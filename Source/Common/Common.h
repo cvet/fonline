@@ -1236,14 +1236,17 @@ constexpr auto xrange(T value)
 
 // ReSharper restore CppInconsistentNaming
 
+extern void SetAppName(const char* name);
+extern auto GetAppName() -> const char*;
+
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \
-    void Create_##class_name() \
+    static void Create_##class_name() \
     { \
         assert(!(instance_name)); \
         (instance_name) = new class_name(); \
     } \
-    void Delete_##class_name() \
+    static void Delete_##class_name() \
     { \
         delete (instance_name); \
         (instance_name) = nullptr; \
@@ -1257,7 +1260,8 @@ constexpr auto xrange(T value)
             DeleteGlobalDataCallbacks[GlobalDataCallbacksCount] = Delete_##class_name; \
             GlobalDataCallbacksCount++; \
         } \
-    } Register_##class_name##_Instance
+    }; \
+    static Register_##class_name Register_##class_name##_Instance
 
 constexpr auto MAX_GLOBAL_DATA_CALLBACKS = 20;
 using GlobalDataCallback = void (*)();

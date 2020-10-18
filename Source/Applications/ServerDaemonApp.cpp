@@ -36,7 +36,6 @@
 #include "Server.h"
 #include "Settings.h"
 #include "Testing.h"
-#include "Version-Include.h"
 
 #if defined(FO_LINUX) || defined(FO_MAC)
 #include <errno.h>
@@ -52,9 +51,10 @@ int main(int argc, char** argv)
 #endif
 {
     try {
+        SetAppName("FOnlineServerDaemon");
+        CatchSystemExceptions();
         CreateGlobalData();
-        CatchExceptions("FOnlineServerDaemon", FO_VERSION);
-        LogToFile("FOnlineServerDaemon.log");
+        LogToFile();
 
 #if defined(FO_LINUX) || defined(FO_MAC)
         // Start daemon

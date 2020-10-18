@@ -33,9 +33,22 @@
 
 #include "Common.h"
 
+static const char* AppName;
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
+
+void SetAppName(const char* name)
+{
+    assert(AppName == nullptr);
+    AppName = name;
+}
+
+auto GetAppName() -> const char*
+{
+    assert(AppName != nullptr);
+    return AppName;
+}
 
 void CreateGlobalData()
 {

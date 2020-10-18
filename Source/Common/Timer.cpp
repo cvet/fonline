@@ -44,18 +44,27 @@ struct TimerData
 {
     TimerData()
     {
-#if defined(FO_WINDOWS)
-        QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&QpcStartValue));
-        QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&QpcFrequency));
-#endif
+#if FO_WINDOWS
+        LARGE_INTEGER qpc_frequency;
+        ::QueryPerformanceFrequency(&qpc_frequency);
+        QpcFrequency = static_cast<double>(qpc_frequency.QuadPart);
+        LARGE_INTEGER qpc_value;
+        ::QueryPerformanceCounter(&qpc_value);
+        InitialRealtimeTick = static_cast<double>(qpc_value.QuadPart) / QpcFrequency * 1000.0;
 
-        InitialRealtimeTick = Timer::RealtimeTick();
+#elif FO_WEB
+        InitialRealtimeTick = ::emscripten_get_now();
+
+#else
+        struct timeval tv;
+        ::gettimeofday(&tv, nullptr);
+        InitialRealtimeTick = static_cast<double>(tv.tv_sec * 1000000 + tv.tv_usec) / 1000.0;
+#endif
     }
 
     double InitialRealtimeTick {};
-#if defined(FO_WINDOWS)
-    int64 QpcStartValue {};
-    int64 QpcFrequency {};
+#if FO_WINDOWS
+    double QpcFrequency {};
 #endif
 };
 GLOBAL_DATA(TimerData, Data);
@@ -164,18 +173,18 @@ auto GameTimer::IsGamePaused() const -> bool
 
 auto Timer::RealtimeTick() -> double
 {
-#if defined(FO_WINDOWS)
-    int64 qpc_value = 0;
-    QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&qpc_value));
-    return static_cast<double>(qpc_value - Data->QpcStartValue) / static_cast<double>(Data->QpcFrequency) * 1000.0 - Data->InitialRealtimeTick;
+#if FO_WINDOWS
+    LARGE_INTEGER qpc_value;
+    ::QueryPerformanceCounter(&qpc_value);
+    return static_cast<double>(qpc_value.QuadPart) / Data->QpcFrequency * 1000.0 - Data->InitialRealtimeTick;
 
-#elif defined(FO_WEB)
-    return emscripten_get_now() - Data->InitialRealtimeTick;
+#elif FO_WEB
+    return ::emscripten_get_now() - Data->InitialRealtimeTick;
 
 #else
     struct timeval tv;
-    gettimeofday(&tv, nullptr);
-    return (double)(tv.tv_sec * 1000000 + tv.tv_usec) / 1000.0 - Data->InitialRealtimeTick;
+    ::gettimeofday(&tv, nullptr);
+    return static_cast<double>(tv.tv_sec * 1000000 + tv.tv_usec) / 1000.0 - Data->InitialRealtimeTick;
 #endif
 }
 

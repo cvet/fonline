@@ -108,7 +108,6 @@ public:
         ImVec2 ButtonSize {ImVec2(200, 30)};
         ImVec2 LogPos {ImVec2(140, 140)};
         ImVec2 LogSize {ImVec2(800, 600)};
-        string CurLog {};
         string WholeLog {};
         string Stats {};
     };

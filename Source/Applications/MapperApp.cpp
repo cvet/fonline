@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "Application.h"
-#include "Keyboard.h"
 #include "Log.h"
 #include "Mapper.h"
 #include "Settings.h"
@@ -93,9 +92,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
+        SetAppName("FOnlineMapper");
+        CatchSystemExceptions();
         CreateGlobalData();
-        CatchExceptions("FOnlineMapper", FO_VERSION);
-        LogToFile("FOnlineMapper.log");
+        LogToFile();
 
         WriteLog("Starting Mapper ({:#x})...\n", FO_VERSION);
 

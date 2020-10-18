@@ -44,7 +44,6 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Version-Include.h"
 
 #ifndef FO_TESTING
 int main(int argc, char** argv)
@@ -53,9 +52,10 @@ int main(int argc, char** argv)
 #endif
 {
     try {
+        SetAppName("FOnlineBaker");
+        CatchSystemExceptions();
         CreateGlobalData();
-        CatchExceptions("FOnlineBaker", FO_VERSION);
-        LogToFile("FOnlineBaker.log");
+        LogToFile();
 
         auto settings = GlobalSettings(argc, argv);
 

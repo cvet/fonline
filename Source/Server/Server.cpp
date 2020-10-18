@@ -496,10 +496,9 @@ void FOServer::DrawGui()
     ImGui::SetNextWindowPos(Gui.LogPos, ImGuiCond_Once);
     ImGui::SetNextWindowSize(Gui.LogSize, ImGuiCond_Once);
     if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
-        LogGetBuffer(Gui.CurLog);
-        if (!Gui.CurLog.empty()) {
-            Gui.WholeLog += Gui.CurLog;
-            Gui.CurLog.clear();
+        const auto log = LogGetBuffer();
+        if (!log.empty()) {
+            Gui.WholeLog += log;
             if (Gui.WholeLog.size() > 100000) {
                 Gui.WholeLog = Gui.WholeLog.substr(Gui.WholeLog.size() - 100000);
             }

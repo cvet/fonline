@@ -291,16 +291,6 @@ static void AdminWork(FOServer* server, Session* session)
             WriteLog("Admin panel ({}): Kill whole process.\n", admin_name);
             std::exit(0);
         }
-        else if (_str(cmd).startsWith("log ")) {
-            if (cmd.substr(4) == "disable") {
-                LogToFile(cmd.substr(4));
-                WriteLog("Admin panel ({}): Logging to file '{}'.\n", admin_name, cmd.substr(4));
-            }
-            else {
-                LogToFile("");
-                WriteLog("Admin panel ({}): Logging disabled.\n", admin_name);
-            }
-        }
         else if (cmd == "stop") {
             if (!server->Started) {
                 WriteLog("Admin panel ({}): Server starting, wait.\n", admin_name);

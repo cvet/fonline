@@ -69,21 +69,16 @@
 #include "SDL_main.h"
 #endif
 
-struct TestingData
-{
-    string AppName {};
-    string AppVer {};
-    string ManualDumpAppendix {};
-    string ManualDumpMessage {};
-};
-GLOBAL_DATA(TestingData, Data);
+static const char* ManualDumpAppendix;
+static const char* ManualDumpMessage;
 
 #ifdef FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 {
+    SetAppName("FOnlineTesting");
+    CatchSystemExceptions();
     CreateGlobalData();
-    CatchExceptions("FOnlineTesting", FO_VERSION);
-    LogToFile("FOnlineTesting.log");
+    LogToFile();
     return Catch::Session().run(argc, argv);
 }
 #endif
@@ -100,7 +95,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except);
 static void DumpAngelScript(DiskFile& file);
 
 // Old version of the structure, used before Vista
-typedef struct ImagehlpModule64V2
+struct ImagehlpModule64V2
 {
     DWORD SizeOfStruct; // set to sizeof(IMAGEHLP_MODULE64)
     DWORD64 BaseOfImage; // base load address of module
@@ -112,19 +107,11 @@ typedef struct ImagehlpModule64V2
     CHAR ModuleName[32]; // module name
     CHAR ImageName[256]; // image name
     CHAR LoadedImageName[256]; // symbol file name
-} imagehlp_module64_v2;
+};
 
-void CatchExceptions(const string& app_name, int app_ver)
+void CatchSystemExceptions()
 {
-    Data->AppName = app_name;
-    Data->AppVer = _str("{:#x}", app_ver);
-
-    if (!app_name.empty()) {
-        SetUnhandledExceptionFilter(TopLevelFilterReadableDump);
-    }
-    else {
-        SetUnhandledExceptionFilter(nullptr);
-    }
+    ::SetUnhandledExceptionFilter(TopLevelFilterReadableDump);
 }
 
 static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
@@ -134,13 +121,13 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
 
     DiskFileSystem::ResetCurDir();
     const auto dt = Timer::GetCurrentDateTime();
-    auto dump_str = except != nullptr ? "CrashDump" : Data->ManualDumpAppendix;
-    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, Data->AppName, Data->AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    const auto* dump_str = (except != nullptr ? "CrashDump" : ManualDumpAppendix);
+    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_VERSION_STR, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     DiskFileSystem::MakeDirTree(dump_path);
     if (auto file = DiskFileSystem::OpenFile(dump_path, true)) {
         if (except == nullptr) {
-            message = Data->ManualDumpMessage;
+            message = ManualDumpMessage;
         }
         else {
             message = "Exception";
@@ -151,8 +138,8 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         file.Write(_str("{}\n", message));
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", Data->AppName));
-        file.Write(_str("\tVersion     {}\n", Data->AppVer));
+        file.Write(_str("\tName        {}\n", GetAppName()));
+        file.Write(_str("\tVersion     {}\n", FO_VERSION_STR));
         OSVERSIONINFOW ver;
         std::memset(&ver, 0, sizeof(OSVERSIONINFOW));
         ver.dwOSVersionInfoSize = sizeof(ver);
@@ -421,7 +408,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
                     IMAGEHLP_MODULE64 module;
                     std::memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
                     module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
-                    if ((SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) || ((module.SizeOfStruct = sizeof(imagehlp_module64_v2), SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)) != 0)) {
+                    if ((SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) || ((module.SizeOfStruct = sizeof(ImagehlpModule64V2), SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)) != 0)) {
                         switch (module.SymType) {
                         case SymNone:
                             callstack.SymTypeString = "-nosymbols-";
@@ -502,10 +489,10 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
-void CreateDump(const string& appendix, const string& message)
+void CreateDump(const char* appendix, const char* message)
 {
-    Data->ManualDumpAppendix = appendix;
-    Data->ManualDumpMessage = message;
+    ManualDumpAppendix = appendix;
+    ManualDumpMessage = message;
 
     TopLevelFilterReadableDump(nullptr);
 }
@@ -653,7 +640,7 @@ static auto GetTraceback() -> string
             IMAGEHLP_MODULE64 module;
             std::memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
             module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
-            if ((SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) || ((module.SizeOfStruct = sizeof(imagehlp_module64_v2), SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)) != 0)) {
+            if (SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0 || (module.SizeOfStruct = sizeof(ImagehlpModule64V2), SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)) != 0) {
                 switch (module.SymType) {
                 case SymNone:
                     callstack.SymTypeString = "-nosymbols-";
@@ -712,55 +699,41 @@ static auto GetTraceback() -> string
 
 #elif !defined(FO_WINDOWS) && !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
 static void TerminationHandler(int signum, siginfo_t* siginfo, void* context);
-static bool SigactionsSetted = false;
 static struct sigaction OldSIGSEGV;
 static struct sigaction OldSIGFPE;
 
 static void DumpAngelScript(DiskFile& file);
 
-void CatchExceptions(const string& app_name, int app_ver)
+void CatchSystemExceptions()
 {
-    Data->AppName = app_name;
-    Data->AppVer = _str("{:#x}", app_ver);
+    // SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGTERM
+    // CTRL-C - sends SIGINT which default action is to terminate the application.
+    // CTRL-\ - sends SIGQUIT which default action is to terminate the application dumping core.
+    // CTRL-Z - sends SIGSTOP that suspends the program.
 
-    if (!app_name.empty() && !SigactionsSetted) {
-        // SIGILL, SIGFPE, SIGSEGV, SIGBUS, SIGTERM
-        // CTRL-C - sends SIGINT which default action is to terminate the application.
-        // CTRL-\ - sends SIGQUIT which default action is to terminate the application dumping core.
-        // CTRL-Z - sends SIGSTOP that suspends the program.
+    struct sigaction act;
 
-        struct sigaction act;
+    // SIGSEGV
+    // Description     Invalid memory reference
+    // Default action  Abnormal termination of the process
+    std::memset(&act, 0, sizeof(act));
+    act.sa_sigaction = &TerminationHandler;
+    act.sa_flags = SA_SIGINFO;
+    sigaction(SIGSEGV, &act, &OldSIGSEGV);
 
-        // SIGSEGV
-        // Description     Invalid memory reference
-        // Default action  Abnormal termination of the process
-        std::memset(&act, 0, sizeof(act));
-        act.sa_sigaction = &TerminationHandler;
-        act.sa_flags = SA_SIGINFO;
-        sigaction(SIGSEGV, &act, &OldSIGSEGV);
-
-        // SIGFPE
-        // Description     Erroneous arithmetic operation
-        // Default action  bnormal termination of the process
-        std::memset(&act, 0, sizeof(act));
-        act.sa_sigaction = &TerminationHandler;
-        act.sa_flags = SA_SIGINFO;
-        sigaction(SIGFPE, &act, &OldSIGFPE);
-
-        SigactionsSetted = true;
-    }
-    else if (app_name.empty() && SigactionsSetted) {
-        sigaction(SIGSEGV, &OldSIGSEGV, nullptr);
-        sigaction(SIGFPE, &OldSIGFPE, nullptr);
-
-        SigactionsSetted = false;
-    }
+    // SIGFPE
+    // Description     Erroneous arithmetic operation
+    // Default action  bnormal termination of the process
+    std::memset(&act, 0, sizeof(act));
+    act.sa_sigaction = &TerminationHandler;
+    act.sa_flags = SA_SIGINFO;
+    sigaction(SIGFPE, &act, &OldSIGFPE);
 }
 
-void CreateDump(const string& appendix, const string& message)
+void CreateDump(const char* appendix, const char* message)
 {
-    Data->ManualDumpAppendix = appendix;
-    Data->ManualDumpMessage = message;
+    ManualDumpAppendix = appendix;
+    ManualDumpMessage = message;
 
     TerminationHandler(0, nullptr, nullptr);
 }
@@ -801,7 +774,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
             message += _str(" ({})", sig_desc);
     }
     else {
-        message = Data->ManualDumpMessage;
+        message = ManualDumpMessage;
     }
 
     // Obtain traceback
@@ -816,8 +789,8 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     // Dump file
     DateTimeStamp dt;
     Timer::GetCurrentDateTime(dt);
-    string dump_str = (siginfo ? "CrashDump" : Data->ManualDumpAppendix);
-    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, Data->AppName, Data->AppVer, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    string dump_str = (siginfo ? "CrashDump" : ManualDumpAppendix);
+    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_VERSION_STR, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     DiskFileSystem::ResetCurDir();
     DiskFile file = DiskFileSystem::OpenFile(dump_path, true);
@@ -827,8 +800,8 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
         file.Write(_str("\t{}\n", message));
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", Data->AppName));
-        file.Write(_str("\tVersion     {}\n", Data->AppVer));
+        file.Write(_str("\tName        {}\n", GetAppName()));
+        file.Write(_str("\tVersion     {}\n", FO_VERSION_STR);
         struct utsname ver;
         uname(&ver);
         file.Write(_str("\tOS          {} / {} / {}\n", ver.sysname, ver.release, ver.version));
@@ -872,7 +845,7 @@ static string GetTraceback()
 #else
 // Todo: improve global exceptions handlers for mobile os
 
-void CatchExceptions(const string& app_name, int app_ver)
+void CatchSystemExceptions()
 {
     //
 }
@@ -908,51 +881,38 @@ static void DumpAngelScript(DiskFile& file)
     //    file.Write(_str("AngelScript\n{}", tb));
 }
 
-auto RaiseAssert(const string& message, const string& file, int line) -> bool
+static void ShowErrorMessage(const char* message, bool is_fatal)
 {
-    // Break into debugger
-#if defined(FO_WINDOWS)
-    if (::IsDebuggerPresent() != 0) {
+    // Try break into debugger
+#if FO_WINDOWS
+    if (::IsDebuggerPresent() != FALSE) {
         ::DebugBreak();
-        return true;
+        return;
     }
 #endif
 
-    const string name = _str(file).extractFileName();
-    WriteLog("Runtime assert: {} in {} ({})\n", message, name, line);
-
-#if defined(FO_WINDOWS) || defined(FO_LINUX) || defined(FO_MAC)
-    // Create dump
-    CreateDump(_str("AssertFailed_{:#x}_{}({})", FO_VERSION, name, line), message);
-
     // Show message
-    string traceback;
-#if defined(FO_LINUX) || defined(FO_MAC)
-    backward::StackTrace st;
-    st.load_here(42);
-    backward::Printer st_printer;
-    st_printer.snippet = false;
-    std::stringstream ss;
-    st_printer.print(st, ss);
-    traceback = ss.str();
-#else
-    traceback = "";
-#endif
-
-    MessageBox::ShowErrorMessage(_str("Assert failed!\nVersion: {:#x}\nFile: {} ({})\n\n{}", FO_VERSION, name, line, message), traceback);
-#endif
-
-    // Shut down
-    std::exit(1);
+    if (is_fatal) {
+        MessageBox::ShowErrorMessage("Fatal Exception!", GetTraceback());
+    }
+    else {
+        MessageBox::ShowErrorMessage("Exception!", GetTraceback());
+    }
 }
 
 void ReportExceptionAndExit(const std::exception& ex)
 {
     WriteLog("{}\n", ex.what());
+    CreateDump("FatalException", ex.what());
+    ShowErrorMessage(ex.what(), true);
     std::exit(1);
 }
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
     WriteLog("{}\n", ex.what());
+#if !NDEBUG
+    CreateDump("Exception", ex.what());
+    ShowErrorMessage(ex.what(), false);
+#endif
 }

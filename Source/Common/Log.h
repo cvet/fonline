@@ -47,7 +47,7 @@ void WriteLog(const string& message, Args... args)
 
 // Control
 extern void LogWithoutTimestamp();
-extern void LogToFile(const string& fname);
+extern void LogToFile();
 extern void LogToFunc(const string& key, const LogFunc& func, bool enable);
 extern void LogToBuffer(bool enable);
-extern void LogGetBuffer(string& buf);
+extern auto LogGetBuffer() -> string;

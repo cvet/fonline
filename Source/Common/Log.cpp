@@ -62,15 +62,12 @@ void LogWithoutTimestamp()
     Data->LogDisableTimestamp = true;
 }
 
-void LogToFile(const string& fname)
+void LogToFile()
 {
     SCOPE_LOCK(Data->LogLocker);
 
-    Data->LogFileHandle = nullptr;
-
-    if (!fname.empty()) {
-        Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
-    }
+    const auto fname = _str("{}.log", GetAppName()).str();
+    Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
 }
 
 void LogToFunc(const string& key, const LogFunc& func, bool enable)
@@ -101,14 +98,16 @@ void LogToBuffer(bool enable)
     }
 }
 
-void LogGetBuffer(std::string& buf)
+auto LogGetBuffer() -> string
 {
     SCOPE_LOCK(Data->LogLocker);
 
     if (Data->LogBufferStr != nullptr && !Data->LogBufferStr->empty()) {
-        buf = *Data->LogBufferStr;
+        auto buf = *Data->LogBufferStr;
         Data->LogBufferStr->clear();
+        return buf;
     }
+    return string();
 }
 
 void WriteLogMessage(const string& message)

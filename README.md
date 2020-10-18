@@ -318,13 +318,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: rename char to int8 and use int8_t as alias
 * Common: rename short to int16 and use int16_t as alias
 * Common: rename int to int32 and use int32_t as alias
-* Common: replace depedency from assimp types (matrix/vector/quaternion/color)
-* Common: remove map/vector/set/pair bindings
+* Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
 * Common: auto expand exception parameters to readable state
 * Common: recursion guard for EventDispatcher
 * Common: improve ptr<> system for leng term pointer observing
 * Common: add _hash c-string literal helper
 * Common: move WriteData/ReadData to DataWriter/DataReader
+* Common: fix TRect Width/Height
 * Common: move NetProperty to more proper place
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
@@ -335,7 +335,6 @@ Please follow these instructions to understand how to use this engine by design:
 * ServerApp: fix data racing
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
-* 3dStuff: check scale precision
 * 3dStuff: add reverse playing of 3d animation
 * 3dStuff: process default animations
 * 3dStuff: GetAnim1/GetAnim2 int to uint return type
@@ -372,6 +371,7 @@ Please follow these instructions to understand how to use this engine by design:
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * Entity: fix proto name recognition
+* Entity: use passkey for SetId
 * FileSystem: handle apply file writing
 * GenericUtils: script handling in ConvertParamValue
 * KeyCodes-Include: rename DIK_ to Key or something else
@@ -383,8 +383,6 @@ Please follow these instructions to understand how to use this engine by design:
 * MapLoader: remove mapper specific IsSelected from MapTile
 * MessageBox: fix workaround for strange behaviour of button focus
 * MsgFiles: move loading to constructors
-* NetBuffer: make NeedProcess const
-* NetBuffer: allow transferring of any type and add safe transferring of floats
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * ScriptSystem: rework FONLINE_
@@ -398,7 +396,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Testing: restore stack trace dumping in file
 * Testing: improve global exceptions handlers for mobile os
 * Testing: fix script system
-* Testing: review RUNTIME_ASSERT(( <- double braces
+* Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
 * Testing: send client dumps to server
 * WinApi-Include: move WinApi to separate module because it's give too much garbage in global namespace
 * MonoScripting: set Mono domain user data
@@ -443,7 +441,6 @@ Please follow these instructions to understand how to use this engine by design:
 * ImageBaker: swap colors of fo palette once in header
 * Mapper: need attention! (24)
 * Mapper: mapper render iface layer
-* Mapper: add standalone Mapper application
 * Mapper: rename FOMapper to just Mapper
   
 ## Repository structure

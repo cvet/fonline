@@ -34,13 +34,9 @@
 #include "Common.h"
 
 #include "AppGui.h"
-#include "NetBuffer.h"
 #include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 #include "Testing.h"
-#include "Timer.h"
-#include "Version-Include.h"
 
 #include "SDL_main.h"
 
@@ -101,9 +97,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
+        SetAppName("FOnlineServer");
+        CatchSystemExceptions();
         CreateGlobalData();
-        CatchExceptions("FOnlineServer", FO_VERSION);
-        LogToFile("FOnlineServer.log");
+        LogToFile();
 
         Data->Settings = new GlobalSettings(argc, argv);
 

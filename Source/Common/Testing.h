@@ -31,14 +31,15 @@
 // SOFTWARE.
 //
 
+// Todo: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
 // Todo: send client dumps to server
 
 #pragma once
 
 #include "Common.h"
 
-extern void CatchExceptions(const string& app_name, int app_ver);
-extern void CreateDump(const string& appendix, const string& message);
-extern auto RaiseAssert(const string& message, const string& file, int line) -> bool;
+extern void CatchSystemExceptions();
+extern void CreateDump(const char* appendix, const char* message);
+extern auto GetStackTrace() -> string;
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
 extern void ReportExceptionAndContinue(const std::exception& ex);

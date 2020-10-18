@@ -37,7 +37,6 @@
 #include "Server.h"
 #include "Settings.h"
 #include "Testing.h"
-#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 static wchar_t* ServiceName = L"FOnlineServer";
@@ -216,9 +215,11 @@ int main(int argc, char** argv)
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
+        SetAppName("FOnlineServerService");
+        CatchSystemExceptions();
         CreateGlobalData();
-        CatchExceptions("FOnlineServerService", FO_VERSION);
-        LogToFile("FOnlineServerService.log");
+        LogToFile();
+
         Data->Settings = new GlobalSettings(argc, nullptr); // Todo: convert argv from wchar_t** to char**
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);

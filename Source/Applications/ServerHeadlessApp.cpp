@@ -36,7 +36,6 @@
 #include "Server.h"
 #include "Settings.h"
 #include "Testing.h"
-#include "Version-Include.h"
 
 #ifndef FO_TESTING
 extern "C" int main(int argc, char** argv)
@@ -45,9 +44,10 @@ extern "C" int main(int argc, char** argv)
 #endif
 {
     try {
+        SetAppName("FOnlineServerHeadless");
+        CatchSystemExceptions();
         CreateGlobalData();
-        CatchExceptions("FOnlineServerHeadless", FO_VERSION);
-        LogToFile("FOnlineServerHeadless.log");
+        LogToFile();
 
         auto settings = GlobalSettings(argc, argv);
         auto* server = new FOServer(settings);

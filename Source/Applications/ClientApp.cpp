@@ -35,9 +35,7 @@
 
 #include "Application.h"
 #include "Client.h"
-#include "Keyboard.h"
 #include "Log.h"
-#include "MessageBox.h"
 #include "Settings.h"
 #include "Testing.h"
 #include "Timer.h"
@@ -129,9 +127,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
+        SetAppName("FOnline");
+        CatchSystemExceptions();
         CreateGlobalData();
-        CatchExceptions("FOnline", FO_VERSION);
-        LogToFile("FOnline.log");
+        LogToFile();
 
         WriteLog("Starting FOnline ({:#x})...\n", FO_VERSION);
 

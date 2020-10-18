@@ -38,7 +38,6 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "Version-Include.h"
 
 #include "minizip/zip.h"
 
@@ -64,9 +63,10 @@ int main(int argc, char** argv)
 #endif
 {
     try {
+        SetAppName("FOnlineASCompiler");
+        CatchSystemExceptions();
         CreateGlobalData();
-        CatchExceptions("FOnlineASCompiler", FO_VERSION);
-        LogToFile("FOnlineASCompiler.log");
+        LogToFile();
 
         auto settings = GlobalSettings(argc, argv);
         int errors = 0;
