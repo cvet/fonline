@@ -1,31 +1,17 @@
-tasks:
-- init: cmake -S . -B build && cmake --build build --target FOnlineUnitTests --parallel
-
 vscode:
   extensions:
     - ms-vscode.cmake-tools@1.4.2:85XiRZZTNCh6JgvEqefqww==
-
     - llvm-vs-code-extensions.vscode-clangd@0.1.7:drODQ7O13QYFp9Ufy1Plaw==
-
     - matepek.vscode-catch2-test-adapter@3.4.2:8HmPtYNiX6FRr+lAV/hQOQ==
-
     - twxs.cmake@0.0.17:aQNzlYa74rJFJ5/BnUF1yA==
 
 github:
   prebuilds:
-    # enable for the master/default branch (defaults to true)
     master: true
-# enable for all branches in this repo (defaults to false)
     branches: true
-# enable for pull requests coming from this repo (defaults to true)
     pullRequests: true
-# enable for pull requests coming from forks (defaults to false)
     pullRequestsFromForks: true
-# add a check to pull requests (defaults to true)
     addCheck: true
-# add a "Review in Gitpod" button as a comment to pull requests (defaults to false)
     addComment: true
-# add a "Review in Gitpod" button to the pull request's description (defaults to false)
-    addBadge: false
-# add a label once the prebuild is ready to pull requests (defaults to false)
-    addLabel: false
+    addBadge: true
+    addLabel: true
