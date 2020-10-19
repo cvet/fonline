@@ -39,10 +39,12 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
+#if !FO_HEADLESS
 #include "SDL.h"
 #include "SDL_audio.h"
 #include "SDL_events.h"
 #include "SDL_video.h"
+#endif
 #ifdef FO_HAVE_OPENGL
 #ifndef FO_OPENGL_ES
 #include "GL/glew.h"
@@ -124,7 +126,7 @@ static constexpr auto RING_BUFFER_LENGTH = 300;
 #define glRenderbufferStorageMultisampleEXT(a, b, c, d, e)
 #endif
 #endif
-#ifdef NDEBUG
+#if !FO_DEBUG
 #define GL(expr) expr
 #else
 #define GL(expr) \
@@ -160,8 +162,9 @@ enum class RenderType
 #endif
 };
 
-static RenderType CurRenderType {RenderType::None};
+#if !FO_HEADLESS
 static SDL_Window* SdlWindow {};
+static RenderType CurRenderType {RenderType::None};
 static bool RenderDebug {};
 static vector<InputEvent> EventsQueue {};
 static vector<InputEvent> NextFrameEventsQueue {};
@@ -193,11 +196,17 @@ static bool VSync {};
 const uint Application::AppRender::MAX_ATLAS_WIDTH {};
 const uint Application::AppRender::MAX_ATLAS_HEIGHT {};
 const uint Application::AppRender::MAX_BONES {};
-// vector<tuple<int, string>> Application::Input::KeyboardEvents {};
-// vector<tuple<int, int, int>> Application::Input::MouseEvents {};
 const int Application::AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int Application::AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
+#else
+const uint Application::AppRender::MAX_ATLAS_WIDTH {};
+const uint Application::AppRender::MAX_ATLAS_HEIGHT {};
+const uint Application::AppRender::MAX_BONES {};
+const int Application::AppAudio::AUDIO_FORMAT_U8 {};
+const int Application::AppAudio::AUDIO_FORMAT_S16 {};
+#endif // !FO_HEADLESS
 
+#if !FO_HEADLESS
 static unordered_map<SDL_Keycode, KeyCode> KeysMap {
 #define KEY_CODE(name, index, code) {code, KeyCode::name},
 #include "KeyCodes-Include.h"
@@ -213,6 +222,7 @@ static unordered_map<int, MouseButton> MouseButtonsMap {
     {SDL_BUTTON(7), MouseButton::Ext3},
     {SDL_BUTTON(8), MouseButton::Ext4},
 };
+#endif
 
 struct RenderTexture::Impl
 {
@@ -372,6 +382,7 @@ void InitApplication(GlobalSettings& settings)
 
 Application::Application(GlobalSettings& settings)
 {
+#if !FO_HEADLESS
     // Initialize input events
     if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0) {
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
@@ -829,6 +840,7 @@ Application::Application(GlobalSettings& settings)
     if (settings.AlwaysOnTop) {
         Window.AlwaysOnTop(true);
     }
+#endif // !FO_HEADLESS
 
     // Skip SDL allocations from profiling
 #if defined(FO_WINDOWS) && defined(_DEBUG)
@@ -838,6 +850,7 @@ Application::Application(GlobalSettings& settings)
 
 void Application::BeginFrame()
 {
+#if !FO_HEADLESS
     if (!NextFrameEventsQueue.empty()) {
         EventsQueue.insert(EventsQueue.end(), NextFrameEventsQueue.begin(), NextFrameEventsQueue.end());
         NextFrameEventsQueue.clear();
@@ -969,12 +982,14 @@ void Application::BeginFrame()
             break;
         }
     }
+#endif // !FO_HEADLESS
 
     _onFrameBeginDispatcher();
 }
 
 void Application::EndFrame()
 {
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
 #ifdef FO_HAVE_OPENGL
         if (CurRenderType == RenderType::OpenGL) {
@@ -1000,6 +1015,7 @@ void Application::EndFrame()
         }
 #endif
     }
+#endif // !FO_HEADLESS
 
     _onFrameEndDispatcher();
 }
@@ -1008,80 +1024,99 @@ auto Application::AppWindow::GetSize() -> tuple<int, int>
 {
     auto w = 1000;
     auto h = 1000;
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_GetWindowSize(SdlWindow, &w, &h);
     }
+#endif
     return {w, h};
 }
 
 void Application::AppWindow::SetSize(int w, int h)
 {
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_SetWindowSize(SdlWindow, w, h);
     }
+#endif
 }
 
 auto Application::AppWindow::GetPosition() -> tuple<int, int>
 {
     auto x = 0;
     auto y = 0;
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_GetWindowPosition(SdlWindow, &x, &y);
     }
+#endif
     return {x, y};
 }
 
 void Application::AppWindow::SetPosition(int x, int y)
 {
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_SetWindowPosition(SdlWindow, x, y);
     }
+#endif
 }
 
 auto Application::AppWindow::GetMousePosition() -> tuple<int, int>
 {
     auto x = 100;
     auto y = 100;
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
     }
+#endif
     return {x, y};
 }
 
 void Application::AppWindow::SetMousePosition(int x, int y)
 {
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_WarpMouseInWindow(SdlWindow, x, y);
     }
+#endif
 }
 
 auto Application::AppWindow::IsFocused() -> bool
 {
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         return (SDL_GetWindowFlags(SdlWindow) & SDL_WINDOW_INPUT_FOCUS) != 0u;
     }
+#endif
 
     return true;
 }
 
 void Application::AppWindow::Minimize()
 {
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_MinimizeWindow(SdlWindow);
     }
+#endif
 }
 
 auto Application::AppWindow::IsFullscreen() -> bool
 {
+#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         return (SDL_GetWindowFlags(SdlWindow) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0u;
     }
+#endif
 
     return false;
 }
 
 auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
 {
+#if !FO_HEADLESS
     if (CurRenderType == RenderType::Null) {
         return false;
     }
@@ -1097,11 +1132,14 @@ auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
             return true;
         }
     }
+#endif
+
     return false;
 }
 
 void Application::AppWindow::Blink()
 {
+#if !FO_HEADLESS
     if (CurRenderType == RenderType::Null) {
         return;
     }
@@ -1113,10 +1151,12 @@ void Application::AppWindow::Blink()
         ::FlashWindow(info.info.win.window, 1);
     }
 #endif
+#endif
 }
 
 void Application::AppWindow::AlwaysOnTop(bool enable)
 {
+#if !FO_HEADLESS
     if (CurRenderType == RenderType::Null) {
         return;
     }
@@ -1127,6 +1167,7 @@ void Application::AppWindow::AlwaysOnTop(bool enable)
     if (SDL_GetWindowWMInfo(SdlWindow, &info) != 0) {
         ::SetWindowPos(info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
     }
+#endif
 #endif
 }
 
@@ -2053,46 +2094,68 @@ void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/
 
 auto Application::AppInput::PollEvent(InputEvent& event) -> bool
 {
+#if !FO_HEADLESS
     if (!EventsQueue.empty()) {
         event = EventsQueue.front();
         EventsQueue.erase(EventsQueue.begin());
         return true;
     }
+#endif
     return false;
 }
 
 void Application::AppInput::PushEvent(const InputEvent& event)
 {
+#if !FO_HEADLESS
     NextFrameEventsQueue.push_back(event);
+#endif
 }
 
 void Application::AppInput::SetClipboardText(const string& text)
 {
+#if !FO_HEADLESS
     SDL_SetClipboardText(text.c_str());
+#endif
 }
 
 auto Application::AppInput::GetClipboardText() -> string
 {
+#if !FO_HEADLESS
     return SDL_GetClipboardText();
+#else
+    return string();
+#endif
 }
 
 auto Application::AppAudio::IsEnabled() -> bool
 {
+#if !FO_HEADLESS
     return AudioDeviceId >= 2;
+#else
+    return false;
+#endif
 }
 
 auto Application::AppAudio::GetStreamSize() -> uint
 {
     RUNTIME_ASSERT(IsEnabled());
 
+#if !FO_HEADLESS
     return AudioSpec.size;
+#else
+    return 0u;
+#endif
 }
 
 auto Application::AppAudio::GetSilence() -> uchar
 {
     RUNTIME_ASSERT(IsEnabled());
 
+#if !FO_HEADLESS
     return AudioSpec.silence;
+#else
+    return 0u;
+#endif
 }
 
 void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
@@ -2100,7 +2163,9 @@ void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
     RUNTIME_ASSERT(IsEnabled());
 
     LockDevice();
+#if !FO_HEADLESS
     AudioStreamWriter = std::move(stream_callback);
+#endif
     UnlockDevice();
 }
 
@@ -2108,6 +2173,7 @@ auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vec
 {
     RUNTIME_ASSERT(IsEnabled());
 
+#if !FO_HEADLESS
     struct AudioConverter
     {
         int Format {};
@@ -2151,6 +2217,8 @@ auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vec
 
         buf.resize(converter->Cvt.len_cvt);
     }
+#endif
+
     return true;
 }
 
@@ -2158,20 +2226,26 @@ void Application::AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
     RUNTIME_ASSERT(IsEnabled());
 
+#if !FO_HEADLESS
     volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
     SDL_MixAudioFormat(output, buf, AudioSpec.format, AudioSpec.size, volume);
+#endif
 }
 
 void Application::AppAudio::LockDevice()
 {
     RUNTIME_ASSERT(IsEnabled());
 
+#if !FO_HEADLESS
     SDL_LockAudioDevice(AudioDeviceId);
+#endif
 }
 
 void Application::AppAudio::UnlockDevice()
 {
     RUNTIME_ASSERT(IsEnabled());
 
+#if !FO_HEADLESS
     SDL_UnlockAudioDevice(AudioDeviceId);
+#endif
 }

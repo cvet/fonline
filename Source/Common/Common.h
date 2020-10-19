@@ -95,6 +95,7 @@
 #endif
 
 // Rendering
+#if !FO_HEADLESS
 #if !(defined(FO_WINDOWS) && defined(WINRT)) && !defined(FO_PS4)
 #define FO_HAVE_OPENGL
 #if defined(FO_IOS) || defined(FO_ANDROID) || defined(FO_WEB)
@@ -109,6 +110,7 @@
 #endif
 #if defined(FO_PS4)
 #define FO_HAVE_GNM
+#endif
 #endif
 
 // Standard API

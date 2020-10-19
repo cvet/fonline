@@ -910,7 +910,7 @@ void ReportExceptionAndExit(const std::exception& ex)
 void ReportExceptionAndContinue(const std::exception& ex)
 {
     WriteLog("{}\n", ex.what());
-#if !NDEBUG
+#if FO_DEBUG
     CreateDump("Exception", ex.what());
     ShowErrorMessage(ex.what(), false);
 #endif
