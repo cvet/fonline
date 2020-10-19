@@ -784,7 +784,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 
 auto ModelInstance::GetDrawSize() const -> tuple<uint, uint>
 {
-    const auto scale = std::ceilf(std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3));
+    const auto scale = std::ceil(std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3));
     const auto w = static_cast<float>(_modelInfo->_drawWidth) * scale;
     const auto h = static_cast<float>(_modelInfo->_drawHeight) * scale;
     return tuple {static_cast<uint>(w), static_cast<uint>(h)};

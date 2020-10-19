@@ -1246,7 +1246,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
         // Find animation
         file.SetCurPos(0);
         for (uint i = 0; i <= anim_index; i++) {
-            if (!file.FindFragment(reinterpret_cast<uchar*>("<spranim>"), 9, file.GetCurPos())) {
+            if (!file.FindFragment(reinterpret_cast<const uchar*>("<spranim>"), 9, file.GetCurPos())) {
                 throw ImageBakerException("Spranim for SPR not found", fname);
             }
             file.GoForward(12);
@@ -1286,7 +1286,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
 
         uint data_len = 0;
         auto cur_pos = file.GetCurPos();
-        if (file.FindFragment(reinterpret_cast<uchar*>("<spranim_img>"), 13, cur_pos)) {
+        if (file.FindFragment(reinterpret_cast<const uchar*>("<spranim_img>"), 13, cur_pos)) {
             data_len = file.GetCurPos() - cur_pos;
         }
         else {
@@ -1622,7 +1622,7 @@ auto ImageBaker::LoadTil(const string& fname, const string& /*opt*/, File& file)
     auto h = file.GetLEUInt();
     UNUSED_VARIABLE(h);
 
-    if (!file.FindFragment(reinterpret_cast<uchar*>("<tiledata>"), 10, file.GetCurPos())) {
+    if (!file.FindFragment(reinterpret_cast<const uchar*>("<tiledata>"), 10, file.GetCurPos())) {
         throw ImageBakerException("Tiledata in TIL file not found", fname);
     }
 

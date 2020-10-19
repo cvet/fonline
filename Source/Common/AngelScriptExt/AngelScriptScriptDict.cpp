@@ -717,7 +717,7 @@ static void* CopyObject(asITypeInfo* objType, int subTypeIndex, void* value)
         elementSize = engine->GetSizeOfPrimitiveType(subTypeId);
 
     void* ptr = userAlloc(elementSize);
-    std::memset(ptr, 0, elementSize);
+    memset(ptr, 0, elementSize);
 
     if (subTypeId & asTYPEID_OBJHANDLE) {
         *(void**)ptr = *(void**)value;
