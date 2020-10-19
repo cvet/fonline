@@ -3,5 +3,7 @@ Temp
 .vs
 .idea
 .vscode
+.theia
+.cache
 build**
 cmake-build**
