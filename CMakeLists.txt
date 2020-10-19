@@ -917,11 +917,14 @@ include_directories( "${FO_CATCH2_DIR}/single_include/catch2" )
 
 # Backward-cpp
 if( NOT WIN32 )
-	StatusMessage( "+ Backward-cpp" )
 	set( FO_BACKWARDCPP_DIR "ThirdParty/backward-cpp" )
 	include_directories( "${FO_BACKWARDCPP_DIR}" )
-	if( FO_OS STREQUAL "Linux" )
+	CHECK_INCLUDE_FILE( "bfd.h" haveBFD )
+	if( haveBFD )
+		StatusMessage( "+ Backward-cpp (with bfd)" )
 		list( APPEND FO_COMMON_SYSTEM_LIBS "bfd" )
+	else()
+		StatusMessage( "+ Backward-cpp (without bfd)" )
 	endif()
 endif()
 

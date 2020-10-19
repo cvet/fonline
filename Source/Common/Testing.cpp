@@ -56,7 +56,7 @@
 #include <TlHelp32.h>
 #endif
 #if !defined(FO_WINDOWS) && !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
-#ifdef FO_LINUX
+#if __has_include(<bfd.h>)
 #define BACKWARD_HAS_BFD 1
 #endif
 #include "backward.hpp"
