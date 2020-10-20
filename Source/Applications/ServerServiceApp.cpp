@@ -39,7 +39,9 @@
 #include "Testing.h"
 #include "WinApi-Include.h"
 
+#if FO_WINDOWS
 static wchar_t* ServiceName = L"FOnlineServer";
+#endif
 
 struct ServerServiceAppData
 {

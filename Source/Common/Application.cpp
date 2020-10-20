@@ -44,7 +44,6 @@
 #include "SDL_audio.h"
 #include "SDL_events.h"
 #include "SDL_video.h"
-#endif
 #if FO_HAVE_OPENGL
 #if !FO_OPENGL_ES
 #include "GL/glew.h"
@@ -56,6 +55,7 @@
 #if FO_HAVE_DIRECT_3D
 #include <d3d11_1.h>
 #endif
+#endif
 
 Application* App;
 
@@ -63,6 +63,7 @@ Application* App;
 static _CrtMemState CrtMemState;
 #endif
 
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
 static constexpr auto RING_BUFFER_LENGTH = 300;
 #if !FO_OPENGL_ES
@@ -140,6 +141,7 @@ static constexpr auto RING_BUFFER_LENGTH = 300;
 #endif
 #define GL_HAS(extension) (OGL_##extension)
 #endif
+#endif
 
 enum class RenderType
 {
@@ -206,6 +208,55 @@ const int Application::AppAudio::AUDIO_FORMAT_U8 {};
 const int Application::AppAudio::AUDIO_FORMAT_S16 {};
 #endif // !FO_HEADLESS
 
+struct RenderTexture::Impl
+{
+    virtual ~Impl() = default;
+};
+
+RenderTexture::~RenderTexture()
+{
+}
+
+struct RenderEffect::Impl
+{
+    virtual ~Impl() = default;
+};
+
+RenderEffect::~RenderEffect()
+{
+}
+
+auto RenderEffect::IsSame(const string& name, const string& defines) const -> bool
+{
+    return _str(name).compareIgnoreCase(_effectName) && defines == _effectDefines;
+}
+
+auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
+{
+    if (_nameHash != other->_nameHash) {
+        return false;
+    }
+    if (MainTex != other->MainTex) {
+        return false;
+    }
+    if (BorderBuf || ModelBuf || AnimBuf || RandomValueBuf) {
+        return false;
+    }
+    if (CustomTexBuf && std::mismatch(std::begin(CustomTex), std::end(CustomTex), std::begin(other->CustomTex)).first != std::end(CustomTex)) {
+        return false;
+    }
+    return true;
+}
+
+struct RenderMesh::Impl
+{
+    virtual ~Impl() = default;
+};
+
+RenderMesh::~RenderMesh()
+{
+}
+
 #if !FO_HEADLESS
 static unordered_map<SDL_Keycode, KeyCode> KeysMap {
 #define KEY_CODE(name, index, code) {code, KeyCode::name},
@@ -222,16 +273,6 @@ static unordered_map<int, MouseButton> MouseButtonsMap {
     {SDL_BUTTON(7), MouseButton::Ext3},
     {SDL_BUTTON(8), MouseButton::Ext4},
 };
-#endif
-
-struct RenderTexture::Impl
-{
-    virtual ~Impl() = default;
-};
-
-RenderTexture::~RenderTexture()
-{
-}
 
 #if FO_HAVE_OPENGL
 struct OpenGLTexture : RenderTexture::Impl
@@ -284,37 +325,6 @@ struct OpenGLRenderBuffer
 };
 #endif
 
-struct RenderEffect::Impl
-{
-    virtual ~Impl() = default;
-};
-
-RenderEffect::~RenderEffect()
-{
-}
-
-auto RenderEffect::IsSame(const string& name, const string& defines) const -> bool
-{
-    return _str(name).compareIgnoreCase(_effectName) && defines == _effectDefines;
-}
-
-auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
-{
-    if (_nameHash != other->_nameHash) {
-        return false;
-    }
-    if (MainTex != other->MainTex) {
-        return false;
-    }
-    if (BorderBuf || ModelBuf || AnimBuf || RandomValueBuf) {
-        return false;
-    }
-    if (CustomTexBuf && std::mismatch(std::begin(CustomTex), std::end(CustomTex), std::begin(other->CustomTex)).first != std::end(CustomTex)) {
-        return false;
-    }
-    return true;
-}
-
 #if FO_HAVE_OPENGL
 struct OpenGLEffect : RenderEffect::Impl
 {
@@ -328,15 +338,6 @@ struct Direct3DEffect : RenderEffect::Impl
     ~Direct3DEffect() override { }
 };
 #endif
-
-struct RenderMesh::Impl
-{
-    virtual ~Impl() = default;
-};
-
-RenderMesh::~RenderMesh()
-{
-}
 
 #if FO_HAVE_OPENGL
 struct OpenGLMesh : RenderMesh::Impl
@@ -366,6 +367,7 @@ struct Direct3DMesh : RenderMesh::Impl
     ~Direct3DMesh() override { }
 };
 #endif
+#endif // !FO_HEADLESS
 
 void InitApplication(GlobalSettings& settings)
 {
@@ -1173,6 +1175,7 @@ void Application::AppWindow::AlwaysOnTop(bool enable)
 
 auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool multisampled, bool with_depth) -> RenderTexture*
 {
+#if !FO_HEADLESS
     auto tex = unique_ptr<RenderTexture>(new RenderTexture());
     const_cast<uint&>(tex->Width) = width;
     const_cast<uint&>(tex->Height) = height;
@@ -1265,12 +1268,14 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
         return tex.release();
     }
 #endif
+#endif
 
-    throw UnreachablePlaceException(LINE_STR);
+    return nullptr;
 }
 
 auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) -> uint
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
@@ -1286,6 +1291,8 @@ auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) -
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
+
     return 0;
 }
 
@@ -1293,6 +1300,7 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
 {
     RUNTIME_ASSERT(w && h);
     vector<uint> result(w * h);
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
@@ -1307,11 +1315,13 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
     return std::move(result);
 }
 
 void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data)
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
@@ -1326,10 +1336,12 @@ void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect
         // D3DDeviceContext->UpdateSubresource()
     }
 #endif
+#endif
 }
 
 void Application::AppRender::SetRenderTarget(RenderTexture* tex)
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
@@ -1379,10 +1391,12 @@ void Application::AppRender::SetRenderTarget(RenderTexture* tex)
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
 }
 
 auto Application::AppRender::GetRenderTarget() -> RenderTexture*
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
     }
@@ -1391,11 +1405,13 @@ auto Application::AppRender::GetRenderTarget() -> RenderTexture*
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
     return nullptr;
 }
 
 void Application::AppRender::ClearRenderTarget(uint color)
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto a = static_cast<float>((color >> 24) & 0xFF) / 255.0f;
@@ -1410,10 +1426,12 @@ void Application::AppRender::ClearRenderTarget(uint color)
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
 }
 
 void Application::AppRender::ClearRenderTargetDepth()
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glClear(GL_DEPTH_BUFFER_BIT));
@@ -1423,10 +1441,12 @@ void Application::AppRender::ClearRenderTargetDepth()
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
 }
 
 void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glEnable(GL_SCISSOR_TEST));
@@ -1437,10 +1457,12 @@ void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
 }
 
 void Application::AppRender::DisableScissor()
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glDisable(GL_SCISSOR_TEST));
@@ -1450,11 +1472,13 @@ void Application::AppRender::DisableScissor()
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
 }
 
 auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
 {
     auto effect = unique_ptr<RenderEffect>(new RenderEffect());
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         /*
@@ -1867,11 +1891,13 @@ i).c_str()));
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
     return effect.release();
 }
 
 void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderTexture* /*tex*/)
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         // EnableVertexArray(quadsVertexArray, 4 * curDrawQuad);
@@ -1943,10 +1969,12 @@ void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
 }
 
 void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderPrimitiveType /*prim*/)
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
     }
@@ -1955,10 +1983,12 @@ void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const ve
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
+#endif
 }
 
 void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/)
 {
+#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         auto* opengl_mesh = dynamic_cast<OpenGLMesh*>(mesh->_pImpl.get());
@@ -2089,6 +2119,7 @@ void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/
 #if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
+#endif
 #endif
 }
 

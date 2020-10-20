@@ -3105,7 +3105,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                     tiles[k].HexX = hx;
                     tiles[k].HexY = hy;
                     auto& ftile = f.GetTile(k, stile.IsRoof);
-                    tiles_to_move.push_back(TileToMove(&HexMngr.GetField(hx, hy), ftile, &HexMngr.GetTiles(hx, hy, stile.IsRoof), tiles[k], stile.IsRoof));
+                    tiles_to_move.push_back({&HexMngr.GetField(hx, hy), ftile, &HexMngr.GetTiles(hx, hy, stile.IsRoof), tiles[k], stile.IsRoof});
                     tiles.erase(tiles.begin() + k);
                     f.EraseTile(k, stile.IsRoof);
                 }
@@ -3119,7 +3119,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     }
 
     for (auto& ttm : tiles_to_move) {
-        ttm.Field->AddTile(ttm.TileToMove.Anim, ttm.TileToMove.OffsX, ttm.TileToMove.OffsY, ttm.TileToMove.Layer, ttm.IsRoofMoved);
+        ttm.FieldToMove->AddTile(ttm.TileToMove.Anim, ttm.TileToMove.OffsX, ttm.TileToMove.OffsY, ttm.TileToMove.Layer, ttm.IsRoofMoved);
         ttm.MapTilesToMove->push_back(ttm.MapTimeToMove);
     }
     return true;
