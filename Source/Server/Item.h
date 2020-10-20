@@ -38,7 +38,7 @@
 #include "Entity.h"
 #include "ServerScripting.h"
 
-#define FO_API_ITEM_HEADER
+#define FO_API_ITEM_HEADER 1
 #include "ScriptApi.h"
 
 class Item;
@@ -80,7 +80,7 @@ public:
     ScriptFunc<void, Critter*, Item*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 
-#define FO_API_ITEM_CLASS
+#define FO_API_ITEM_CLASS 1
 #include "ScriptApi.h"
 
     PROPERTIES_HEADER();

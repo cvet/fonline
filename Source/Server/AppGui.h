@@ -48,7 +48,7 @@ public:
     static void EndFrame();
 
 private:
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     static auto InitDX(const string& app_name, bool docking, bool maximized) -> bool;
     static auto BeginFrameDX() -> bool;
     static void EndFrameDX();

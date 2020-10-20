@@ -47,7 +47,7 @@ void AppGui::EndFrame()
 {
 }
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
 auto AppGui::InitDX(const string&, bool, bool) -> bool
 {
     return true;

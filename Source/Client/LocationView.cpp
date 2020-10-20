@@ -33,7 +33,7 @@
 
 #include "LocationView.h"
 
-#define FO_API_LOCATION_VIEW_IMPL
+#define FO_API_LOCATION_VIEW_IMPL 1
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(LocationView, "Location", false);

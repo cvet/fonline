@@ -256,13 +256,12 @@ auto Compressor::Uncompress(const vector<uchar>& data, uint mul_approx) -> vecto
 }
 
 // Default randomizer
-#ifndef FO_TESTING
-static auto RANDOM_SEED = std::random_device {}();
-static std::mt19937 RandomGenerator(RANDOM_SEED);
-#else
-static constexpr auto FIXED_SEED = 42;
-static std::mt19937 RandomGenerator(FIXED_SEED);
-#endif
+static std::mt19937 RandomGenerator(std::random_device {}());
+void GenericUtils::SetRandomSeed(int seed)
+{
+    RandomGenerator = std::mt19937(seed);
+}
+
 auto GenericUtils::Random(int minimum, int maximum) -> int
 {
     return std::uniform_int_distribution {minimum, maximum}(RandomGenerator);

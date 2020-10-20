@@ -73,7 +73,6 @@
 // Todo: research about Steam integration
 // Todo: speed up content loading from server
 // Todo: temporary entities, disable writing to data base
-// Todo: #ifdef to #if defined
 // Todo: RUNTIME_ASSERT to assert
 // Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
 // Todo: remove dynamic_cast?
@@ -86,31 +85,11 @@
 #define FO_PRECOMPILED_HEADER_GUARD
 
 // Operating system (passed outside)
-// Todo: detect OS automatically not from passed constant from build system
 #if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB + FO_PS4 == 0
 #error "Operating system not specified"
 #endif
 #if FO_WINDOWS + FO_LINUX + FO_MAC + FO_ANDROID + FO_IOS + FO_WEB + FO_PS4 != 1
 #error "Multiple operating systems not allowed"
-#endif
-
-// Rendering
-#if !FO_HEADLESS
-#if !(defined(FO_WINDOWS) && defined(WINRT)) && !defined(FO_PS4)
-#define FO_HAVE_OPENGL
-#if defined(FO_IOS) || defined(FO_ANDROID) || defined(FO_WEB)
-#define FO_OPENGL_ES
-#endif
-#endif
-#if defined(FO_WINDOWS)
-#define FO_HAVE_DIRECT_3D
-#endif
-#if defined(FO_MAC) || defined(FO_IOS)
-// #define FO_HAVE_METAL
-#endif
-#if defined(FO_PS4)
-#define FO_HAVE_GNM
-#endif
 #endif
 
 // Standard API
@@ -150,10 +129,9 @@
 #include <vector>
 
 // OS specific API
-#if defined(FO_MAC) || defined(FO_IOS)
+#if FO_MAC || FO_IOS
 #include <TargetConditionals.h>
-#endif
-#if defined(FO_WEB)
+#elif FO_WEB
 #include <emscripten.h>
 #include <emscripten/html5.h>
 #endif

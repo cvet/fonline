@@ -574,7 +574,7 @@ void FOServer::RemoveClient(Client* cl)
     if (cl_ != nullptr && cl_ == cl) {
         RUNTIME_ASSERT(cl->Connection->IsDisconnected);
 
-#ifndef FO_SINGLEPLAYER
+#if !FO_SINGLEPLAYER
         ScriptSys.PlayerLogoutEvent(cl);
 #endif
 
@@ -2509,7 +2509,7 @@ void FOServer::Process_CreateClient(Client* cl)
         }
     }
 
-#ifndef FO_SINGLEPLAYER
+#if !FO_SINGLEPLAYER
     uint disallow_msg_num = 0;
     uint disallow_str_num = 0;
     string lexems;
@@ -2662,7 +2662,7 @@ void FOServer::Process_LogIn(Client*& cl)
         }
     }
 
-#ifndef FO_SINGLEPLAYER
+#if !FO_SINGLEPLAYER
     // Request script
     uint disallow_msg_num = 0;
     uint disallow_str_num = 0;

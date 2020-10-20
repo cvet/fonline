@@ -33,7 +33,7 @@
 
 #include "AppGui.h"
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
 #include "Log.h"
 #include "StringUtils.h"
 #include "Testing.h"

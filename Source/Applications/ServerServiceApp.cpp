@@ -48,13 +48,13 @@ struct ServerServiceAppData
     std::thread ServerThread {};
     uint LastState {};
     uint CheckPoint {};
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     SERVICE_STATUS_HANDLE FOServiceStatusHandle {};
 #endif
 };
 GLOBAL_DATA(ServerServiceAppData, Data);
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv);
 static VOID WINAPI FOServiceCtrlHandler(DWORD opcode);
 static void SetFOServiceStatus(uint state);
@@ -96,7 +96,7 @@ static void ServerEntry()
     }
 }
 
-#ifndef FO_TESTING
+#if !FO_TESTING
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto ServerServiceApp(int argc, char** argv) -> int
@@ -105,7 +105,7 @@ int main(int argc, char** argv)
     try {
         CreateGlobalData();
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
             // Start
             const SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
@@ -211,7 +211,7 @@ int main(int argc, char** argv)
     }
 }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {

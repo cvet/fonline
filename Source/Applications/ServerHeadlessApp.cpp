@@ -37,7 +37,7 @@
 #include "Settings.h"
 #include "Testing.h"
 
-#ifndef FO_TESTING
+#if !FO_TESTING
 extern "C" int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto ServerHeadlessApp(int argc, char** argv) -> int

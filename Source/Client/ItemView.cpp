@@ -34,7 +34,7 @@
 #include "ItemView.h"
 #include "Timer.h"
 
-#define FO_API_ITEM_VIEW_IMPL
+#define FO_API_ITEM_VIEW_IMPL 1
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(ItemView, "Item", false);

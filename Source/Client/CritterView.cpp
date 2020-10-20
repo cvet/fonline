@@ -36,7 +36,7 @@
 #include "ItemView.h"
 #include "StringUtils.h"
 
-#define FO_API_CRITTER_VIEW_IMPL
+#define FO_API_CRITTER_VIEW_IMPL 1
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(CritterView, "Critter", false);

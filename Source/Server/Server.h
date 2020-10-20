@@ -54,7 +54,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
-#ifdef FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
 #include "Client.h"
 #endif
 
@@ -148,7 +148,7 @@ public:
     auto operator=(FOServer&&) noexcept = delete;
     ~FOServer();
 
-#ifdef FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
     void ConnectClient(FOClient* client) { }
 #endif
 

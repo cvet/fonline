@@ -40,7 +40,7 @@
 
 #include "SDL.h"
 #include "SDL_vulkan.h"
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
 #include "GL/glew.h"
 #include "SDL_opengl.h"
 #else
@@ -49,8 +49,8 @@
 
 #define GL(expr) expr
 
-#ifndef FO_OPENGL_ES
-#ifdef FO_MAC
+#if !FO_OPENGL_ES
+#if FO_MAC
 #undef glGenVertexArrays
 #undef glBindVertexArray
 #undef glDeleteVertexArrays
@@ -122,7 +122,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
 
     // DirectX backend
     if (use_dx) {
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
         if (!InitDX(app_name, docking, maximized)) {
             return false;
         }
@@ -145,7 +145,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-#ifdef FO_OPENGL_ES
+#if FO_OPENGL_ES
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
@@ -161,31 +161,31 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     GlContext = gl_context;
 
     // Init graphic
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
     GLenum glew_result = glewInit();
     RUNTIME_ASSERT(glew_result == GLEW_OK);
-#ifndef FO_WINDOWS
+#if !FO_WINDOWS
     if (!GLEW_VERSION_2_0 || !GLEW_ARB_vertex_buffer_object) {
         WriteLog("Minimum OpenGL 2.0 required.\n");
         return false;
     }
 #endif
-#ifdef FO_MAC
+#if FO_MAC
     IsVertexArraySupported = (GLEW_APPLE_vertex_array_object != 0);
 #else
     IsVertexArraySupported = (GLEW_ARB_vertex_array_object != 0);
 #endif
 #else
-#ifdef FO_ANDROID
+#if FO_ANDROID
     IsVertexArraySupported = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
 #endif
-#ifdef FO_IOS
+#if FO_IOS
     IsVertexArraySupported = true;
 #endif
 #endif
 
     // RDP connection support only fixed pipeline
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     int remote_session = GetSystemMetrics(SM_REMOTESESSION);
     FixedPipeline = (remote_session != 0);
 #endif
@@ -196,7 +196,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     GL(glDisable(GL_CULL_FACE));
     GL(glDisable(GL_DEPTH_TEST));
     GL(glEnable(GL_TEXTURE_2D));
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
     GL(glDisable(GL_LIGHTING));
     GL(glDisable(GL_COLOR_MATERIAL));
     GL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
@@ -217,7 +217,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
                                       "    gl_Position = ProjMtx * vec4(Position.xy, 0, 1);\n"
                                       "}\n";
         const GLchar* fragment_shader = "#version 110\n"
-#ifdef FO_OPENGL_ES
+#if FO_OPENGL_ES
                                         "precision mediump float;\n"
 #endif
                                         "uniform sampler2D Texture;\n"
@@ -286,7 +286,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
     io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
     io.BackendFlags |= ImGuiBackendFlags_PlatformHasViewports;
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
     io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 #endif
 
@@ -330,7 +330,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
     // Setup viewport stuff
     ImGuiViewport* main_viewport = ImGui::GetMainViewport();
     main_viewport->PlatformHandle = SdlWindow;
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
     if (SDL_GetWindowWMInfo(window, &info))
@@ -411,7 +411,7 @@ bool AppGui::BeginFrame()
 {
     RUNTIME_ASSERT(InitCalled);
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (UseDirectX)
         return BeginFrameDX();
 #endif
@@ -515,7 +515,7 @@ bool AppGui::BeginFrame()
     io.MouseDown[2] = (MousePressed[2] || (mouse_buttons & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0);
     MousePressed[0] = MousePressed[1] = MousePressed[2] = false;
 
-#if !defined(FO_WEB) && !defined(FO_ANDROID) && !defined(FO_IOS)
+#if !FO_WEB && !FO_ANDROID && !FO_IOS
     int mouse_x_global, mouse_y_global;
     SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
 
@@ -558,7 +558,7 @@ void AppGui::EndFrame()
 {
     RUNTIME_ASSERT(InitCalled);
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (UseDirectX) {
         EndFrameDX();
         return;
@@ -638,7 +638,7 @@ static void RenderDrawData(ImDrawData* draw_data)
         const ImDrawIdx* idx_buffer = cmd_list->IdxBuffer.Data;
 
         if (FixedPipeline) {
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
             GL(glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, pos))));
             GL(glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, uv))));
             GL(glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), (const GLvoid*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, col))));
@@ -669,14 +669,14 @@ static void RenderDrawData(ImDrawData* draw_data)
                     GL(glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)pcmd->TextureId));
 
                     if (!FixedPipeline) {
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
                         GL(glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (void*)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx)), (GLint)pcmd->VtxOffset));
 #else
                         GL(glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (void*)(intptr_t)(pcmd->IdxOffset * sizeof(ImDrawIdx))));
 #endif
                     }
                     else {
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
                         GL(glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer));
 #endif
                     }
@@ -730,7 +730,7 @@ static void SetupRenderState(ImDrawData* draw_data, int fb_width, int fb_height,
         GL(glVertexAttribPointer(AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, col)));
     }
     else {
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
         GL(glEnableClientState(GL_VERTEX_ARRAY));
         GL(glEnableClientState(GL_TEXTURE_COORD_ARRAY));
         GL(glEnableClientState(GL_COLOR_ARRAY));
@@ -779,7 +779,7 @@ static void Platform_CreateWindow(ImGuiViewport* viewport)
 
     viewport->PlatformHandle = (void*)data->Window;
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
     if (SDL_GetWindowWMInfo(data->Window, &info))
@@ -805,7 +805,7 @@ static void Platform_ShowWindow(ImGuiViewport* viewport)
 {
     ImGuiViewportDataSDL2* data = (ImGuiViewportDataSDL2*)viewport->PlatformUserData;
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     HWND hwnd = (HWND)viewport->PlatformHandleRaw;
 
     // Hide icon from task bar

@@ -40,7 +40,7 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-#ifdef FO_ANDROID
+#if FO_ANDROID
 #include <android/log.h>
 #endif
 
@@ -145,11 +145,11 @@ void WriteLogMessage(const string& message)
         Data->LogFunctionsInProcess = false;
     }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     OutputDebugStringW(_str(result).toWideChar().c_str());
 #endif
 
-#ifndef FO_ANDROID
+#if !FO_ANDROID
     printf("%s", result.c_str());
 #else
     __android_log_print(ANDROID_LOG_INFO, "FOnline", "%s", result.c_str());

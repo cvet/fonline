@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#ifdef FO_API_CLIENT_IMPL
+#if FO_API_CLIENT_IMPL
 #include "NetCommand.h"
 #endif
 
@@ -41,7 +41,7 @@
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsChosen, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsChosen());
@@ -49,14 +49,14 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsPlayer, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsPlayer());
@@ -71,7 +71,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsNpc, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsNpc());
@@ -79,14 +79,14 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsOffline, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsOffline());
@@ -95,14 +95,14 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsAlive, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsAlive());
@@ -111,14 +111,14 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsKnockout, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsKnockout());
@@ -127,14 +127,14 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsDead, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsDead());
@@ -143,14 +143,14 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsFree, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsFree());
@@ -159,14 +159,14 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsBusy, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(!_critterView->IsFree());
@@ -181,7 +181,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsModel, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->Model != nullptr);
@@ -197,7 +197,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsAnimAvailable, FO_API_RET(bool), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2))
 {
     FO_API_RETURN(_critterView->IsAnimAvailable(anim1, anim2));
@@ -211,7 +211,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(IsAnimPlaying, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->IsAnim());
@@ -225,7 +225,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetAnim1, FO_API_RET(uint))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->GetAnim1());
@@ -240,7 +240,7 @@ FO_API_EPILOG(0)
  * @param anim2 ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(Animate, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2))
 {
     _critterView->Animate(anim1, anim2, nullptr);
@@ -256,7 +256,7 @@ FO_API_EPILOG()
  * @param actionItem ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(AnimateExt, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_OBJ(ItemView, actionItem))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_OBJ_MARSHAL(ItemView, actionItem))
 {
     _critterView->Animate(anim1, anim2, actionItem);
@@ -269,7 +269,7 @@ FO_API_EPILOG()
  *
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(StopAnim, FO_API_RET(void))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     _critterView->ClearAnim();
@@ -277,14 +277,14 @@ FO_API_PROLOG()
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @param ms ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(Wait, FO_API_RET(void), FO_API_ARG(uint, ms))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ms))
 {
     _critterView->TickStart(ms);
@@ -293,7 +293,7 @@ FO_API_EPILOG()
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -301,7 +301,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(CountItem, FO_API_RET(uint), FO_API_ARG(hash, protoId))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
 {
     FO_API_RETURN(_critterView->CountItemPid(protoId));
@@ -310,7 +310,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -318,7 +318,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetItem, FO_API_RET_OBJ(ItemView), FO_API_ARG(uint, itemId))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
 {
     FO_API_RETURN(_critterView->GetItem(itemId));
@@ -327,7 +327,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -335,7 +335,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetItemByPredicate, FO_API_RET_OBJ(ItemView), FO_API_ARG_PREDICATE(ItemView, predicate))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
 {
     auto inv_items = _critterView->InvItems;
@@ -350,7 +350,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -358,7 +358,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetItemBySlot, FO_API_RET_OBJ(ItemView), FO_API_ARG(int, slot))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
 {
     FO_API_RETURN(_critterView->GetItemSlot(slot));
@@ -367,7 +367,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -375,7 +375,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetItemByPid, FO_API_RET_OBJ(ItemView), FO_API_ARG(hash, protoId))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, protoId))
 {
     const auto* proto_item = _client->ProtoMngr.GetProtoItem(protoId);
@@ -409,14 +409,14 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetItems, FO_API_RET_OBJ_ARR(ItemView))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->InvItems);
@@ -425,7 +425,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -433,7 +433,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetItemsBySlot, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG(int, slot))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, slot))
 {
     FO_API_RETURN(_critterView->GetItemsSlot(slot));
@@ -442,7 +442,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -450,7 +450,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetItemsByPredicate, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG_PREDICATE(ItemView, predicate))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_PREDICATE_MARSHAL(ItemView, predicate))
 {
     auto inv_items = _critterView->InvItems;
@@ -473,7 +473,7 @@ FO_API_EPILOG(0)
  * @param visible ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(SetVisibility, FO_API_RET(void), FO_API_ARG(bool, visible))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, visible))
 {
     _critterView->Visible = visible;
@@ -488,7 +488,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetVisibility, FO_API_RET(bool))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->Visible);
@@ -502,7 +502,7 @@ FO_API_EPILOG(0)
  * @param value ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(SetContourColor, FO_API_RET(void), FO_API_ARG(uint, value))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, value))
 {
     if (_critterView->SprDrawValid) {
@@ -520,7 +520,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetContourColor, FO_API_RET(uint))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critterView->ContourColor);
@@ -539,7 +539,7 @@ FO_API_EPILOG(0)
  * @param lines ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetNameTextInfo, FO_API_RET(void), FO_API_ARG_REF(bool, nameVisible), FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y), FO_API_ARG_REF(int, w), FO_API_ARG_REF(int, h), FO_API_ARG_REF(int, lines))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(bool, nameVisible) FO_API_ARG_REF_MARSHAL(int, x) FO_API_ARG_REF_MARSHAL(int, y) FO_API_ARG_REF_MARSHAL(int, w) FO_API_ARG_REF_MARSHAL(int, h) FO_API_ARG_REF_MARSHAL(int, lines))
 {
     _critterView->GetNameTextInfo(nameVisible, x, y, w, h, lines);
@@ -556,7 +556,7 @@ FO_API_EPILOG()
  * @param animCallback ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(AddAnimCallback, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG(float, normalizedTime), FO_API_ARG_CALLBACK(CritterView, animCallback))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_MARSHAL(float, normalizedTime) FO_API_ARG_CALLBACK_MARSHAL(CritterView, animCallback))
 {
     if (_critterView->Model == nullptr) {
@@ -584,7 +584,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_CRITTER_VIEW_METHOD(GetBonePos, FO_API_RET(bool), FO_API_ARG(hash, boneName), FO_API_ARG_REF(int, boneX), FO_API_ARG_REF(int, boneY))
-#ifdef FO_API_CRITTER_VIEW_METHOD_IMPL
+#if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, boneName) FO_API_ARG_REF_MARSHAL(int, boneX) FO_API_ARG_REF_MARSHAL(int, boneY))
 {
     if (!_critterView->Model) {
@@ -603,7 +603,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, boneName) FO_API_ARG_REF_MARSHAL(int, bon
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -612,7 +612,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_ITEM_VIEW_METHOD(GetMapPos, FO_API_RET(bool), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy))
-#ifdef FO_API_ITEM_VIEW_METHOD_IMPL
+#if FO_API_ITEM_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy))
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -661,7 +661,7 @@ FO_API_EPILOG(0)
  * @param toFrame ...
  ******************************************************************************/
 FO_API_ITEM_VIEW_METHOD(Animate, FO_API_RET(void), FO_API_ARG(uint, fromFrame), FO_API_ARG(uint, toFrame))
-#ifdef FO_API_ITEM_VIEW_METHOD_IMPL
+#if FO_API_ITEM_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fromFrame) FO_API_ARG_MARSHAL(uint, toFrame))
 {
     if (_itemView->Type == EntityType::ItemHexView) {
@@ -672,7 +672,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fromFrame) FO_API_ARG_MARSHAL(uint, toFra
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -680,7 +680,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_ITEM_VIEW_METHOD(GetItems, FO_API_RET_OBJ_ARR(ItemView), FO_API_ARG(uint, stackId))
-#ifdef FO_API_ITEM_VIEW_METHOD_IMPL
+#if FO_API_ITEM_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, stackId))
 {
     vector<ItemView*> items;
@@ -700,7 +700,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(CustomCall, FO_API_RET(string), FO_API_ARG(string, command), FO_API_ARG(string, separator))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, separator))
 {
     // Parse command
@@ -792,7 +792,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
         }
     }
     else if (cmd == "SetMousePos" && args.size() == 4) {
-#ifndef FO_WEB
+#if !FO_WEB
         /*int x = _str(args[1]).toInt();
         int y = _str(args[2]).toInt();
         bool motion = _str(args[3]).toBool();
@@ -1067,7 +1067,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetChosen, FO_API_RET_OBJ(CritterView))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
     if (_client->Chosen && _client->Chosen->IsDestroyed) {
@@ -1078,7 +1078,7 @@ FO_API_PROLOG()
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1086,7 +1086,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetItem, FO_API_RET_OBJ(ItemView), FO_API_ARG(uint, itemId))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId))
 {
     if (itemId == 0u) {
@@ -1125,7 +1125,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetVisibleItems, FO_API_RET_OBJ_ARR(ItemView))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
     vector<ItemView*> items;
@@ -1151,7 +1151,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetVisibleItemsOnHex, FO_API_RET_OBJ_ARR(ItemHexView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 {
     vector<ItemHexView*> items;
@@ -1166,7 +1166,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1175,7 +1175,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCritterDistance, FO_API_RET(int), FO_API_ARG_OBJ(CritterView, cr1), FO_API_ARG_OBJ(CritterView, cr2))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr1) FO_API_ARG_OBJ_MARSHAL(CritterView, cr2))
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -1194,7 +1194,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1202,7 +1202,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCritter, FO_API_RET_OBJ(CritterView), FO_API_ARG(uint, critterId))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, critterId))
 {
     if (critterId == 0u) {
@@ -1218,7 +1218,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1229,7 +1229,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCrittersAroundHex, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, radius), FO_API_ARG(uchar, findType))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, radius) FO_API_ARG_MARSHAL(uchar, findType))
 {
     if (hx >= _client->HexMngr.GetWidth() || hy >= _client->HexMngr.GetHeight()) {
@@ -1253,7 +1253,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1262,7 +1262,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCrittersByPids, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(hash, pid), FO_API_ARG(uchar, findType))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_MARSHAL(uchar, findType))
 {
     auto& crits = _client->HexMngr.GetCritters();
@@ -1289,7 +1289,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1303,7 +1303,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCrittersInPath, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist), FO_API_ARG(int, findType))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist) FO_API_ARG_MARSHAL(int, findType))
 {
     vector<CritterView*> critters;
@@ -1314,7 +1314,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1332,7 +1332,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCrittersWithBlockInPath, FO_API_RET_OBJ_ARR(CritterView), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist), FO_API_ARG(int, findType), FO_API_ARG_REF(ushort, preBlockHx), FO_API_ARG_REF(ushort, preBlockHy), FO_API_ARG_REF(ushort, blockHx), FO_API_ARG_REF(ushort, blockHy))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist) FO_API_ARG_MARSHAL(int, findType) FO_API_ARG_REF_MARSHAL(ushort, preBlockHx) FO_API_ARG_REF_MARSHAL(ushort, preBlockHy) FO_API_ARG_REF_MARSHAL(ushort, blockHx) FO_API_ARG_REF_MARSHAL(ushort, blockHy))
 {
     vector<CritterView*> critters;
@@ -1349,7 +1349,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1361,7 +1361,7 @@ FO_API_EPILOG(0)
  * @param dist ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetHexInPath, FO_API_RET(void), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG_REF(ushort, toHx), FO_API_ARG_REF(ushort, toHy), FO_API_ARG(float, angle), FO_API_ARG(uint, dist))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_REF_MARSHAL(ushort, toHx) FO_API_ARG_REF_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, angle) FO_API_ARG_MARSHAL(uint, dist))
 {
     pair<ushort, ushort> pre_block;
@@ -1374,7 +1374,7 @@ FO_API_EPILOG()
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1386,7 +1386,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetPathToHex, FO_API_RET_ARR(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(uint, cut))
 {
     if (fromHx >= _client->HexMngr.GetWidth() || fromHy >= _client->HexMngr.GetHeight()) {
@@ -1414,7 +1414,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1425,7 +1425,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetPathToCritter, FO_API_RET_ARR(uchar), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(uint, cut))
 {
     if (toHx >= _client->HexMngr.GetWidth() || toHy >= _client->HexMngr.GetHeight()) {
@@ -1450,7 +1450,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1462,7 +1462,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetPathLengthToHex, FO_API_RET(uint), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(uint, cut))
 {
     if (fromHx >= _client->HexMngr.GetWidth() || fromHy >= _client->HexMngr.GetHeight()) {
@@ -1490,7 +1490,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1501,7 +1501,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetPathLengthToCritter, FO_API_RET(uint), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(uint, cut))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(uint, cut))
 {
     if (toHx >= _client->HexMngr.GetWidth() || toHy >= _client->HexMngr.GetHeight()) {
@@ -1534,7 +1534,7 @@ FO_API_EPILOG(0)
  * @param ms ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(FlushScreen, FO_API_RET(void), FO_API_ARG(uint, fromColor), FO_API_ARG(uint, toColor), FO_API_ARG(uint, ms))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fromColor) FO_API_ARG_MARSHAL(uint, toColor) FO_API_ARG_MARSHAL(uint, ms))
 {
     _client->ScreenFade(ms, fromColor, toColor, true);
@@ -1549,7 +1549,7 @@ FO_API_EPILOG()
  * @param ms ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(QuakeScreen, FO_API_RET(void), FO_API_ARG(uint, noise), FO_API_ARG(uint, ms))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, noise) FO_API_ARG_MARSHAL(uint, ms))
 {
     _client->ScreenQuake(noise, ms);
@@ -1564,7 +1564,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(PlaySound, FO_API_RET(void), FO_API_ARG(string, soundName))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, soundName))
 {
     if (!_client->SndMngr.PlaySound(_client->ResMngr.GetSoundNames(), soundName)) {
@@ -1582,7 +1582,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(PlayMusic, FO_API_RET(void), FO_API_ARG(string, musicName), FO_API_ARG(uint, repeatTime))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, musicName) FO_API_ARG_MARSHAL(uint, repeatTime))
 {
     if (musicName.empty()) {
@@ -1604,7 +1604,7 @@ FO_API_EPILOG()
  * @param canStop ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(PlayVideo, FO_API_RET(void), FO_API_ARG(string, videoName), FO_API_ARG(bool, canStop))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, videoName) FO_API_ARG_MARSHAL(bool, canStop))
 {
     // _client->SndMngr.StopMusic();
@@ -1619,7 +1619,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCurMapPid, FO_API_RET(hash))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -1636,7 +1636,7 @@ FO_API_EPILOG(0)
  * @param msg ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(Message, FO_API_RET(void), FO_API_ARG(string, msg))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg))
 {
     _client->AddMess(FOClient::FOMB_GAME, msg, true);
@@ -1651,7 +1651,7 @@ FO_API_EPILOG()
  * @param type ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(MessageExt, FO_API_RET(void), FO_API_ARG(string, msg), FO_API_ARG(int, type))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg) FO_API_ARG_MARSHAL(int, type))
 {
     _client->AddMess(type, msg, true);
@@ -1666,7 +1666,7 @@ FO_API_EPILOG()
  * @param strNum ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(MessageMsg, FO_API_RET(void), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
     if (textMsg >= TEXTMSG_COUNT) {
@@ -1686,7 +1686,7 @@ FO_API_EPILOG()
  * @param type ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(MessageMsgExt, FO_API_RET(void), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(int, type))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum) FO_API_ARG_MARSHAL(int, type))
 {
     if (textMsg >= TEXTMSG_COUNT) {
@@ -1711,7 +1711,7 @@ FO_API_EPILOG()
  * @param oy ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(MapMessage, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, ms), FO_API_ARG(uint, color), FO_API_ARG(bool, fade), FO_API_ARG(int, ox), FO_API_ARG(int, oy))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, ms) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, fade) FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy))
 {
     FOClient::MapText map_text;
@@ -1743,7 +1743,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStr, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
     if (textMsg >= TEXTMSG_COUNT) {
@@ -1763,7 +1763,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStrExt, FO_API_RET(string), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum), FO_API_ARG(uint, skipCount))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum) FO_API_ARG_MARSHAL(uint, skipCount))
 {
     if (textMsg >= TEXTMSG_COUNT) {
@@ -1782,7 +1782,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStrNumUpper, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
     if (textMsg >= TEXTMSG_COUNT) {
@@ -1801,7 +1801,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStrNumLower, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
     if (textMsg >= TEXTMSG_COUNT) {
@@ -1820,7 +1820,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetMsgStrCount, FO_API_RET(uint), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
     if (textMsg >= TEXTMSG_COUNT) {
@@ -1839,7 +1839,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(IsMsgStr, FO_API_RET(bool), FO_API_ARG(int, textMsg), FO_API_ARG(uint, strNum))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 {
     if (textMsg >= TEXTMSG_COUNT) {
@@ -1850,7 +1850,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
+#if FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1860,7 +1860,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(ReplaceTextStr, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(string, str))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replace) FO_API_ARG_MARSHAL(string, str))
 {
     const auto pos = text.find(replace, 0);
@@ -1873,7 +1873,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
+#if FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -1883,7 +1883,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(ReplaceTextInt, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, replace), FO_API_ARG(int, i))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replace) FO_API_ARG_MARSHAL(int, i))
 {
     const auto pos = text.find(replace, 0);
@@ -1904,7 +1904,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(FormatTags, FO_API_RET(string), FO_API_ARG(string, text), FO_API_ARG(string, lexems))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, lexems))
 {
     auto text_copy = text;
@@ -1923,7 +1923,7 @@ FO_API_EPILOG(0)
  * @param canStop ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(MoveScreenToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, speed) FO_API_ARG_MARSHAL(bool, canStop))
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -1952,7 +1952,7 @@ FO_API_EPILOG()
  * @param canStop ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(MoveScreenByOffset, FO_API_RET(void), FO_API_ARG(int, ox), FO_API_ARG(int, oy), FO_API_ARG(uint, speed), FO_API_ARG(bool, canStop))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, ox) FO_API_ARG_MARSHAL(int, oy) FO_API_ARG_MARSHAL(uint, speed) FO_API_ARG_MARSHAL(bool, canStop))
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -1972,7 +1972,7 @@ FO_API_EPILOG()
  * @param unlockIfSame ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(LockScreenScroll, FO_API_RET(void), FO_API_ARG_OBJ(CritterView, cr), FO_API_ARG(bool, softLock), FO_API_ARG(bool, unlockIfSame))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(bool, softLock) FO_API_ARG_MARSHAL(bool, unlockIfSame))
 {
     const auto id = (cr != nullptr ? cr->GetId() : 0);
@@ -1999,7 +1999,7 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(CritterView, cr) FO_API_ARG_MARSHAL(bool, s
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -2008,7 +2008,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetFog, FO_API_RET(int), FO_API_ARG(ushort, zoneX), FO_API_ARG(ushort, zoneY))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, zoneX) FO_API_ARG_MARSHAL(ushort, zoneY))
 {
     if (zoneX >= _client->Settings.GlobalMapWidth || zoneY >= _client->Settings.GlobalMapHeight) {
@@ -2027,7 +2027,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetDayTime, FO_API_RET(uint), FO_API_ARG(uint, dayPart))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, dayPart))
 {
     if (dayPart >= 4) {
@@ -2051,7 +2051,7 @@ FO_API_EPILOG(0)
  * @param b ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetDayColor, FO_API_RET(void), FO_API_ARG(uint, dayPart), FO_API_ARG_REF(uchar, r), FO_API_ARG_REF(uchar, g), FO_API_ARG_REF(uchar, b))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, dayPart) FO_API_ARG_REF_MARSHAL(uchar, r) FO_API_ARG_REF_MARSHAL(uchar, g) FO_API_ARG_REF_MARSHAL(uchar, b))
 {
     r = g = b = 0;
@@ -2069,14 +2069,14 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, dayPart) FO_API_ARG_REF_MARSHAL(uchar, r)
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetFullSecond, FO_API_RET(uint))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_client->GameTime.GetFullSecond());
@@ -2085,7 +2085,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -2098,7 +2098,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(EvaluateFullSecond, FO_API_RET(uint), FO_API_ARG(ushort, year), FO_API_ARG(ushort, month), FO_API_ARG(ushort, day), FO_API_ARG(ushort, hour), FO_API_ARG(ushort, minute), FO_API_ARG(ushort, second))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, year) FO_API_ARG_MARSHAL(ushort, month) FO_API_ARG_MARSHAL(ushort, day) FO_API_ARG_MARSHAL(ushort, hour) FO_API_ARG_MARSHAL(ushort, minute) FO_API_ARG_MARSHAL(ushort, second))
 {
     if (year && year < _client->Settings.StartYear) {
@@ -2152,7 +2152,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -2166,7 +2166,7 @@ FO_API_EPILOG(0)
  * @param second ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetGameTime, FO_API_RET(void), FO_API_ARG(uint, fullSecond), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, fullSecond) FO_API_ARG_REF_MARSHAL(ushort, year) FO_API_ARG_REF_MARSHAL(ushort, month) FO_API_ARG_REF_MARSHAL(ushort, day) FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek) FO_API_ARG_REF_MARSHAL(ushort, hour) FO_API_ARG_REF_MARSHAL(ushort, minute) FO_API_ARG_REF_MARSHAL(ushort, second))
 {
     const auto dt = _client->GameTime.GetGameTime(fullSecond);
@@ -2182,7 +2182,7 @@ FO_API_EPILOG()
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -2193,7 +2193,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(MoveHexByDir, FO_API_RET(bool), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy), FO_API_ARG(uchar, dir), FO_API_ARG(uint, steps))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uchar, dir) FO_API_ARG_MARSHAL(uint, steps))
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -2237,7 +2237,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetTileName, FO_API_RET(hash), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, roof), FO_API_ARG(int, layer))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, roof) FO_API_ARG_MARSHAL(int, layer))
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -2276,7 +2276,7 @@ FO_API_EPILOG(0)
  * @param fnames ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(Preload3dFiles, FO_API_RET(void), FO_API_ARG_ARR(string, fnames))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(string, fnames))
 {
     for (size_t i = 0; i < fnames.size(); i++) {
@@ -2286,13 +2286,13 @@ FO_API_PROLOG(FO_API_ARG_ARR_MARSHAL(string, fnames))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(WaitPing, FO_API_RET(void))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
     _client->WaitPing();
@@ -2309,7 +2309,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(LoadFont, FO_API_RET(void), FO_API_ARG(int, fontIndex), FO_API_ARG(string, fontFname))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, fontFname))
 {
     _client->SprMngr.PushAtlasType(AtlasType::Static);
@@ -2341,7 +2341,7 @@ FO_API_EPILOG()
  * @param color ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SetDefaultFont, FO_API_RET(void), FO_API_ARG(int, font), FO_API_ARG(uint, color))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(uint, color))
 {
     _client->SprMngr.SetDefaultFont(font, color);
@@ -2359,7 +2359,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SetEffect, FO_API_RET(void), FO_API_ARG(int, effectType), FO_API_ARG(int, effectSubtype), FO_API_ARG(string, effectName), FO_API_ARG(string, effectDefines))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectType) FO_API_ARG_MARSHAL(int, effectSubtype) FO_API_ARG_MARSHAL(string, effectName) FO_API_ARG_MARSHAL(string, effectDefines))
 {
     RenderEffect* effect = nullptr;
@@ -2466,7 +2466,7 @@ FO_API_EPILOG()
  * @param onlyLight ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(RedrawMap, FO_API_RET(void), FO_API_ARG(bool, onlyTiles), FO_API_ARG(bool, onlyRoof), FO_API_ARG(bool, onlyLight))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, onlyTiles) FO_API_ARG_MARSHAL(bool, onlyRoof) FO_API_ARG_MARSHAL(bool, onlyLight))
 {
     if (_client->HexMngr.IsMapLoaded()) {
@@ -2495,7 +2495,7 @@ FO_API_EPILOG()
  * @param button ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SimulateMouseClick, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, button))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, button))
 {
     /*App->Input.PushEvent({InputEvent::MouseDown({(MouseButton)button})});
@@ -2531,7 +2531,7 @@ FO_API_EPILOG()
  * @param key2Text ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SimulateKeyboardPress, FO_API_RET(void), FO_API_ARG(uchar, key1), FO_API_ARG(uchar, key2), FO_API_ARG(string, key1Text), FO_API_ARG(string, key2Text))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, key1) FO_API_ARG_MARSHAL(uchar, key2) FO_API_ARG_MARSHAL(string, key1Text) FO_API_ARG_MARSHAL(string, key2Text))
 {
     if (key1 == 0u && key2 == 0u) {
@@ -2561,7 +2561,7 @@ FO_API_EPILOG()
  * @param dropAnimName ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SetRainAnim, FO_API_RET(void), FO_API_ARG(string, fallAnimName), FO_API_ARG(string, dropAnimName))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fallAnimName) FO_API_ARG_MARSHAL(string, dropAnimName))
 {
     _client->HexMngr.SetRainAnimation(!fallAnimName.empty() ? fallAnimName.c_str() : nullptr, !dropAnimName.empty() ? dropAnimName.c_str() : nullptr);
@@ -2575,7 +2575,7 @@ FO_API_EPILOG()
  * @param targetZoom ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(ChangeZoom, FO_API_RET(void), FO_API_ARG(float, targetZoom))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(float, targetZoom))
 {
     if (targetZoom == _client->Settings.SpritesZoom) {
@@ -2612,7 +2612,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(float, targetZoom))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -2626,7 +2626,7 @@ FO_API_EPILOG()
  * @param milliseconds ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetTime, FO_API_RET(void), FO_API_ARG_REF(ushort, year), FO_API_ARG_REF(ushort, month), FO_API_ARG_REF(ushort, day), FO_API_ARG_REF(ushort, dayOfWeek), FO_API_ARG_REF(ushort, hour), FO_API_ARG_REF(ushort, minute), FO_API_ARG_REF(ushort, second), FO_API_ARG_REF(ushort, milliseconds))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_REF_MARSHAL(ushort, year) FO_API_ARG_REF_MARSHAL(ushort, month) FO_API_ARG_REF_MARSHAL(ushort, day) FO_API_ARG_REF_MARSHAL(ushort, dayOfWeek) FO_API_ARG_REF_MARSHAL(ushort, hour) FO_API_ARG_REF_MARSHAL(ushort, minute) FO_API_ARG_REF_MARSHAL(ushort, second) FO_API_ARG_REF_MARSHAL(ushort, milliseconds))
 {
     const auto cur_time = Timer::GetCurrentDateTime();
@@ -2643,14 +2643,14 @@ FO_API_EPILOG()
 #endif
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
  * @param datName ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(AddDataSource, FO_API_RET(void), FO_API_ARG(string, datName))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, datName))
 {
     _client->FileMngr.AddDataSource(datName, true);
@@ -2666,7 +2666,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(LoadSprite, FO_API_RET(uint), FO_API_ARG(string, sprName))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, sprName))
 {
     FO_API_RETURN(_client->AnimLoad(sprName.c_str(), AtlasType::Static));
@@ -2681,7 +2681,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(LoadSpriteByHash, FO_API_RET(uint), FO_API_ARG(hash, nameHash))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, nameHash))
 {
     FO_API_RETURN(_client->AnimLoad(nameHash, AtlasType::Static));
@@ -2697,7 +2697,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetSpriteWidth, FO_API_RET(int), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex))
 {
     auto* anim = _client->AnimGetFrames(sprId);
@@ -2723,7 +2723,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetSpriteHeight, FO_API_RET(int), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex))
 {
     auto* anim = _client->AnimGetFrames(sprId);
@@ -2747,7 +2747,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetSpriteCount, FO_API_RET(uint), FO_API_ARG(uint, sprId))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
 {
     auto* const anim = _client->AnimGetFrames(sprId);
@@ -2763,7 +2763,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetSpriteTicks, FO_API_RET(uint), FO_API_ARG(uint, sprId))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId))
 {
     auto* const anim = _client->AnimGetFrames(sprId);
@@ -2782,7 +2782,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetSpritePixelColor, FO_API_RET(uint), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
 {
     if (sprId == 0u) {
@@ -2813,7 +2813,7 @@ FO_API_EPILOG(0)
  * @param lines ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetTextInfo, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, font), FO_API_ARG(int, flags), FO_API_ARG_REF(int, tw), FO_API_ARG_REF(int, th), FO_API_ARG_REF(int, lines))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(int, flags) FO_API_ARG_REF_MARSHAL(int, tw) FO_API_ARG_REF_MARSHAL(int, th) FO_API_ARG_REF_MARSHAL(int, lines))
 {
     if (!_client->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines)) {
@@ -2834,7 +2834,7 @@ FO_API_EPILOG()
  * @param offs ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(DrawSprite, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, offs))
 {
     if (!_client->CanDrawInScripts) {
@@ -2883,7 +2883,7 @@ FO_API_EPILOG()
  * @param offs ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(DrawSpriteSized, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(bool, zoom), FO_API_ARG(uint, color), FO_API_ARG(bool, offs))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(bool, zoom) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(bool, offs))
 {
     if (!_client->CanDrawInScripts) {
@@ -2932,7 +2932,7 @@ FO_API_EPILOG()
  * @param color ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(DrawSpritePattern, FO_API_RET(void), FO_API_ARG(uint, sprId), FO_API_ARG(int, frameIndex), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(int, sprWidth), FO_API_ARG(int, sprHeight), FO_API_ARG(uint, color))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(int, sprWidth) FO_API_ARG_MARSHAL(int, sprHeight) FO_API_ARG_MARSHAL(uint, color))
 {
     if (!_client->CanDrawInScripts) {
@@ -2966,7 +2966,7 @@ FO_API_EPILOG()
  * @param flags ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(DrawText, FO_API_RET(void), FO_API_ARG(string, text), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h), FO_API_ARG(uint, color), FO_API_ARG(int, font), FO_API_ARG(int, flags))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h) FO_API_ARG_MARSHAL(uint, color) FO_API_ARG_MARSHAL(int, font) FO_API_ARG_MARSHAL(int, flags))
 {
     if (!_client->CanDrawInScripts) {
@@ -3003,7 +3003,7 @@ FO_API_EPILOG()
  * @param data ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(DrawPrimitive, FO_API_RET(void), FO_API_ARG(int, primitiveType), FO_API_ARG_ARR(int, data))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, primitiveType) FO_API_ARG_ARR_MARSHAL(int, data))
 {
     if (!_client->CanDrawInScripts) {
@@ -3061,7 +3061,7 @@ FO_API_EPILOG()
  * @param mapSpr ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(DrawMapSprite, FO_API_RET(void), FO_API_ARG_OBJ(MapSprite, mapSpr))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
 {
     if (mapSpr == nullptr) {
@@ -3168,7 +3168,7 @@ FO_API_EPILOG()
  * @param color ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(DrawCritter2d, FO_API_RET(void), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG(uchar, dir), FO_API_ARG(int, l), FO_API_ARG(int, t), FO_API_ARG(int, r), FO_API_ARG(int, b), FO_API_ARG(bool, scratch), FO_API_ARG(bool, center), FO_API_ARG(uint, color))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, modelName) FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_MARSHAL(uchar, dir) FO_API_ARG_MARSHAL(int, l) FO_API_ARG_MARSHAL(int, t) FO_API_ARG_MARSHAL(int, r) FO_API_ARG_MARSHAL(int, b) FO_API_ARG_MARSHAL(bool, scratch) FO_API_ARG_MARSHAL(bool, center) FO_API_ARG_MARSHAL(uint, color))
 {
     auto* anim = _client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
@@ -3179,7 +3179,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, modelName) FO_API_ARG_MARSHAL(uint, anim1
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 static vector<ModelInstance*> DrawCritterModel;
 static vector<uint> DrawCritterModelCrType;
 static vector<bool> DrawCritterModelFailedToLoad;
@@ -3197,7 +3197,7 @@ static int DrawCritterModelLayers[LAYERS3D_COUNT];
  * @param color ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(DrawCritter3d, FO_API_RET(void), FO_API_ARG(uint, instance), FO_API_ARG(hash, modelName), FO_API_ARG(uint, anim1), FO_API_ARG(uint, anim2), FO_API_ARG_ARR(int, layers), FO_API_ARG_ARR(float, position), FO_API_ARG(uint, color))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, instance) FO_API_ARG_MARSHAL(hash, modelName) FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_ARR_MARSHAL(int, layers) FO_API_ARG_ARR_MARSHAL(float, position) FO_API_ARG_MARSHAL(uint, color))
 {
     // x y
@@ -3284,7 +3284,7 @@ FO_API_EPILOG()
  * @param h ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(PushDrawScissor, FO_API_RET(void), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h))
 {
     _client->SprMngr.PushScissor(x, y, x + w, y + h);
@@ -3297,7 +3297,7 @@ FO_API_EPILOG()
  *
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(PopDrawScissor, FO_API_RET(void))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
     _client->SprMngr.PopScissor();
@@ -3311,7 +3311,7 @@ FO_API_EPILOG()
  * @param forceClear ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(ActivateOffscreenSurface, FO_API_RET(void), FO_API_ARG(bool, forceClear))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, forceClear))
 {
     if (!_client->CanDrawInScripts) {
@@ -3355,7 +3355,7 @@ FO_API_EPILOG()
  * @param effectSubtype ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurface, FO_API_RET(void), FO_API_ARG(int, effectSubtype))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype))
 {
     if (!_client->CanDrawInScripts) {
@@ -3392,7 +3392,7 @@ FO_API_EPILOG()
  * @param h ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurfaceExt, FO_API_RET(void), FO_API_ARG(int, effectSubtype), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG(int, w), FO_API_ARG(int, h))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype) FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_MARSHAL(int, w) FO_API_ARG_MARSHAL(int, h))
 {
     if (!_client->CanDrawInScripts) {
@@ -3435,7 +3435,7 @@ FO_API_EPILOG()
  * @param toH ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(PresentOffscreenSurfaceExt2, FO_API_RET(void), FO_API_ARG(int, effectSubtype), FO_API_ARG(int, fromX), FO_API_ARG(int, fromY), FO_API_ARG(int, fromW), FO_API_ARG(int, fromH), FO_API_ARG(int, toX), FO_API_ARG(int, toY), FO_API_ARG(int, toW), FO_API_ARG(int, toH))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectSubtype) FO_API_ARG_MARSHAL(int, fromX) FO_API_ARG_MARSHAL(int, fromY) FO_API_ARG_MARSHAL(int, fromW) FO_API_ARG_MARSHAL(int, fromH) FO_API_ARG_MARSHAL(int, toX) FO_API_ARG_MARSHAL(int, toY) FO_API_ARG_MARSHAL(int, toW) FO_API_ARG_MARSHAL(int, toH))
 {
     if (!_client->CanDrawInScripts) {
@@ -3471,7 +3471,7 @@ FO_API_EPILOG()
  * @param data ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(ShowScreen, FO_API_RET(void), FO_API_ARG(int, screen), FO_API_ARG_DICT(string, int, data))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen) FO_API_ARG_DICT_MARSHAL(string, int, data))
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
@@ -3493,7 +3493,7 @@ FO_API_EPILOG()
  * @param screen ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(HideScreen, FO_API_RET(void), FO_API_ARG(int, screen))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, screen))
 {
     _client->HideScreen(screen);
@@ -3511,7 +3511,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetHexMonitorPos, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG_REF(int, x), FO_API_ARG_REF(int, y))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_REF_MARSHAL(int, x) FO_API_ARG_REF_MARSHAL(int, y))
 {
     x = y = 0;
@@ -3538,7 +3538,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetHexByMonitorPos, FO_API_RET(bool), FO_API_ARG(int, x), FO_API_ARG(int, y), FO_API_ARG_REF(ushort, hx), FO_API_ARG_REF(ushort, hy))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y) FO_API_ARG_REF_MARSHAL(ushort, hx) FO_API_ARG_REF_MARSHAL(ushort, hy))
 {
     const auto old_x = _client->Settings.MouseX;
@@ -3568,7 +3568,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetItemByMonitorPos, FO_API_RET_OBJ(ItemView), FO_API_ARG(int, x), FO_API_ARG(int, y))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
 {
     bool item_egg;
@@ -3585,7 +3585,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCritterByMonitorPos, FO_API_RET_OBJ(CritterView), FO_API_ARG(int, x), FO_API_ARG(int, y))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
 {
     FO_API_RETURN(_client->HexMngr.GetCritterPixel(x, y, false));
@@ -3601,7 +3601,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetEntityByMonitorPos, FO_API_RET_OBJ(Entity), FO_API_ARG(int, x), FO_API_ARG(int, y))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, x) FO_API_ARG_MARSHAL(int, y))
 {
     ItemHexView* item = nullptr;
@@ -3618,7 +3618,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetMapWidth, FO_API_RET(ushort))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -3636,7 +3636,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetMapHeight, FO_API_RET(ushort))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG()
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -3656,7 +3656,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(IsMapHexPassed, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -3679,7 +3679,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(IsMapHexRaked, FO_API_RET(bool), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy))
 {
     if (!_client->HexMngr.IsMapLoaded()) {
@@ -3700,7 +3700,7 @@ FO_API_EPILOG(0)
  * @param filePath ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SaveScreenshot, FO_API_RET(void), FO_API_ARG(string, filePath))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, filePath))
 {
     // _client->SprMngr.SaveTexture(nullptr, _str(filePath).formatPath(), true);
@@ -3716,7 +3716,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SaveText, FO_API_RET(void), FO_API_ARG(string, filePath), FO_API_ARG(string, text))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, filePath) FO_API_ARG_MARSHAL(string, text))
 {
     auto f = DiskFileSystem::OpenFile(_str(filePath).formatPath(), true);
@@ -3738,7 +3738,7 @@ FO_API_EPILOG()
  * @param data ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SetCacheData, FO_API_RET(void), FO_API_ARG(string, name), FO_API_ARG_ARR(uchar, data))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_ARR_MARSHAL(uchar, data))
 {
     _client->Cache.SetData(name, data);
@@ -3754,7 +3754,7 @@ FO_API_EPILOG()
  * @param dataSize ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SetCacheDataExt, FO_API_RET(void), FO_API_ARG(string, name), FO_API_ARG_ARR(uchar, data), FO_API_ARG(uint, dataSize))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_ARR_MARSHAL(uchar, data) FO_API_ARG_MARSHAL(uint, dataSize))
 {
     auto data_copy = data;
@@ -3771,7 +3771,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCacheData, FO_API_RET_ARR(uchar), FO_API_ARG(string, name))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 {
     FO_API_RETURN(_client->Cache.GetData(name));
@@ -3786,7 +3786,7 @@ FO_API_EPILOG(0)
  * @param str ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SetCacheText, FO_API_RET(void), FO_API_ARG(string, name), FO_API_ARG(string, str))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name) FO_API_ARG_MARSHAL(string, str))
 {
     _client->Cache.SetString(name, str);
@@ -3801,7 +3801,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(GetCacheText, FO_API_RET(string), FO_API_ARG(string, name))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 {
     FO_API_RETURN(_client->Cache.GetString(name));
@@ -3816,7 +3816,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(IsCacheEntry, FO_API_RET(bool), FO_API_ARG(string, name))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 {
     FO_API_RETURN(_client->Cache.HasEntry(name));
@@ -3830,7 +3830,7 @@ FO_API_EPILOG(0)
  * @param name ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(RemoveCacheEntry, FO_API_RET(void), FO_API_ARG(string, name))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 {
     _client->Cache.EraseEntry(name);
@@ -3844,7 +3844,7 @@ FO_API_EPILOG()
  * @param keyValues ...
  ******************************************************************************/
 FO_API_GLOBAL_CLIENT_FUNC(SetUserConfig, FO_API_RET(void), FO_API_ARG_DICT(string, string, keyValues))
-#ifdef FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_DICT_MARSHAL(string, string, keyValues))
 {
     auto cfg_user = _client->FileMngr.WriteFile(CONFIG_NAME, false);

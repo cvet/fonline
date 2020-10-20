@@ -35,7 +35,7 @@
 #pragma once
 
 // WinApi universal header
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 

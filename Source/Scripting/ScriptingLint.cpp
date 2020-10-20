@@ -125,86 +125,86 @@ public:
         auto* _server = DUMMY_PTR(FOServer); \
         auto* _common = DUMMY_PTR(FOServer); \
         auto* _item = DUMMY_PTR(Item);
-#define FO_API_ITEM_METHOD_IMPL
+#define FO_API_ITEM_METHOD_IMPL 1
 #define FO_API_CRITTER_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_Critter_##name(__VA_ARGS__) \
     { \
         auto* _server = DUMMY_PTR(FOServer); \
         auto* _common = DUMMY_PTR(FOServer); \
         auto* _critter = DUMMY_PTR(Critter);
-#define FO_API_CRITTER_METHOD_IMPL
+#define FO_API_CRITTER_METHOD_IMPL 1
 #define FO_API_MAP_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_Map_##name(__VA_ARGS__) \
     { \
         auto* _server = DUMMY_PTR(FOServer); \
         auto* _common = DUMMY_PTR(FOServer); \
         auto* _map = DUMMY_PTR(Map);
-#define FO_API_MAP_METHOD_IMPL
+#define FO_API_MAP_METHOD_IMPL 1
 #define FO_API_LOCATION_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_Location_##name(__VA_ARGS__) \
     { \
         auto* _server = DUMMY_PTR(FOServer); \
         auto* _common = DUMMY_PTR(FOServer); \
         auto* _location = DUMMY_PTR(Location);
-#define FO_API_LOCATION_METHOD_IMPL
+#define FO_API_LOCATION_METHOD_IMPL 1
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_ItemView_##name(__VA_ARGS__) \
     { \
         auto* _client = DUMMY_PTR(FOClient); \
         auto* _common = DUMMY_PTR(FOClient); \
         auto* _itemView = DUMMY_PTR(ItemView);
-#define FO_API_ITEM_VIEW_METHOD_IMPL
+#define FO_API_ITEM_VIEW_METHOD_IMPL 1
 #define FO_API_HEX_ITEM_VIEW_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_HexItemView_##name(__VA_ARGS__) \
     { \
         auto* _client = DUMMY_PTR(FOClient); \
         auto* _common = DUMMY_PTR(FOClient); \
         auto* _itemHexView = DUMMY_PTR(ItemHexView);
-#define FO_API_HEX_ITEM_VIEW_METHOD_IMPL
+#define FO_API_HEX_ITEM_VIEW_METHOD_IMPL 1
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_CritterView_##name(__VA_ARGS__) \
     { \
         auto* _client = DUMMY_PTR(FOClient); \
         auto* _common = DUMMY_PTR(FOClient); \
         auto* _critterView = DUMMY_PTR(CritterView);
-#define FO_API_CRITTER_VIEW_METHOD_IMPL
+#define FO_API_CRITTER_VIEW_METHOD_IMPL 1
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_MapView_##name(__VA_ARGS__) \
     { \
         auto* _client = DUMMY_PTR(FOClient); \
         auto* _common = DUMMY_PTR(FOClient); \
         auto* _mapView = DUMMY_PTR(MapView);
-#define FO_API_MAP_VIEW_METHOD_IMPL
+#define FO_API_MAP_VIEW_METHOD_IMPL 1
 #define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_LocationView_##name(__VA_ARGS__) \
     { \
         auto* _client = DUMMY_PTR(FOClient); \
         auto* _common = DUMMY_PTR(FOClient); \
         auto* _locationView = DUMMY_PTR(LocationView);
-#define FO_API_LOCATION_VIEW_METHOD_IMPL
+#define FO_API_LOCATION_VIEW_METHOD_IMPL 1
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
     [[maybe_unused]] static ret Lint_Common_##name(__VA_ARGS__) \
     { \
         auto* _common = DUMMY_PTR(FOServer);
-#define FO_API_GLOBAL_COMMON_FUNC_IMPL
+#define FO_API_GLOBAL_COMMON_FUNC_IMPL 1
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
     [[maybe_unused]] static ret Lint_Server_##name(__VA_ARGS__) \
     { \
         auto* _server = DUMMY_PTR(FOServer); \
         auto* _common = DUMMY_PTR(FOServer);
-#define FO_API_GLOBAL_SERVER_FUNC_IMPL
+#define FO_API_GLOBAL_SERVER_FUNC_IMPL 1
 #define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) \
     [[maybe_unused]] static ret Lint_Client_##name(__VA_ARGS__) \
     { \
         auto* _client = DUMMY_PTR(FOClient); \
         auto* _common = DUMMY_PTR(FOClient);
-#define FO_API_GLOBAL_CLIENT_FUNC_IMPL
+#define FO_API_GLOBAL_CLIENT_FUNC_IMPL 1
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) \
     [[maybe_unused]] static ret Lint_Mapper_##name(__VA_ARGS__) \
     { \
         auto* _mapper = DUMMY_PTR(FOMapper); \
         auto* _common = DUMMY_PTR(FOMapper);
-#define FO_API_GLOBAL_MAPPER_FUNC_IMPL
+#define FO_API_GLOBAL_MAPPER_FUNC_IMPL 1
 
 #define FO_API_ENUM_GROUP(...)
 #define FO_API_ENUM_ENTRY(group, name, value) static int group##_##name = value;
@@ -224,20 +224,22 @@ public:
 #define FO_API_LOCATION_PROPERTY(...)
 #define FO_API_LOCATION_READONLY_PROPERTY(...)
 
-#define FO_API_ANGELSCRIPT_ONLY
-#define FO_API_MONO_ONLY
-#define FO_API_NATIVE_ONLY
+#define FO_API_ANGELSCRIPT_ONLY 1
+#define FO_API_MONO_ONLY 1
+#define FO_API_NATIVE_ONLY 1
 
 // #define FO_API_COMMON_IMPL
 // #define FO_API_SERVER_IMPL
 // #define FO_API_CLIENT_IMPL
 // #define FO_API_MAPPER_IMPL
 
-#ifndef FO_API_MULTIPLAYER_ONLY
-#define FO_API_MULTIPLAYER_ONLY
+#if !FO_API_MULTIPLAYER_ONLY
+#undef FO_API_MULTIPLAYER_ONLY
+#define FO_API_MULTIPLAYER_ONLY 1
 #endif
-#ifndef FO_API_SINGLEPLAYER_ONLY
-#define FO_API_SINGLEPLAYER_ONLY
+#if !FO_API_SINGLEPLAYER_ONLY
+#undef FO_API_SINGLEPLAYER_ONLY
+#define FO_API_SINGLEPLAYER_ONLY 1
 #endif
 
 #include "ScriptApi-Enums.h"

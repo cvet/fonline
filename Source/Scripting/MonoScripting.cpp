@@ -31,36 +31,36 @@
 // SOFTWARE.
 //
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #include "ServerScripting.h"
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #include "ClientScripting.h"
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #include "MapperScripting.h"
 #endif
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #include "Server.h"
-#define FO_API_COMMON_IMPL
-#define FO_API_SERVER_IMPL
+#define FO_API_COMMON_IMPL 1
+#define FO_API_SERVER_IMPL 1
 #include "ScriptApi.h"
 #define SCRIPTING_CLASS ServerScriptSystem
 #define IS_SERVER true
 #define IS_CLIENT false
 #define IS_MAPPER false
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #include "Client.h"
-#define FO_API_COMMON_IMPL
-#define FO_API_CLIENT_IMPL
+#define FO_API_COMMON_IMPL 1
+#define FO_API_CLIENT_IMPL 1
 #include "ScriptApi.h"
 #define SCRIPTING_CLASS ClientScriptSystem
 #define IS_SERVER false
 #define IS_CLIENT true
 #define IS_MAPPER false
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #include "Mapper.h"
-#define FO_API_COMMON_IMPL
-#define FO_API_MAPPER_IMPL
+#define FO_API_COMMON_IMPL 1
+#define FO_API_MAPPER_IMPL 1
 #include "ScriptApi.h"
 #define SCRIPTING_CLASS MapperScriptSystem
 #define IS_SERVER false
@@ -68,7 +68,7 @@
 #define IS_MAPPER true
 #endif
 
-#ifdef FO_MONO_SCRIPTING
+#if FO_MONO_SCRIPTING
 #include "Log.h"
 
 #include <mono/dis/meta.h>
@@ -165,7 +165,7 @@ inline T MarshalBack(T value)
 #define Mono_string MonoString*
 #define Mono_hash hash
 #define Mono_void void
-#define FO_API_PARTLY_UNDEF
+#define FO_API_PARTLY_UNDEF 1
 #define FO_API_ARG(type, name) Mono_##type _##name
 #define FO_API_ARG_ARR(type, name) MonoArray* _##name
 #define FO_API_ARG_OBJ(type, name) MonoObject* _##name
@@ -214,15 +214,15 @@ inline void* GetDomainUserData(MonoDomain* domain)
     return nullptr; // Todo: get Mono domain user data
 }
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define CONTEXT_ARG \
     FOServer* _server = (FOServer*)GetDomainUserData(_domain); \
     FOServer* _common = _server
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define CONTEXT_ARG \
     FOClient* _client = (FOClient*)GetDomainUserData(_domain); \
     FOClient* _common = _client
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define CONTEXT_ARG \
     FOMapper* _mapper = (FOMapper*)GetDomainUserData(_domain); \
     FOMapper* _common = _mapper
@@ -244,17 +244,17 @@ inline void* GetDomainUserData(MonoDomain* domain)
     } \
     }
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Item* _item = (Item*)_thisPtr
 #define FO_API_ITEM_METHOD(name, ret, ...) static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
-#define FO_API_ITEM_METHOD_IMPL
+#define FO_API_ITEM_METHOD_IMPL 1
 #define ITEM_CLASS Item
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define THIS_ARG ItemView* _itemView = (ItemView*)_thisPtr
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
-#define FO_API_ITEM_VIEW_METHOD_IMPL
+#define FO_API_ITEM_VIEW_METHOD_IMPL 1
 #define ITEM_CLASS ItemView
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define ITEM_CLASS ItemView
 #endif
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
@@ -285,17 +285,17 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef THIS_ARG
 #undef ITEM_CLASS
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Critter* _critter = (Critter*)_thisPtr
 #define FO_API_CRITTER_METHOD(name, ret, ...) static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
-#define FO_API_CRITTER_METHOD_IMPL
+#define FO_API_CRITTER_METHOD_IMPL 1
 #define CRITTER_CLASS Critter
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define THIS_ARG CritterView* _critterView = (CritterView*)_thisPtr
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) static ret MonoCritter_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
-#define FO_API_CRITTER_VIEW_METHOD_IMPL
+#define FO_API_CRITTER_VIEW_METHOD_IMPL 1
 #define CRITTER_CLASS CritterView
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define CRITTER_CLASS CritterView
 #endif
 #define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
@@ -326,17 +326,17 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef THIS_ARG
 #undef CRITTER_CLASS
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Map* _map = (Map*)_thisPtr
 #define FO_API_MAP_METHOD(name, ret, ...) static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
-#define FO_API_MAP_METHOD_IMPL
+#define FO_API_MAP_METHOD_IMPL 1
 #define MAP_CLASS Map
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define THIS_ARG MapView* _mapView = (MapView*)_thisPtr
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) static ret MonoMap_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
-#define FO_API_MAP_VIEW_METHOD_IMPL
+#define FO_API_MAP_VIEW_METHOD_IMPL 1
 #define MAP_CLASS MapView
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define MAP_CLASS MapView
 #endif
 #define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
@@ -367,17 +367,17 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #undef THIS_ARG
 #undef MAP_CLASS
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Location* _location = (Location*)_thisPtr
 #define FO_API_LOCATION_METHOD(name, ret, ...) static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
-#define FO_API_LOCATION_METHOD_IMPL
+#define FO_API_LOCATION_METHOD_IMPL 1
 #define LOCATION_CLASS Location
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define THIS_ARG LocationView* _locationView = (LocationView*)_thisPtr
 #define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) static ret MonoLocation_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
-#define FO_API_LOCATION_VIEW_METHOD_IMPL
+#define FO_API_LOCATION_VIEW_METHOD_IMPL 1
 #define LOCATION_CLASS LocationView
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define LOCATION_CLASS LocationView
 #endif
 #define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
@@ -410,16 +410,16 @@ inline void* GetDomainUserData(MonoDomain* domain)
 
 #define THIS_ARG (void)0
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
-#define FO_API_GLOBAL_COMMON_FUNC_IMPL
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#define FO_API_GLOBAL_COMMON_FUNC_IMPL 1
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
-#define FO_API_GLOBAL_SERVER_FUNC_IMPL
-#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_GLOBAL_SERVER_FUNC_IMPL 1
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
-#define FO_API_GLOBAL_CLIENT_FUNC_IMPL
-#elif defined(FO_MAPPER_SCRIPTING)
+#define FO_API_GLOBAL_CLIENT_FUNC_IMPL 1
+#elif FO_MAPPER_SCRIPTING
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) static ret MonoGlobal_##name(MonoDomain* _domain, MonoException** _ex, ##__VA_ARGS__)
-#define FO_API_GLOBAL_MAPPER_FUNC_IMPL
+#define FO_API_GLOBAL_MAPPER_FUNC_IMPL 1
 #endif
 #include "ScriptApi.h"
 #undef THIS_ARG
@@ -512,12 +512,12 @@ void SCRIPTING_CLASS::InitMonoScripting()
 
     SetDomainUserData(domain, _mainObj);
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_ITEM_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
 #define FO_API_CRITTER_METHOD(name, ret, ...) mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
 #define FO_API_MAP_METHOD(name, ret, ...) mono_add_internal_call("Map::_" #name, (void*)&MonoMap_##name);
 #define FO_API_LOCATION_METHOD(name, ret, ...) mono_add_internal_call("Location::_" #name, (void*)&MonoLocation_##name);
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Map::_" #name, (void*)&MonoMap_##name);
@@ -602,7 +602,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
 /*static MonoAssembly* LoadNetAssembly(const string& name)
 {
     string assemblies_path = "Assemblies/" + name + (_str(name).endsWith(".dll") ? "" : ".dll");
-#ifdef FONLINE_SERVER
+#if FONLINE_SERVER
     assemblies_path = "Resources/Mono/" + assemblies_path;
 #endif
 

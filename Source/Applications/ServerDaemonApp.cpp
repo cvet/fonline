@@ -37,14 +37,14 @@
 #include "Settings.h"
 #include "Testing.h"
 
-#if defined(FO_LINUX) || defined(FO_MAC)
+#if FO_LINUX || FO_MAC
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
 
-#ifndef FO_TESTING
+#if !FO_TESTING
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto ServerDaemonApp(int argc, char** argv) -> int
@@ -56,7 +56,7 @@ int main(int argc, char** argv)
         CreateGlobalData();
         LogToFile();
 
-#if defined(FO_LINUX) || defined(FO_MAC)
+#if FO_LINUX || FO_MAC
         // Start daemon
         pid_t parpid = ::fork();
         if (parpid < 0) {

@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#ifdef FO_API_COMMON_IMPL
+#if FO_API_COMMON_IMPL
 #include "GenericUtils.h"
 #include "StringUtils.h"
 #include "Timer.h"
@@ -84,14 +84,14 @@ public:
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
+#if FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
  * @param condition ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(Assert, FO_API_RET(void), FO_API_ARG(bool, condition))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, condition))
 {
     if (!condition) {
@@ -102,14 +102,14 @@ FO_API_EPILOG()
 #endif
 #endif
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
+#if FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
  * @param message ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(ThrowException, FO_API_RET(void), FO_API_ARG(string, message))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, message))
 {
     throw ScriptException(message);
@@ -126,7 +126,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(Random, FO_API_RET(int), FO_API_ARG(int, minValue), FO_API_ARG(int, maxValue))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, minValue) FO_API_ARG_MARSHAL(int, maxValue))
 {
     FO_API_RETURN(GenericUtils::Random(minValue, maxValue));
@@ -140,7 +140,7 @@ FO_API_EPILOG(0)
  * @param text ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(Log, FO_API_RET(void), FO_API_ARG(string, text))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 {
     WriteLog("{}\n", text);
@@ -148,7 +148,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 FO_API_EPILOG()
 #endif
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
+#if FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -157,7 +157,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(StrToInt, FO_API_RET(bool), FO_API_ARG(string, text), FO_API_ARG_REF(int, result))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(int, result))
 {
     if (!_str(text).isNumber()) {
@@ -170,7 +170,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
+#if FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -179,7 +179,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(StrToFloat, FO_API_RET(bool), FO_API_ARG(string, text), FO_API_ARG_REF(float, result))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(float, result))
 {
     if (!_str(text).isNumber()) {
@@ -202,7 +202,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(GetHexDistance, FO_API_RET(int), FO_API_ARG(ushort, hx1), FO_API_ARG(ushort, hy1), FO_API_ARG(ushort, hx2), FO_API_ARG(ushort, hy2))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx1) FO_API_ARG_MARSHAL(ushort, hy1) FO_API_ARG_MARSHAL(ushort, hx2) FO_API_ARG_MARSHAL(ushort, hy2))
 {
     FO_API_RETURN(_common->GeomHelper.DistGame(hx1, hy1, hx2, hy2));
@@ -220,7 +220,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(GetHexDir, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy))
 {
     FO_API_RETURN(_common->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy));
@@ -239,7 +239,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(GetHexDirWithOffset, FO_API_RET(uchar), FO_API_ARG(ushort, fromHx), FO_API_ARG(ushort, fromHy), FO_API_ARG(ushort, toHx), FO_API_ARG(ushort, toHy), FO_API_ARG(float, offset))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, fromHx) FO_API_ARG_MARSHAL(ushort, fromHy) FO_API_ARG_MARSHAL(ushort, toHx) FO_API_ARG_MARSHAL(ushort, toHy) FO_API_ARG_MARSHAL(float, offset))
 {
     FO_API_RETURN(_common->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy, offset));
@@ -253,7 +253,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(GetTick, FO_API_RET(uint))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(_common->GameTime.FrameTick());
@@ -268,7 +268,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(GetStrHash, FO_API_RET(hash), FO_API_ARG(string, text))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 {
     if (text.empty()) {
@@ -286,7 +286,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(GetHashStr, FO_API_RET(string), FO_API_ARG(hash, value))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, value))
 {
     FO_API_RETURN(_str().parseHash(value).str());
@@ -302,7 +302,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(DecodeUTF8, FO_API_RET(uint), FO_API_ARG(string, text), FO_API_ARG_REF(uint, length))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_REF_MARSHAL(uint, length))
 {
     FO_API_RETURN(utf8::Decode(text.c_str(), &length));
@@ -317,7 +317,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(EncodeUTF8, FO_API_RET(string), FO_API_ARG(uint, ucs))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ucs))
 {
     char buf[4];
@@ -327,14 +327,14 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ucs))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
+#if FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
  * @param time ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(Yield, FO_API_RET(void), FO_API_ARG(uint, time))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, time))
 {
     // Todo: fix script system
@@ -351,7 +351,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(SHA1, FO_API_RET(string), FO_API_ARG(string, text))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 {
     SHA1_CTX ctx;
@@ -378,7 +378,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(SHA2, FO_API_RET(string), FO_API_ARG(string, text))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 {
     const uint digest_size = 32;
@@ -395,8 +395,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text))
 FO_API_EPILOG(0)
 #endif
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_ANGELSCRIPT_ONLY
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 static void PrintLog(string& log, bool last_call, const std::function<void(const string&)>& log_callback)
 {
     // Normalize new lines to \n
@@ -431,7 +431,7 @@ static void PrintLog(string& log, bool last_call, const std::function<void(const
 
 static auto SystemCall(string command, const std::function<void(const string&)>& log_callback) -> int
 {
-#if defined(FO_WINDOWS) && !defined(WINRT)
+#if FO_WINDOWS && !FO_UWP
     HANDLE out_read = nullptr;
     HANDLE out_write = nullptr;
 
@@ -502,7 +502,7 @@ static auto SystemCall(string command, const std::function<void(const string&)>&
 
     return static_cast<int>(retval);
 
-#elif !defined(FO_WINDOWS) && !defined(FO_WEB)
+#elif !FO_WINDOWS && !FO_WEB
     FILE* in = popen(command.c_str(), "r");
     if (!in) {
         return -1;
@@ -529,7 +529,7 @@ static auto SystemCall(string command, const std::function<void(const string&)>&
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(SystemCall, FO_API_RET(int), FO_API_ARG(string, command))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command))
 {
     auto prefix = command.substr(0, command.find(' '));
@@ -540,7 +540,7 @@ FO_API_EPILOG(0)
 #endif
 #endif
 
-#ifdef FO_API_ANGELSCRIPT_ONLY
+#if FO_API_ANGELSCRIPT_ONLY
 /*******************************************************************************
  * ...
  *
@@ -549,7 +549,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(SystemCallExt, FO_API_RET(int), FO_API_ARG(string, command), FO_API_ARG_REF(string, output))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_REF_MARSHAL(string, output))
 {
     output = "";
@@ -571,14 +571,14 @@ FO_API_EPILOG(0)
  * @param link ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(OpenLink, FO_API_RET(void), FO_API_ARG(string, link))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, link))
 {
-#if defined(FO_WINDOWS)
-#ifndef WINRT
+#if FO_WINDOWS
+#if !FO_UWP
     ::ShellExecuteW(nullptr, L"open", _str(link).toWideChar().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 #endif
-#elif !defined(FO_IOS)
+#elif !FO_IOS
     int r = system((string("xdg-open ") + link).c_str());
     UNUSED_VARIABLE(r); // Supress compiler warning
 #endif
@@ -594,7 +594,7 @@ FO_API_EPILOG()
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(GetProtoItem, FO_API_RET_OBJ(Entity), FO_API_ARG(hash, pid), FO_API_ARG_DICT(int, int, props))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid) FO_API_ARG_DICT_MARSHAL(int, int, props))
 {
 #if 0
@@ -628,7 +628,7 @@ FO_API_EPILOG(0)
  * @return ...
  ******************************************************************************/
 FO_API_GLOBAL_COMMON_FUNC(GetUnixTime, FO_API_RET(uint))
-#ifdef FO_API_GLOBAL_COMMON_FUNC_IMPL
+#if FO_API_GLOBAL_COMMON_FUNC_IMPL
 FO_API_PROLOG()
 {
     FO_API_RETURN(static_cast<uint>(time(nullptr)));

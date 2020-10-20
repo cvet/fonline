@@ -73,13 +73,13 @@ FOClient::FOClient(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     SetGameColor(COLOR_IFACE);
 
     // Data sources
-#if defined(FO_IOS)
+#if FO_IOS
     FileMngr.AddDataSource("../../Documents/", true);
-#elif defined(FO_ANDROID)
+#elif FO_ANDROID
     FileMngr.AddDataSource("$AndroidAssets", true);
     // FileMngr.AddDataSource(SDL_AndroidGetInternalStoragePath(), true);
     // FileMngr.AddDataSource(SDL_AndroidGetExternalStoragePath(), true);
-#elif defined(FO_WEB)
+#elif FO_WEB
     FileMngr.AddDataSource("Data/", true);
     FileMngr.AddDataSource("PersistentData/", true);
 #else
@@ -98,7 +98,7 @@ FOClient::FOClient(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     SprMngr.AccumulateAtlasData();
     SprMngr.PushAtlasType(AtlasType::Static);
 
-#ifndef FO_SINGLEPLAYER
+#if !FO_SINGLEPLAYER
     // Modules initialization
     ScriptSys.StartEvent();
 #endif
@@ -138,7 +138,7 @@ void FOClient::ProcessAutoLogin()
 {
     const auto auto_login = Settings.AutoLogin;
 
-#ifdef FO_WEB
+#if FO_WEB
     char* auto_login_web = (char*)EM_ASM_INT({
         if ('foAutoLogin' in Module) {
             var len = lengthBytesUTF8(Module.foAutoLogin) + 1;
@@ -166,7 +166,7 @@ void FOClient::ProcessAutoLogin()
 
     IsAutoLogin = true;
 
-#ifndef FO_SINGLEPLAYER
+#if !FO_SINGLEPLAYER
     if (ScriptSys.AutoLoginEvent(auto_login_args[0], auto_login_args[1]) && InitNetReason == INIT_NET_REASON_NONE) {
         LoginName = auto_login_args[0];
         LoginPassword = auto_login_args[1];
@@ -286,7 +286,7 @@ void FOClient::UpdateFilesLoop()
                 else {
                     // Web client can receive only cache updates
                     // Resources must be packed in main bundle
-#ifdef FO_WEB
+#if FO_WEB
                     UpdateFilesAddText(STR_CLIENT_OUTDATED, "Client outdated!");
                     NetDisconnect();
                     return;
@@ -650,7 +650,7 @@ void FOClient::MainLoop()
     // Start render
     SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
 
-#ifndef FO_SINGLEPLAYER
+#if !FO_SINGLEPLAYER
     // Script loop
     ScriptSys.LoopEvent();
 #endif
@@ -865,7 +865,7 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
 
 static auto GetLastSocketError() -> string
 {
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     const int error_code = WSAGetLastError();
     wchar_t* ws = nullptr;
     FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
@@ -899,7 +899,7 @@ auto FOClient::CheckSocketStatus(bool for_write) -> bool
 
     if (r == 0) {
         int error = 0;
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         int len = sizeof(error);
 #else
         socklen_t len = sizeof(error);
@@ -926,7 +926,7 @@ auto FOClient::CheckSocketStatus(bool for_write) -> bool
 
 auto FOClient::NetConnect(const string& host, ushort port) -> bool
 {
-#ifdef FO_WEB
+#if FO_WEB
     port++;
     if (!Settings.SecuredWebSockets) {
         EM_ASM(Module['websocket']['url'] = 'ws://');
@@ -952,7 +952,7 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
         ZStreamOk = true;
     }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         WriteLog("WSAStartup error '{}'.\n", GetLastSocketError());
@@ -970,7 +970,7 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
     Bin.SetEncryptKey(0);
     Bout.SetEncryptKey(0);
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     const auto sock_type = SOCK_STREAM;
 #else
     const auto sock_type = SOCK_STREAM | SOCK_CLOEXEC;
@@ -981,7 +981,7 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
     }
 
     // Nagle
-#ifndef FO_WEB
+#if !FO_WEB
     if (Settings.DisableTcpNagle) {
         int optval = 1;
         if (setsockopt(Sock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&optval), sizeof(optval)) != 0) {
@@ -993,7 +993,7 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
     // Direct connect
     if (Settings.ProxyType == 0u) {
         // Set non blocking mode
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         unsigned long mode = 1;
         if (ioctlsocket(Sock, FIONBIO, &mode) != 0)
 #else
@@ -1007,7 +1007,7 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
         }
 
         const int r = connect(Sock, reinterpret_cast<sockaddr*>(&SockAddr), sizeof(sockaddr_in));
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         if (r == INVALID_SOCKET && WSAGetLastError() != WSAEWOULDBLOCK)
 #else
         if (r == INVALID_SOCKET && errno != EINPROGRESS)
@@ -1018,7 +1018,7 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
         }
     }
     else {
-#if !defined(FO_IOS) && !defined(FO_ANDROID) && !defined(FO_WEB)
+#if !FO_IOS && !FO_ANDROID && !FO_WEB
         // Proxy connect
         if (connect(Sock, reinterpret_cast<sockaddr*>(&ProxyAddr), sizeof(sockaddr_in)) != 0) {
             WriteLog("Can't connect to proxy server, error '{}'.\n", GetLastSocketError());
@@ -1300,7 +1300,7 @@ auto FOClient::NetOutput() -> bool
     const int tosend = Bout.GetEndPos();
     int sendpos = 0;
     while (sendpos < tosend) {
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         DWORD len = 0;
         WSABUF buf;
         buf.buf = reinterpret_cast<char*>(Bout.GetData()) + sendpos;
@@ -1329,7 +1329,7 @@ auto FOClient::NetInput(bool unpack) -> int
         return 0;
     }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     DWORD len = 0;
     DWORD flags = 0;
     WSABUF buf;
@@ -1353,7 +1353,7 @@ auto FOClient::NetInput(bool unpack) -> int
     while (whole_len == static_cast<uint>(ComBuf.size())) {
         ComBuf.resize(ComBuf.size() * 2);
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         flags = 0;
         buf.buf = reinterpret_cast<char*>(&ComBuf[0]) + whole_len;
         buf.len = static_cast<uint>(ComBuf.size()) - whole_len;
@@ -1363,7 +1363,7 @@ auto FOClient::NetInput(bool unpack) -> int
         if (len == SOCKET_ERROR)
 #endif
         {
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
             if (WSAGetLastError() == WSAEWOULDBLOCK) {
 #else
             if (errno == EINPROGRESS) {
@@ -3662,7 +3662,7 @@ void FOClient::Net_OnUpdateFilesList()
     Update->FilesWholeSize = 0;
     Update->ClientOutdated = outdated;
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     /*bool have_exe = false;
     string exe_name;
     if (outdated)
@@ -3682,7 +3682,7 @@ void FOClient::Net_OnUpdateFilesList()
         uint hash = file.GetLEUInt();
 
         // Skip platform depended
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         // if (outdated && _str(exe_name).compareIgnoreCase(name))
         //    have_exe = true;
         string ext = _str(name).getFileExtension();
@@ -3730,7 +3730,7 @@ void FOClient::Net_OnUpdateFilesList()
         Update->FilesWholeSize += size;
     }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     // if (Update->ClientOutdated && !have_exe)
     //    UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
 #else
@@ -3974,7 +3974,7 @@ void FOClient::FlashGameWindow()
         SprMngr.BlinkWindow();
     }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     if (Settings.SoundNotify) {
         ::Beep(100, 200);
     }

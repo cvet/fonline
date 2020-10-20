@@ -43,7 +43,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-#define FO_API_MAP_IMPL
+#define FO_API_MAP_IMPL 1
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(Map, "Map", true);

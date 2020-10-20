@@ -90,7 +90,7 @@ static void ServerEntry()
     }
 }
 
-#ifndef FO_TESTING
+#if !FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
@@ -104,7 +104,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         Data->Settings = new GlobalSettings(argc, argv);
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
         const auto use_dx = !Data->Settings->ForceOpenGL;
 #else
         bool use_dx = false;

@@ -293,32 +293,32 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         }
     }
 
-#ifdef FO_WEB
+#if FO_WEB
     const_cast<bool&>(WebBuild) = true;
 #else
     const_cast<bool&>(WebBuild) = false;
 #endif
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     const_cast<bool&>(WindowsBuild) = true;
 #else
     const_cast<bool&>(WindowsBuild) = false;
 #endif
-#ifdef FO_LINUX
+#if FO_LINUX
     const_cast<bool&>(LinuxBuild) = true;
 #else
     const_cast<bool&>(LinuxBuild) = false;
 #endif
-#ifdef FO_MAC
+#if FO_MAC
     const_cast<bool&>(MacOsBuild) = true;
 #else
     const_cast<bool&>(MacOsBuild) = false;
 #endif
-#ifdef FO_ANDROID
+#if FO_ANDROID
     const_cast<bool&>(AndroidBuild) = true;
 #else
     const_cast<bool&>(AndroidBuild) = false;
 #endif
-#ifdef FO_IOS
+#if FO_IOS
     const_cast<bool&>(IOsBuild) = true;
 #else
     const_cast<bool&>(IOsBuild) = false;
@@ -326,7 +326,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     const_cast<bool&>(DesktopBuild) = WindowsBuild || LinuxBuild || MacOsBuild;
     const_cast<bool&>(TabletBuild) = AndroidBuild || IOsBuild;
 
-#if defined(FO_WINDOWS) && !defined(WINRT)
+#if FO_WINDOWS && !FO_UWP
     if (GetSystemMetrics(SM_TABLETPC) != 0) {
         const_cast<bool&>(DesktopBuild) = false;
         const_cast<bool&>(TabletBuild) = true;

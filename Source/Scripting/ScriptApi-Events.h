@@ -321,7 +321,7 @@ FO_API_SERVER_EVENT(CritterBarter, FO_API_ARG_OBJ(Critter, cr), FO_API_ARG_OBJ(C
  ******************************************************************************/
 FO_API_SERVER_EVENT(CritterGetAttackDistantion, FO_API_ARG_OBJ(Critter, critter), FO_API_ARG_OBJ(Item, item), FO_API_ARG(uchar, itemMode), FO_API_ARG_REF(uint, dist))
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -334,7 +334,7 @@ FO_API_SERVER_EVENT(CritterGetAttackDistantion, FO_API_ARG_OBJ(Critter, critter)
 FO_API_SERVER_EVENT(PlayerRegistration, FO_API_ARG(uint, ip), FO_API_ARG(string, name), FO_API_ARG_REF(uint, disallowMsgNum), FO_API_ARG_REF(uint, disallowStrNum), FO_API_ARG_REF(string, disallowLex))
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -366,7 +366,7 @@ FO_API_SERVER_EVENT(PlayerGetAccess, FO_API_ARG_OBJ(Critter, player), FO_API_ARG
  ******************************************************************************/
 FO_API_SERVER_EVENT(PlayerAllowCommand, FO_API_ARG_OBJ(Critter, player), FO_API_ARG(string, arg1), FO_API_ARG(uchar, arg2))
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -420,21 +420,21 @@ FO_API_SERVER_EVENT(ItemCheckMove, FO_API_ARG_OBJ(Item, item), FO_API_ARG(uint, 
  ******************************************************************************/
 FO_API_SERVER_EVENT(StaticItemWalk, FO_API_ARG_OBJ(Item, item), FO_API_ARG_OBJ(Critter, critter), FO_API_ARG(bool, isIn), FO_API_ARG(uchar, dir))
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  ******************************************************************************/
 FO_API_CLIENT_EVENT(Start)
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  ******************************************************************************/
 FO_API_CLIENT_EVENT(Finish)
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  *
@@ -444,7 +444,7 @@ FO_API_CLIENT_EVENT(Finish)
 FO_API_CLIENT_EVENT(AutoLogin, FO_API_ARG(string, login), FO_API_ARG(string, password))
 #endif
 
-#ifdef FO_API_MULTIPLAYER_ONLY
+#if FO_API_MULTIPLAYER_ONLY
 /*******************************************************************************
  * ...
  ******************************************************************************/

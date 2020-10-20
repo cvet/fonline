@@ -37,7 +37,7 @@
 
 #include "Entity.h"
 
-#define FO_API_ITEM_VIEW_HEADER
+#define FO_API_ITEM_VIEW_HEADER 1
 #include "ScriptApi.h"
 
 class ItemView : public Entity
@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto GetInvColor() const -> uint;
     [[nodiscard]] auto LightGetHash() const -> uint;
 
-#define FO_API_ITEM_VIEW_CLASS
+#define FO_API_ITEM_VIEW_CLASS 1
 #include "ScriptApi.h"
 
     PROPERTIES_HEADER();

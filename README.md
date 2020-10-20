@@ -306,11 +306,9 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: research about Steam integration
 * Common: speed up content loading from server
 * Common: temporary entities, disable writing to data base
-* Common: #ifdef to #if defined
 * Common: RUNTIME_ASSERT to assert
 * Common: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
 * Common: remove dynamic_cast?
-* Common: detect OS automatically not from passed constant from build system
 * Common: split meanings if int8 and char in code
 * Common: move from 32 bit hashes to 64 bit
 * Common: rename uchar to uint8 and use uint8_t as alias

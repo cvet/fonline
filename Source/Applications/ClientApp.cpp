@@ -40,7 +40,7 @@
 #include "Testing.h"
 #include "Timer.h"
 #include "Version-Include.h"
-#ifdef FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
 #include "Server.h"
 #endif
 
@@ -50,18 +50,18 @@ struct ClientAppData
 {
     GlobalSettings* Settings {};
     FOClient* Client {};
-#ifdef FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
     FOServer* Server {};
 #endif
 };
 GLOBAL_DATA(ClientAppData, Data);
 
-#ifdef FO_SINGLEPLAYER
-NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback)
+#if FO_SINGLEPLAYER
+NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
 {
     throw UnreachablePlaceException(LINE_STR);
 }
-NetServerBase* NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback)
+NetServerBase* NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
 {
     throw UnreachablePlaceException(LINE_STR);
 }
@@ -80,18 +80,18 @@ static void ClientEntry(void*)
 {
     try {
         if (Data->Client == nullptr) {
-#ifdef FO_WEB
+#if FO_WEB
             // Wait file system synchronization
             if (EM_ASM_INT(return Module.syncfsDone) != 1)
                 return;
 #endif
 
             try {
-#ifdef FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
                 Data->Server = new FOServer(*Data->Settings);
 #endif
                 Data->Client = new FOClient(*Data->Settings);
-#ifdef FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
                 Data->Server->ConnectClient(Data->Client);
 #endif
             }
@@ -102,7 +102,7 @@ static void ClientEntry(void*)
 
         try {
             App->BeginFrame();
-#ifdef FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
             Data->Server->MainLoop();
 #endif
             Data->Client->MainLoop();
@@ -120,7 +120,7 @@ static void ClientEntry(void*)
     }
 }
 
-#ifndef FO_TESTING
+#if !FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto ClientApp(int argc, char** argv) -> int
@@ -138,18 +138,18 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         InitApplication(*Data->Settings);
 
         // Hard restart, need wait before lock event dissapeared
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         if (::wcsstr(GetCommandLineW(), L"--restart") != nullptr) {
             std::this_thread::sleep_for(std::chrono::milliseconds(500));
         }
 #endif
 
-#if defined(FO_IOS)
+#if FO_IOS
         ClientEntry(nullptr);
         SDL_iPhoneSetAnimationCallback(SprMngr_MainWindow, 1, ClientEntry, nullptr);
         return 0;
 
-#elif defined(FO_WEB)
+#elif FO_WEB
         EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
             true, function(err) {
                 assert(!err);
@@ -157,7 +157,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }););
         emscripten_set_main_loop_arg(ClientEntry, nullptr, 0, 1);
 
-#elif defined(FO_ANDROID)
+#elif FO_ANDROID
         while (!Settings->Quit) {
             ClientEntry(nullptr);
         }
@@ -188,7 +188,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Exit from game.\n");
 
-#ifdef FO_SINGLEPLAYER
+#if FO_SINGLEPLAYER
         delete Data->Server;
 #endif
         delete Data->Client;

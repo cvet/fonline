@@ -63,7 +63,7 @@
 #include "WinApi-Include.h"
 
 #include "zlib.h"
-#ifndef FO_WINDOWS
+#if !FO_WINDOWS
 // Todo: add working in IPv6 networks
 #include <arpa/inet.h>
 #include <fcntl.h>

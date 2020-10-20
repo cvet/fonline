@@ -1005,7 +1005,7 @@ bool ScriptSystem::RunPrepared()
 
     int result = ctx->Execute();
 
-#ifdef SCRIPT_WATCHER
+#if SCRIPT_WATCHER
     uint delta = Timer::FrameTick() - tick;
 #endif
 

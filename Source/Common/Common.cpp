@@ -65,7 +65,7 @@ void DeleteGlobalData()
 }
 
 // Dummy symbols for web build to avoid linker errors
-#ifdef FO_WEB
+#if FO_WEB
 void* SDL_LoadObject(const char* sofile)
 {
     throw UnreachablePlaceException(LINE_STR);

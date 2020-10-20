@@ -31,28 +31,28 @@
 // SOFTWARE.
 //
 
-#ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if !FO_ANGELSCRIPT_COMPILER
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #include "ServerScripting.h"
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #include "ClientScripting.h"
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #include "MapperScripting.h"
 #endif
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #include "Server.h"
-#define FO_API_COMMON_IMPL
-#define FO_API_SERVER_IMPL
+#define FO_API_COMMON_IMPL 1
+#define FO_API_SERVER_IMPL 1
 #include "ScriptApi.h"
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #include "Client.h"
-#define FO_API_COMMON_IMPL
-#define FO_API_CLIENT_IMPL
+#define FO_API_COMMON_IMPL 1
+#define FO_API_CLIENT_IMPL 1
 #include "ScriptApi.h"
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #include "Mapper.h"
-#define FO_API_COMMON_IMPL
-#define FO_API_MAPPER_IMPL
+#define FO_API_COMMON_IMPL 1
+#define FO_API_MAPPER_IMPL 1
 #include "ScriptApi.h"
 #endif
 #else
@@ -64,24 +64,24 @@
 DECLARE_EXCEPTION(ScriptCompilerException);
 #endif
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define SCRIPTING_CLASS ServerScriptSystem
 #define IS_SERVER true
 #define IS_CLIENT false
 #define IS_MAPPER false
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define SCRIPTING_CLASS ClientScriptSystem
 #define IS_SERVER false
 #define IS_CLIENT true
 #define IS_MAPPER false
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define SCRIPTING_CLASS MapperScriptSystem
 #define IS_SERVER false
 #define IS_CLIENT false
 #define IS_MAPPER true
 #endif
 
-#ifdef FO_ANGELSCRIPT_COMPILER
+#if FO_ANGELSCRIPT_COMPILER
 enum class EntityType
 {
     ItemProto,
@@ -133,7 +133,7 @@ struct Property
 };
 #endif
 
-#ifdef FO_ANGELSCRIPT_SCRIPTING
+#if FO_ANGELSCRIPT_SCRIPTING
 #include "AngelScriptExtensions.h"
 #include "AngelScriptReflection.h"
 #include "AngelScriptScriptDict.h"
@@ -157,7 +157,7 @@ struct Property
 #define FO_API_ENUM_ENTRY(group, name, value) static int group##_##name = value;
 #include "ScriptApi.h"
 
-#ifdef FO_ANGELSCRIPT_COMPILER
+#if FO_ANGELSCRIPT_COMPILER
 #define INIT_ARGS const string& script_path
 struct SCRIPTING_CLASS
 {
@@ -167,7 +167,7 @@ struct SCRIPTING_CLASS
 #define INIT_ARGS
 #endif
 
-#ifdef FO_ANGELSCRIPT_COMPILER
+#if FO_ANGELSCRIPT_COMPILER
 struct Entity
 {
     void AddRef() { }
@@ -192,6 +192,9 @@ struct Location : Entity
 struct ItemView : Entity
 {
 };
+struct ItemHexView : ItemView
+{
+};
 struct CritterView : Entity
 {
 };
@@ -202,7 +205,7 @@ struct LocationView : Entity
 {
 };
 
-class MapSprite : public NonCopyable
+class MapSprite
 {
 public:
     void AddRef() const { ++RefCount; }
@@ -244,7 +247,7 @@ public:
         RUNTIME_ASSERT_STR(as_result >= 0, #expr); \
     }
 
-#ifndef FO_ANGELSCRIPT_COMPILER
+#if !FO_ANGELSCRIPT_COMPILER
 #ifdef AS_MAX_PORTABILITY
 #define SCRIPT_FUNC(name) WRAP_FN(name)
 #define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
@@ -278,7 +281,7 @@ static void DummyFunc(asIScriptGeneric* gen)
 }
 #endif
 
-#ifndef FO_ANGELSCRIPT_COMPILER
+#if !FO_ANGELSCRIPT_COMPILER
 struct ScriptSystem::AngelScriptImpl
 {
     asIScriptEngine* Engine {};
@@ -386,7 +389,7 @@ inline string GetASType(string name)
         {typeid(double).hash_code(), "double"},
         {typeid(Entity).hash_code(), "Entity@+"},
         {typeid(vector<Entity>).hash_code(), "array<Entity>@+"},
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
         {typeid(Item).hash_code(), "Item@+"},
         {typeid(Critter).hash_code(), "Critter@+"},
         {typeid(Map).hash_code(), "Map@+"},
@@ -442,7 +445,7 @@ inline string MakeMethodDecl(string name, string ret, string decl)
     return fmt::format("{} {}({})", ret, name, decl);
 }
 
-#define FO_API_PARTLY_UNDEF
+#define FO_API_PARTLY_UNDEF 1
 #define FO_API_ARG(type, name) type name
 #define FO_API_ARG_ARR(type, name) CScriptArray* _##name
 #define FO_API_ARG_OBJ(type, name) ASEntity* _##name
@@ -476,15 +479,15 @@ inline string MakeMethodDecl(string name, string ret, string decl)
 #define FO_API_PROPERTY_TYPE_ENUM(type) int
 #define FO_API_PROPERTY_MOD(mod)
 
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define CONTEXT_ARG \
     FOServer* _server = (FOServer*)asGetActiveContext()->GetEngine()->GetUserData(); \
     FOServer* _common = _server
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define CONTEXT_ARG \
     FOClient* _client = (FOClient*)asGetActiveContext()->GetEngine()->GetUserData(); \
     FOClient* _common = _client
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define CONTEXT_ARG \
     FOMapper* _mapper = (FOMapper*)asGetActiveContext()->GetEngine()->GetUserData(); \
     FOMapper* _common = _mapper
@@ -499,18 +502,18 @@ inline string MakeMethodDecl(string name, string ret, string decl)
 
 struct ASItem : ASEntity
 {
-#ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if !FO_ANGELSCRIPT_COMPILER
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Item* _item = (Item*)GameEntity
 #define FO_API_ITEM_METHOD(name, ret, ...) ret name(__VA_ARGS__)
-#define FO_API_ITEM_METHOD_IMPL
+#define FO_API_ITEM_METHOD_IMPL 1
 #define ITEM_CLASS Item
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define THIS_ARG ItemView* _itemView = (ItemView*)GameEntity
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
-#define FO_API_ITEM_VIEW_METHOD_IMPL
+#define FO_API_ITEM_VIEW_METHOD_IMPL 1
 #define ITEM_CLASS ItemView
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define ITEM_CLASS ItemView
 #endif
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
@@ -519,10 +522,10 @@ struct ASItem : ASEntity
     type Get_##name() { return MarshalBack(((ITEM_CLASS*)GameEntity)->Get##name()); } \
     void Set_##name(type value) { ((ITEM_CLASS*)GameEntity)->Set##name(Marshal<decltype(((ITEM_CLASS*)GameEntity)->Get##name())>(value)); }
 #else
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_ITEM_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #endif
@@ -539,18 +542,18 @@ struct ASItem : ASEntity
 
 struct ASCritter : ASEntity
 {
-#ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if !FO_ANGELSCRIPT_COMPILER
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Critter* _critter = (Critter*)GameEntity
 #define FO_API_CRITTER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
-#define FO_API_CRITTER_METHOD_IMPL
+#define FO_API_CRITTER_METHOD_IMPL 1
 #define CRITTER_CLASS Critter
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define THIS_ARG CritterView* _critterView = (CritterView*)GameEntity
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
-#define FO_API_CRITTER_VIEW_METHOD_IMPL
+#define FO_API_CRITTER_VIEW_METHOD_IMPL 1
 #define CRITTER_CLASS CritterView
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define CRITTER_CLASS CritterView
 #endif
 #define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
@@ -559,10 +562,10 @@ struct ASCritter : ASEntity
     type Get_##name() { return MarshalBack(((CRITTER_CLASS*)GameEntity)->Get##name()); } \
     void Set_##name(type value) { ((CRITTER_CLASS*)GameEntity)->Set##name(Marshal<decltype(((CRITTER_CLASS*)GameEntity)->Get##name())>(value)); }
 #else
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_CRITTER_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #endif
@@ -579,18 +582,18 @@ struct ASCritter : ASEntity
 
 struct ASMap : ASEntity
 {
-#ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if !FO_ANGELSCRIPT_COMPILER
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Map* _map = (Map*)GameEntity
 #define FO_API_MAP_METHOD(name, ret, ...) ret name(__VA_ARGS__)
-#define FO_API_MAP_METHOD_IMPL
+#define FO_API_MAP_METHOD_IMPL 1
 #define MAP_CLASS Map
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define THIS_ARG MapView* _mapView = (MapView*)GameEntity
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
-#define FO_API_MAP_VIEW_METHOD_IMPL
+#define FO_API_MAP_VIEW_METHOD_IMPL 1
 #define MAP_CLASS MapView
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define MAP_CLASS MapView
 #endif
 #define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
@@ -599,10 +602,10 @@ struct ASMap : ASEntity
     type Get_##name() { return MarshalBack(((MAP_CLASS*)GameEntity)->Get##name()); } \
     void Set_##name(type value) { ((MAP_CLASS*)GameEntity)->Set##name(Marshal<decltype(((MAP_CLASS*)GameEntity)->Get##name())>(value)); }
 #else
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_MAP_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #endif
@@ -619,18 +622,18 @@ struct ASMap : ASEntity
 
 struct ASLocation : ASEntity
 {
-#ifndef FO_ANGELSCRIPT_COMPILER
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if !FO_ANGELSCRIPT_COMPILER
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Location* _location = (Location*)GameEntity
 #define FO_API_LOCATION_METHOD(name, ret, ...) ret name(__VA_ARGS__)
-#define FO_API_LOCATION_METHOD_IMPL
+#define FO_API_LOCATION_METHOD_IMPL 1
 #define LOCATION_CLASS Location
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define THIS_ARG LocationView* _locationView = (LocationView*)GameEntity
 #define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
-#define FO_API_LOCATION_VIEW_METHOD_IMPL
+#define FO_API_LOCATION_VIEW_METHOD_IMPL 1
 #define LOCATION_CLASS LocationView
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define LOCATION_CLASS LocationView
 #endif
 #define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
@@ -639,10 +642,10 @@ struct ASLocation : ASEntity
     type Get_##name() { return MarshalBack(((LOCATION_CLASS*)GameEntity)->Get##name()); } \
     void Set_##name(type value) { ((LOCATION_CLASS*)GameEntity)->Set##name(Marshal<decltype(((LOCATION_CLASS*)GameEntity)->Get##name())>(value)); }
 #else
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_LOCATION_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_LOCATION_VIEW_METHOD(name, ret, ...) \
     ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #endif
@@ -657,30 +660,30 @@ struct ASLocation : ASEntity
 #undef LOCATION_CLASS
 };
 
-#ifndef FO_ANGELSCRIPT_COMPILER
+#if !FO_ANGELSCRIPT_COMPILER
 #define THIS_ARG (void)0
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) static ret AS_##name(__VA_ARGS__)
-#define FO_API_GLOBAL_COMMON_FUNC_IMPL
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#define FO_API_GLOBAL_COMMON_FUNC_IMPL 1
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) static ret AS_##name(__VA_ARGS__)
-#define FO_API_GLOBAL_SERVER_FUNC_IMPL
-#elif defined(FO_CLIENT_SCRIPTING)
+#define FO_API_GLOBAL_SERVER_FUNC_IMPL 1
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) static ret AS_##name(__VA_ARGS__)
-#define FO_API_GLOBAL_CLIENT_FUNC_IMPL
-#elif defined(FO_MAPPER_SCRIPTING)
+#define FO_API_GLOBAL_CLIENT_FUNC_IMPL 1
+#elif FO_MAPPER_SCRIPTING
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) static ret AS_##name(__VA_ARGS__)
-#define FO_API_GLOBAL_MAPPER_FUNC_IMPL
+#define FO_API_GLOBAL_MAPPER_FUNC_IMPL 1
 #endif
 #else
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) \
     static ret AS_##name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) \
     static ret AS_##name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) \
     static ret AS_##name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) \
     static ret AS_##name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
 #endif
@@ -751,7 +754,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
     WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message, Preprocessor::ResolveOriginalLine(msg->row));
 }
 
-#ifdef FO_ANGELSCRIPT_COMPILER
+#if FO_ANGELSCRIPT_COMPILER
 static void CompileRootModule(asIScriptEngine* engine, const string& script_path);
 #else
 static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
@@ -762,7 +765,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
     RUNTIME_ASSERT(engine);
 
-#ifndef FO_ANGELSCRIPT_COMPILER
+#if !FO_ANGELSCRIPT_COMPILER
     _pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
     _pAngelScriptImpl->Engine = engine;
 // asEngine->ShutDownAndRelease();
@@ -796,14 +799,14 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RegisterScriptWeakRef(engine);
     RegisterScriptReflection(engine);
 
-#ifndef FO_ANGELSCRIPT_COMPILER
+#if !FO_ANGELSCRIPT_COMPILER
     engine->SetUserData(_mainObj);
 #endif
 
     AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
     AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
 
-#if defined(FO_CLIENT_SCRIPTING) || defined(FO_MAPPER_SCRIPTING)
+#if FO_CLIENT_SCRIPTING || FO_MAPPER_SCRIPTING
     AS_VERIFY(engine->RegisterObjectType("MapSprite", sizeof(MapSprite), asOBJ_REF));
     AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(MapSprite, AddRef), SCRIPT_METHOD_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(MapSprite, Release), SCRIPT_METHOD_CONV));
@@ -871,7 +874,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterFuncdef("void MapCallback(Map@+)"));
     AS_VERIFY(engine->RegisterFuncdef("bool LocationPredicate(Location@+)"));
     AS_VERIFY(engine->RegisterFuncdef("void LocationCallback(Location@+)"));
-#if defined(FO_CLIENT_SCRIPTING)
+#if FO_CLIENT_SCRIPTING
     // AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &BIND_CLASS ClientCurMap));
     // AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &BIND_CLASS ClientCurLocation));
 #endif
@@ -892,19 +895,19 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define FO_API_RET_OBJ_ARR(type) GetASType<vector<type>>("")
 
 #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
 #endif
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_ITEM_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
 #define FO_API_CRITTER_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASCritter, name), SCRIPT_METHOD_CONV));
 #define FO_API_MAP_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASMap, name), SCRIPT_METHOD_CONV));
 #define FO_API_LOCATION_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASLocation, name), SCRIPT_METHOD_CONV));
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASCritter, name), SCRIPT_METHOD_CONV));
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASMap, name), SCRIPT_METHOD_CONV));
@@ -951,7 +954,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASLocation, Set_##name), SCRIPT_METHOD_CONV));
 #include "ScriptApi.h"
 
-#ifdef FO_ANGELSCRIPT_COMPILER
+#if FO_ANGELSCRIPT_COMPILER
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
@@ -963,34 +966,34 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 class BinaryStream : public asIBinaryStream
 {
 public:
-    BinaryStream(std::vector<asBYTE>& buf) : binBuf {buf} { }
+    BinaryStream(std::vector<asBYTE>& buf) : _binBuf {buf} { }
 
-    virtual void Write(const void* ptr, asUINT size) override
+    void Write(const void* ptr, asUINT size) override
     {
         if (!ptr || !size)
             return;
-        binBuf.resize(binBuf.size() + size);
-        std::memcpy(&binBuf[writePos], ptr, size);
-        writePos += size;
+        _binBuf.resize(_binBuf.size() + size);
+        std::memcpy(&_binBuf[_writePos], ptr, size);
+        _writePos += size;
     }
 
-    virtual void Read(void* ptr, asUINT size) override
+    void Read(void* ptr, asUINT size) override
     {
         if (!ptr || !size)
             return;
-        std::memcpy(ptr, &binBuf[readPos], size);
-        readPos += size;
+        std::memcpy(ptr, &_binBuf[_readPos], size);
+        _readPos += size;
     }
 
-    std::vector<asBYTE>& GetBuf() { return binBuf; }
+    auto GetBuf() -> std::vector<asBYTE>& { return _binBuf; }
 
 private:
-    std::vector<asBYTE>& binBuf;
-    int readPos {};
-    int writePos {};
+    std::vector<asBYTE>& _binBuf;
+    int _readPos {};
+    int _writePos {};
 };
 
-#ifdef FO_ANGELSCRIPT_COMPILER
+#if FO_ANGELSCRIPT_COMPILER
 static void CompileRootModule(asIScriptEngine* engine, const string& script_path)
 {
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
@@ -999,33 +1002,36 @@ static void CompileRootModule(asIScriptEngine* engine, const string& script_path
     class ScriptLoader : public Preprocessor::FileLoader
     {
     public:
-        ScriptLoader(UCharVec& root) : rootScript {&root} { }
+        ScriptLoader(vector<uchar>& root) : _rootScript {&root} { }
 
-        virtual bool LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) override
+        auto LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) -> bool override
         {
-            if (rootScript) {
-                data.resize(rootScript->size());
-                std::memcpy(data.data(), rootScript->data(), rootScript->size());
-                rootScript = nullptr;
+            if (_rootScript) {
+                data.resize(_rootScript->size());
+                std::memcpy(data.data(), _rootScript->data(), _rootScript->size());
+                _rootScript = nullptr;
                 file_path = "(Root)";
                 return true;
             }
 
-            includeDeep++;
+            _includeDeep++;
 
             file_path = _str(file_name).extractFileName().eraseFileExtension();
             data.resize(0);
 
-            if (includeDeep == 1) {
-                DiskFile script_file = DiskFileSystem::OpenFile(file_name, false);
-                if (!script_file)
+            if (_includeDeep == 1) {
+                auto script_file = DiskFileSystem::OpenFile(file_name, false);
+                if (!script_file) {
                     return false;
-                if (script_file.GetSize() == 0)
+                }
+                if (script_file.GetSize() == 0) {
                     return true;
+                }
 
                 data.resize(script_file.GetSize());
-                if (!script_file.Read(data.data(), script_file.GetSize()))
+                if (!script_file.Read(data.data(), script_file.GetSize())) {
                     return false;
+                }
 
                 return true;
             }
@@ -1033,78 +1039,90 @@ static void CompileRootModule(asIScriptEngine* engine, const string& script_path
             return Preprocessor::FileLoader::LoadFile(dir, file_name, data, file_path);
         }
 
-        virtual void FileLoaded() override { includeDeep--; }
+        void FileLoaded() override { _includeDeep--; }
 
     private:
-        UCharVec* rootScript {};
-        int includeDeep {0};
+        vector<uchar>* _rootScript {};
+        int _includeDeep {0};
     };
 
-    DiskFile script_file = DiskFileSystem::OpenFile(script_path, false);
-    if (!script_file)
+    auto script_file = DiskFileSystem::OpenFile(script_path, false);
+    if (!script_file) {
         throw ScriptCompilerException("Root script file not found", script_path);
-    if (script_file.GetSize() == 0)
+    }
+    if (script_file.GetSize() == 0) {
         throw ScriptCompilerException("Root script file is empty", script_path);
+    }
 
-    UCharVec script_data(script_file.GetSize());
-    if (!script_file.Read(script_data.data(), script_file.GetSize()))
+    vector<uchar> script_data(script_file.GetSize());
+    if (!script_file.Read(script_data.data(), script_file.GetSize())) {
         throw ScriptCompilerException("Can't read root script file", script_path);
+    }
 
     Preprocessor::UndefAll();
-#if defined(FO_SERVER_SCRIPTING) || defined(FO_SINGLEPLAYER_SCRIPTING)
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
     Preprocessor::Define("SERVER");
-#elif defined(FO_CLIENT_SCRIPTING)
+#elif FO_CLIENT_SCRIPTING
     Preprocessor::Define("CLIENT");
-#elif defined(FO_MAPPER_SCRIPTING)
+#elif FO_MAPPER_SCRIPTING
     Preprocessor::Define("MAPPER");
 #endif
 
     ScriptLoader loader {script_data};
     Preprocessor::StringOutStream result, errors;
-    int errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
+    auto errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
 
-    while (!errors.String.empty() && errors.String.back() == '\n')
+    while (!errors.String.empty() && errors.String.back() == '\n') {
         errors.String.pop_back();
+    }
 
-    if (errors_count)
+    if (errors_count) {
         throw ScriptCompilerException("Preprocessor failed", errors.String);
-    else if (!errors.String.empty())
+    }
+    else if (!errors.String.empty()) {
         WriteLog("Preprocessor message: {}.\n", errors.String);
+    }
 
     asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
-    if (!mod)
+    if (!mod) {
         throw ScriptCompilerException("Create root module failed");
+    }
 
     int as_result = mod->AddScriptSection("Root", result.String.c_str());
-    if (as_result < 0)
+    if (as_result < 0) {
         throw ScriptCompilerException("Unable to add script section", as_result);
+    }
 
     as_result = mod->Build();
-    if (as_result < 0)
+    if (as_result < 0) {
         throw ScriptCompilerException("Unable to build module", as_result);
+    }
 
     vector<asBYTE> buf;
     BinaryStream binary {buf};
     as_result = mod->SaveByteCode(&binary);
-    if (as_result < 0)
+    if (as_result < 0) {
         throw ScriptCompilerException("Unable to save byte code", as_result);
+    }
 
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
-    UCharVec lnt_data;
+    vector<uchar> lnt_data;
     Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
 
-    UCharVec data;
+    vector<uchar> data;
     DataWriter writer {data};
     writer.Write((uint)buf.size());
     writer.WritePtr(buf.data(), buf.size());
     writer.Write((uint)lnt_data.size());
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
-    DiskFile file = DiskFileSystem::OpenFile(script_path + "b", true);
-    if (!file)
+    auto file = DiskFileSystem::OpenFile(script_path + "b", true);
+    if (!file) {
         throw ScriptCompilerException("Can't write binary to file", script_path + "b");
-    if (!file.Write(data.data(), (uint)data.size()))
+    }
+    if (!file.Write(data.data(), (uint)data.size())) {
         throw ScriptCompilerException("Can't write binary to file", script_path + "b");
+    }
 }
 
 #else
@@ -1135,14 +1153,14 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
 #endif
 
 #else
-#ifndef FO_ANGELSCRIPT_COMPILER
+#if !FO_ANGELSCRIPT_COMPILER
 struct ScriptSystem::AngelScriptImpl
 {
 };
 #endif
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
-#ifdef FO_ANGELSCRIPT_COMPILER
+#if FO_ANGELSCRIPT_COMPILER
     throw ScriptCompilerException("AngelScript not supported");
 #endif
 }

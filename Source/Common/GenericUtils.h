@@ -79,6 +79,8 @@ public:
     [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
     [[nodiscard]] static auto GetStepsXY(int x1, int y1, int x2, int y2) -> tuple<float, float>;
     [[nodiscard]] static auto ChangeStepsXY(float sx, float sy, float deq) -> tuple<float, float>;
+
+    static void SetRandomSeed(int seed);
 };
 
 class MatrixHelper final

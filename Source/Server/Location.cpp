@@ -36,7 +36,7 @@
 #include "Map.h"
 #include "StringUtils.h"
 
-#define FO_API_LOCATION_IMPL
+#define FO_API_LOCATION_IMPL 1
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(Location, "Location", true);

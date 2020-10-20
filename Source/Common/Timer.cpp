@@ -34,7 +34,7 @@
 #include "Timer.h"
 #include "WinApi-Include.h"
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 #include <mmsystem.h>
 #else
 #include <sys/time.h>
@@ -192,7 +192,7 @@ auto Timer::GetCurrentDateTime() -> DateTimeStamp
 {
     DateTimeStamp dt;
 
-#if defined(FO_WINDOWS)
+#if FO_WINDOWS
     SYSTEMTIME st;
     GetLocalTime(&st);
 

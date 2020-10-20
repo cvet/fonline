@@ -54,7 +54,7 @@ static void MapperEntry(void*)
 {
     try {
         if (Data->Mapper == nullptr) {
-#ifdef FO_WEB
+#if FO_WEB
             // Wait file system synchronization
             if (EM_ASM_INT(return Module.syncfsDone) != 1)
                 return;
@@ -85,7 +85,7 @@ static void MapperEntry(void*)
     }
 }
 
-#ifndef FO_TESTING
+#if !FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
@@ -102,12 +102,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         Data->Settings = new GlobalSettings(argc, argv);
         InitApplication(*Data->Settings);
 
-#if defined(FO_IOS)
+#if FO_IOS
         MapperEntry(nullptr);
         SDL_iPhoneSetAnimationCallback(SprMngr_MainWindow, 1, MapperEntry, nullptr);
         return 0;
 
-#elif defined(FO_WEB)
+#elif FO_WEB
         EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
             true, function(err) {
                 assert(!err);
@@ -115,7 +115,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }););
         emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
 
-#elif defined(FO_ANDROID)
+#elif FO_ANDROID
         while (!Data->Settings.Quit) {
             MapperEntry(nullptr);
         }

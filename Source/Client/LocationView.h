@@ -37,7 +37,7 @@
 
 #include "Entity.h"
 
-#define FO_API_LOCATION_VIEW_HEADER
+#define FO_API_LOCATION_VIEW_HEADER 1
 #include "ScriptApi.h"
 
 class LocationView final : public Entity
@@ -45,7 +45,7 @@ class LocationView final : public Entity
 public:
     LocationView(uint id, const ProtoLocation* proto);
 
-#define FO_API_LOCATION_VIEW_CLASS
+#define FO_API_LOCATION_VIEW_CLASS 1
 #include "ScriptApi.h"
 
     PROPERTIES_HEADER();

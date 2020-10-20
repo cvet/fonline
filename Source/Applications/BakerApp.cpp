@@ -45,7 +45,7 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
-#ifndef FO_TESTING
+#if !FO_TESTING
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto BakerApp(int argc, char** argv) -> int

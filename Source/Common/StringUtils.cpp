@@ -555,7 +555,7 @@ auto _str::normalizeLineEndings() -> _str&
     return *this;
 }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 auto _str::parseWideChar(const wchar_t* str) -> _str&
 {
     const auto len = static_cast<int>(wcslen(str));

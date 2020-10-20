@@ -37,7 +37,7 @@
 
 #include "Entity.h"
 
-#define FO_API_MAP_VIEW_HEADER
+#define FO_API_MAP_VIEW_HEADER 1
 #include "ScriptApi.h"
 
 class MapView final : public Entity
@@ -45,7 +45,7 @@ class MapView final : public Entity
 public:
     MapView(uint id, const ProtoMap* proto);
 
-#define FO_API_MAP_VIEW_CLASS
+#define FO_API_MAP_VIEW_CLASS 1
 #include "ScriptApi.h"
 
     PROPERTIES_HEADER();

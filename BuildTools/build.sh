@@ -34,12 +34,11 @@ fi
 
 BUILD_DIR="build-$1-$2"
 CONFIG="Release"
-
 if [ "$3" = "debug" ]; then
     CONFIG="Debug"
-    BUILD_TARGET="$BUILD_TARGET -DFONLINE_DEBUG_BUILD=1"
     BUILD_DIR="$BUILD_DIR-debug"
 fi
+BUILD_TARGET=" -DCMAKE_BUILD_TYPE=$CONFIG $BUILD_TARGET"
 
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR

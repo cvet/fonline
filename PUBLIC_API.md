@@ -61,11 +61,6 @@ By default all non-fonline related output are hidden but with enabling this opti
 Also some of additional information will be printed during configuration.  
 This option can help if something goes wrong during CMake configuration processing.
 
-`FONLINE_DEBUG_BUILD (default: NO)`
-
-Enabling of this option give producing of debug binaries output.  
-By default release configuration is performed.
-
 `FONLINE_OUTPUT_PATH (default: *cmake binary dir*)`
 
 Path where resulted binaries will be placed.  
@@ -105,7 +100,7 @@ Binaries will be placed in `output/Tools` directory and later used for AngelScri
 Produce baker binaries.  
 Binaries will be placed in `output/Tools` directory and later used for baking resources.
 
-`FONLINE_UNIT_TESTS (default: NO)`
+`FONLINE_UNIT_TESTS (default: YES)`
 
 Create binaries for unit testing.  
 Binaries will be placed in `output/Tests` directory.

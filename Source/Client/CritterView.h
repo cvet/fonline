@@ -48,7 +48,7 @@
 #include "SpriteManager.h"
 #include "Timer.h"
 
-#define FO_API_CRITTER_VIEW_HEADER
+#define FO_API_CRITTER_VIEW_HEADER 1
 #include "ScriptApi.h"
 
 class ItemView;
@@ -147,7 +147,7 @@ public:
     short SprOy {};
     uint FadingTick {};
 
-#define FO_API_CRITTER_VIEW_CLASS
+#define FO_API_CRITTER_VIEW_CLASS 1
 #include "ScriptApi.h"
 
     PROPERTIES_HEADER();

@@ -33,7 +33,7 @@
 
 #include "MapView.h"
 
-#define FO_API_MAP_VIEW_IMPL
+#define FO_API_MAP_VIEW_IMPL 1
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(MapView, "Map", false);

@@ -42,7 +42,7 @@
 #include "Settings.h"
 #include "Timer.h"
 
-#define FO_API_MAP_HEADER
+#define FO_API_MAP_HEADER 1
 #include "ScriptApi.h"
 
 class Item;
@@ -149,7 +149,7 @@ public:
     void UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void RecacheHexFlags(ushort hx, ushort hy);
 
-#define FO_API_MAP_CLASS
+#define FO_API_MAP_CLASS 1
 #include "ScriptApi.h"
 
     PROPERTIES_HEADER();

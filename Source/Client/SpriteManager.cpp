@@ -1998,7 +1998,7 @@ void SpriteManager::DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim
     }
 
     /*// Enable smooth
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
     if (zoom && *zoom != 1.0f)
         GL(glEnable(prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH));
 #endif
@@ -2030,7 +2030,7 @@ void SpriteManager::DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim
     DisableScissor();
 
 // Disable smooth
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
     if (zoom && *zoom != 1.0f)
         GL(glDisable(prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH));
 #endif*/

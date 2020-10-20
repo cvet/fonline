@@ -45,28 +45,28 @@
 #include "SDL_events.h"
 #include "SDL_video.h"
 #endif
-#ifdef FO_HAVE_OPENGL
-#ifndef FO_OPENGL_ES
+#if FO_HAVE_OPENGL
+#if !FO_OPENGL_ES
 #include "GL/glew.h"
 #include "SDL_opengl.h"
 #else
 #include "SDL_opengles2.h"
 #endif
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
 #include <d3d11_1.h>
 #endif
 
 Application* App;
 
-#if defined(FO_WINDOWS) && defined(_DEBUG)
+#if FO_WINDOWS && FO_DEBUG
 static _CrtMemState CrtMemState;
 #endif
 
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
 static constexpr auto RING_BUFFER_LENGTH = 300;
-#ifndef FO_OPENGL_ES
-#ifdef FO_MAC
+#if !FO_OPENGL_ES
+#if FO_MAC
 #undef glGenVertexArrays
 #undef glBindVertexArray
 #undef glDeleteVertexArrays
@@ -112,15 +112,15 @@ static constexpr auto RING_BUFFER_LENGTH = 300;
 #define GL_MAX GL_MAX_EXT
 #define GL_MIN GL_MIN_EXT
 #endif
-#if defined(FO_IOS)
+#if FO_IOS
 #define glTexImage2DMultisample(a, b, c, d, e, f)
 #define glRenderbufferStorageMultisample glRenderbufferStorageMultisampleAPPLE
 #define glRenderbufferStorageMultisampleEXT glRenderbufferStorageMultisampleAPPLE
-#elif defined(FO_ANDROID)
+#elif FO_ANDROID
 #define glTexImage2DMultisample(a, b, c, d, e, f)
 #define glRenderbufferStorageMultisample glRenderbufferStorageMultisampleIMG
 #define glRenderbufferStorageMultisampleEXT glRenderbufferStorageMultisampleIMG
-#elif defined(FO_WEB) || (defined(FO_WINDOWS) && defined(WINRT))
+#elif FO_WEB || (FO_WINDOWS && FO_UWP)
 #define glTexImage2DMultisample(a, b, c, d, e, f)
 #define glRenderbufferStorageMultisample(a, b, c, d, e)
 #define glRenderbufferStorageMultisampleEXT(a, b, c, d, e)
@@ -145,19 +145,19 @@ enum class RenderType
 {
     None,
     Null,
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     OpenGL,
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     Direct3D,
 #endif
-#ifdef FO_HAVE_METAL
+#if FO_HAVE_METAL
     Metal,
 #endif
-#ifdef FO_HAVE_VULKAN
+#if FO_HAVE_VULKAN
     Vulkan,
 #endif
-#ifdef FO_HAVE_GNM
+#if FO_HAVE_GNM
     Gnm,
 #endif
 };
@@ -171,7 +171,7 @@ static vector<InputEvent> NextFrameEventsQueue {};
 static SDL_AudioDeviceID AudioDeviceId {};
 static SDL_AudioSpec AudioSpec {};
 static Application::AppAudio::AudioStreamCallback AudioStreamWriter {};
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
 static SDL_GLContext GlContext {};
 static GLint BaseFBO {};
 static uint GlSamples {};
@@ -184,7 +184,7 @@ static bool OGL_framebuffer_multisample {};
 static bool OGL_texture_multisample {};
 static bool OGL_vertex_array_object {};
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
 static ID3D11Device* D3DDevice {};
 static ID3D11DeviceContext* D3DDeviceContext {};
 static IDXGISwapChain* SwapChain {};
@@ -233,7 +233,7 @@ RenderTexture::~RenderTexture()
 {
 }
 
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
 struct OpenGLTexture : RenderTexture::Impl
 {
     ~OpenGLTexture() override
@@ -251,7 +251,7 @@ struct OpenGLTexture : RenderTexture::Impl
 };
 #endif
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
 struct Direct3DTexture : RenderTexture::Impl
 {
     ~Direct3DTexture() override
@@ -267,7 +267,7 @@ struct Direct3DTexture : RenderTexture::Impl
 };
 #endif
 
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
 struct OpenGLRenderBuffer
 {
     struct VertexArray
@@ -315,14 +315,14 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return true;
 }
 
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
 struct OpenGLEffect : RenderEffect::Impl
 {
     ~OpenGLEffect() override { }
 };
 #endif
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
 struct Direct3DEffect : RenderEffect::Impl
 {
     ~Direct3DEffect() override { }
@@ -338,7 +338,7 @@ RenderMesh::~RenderMesh()
 {
 }
 
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
 struct OpenGLMesh : RenderMesh::Impl
 {
     ~OpenGLMesh() override
@@ -360,7 +360,7 @@ struct OpenGLMesh : RenderMesh::Impl
 };
 #endif
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
 struct Direct3DMesh : RenderMesh::Impl
 {
     ~Direct3DMesh() override { }
@@ -393,7 +393,7 @@ Application::Application(GlobalSettings& settings)
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
             SDL_AudioSpec desired;
             std::memset(&desired, 0, sizeof(desired));
-#ifdef FO_WEB
+#if FO_WEB
             desired.format = AUDIO_F32;
             desired.freq = 48000;
             desired.channels = 2;
@@ -422,27 +422,27 @@ Application::Application(GlobalSettings& settings)
     }
 
     // First choose render type by user preference
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (settings.ForceOpenGL) {
         CurRenderType = RenderType::OpenGL;
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (settings.ForceDirect3D) {
         CurRenderType = RenderType::Direct3D;
     }
 #endif
-#ifdef FO_HAVE_METAL
+#if FO_HAVE_METAL
     if (settings.ForceMetal) {
         CurRenderType = RenderType::Metal;
     }
 #endif
-#ifdef FO_HAVE_VULKAN
+#if FO_HAVE_VULKAN
     if (settings.ForceVulkan) {
         CurRenderType = RenderType::Vulkan;
     }
 #endif
-#ifdef FO_HAVE_GNM
+#if FO_HAVE_GNM
     if (settings.ForceGnm) {
         CurRenderType = RenderType::Gnm;
     }
@@ -450,19 +450,19 @@ Application::Application(GlobalSettings& settings)
 
     // If none of selected then evaluate automatic selection
     if (CurRenderType == RenderType::None) {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
         CurRenderType = RenderType::OpenGL;
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
         CurRenderType = RenderType::Direct3D;
 #endif
-#ifdef FO_HAVE_METAL
+#if FO_HAVE_METAL
         CurRenderType = RenderType::Metal;
 #endif
-#ifdef FO_HAVE_VULKAN
+#if FO_HAVE_VULKAN
         CurRenderType = RenderType::Vulkan;
 #endif
-#ifdef FO_HAVE_GNM
+#if FO_HAVE_GNM
         CurRenderType = RenderType::Gnm;
 #endif
 
@@ -480,11 +480,11 @@ Application::Application(GlobalSettings& settings)
         throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
     }
 
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         // Initialize GLEW
         // Todo: remove GLEW and bind OpenGL functions manually
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
         auto glew_result = glewInit();
         RUNTIME_ASSERT_STR(glew_result == GLEW_OK, _str("GLEW not initialized, result {}", glew_result));
         OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
@@ -493,7 +493,7 @@ Application::Application(GlobalSettings& settings)
         OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
         OGL_framebuffer_multisample = GLEW_EXT_framebuffer_multisample != 0;
         OGL_texture_multisample = GLEW_ARB_texture_multisample != 0;
-#ifdef FO_MAC
+#if FO_MAC
         OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
 #else
         OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
@@ -501,7 +501,7 @@ Application::Application(GlobalSettings& settings)
 #endif
 
         // OpenGL ES extensions
-#ifdef FO_OPENGL_ES
+#if FO_OPENGL_ES
         OGL_version_2_0 = true;
         OGL_vertex_buffer_object = true;
         OGL_framebuffer_object = true;
@@ -509,11 +509,11 @@ Application::Application(GlobalSettings& settings)
         OGL_framebuffer_multisample = false;
         OGL_texture_multisample = false;
         OGL_vertex_array_object = false;
-#ifdef FO_ANDROID
+#if FO_ANDROID
         OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
         OGL_framebuffer_multisample = SDL_GL_ExtensionSupported("GL_IMG_multisampled_render_to_texture");
 #endif
-#ifdef FO_IOS
+#if FO_IOS
         OGL_vertex_array_object = true;
         OGL_framebuffer_multisample = true;
 #endif
@@ -553,10 +553,10 @@ Application::Application(GlobalSettings& settings)
 
     // Determine main window size
     auto is_tablet = false;
-#if defined(FO_IOS) || defined(FO_ANDROID)
+#if FO_IOS || FO_ANDROID
     is_tablet = true;
 #endif
-#if defined(FO_WINDOWS) && !defined(WINRT)
+#if FO_WINDOWS && !FO_UWP
     is_tablet = (::GetSystemMetrics(SM_TABLETPC) != 0); // Todo: recognize tablet mode for Windows 10
 #endif
     if (is_tablet) {
@@ -576,7 +576,7 @@ Application::Application(GlobalSettings& settings)
         settings.FullScreen = true;
     }
 
-#ifdef FO_WEB
+#if FO_WEB
     // Adaptive size
     int window_w = EM_ASM_INT(return window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth);
     int window_h = EM_ASM_INT(return window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight);
@@ -603,7 +603,7 @@ Application::Application(GlobalSettings& settings)
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
 
-#if defined(FO_HAVE_OPENGL) && defined(FO_OPENGL_ES)
+#if FO_HAVE_OPENGL && FO_OPENGL_ES
     if (CurRenderType == RenderType::OpenGL) {
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -621,7 +621,7 @@ Application::Application(GlobalSettings& settings)
         window_create_flags |= SDL_WINDOW_BORDERLESS;
     }
 
-#if defined(FO_HAVE_OPENGL) && !defined(FO_WEB)
+#if FO_HAVE_OPENGL && !FO_WEB
     if (CurRenderType == RenderType::OpenGL) {
         window_create_flags |= SDL_WINDOW_OPENGL;
     }
@@ -635,9 +635,9 @@ Application::Application(GlobalSettings& settings)
     SdlWindow = SDL_CreateWindow(settings.WindowName.c_str(), win_pos, win_pos, settings.ScreenWidth, settings.ScreenHeight, window_create_flags);
     RUNTIME_ASSERT_STR(SdlWindow, _str("SDL Window not created, error '{}'", SDL_GetError()));
 
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
-#ifndef FO_WEB
+#if !FO_WEB
         GlContext = SDL_GL_CreateContext(SdlWindow);
         RUNTIME_ASSERT_STR(GlContext, _str("OpenGL context not created, error '{}'", SDL_GetError()));
 
@@ -693,7 +693,7 @@ Application::Application(GlobalSettings& settings)
         GL(glActiveTexture(GL_TEXTURE0));
         GL(glPixelStorei(GL_PACK_ALIGNMENT, 1));
         GL(glPixelStorei(GL_UNPACK_ALIGNMENT, 1));
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
         GL(glDisable(GL_LIGHTING));
         GL(glDisable(GL_COLOR_MATERIAL));
         GL(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
@@ -717,7 +717,7 @@ Application::Application(GlobalSettings& settings)
 
         // Check max bones
         if (settings.Enable3dRendering) {
-#ifndef FO_OPENGL_ES
+#if !FO_OPENGL_ES
             GLint max_uniform_components = 0;
             GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
             if (max_uniform_components < 1024) {
@@ -745,12 +745,12 @@ Application::Application(GlobalSettings& settings)
     }
 #endif
 
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
         SDL_SysWMinfo wminfo;
         SDL_VERSION(&wminfo.version)
         SDL_GetWindowWMInfo(SdlWindow, &wminfo);
-#ifndef WINRT
+#if !FO_UWP
         auto* hwnd = wminfo.info.win.window;
 #else
         HWND hwnd = 0;
@@ -780,7 +780,7 @@ Application::Application(GlobalSettings& settings)
         D3D_FEATURE_LEVEL feature_level;
         const D3D_FEATURE_LEVEL feature_levels[7] = {
             D3D_FEATURE_LEVEL_11_1,
-#if !defined(WINRT)
+#if !FO_UWP
             D3D_FEATURE_LEVEL_11_0,
             D3D_FEATURE_LEVEL_10_1,
             D3D_FEATURE_LEVEL_10_0,
@@ -790,7 +790,7 @@ Application::Application(GlobalSettings& settings)
 #endif
         };
 
-#if !defined(WINRT)
+#if !FO_UWP
         const auto d3d_create_device = ::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, 7, D3D11_SDK_VERSION, &sd, &SwapChain, &D3DDevice, &feature_level, &D3DDeviceContext);
         if (d3d_create_device != S_OK) {
             throw AppInitException("D3D11CreateDeviceAndSwapChain failed", d3d_create_device);
@@ -843,7 +843,7 @@ Application::Application(GlobalSettings& settings)
 #endif // !FO_HEADLESS
 
     // Skip SDL allocations from profiling
-#if defined(FO_WINDOWS) && defined(_DEBUG)
+#if FO_WINDOWS && FO_DEBUG
     ::_CrtMemCheckpoint(&CrtMemState);
 #endif
 }
@@ -972,7 +972,7 @@ void Application::BeginFrame()
 
             DeleteGlobalData();
 
-#if defined(FO_WINDOWS) && defined(_DEBUG)
+#if FO_WINDOWS && FO_DEBUG
             ::_CrtMemDumpAllObjectsSince(&CrtMemState);
 #endif
 
@@ -991,9 +991,9 @@ void Application::EndFrame()
 {
 #if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
         if (CurRenderType == RenderType::OpenGL) {
-#ifndef FO_WEB
+#if !FO_WEB
             SDL_GL_SwapWindow(SdlWindow);
 #endif
             if (RenderDebug && glGetError() != GL_NO_ERROR) {
@@ -1004,7 +1004,7 @@ void Application::EndFrame()
             GL(glClear(GL_COLOR_BUFFER_BIT));
         }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
         if (CurRenderType == RenderType::Direct3D) {
             const auto swap_chain = SwapChain->Present(VSync ? 1 : 0, 0);
             RUNTIME_ASSERT(swap_chain == S_OK);
@@ -1144,7 +1144,7 @@ void Application::AppWindow::Blink()
         return;
     }
 
-#if defined(FO_WINDOWS) && !defined(WINRT)
+#if FO_WINDOWS && !FO_UWP
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version)
     if (SDL_GetWindowWMInfo(SdlWindow, &info) != 0) {
@@ -1161,7 +1161,7 @@ void Application::AppWindow::AlwaysOnTop(bool enable)
         return;
     }
 
-#if defined(FO_WINDOWS) && !defined(WINRT)
+#if FO_WINDOWS && !FO_UWP
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version)
     if (SDL_GetWindowWMInfo(SdlWindow, &info) != 0) {
@@ -1180,14 +1180,14 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
     const_cast<float&>(tex->SizeData[0]) = static_cast<float>(height);
     const_cast<float&>(tex->SizeData[0]) = 1.0f / tex->SizeData[0];
     const_cast<float&>(tex->SizeData[0]) = 1.0f / tex->SizeData[1];
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     const_cast<float&>(tex->Samples) = (multisampled && (GlSamples != 0u) ? static_cast<float>(GlSamples) : 1.0f);
     const_cast<bool&>(tex->LinearFiltered) = linear_filtered;
     const_cast<bool&>(tex->Multisampled) = (multisampled && (GlSamples != 0u));
     const_cast<bool&>(tex->WithDepth) = with_depth;
 #endif
 
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         auto opengl_tex = std::make_unique<OpenGLTexture>();
 
@@ -1232,7 +1232,7 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
         return tex.release();
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
         auto d3d_tex = std::make_unique<Direct3DTexture>();
 
@@ -1271,7 +1271,7 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
 
 auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) -> uint
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
         auto prev_fbo = 0;
@@ -1282,7 +1282,7 @@ auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) -
         GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1293,7 +1293,7 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
 {
     RUNTIME_ASSERT(w && h);
     vector<uint> result(w * h);
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
         GLint prev_fbo = 0;
@@ -1303,7 +1303,7 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
         GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1312,7 +1312,7 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
 
 void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data)
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
         GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
@@ -1320,7 +1320,7 @@ void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect
         GL(glBindTexture(GL_TEXTURE_2D, 0));
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
         const auto* d3d_tex = dynamic_cast<Direct3DTexture*>(tex->_pImpl.get());
         // D3DDeviceContext->UpdateSubresource()
@@ -1330,7 +1330,7 @@ void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect
 
 void Application::AppRender::SetRenderTarget(RenderTexture* tex)
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FBO));
@@ -1375,7 +1375,7 @@ void Application::AppRender::SetRenderTarget(RenderTexture* tex)
     projectionMatrixCM.Transpose(); // Convert to column major order*/
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1383,11 +1383,11 @@ void Application::AppRender::SetRenderTarget(RenderTexture* tex)
 
 auto Application::AppRender::GetRenderTarget() -> RenderTexture*
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1396,7 +1396,7 @@ auto Application::AppRender::GetRenderTarget() -> RenderTexture*
 
 void Application::AppRender::ClearRenderTarget(uint color)
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto a = static_cast<float>((color >> 24) & 0xFF) / 255.0f;
         const auto r = static_cast<float>((color >> 16) & 0xFF) / 255.0f;
@@ -1406,7 +1406,7 @@ void Application::AppRender::ClearRenderTarget(uint color)
         GL(glClear(GL_COLOR_BUFFER_BIT));
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1414,12 +1414,12 @@ void Application::AppRender::ClearRenderTarget(uint color)
 
 void Application::AppRender::ClearRenderTargetDepth()
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glClear(GL_DEPTH_BUFFER_BIT));
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1427,13 +1427,13 @@ void Application::AppRender::ClearRenderTargetDepth()
 
 void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glEnable(GL_SCISSOR_TEST));
         GL(glScissor(x, y, w, h));
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1441,12 +1441,12 @@ void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
 
 void Application::AppRender::DisableScissor()
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glDisable(GL_SCISSOR_TEST));
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1455,7 +1455,7 @@ void Application::AppRender::DisableScissor()
 auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
 {
     auto effect = unique_ptr<RenderEffect>(new RenderEffect());
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         /*
 #define IS_EFFECT_VALUE(pos) ((pos) != -1)
@@ -1666,7 +1666,7 @@ auto Application::AppRender::CreateEffect(const string& /*name*/, const string& 
             file_content = file_content.substr(ver_end + 1);
         }
     }
-#ifdef FO_OPENGL_ES
+#if FO_OPENGL_ES
     version = "precision lowp float;\n";
 #endif
 
@@ -1863,7 +1863,7 @@ i).c_str()));
 }*/
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1872,7 +1872,7 @@ i).c_str()));
 
 void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderTexture* /*tex*/)
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         // EnableVertexArray(quadsVertexArray, 4 * curDrawQuad);
         // EnableScissor();
@@ -1939,7 +1939,7 @@ void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector
         DisableScissor();*/
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1947,11 +1947,11 @@ void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector
 
 void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderPrimitiveType /*prim*/)
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
@@ -1959,7 +1959,7 @@ void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const ve
 
 void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/)
 {
-#ifdef FO_HAVE_OPENGL
+#if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         auto* opengl_mesh = dynamic_cast<OpenGLMesh*>(mesh->_pImpl.get());
         if (opengl_mesh->VBO == 0u || mesh->DataChanged) {
@@ -2086,7 +2086,7 @@ void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/
         GL(glDisable(GL_DEPTH_TEST));*/
     }
 #endif
-#ifdef FO_HAVE_DIRECT_3D
+#if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif

@@ -35,18 +35,18 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 #include <io.h>
 #else
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
-#ifdef FO_ANDROID
+#if FO_ANDROID
 #include "SDL.h"
 #endif
 
-#if defined(FO_WINDOWS) && defined(WINRT)
+#if FO_WINDOWS && FO_UWP
 #define CreateFileW CreateFileFromAppW
 #endif
 
@@ -55,7 +55,7 @@ struct DiskFileSystemData
     DiskFileSystemData()
     {
         const auto buf_len = 16384 * 2;
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
         const auto dir_buf = std::make_unique<wchar_t[]>(buf_len);
         GetCurrentDirectoryW(buf_len, dir_buf.get());
         InitialDir = _str().parseWideChar(dir_buf.get());
@@ -86,7 +86,7 @@ auto DiskFileSystem::FindFiles(const string& path, const string& ext) -> DiskFin
     return DiskFind(path, ext);
 }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 static auto FileTimeToUInt64(FILETIME ft) -> uint64
 {
     return static_cast<uint64>(ft.dwHighDateTime) << 32 | static_cast<uint64>(ft.dwLowDateTime);
@@ -233,7 +233,7 @@ auto DiskFile::GetSize() const -> uint
     return li.LowPart;
 }
 
-#elif defined(FO_ANDROID)
+#elif FO_ANDROID
 
 struct DiskFile::Impl
 {
@@ -355,7 +355,7 @@ uint64 DiskFile::GetWriteTime() const
 #endif
     }
     else if (ops->type == SDL_RWOPS_STDFILE) {
-#ifdef HAVE_STDIO_H
+#if HAVE_STDIO_H
         int fd = fileno(ops->hidden.stdio.fp);
         struct stat st;
         fstat(fd, &st);
@@ -404,7 +404,7 @@ DiskFile::~DiskFile()
     if (_pImpl) {
         fclose(_pImpl->File);
 
-#ifdef FO_WEB
+#if FO_WEB
         if (openedForWriting) {
             EM_ASM(FS.syncfs(function(err) {}));
         }
@@ -497,7 +497,7 @@ uint DiskFile::GetSize() const
 }
 #endif
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
 auto DiskFileSystem::DeleteFile(const string& fname) -> bool
 {
     return DeleteFileW(WinMultiByteToWideChar(fname).c_str()) != FALSE;
@@ -783,7 +783,7 @@ uint64 DiskFind::GetWriteTime() const
 
 void DiskFileSystem::ResolvePath(string& path)
 {
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     const auto len = GetFullPathNameW(WinMultiByteToWideChar(path).c_str(), 0, nullptr, nullptr);
     vector<wchar_t> buf(len);
     if (GetFullPathNameW(WinMultiByteToWideChar(path).c_str(), len, &buf[0], nullptr) != 0u) {
@@ -806,7 +806,7 @@ void DiskFileSystem::MakeDirTree(const string& path)
     for (size_t i = 0; i < work.length(); i++) {
         if (work[i] == '/') {
             auto path_part = work.substr(0, i);
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
             CreateDirectoryW(WinMultiByteToWideChar(path_part).c_str(), nullptr);
 #else
             mkdir(path_part.c_str(), 0777);
@@ -832,7 +832,7 @@ auto DiskFileSystem::DeleteDir(const string& dir) -> bool
         }
     }
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     return RemoveDirectoryW(_str(dir).toWideChar().c_str()) != FALSE;
 #else
     return rmdir(dir.c_str()) == 0;
@@ -844,7 +844,7 @@ auto DiskFileSystem::SetCurrentDir(const string& dir) -> bool
     string resolved_dir = _str(dir).formatPath();
     ResolvePath(resolved_dir);
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     return SetCurrentDirectoryW(_str(resolved_dir).toWideChar().c_str()) != FALSE;
 #else
     return chdir(resolved_dir.c_str()) == 0;
@@ -853,7 +853,7 @@ auto DiskFileSystem::SetCurrentDir(const string& dir) -> bool
 
 void DiskFileSystem::ResetCurDir()
 {
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     SetCurrentDirectoryW(_str(Data->InitialDir).toWideChar().c_str());
 #else
     int r = chdir(Data->InitialDir.c_str());
@@ -863,7 +863,7 @@ void DiskFileSystem::ResetCurDir()
 
 auto DiskFileSystem::GetExePath() -> string
 {
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     const DWORD buf_len = 4096;
     wchar_t buf[buf_len] {};
     const auto r = GetModuleFileNameW(nullptr, buf, buf_len);

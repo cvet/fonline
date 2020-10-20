@@ -41,7 +41,7 @@
 #include "Timer.h"
 #include "WinApi-Include.h"
 
-#ifndef FO_WINDOWS
+#if !FO_WINDOWS
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -80,7 +80,7 @@ void InitAdminManager(FOServer* server, ushort port)
 
 static void AdminManager(FOServer* server, ushort port)
 {
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         WriteLog("WSAStartup fail on creation listen socket for admin manager.\n");
@@ -88,7 +88,7 @@ static void AdminManager(FOServer* server, ushort port)
     }
 #endif
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     const auto sock_type = SOCK_STREAM;
 #else
     const auto sock_type = SOCK_STREAM | SOCK_CLOEXEC;
@@ -128,7 +128,7 @@ static void AdminManager(FOServer* server, ushort port)
         FD_SET(listen_sock, &sock_set);
         if (select(static_cast<int>(listen_sock) + 1, &sock_set, nullptr, nullptr, &tv) > 0) {
             sockaddr_in from {};
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
             int len = sizeof(from);
 #else
             socklen_t len = sizeof(from);

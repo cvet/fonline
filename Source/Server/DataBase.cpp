@@ -31,16 +31,23 @@
 // SOFTWARE.
 //
 
-#define FO_HAVE_JSON
-#define FO_HAVE_UNQLITE
-#define FO_HAVE_MONGO
+#define FO_HAVE_JSON 1
+#define FO_HAVE_UNQLITE 1
+#define FO_HAVE_MONGO 1
 
-#if defined(FO_SINGLEPLAYER)
-#undef FO_HAVE_JSON
+// Todo: enable mongo db
 #undef FO_HAVE_MONGO
+#define FO_HAVE_MONGO 0
+
+#if FO_SINGLEPLAYER
+#undef FO_HAVE_JSON
+#define FO_HAVE_JSON 0
+#undef FO_HAVE_MONGO
+#define FO_HAVE_MONGO 0
 #endif
-#if defined(FO_WEB)
+#if FO_WEB
 #undef FO_HAVE_UNQLITE
+#define FO_HAVE_UNQLITE 0
 #endif
 
 #include "DataBase.h"
@@ -48,13 +55,13 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-#if defined(FO_HAVE_JSON)
+#if FO_HAVE_JSON
 #include "json.hpp"
 #endif
-#if defined(FO_HAVE_UNQLITE)
+#if FO_HAVE_UNQLITE
 #include "unqlite.h"
 #endif
-#if defined(FO_HAVE_MONGO)
+#if FO_HAVE_MONGO
 #include "mongoc.h"
 #endif
 #include "bson.h"
@@ -563,7 +570,7 @@ void DataBaseImpl::CommitChanges()
     CommitRecords();
 }
 
-#ifdef FO_HAVE_JSON
+#if FO_HAVE_JSON
 class DbJson final : public DataBaseImpl
 {
 public:
@@ -734,7 +741,7 @@ private:
 };
 #endif
 
-#ifdef FO_HAVE_UNQLITE
+#if FO_HAVE_UNQLITE
 class DbUnQLite final : public DataBaseImpl
 {
 public:
@@ -969,7 +976,7 @@ private:
 };
 #endif
 
-#ifdef FO_HAVE_MONGO
+#if FO_HAVE_MONGO
 class DbMongo final : public DataBaseImpl
 {
 public:
@@ -1308,17 +1315,17 @@ auto ConnectToDataBase(const string& connection_info) -> DataBase
 {
     auto options = _str(connection_info).split(' ');
     if (!options.empty()) {
-#ifdef FO_HAVE_JSON
+#if FO_HAVE_JSON
         if (options[0] == "JSON" && options.size() == 2) {
             return DataBase(new DbJson(options[1]));
         }
 #endif
-#ifdef FO_HAVE_UNQLITE
+#if FO_HAVE_UNQLITE
         if (options[0] == "DbUnQLite" && options.size() == 2) {
             return DataBase(new DbUnQLite(options[1]));
         }
 #endif
-#ifdef FO_HAVE_MONGO
+#if FO_HAVE_MONGO
         if (options[0] == "Mongo" && options.size() == 3) {
             return DataBase(new DbMongo(options[1], options[2]));
         }

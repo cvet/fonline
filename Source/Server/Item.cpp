@@ -39,7 +39,7 @@
 #include "ProtoManager.h"
 #include "StringUtils.h"
 
-#define FO_API_ITEM_IMPL
+#define FO_API_ITEM_IMPL 1
 #include "ScriptApi.h"
 
 PROPERTIES_IMPL(Item, "Item", true);

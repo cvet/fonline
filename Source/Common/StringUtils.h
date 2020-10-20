@@ -126,7 +126,7 @@ public:
     auto normalizePathSlashes() -> _str&;
     auto normalizeLineEndings() -> _str&;
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     auto parseWideChar(const wchar_t* str) -> _str&;
     [[nodiscard]] auto toWideChar() const -> std::wstring;
 #endif

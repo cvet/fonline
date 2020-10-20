@@ -572,10 +572,10 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& /*hdl*
     return ctx;
 }
 
-auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*
+auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*
 {
     try {
-        return new NetTcpServer(settings, std::move(callback));
+        return new NetTcpServer(settings, callback);
     }
     catch (const std::exception& ex) {
         WriteLog("Can't start Tcp server: {}.\n", ex.what());

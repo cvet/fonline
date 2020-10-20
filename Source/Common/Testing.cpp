@@ -31,11 +31,6 @@
 // SOFTWARE.
 //
 
-#ifdef FO_TESTING
-#define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
-#endif
-
 #include "Testing.h"
 
 #include "FileSystem.h"
@@ -48,14 +43,14 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-#if defined(FO_WINDOWS) && !defined(WINRT)
+#if FO_WINDOWS && !FO_UWP
 #pragma warning(disable : 4091)
 #pragma warning(disable : 4996)
 #include <DbgHelp.h>
 #include <Psapi.h>
 #include <TlHelp32.h>
 #endif
-#if !defined(FO_WINDOWS) && !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
+#if !FO_WINDOWS && !FO_ANDROID && !FO_WEB && !FO_IOS
 #if __has_include(<bfd.h>)
 #define BACKWARD_HAS_BFD 1
 #endif
@@ -65,27 +60,12 @@
 #include <sys/utsname.h>
 #endif
 
-#ifdef FO_TESTING
-#include "SDL_main.h"
-#endif
-
 static const char* ManualDumpAppendix;
 static const char* ManualDumpMessage;
 
-#ifdef FO_TESTING
-extern "C" int main(int argc, char** argv) // Handled by SDL
-{
-    SetAppName("FOnlineTesting");
-    CatchSystemExceptions();
-    CreateGlobalData();
-    LogToFile();
-    return Catch::Session().run(argc, argv);
-}
-#endif
-
-#if defined(FO_WINDOWS) && !defined(WINRT)
+#if FO_WINDOWS && !FO_UWP
 #if UINTPTR_MAX == 0xFFFFFFFF
-#define WIN32BIT
+#define WIN32BIT 1
 #pragma warning(disable : 4748)
 #endif
 
@@ -269,7 +249,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
                     std::memcpy(&context, except->ContextRecord, sizeof(CONTEXT));
                 }
                 else {
-#ifdef WIN32BIT
+#if WIN32BIT
                     __asm label : __asm mov[context.Ebp], ebp;
                     __asm mov[context.Esp], esp;
                     __asm mov eax, [label];
@@ -288,7 +268,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
             STACKFRAME64 stack;
             std::memset(&stack, 0, sizeof(stack));
 
-#ifdef WIN32BIT
+#if WIN32BIT
             DWORD machine_type = IMAGE_FILE_MACHINE_I386;
             stack.AddrFrame.Mode = AddrModeFlat;
             stack.AddrFrame.Offset = context.Ebp;
@@ -516,7 +496,7 @@ static auto GetTraceback() -> string
     std::memset(&context, 0, sizeof(context));
     context.ContextFlags = CONTEXT_FULL;
 
-#ifdef WIN32BIT
+#if WIN32BIT
     __asm label : __asm mov[context.Ebp], ebp;
     __asm mov[context.Esp], esp;
     __asm mov eax, [label];
@@ -528,7 +508,7 @@ static auto GetTraceback() -> string
     STACKFRAME64 stack;
     std::memset(&stack, 0, sizeof(stack));
 
-#ifdef WIN32BIT
+#if WIN32BIT
     DWORD machine_type = IMAGE_FILE_MACHINE_I386;
     stack.AddrFrame.Mode = AddrModeFlat;
     stack.AddrFrame.Offset = context.Ebp;
@@ -697,7 +677,7 @@ static auto GetTraceback() -> string
     return traceback;
 }
 
-#elif !defined(FO_WINDOWS) && !defined(FO_ANDROID) && !defined(FO_WEB) && !defined(FO_IOS)
+#elif !FO_WINDOWS && !FO_ANDROID && !FO_WEB && !FO_IOS
 static void TerminationHandler(int signum, siginfo_t* siginfo, void* context);
 static struct sigaction OldSIGSEGV;
 static struct sigaction OldSIGFPE;
@@ -863,7 +843,7 @@ static string GetTraceback()
 
 auto GetStackTrace() -> string
 {
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     const string most_recent = "most recent call first";
 #else
     string most_recent = "most recent call last";

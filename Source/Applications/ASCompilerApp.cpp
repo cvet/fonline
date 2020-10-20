@@ -56,7 +56,7 @@ struct MapperScriptSystem
     void InitAngelScriptScripting(const string& script_path);
 };
 
-#ifndef FO_TESTING
+#if !FO_TESTING
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int
@@ -73,7 +73,7 @@ int main(int argc, char** argv)
 
         if (!settings.ASServer.empty()) {
             try {
-                ServerScriptSystem().InitAngelScriptScripting(Settings.ASServer);
+                ServerScriptSystem().InitAngelScriptScripting(settings.ASServer);
             }
             catch (std::exception& ex) {
                 WriteLog("Server scripts compilation failed!\n");
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
 
         if (!settings.ASClient.empty()) {
             try {
-                ClientScriptSystem().InitAngelScriptScripting(Settings.ASClient);
+                ClientScriptSystem().InitAngelScriptScripting(settings.ASClient);
             }
             catch (std::exception& ex) {
                 WriteLog("Client scripts compilation failed!\n");
@@ -95,7 +95,7 @@ int main(int argc, char** argv)
 
         if (!settings.ASMapper.empty()) {
             try {
-                MapperScriptSystem().InitAngelScriptScripting(Settings.ASMapper);
+                MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper);
             }
             catch (std::exception& ex) {
                 WriteLog("Mapper scripts compilation failed!\n");

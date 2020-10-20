@@ -43,7 +43,7 @@
 #include "Settings.h"
 #include "Timer.h"
 
-#define FO_API_CRITTER_HEADER
+#define FO_API_CRITTER_HEADER 1
 #include "ScriptApi.h"
 
 #define CLIENT_OUTPUT_BEGIN(cl) \
@@ -231,7 +231,7 @@ public:
     vector<Critter*>* GlobalMapGroup {};
     bool CanBeRemoved {};
 
-#define FO_API_CRITTER_CLASS
+#define FO_API_CRITTER_CLASS 1
 #include "ScriptApi.h"
 
     PROPERTIES_HEADER();

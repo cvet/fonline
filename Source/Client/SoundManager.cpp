@@ -78,7 +78,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileManager& file_mngr) : _s
         return;
     }
 
-#ifdef FO_WEB
+#if FO_WEB
     _streamingPortion = 0x20000; // 128kb
 #else
     _streamingPortion = 0x10000; // 64kb
