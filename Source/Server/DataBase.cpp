@@ -69,22 +69,6 @@
 class DataBaseImpl
 {
 public:
-    static constexpr auto INT_VALUE = 0;
-    static constexpr auto INT64_VALUE = 1;
-    static constexpr auto DOUBLE_VALUE = 2;
-    static constexpr auto BOOL_VALUE = 3;
-    static constexpr auto STRING_VALUE = 4;
-    static constexpr auto ARRAY_VALUE = 5;
-    static constexpr auto DICT_VALUE = 6;
-
-    using Array = vector<std::variant<int, int64, double, bool, string>>;
-    using Dict = map<string, std::variant<int, int64, double, bool, string, Array>>;
-    using Value = std::variant<int, int64, double, bool, string, Array, Dict>;
-    using Document = map<string, Value>;
-    using Collection = map<uint, Document>;
-    using Collections = map<string, Collection>;
-    using RecordsState = map<string, set<uint>>;
-
     DataBaseImpl() = default;
     DataBaseImpl(const DataBaseImpl&) = delete;
     DataBaseImpl(DataBaseImpl&&) noexcept = default;
@@ -93,26 +77,26 @@ public:
     virtual ~DataBaseImpl() = default;
 
     [[nodiscard]] virtual auto GetAllIds(const string& collection_name) -> vector<uint> = 0;
-    [[nodiscard]] auto Get(const string& collection_name, uint id) -> Document;
+    [[nodiscard]] auto Get(const string& collection_name, uint id) -> DataBase::Document;
 
     void StartChanges();
-    void Insert(const string& collection_name, uint id, const Document& doc);
-    void Update(const string& collection_name, uint id, const string& key, const Value& value);
+    void Insert(const string& collection_name, uint id, const DataBase::Document& doc);
+    void Update(const string& collection_name, uint id, const string& key, const DataBase::Value& value);
     void Delete(const string& collection_name, uint id);
     void CommitChanges();
 
 protected:
-    [[nodiscard]] virtual auto GetRecord(const string& collection_name, uint id) -> Document = 0;
-    virtual void InsertRecord(const string& collection_name, uint id, const Document& doc) = 0;
-    virtual void UpdateRecord(const string& collection_name, uint id, const Document& doc) = 0;
+    [[nodiscard]] virtual auto GetRecord(const string& collection_name, uint id) -> DataBase::Document = 0;
+    virtual void InsertRecord(const string& collection_name, uint id, const DataBase::Document& doc) = 0;
+    virtual void UpdateRecord(const string& collection_name, uint id, const DataBase::Document& doc) = 0;
     virtual void DeleteRecord(const string& collection_name, uint id) = 0;
     virtual void CommitRecords() = 0;
 
 private:
     bool _changesStarted {};
-    Collections _recordChanges {};
-    RecordsState _newRecords {};
-    RecordsState _deletedRecords {};
+    DataBase::Collections _recordChanges {};
+    DataBase::RecordsState _newRecords {};
+    DataBase::RecordsState _deletedRecords {};
 };
 
 DataBase::DataBase() = default;
@@ -478,10 +462,10 @@ static void BsonToDocument(const bson_t* bson, DataBase::Document& doc)
     }
 }
 
-auto DataBaseImpl::Get(const string& collection_name, uint id) -> Document
+auto DataBaseImpl::Get(const string& collection_name, uint id) -> DataBase::Document
 {
     if (_deletedRecords[collection_name].count(id) != 0u) {
-        return Document();
+        return DataBase::Document();
     }
 
     if (_newRecords[collection_name].count(id) != 0u) {
@@ -509,7 +493,7 @@ void DataBaseImpl::StartChanges()
     _changesStarted = true;
 }
 
-void DataBaseImpl::Insert(const string& collection_name, uint id, const Document& doc)
+void DataBaseImpl::Insert(const string& collection_name, uint id, const DataBase::Document& doc)
 {
     RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_newRecords[collection_name].count(id));
@@ -521,7 +505,7 @@ void DataBaseImpl::Insert(const string& collection_name, uint id, const Document
     }
 }
 
-void DataBaseImpl::Update(const string& collection_name, uint id, const string& key, const Value& value)
+void DataBaseImpl::Update(const string& collection_name, uint id, const string& key, const DataBase::Value& value)
 {
     RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
@@ -604,7 +588,7 @@ public:
     }
 
 protected:
-    auto GetRecord(const string& collection_name, uint id) -> Document override
+    auto GetRecord(const string& collection_name, uint id) -> DataBase::Document override
     {
         const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -618,7 +602,7 @@ protected:
             }
         }
         else {
-            return Document();
+            return DataBase::Document();
         }
 
         bson_t bson;
@@ -629,14 +613,14 @@ protected:
 
         delete[] json;
 
-        Document doc;
+        DataBase::Document doc;
         BsonToDocument(&bson, doc);
 
         bson_destroy(&bson);
         return doc;
     }
 
-    void InsertRecord(const string& collection_name, uint id, const Document& doc) override
+    void InsertRecord(const string& collection_name, uint id, const DataBase::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -672,7 +656,7 @@ protected:
         }
     }
 
-    void UpdateRecord(const string& collection_name, uint id, const Document& doc) override
+    void UpdateRecord(const string& collection_name, uint id, const DataBase::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -800,7 +784,7 @@ public:
 
         vector<uint> ids;
         while (unqlite_kv_cursor_valid_entry(cursor) != 0) {
-            uint id = 0u;
+            auto id = 0u;
             const auto kv_cursor_key_callback = unqlite_kv_cursor_key_callback(
                 cursor,
                 [](const void* output, unsigned int output_len, void* user_data) {
@@ -829,14 +813,14 @@ public:
     }
 
 protected:
-    auto GetRecord(const string& collection_name, uint id) -> Document override
+    auto GetRecord(const string& collection_name, uint id) -> DataBase::Document override
     {
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
-        Document doc;
+        DataBase::Document doc;
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
             db, &id, sizeof(id),
             [](const void* output, unsigned int output_len, void* user_data) {
@@ -845,7 +829,7 @@ protected:
                     throw DataBaseException("DbUnQLite bson_init_static");
                 }
 
-                auto& doc2 = *static_cast<Document*>(user_data);
+                auto& doc2 = *static_cast<DataBase::Document*>(user_data);
                 BsonToDocument(&bson, doc2);
 
                 return UNQLITE_OK;
@@ -859,7 +843,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(const string& collection_name, uint id, const Document& doc) override
+    void InsertRecord(const string& collection_name, uint id, const DataBase::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -892,7 +876,7 @@ protected:
         bson_destroy(&bson);
     }
 
-    void UpdateRecord(const string& collection_name, uint id, const Document& doc) override
+    void UpdateRecord(const string& collection_name, uint id, const DataBase::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1084,7 +1068,7 @@ public:
     }
 
 protected:
-    auto GetRecord(const string& collection_name, uint id) -> Document override
+    auto GetRecord(const string& collection_name, uint id) -> DataBase::Document override
     {
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1107,7 +1091,7 @@ protected:
         if (!mongoc_cursor_next(cursor, &bson)) {
             mongoc_cursor_destroy(cursor);
             bson_destroy(&query);
-            return Document();
+            return DataBase::Document();
         }
 
         Document doc;
@@ -1118,7 +1102,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(const string& collection_name, uint id, const Document& doc) override
+    void InsertRecord(const string& collection_name, uint id, const DataBase::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1144,7 +1128,7 @@ protected:
         bson_destroy(&insert);
     }
 
-    void UpdateRecord(const string& collection_name, uint id, const Document& doc) override
+    void UpdateRecord(const string& collection_name, uint id, const DataBase::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1260,15 +1244,15 @@ public:
     }
 
 protected:
-    auto GetRecord(const string& collection_name, uint id) -> Document override
+    auto GetRecord(const string& collection_name, uint id) -> DataBase::Document override
     {
         auto& collection = _collections[collection_name];
 
         const auto it = collection.find(id);
-        return it != collection.end() ? it->second : Document();
+        return it != collection.end() ? it->second : DataBase::Document();
     }
 
-    void InsertRecord(const string& collection_name, uint id, const Document& doc) override
+    void InsertRecord(const string& collection_name, uint id, const DataBase::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1278,7 +1262,7 @@ protected:
         collection.insert(std::make_pair(id, doc));
     }
 
-    void UpdateRecord(const string& collection_name, uint id, const Document& doc) override
+    void UpdateRecord(const string& collection_name, uint id, const DataBase::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1308,7 +1292,7 @@ protected:
     }
 
 private:
-    Collections _collections {};
+    DataBase::Collections _collections {};
 };
 
 auto ConnectToDataBase(const string& connection_info) -> DataBase

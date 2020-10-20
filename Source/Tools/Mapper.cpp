@@ -2893,13 +2893,11 @@ void FOMapper::SelectAll()
 
 struct TileToMove
 {
-    Field* field {};
-    Field::Tile tile;
-    vector<MapTile>* ptiles {};
-    MapTile ptile;
-    bool roof {};
-    TileToMove() { }
-    TileToMove(Field* f, Field::Tile& t, vector<MapTile>* pts, MapTile& pt, bool r) : field(f), tile(t), ptiles(pts), ptile(pt), roof(r) { }
+    Field* FieldToMove {};
+    Field::Tile TileToMove {};
+    vector<MapTile>* MapTilesToMove {};
+    MapTile MapTimeToMove {};
+    bool IsRoofMoved {};
 };
 
 auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool
@@ -3121,8 +3119,8 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     }
 
     for (auto& ttm : tiles_to_move) {
-        ttm.field->AddTile(ttm.tile.Anim, ttm.tile.OffsX, ttm.tile.OffsY, ttm.tile.Layer, ttm.roof);
-        ttm.ptiles->push_back(ttm.ptile);
+        ttm.Field->AddTile(ttm.TileToMove.Anim, ttm.TileToMove.OffsX, ttm.TileToMove.OffsY, ttm.TileToMove.Layer, ttm.IsRoofMoved);
+        ttm.MapTilesToMove->push_back(ttm.MapTimeToMove);
     }
     return true;
 }

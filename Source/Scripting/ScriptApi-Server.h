@@ -1881,8 +1881,7 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, target) FO_API_ARG_MARSHAL(uint, c
         throw ScriptException("Critter arg is null");
     }
 
-    std::memset(&_critter->Moving, 0, sizeof(_critter->Moving));
-
+    _critter->Moving = Critter::MovingData();
     _critter->Moving.TargId = target->GetId();
     _critter->Moving.HexX = target->GetHexX();
     _critter->Moving.HexY = target->GetHexY();
@@ -1904,8 +1903,7 @@ FO_API_CRITTER_METHOD(MoveToHex, FO_API_RET(void), FO_API_ARG(ushort, hx), FO_AP
 #if FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(uint, cut) FO_API_ARG_MARSHAL(bool, isRun))
 {
-    std::memset(&_critter->Moving, 0, sizeof(_critter->Moving));
-
+    _critter->Moving = Critter::MovingData();
     _critter->Moving.HexX = hx;
     _critter->Moving.HexY = hy;
     _critter->Moving.Cut = cut;
@@ -1935,7 +1933,7 @@ FO_API_CRITTER_METHOD(ResetMovingState, FO_API_RET(void))
 #if FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG()
 {
-    std::memset(&_critter->Moving, 0, sizeof(_critter->Moving));
+    _critter->Moving = Critter::MovingData();
     _critter->Moving.State = 1;
 }
 FO_API_EPILOG()
