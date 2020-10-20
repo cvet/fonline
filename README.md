@@ -8,7 +8,6 @@
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
 [![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
 [![Codacy](https://app.codacy.com/project/badge/Grade/25dce96e818d45c48745028fd86c5d99)](https://www.codacy.com/gh/cvet/fonline/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=cvet/fonline&amp;utm_campaign=Badge_Grade)
-[![Deepcode](https://www.deepcode.ai/api/gh/badge?key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwbGF0Zm9ybTEiOiJnaCIsIm93bmVyMSI6ImN2ZXQiLCJyZXBvMSI6ImZvbmxpbmUiLCJpbmNsdWRlTGludCI6ZmFsc2UsImF1dGhvcklkIjoyMzEwNiwiaWF0IjoxNjAzMjI3ODIzfQ.HLQMY8FWNi3GkT4MGL-QP2OJEaG4KdEAKwKso_7vXlQ)](https://www.deepcode.ai/app/gh/cvet/fonline/_/dashboard?utm_content=gh%2Fcvet%2Ffonline)
 [![Commit](https://img.shields.io/github/last-commit/cvet/fonline.svg)](https://github.com/cvet/fonline/commits/master)
 
 ## Table of Content
