@@ -153,7 +153,7 @@ int main( int argc, char** argv )
 
     // Hide cursor
     #ifdef FO_WINDOWS
-    ShowCursor( FALSE );
+    MainWindow->cursor(FL_CURSOR_NONE, FL_BLACK);
     #else
     char   data[] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     XColor black;
