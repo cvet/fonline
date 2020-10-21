@@ -2,6 +2,26 @@
 #include "Client.h"
 #include "Version.h"
 
+
+#define SK_LAST_LEGACY (217) // SK_OUTDOORSMAN
+#define SK_SPACING (4)
+
+int skill_to_offset(int skill) {
+    int offs = skill - SKILL_BEGIN;
+    if( skill > SK_LAST_LEGACY ) {
+        offs += SK_SPACING;
+    }
+	return offs;
+}
+
+int offset_to_skill(int offs) {
+    int skill = offs + SKILL_BEGIN;
+    if( skill-SK_SPACING > SK_LAST_LEGACY ) {
+        skill -= SK_SPACING;
+    }
+	return skill;
+}
+
 // ==============================================================================================================================
 // ******************************************************************************************************************************
 // ==============================================================================================================================
@@ -7289,10 +7309,7 @@ void FOClient::ChaDraw( bool is_reg )
 
     for( uint i = SKILL_BEGIN; i <= SKILL_END; i++ )
     {
-        int offs = i - SKILL_BEGIN;
-		if( i > 217 ) { //SK_OUTDOORSMAN
-		  offs += 4;
-		}
+        int offs = skill_to_offset(i);
         // Name
         SprMngr.DrawStr( Rect( ChaWSkillName, ChaX + ChaWSkillNextX * offs, ChaY + ChaWSkillNextY * offs ), MsgGame->GetStr( STR_PARAM_NAME_( i ) ), FT_NOBREAK, cr->IsTagSkill( i ) ? 0xFFAAAAAA : COLOR_TEXT );
         // Value
@@ -7420,7 +7437,7 @@ void FOClient::ChaDraw( bool is_reg )
             SprMngr.DrawSprite( RegPBSpecialMinusDn, RegBSpecialMinus[ 0 ] + RegCurSpecial * RegBSpecialNextX + ChaX, RegBSpecialMinus[ 1 ] + RegCurSpecial * RegBSpecialNextY + ChaY );
             break;
         case IFACE_REG_TAGSKILL:
-            SprMngr.DrawSprite( RegPBTagSkillDn, RegBTagSkill[ 0 ] + ( RegCurTagSkill - SKILL_BEGIN ) * RegBTagSkillNextX + ChaX, RegBTagSkill[ 1 ] + ( RegCurTagSkill - SKILL_BEGIN ) * RegBTagSkillNextY + ChaY );
+            SprMngr.DrawSprite( RegPBTagSkillDn, RegBTagSkill[ 0 ] + skill_to_offset(RegCurTagSkill) * RegBTagSkillNextX + ChaX, RegBTagSkill[ 1 ] + skill_to_offset(RegCurTagSkill) * RegBTagSkillNextY + ChaY );
             break;
         default:
             break;
@@ -7468,10 +7485,7 @@ label_DrawSpecial:
     // Skills
     for( uint i = SKILL_BEGIN; i <= SKILL_END; i++ )
     {
-        int offs = i - SKILL_BEGIN;
-        if( i > 217 ) { //SK_OUTDOORSMAN
-          offs += 4;
-        }
+        int offs = skill_to_offset(i);
         if( is_reg && IsCurInRect( RegBTagSkill, offs * RegBTagSkillNextX + ChaX, offs * RegBTagSkillNextY + ChaY ) )
         {
             RegCurTagSkill = i;
@@ -7746,7 +7760,7 @@ void FOClient::ChaLMouseUp( bool is_reg )
         if( !ChaUnspentSkillPoints )
             break;
 
-        int skill_val = cr->GetRawParam( ChaCurSkill + SKILL_BEGIN ) + ChaSkillUp[ ChaCurSkill ];
+        int skill_val = cr->GetRawParam( offset_to_skill(ChaCurSkill) ) + ChaSkillUp[ ChaCurSkill ];
         if( skill_val >= MAX_SKILL_VAL )
             break;
 
@@ -7767,7 +7781,7 @@ void FOClient::ChaLMouseUp( bool is_reg )
 
         ChaUnspentSkillPoints -= need_sp;
         ChaSkillUp[ ChaCurSkill ]++;
-        if( cr->IsTagSkill( ChaCurSkill + SKILL_BEGIN ) )
+        if( cr->IsTagSkill( offset_to_skill(ChaCurSkill) ) )
             ChaSkillUp[ ChaCurSkill ]++;
     }
     break;
@@ -7781,9 +7795,9 @@ void FOClient::ChaLMouseUp( bool is_reg )
             break;
 
         ChaSkillUp[ ChaCurSkill ]--;
-        if( cr->IsTagSkill( ChaCurSkill + SKILL_BEGIN ) )
+        if( cr->IsTagSkill( offset_to_skill(ChaCurSkill) ) )
             ChaSkillUp[ ChaCurSkill ]--;
-        int skill_val = cr->GetRawParam( ChaCurSkill + SKILL_BEGIN ) + ChaSkillUp[ ChaCurSkill ];
+        int skill_val = cr->GetRawParam( offset_to_skill(ChaCurSkill) ) + ChaSkillUp[ ChaCurSkill ];
 
         if( skill_val > GameOpt.SkillModAdd6 )
             ChaUnspentSkillPoints += 6;
@@ -7832,7 +7846,7 @@ void FOClient::ChaLMouseUp( bool is_reg )
     {
         if( !is_reg )
             break;
-        int offs = RegCurTagSkill - SKILL_BEGIN;
+        int offs = skill_to_offset(RegCurTagSkill);
         if( !IsCurInRect( RegBTagSkill, offs * RegBTagSkillNextX + ChaX, offs * RegBTagSkillNextY + ChaY ) )
             break;
 
