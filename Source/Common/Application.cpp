@@ -657,7 +657,7 @@ Application::Application(GlobalSettings& settings)
         attr.antialias = EM_TRUE;
         attr.premultipliedAlpha = EM_TRUE;
         attr.preserveDrawingBuffer = EM_FALSE;
-        attr.preferLowPowerToHighPerformance = EM_FALSE;
+        attr.powerPreference = EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE;
         attr.failIfMajorPerformanceCaveat = EM_FALSE;
         attr.enableExtensionsByDefault = EM_TRUE;
         attr.explicitSwapControl = EM_FALSE;
