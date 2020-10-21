@@ -10,6 +10,7 @@ struct ScriptString;
 #endif //__API_IMPL__
 
 EXPORT bool Cl_RunClientScript( Critter* cl, const char* func_name, int p0, int p1, int p2, const char* p3, const uint* p4, size_t p4_size );
+EXPORT bool Global_RunCritterScript( Critter* cr, const char* script_name, int p0, int p1, int p2, const char* p3_raw, const uint* p4_ptr, size_t p4_size );
 EXPORT Critter* Global_GetCritter(uint crid);
 EXPORT ScriptString* Global_GetMsgStr(size_t lang, size_t textMsg, uint strNum);
 EXPORT ScriptString* Item_GetLexems(Item* item);

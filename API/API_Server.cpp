@@ -17,6 +17,50 @@ bool Cl_RunClientScript( Critter* cl, const char* func_name, int p0, int p1, int
 	return true;
 }
 
+bool Global_RunCritterScript( Critter* cr, const char* script_name, int p0, int p1, int p2, const char* p3_raw, const uint* p4_ptr, size_t p4_size )
+{
+	ScriptString* p3 = NULL;
+	if( p3_raw ) {
+		p3 = new ScriptString(p3_raw);
+	}
+
+	ScriptArray*  p4 = NULL;
+	if( p4_ptr && p4_size) {
+		p4 = Script::CreateArray( "int[]" );
+		if(p4) {
+			p4->Resize(p4_size);
+			memcpy( p4->At(0), p4_ptr, p4_size * sizeof( int ) );
+		}
+	}
+	
+
+	char module_name[ MAX_SCRIPT_NAME + 1 ] = { 0 };
+    char func_name[ MAX_SCRIPT_NAME + 1 ] = { 0 };
+
+	Script::ReparseScriptName(script_name, module_name, func_name);
+
+	int bind_id = Script::Bind( module_name, func_name, "void %s(Critter@,int,int,int,string@,int[]@)", true );
+
+	bool ok = false;
+	if( bind_id > 0 && Script::PrepareContext( bind_id, _FUNC_, cr ? cr->GetInfo() : "Global_RunCritterScript" ) )
+    {
+        Script::SetArgObject( cr );
+        Script::SetArgUInt( p0 );
+        Script::SetArgUInt( p1 );
+        Script::SetArgUInt( p2 );
+        Script::SetArgObject( p3 );
+        Script::SetArgObject( p4 );
+        ok = Script::RunPrepared();
+    }
+
+    if( p3 )
+        p3->Release();
+    if( p4 )
+        p4->Release();
+
+	return ok;
+}
+
 Critter* Global_GetCritter(uint crid)
 {
 	return FOServer::SScriptFunc::Global_GetCritter(crid);

@@ -130,12 +130,20 @@ size_t HexMngr_GetAllItems_ScriptArray(ScriptArray* script_array)
 	return items.size();
 }
 
-void HexMngr_GetScreenHexes(int& sx, int& sy)
+bool HexMngr_GetScreenHexes(int& sx, int& sy)
 {
-	FOClient::Self->HexMngr.GetScreenHexes(sx, sy);
+	if(FOClient::Self->HexMngr.IsMapLoaded()) {
+		FOClient::Self->HexMngr.GetScreenHexes(sx, sy);
+		return true;
+	}
+	return false;
 }
 
-void HexMngr_GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y)
+bool HexMngr_GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y)
 {
-	FOClient::Self->HexMngr.GetHexCurrentPosition(hx, hy, x, y);
+	if(FOClient::Self->HexMngr.IsMapLoaded()) {
+		FOClient::Self->HexMngr.GetHexCurrentPosition(hx, hy, x, y);
+		return true;
+	}
+	return false;
 }

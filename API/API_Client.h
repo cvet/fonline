@@ -18,7 +18,7 @@ EXPORT Sprite* Sprites_InsertSprite(Sprites* sprites, int draw_order, int hx, in
 EXPORT void Field_ChangeTile(Field* field, AnyFrames* anim, short ox, short oy, uchar layer, bool is_roof );
 EXPORT AnyFrames* ResMngr_GetAnim(uint name_hash, int dir, int res_type, bool filter_nearest);
 EXPORT size_t HexMngr_GetAllItems_ScriptArray(ScriptArray* items);
-EXPORT void HexMngr_GetScreenHexes(int& sx, int& sy);
-EXPORT void HexMngr_GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y);
+EXPORT bool HexMngr_GetScreenHexes(int& sx, int& sy);
+EXPORT bool HexMngr_GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y);
 
 #endif // __API_CLIENT__
