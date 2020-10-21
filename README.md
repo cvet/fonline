@@ -419,6 +419,7 @@ Please follow these instructions to understand how to use this engine by design:
 * AdminPanel: admin panel network to Asio
 * Critter: rework Client class to ClientConnection
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
+* DataBase: enable mongo db
 * Dialogs: check item name on DR_ITEM
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts

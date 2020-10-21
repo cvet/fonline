@@ -321,6 +321,7 @@ private:
     float _animPosPeriod {};
     bool _allowMeshGeneration {};
     vector<ModelCutData*> _allCuts {};
+    bool _nonConstHelper {};
 
     // Derived animations
     vector<ModelInstance*> _children {};
@@ -405,5 +406,5 @@ private:
     unique_ptr<ModelBone> _rootBone {};
     vector<ModelBone*> _allBones {};
     vector<ModelBone*> _allDrawBones {};
-    int _dummy {};
+    bool _nonConstHelper {};
 };

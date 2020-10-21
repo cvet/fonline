@@ -91,5 +91,5 @@ private:
     vector<string> _splashNames {};
     map<string, string> _soundNames {};
     AnyFrames* _splash {};
-    int _dummy {};
+    bool _nonConstHelper {};
 };

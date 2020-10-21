@@ -326,7 +326,7 @@ auto _str::isNumber() -> bool
         return false;
     }
 
-    if (_s.empty() || isdigit(_s[0]) == 0 && _s[0] != '-' && _s[0] != '+') {
+    if (_s.empty() || (std::isdigit(_s[0]) == 0 && _s[0] != '-' && _s[0] != '+')) {
         return false;
     }
 
@@ -724,21 +724,21 @@ auto utf8::Encode(uint ucs, char (&buf)[4]) -> uint
         return 1;
     }
     if (ucs < 0x000800U) {
-        buf[0] = 0xc0 | ucs >> 6;
-        buf[1] = 0x80 | ucs & 0x3F;
+        buf[0] = 0xc0 | (ucs >> 6);
+        buf[1] = 0x80 | (ucs & 0x3F);
         return 2;
     }
     else if (ucs < 0x010000U) {
-        buf[0] = 0xe0 | ucs >> 12;
-        buf[1] = 0x80 | ucs >> 6 & 0x3F;
-        buf[2] = 0x80 | ucs & 0x3F;
+        buf[0] = 0xe0 | (ucs >> 12);
+        buf[1] = 0x80 | ((ucs >> 6) & 0x3F);
+        buf[2] = 0x80 | (ucs & 0x3F);
         return 3;
     }
     else if (ucs <= 0x0010ffffU) {
-        buf[0] = 0xf0 | ucs >> 18;
-        buf[1] = 0x80 | ucs >> 12 & 0x3F;
-        buf[2] = 0x80 | ucs >> 6 & 0x3F;
-        buf[3] = 0x80 | ucs & 0x3F;
+        buf[0] = 0xf0 | (ucs >> 18);
+        buf[1] = 0x80 | ((ucs >> 12) & 0x3F);
+        buf[2] = 0x80 | ((ucs >> 6) & 0x3F);
+        buf[3] = 0x80 | (ucs & 0x3F);
         return 4;
     }
     else {

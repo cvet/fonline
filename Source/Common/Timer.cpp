@@ -146,7 +146,7 @@ auto GameTimer::GameTimeMonthDay(ushort year, ushort month) const -> uint
     case 12: // 31
         return 31;
     case 2: // 28-29
-        if (year % 400 == 0 || year % 4 == 0 && year % 100 != 0) {
+        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)) {
             return 29;
         }
         return 28;
@@ -234,7 +234,7 @@ auto Timer::DateTimeToFullTime(const DateTimeStamp& dt) -> uint64
     static const uint COUNT1[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
     static const uint COUNT2[12] = {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}; // Leap
 
-    if (dt.Year % 400 == 0 || dt.Year % 4 == 0 && dt.Year % 100 != 0) {
+    if (dt.Year % 400 == 0 || (dt.Year % 4 == 0 && dt.Year % 100 != 0)) {
         ft += static_cast<uint64>(COUNT2[dt.Month - 1]) * 24ULL * 60ULL * 60ULL * 1000ULL * 1000ULL;
     }
     else {
@@ -274,7 +274,7 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
     days -= year / 4 + year / 400 - year / 100;
 
     while (days < 0) {
-        if (year % 400 == 0 || year % 4 == 0 && year % 100 != 0) {
+        if (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0)) {
             days += 366;
         }
         else {
@@ -289,7 +289,7 @@ auto Timer::FullTimeToDateTime(uint64 ft) -> DateTimeStamp
     // Month
     static const uint COUNT1[13] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
     static const uint COUNT2[13] = {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}; // Leap
-    const auto* count = dt.Year % 400 == 0 || dt.Year % 4 == 0 && dt.Year % 100 != 0 ? COUNT2 : COUNT1;
+    const auto* count = (dt.Year % 400 == 0 || (dt.Year % 4 == 0 && dt.Year % 100 != 0) ? COUNT2 : COUNT1);
 
     for (auto i = 0; i < 12; i++) {
         if (static_cast<uint>(ft) >= count[i] && static_cast<uint>(ft) < count[i + 1]) {

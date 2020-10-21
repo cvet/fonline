@@ -267,4 +267,5 @@ public:
     std::mutex ConnectedClientsLocker {};
     vector<ClientBanned> Banned {};
     std::mutex BannedLocker {};
+    bool _nonConstHelper {};
 };

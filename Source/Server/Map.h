@@ -173,4 +173,5 @@ private:
     map<uint, vector<Item*>> _mapBlockLinesByHex {};
     Location* _mapLocation {};
     uint _loopLastTick[5] {};
+    bool _nonConstHelper {};
 };

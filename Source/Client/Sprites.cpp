@@ -320,7 +320,7 @@ void Sprites::GrowPool()
 
 auto Sprites::RootSprite() -> Sprite*
 {
-    NON_CONST_METHOD_HINT(_spriteCount);
+    NON_CONST_METHOD_HINT();
 
     return _rootSprite;
 }
@@ -484,7 +484,7 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, 
                 break;
             }
 
-            if (hor && --i < h2 || !hor && ++i > h2) {
+            if ((hor && (--i < h2)) || (!hor && (++i > h2))) {
                 break;
             }
         }

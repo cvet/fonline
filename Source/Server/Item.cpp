@@ -98,7 +98,7 @@ void Item::ChangeCount(int val)
 
 auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
 {
-    NON_CONST_METHOD_HINT(_childItems);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(item_id);
 
@@ -119,7 +119,7 @@ auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
 
 auto Item::ContGetAllItems(bool skip_hide) -> vector<Item*>
 {
-    NON_CONST_METHOD_HINT(_childItems);
+    NON_CONST_METHOD_HINT();
 
     if (_childItems == nullptr) {
         return {};
@@ -138,7 +138,7 @@ auto Item::ContGetAllItems(bool skip_hide) -> vector<Item*>
 
 auto Item::ContGetItemByPid(hash pid, uint stack_id) -> Item*
 {
-    NON_CONST_METHOD_HINT(_childItems);
+    NON_CONST_METHOD_HINT();
 
     if (_childItems == nullptr) {
         return nullptr;
@@ -154,7 +154,7 @@ auto Item::ContGetItemByPid(hash pid, uint stack_id) -> Item*
 
 auto Item::ContGetItems(uint stack_id) -> vector<Item*>
 {
-    NON_CONST_METHOD_HINT(_childItems);
+    NON_CONST_METHOD_HINT();
 
     if (_childItems == nullptr) {
         return {};

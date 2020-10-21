@@ -180,7 +180,7 @@ auto EntityManager::GetCritter(uint id) -> Critter*
 
 auto EntityManager::GetCritters() -> vector<Critter*>
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     vector<Critter*> critters;
     critters.reserve(critters.size() + _entitiesCount[static_cast<int>(EntityType::Npc)] + _entitiesCount[static_cast<int>(EntityType::Client)]);
@@ -276,7 +276,7 @@ auto EntityManager::GetLocations() -> vector<Location*>
 
 void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     WriteLog("Load entities...\n");
 
@@ -404,7 +404,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
 void EntityManager::InitAfterLoad()
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     WriteLog("Init entities after load...\n");
 

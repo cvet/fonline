@@ -1224,7 +1224,7 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
 
 void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* cut)
 {
-    NON_CONST_METHOD_HINT(_curAnim1);
+    NON_CONST_METHOD_HINT();
 
     auto& vertices = combined_mesh->DrawMesh->Vertices;
     auto& indices = combined_mesh->DrawMesh->Indices;
@@ -2390,14 +2390,14 @@ static void SetupAnimationOutputExt(ModelAnimationController* anim_controller, M
 
 void ModelHierarchy::SetupAnimationOutput(ModelAnimationController* anim_controller)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     SetupAnimationOutputExt(anim_controller, _rootBone.get());
 }
 
 auto ModelHierarchy::GetTexture(const string& tex_name) -> MeshTexture*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     auto* texture = _modelMngr.LoadTexture(tex_name, _fileName);
     if (texture == nullptr) {
@@ -2408,7 +2408,7 @@ auto ModelHierarchy::GetTexture(const string& tex_name) -> MeshTexture*
 
 auto ModelHierarchy::GetEffect(const string& name) -> RenderEffect*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     auto* effect = _modelMngr._effectMngr.LoadEffect(name, "", _fileName);
     if (effect == nullptr) {

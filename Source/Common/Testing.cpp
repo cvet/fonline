@@ -829,7 +829,7 @@ void CatchSystemExceptions()
     //
 }
 
-void CreateDump(const string& appendix, const string& message)
+void CreateDump(const char* appendix, const char* message)
 {
     //
 }

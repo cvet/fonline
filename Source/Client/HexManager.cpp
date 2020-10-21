@@ -866,7 +866,7 @@ void HexManager::SetCursorPos(int x, int y, bool show_steps, bool refresh)
 
 void HexManager::DrawCursor(uint spr_id)
 {
-    NON_CONST_METHOD_HINT(_isShowTrack);
+    NON_CONST_METHOD_HINT();
 
     if (_settings.HideCursor || !_settings.ShowMoveCursor) {
         return;

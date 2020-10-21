@@ -370,6 +370,7 @@ private:
     int _eggSprHeight {};
     float _eggAtlasWidth {};
     float _eggAtlasHeight {};
+    bool _nonConstHelper {};
 
     // Todo: move fonts stuff to separate module
 public:

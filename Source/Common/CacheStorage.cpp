@@ -92,7 +92,7 @@ auto CacheStorage::HasEntry(const string& data_name) const -> bool
 
 void CacheStorage::EraseEntry(const string& data_name)
 {
-    NON_CONST_METHOD_HINT(_workPath);
+    NON_CONST_METHOD_HINT();
 
     auto r = unqlite_kv_delete(_pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()));
     if (r != UNQLITE_OK && r != UNQLITE_NOTFOUND) {
@@ -109,7 +109,7 @@ void CacheStorage::EraseEntry(const string& data_name)
 
 void CacheStorage::SetRawData(const string& data_name, const uchar* data, uint data_len)
 {
-    NON_CONST_METHOD_HINT(_workPath);
+    NON_CONST_METHOD_HINT();
 
     auto r = unqlite_kv_store(_pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()), data, data_len);
     if (r != UNQLITE_OK) {
@@ -284,7 +284,7 @@ auto CacheStorage::GetData(const string& entry_name) const -> vector<uchar>
 
 void CacheStorage::SetRawData(const string& entry_name, const uchar* data, uint data_len)
 {
-    NON_CONST_METHOD_HINT(_workPath);
+    NON_CONST_METHOD_HINT();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, true);
@@ -310,7 +310,7 @@ void CacheStorage::SetData(const string& entry_name, const vector<uchar>& data)
 
 void CacheStorage::EraseEntry(const string& entry_name)
 {
-    NON_CONST_METHOD_HINT(_workPath);
+    NON_CONST_METHOD_HINT();
 
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     DiskFileSystem::DeleteFile(path);

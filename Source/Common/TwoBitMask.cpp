@@ -97,7 +97,7 @@ void TwoBitMask::Fill(int fill) const
 
 auto TwoBitMask::GetData() -> uchar*
 {
-    NON_CONST_METHOD_HINT(_data);
+    NON_CONST_METHOD_HINT();
 
     return _data;
 }

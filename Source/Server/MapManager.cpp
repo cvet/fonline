@@ -303,7 +303,7 @@ auto MapManager::FindStaticMap(const ProtoMap* proto_map) const -> const StaticM
 
 void MapManager::GenerateMapContent(Map* map)
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     std::map<uint, uint> id_map;
 
@@ -542,7 +542,7 @@ void MapManager::RegenerateMap(Map* map)
 
 auto MapManager::GetMap(uint map_id) -> Map*
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     if (map_id == 0u) {
         return nullptr;
@@ -557,7 +557,7 @@ auto MapManager::GetMap(uint map_id) const -> const Map*
 
 auto MapManager::GetMapByPid(hash map_pid, uint skip_count) -> Map*
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     if (map_pid == 0u) {
         return nullptr;
@@ -567,7 +567,7 @@ auto MapManager::GetMapByPid(hash map_pid, uint skip_count) -> Map*
 
 auto MapManager::GetMaps() -> vector<Map*>
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     return _entityMngr.GetMaps();
 }
@@ -588,7 +588,7 @@ auto MapManager::GetLocationByMap(uint map_id) -> Location*
 
 auto MapManager::GetLocation(uint loc_id) -> Location*
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     if (loc_id == 0u) {
         return nullptr;
@@ -603,7 +603,7 @@ auto MapManager::GetLocation(uint loc_id) const -> const Location*
 
 auto MapManager::GetLocationByPid(hash loc_pid, uint skip_count) -> Location*
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     if (loc_pid == 0u) {
         return nullptr;
@@ -621,7 +621,7 @@ auto MapManager::IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int w
 
 auto MapManager::GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     const auto wx = zx * static_cast<int>(_settings.GlobalMapZoneLength);
     const auto wy = zy * static_cast<int>(_settings.GlobalMapZoneLength);
@@ -645,7 +645,7 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
 
 auto MapManager::GetLocations() -> vector<Location*>
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     return _entityMngr.GetLocations();
 }
@@ -735,7 +735,7 @@ void MapManager::DeleteLocation(Location* loc, vector<Client*>* gmap_players)
 
 void MapManager::TraceBullet(TraceData& trace)
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     auto* map = trace.TraceMap;
     const auto maxhx = map->GetWidth();
@@ -1657,7 +1657,7 @@ auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint
 
 void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint leader_id)
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     cr->LockMapTransfers++;
 
@@ -1767,7 +1767,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
 
 void MapManager::ProcessVisibleCritters(Critter* view_cr)
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     if (view_cr->IsDestroyed) {
         return;
@@ -2129,7 +2129,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
 
 void MapManager::ProcessVisibleItems(Critter* view_cr)
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     if (view_cr->IsDestroyed) {
         return;
@@ -2185,7 +2185,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
 
 void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort hy, int dir)
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     if (view_cr->IsDestroyed) {
         return;
@@ -2319,7 +2319,7 @@ auto MapManager::CheckKnownLocByPid(Critter* cr, hash loc_pid) const -> bool
 
 void MapManager::AddKnownLoc(Critter* cr, uint loc_id)
 {
-    NON_CONST_METHOD_HINT(_smoothSwitcher);
+    NON_CONST_METHOD_HINT();
 
     if (CheckKnownLocById(cr, loc_id)) {
         return;

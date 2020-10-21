@@ -511,14 +511,14 @@ auto Properties::operator=(const Properties& other) -> Properties&
 
 auto Properties::FindByEnum(int enum_value) -> Property*
 {
-    NON_CONST_METHOD_HINT(_registrator);
+    NON_CONST_METHOD_HINT();
 
     return _registrator->FindByEnum(enum_value);
 }
 
 auto Properties::FindData(const string& property_name) -> void*
 {
-    NON_CONST_METHOD_HINT(_registrator);
+    NON_CONST_METHOD_HINT();
 
     const auto* prop = _registrator->Find(property_name);
     RUNTIME_ASSERT(prop);

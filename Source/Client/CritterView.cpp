@@ -1084,14 +1084,14 @@ void CritterView::DrawTextOnHead()
 
                 if (dt >= hide) {
                     const uint alpha = 0xFF * (100 - GenericUtils::Percent(_tickTextDelay - hide, dt - hide)) / 100;
-                    color = alpha << 24 | color & 0xFFFFFF;
+                    color = (alpha << 24) | (color & 0xFFFFFF);
                 }
             }
         }
 
         if (_fadingEnable) {
             const uint alpha = GetFadeAlpha();
-            _sprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, alpha << 24 | color & 0xFFFFFF, 0);
+            _sprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), 0);
         }
         else if (!IsFinishing()) {
             _sprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, 0);

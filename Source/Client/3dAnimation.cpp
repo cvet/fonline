@@ -155,7 +155,7 @@ auto ModelAnimationController::Clone() const -> ModelAnimationController*
 
 void ModelAnimationController::RegisterAnimationOutput(hash bone_name_hash, mat44& output_matrix)
 {
-    NON_CONST_METHOD_HINT(_cloned);
+    NON_CONST_METHOD_HINT();
 
     auto& o = _outputs->emplace_back();
     o.NameHash = bone_name_hash;
@@ -169,7 +169,7 @@ void ModelAnimationController::RegisterAnimationOutput(hash bone_name_hash, mat4
 
 void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
 {
-    NON_CONST_METHOD_HINT(_cloned);
+    NON_CONST_METHOD_HINT();
 
     _sets->push_back(animation);
 }

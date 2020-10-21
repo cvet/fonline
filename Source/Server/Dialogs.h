@@ -161,5 +161,5 @@ private:
     FileManager& _fileMngr;
     ServerScriptSystem& _scriptSys;
     map<hash, unique_ptr<DialogPack>> _dialogPacks {};
-    int _dummy {};
+    bool _nonConstHelper {};
 };

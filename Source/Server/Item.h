@@ -90,4 +90,5 @@ public:
 private:
     ServerScriptSystem& _scriptSys;
     vector<Item*>* _childItems {};
+    bool _nonConstHelper {};
 };

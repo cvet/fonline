@@ -216,7 +216,7 @@ auto SoundManager::Load(const string& fname, bool is_music) -> Sound*
 
 auto SoundManager::LoadWAV(Sound* sound, const string& fname) -> bool
 {
-    NON_CONST_METHOD_HINT(_isActive);
+    NON_CONST_METHOD_HINT();
 
     auto file = _fileMngr.ReadFile(fname);
     if (!file) {
@@ -308,7 +308,7 @@ auto SoundManager::LoadWAV(Sound* sound, const string& fname) -> bool
 
 auto SoundManager::LoadACM(Sound* sound, const string& fname, bool is_music) -> bool
 {
-    NON_CONST_METHOD_HINT(_isActive);
+    NON_CONST_METHOD_HINT();
 
     const auto file = _fileMngr.ReadFile(fname);
     if (!file) {
@@ -452,7 +452,7 @@ auto SoundManager::LoadOGG(Sound* sound, const string& fname) -> bool
 
 auto SoundManager::StreamOGG(Sound* sound) -> bool
 {
-    NON_CONST_METHOD_HINT(_isActive);
+    NON_CONST_METHOD_HINT();
 
     long result = 0;
     uint decoded = 0;

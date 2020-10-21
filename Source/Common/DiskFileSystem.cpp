@@ -152,7 +152,7 @@ DiskFile::operator bool() const
 
 auto DiskFile::Read(void* buf, uint len) -> bool
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
@@ -164,7 +164,7 @@ auto DiskFile::Read(void* buf, uint len) -> bool
 
 auto DiskFile::Write(const void* buf, uint len) -> bool
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
@@ -176,7 +176,7 @@ auto DiskFile::Write(const void* buf, uint len) -> bool
 
 auto DiskFile::Write(const string& str) -> bool
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
@@ -192,7 +192,7 @@ auto DiskFile::Write(const string& str) -> bool
 
 auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
@@ -245,63 +245,66 @@ DiskFile::DiskFile(const string& fname, bool write, bool write_through)
 {
     SDL_RWops* ops = SDL_RWFromFile(fname.c_str(), write ? "wb" : "rb");
     if (!ops) {
-        if (write)
+        if (write) {
             DiskFileSystem::MakeDirTree(fname);
+        }
 
         ops = SDL_RWFromFile(fname.c_str(), write ? "wb" : "rb");
     }
-    if (!ops)
+    if (!ops) {
         return;
+    }
 
     _pImpl = std::make_unique<Impl>();
     _pImpl->Ops = ops;
     _pImpl->WriteThrough = write_through;
-    openedForWriting = write;
+    _openedForWriting = write;
 }
 
 DiskFile::~DiskFile()
 {
-    if (_pImpl)
+    if (_pImpl) {
         SDL_RWclose(_pImpl->Ops);
+    }
 }
 
 DiskFile::DiskFile(DiskFile&&) noexcept = default;
 
 DiskFile::operator bool() const
 {
-    return !!pImpl;
+    return !!_pImpl;
 }
 
 bool DiskFile::Read(void* buf, uint len)
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(!openedForWriting);
+    RUNTIME_ASSERT(!_openedForWriting);
     RUNTIME_ASSERT(len);
 
-    return (uint)SDL_RWread(_pImpl->Ops, buf, sizeof(char), len) == len;
+    return static_cast<uint>(SDL_RWread(_pImpl->Ops, buf, sizeof(char), len)) == len;
 }
 
 bool DiskFile::Write(const void* buf, uint len)
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(openedForWriting);
+    RUNTIME_ASSERT(_openedForWriting);
     RUNTIME_ASSERT(len);
 
     SDL_RWops* ops = _pImpl->Ops;
-    bool result = ((uint)SDL_RWwrite(ops, buf, sizeof(char), len) == len);
+    bool result = (static_cast<uint>(SDL_RWwrite(ops, buf, sizeof(char), len)) == len);
     if (result && _pImpl->WriteThrough) {
         if (ops->type == SDL_RWOPS_WINFILE) {
 #ifdef __WIN32__
-            FlushFileBuffers((HANDLE)ops->hidden.windowsio.h);
+            ::FlushFileBuffers((HANDLE)ops->hidden.windowsio.h);
 #endif
         }
         else if (ops->type == SDL_RWOPS_STDFILE) {
 #ifdef HAVE_STDIO_H
-            fflush(ops->hidden.stdio.fp);
+            ::fflush(ops->hidden.stdio.fp);
 #endif
         }
     }
@@ -310,32 +313,33 @@ bool DiskFile::Write(const void* buf, uint len)
 
 bool DiskFile::Write(const string& str)
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(openedForWriting);
+    RUNTIME_ASSERT(_openedForWriting);
 
-    if (!str.empty())
-        return Write(str.c_str(), (uint)str.length());
+    if (!str.empty()) {
+        return Write(str.c_str(), static_cast<uint>(str.length()));
+    }
     return true;
 }
 
 bool DiskFile::SetPos(int offset, DiskFileSeek origin)
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(!openedForWriting);
+    RUNTIME_ASSERT(!_openedForWriting);
 
-    return SDL_RWseek(_pImpl->Ops, offset, (int)origin) != -1;
+    return SDL_RWseek(_pImpl->Ops, offset, static_cast<int>(origin)) != -1;
 }
 
 uint DiskFile::GetPos() const
 {
     RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(!openedForWriting);
+    RUNTIME_ASSERT(!_openedForWriting);
 
-    return (uint)SDL_RWtell(_pImpl->Ops);
+    return static_cast<uint>(SDL_RWtell(_pImpl->Ops));
 }
 
 uint64 DiskFile::GetWriteTime() const
@@ -346,19 +350,19 @@ uint64 DiskFile::GetWriteTime() const
 #error __WIN32__ or HAVE_STDIO_H must be defined
 #endif
 
-    SDL_RWops* ops = _pImpl->Ops;
+    auto* ops = _pImpl->Ops;
     if (ops->type == SDL_RWOPS_WINFILE) {
 #ifdef __WIN32__
         FILETIME tc, ta, tw;
-        GetFileTime((HANDLE)ops->hidden.windowsio.h, &tc, &ta, &tw);
+        ::GetFileTime((HANDLE)ops->hidden.windowsio.h, &tc, &ta, &tw);
         return FileTimeToUInt64(tw);
 #endif
     }
     else if (ops->type == SDL_RWOPS_STDFILE) {
 #if HAVE_STDIO_H
-        int fd = fileno(ops->hidden.stdio.fp);
+        int fd = ::fileno(ops->hidden.stdio.fp);
         struct stat st;
-        fstat(fd, &st);
+        ::fstat(fd, &st);
         return (uint64)st.st_mtime;
 #endif
     }
@@ -369,7 +373,7 @@ uint64 DiskFile::GetWriteTime() const
 uint DiskFile::GetSize() const
 {
     Sint64 size = SDL_RWsize(_pImpl->Ops);
-    return (uint)(size <= 0 ? 0 : size);
+    return size <= 0 ? 0u : static_cast<uint>(size);
 }
 
 #else
@@ -405,7 +409,7 @@ DiskFile::~DiskFile()
         fclose(_pImpl->File);
 
 #if FO_WEB
-        if (openedForWriting) {
+        if (_openedForWriting) {
             EM_ASM(FS.syncfs(function(err) {}));
         }
 #endif
@@ -421,7 +425,7 @@ DiskFile::operator bool() const
 
 bool DiskFile::Read(void* buf, uint len)
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
@@ -432,7 +436,7 @@ bool DiskFile::Read(void* buf, uint len)
 
 bool DiskFile::Write(const void* buf, uint len)
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
@@ -447,7 +451,7 @@ bool DiskFile::Write(const void* buf, uint len)
 
 bool DiskFile::Write(const string& str)
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
@@ -460,7 +464,7 @@ bool DiskFile::Write(const string& str)
 
 bool DiskFile::SetPos(int offset, DiskFileSeek origin)
 {
-    NON_CONST_METHOD_HINT(_openedForWriting);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);

@@ -94,7 +94,7 @@ void CritterManager::InitAfterLoad()
 
 void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cr);
     RUNTIME_ASSERT(item);
@@ -128,7 +128,7 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
 
 void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cr);
     RUNTIME_ASSERT(item);
@@ -151,7 +151,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
 
 auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Npc*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(map);
     RUNTIME_ASSERT(proto_id);
@@ -241,7 +241,7 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
 
 void CritterManager::DeleteNpc(Critter* cr)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cr->IsNpc());
 
@@ -284,7 +284,7 @@ void CritterManager::DeleteNpc(Critter* cr)
 
 void CritterManager::DeleteInventory(Critter* cr)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     while (!cr->_invItems.empty()) {
         _itemMngr.DeleteItem(*cr->_invItems.begin());
@@ -293,7 +293,7 @@ void CritterManager::DeleteInventory(Critter* cr)
 
 auto CritterManager::GetCritters() -> vector<Critter*>
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     auto all_critters = _entityMngr.GetCritters();
 
@@ -309,7 +309,7 @@ auto CritterManager::GetCritters() -> vector<Critter*>
 
 auto CritterManager::GetNpcs() -> vector<Npc*>
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     auto all_critters = _entityMngr.GetCritters();
 
@@ -327,7 +327,7 @@ auto CritterManager::GetNpcs() -> vector<Npc*>
 
 auto CritterManager::GetClients(bool on_global_map_only) -> vector<Client*>
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     auto all_critters = _entityMngr.GetCritters();
 
@@ -345,7 +345,7 @@ auto CritterManager::GetClients(bool on_global_map_only) -> vector<Client*>
 
 auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, uchar find_type) -> vector<Critter*>
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     auto all_critters = _entityMngr.GetCritters();
 
@@ -363,7 +363,7 @@ auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, uch
 
 auto CritterManager::GetCritter(uint cr_id) -> Critter*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     return _entityMngr.GetCritter(cr_id);
 }
@@ -375,7 +375,7 @@ auto CritterManager::GetCritter(uint cr_id) const -> const Critter*
 
 auto CritterManager::GetPlayer(uint cr_id) -> Client*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     if (!IS_CLIENT_ID(cr_id)) {
         return nullptr;
@@ -386,7 +386,7 @@ auto CritterManager::GetPlayer(uint cr_id) -> Client*
 
 auto CritterManager::GetPlayer(const char* name) -> Client*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     Client* cl = nullptr;
     for (auto* entity : _entityMngr.GetEntities(EntityType::Client)) {
@@ -401,7 +401,7 @@ auto CritterManager::GetPlayer(const char* name) -> Client*
 
 auto CritterManager::GetNpc(uint cr_id) -> Npc*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     if (IS_CLIENT_ID(cr_id)) {
         return nullptr;
@@ -412,7 +412,7 @@ auto CritterManager::GetNpc(uint cr_id) -> Npc*
 
 auto CritterManager::GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     const auto* proto_item = _protoMngr.GetProtoItem(item_pid);
     if (proto_item == nullptr) {
@@ -443,7 +443,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item
 
 void CritterManager::ProcessTalk(Client* cl, bool force)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     if (!force && _gameTime.GameTick() < cl->_talkNextTick) {
         return;
@@ -508,7 +508,7 @@ void CritterManager::ProcessTalk(Client* cl, bool force)
 
 void CritterManager::CloseTalk(Client* cl)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     if (cl->Talk.Type != TalkType::None) {
         Npc* npc = nullptr;

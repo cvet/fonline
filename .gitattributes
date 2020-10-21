@@ -32,6 +32,8 @@
 *.cfg      text
 *.ini      text
 *.sql      text
+*.html     text
+*.htm      text
 *.tex      text diff=tex
 *.bibtex   text diff=bibtex
 *.doc      diff=astextplain

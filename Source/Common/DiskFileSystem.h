@@ -70,6 +70,7 @@ private:
     struct Impl;
     unique_ptr<Impl> _pImpl {};
     bool _openedForWriting {};
+    bool _nonConstHelper {};
 };
 
 class DiskFind final

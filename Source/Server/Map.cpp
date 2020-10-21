@@ -90,7 +90,7 @@ auto Map::GetProtoMap() const -> const ProtoMap*
 
 auto Map::GetLocation() -> Location*
 {
-    NON_CONST_METHOD_HINT(_hexFlagsSize);
+    NON_CONST_METHOD_HINT();
 
     return _mapLocation;
 }
@@ -420,7 +420,7 @@ auto Map::GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker) -> It
     auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
     if (it_hex_all != _mapItemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
-            if ((item_pid == 0 || item->GetProtoId() == item_pid) && (picker == nullptr || !item->GetIsHidden() && picker->CountIdVisItem(item->GetId()))) {
+            if ((item_pid == 0 || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetIsHidden() && picker->CountIdVisItem(item->GetId())))) {
                 return item;
             }
         }

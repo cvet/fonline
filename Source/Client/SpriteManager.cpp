@@ -1103,7 +1103,7 @@ void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
 
 void SpriteManager::Flush()
 {
-    NON_CONST_METHOD_HINT(_accumulatorActive);
+    NON_CONST_METHOD_HINT();
 
     if (_curDrawQuad == 0) {
         return;
@@ -1267,7 +1267,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     const auto k = std::min(static_cast<float>(w) / wf, static_cast<float>(h) / hf);
 
     if (!stretch) {
-        if (k < 1.0f || k > 1.0f && zoom_up) {
+        if (k < 1.0f || (k > 1.0f && zoom_up)) {
             wf = floorf(wf * k + 0.5f);
             hf = floorf(hf * k + 0.5f);
         }
@@ -2644,7 +2644,7 @@ static void StrInsert(char* to, const char* from, uint from_len)
 
 void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 {
-    NON_CONST_METHOD_HINT(_accumulatorActive);
+    NON_CONST_METHOD_HINT();
 
     auto* str = fi.PStr;
     auto flags = fi.Flags;
@@ -3077,7 +3077,7 @@ void SpriteManager::DrawStr(const IRect& r, const string& str, uint flags, uint 
                     color = fi.ColorDots[i]; // With alpha
                 }
                 else {
-                    color = color & 0xFF000000 | fi.ColorDots[i] & 0x00FFFFFF; // Still old alpha
+                    color = (color & 0xFF000000) | (fi.ColorDots[i] & 0x00FFFFFF); // Still old alpha
                 }
                 color = COLOR_SWAP_RB(color);
                 break;
@@ -3095,7 +3095,7 @@ void SpriteManager::DrawStr(const IRect& r, const string& str, uint flags, uint 
                     color = new_color; // With alpha
                 }
                 else {
-                    color = color & 0xFF000000 | new_color & 0x00FFFFFF; // Still old alpha
+                    color = (color & 0xFF000000) | (new_color & 0x00FFFFFF); // Still old alpha
                 }
                 color = COLOR_SWAP_RB(color);
             }

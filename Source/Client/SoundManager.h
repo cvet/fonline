@@ -76,4 +76,5 @@ private:
     SoundVec _soundsActive {};
     vector<uchar> _outputBuf {};
     SoundsFunc _soundsFunc {};
+    bool _nonConstHelper {};
 };

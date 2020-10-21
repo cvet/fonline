@@ -2893,8 +2893,8 @@ void FOMapper::SelectAll()
 
 struct TileToMove
 {
-    Field* FieldToMove {};
-    Field::Tile TileToMove {};
+    Field* MoveField {};
+    Field::Tile MoveTile {};
     vector<MapTile>* MapTilesToMove {};
     MapTile MapTimeToMove {};
     bool IsRoofMoved {};
@@ -3119,7 +3119,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     }
 
     for (auto& ttm : tiles_to_move) {
-        ttm.FieldToMove->AddTile(ttm.TileToMove.Anim, ttm.TileToMove.OffsX, ttm.TileToMove.OffsY, ttm.TileToMove.Layer, ttm.IsRoofMoved);
+        ttm.MoveField->AddTile(ttm.MoveTile.Anim, ttm.MoveTile.OffsX, ttm.MoveTile.OffsY, ttm.MoveTile.Layer, ttm.IsRoofMoved);
         ttm.MapTilesToMove->push_back(ttm.MapTimeToMove);
     }
     return true;

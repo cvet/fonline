@@ -368,7 +368,7 @@ auto ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint anim2) -
 
 void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     if (stay_frm_base == nullptr) {
         return;
@@ -397,7 +397,7 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
 
 void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     if (stay_frm_base == nullptr) {
         return;

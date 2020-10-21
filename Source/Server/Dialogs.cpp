@@ -394,7 +394,7 @@ auto DialogManager::ParseDialog(const string& pack_name, const string& data) -> 
 
 auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     auto fail = false;
     char who = DR_WHO_PLAYER;
@@ -611,7 +611,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
 
 auto DialogManager::GetNotAnswerAction(const string& str) -> ScriptFunc<string, Critter*, Critter*>
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     if (str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None") {
         return {};

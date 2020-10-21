@@ -213,4 +213,5 @@ private:
     string _rootPath {};
     vector<DataSource> _dataSources {};
     EventDispatcher<DataSource*> _dataSourceAddedDispatcher {OnDataSourceAdded};
+    bool _nonConstHelper {};
 };

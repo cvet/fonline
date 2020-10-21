@@ -271,6 +271,7 @@ private:
     mutable vector<ushort> _storeDataComplexIndicies {};
     Entity* _sendIgnoreEntity {};
     Property* _sendIgnoreProperty {};
+    bool _nonConstHelper {};
 };
 
 class PropertyRegistrator final

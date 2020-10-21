@@ -158,7 +158,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         emscripten_set_main_loop_arg(ClientEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
-        while (!Settings->Quit) {
+        while (!Data->Settings->Quit) {
             ClientEntry(nullptr);
         }
 

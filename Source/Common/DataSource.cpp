@@ -71,7 +71,7 @@ static auto GetFileNamesGeneric(const FileNameVec& fnames, const string& path, b
 
     for (const auto& [fst, snd] : fnames) {
         auto add = false;
-        if (fst.compare(0, len, path_fixed) == 0 && (include_subdirs || len > 0 && fst.find_last_of('/') < len || len == 0 && fst.find_last_of('/') == string::npos)) {
+        if (fst.compare(0, len, path_fixed) == 0 && (include_subdirs || (len > 0 && fst.find_last_of('/') < len) || (len == 0 && fst.find_last_of('/') == string::npos))) {
             if (ext.empty() || _str(fst).getFileExtension() == ext) {
                 add = true;
             }

@@ -56,7 +56,7 @@ public:
     GlobalSettings() = default;
     GlobalSettings(int argc, char** argv);
     GlobalSettings(const GlobalSettings&) = default;
-    GlobalSettings(GlobalSettings&&) noexcept = default;
+    GlobalSettings(GlobalSettings&&) = default;
     auto operator=(const GlobalSettings&) = delete;
     auto operator=(GlobalSettings&&) noexcept = delete;
     ~GlobalSettings() = default;

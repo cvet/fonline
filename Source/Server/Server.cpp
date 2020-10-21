@@ -2059,7 +2059,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
 
 void FOServer::EntitySetValue(Entity* entity, Property* prop, void* /*cur_value*/, void* /*old_value*/)
 {
-    NON_CONST_METHOD_HINT(FpsTick);
+    NON_CONST_METHOD_HINT();
 
     if ((entity->Id == 0u) || prop->IsTemporary()) {
         return;
@@ -4406,7 +4406,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
 
 void FOServer::OnSetItemCount(Entity* entity, Property* /*prop*/, void* cur_value, void* old_value)
 {
-    NON_CONST_METHOD_HINT(FpsTick);
+    NON_CONST_METHOD_HINT();
 
     auto* item = dynamic_cast<Item*>(entity);
     const auto cur = *static_cast<uint*>(cur_value);

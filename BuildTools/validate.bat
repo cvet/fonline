@@ -61,8 +61,8 @@ if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 cd %BUILD_DIR%
 
 if [%BUILD_CACHE%] == [] (
-    cmake -A %BUILD_ARCH% -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 "%FO_ROOT%"
+    cmake -A %BUILD_ARCH% -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
 ) else (
-    cmake -A %BUILD_ARCH% -C "%FO_ROOT%\BuildTool\%BUILD_CACHE%" -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 "%FO_ROOT%"
+    cmake -A %BUILD_ARCH% -C "%FO_ROOT%\BuildTool\%BUILD_CACHE%" -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
 )
 cmake --build . --config Debug --parallel

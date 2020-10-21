@@ -103,7 +103,7 @@ protected:
     virtual ~Entity();
 
 private:
-    int _dummy {};
+    bool _nonConstHelper {};
 };
 
 class ProtoEntity : public Entity

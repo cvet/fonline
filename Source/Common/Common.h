@@ -514,7 +514,7 @@ auto constexpr operator"" _len(const char* /*str*/, size_t size) -> size_t
 #define LINE_STR STRINGIFY(__LINE__)
 #define SCOPE_LOCK(m) std::lock_guard<std::mutex> _scope_lock(m) // Non-unique name to allow only one lock per scope
 #define UNUSED_VARIABLE(x) (void)(x)
-#define NON_CONST_METHOD_HINT(some_field) some_field = some_field
+#define NON_CONST_METHOD_HINT(some_field) _nonConstHelper = !_nonConstHelper
 #define UNIQUE_FUNCTION_NAME(name, ...) UNIQUE_FUNCTION_NAME2(MERGE_ARGS(name, __COUNTER__), __VA_ARGS__)
 #define UNIQUE_FUNCTION_NAME2(name, ...) name(__VA_ARGS__)
 #define MERGE_ARGS(a, b) MERGE_ARGS2(a, b)

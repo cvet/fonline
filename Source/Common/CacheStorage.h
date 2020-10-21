@@ -64,4 +64,5 @@ private:
     struct Impl;
     unique_ptr<Impl> _pImpl {};
     string _workPath {};
+    bool _nonConstHelper {};
 };

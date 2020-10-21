@@ -397,4 +397,5 @@ private:
     int _cursorY {};
     set<hash> _fastPids {};
     set<hash> _ignorePids {};
+    bool _nonConstHelper {};
 };

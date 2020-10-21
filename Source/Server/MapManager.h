@@ -198,4 +198,5 @@ private:
     bool _runGarbager {true};
     bool _smoothSwitcher {};
     map<const ProtoMap*, StaticMap> _staticMaps {};
+    bool _nonConstHelper {};
 };

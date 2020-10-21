@@ -149,4 +149,5 @@ private:
     Sprite* _lastSprite {};
     uint _spriteCount {};
     SpriteVec _unvalidatedSprites {};
+    bool _nonConstHelper {};
 };

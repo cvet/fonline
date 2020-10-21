@@ -93,5 +93,5 @@ private:
     GlobalVars* _globals {};
     map<uint, Entity*> _allEntities {};
     uint _entitiesCount[static_cast<int>(EntityType::Max)] {};
-    int _dummy {};
+    bool _nonConstHelper {};
 };

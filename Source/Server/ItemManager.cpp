@@ -146,7 +146,7 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
 
 void ItemManager::SetItemToContainer(Item* cont, Item* item)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(item);
@@ -188,7 +188,7 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
 
 void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(cont);
     RUNTIME_ASSERT(cont->_childItems);
@@ -210,7 +210,7 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
 
 auto ItemManager::GetItems() -> vector<Item*>
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     return _entityMngr.GetItems();
 }

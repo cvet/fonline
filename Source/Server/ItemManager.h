@@ -98,5 +98,5 @@ private:
     CritterManager& _crMngr;
     ServerScriptSystem& _scriptSys;
     vector<Item*> _radioItems {};
-    int _dummy {};
+    bool _nonConstHelper {};
 };

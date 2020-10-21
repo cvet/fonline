@@ -94,5 +94,5 @@ private:
     ItemManager& _itemMngr;
     ServerScriptSystem& _scriptSys;
     GameTimer& _gameTime;
-    int _dummy {};
+    bool _nonConstHelper {};
 };

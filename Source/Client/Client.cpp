@@ -136,7 +136,7 @@ FOClient::~FOClient()
 
 void FOClient::ProcessAutoLogin()
 {
-    const auto auto_login = Settings.AutoLogin;
+    auto auto_login = Settings.AutoLogin;
 
 #if FO_WEB
     char* auto_login_web = (char*)EM_ASM_INT({
@@ -970,10 +970,10 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
     Bin.SetEncryptKey(0);
     Bout.SetEncryptKey(0);
 
-#if FO_WINDOWS
-    const auto sock_type = SOCK_STREAM;
-#else
+#if FO_LINUX
     const auto sock_type = SOCK_STREAM | SOCK_CLOEXEC;
+#else
+    const auto sock_type = SOCK_STREAM;
 #endif
     if ((Sock = socket(PF_INET, sock_type, IPPROTO_TCP)) == INVALID_SOCKET) {
         WriteLog("Create socket error '{}'.\n", GetLastSocketError());

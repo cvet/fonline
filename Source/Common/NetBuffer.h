@@ -120,4 +120,5 @@ private:
     bool _encryptActive {};
     int _encryptKeyPos {};
     uchar _encryptKeys[CRYPT_KEYS_COUNT] {};
+    bool _nonConstHelper {};
 };

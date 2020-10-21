@@ -121,14 +121,14 @@ void NetBuffer::GrowBuf(uint len)
 
 auto NetBuffer::GetData() -> uchar*
 {
-    NON_CONST_METHOD_HINT(_isError);
+    NON_CONST_METHOD_HINT();
 
     return _bufData.get();
 }
 
 auto NetBuffer::GetCurData() -> uchar*
 {
-    NON_CONST_METHOD_HINT(_isError);
+    NON_CONST_METHOD_HINT();
 
     return _bufData.get() + _bufReadPos;
 }

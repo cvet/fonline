@@ -56,7 +56,7 @@ auto Entity::GetId() const -> uint
 
 void Entity::SetId(uint id)
 {
-    NON_CONST_METHOD_HINT(_dummy);
+    NON_CONST_METHOD_HINT();
 
     const_cast<uint&>(Id) = id;
 }

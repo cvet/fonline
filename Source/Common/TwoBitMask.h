@@ -58,4 +58,5 @@ private:
     uint _width {};
     uint _height {};
     uint _widthBytes {};
+    bool _nonConstHelper {};
 };

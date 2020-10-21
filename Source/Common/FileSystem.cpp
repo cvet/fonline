@@ -619,7 +619,7 @@ auto FileManager::ReadConfigFile(const string& path) -> ConfigFile
 
 auto FileManager::WriteFile(const string& path, bool apply) -> OutputFile
 {
-    NON_CONST_METHOD_HINT(_rootPath);
+    NON_CONST_METHOD_HINT();
 
     DiskFileSystem::SetCurrentDir(_rootPath);
     auto file = DiskFileSystem::OpenFile(path, true); // Todo: handle apply file writing
@@ -631,7 +631,7 @@ auto FileManager::WriteFile(const string& path, bool apply) -> OutputFile
 
 void FileManager::DeleteFile(const string& path)
 {
-    NON_CONST_METHOD_HINT(_rootPath);
+    NON_CONST_METHOD_HINT();
 
     DiskFileSystem::SetCurrentDir(_rootPath);
     DiskFileSystem::DeleteFile(path);
@@ -639,7 +639,7 @@ void FileManager::DeleteFile(const string& path)
 
 void FileManager::DeleteDir(const string& path)
 {
-    NON_CONST_METHOD_HINT(_rootPath);
+    NON_CONST_METHOD_HINT();
 
     DiskFileSystem::SetCurrentDir(_rootPath);
     DiskFileSystem::DeleteDir(path);
@@ -647,7 +647,7 @@ void FileManager::DeleteDir(const string& path)
 
 void FileManager::RenameFile(const string& from_path, const string& to_path)
 {
-    NON_CONST_METHOD_HINT(_rootPath);
+    NON_CONST_METHOD_HINT();
 
     DiskFileSystem::SetCurrentDir(_rootPath);
     DiskFileSystem::RenameFile(from_path, to_path);

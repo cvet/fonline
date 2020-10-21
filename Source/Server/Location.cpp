@@ -66,7 +66,7 @@ auto Location::GetProtoLoc() const -> const ProtoLocation*
 
 auto Location::IsLocVisible() const -> bool
 {
-    return !GetHidden() || GetGeckVisible() && GeckCount > 0;
+    return !GetHidden() || (GetGeckVisible() && GeckCount > 0);
 }
 
 auto Location::GetMapsRaw() -> vector<Map*>&
@@ -177,7 +177,7 @@ auto Location::IsCanDelete() -> bool
     auto maps = _locMaps;
     for (auto* map : maps) {
         for (auto* npc : map->GetNpcs()) {
-            if (npc->GetIsGeck() || !npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId() || npc->IsHaveGeckItem()) {
+            if (npc->GetIsGeck() || (!npc->GetIsNoHome() && npc->GetHomeMapId() != map->GetId()) || npc->IsHaveGeckItem()) {
                 return false;
             }
         }

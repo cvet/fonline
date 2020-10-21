@@ -174,4 +174,5 @@ private:
     vector<Track> _tracks {};
     float _curTime {};
     bool _interpolationDisabled {};
+    bool _nonConstHelper {};
 };

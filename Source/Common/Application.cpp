@@ -978,7 +978,7 @@ void Application::BeginFrame()
             ::_CrtMemDumpAllObjectsSince(&CrtMemState);
 #endif
 
-            std::quick_exit(0);
+            std::exit(0);
         }
         default:
             break;
