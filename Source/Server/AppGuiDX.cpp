@@ -130,14 +130,14 @@ bool AppGui::InitDX(const string& app_name, bool docking, bool maximized)
     // Create application window
     WndClassName = _str(app_name).toWideChar();
     WndSubClassName = WndClassName + L" Sub";
-    WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProcHandler, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, _str(app_name).toWideChar().c_str(), nullptr};
-    RegisterClassEx(&wc);
-    HWND hwnd = CreateWindow(wc.lpszClassName, WndClassName.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, wc.hInstance, nullptr);
+    WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProcHandler, 0L, 0L, GetModuleHandleW(nullptr), nullptr, nullptr, nullptr, nullptr, _str(app_name).toWideChar().c_str(), nullptr};
+    RegisterClassExW(&wc);
+    HWND hwnd = CreateWindowExW(0u, wc.lpszClassName, WndClassName.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, wc.hInstance, nullptr);
 
     // Initialize Direct3D
     if (!CreateDevice(hwnd)) {
         WriteLog("Failed to create D3D device.\n");
-        UnregisterClass(wc.lpszClassName, wc.hInstance);
+        UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return false;
     }
 
@@ -218,14 +218,14 @@ bool AppGui::InitDX(const string& app_name, bool docking, bool maximized)
         wcex.lpfnWndProc = WndProcHandler;
         wcex.cbClsExtra = 0;
         wcex.cbWndExtra = 0;
-        wcex.hInstance = GetModuleHandle(nullptr);
+        wcex.hInstance = GetModuleHandleW(nullptr);
         wcex.hIcon = nullptr;
         wcex.hCursor = nullptr;
         wcex.hbrBackground = (HBRUSH)(COLOR_BACKGROUND + 1);
         wcex.lpszMenuName = nullptr;
         wcex.lpszClassName = WndSubClassName.c_str();
         wcex.hIconSm = nullptr;
-        RegisterClassEx(&wcex);
+        RegisterClassExW(&wcex);
 
         UpdateMonitors();
 
@@ -269,14 +269,14 @@ bool AppGui::BeginFrameDX()
 {
     // Handle window messages
     MSG msg;
-    ZeroMemory(&msg, sizeof(msg));
+    std::memset(&msg, 0, sizeof(msg));
     bool quit = false;
     while (true) {
-        if (!PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+        if (!PeekMessageW(&msg, nullptr, 0U, 0U, PM_REMOVE))
             break;
 
         TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        DispatchMessageW(&msg);
 
         if (msg.message == WM_QUIT)
             quit = true;
@@ -516,7 +516,7 @@ static LRESULT WINAPI WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM 
         }
     }
 
-    return DefWindowProc(hwnd, msg, wparam, lparam);
+    return DefWindowProcW(hwnd, msg, wparam, lparam);
 }
 
 static bool CreateDevice(HWND hwnd)
@@ -771,7 +771,7 @@ static bool UpdateMouseCursor()
             break;
         }
 
-        SetCursor(LoadCursor(nullptr, win32_cursor));
+        SetCursor(LoadCursorW(nullptr, win32_cursor));
     }
     return true;
 }
@@ -785,8 +785,6 @@ static BOOL IsWindowsVersionOrGreater(WORD major, WORD minor, WORD sp)
     cond = VerSetConditionMask(cond, VER_SERVICEPACKMAJOR, VER_GREATER_EQUAL);
     return VerifyVersionInfoW(&osvi, mask, cond);
 }
-#define IsWindows8Point1OrGreater() IsWindowsVersionOrGreater(HIBYTE(0x0602), LOBYTE(0x0602), 0) // _WIN32_WINNT_WINBLUE
-#define IsWindows10OrGreater() IsWindowsVersionOrGreater(HIBYTE(0x0A00), LOBYTE(0x0A00), 0) // _WIN32_WINNT_WIN10
 
 #ifndef DPI_ENUMS_DECLARED
 typedef enum
@@ -816,15 +814,14 @@ typedef DPI_AWARENESS_CONTEXT(WINAPI* PFN_SetThreadDpiAwarenessContext)(DPI_AWAR
 
 static void EnableDpiAwareness()
 {
-    // if (IsWindows10OrGreater())
-    {
+    if (IsWindowsVersionOrGreater(HIBYTE(0x0A00), LOBYTE(0x0A00), 0)) {
         static HINSTANCE user32_dll = LoadLibraryA("user32.dll");
         if (PFN_SetThreadDpiAwarenessContext SetThreadDpiAwarenessContextFn = (PFN_SetThreadDpiAwarenessContext)GetProcAddress(user32_dll, "SetThreadDpiAwarenessContext")) {
             SetThreadDpiAwarenessContextFn(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
             return;
         }
     }
-    if (IsWindows8Point1OrGreater()) {
+    if (IsWindowsVersionOrGreater(HIBYTE(0x0602), LOBYTE(0x0602), 0)) {
         static HINSTANCE shcore_dll = LoadLibraryA("shcore.dll");
         if (PFN_SetProcessDpiAwareness SetProcessDpiAwarenessFn = (PFN_SetProcessDpiAwareness)GetProcAddress(shcore_dll, "SetProcessDpiAwareness"))
             SetProcessDpiAwarenessFn(PROCESS_PER_MONITOR_DPI_AWARE);
@@ -837,7 +834,7 @@ static void EnableDpiAwareness()
 static float GetDpiScaleForMonitor(void* monitor)
 {
     UINT xdpi = 96, ydpi = 96;
-    if (IsWindows8Point1OrGreater()) {
+    if (IsWindowsVersionOrGreater(HIBYTE(0x0602), LOBYTE(0x0602), 0)) {
         static HINSTANCE shcore_dll = LoadLibraryA("shcore.dll");
         if (PFN_GetDpiForMonitor GetDpiForMonitorFn = (PFN_GetDpiForMonitor)GetProcAddress(shcore_dll, "GetDpiForMonitor"))
             GetDpiForMonitorFn((HMONITOR)monitor, MDT_EFFECTIVE_DPI, &xdpi, &ydpi);
@@ -889,10 +886,10 @@ static void Platform_CreateWindow(ImGuiViewport* viewport)
     // Create window
     RECT rect = {(LONG)viewport->Pos.x, (LONG)viewport->Pos.y, (LONG)(viewport->Pos.x + viewport->Size.x), (LONG)(viewport->Pos.y + viewport->Size.y)};
     AdjustWindowRectEx(&rect, data->DwStyle, FALSE, data->DwExStyle);
-    data->Hwnd = CreateWindowEx(data->DwExStyle, WndSubClassName.c_str(), L"Child",
+    data->Hwnd = ::CreateWindowExW(data->DwExStyle, WndSubClassName.c_str(), L"Child",
         data->DwStyle, // Style, class name, window name
         rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, // Window area
-        parent_window, nullptr, GetModuleHandle(nullptr), nullptr); // Parent window, Menu, Instance, Param
+        parent_window, nullptr, GetModuleHandleW(nullptr), nullptr); // Parent window, Menu, Instance, Param
     data->HwndOwned = true;
     viewport->PlatformRequestResize = false;
     viewport->PlatformHandle = viewport->PlatformHandleRaw = data->Hwnd;
@@ -934,8 +931,8 @@ static void Platform_UpdateWindow(ImGuiViewport* viewport)
     if (data->DwStyle != new_style || data->DwExStyle != new_ex_style) {
         data->DwStyle = new_style;
         data->DwExStyle = new_ex_style;
-        SetWindowLong(data->Hwnd, GWL_STYLE, data->DwStyle);
-        SetWindowLong(data->Hwnd, GWL_EXSTYLE, data->DwExStyle);
+        SetWindowLongW(data->Hwnd, GWL_STYLE, data->DwStyle);
+        SetWindowLongW(data->Hwnd, GWL_EXSTYLE, data->DwExStyle);
         RECT rect = {(LONG)viewport->Pos.x, (LONG)viewport->Pos.y, (LONG)(viewport->Pos.x + viewport->Size.x), (LONG)(viewport->Pos.y + viewport->Size.y)};
         AdjustWindowRectEx(&rect, data->DwStyle, FALSE, data->DwExStyle); // Client to Screen
         SetWindowPos(data->Hwnd, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
@@ -1064,7 +1061,7 @@ static BOOL CALLBACK UpdateMonitorsEnumFunc(HMONITOR monitor, HDC, LPRECT, LPARA
 {
     MONITORINFO info = {0};
     info.cbSize = sizeof(MONITORINFO);
-    if (!GetMonitorInfo(monitor, &info))
+    if (!GetMonitorInfoW(monitor, &info))
         return TRUE;
 
     ImGuiPlatformMonitor imgui_monitor;
@@ -1089,7 +1086,7 @@ static void Renderer_CreateWindow(ImGuiViewport* viewport)
     HWND hwnd = viewport->PlatformHandleRaw ? (HWND)viewport->PlatformHandleRaw : (HWND)viewport->PlatformHandle;
     RUNTIME_ASSERT(hwnd != 0);
 
-    ZeroMemory(&data->D3dPP, sizeof(D3DPRESENT_PARAMETERS));
+    std::memset(&data->D3dPP, 0, sizeof(D3DPRESENT_PARAMETERS));
     data->D3dPP.Windowed = TRUE;
     data->D3dPP.SwapEffect = D3DSWAPEFFECT_DISCARD;
     data->D3dPP.BackBufferWidth = (UINT)viewport->Size.x;
@@ -1111,7 +1108,7 @@ static void Renderer_DestroyWindow(ImGuiViewport* viewport)
         if (data->SwapChain)
             data->SwapChain->Release();
         data->SwapChain = nullptr;
-        ZeroMemory(&data->D3dPP, sizeof(D3DPRESENT_PARAMETERS));
+        std::memset(&data->D3dPP, 0, sizeof(D3DPRESENT_PARAMETERS));
         IM_DELETE(data);
     }
     viewport->RendererUserData = nullptr;

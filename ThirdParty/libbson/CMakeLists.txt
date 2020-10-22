@@ -59,7 +59,7 @@ set (CPACK_PACKAGE_VERSION_MAJOR ${BSON_MAJOR_VERSION})
 set (CPACK_PACKAGE_VERSION_MINOR ${BSON_MINOR_VERSION})
 
 include (CPack)
-TEST_BIG_ENDIAN(BSON_BIG_ENDIAN)
+#!TEST_BIG_ENDIAN(BSON_BIG_ENDIAN)
 
 # These need proper checks like automake.
 set (BSON_PTHREAD_ONCE_INIT_NEEDS_BRACES 0)
@@ -249,7 +249,7 @@ endif()
 #! -
 
 set(THREADS_PREFER_PTHREAD_FLAG 1)
-find_package (Threads REQUIRED)
+#!find_package (Threads REQUIRED)
 #!target_link_libraries(bson_shared Threads::Threads)
 if(CMAKE_USE_PTHREADS_INIT)
    set(BSON_LIBS ${BSON_LIBS} ${CMAKE_THREAD_LIBS_INIT})
@@ -268,7 +268,7 @@ if (BSON_ENABLE_STATIC)
    set_target_properties(bson_static PROPERTIES COMPILE_DEFINITIONS "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN")
    set_target_properties(bson_static PROPERTIES VERSION ${BSON_VERSION})
    set_target_properties(bson_static PROPERTIES OUTPUT_NAME "bson-static-${BSON_API_VERSION}")
-   target_link_libraries(bson_static Threads::Threads)
+   #!target_link_libraries(bson_static Threads::Threads)
    if (RT_LIBRARY)
       target_link_libraries (bson_static ${RT_LIBRARY})
    endif()

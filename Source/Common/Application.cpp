@@ -759,7 +759,7 @@ Application::Application(GlobalSettings& settings)
 #endif
 
         DXGI_SWAP_CHAIN_DESC sd;
-        ZeroMemory(&sd, sizeof(sd));
+        std::memset(&sd, 0, sizeof(sd));
         sd.BufferCount = 2;
         sd.BufferDesc.Width = 0;
         sd.BufferDesc.Height = 0;

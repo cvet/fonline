@@ -61,7 +61,7 @@ void EffectBaker::AutoBakeEffects()
         auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
 
         {
-            SCOPE_LOCK(_bakedFilesLocker);
+            std::lock_guard locker(_bakedFilesLocker);
             if (_bakedFiles.count(relative_path) != 0u) {
                 continue;
             }
@@ -111,7 +111,7 @@ void EffectBaker::BakeShaderProgram(const string& fname, const string& /*content
     BakeShaderStage(fname_wo_ext + ".frag", program.getIntermediate(EShLangFragment));
 
     {
-        SCOPE_LOCK(_bakedFilesLocker);
+        std::lock_guard locker(_bakedFilesLocker);
         string dummy_content = "BAKED";
         _bakedFiles.emplace(fname, vector<uchar>(dummy_content.begin(), dummy_content.end()));
     }
@@ -136,7 +136,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         vector<uchar> data(spirv.size() * sizeof(uint32_t));
         std::memcpy(&data[0], &spirv[0], data.size());
-        SCOPE_LOCK(_bakedFilesLocker);
+        std::lock_guard locker(_bakedFilesLocker);
         _bakedFiles.emplace(fname_wo_ext + ".spv", std::move(data));
     };
 
@@ -146,7 +146,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         const auto& options = compiler.get_common_options();
         compiler.set_common_options(options);
         auto source = compiler.compile();
-        SCOPE_LOCK(_bakedFilesLocker);
+        std::lock_guard locker(_bakedFilesLocker);
         _bakedFiles.emplace(fname_wo_ext + ".glsl", vector<uchar>(source.begin(), source.end()));
     };
 
@@ -157,7 +157,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         options.es = true;
         compiler.set_common_options(options);
         auto source = compiler.compile();
-        SCOPE_LOCK(_bakedFilesLocker);
+        std::lock_guard locker(_bakedFilesLocker);
         _bakedFiles.emplace(fname_wo_ext + ".glsl-es", vector<uchar>(source.begin(), source.end()));
     };
 
@@ -167,7 +167,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         const auto& options = compiler.get_hlsl_options();
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
-        SCOPE_LOCK(_bakedFilesLocker);
+        std::lock_guard locker(_bakedFilesLocker);
         _bakedFiles.emplace(fname_wo_ext + ".hlsl", vector<uchar>(source.begin(), source.end()));
     };
 
@@ -178,7 +178,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         options.platform = spirv_cross::CompilerMSL::Options::macOS;
         compiler.set_msl_options(options);
         auto source = compiler.compile();
-        SCOPE_LOCK(_bakedFilesLocker);
+        std::lock_guard locker(_bakedFilesLocker);
         _bakedFiles.emplace(fname_wo_ext + ".msl-mac", vector<uchar>(source.begin(), source.end()));
     };
 
@@ -189,7 +189,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
         options.platform = spirv_cross::CompilerMSL::Options::iOS;
         compiler.set_msl_options(options);
         auto source = compiler.compile();
-        SCOPE_LOCK(_bakedFilesLocker);
+        std::lock_guard locker(_bakedFilesLocker);
         _bakedFiles.emplace(fname_wo_ext + ".msl-ios", vector<uchar>(source.begin(), source.end()));
     };
 
@@ -209,7 +209,7 @@ void EffectBaker::BakeShaderStage(const string& fname_wo_ext, glslang::TIntermed
 
 void EffectBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
-    SCOPE_LOCK(_bakedFilesLocker);
+    std::lock_guard locker(_bakedFilesLocker);
 
     for (const auto& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);

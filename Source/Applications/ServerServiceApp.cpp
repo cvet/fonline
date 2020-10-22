@@ -40,7 +40,7 @@
 #include "WinApi-Include.h"
 
 #if FO_WINDOWS
-static wchar_t* ServiceName = L"FOnlineServer";
+static wchar_t ServiceName[32] = L"FOnlineServer";
 #endif
 
 struct ServerServiceAppData
@@ -111,11 +111,11 @@ int main(int argc, char** argv)
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
             // Start
             const SERVICE_TABLE_ENTRY dispatch_table[] = {{ServiceName, FOServiceStart}, {nullptr, nullptr}};
-            ::StartServiceCtrlDispatcher(dispatch_table);
+            ::StartServiceCtrlDispatcherW(dispatch_table);
         }
         else if (std::wstring(::GetCommandLineW()).find(L"--server-service-delete") != std::wstring::npos) {
             // Delete
-            auto* manager = ::OpenSCManager(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
+            auto* manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
             if (manager == nullptr) {
                 ::MessageBoxW(nullptr, L"Can't open service manager", ServiceName, MB_OK | MB_ICONHAND);
                 return 1;
@@ -143,7 +143,7 @@ int main(int argc, char** argv)
         }
         else {
             // Register or manage service
-            auto* manager = ::OpenSCManager(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
+            auto* manager = ::OpenSCManagerW(nullptr, nullptr, SC_MANAGER_ALL_ACCESS);
             if (manager == nullptr) {
                 ::MessageBoxW(nullptr, L"Can't open service manager", ServiceName, MB_OK | MB_ICONHAND);
                 return 1;

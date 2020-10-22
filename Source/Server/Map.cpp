@@ -443,7 +443,7 @@ auto Map::GetItemGag(ushort hx, ushort hy) -> Item*
 
 auto Map::GetItems() -> vector<Item*>
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     return _mapItems;
 }
@@ -610,14 +610,14 @@ auto Map::GetHexFlags(ushort hx, ushort hy) const -> ushort
 
 void Map::SetHexFlag(ushort hx, ushort hy, uchar flag)
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     SetBit(_hexFlags[hy * GetWidth() + hx], flag);
 }
 
 void Map::UnsetHexFlag(ushort hx, ushort hy, uchar flag)
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     UnsetBit(_hexFlags[hy * GetWidth() + hx], flag);
 }
@@ -885,21 +885,21 @@ auto Map::GetCrittersHex(ushort hx, ushort hy, uint radius, uchar find_type) -> 
 
 auto Map::GetCritters() -> vector<Critter*>
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     return _mapCritters;
 }
 
 auto Map::GetPlayers() -> vector<Client*>
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     return _mapPlayers;
 }
 
 auto Map::GetNpcs() -> vector<Npc*>
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     return _mapNpcs;
 }
@@ -1016,7 +1016,7 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
 
 auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     vector<Item*> triggers;
     for (auto* item : _staticMap->TriggerItemsVec) {
@@ -1029,7 +1029,7 @@ auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>
 
 auto Map::GetStaticItem(ushort hx, ushort hy, hash pid) -> Item*
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     for (auto* item : _staticMap->StaticItemsVec) {
         if ((pid == 0u || item->GetProtoId() == pid) && item->GetHexX() == hx && item->GetHexY() == hy) {
@@ -1041,7 +1041,7 @@ auto Map::GetStaticItem(ushort hx, ushort hy, hash pid) -> Item*
 
 auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     vector<Item*> items;
     for (auto* item : _staticMap->StaticItemsVec) {
@@ -1054,7 +1054,7 @@ auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>
 
 auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     vector<Item*> items;
     for (auto* item : _staticMap->StaticItemsVec) {
@@ -1067,7 +1067,7 @@ auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> ve
 
 auto Map::GetStaticItemsByPid(hash pid) -> vector<Item*>
 {
-    NON_CONST_METHOD_HINT(_staticMap);
+    NON_CONST_METHOD_HINT();
 
     vector<Item*> items;
     for (auto* item : _staticMap->StaticItemsVec) {

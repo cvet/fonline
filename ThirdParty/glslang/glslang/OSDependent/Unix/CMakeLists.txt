@@ -16,7 +16,7 @@ else()
     # This is the recommended way, so we use it for 3.1+.
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads)
-    target_link_libraries(OSDependent Threads::Threads)
+    #!target_link_libraries(OSDependent Threads::Threads)
 endif()
 
 if(ENABLE_GLSLANG_INSTALL)

@@ -41,12 +41,12 @@ static constexpr auto MAX_LIGHT_VALUE = 10000;
 static constexpr auto MAX_LIGHT_HEX = 200;
 static constexpr auto MAX_LIGHT_ALPHA = 255;
 
-static constexpr auto DRAW_ORDER_ITEM_AUTO(const ItemView* item)
+static auto EvaluateItemDrawOrder(const ItemView* item)
 {
     return item->GetIsFlat() ? (!item->IsAnyScenery() ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY) : (!item->IsAnyScenery() ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY);
 }
 
-static constexpr auto DRAW_ORDER_CRITTER_AUTO(const CritterView* cr)
+static auto EvaluateCritterDrawOrder(const CritterView* cr)
 {
     return cr->IsDead() && !cr->GetIsNoFlatten() ? DRAW_ORDER_DEAD_CRITTER : DRAW_ORDER_CRITTER;
 }
@@ -456,7 +456,7 @@ auto HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added,
     if (!ProcessHexBorders(item->Anim->GetSprId(0), item->GetOffsetX(), item->GetOffsetY(), true)) {
         // Draw
         if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent()) {
-            auto& spr = _mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), hx, hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+            auto& spr = _mainTree.InsertSprite(EvaluateItemDrawOrder(item), hx, hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
             if (!item->GetIsNoLightInfluence()) {
                 spr.SetLight(item->GetCorner(), _hexLight, _maxHexX, _maxHexY);
             }
@@ -555,7 +555,7 @@ void HexManager::ProcessItems()
                 }
 
                 if (IsHexToDraw(step_x, step_y)) {
-                    item->SprDraw = &_mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), step_x, step_y + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+                    item->SprDraw = &_mainTree.InsertSprite(EvaluateItemDrawOrder(item), step_x, step_y + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                     if (!item->GetIsNoLightInfluence()) {
                         item->SprDraw->SetLight(item->GetCorner(), _hexLight, _maxHexX, _maxHexY);
                     }
@@ -737,7 +737,7 @@ auto HexManager::RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort 
     _hexItems.push_back(item);
 
     if (IsHexToDraw(from_hx, from_hy)) {
-        item->SprDraw = &_mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), from_hx, from_hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+        item->SprDraw = &_mainTree.InsertSprite(EvaluateItemDrawOrder(item), from_hx, from_hy + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
         if (!item->GetIsNoLightInfluence()) {
             item->SprDraw->SetLight(item->GetCorner(), _hexLight, _maxHexX, _maxHexY);
         }
@@ -1036,7 +1036,7 @@ void HexManager::RebuildMap(int rx, int ry)
                     }
                 }
 
-                auto& spr = _mainTree.AddSprite(DRAW_ORDER_ITEM_AUTO(item), nx, ny + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+                auto& spr = _mainTree.AddSprite(EvaluateItemDrawOrder(item), nx, ny + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                 if (!item->GetIsNoLightInfluence()) {
                     spr.SetLight(item->GetCorner(), _hexLight, _maxHexX, _maxHexY);
                 }
@@ -1048,7 +1048,7 @@ void HexManager::RebuildMap(int rx, int ry)
         // Critters
         auto* cr = field.Crit;
         if (cr != nullptr && _settings.ShowCrit && cr->Visible) {
-            auto& spr = _mainTree.AddSprite(DRAW_ORDER_CRITTER_AUTO(cr), nx, ny, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+            auto& spr = _mainTree.AddSprite(EvaluateCritterDrawOrder(cr), nx, ny, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
             spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
             cr->SprDraw = &spr;
             cr->SetSprRect();
@@ -1072,7 +1072,7 @@ void HexManager::RebuildMap(int rx, int ry)
                     continue;
                 }
 
-                auto& spr = _mainTree.AddSprite(DRAW_ORDER_CRITTER_AUTO(dead_cr), nx, ny, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &dead_cr->SprId, &dead_cr->SprOx, &dead_cr->SprOy, &dead_cr->Alpha, &dead_cr->DrawEffect, &dead_cr->SprDrawValid);
+                auto& spr = _mainTree.AddSprite(EvaluateCritterDrawOrder(dead_cr), nx, ny, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &dead_cr->SprId, &dead_cr->SprOx, &dead_cr->SprOy, &dead_cr->Alpha, &dead_cr->DrawEffect, &dead_cr->SprDrawValid);
                 spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
                 dead_cr->SprDraw = &spr;
                 dead_cr->SetSprRect();
@@ -1272,7 +1272,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                     }
                 }
 
-                auto& spr = _mainTree.InsertSprite(DRAW_ORDER_ITEM_AUTO(item), nx, ny + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), _settings.MapHexWidth / 2, _settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+                auto& spr = _mainTree.InsertSprite(EvaluateItemDrawOrder(item), nx, ny + item->GetDrawOrderOffsetHexY(), item->GetSpriteCut(), _settings.MapHexWidth / 2, _settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
                 if (!item->GetIsNoLightInfluence()) {
                     spr.SetLight(item->GetCorner(), _hexLight, _maxHexX, _maxHexY);
                 }
@@ -1284,7 +1284,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
         // Critters
         auto* cr = field.Crit;
         if (cr != nullptr && _settings.ShowCrit && cr->Visible) {
-            auto& spr = _mainTree.InsertSprite(DRAW_ORDER_CRITTER_AUTO(cr), nx, ny, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+            auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), nx, ny, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
             spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
             cr->SprDraw = &spr;
             cr->SetSprRect();
@@ -1309,7 +1309,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                     continue;
                 }
 
-                auto& spr = _mainTree.InsertSprite(DRAW_ORDER_CRITTER_AUTO(cr), nx, ny, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+                auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), nx, ny, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
                 spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
                 cr->SprDraw = &spr;
                 cr->SetSprRect();
@@ -2811,7 +2811,7 @@ void HexManager::SetCritter(CritterView* cr)
     }
 
     if (IsHexToDraw(hx, hy) && cr->Visible) {
-        auto& spr = _mainTree.InsertSprite(DRAW_ORDER_CRITTER_AUTO(cr), hx, hy, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
+        auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), hx, hy, 0, (_settings.MapHexWidth / 2), (_settings.MapHexHeight / 2), &f.ScrX, &f.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
         spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
         cr->SprDraw = &spr;
 

@@ -57,14 +57,14 @@ GLOBAL_DATA(LogData, Data);
 
 void LogWithoutTimestamp()
 {
-    SCOPE_LOCK(Data->LogLocker);
+    std::lock_guard locker(Data->LogLocker);
 
     Data->LogDisableTimestamp = true;
 }
 
 void LogToFile()
 {
-    SCOPE_LOCK(Data->LogLocker);
+    std::lock_guard locker(Data->LogLocker);
 
     const auto fname = _str("{}.log", GetAppName()).str();
     Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
@@ -72,7 +72,7 @@ void LogToFile()
 
 void LogToFunc(const string& key, const LogFunc& func, bool enable)
 {
-    SCOPE_LOCK(Data->LogLocker);
+    std::lock_guard locker(Data->LogLocker);
 
     if (func) {
         Data->LogFunctions.erase(key);
@@ -88,7 +88,7 @@ void LogToFunc(const string& key, const LogFunc& func, bool enable)
 
 void LogToBuffer(bool enable)
 {
-    SCOPE_LOCK(Data->LogLocker);
+    std::lock_guard locker(Data->LogLocker);
 
     delete Data->LogBufferStr;
     Data->LogBufferStr = nullptr;
@@ -100,7 +100,7 @@ void LogToBuffer(bool enable)
 
 auto LogGetBuffer() -> string
 {
-    SCOPE_LOCK(Data->LogLocker);
+    std::lock_guard locker(Data->LogLocker);
 
     if (Data->LogBufferStr != nullptr && !Data->LogBufferStr->empty()) {
         auto buf = *Data->LogBufferStr;
@@ -112,7 +112,7 @@ auto LogGetBuffer() -> string
 
 void WriteLogMessage(const string& message)
 {
-    SCOPE_LOCK(Data->LogLocker);
+    std::lock_guard locker(Data->LogLocker);
 
     // Avoid recursive calls
     if (Data->LogFunctionsInProcess) {

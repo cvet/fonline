@@ -451,7 +451,7 @@ static auto SystemCall(string command, const std::function<void(const string&)>&
     }
 
     STARTUPINFOW si;
-    ZeroMemory(&si, sizeof(STARTUPINFO));
+    std::memset(&si, 0, sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
     si.hStdError = out_write;
     si.hStdOutput = out_write;
@@ -459,7 +459,7 @@ static auto SystemCall(string command, const std::function<void(const string&)>&
     si.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION pi;
-    ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+    std::memset(&pi, 0, sizeof(PROCESS_INFORMATION));
 
     auto* cmd_line = _wcsdup(_str(std::move(command)).toWideChar().c_str());
     const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);

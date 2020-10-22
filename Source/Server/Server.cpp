@@ -233,7 +233,7 @@ void FOServer::Shutdown()
 
     // Clients
     {
-        SCOPE_LOCK(ConnectedClientsLocker);
+        std::lock_guard locker(ConnectedClientsLocker);
 
         for (auto* cl : ConnectedClients) {
             cl->Disconnect();
@@ -291,7 +291,7 @@ void FOServer::MainLoop()
     // Process clients
     vector<Client*> clients;
     {
-        SCOPE_LOCK(ConnectedClientsLocker);
+        std::lock_guard locker(ConnectedClientsLocker);
 
         clients = ConnectedClients;
         for (auto* cl : clients) {
@@ -305,7 +305,7 @@ void FOServer::MainLoop()
             DisconnectClient(cl);
 
             {
-                SCOPE_LOCK(ConnectedClientsLocker);
+                std::lock_guard locker(ConnectedClientsLocker);
 
                 auto it = std::find(ConnectedClients.begin(), ConnectedClients.end(), cl);
                 RUNTIME_ASSERT(it != ConnectedClients.end());
@@ -517,7 +517,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
 
     uint conn_count;
     {
-        SCOPE_LOCK(ConnectedClientsLocker);
+        std::lock_guard locker(ConnectedClientsLocker);
         conn_count = static_cast<uint>(ConnectedClients.size());
     }
 
@@ -622,7 +622,7 @@ void FOServer::OnNewConnection(NetConnection* connection)
 
     // Add to connected collection
     {
-        SCOPE_LOCK(ConnectedClientsLocker);
+        std::lock_guard locker(ConnectedClientsLocker);
 
         cl->State = ClientState::Connected;
         ConnectedClients.push_back(cl);
@@ -639,13 +639,13 @@ void FOServer::OnNewConnection(NetConnection* connection)
 void FOServer::Process(Client* cl)
 {
     if (cl->IsOffline() || cl->IsDestroyed) {
-        SCOPE_LOCK(cl->Connection->BinLocker);
+        std::lock_guard locker(cl->Connection->BinLocker);
         cl->Connection->Bin.Reset();
         return;
     }
 
     if (cl->State == ClientState::Connected) {
-        SCOPE_LOCK(cl->Connection->BinLocker);
+        std::lock_guard locker(cl->Connection->BinLocker);
 
         if (cl->Connection->Bin.IsEmpty()) {
             cl->Connection->Bin.Reset();
@@ -714,7 +714,7 @@ void FOServer::Process(Client* cl)
         }
     }
     else if (cl->State == ClientState::Transferring) {
-        SCOPE_LOCK(cl->Connection->BinLocker);
+        std::lock_guard locker(cl->Connection->BinLocker);
 
         if (cl->Connection->Bin.IsEmpty()) {
             cl->Connection->Bin.Reset();
@@ -751,7 +751,7 @@ void FOServer::Process(Client* cl)
     else if (cl->State == ClientState::Playing) {
         static const auto messages_per_cycle = 5;
         for (auto i = 0; i < messages_per_cycle; i++) {
-            SCOPE_LOCK(cl->Connection->BinLocker);
+            std::lock_guard locker(cl->Connection->BinLocker);
 
             if (cl->Connection->Bin.IsEmpty()) {
                 cl->Connection->Bin.Reset();
@@ -953,7 +953,7 @@ void FOServer::Process_Text(Client* cl)
     string listen_str[100];
 
     {
-        SCOPE_LOCK(TextListenersLocker);
+        std::lock_guard locker(TextListenersLocker);
 
         if (how_say == SAY_RADIO) {
             for (auto& tl : TextListeners) {
@@ -1083,7 +1083,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client*
 
         string str;
         {
-            SCOPE_LOCK(ConnectedClientsLocker);
+            std::lock_guard locker(ConnectedClientsLocker);
 
             str = _str("Connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.", ConnectedClients.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), GameTime.FrameTick() / 1000 / 60, (GameTime.FrameTick() - Stats.ServerStartTick) / 1000 / 60);
         }
@@ -1348,9 +1348,9 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client*
     } break;
     case CMD_RUNSCRIPT: {
         string func_name;
-        uint param0 = 0;
-        uint param1 = 0;
-        uint param2 = 0;
+        int param0 = 0;
+        int param1 = 0;
+        int param2 = 0;
         buf >> func_name;
         buf >> param0;
         buf >> param1;
@@ -1363,7 +1363,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client*
             break;
         }
 
-        if (ScriptSys.CallFunc<void, Critter*, int, int, int>(func_name, cl_, param0, param1, param2)) {
+        if (ScriptSys.CallFunc<void, Critter*, int, int, int>(func_name, static_cast<Critter*>(cl_), param0, param1, param2)) {
             logcb("Run script success.");
         }
         else {
@@ -1428,7 +1428,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client*
 
         CHECK_ALLOW_COMMAND();
 
-        SCOPE_LOCK(BannedLocker);
+        std::lock_guard locker(BannedLocker);
 
         if (_str(params).compareIgnoreCase("list")) {
             if (Banned.empty()) {
@@ -1629,7 +1629,7 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
     {
-        SCOPE_LOCK(ConnectedClientsLocker);
+        std::lock_guard locker(ConnectedClientsLocker);
 
         for (auto* cl : ConnectedClients) {
             if (cl->IsOnline()) {
@@ -1836,7 +1836,7 @@ auto FOServer::GetBanLexems(ClientBanned& ban) -> string
 
 void FOServer::ProcessBans()
 {
-    SCOPE_LOCK(BannedLocker);
+    std::lock_guard locker(BannedLocker);
 
     auto resave = false;
     const auto time = Timer::GetCurrentDateTime();
@@ -1858,7 +1858,7 @@ void FOServer::ProcessBans()
 
 void FOServer::SaveBan(ClientBanned& ban, bool expired)
 {
-    SCOPE_LOCK(BannedLocker);
+    std::lock_guard locker(BannedLocker);
 
     const string ban_file_name = (expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE);
     auto out_ban_file = FileMngr.WriteFile(ban_file_name, true);
@@ -1885,7 +1885,7 @@ void FOServer::SaveBan(ClientBanned& ban, bool expired)
 
 void FOServer::SaveBans()
 {
-    SCOPE_LOCK(BannedLocker);
+    std::lock_guard locker(BannedLocker);
 
     auto out_ban_file = FileMngr.WriteFile(BANS_FNAME_ACTIVE, false);
     for (auto& ban : Banned) {
@@ -1912,7 +1912,7 @@ void FOServer::SaveBans()
 
 void FOServer::LoadBans()
 {
-    SCOPE_LOCK(BannedLocker);
+    std::lock_guard locker(BannedLocker);
 
     Banned.clear();
 
@@ -1968,7 +1968,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
 
     // Disconnect all connected clients to force data updating
     if (!first_generation) {
-        SCOPE_LOCK(ConnectedClientsLocker);
+        std::lock_guard locker(ConnectedClientsLocker);
 
         for (auto* cl : ConnectedClients) {
             cl->Disconnect();
@@ -2436,7 +2436,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
     // Check for ban by ip
     {
-        SCOPE_LOCK(BannedLocker);
+        std::lock_guard locker(BannedLocker);
 
         const auto ip = cl->GetIp();
         auto* ban = GetBanByIp(ip);
@@ -2488,7 +2488,7 @@ void FOServer::Process_CreateClient(Client* cl)
 
     // Check brute force registration
     if (Settings.RegistrationTimeout != 0u) {
-        SCOPE_LOCK(RegIpLocker);
+        std::lock_guard locker(RegIpLocker);
 
         auto ip = cl->GetIp();
         const auto reg_tick = Settings.RegistrationTimeout * 1000;
@@ -2610,7 +2610,7 @@ void FOServer::Process_LogIn(Client*& cl)
 
     // Check for ban by ip
     {
-        SCOPE_LOCK(BannedLocker);
+        std::lock_guard locker(BannedLocker);
 
         const auto ip = cl->GetIp();
         auto* ban = GetBanByIp(ip);
@@ -2650,7 +2650,7 @@ void FOServer::Process_LogIn(Client*& cl)
 
     // Check for ban by name
     {
-        SCOPE_LOCK(BannedLocker);
+        std::lock_guard locker(BannedLocker);
 
         auto* ban = GetBanByName(cl->Name.c_str());
         if (ban != nullptr) {
@@ -2687,7 +2687,7 @@ void FOServer::Process_LogIn(Client*& cl)
     // Avatar in game
     if (cl_old != nullptr) {
         {
-            SCOPE_LOCK(ConnectedClientsLocker);
+            std::lock_guard locker(ConnectedClientsLocker);
 
             // Disconnect current connection
             if (!cl_old->Connection->IsDisconnected) {

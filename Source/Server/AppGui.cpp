@@ -810,10 +810,10 @@ static void Platform_ShowWindow(ImGuiViewport* viewport)
 
     // Hide icon from task bar
     if (viewport->Flags & ImGuiViewportFlags_NoTaskBarIcon) {
-        LONG ex_style = GetWindowLong(hwnd, GWL_EXSTYLE);
+        LONG ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
         ex_style &= ~WS_EX_APPWINDOW;
         ex_style |= WS_EX_TOOLWINDOW;
-        SetWindowLong(hwnd, GWL_EXSTYLE, ex_style);
+        SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style);
     }
 
     // SDL always activate/focus windows

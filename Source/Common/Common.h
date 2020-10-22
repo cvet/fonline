@@ -139,6 +139,11 @@
 // String formatting lib
 #include "fmt/format.h"
 
+// WinAPI implicitly included in WinRT so add it globally for macro undefining
+#if FO_UWP
+#include "WinApi-Include.h"
+#endif
+
 // Base types
 // Todo: split meanings if int8 and char in code
 // Todo: move from 32 bit hashes to 64 bit
@@ -493,32 +498,12 @@ auto constexpr operator"" _len(const char* /*str*/, size_t size) -> size_t
     return size;
 }
 
-// Undef some global symbols from implicitly included WinRT API
-#undef CopyFile
-#undef DeleteFile
-#undef PlaySound
-#undef MessageBox
-#undef GetObject
-#undef LoadImage
-#undef FindFirstFile
-#undef FindNextFile
-#undef GetClassName
-#undef MessageBox
-#undef Yield
-#undef min
-#undef max
-
 // Generic helpers
 #define STRINGIFY(x) STRINGIFY2(x)
 #define STRINGIFY2(x) #x
 #define LINE_STR STRINGIFY(__LINE__)
-#define SCOPE_LOCK(m) std::lock_guard<std::mutex> _scope_lock(m) // Non-unique name to allow only one lock per scope
 #define UNUSED_VARIABLE(x) (void)(x)
-#define NON_CONST_METHOD_HINT(some_field) _nonConstHelper = !_nonConstHelper
-#define UNIQUE_FUNCTION_NAME(name, ...) UNIQUE_FUNCTION_NAME2(MERGE_ARGS(name, __COUNTER__), __VA_ARGS__)
-#define UNIQUE_FUNCTION_NAME2(name, ...) name(__VA_ARGS__)
-#define MERGE_ARGS(a, b) MERGE_ARGS2(a, b)
-#define MERGE_ARGS2(a, b) a##b
+#define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
 #define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))

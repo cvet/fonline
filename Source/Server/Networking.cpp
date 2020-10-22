@@ -38,7 +38,6 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
-#include "WinApi-Include.h"
 
 #define ASIO_STANDALONE
 #include "asio.hpp"
@@ -56,6 +55,8 @@ using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = asio::ssl::context;
 #include "zlib.h"
+
+#include "WinApi-Include.h" // After all because ASIO using WinAPI
 
 class NetTcpServer : public NetServerBase
 {
@@ -182,7 +183,7 @@ public:
 
         // Nothing to send
         {
-            SCOPE_LOCK(BoutLocker);
+            std::lock_guard locker(BoutLocker);
             if (Bout.IsEmpty()) {
                 return;
             }
@@ -211,7 +212,7 @@ protected:
 
     auto SendCallback(uint& out_len) -> const uchar*
     {
-        SCOPE_LOCK(BoutLocker);
+        std::lock_guard locker(BoutLocker);
 
         if (Bout.IsEmpty()) {
             return nullptr;
@@ -260,7 +261,7 @@ protected:
 
     void ReceiveCallback(const uchar* buf, uint len)
     {
-        SCOPE_LOCK(BinLocker);
+        std::lock_guard locker(BinLocker);
 
         if (Bin.GetCurPos() + len < _settings.FloodSize) {
             Bin.Push(buf, len, true);

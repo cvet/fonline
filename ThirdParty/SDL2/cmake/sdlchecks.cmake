@@ -410,7 +410,7 @@ macro(CheckX11)
 
     if(X11_LIB)
       if(NOT HAVE_XEXT_H)
-        message_error("Missing Xext.h, maybe you need to install the libxext-dev package?")
+        #!message_error("Missing Xext.h, maybe you need to install the libxext-dev package?")
       endif()
 
       set(HAVE_VIDEO_X11 TRUE)

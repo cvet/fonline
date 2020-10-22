@@ -48,7 +48,7 @@
 
 #define CLIENT_OUTPUT_BEGIN(cl) \
     { \
-        SCOPE_LOCK((cl)->Connection->BoutLocker)
+        std::lock_guard locker((cl)->Connection->BoutLocker)
 #define CLIENT_OUTPUT_END(cl) \
     } \
     (cl)->Connection->Dispatch()

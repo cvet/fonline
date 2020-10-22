@@ -4273,7 +4273,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstS
     tl.FirstStr = firstStr;
     tl.Parameter = parameter;
 
-    SCOPE_LOCK(_server->TextListenersLocker);
+    std::lock_guard locker(_server->TextListenersLocker);
 
     _server->TextListeners.push_back(tl);*/
 }
@@ -4291,7 +4291,7 @@ FO_API_GLOBAL_SERVER_FUNC(EraseTextListener, FO_API_RET(void), FO_API_ARG(int, s
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstStr) FO_API_ARG_MARSHAL(uint, parameter))
 {
-    /*SCOPE_LOCK(_server->TextListenersLocker);
+    /*std::lock_guard locker(_server->TextListenersLocker);
 
     for (auto it = _server->TextListeners.begin(), end = _server->TextListeners.end(); it != end; ++it)
     {

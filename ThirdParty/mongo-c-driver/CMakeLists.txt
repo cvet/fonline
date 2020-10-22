@@ -627,12 +627,12 @@ endif()
 #! -
 
 set(THREADS_PREFER_PTHREAD_FLAG 1)
-find_package (Threads REQUIRED)
+#!find_package (Threads REQUIRED)
 if(CMAKE_USE_PTHREADS_INIT)
    set(THREAD_LIB ${CMAKE_THREAD_LIBS_INIT})
 endif()
 
-set (LIBS ${SASL_LIBS} ${SSL_LIBS} ${SHM_LIB} ${SNAPPY_LIBS} Threads::Threads)
+set (LIBS ${SASL_LIBS} ${SSL_LIBS} ${SHM_LIB} ${SNAPPY_LIBS}) #! Threads::Threads)
 if(WIN32)
    set (LIBS ${LIBS} ws2_32)
 endif()
