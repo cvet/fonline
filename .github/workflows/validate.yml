@@ -6,222 +6,191 @@ jobs:
   win32-client:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win32-client
   win64-client:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-client
   uwp-client:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat uwp-client
   linux-client:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh linux-client
+  linux-gcc-client:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh linux-gcc-client
   android-arm-client:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh android-arm-client
   android-arm64-client:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh android-arm64-client
   android-x86-client:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh android-x86-client
   web-client:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh web-client
   mac-client:
     runs-on: macos-10.15
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh mac-client
   ios-client:
     runs-on: macos-10.15
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh ios-client
   win64-server:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-server
   linux-server:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh linux-server
+  linux-gcc-server:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh linux-gcc-server
   win32-single:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win32-single
   win64-single:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-single
   uwp-single:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat uwp-single
   linux-single:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh linux-single
+  linux-gcc-single:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh linux-gcc-single
   android-arm-single:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh android-arm-single
   android-arm64-single:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh android-arm64-single
   android-x86-single:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh android-x86-single
   web-single:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh web-single
   mac-single:
     runs-on: macos-10.15
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh mac-single
   ios-single:
     runs-on: macos-10.15
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh ios-single
   win64-mapper:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-mapper
   linux-mapper:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh linux-mapper
+  linux-gcc-mapper:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh linux-gcc-mapper
   win64-ascompiler:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-ascompiler
   linux-ascompiler:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh linux-ascompiler
+  linux-gcc-ascompiler:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh linux-gcc-ascompiler
   win64-baker:
     runs-on: windows-2019
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-baker
   linux-baker:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh linux-baker
+  linux-gcc-baker:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh linux-gcc-baker
   unit-tests:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - run: BuildTools/validate.sh unit-tests
   code-coverage:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+    - uses: actions/checkout@v2
     - env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       run: BuildTools/validate.sh code-coverage
   check-formatting:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-    - uses: DoozyX/clang-format-lint-action@v0.5
+    - uses: actions/checkout@v2
+    - uses: DoozyX/clang-format-lint-action@v0.11
       with:
         source: ./Source
+        extensions: 'h,cpp'
         clangFormatVersion: 10
