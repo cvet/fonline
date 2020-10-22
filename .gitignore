@@ -5,5 +5,6 @@ Temp
 .vscode
 .theia
 .cache
-build**
-cmake-build**
+[Bb]uild
+[Bb]uild-**
+[Cc]make-[Bb]uild**
