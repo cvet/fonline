@@ -453,9 +453,9 @@ public:
         }
 
         // Check offset
-        if( offset < 0 || offset + size >= data_size )
+        if( offset < 0 || offset + size > data_size )
         {
-            WriteLog( "Error in 'bindfield' pragma<%s>, wrong offset<%d> data.\n", text.c_str(), offset );
+            WriteLog( "Error in 'bindfield' pragma<%s>, wrong offset<%d> data. Size <%d><%d>\n", text.c_str(), offset, size, data_size);
             return;
         }
 

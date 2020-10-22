@@ -233,8 +233,15 @@ public:
     uchar  ChildLines[ ITEM_MAX_CHILDS ][ ITEM_MAX_CHILD_LINES ];
 
     // User data, binded with 'bindfield' pragma
-    int UserData[ PROTO_ITEM_USER_DATA_SIZE / sizeof( int ) ];
-
+	union
+	{
+		int UserData[PROTO_ITEM_USER_DATA_SIZE / sizeof(int)];
+		struct 
+		{
+			int Unknow[ ( PROTO_ITEM_USER_DATA_SIZE / sizeof(int) ) - 1];
+			uint EffectSpeed;
+		} FORPData;
+	};
     // Type specific data
     bool   Weapon_IsUnarmed;
     int    Weapon_UnarmedTree;
