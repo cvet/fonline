@@ -1165,6 +1165,7 @@ void FOClient::ParseKeyboard()
         KeyboardEventsLocker.Lock();
         KeyboardEvents.clear();
         KeyboardEventsLocker.Unlock();
+        DropScroll();
 
         Keyb::Lost();
         Timer::StartAccelerator( ACCELERATE_NONE );
