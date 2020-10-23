@@ -40,7 +40,6 @@
 #include "PropertiesSerializator.h"
 #include "Server.h"
 #include "Sprites.h"
-#include "Version-Include.h"
 
 #include "sha1.h"
 #include "sha2.h"

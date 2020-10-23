@@ -35,7 +35,6 @@
 #include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
 
 EffectManager::EffectManager(EffectSettings& settings, FileManager& file_mngr, GameTimer& game_time) : _settings {settings}, _fileMngr {file_mngr}, _gameTime {game_time}
 {

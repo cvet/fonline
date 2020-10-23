@@ -37,7 +37,9 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
+#if FO_NO_FBXSDK
 #include "fbxsdk.h"
+#endif
 
 // Linker errors workaround
 #define MeshData BakerMeshData
@@ -175,6 +177,7 @@ struct AnimSet
 
 ModelBaker::ModelBaker(FileCollection& all_files) : _allFiles {all_files}
 {
+#if FO_HAVE_FBXSDK
     _fbxManager = FbxManager::Create();
     if (_fbxManager == nullptr) {
         throw GenericException("Unable to create FBX Manager");
@@ -186,11 +189,14 @@ ModelBaker::ModelBaker(FileCollection& all_files) : _allFiles {all_files}
 
     // Load plugins from the executable directory (optional)
     _fbxManager->LoadPluginsDirectory(FbxGetApplicationDirectory().Buffer());
+#endif
 }
 
 ModelBaker::~ModelBaker()
 {
+#if FO_HAVE_FBXSDK
     _fbxManager->Destroy();
+#endif
 }
 
 void ModelBaker::AutoBakeModels()
@@ -221,6 +227,7 @@ void ModelBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
     }
 }
 
+#if FO_HAVE_FBXSDK
 class FbxStreamImpl : public FbxStream
 {
 public:
@@ -570,7 +577,6 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
                 v.TexCoordBase[0] = v.TexCoord[0];
                 v.TexCoordBase[1] = v.TexCoord[1];
             }
-#undef FBX_GET_ELEMENT
 
             v.BlendIndices[0] = -1.0f;
             v.BlendIndices[1] = -1.0f;
@@ -713,3 +719,10 @@ static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44
 {
     return mat44(static_cast<float>(m.Get(0, 0)), static_cast<float>(m.Get(1, 0)), static_cast<float>(m.Get(2, 0)), static_cast<float>(m.Get(3, 0)), static_cast<float>(m.Get(0, 1)), static_cast<float>(m.Get(1, 1)), static_cast<float>(m.Get(2, 1)), static_cast<float>(m.Get(3, 1)), static_cast<float>(m.Get(0, 2)), static_cast<float>(m.Get(1, 2)), static_cast<float>(m.Get(2, 2)), static_cast<float>(m.Get(3, 2)), static_cast<float>(m.Get(0, 3)), static_cast<float>(m.Get(1, 3)), static_cast<float>(m.Get(2, 3)), static_cast<float>(m.Get(3, 3)));
 }
+
+#else
+auto ModelBaker::BakeFile(const string& fname, File& file) -> vector<uchar>
+{
+    throw NotSupportedException("ModelBaker::BakeFile");
+}
+#endif

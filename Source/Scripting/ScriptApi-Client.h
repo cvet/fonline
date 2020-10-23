@@ -826,7 +826,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
         _client->TryExit();
     }
     else if (cmd == "Version") {
-        FO_API_RETURN(_str("{}", FO_VERSION));
+        // FO_API_RETURN(_str("{}", FO_VERSION));
+        FO_API_RETURN(_str("{}", "Unsupported"));
     }
     else if (cmd == "BytesSend") {
         FO_API_RETURN(_str("{}", _client->BytesSend));

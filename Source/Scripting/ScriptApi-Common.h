@@ -35,7 +35,6 @@
 #include "GenericUtils.h"
 #include "StringUtils.h"
 #include "Timer.h"
-#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #include "sha1.h"

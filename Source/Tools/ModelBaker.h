@@ -37,10 +37,12 @@
 
 #include "FileSystem.h"
 
+#if FO_HAVE_FBXSDK
 namespace fbxsdk
 {
     class FbxManager;
 } // namespace fbxsdk
+#endif
 
 class ModelBaker final
 {
@@ -61,5 +63,7 @@ private:
 
     FileCollection& _allFiles;
     map<string, vector<uchar>> _bakedFiles {};
+#if FO_HAVE_FBXSDK
     fbxsdk::FbxManager* _fbxManager {};
+#endif
 };

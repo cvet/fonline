@@ -88,10 +88,10 @@ static void AdminManager(FOServer* server, ushort port)
     }
 #endif
 
-#if FO_WINDOWS
-    const auto sock_type = SOCK_STREAM;
-#else
+#if FO_LINUX
     const auto sock_type = SOCK_STREAM | SOCK_CLOEXEC;
+#else
+    const auto sock_type = SOCK_STREAM;
 #endif
     const auto listen_sock = socket(AF_INET, sock_type, 0);
     if (listen_sock == INVALID_SOCKET) {
