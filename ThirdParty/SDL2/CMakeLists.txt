@@ -761,8 +761,8 @@ if(LIBC)
     foreach(_FN
             malloc calloc realloc free qsort abs memset memcpy memmove memcmp
             wcslen wcsdup wcsstr wcscmp wcsncmp
-            strlen _strrev _strupr _strlwr strchr strrchr strstr itoa _ltoa
-            _ultoa strtol strtoul strtoll strtod atoi atof strcmp strncmp
+            strlen _strupr _strlwr strchr strrchr strstr
+            strtol strtoul strtoll strtod atoi atof strcmp strncmp
             _stricmp _strnicmp strtok_s sscanf
             acos acosf asin asinf atan atanf atan2 atan2f ceil ceilf
             copysign copysignf cos cosf exp expf fabs fabsf floor floorf fmod fmodf
@@ -797,11 +797,11 @@ if(LIBC)
     foreach(_FN
             strtod malloc calloc realloc free getenv setenv putenv unsetenv
             qsort abs bcopy memset memcpy memmove memcmp strlen strlcpy strlcat
-            _strrev _strupr _strlwr strchr strrchr strstr strtok_r itoa _ltoa
-            _uitoa _ultoa strtol strtoul _i64toa _ui64toa strtoll strtoull
+            _strupr _strlwr strchr strrchr strstr strtok_r
+            _uitoa strtol strtoul _i64toa _ui64toa strtoll strtoull
             atoi atof strcmp strncmp _stricmp strcasecmp _strnicmp strncasecmp
-            wcscmp wcsdup wcslcat wcslcpy wcslen wcsncmp wcsstr
-            sscanf vsscanf vsnprintf fopen64 fseeko fseeko64 sigaction setjmp
+            wcscmp wcsdup wcslen wcsncmp wcsstr
+            sscanf vsscanf vsnprintf fopen64 fseeko sigaction setjmp
             nanosleep sysconf sysctlbyname getauxval poll _Exit
             )
       string(TOUPPER ${_FN} _UPPER)

@@ -39,6 +39,7 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
+#if FO_HAVE_ASIO
 #define ASIO_STANDALONE
 #include "asio.hpp"
 #define _WEBSOCKETPP_CPP11_FUNCTIONAL_
@@ -54,10 +55,13 @@
 using web_sockets_tls = websocketpp::server<websocketpp::config::asio_tls>;
 using web_sockets_no_tls = websocketpp::server<websocketpp::config::asio>;
 using ssl_context = asio::ssl::context;
+#endif
+
 #include "zlib.h"
 
 #include "WinApi-Include.h" // After all because ASIO using WinAPI
 
+#if FO_HAVE_ASIO
 class NetTcpServer : public NetServerBase
 {
 public:
@@ -572,9 +576,11 @@ auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& /*hdl*
     ctx->use_private_key_file(_settings.WssPrivateKey, ssl_context::pem);
     return ctx;
 }
+#endif // FO_HAVE_ASIO
 
 auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*
 {
+#if FO_HAVE_ASIO
     try {
         return new NetTcpServer(settings, callback);
     }
@@ -582,10 +588,14 @@ auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const Connec
         WriteLog("Can't start Tcp server: {}.\n", ex.what());
         return nullptr;
     }
+#else
+    throw NotSupportedException("NetServerBase::StartTcpServer");
+#endif
 }
 
 auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*
 {
+#if FO_HAVE_ASIO
     try {
         if (!settings.SecuredWebSockets) {
             return new NetNoTlsWebSocketsServer(settings, callback);
@@ -597,4 +607,7 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const
         WriteLog("Can't start Web sockets server: {}.\n", ex.what());
         return nullptr;
     }
+#else
+    throw NotSupportedException("NetServerBase::StartWebSocketsServer");
+#endif
 }

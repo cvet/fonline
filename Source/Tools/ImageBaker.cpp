@@ -298,7 +298,7 @@ auto ImageBaker::LoadFofrm(const string& fname, const string& /*opt*/, File& fil
         }
 
         // No frames found or error
-        if (no_info || load_fail || sub_collections.empty() || dir > 0 && frames != collection.SequenceSize) {
+        if (no_info || load_fail || sub_collections.empty() || (dir > 0 && frames != collection.SequenceSize)) {
             if (no_info && dir == 1) {
                 break;
             }
@@ -1430,7 +1430,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
                 fm_images.GoForward(rle_size);
                 uchar def_color = 0;
 
-                if (zar[5] != 0 || strcmp(zar, "<zar>") != 0 || subtype != 0x34 && subtype != 0x35 || palette_present == 1) {
+                if (zar[5] != 0 || strcmp(zar, "<zar>") != 0 || (subtype != 0x34 && subtype != 0x35) || palette_present == 1) {
                     throw ImageBakerException("Invalid SPR file innded ZAR header", fname);
                 }
 

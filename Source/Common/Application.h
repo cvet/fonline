@@ -444,6 +444,9 @@ public:
     auto operator=(Application&&) noexcept = delete;
     ~Application() = default;
 
+#if FO_IOS
+    void SetMainLoopCallback(void (*callback)(void*));
+#endif
     void BeginFrame();
     void EndFrame();
 

@@ -1337,7 +1337,7 @@ auto FOClient::NetInput(bool unpack) -> int
     buf.len = static_cast<uint>(ComBuf.size());
     if (WSARecv(Sock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-    int len = recv(Sock, &ComBuf[0], (uint)ComBuf.size(), 0);
+    int len = static_cast<int>(recv(Sock, ComBuf.data(), ComBuf.size(), 0));
     if (len == SOCKET_ERROR)
 #endif
     {
@@ -1355,11 +1355,11 @@ auto FOClient::NetInput(bool unpack) -> int
 
 #if FO_WINDOWS
         flags = 0;
-        buf.buf = reinterpret_cast<char*>(&ComBuf[0]) + whole_len;
+        buf.buf = reinterpret_cast<char*>(ComBuf.data()) + whole_len;
         buf.len = static_cast<uint>(ComBuf.size()) - whole_len;
         if (WSARecv(Sock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-        len = recv(Sock, &ComBuf[0] + whole_len, (uint)ComBuf.size() - whole_len, 0);
+        len = static_cast<int>(recv(Sock, ComBuf.data() + whole_len, ComBuf.size() - whole_len, 0));
         if (len == SOCKET_ERROR)
 #endif
         {

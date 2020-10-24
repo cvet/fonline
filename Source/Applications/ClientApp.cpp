@@ -146,8 +146,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
 #if FO_IOS
         ClientEntry(nullptr);
-        SDL_iPhoneSetAnimationCallback(SprMngr_MainWindow, 1, ClientEntry, nullptr);
-        return 0;
+        App->SetMainLoopCallback(ClientEntry);
 
 #elif FO_WEB
         EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(

@@ -49,6 +49,7 @@
 #include "GL/glew.h"
 #include "SDL_opengl.h"
 #else
+#define GLES_SILENCE_DEPRECATION
 #include "SDL_opengles2.h"
 #endif
 #endif
@@ -849,6 +850,15 @@ Application::Application(GlobalSettings& settings)
     ::_CrtMemCheckpoint(&CrtMemState);
 #endif
 }
+
+#if FO_IOS
+void Application::SetMainLoopCallback(void (*callback)(void*))
+{
+#if !FO_HEADLESS
+    SDL_iPhoneSetAnimationCallback(SdlWindow, 1, callback, nullptr);
+#endif
+}
+#endif
 
 void Application::BeginFrame()
 {

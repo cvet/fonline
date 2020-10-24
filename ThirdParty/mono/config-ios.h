@@ -1281,7 +1281,9 @@
 /* #undef HAVE__FINITE */
 
 /* ... */
-//#define HOST_AMD64 1
+#ifdef IOS_SIMULATOR
+#define HOST_AMD64 1
+#endif
 
 /* Targeting the Android platform */
 /* #undef HOST_ANDROID */
@@ -1291,7 +1293,9 @@
 
 /* ... */
 /* #undef HOST_ARM64 */
+#ifndef IOS_SIMULATOR
 #define HOST_ARM64
+#endif
 
 /* Host Platform is Darwin */
 #define HOST_DARWIN 1
@@ -1456,7 +1460,9 @@
 /* #undef STRERROR_R_CHAR_P */
 
 /* ... */
-//#define TARGET_AMD64 1
+#ifdef IOS_SIMULATOR
+#define TARGET_AMD64 1
+#endif
 
 /* ... */
 /* #undef TARGET_ANDROID */
@@ -1466,7 +1472,9 @@
 
 /* ... */
 /* #undef TARGET_ARM64 */
+#ifndef IOS_SIMULATOR
 #define TARGET_ARM64 1
+#endif
 
 /* byte order of target */
 #define TARGET_BYTE_ORDER G_BYTE_ORDER
@@ -1538,13 +1546,13 @@
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
 #if defined AC_APPLE_UNIVERSAL_BUILD
-# if defined __BIG_ENDIAN__
-#  define WORDS_BIGENDIAN 1
-# endif
+#if defined __BIG_ENDIAN__
+#define WORDS_BIGENDIAN 1
+#endif
 #else
-# ifndef WORDS_BIGENDIAN
+#ifndef WORDS_BIGENDIAN
 /* #  undef WORDS_BIGENDIAN */
-# endif
+#endif
 #endif
 
 /* 64 bit mode with 4 byte longs and pointers */

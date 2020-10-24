@@ -140,7 +140,7 @@ elseif( ANDROID )
 	else()
 		message( FATAL_ERROR "Unknown ANDROID_ABI" )
 	endif()
-elseif( APPLE AND PLATFORM )
+elseif( APPLE AND PLATFORM STREQUAL "OS64" )
 	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		set( LIBMINI_ARCH_SOURCE
 			"repo/mono/mini/mini-arm64.c"
@@ -628,7 +628,7 @@ set( LIBMONOUTILS_ARCH_SOURCE
 	#"repo/mono/utils/mach-support-unknown.c"
 	#"repo/mono/utils/mono-hwcap-cross.c"
 )
-if( APPLE AND PLATFORM )
+if( APPLE AND PLATFORM STREQUAL "OS64" )
 	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
 		set( LIBMONOUTILS_ARCH_SOURCE ${LIBMONOUTILS_ARCH_SOURCE}
 			"repo/mono/utils/mono-hwcap-arm64.c"

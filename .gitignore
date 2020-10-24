@@ -5,6 +5,7 @@ Temp
 .vscode
 .theia
 .cache
+.DS_Store
 [Bb]uild
 [Bb]uild-**
 [Cc]make-[Bb]uild**

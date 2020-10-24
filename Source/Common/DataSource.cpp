@@ -658,7 +658,7 @@ ZipFile::ZipFile(const string& fname)
         ffunc.zopen_file = [](voidpf opaque, const char*, int) -> voidpf { return opaque; };
         ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
             auto* file = static_cast<DiskFile*>(stream);
-            return file->Read(buf, size) ? size : 0;
+            return file->Read(buf, static_cast<uint>(size)) ? size : 0;
         };
         ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
         ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
@@ -669,13 +669,13 @@ ZipFile::ZipFile(const string& fname)
             auto* file = static_cast<DiskFile*>(stream);
             switch (origin) {
             case ZLIB_FILEFUNC_SEEK_SET:
-                file->SetPos(offset, DiskFileSeek::Set);
+                file->SetPos(static_cast<int>(offset), DiskFileSeek::Set);
                 break;
             case ZLIB_FILEFUNC_SEEK_CUR:
-                file->SetPos(offset, DiskFileSeek::Cur);
+                file->SetPos(static_cast<int>(offset), DiskFileSeek::Cur);
                 break;
             case ZLIB_FILEFUNC_SEEK_END:
-                file->SetPos(offset, DiskFileSeek::End);
+                file->SetPos(static_cast<int>(offset), DiskFileSeek::End);
                 break;
             default:
                 return -1;
@@ -736,7 +736,7 @@ ZipFile::ZipFile(const string& fname)
                 mem_stream->Pos += static_cast<uint>(offset);
                 break;
             case ZLIB_FILEFUNC_SEEK_END:
-                mem_stream->Pos = mem_stream->Length + offset;
+                mem_stream->Pos = mem_stream->Length + static_cast<uint>(offset);
                 break;
             default:
                 return -1;
