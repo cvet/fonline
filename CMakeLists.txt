@@ -146,6 +146,10 @@ set( FO_MONO_ASSEMBLIES "" )
 set( FO_CONFIGS "" )
 set( FO_PACKAGES "" )
 
+# Some info about build
+StatusMessage( "Compiler: ${CMAKE_CXX_COMPILER_ID}" )
+StatusMessage( "Generator: ${CMAKE_GENERATOR}" )
+
 # Build configuration
 set( CMAKE_BUILD_TYPE "${CMAKE_BUILD_TYPE}" )
 if( CMAKE_BUILD_TYPE STREQUAL "" )
@@ -696,6 +700,8 @@ set( SDL_FILE ON CACHE BOOL "Forced by FOnline" FORCE )
 set( SDL_CPUINFO OFF CACHE BOOL "Forced by FOnline" FORCE )
 set( SDL_FILESYSTEM OFF CACHE BOOL "Forced by FOnline" FORCE )
 set( SDL_DLOPEN ON CACHE BOOL "Forced by FOnline" FORCE )
+set( RENDER_D3D OFF CACHE BOOL "Forced by FOnline" FORCE )
+set( LIBC ON CACHE BOOL "Forced by FOnline" FORCE )
 if( ANDROID )
 	set( PTHREADS OFF CACHE BOOL "Forced by FOnline" FORCE )
 	set( HIDAPI OFF CACHE BOOL "Forced by FOnline" FORCE )
@@ -822,11 +828,10 @@ StatusMessage( "+ Assimp headers" )
 include_directories( "ThirdParty/AssimpMath" )
 
 # Fbx SDK
-if( ( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND ( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" ) )
-	if( NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
-		message( FATAL_ERROR "Using of FBX SDK for non 64 bit builds is not supported" )
-	endif()
-
+if( FONLINE_BUILD_BAKER AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
+	message( FATAL_ERROR "Using of FBX SDK for non 64 bit builds is not supported" )
+endif()
+if( ( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND ( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" ) AND CMAKE_SIZEOF_VOID_P EQUAL 8 )
 	StatusMessage( "+ Fbx SDK" )
 	set( FO_FBXSDK_DIR "ThirdParty/fbxsdk" )
 	include_directories( "${FO_FBXSDK_DIR}" )
@@ -837,7 +842,6 @@ if( ( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND (
 	else()
 		list( APPEND FO_BAKER_SYSTEM_LIBS "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/fbxsdk/libfbxsdk.so" )
 	endif()
-
 	list( APPEND FO_BUILD_DEFINES "FO_HAVE_FBXSDK=1" )
 else()
 	list( APPEND FO_BUILD_DEFINES "FO_HAVE_FBXSDK=0" )
