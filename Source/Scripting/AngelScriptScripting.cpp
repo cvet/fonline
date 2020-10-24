@@ -31,6 +31,11 @@
 // SOFTWARE.
 //
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wunused-function"
+#endif
+
 #if !FO_ANGELSCRIPT_COMPILER
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #include "ServerScripting.h"

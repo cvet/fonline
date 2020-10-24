@@ -220,6 +220,7 @@ done:
     return has_CPUID;
 }
 
+#ifndef SDL_CPUINFO_DISABLED
 #if defined(__GNUC__) && defined(i386)
 #define cpuid(func, a, b, c, d) \
     __asm__ __volatile__ ( \
@@ -259,6 +260,10 @@ done:
     c = CPUInfo[2]; \
     d = CPUInfo[3]; \
 }
+#else
+#define cpuid(func, a, b, c, d) \
+    do { a = b = c = d = 0; (void) a; (void) b; (void) c; (void) d; } while (0)
+#endif
 #else
 #define cpuid(func, a, b, c, d) \
     do { a = b = c = d = 0; (void) a; (void) b; (void) c; (void) d; } while (0)

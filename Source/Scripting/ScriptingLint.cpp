@@ -31,6 +31,11 @@
 // SOFTWARE.
 //
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wunused-function"
+#endif
+
 #include "Common.h"
 
 #include "Client.h"
