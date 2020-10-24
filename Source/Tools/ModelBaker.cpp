@@ -37,7 +37,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-#if FO_NO_FBXSDK
+#if FO_HAVE_FBXSDK
 #include "fbxsdk.h"
 #endif
 

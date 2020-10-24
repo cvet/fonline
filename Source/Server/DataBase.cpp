@@ -34,7 +34,6 @@
 #include "DataBase.h"
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
-#include "WinApi-Include.h"
 
 #if FO_HAVE_JSON
 #include "json.hpp"
@@ -46,6 +45,8 @@
 #include "mongoc.h"
 #endif
 #include "bson.h"
+
+#include "WinApi-Include.h"
 
 class DataBaseImpl
 {
@@ -1075,7 +1076,7 @@ protected:
             return DataBase::Document();
         }
 
-        Document doc;
+        DataBase::Document doc;
         BsonToDocument(bson, doc);
 
         mongoc_cursor_destroy(cursor);
