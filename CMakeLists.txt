@@ -563,6 +563,9 @@ if( FO_MONO_SCRIPTING )
 endif()
 
 # Compiler options
+if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
+	list( APPEND FO_BUILD_OPTIONS "--param=max-vartrack-size=1000000" )
+endif()
 set( FO_BUILD_OPTIONS "${FO_BUILD_OPTIONS}" )
 string( REPLACE ";" " " FO_BUILD_OPTIONS "${FO_BUILD_OPTIONS}" )
 string( STRIP "${FO_BUILD_OPTIONS}" FO_BUILD_OPTIONS )
@@ -918,6 +921,7 @@ if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND 
 		"${CMAKE_CURRENT_SOURCE_DIR}/${FO_MONGODB_DIR}/src/mongoc" CACHE STRING "Forced by FOnline" FORCE )
 	include_directories( "${MONGOC_INCLUDE_DIR}" )
 	target_compile_definitions( mongoc_static PRIVATE "BSON_COMPILATION;BSON_STATIC;JSONSL_PARSE_NAN" )
+	target_link_libraries( mongoc_static "ssl" "crypto" )
 	list( APPEND FO_SERVER_LIBS "mongoc_static" )
 	DisableLibWarnings( mongoc_static )
 	list( APPEND FO_BUILD_DEFINES "FO_HAVE_MONGO=1" )
