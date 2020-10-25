@@ -29,14 +29,14 @@ if [%1] == [win32-client] (
     set BUILD_TARGET=FONLINE_BUILD_CLIENT
     set BUILD_ARCH=x64
     set BUILD_CACHE=uwp.cache.cmake
-) else if [%1] == [win-clang-client] (
+) else if [%1] == [win64-clang-client] (
     set BUILD_TARGET=FONLINE_BUILD_CLIENT
     set BUILD_ARCH=x64
     set BUILD_TOOLSET=LLVM_v142
 ) else if [%1] == [win64-server] (
     set BUILD_TARGET=FONLINE_BUILD_SERVER
     set BUILD_ARCH=x64
-) else if [%1] == [win-clang-server] (
+) else if [%1] == [win64-clang-server] (
     set BUILD_TARGET=FONLINE_BUILD_SERVER
     set BUILD_ARCH=x64
     set BUILD_TOOLSET=LLVM_v142
@@ -60,19 +60,19 @@ if [%1] == [win32-client] (
 ) else if [%1] == [win64-ascompiler] (
     set BUILD_TARGET=FONLINE_BUILD_ASCOMPILER
     set BUILD_ARCH=x64
-) else if [%1] == [win-clang-ascompiler] (
+) else if [%1] == [win64-clang-ascompiler] (
     set BUILD_TARGET=FONLINE_BUILD_ASCOMPILER
     set BUILD_ARCH=x64
     set BUILD_TOOLSET=LLVM_v142
 ) else if [%1] == [win64-baker] (
     set BUILD_TARGET=FONLINE_BUILD_BAKER
     set BUILD_ARCH=x64
-) else if [%1] == [win-clang-baker] (
+) else if [%1] == [win64-clang-baker] (
     set BUILD_TARGET=FONLINE_BUILD_BAKER
     set BUILD_ARCH=x64
     set BUILD_TOOLSET=LLVM_v142
 ) else (
-    echo Invalid build argument, allowed only win32 or win64
+    echo Invalid build argument
     exit /b 1
 )
 
