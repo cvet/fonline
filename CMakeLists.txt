@@ -147,7 +147,7 @@ set( FO_CONFIGS "" )
 set( FO_PACKAGES "" )
 
 # Some info about build
-StatusMessage( "Compiler: ${CMAKE_CXX_COMPILER_ID}" )
+StatusMessage( "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}" )
 StatusMessage( "Generator: ${CMAKE_GENERATOR}" )
 
 # Build configuration
@@ -168,15 +168,6 @@ StatusMessage( "Configuration: ${FO_BUILD_CONFIGURATION}" )
 
 set( CMAKE_CONFIGURATION_TYPES "${FO_BUILD_CONFIGURATION}" CACHE STRING "Forced by FOnline" FORCE )
 set( CMAKE_BUILD_TYPE "${FO_BUILD_CONFIGURATION}" CACHE STRING "Forced by FOnline" FORCE )
-
-# Architecture configuration
-if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
-	StatusMessage( "CPU architecture: 64-bit" )
-elseif( CMAKE_SIZEOF_VOID_P EQUAL 4 )
-	StatusMessage( "CPU architecture: 32-bit" )
-else()
-	message( FATAL_ERROR "Invalid pointer size, nor 8 or 4 bytes" )
-endif()
 
 # Basic setup
 if( FO_DEBUG_BUILD )
@@ -409,6 +400,15 @@ endif()
 
 string( TOUPPER "${FO_OS}" FO_OS_UPPER )
 list( APPEND FO_BUILD_DEFINES "FO_${FO_OS_UPPER}" )
+
+# Information about CPU architecture
+if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+	StatusMessage( "CPU architecture: 64-bit" )
+elseif( CMAKE_SIZEOF_VOID_P EQUAL 4 )
+	StatusMessage( "CPU architecture: 32-bit" )
+else()
+	message( FATAL_ERROR "Invalid pointer size, nor 8 or 4 bytes" )
+endif()
 
 # Output path
 StatusMessage( "Output path: ${FONLINE_OUTPUT_PATH}" )
