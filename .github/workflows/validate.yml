@@ -18,6 +18,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: BuildTools\validate.bat uwp-client
+  win64-clang-client:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools\validate.bat win64-clang-client
   linux-client:
     runs-on: ubuntu-20.04
     steps:
@@ -63,6 +68,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-server
+  win64-clang-server:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools\validate.bat win64-clang-server
   linux-server:
     runs-on: ubuntu-20.04
     steps:
@@ -83,6 +93,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-single
+  win64-clang-single:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools\validate.bat win64-clang-single
   uwp-single:
     runs-on: windows-2019
     steps:
@@ -133,6 +148,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-mapper
+  win64-clang-mapper:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools\validate.bat win64-clang-mapper
   linux-mapper:
     runs-on: ubuntu-20.04
     steps:
@@ -148,6 +168,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-ascompiler
+  win64-clang-ascompiler:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools\validate.bat win64-clang-ascompiler
   linux-ascompiler:
     runs-on: ubuntu-20.04
     steps:
@@ -163,6 +188,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: BuildTools\validate.bat win64-baker
+  win64-clang-baker:
+    runs-on: windows-2019
+    steps:
+    - uses: actions/checkout@v2
+    - run: BuildTools\validate.bat win64-clang-baker
   linux-baker:
     runs-on: ubuntu-20.04
     steps:
