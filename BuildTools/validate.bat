@@ -80,7 +80,7 @@ set BUILD_DIR=validate-%1
 if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 cd %BUILD_DIR%
 
-if [%BUILD_TOOLSET%] != [] (
+if not [%BUILD_TOOLSET%] == [] (
     cmake -A %BUILD_ARCH% -T %BUILD_TOOLSET% -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
 ) else if [%BUILD_CACHE%] == [] (
     cmake -A %BUILD_ARCH% -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
