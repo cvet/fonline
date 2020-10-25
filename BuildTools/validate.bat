@@ -87,4 +87,4 @@ if [%BUILD_TOOLSET%] != [] (
 ) else (
     cmake -A %BUILD_ARCH% -C "%FO_ROOT%\BuildTool\%BUILD_CACHE%" -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
 )
-cmake --build . --config Debug --parallel
+cmake --build . --config Debug

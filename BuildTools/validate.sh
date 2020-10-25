@@ -9,7 +9,7 @@ if [ "$1" = "linux-client" ]; then
 elif [ "$1" = "linux-gcc-client" ]; then
     TARGET=linux
     BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_UNIT_TESTS=0 -DCMAKE_BUILD_TYPE=Debug"
-	USE_GCC=1
+    USE_GCC=1
 elif [ "$1" = "android-arm-client" ]; then
     TARGET=android
     BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_UNIT_TESTS=0 -DCMAKE_BUILD_TYPE=Debug"
@@ -111,13 +111,13 @@ if [ "$TARGET" = "linux" ]; then
 	fi
 
     cmake -G "Unix Makefiles" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug --parallel
+    cmake --build . --config Debug
 
 elif [ "$TARGET" = "web" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
     cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug --parallel
+    cmake --build . --config Debug
 
 elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET" = "android-x86" ]; then
     if [ "$TARGET" = "android" ]; then
@@ -132,7 +132,7 @@ elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET"
     fi
 
     cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug --parallel
+    cmake --build . --config Debug
 
 elif [ "$TARGET" = "mac" ] || [ "$TARGET" = "ios" ]; then
     if [ -x "$(command -v cmake)" ]; then
