@@ -958,6 +958,27 @@ if( WIN32 )
 	target_compile_options( libmono PRIVATE "/wd4146" "/wd4703" "/wd4996" )
 	target_link_libraries( libmono "mswsock" "ws2_32" "ole32" "oleaut32" "psapi" "version" "advapi32" "winmm" "kernel32" "iphlpapi" )
 else()
+	if( EMSCRIPTEN )
+		set( EXTRA_SOURCE "${CMAKE_BINARY_DIR}/mono/driver_wasm.c" )
+		configure_file( "repo/sdks/wasm/driver.c" "${CMAKE_BINARY_DIR}/mono/driver_wasm.c" COPYONLY )
+	endif()
+	if( ANDROID )
+		set( EXTRA_SOURCE "tkill.c" "repo/support/libm/complex.c" )
+	endif()
+	if( APPLE AND PLATFORM )
+		include_directories( "repo/support/ios" )
+	endif()
+
+	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -fno-strict-aliasing -fwrapv" )
+	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g" )
+
+	add_library( libmono STATIC ${EXTRA_SOURCE}
+		${EGLIB_COMMON_SOURCE} ${EGLIB_POSIX_SOURCE}
+		${LIBGCMONOSGEN_SOURCE}
+		${LIBMINI_ARCH_SOURCE} ${LIBMINI_COMMON_SOURCE} ${LIBMINI_INTERP_SOURCE} ${LIBMINI_POSIX_SOURCE}
+		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
+		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
+
 	# target_compile_definitions( libmono PRIVATE "-mms-bitfields" )
 	# target_compile_definitions( libmono PRIVATE "-mwindows" )
 
@@ -974,18 +995,11 @@ else()
 		target_compile_definitions( libmono PRIVATE "_REENTRANT" )
 		target_compile_definitions( libmono PRIVATE "GC_LINUX_THREADS" )
 	endif()
-	if( APPLE AND PLATFORM )
-		include_directories( "repo/support/ios" )
-	endif()
 	if( EMSCRIPTEN )
-		set( EXTRA_SOURCE "${CMAKE_BINARY_DIR}/mono/driver_wasm.c" )
-		configure_file( "repo/sdks/wasm/driver.c" "${CMAKE_BINARY_DIR}/mono/driver_wasm.c" COPYONLY )
 		target_compile_definitions( libmono PRIVATE "NO_UNALIGNED_ACCESS" )
 		target_compile_definitions( libmono PRIVATE "BROKEN_64BIT_ATOMICS_INTRINSIC=1" )
 	endif()
 	if( ANDROID )
-		include_directories( "repo/support/libm" )
-		set( EXTRA_SOURCE "tkill.c" "repo/support/libm/complex.c" )
 		target_compile_definitions( libmono PRIVATE "ARM_FPU_NONE=1" )
 		target_compile_definitions( libmono PRIVATE "PAGE_SIZE=4096" )
 		target_compile_definitions( libmono PRIVATE "S_IWRITE=S_IWUSR" )
@@ -995,16 +1009,6 @@ else()
 	endif()
 
 	target_compile_definitions( libmono PRIVATE "USE_MMAP" )
-
-	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -fno-strict-aliasing -fwrapv" )
-	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g" )
-
-	add_library( libmono STATIC ${EXTRA_SOURCE}
-		${EGLIB_COMMON_SOURCE} ${EGLIB_POSIX_SOURCE}
-		${LIBGCMONOSGEN_SOURCE}
-		${LIBMINI_ARCH_SOURCE} ${LIBMINI_COMMON_SOURCE} ${LIBMINI_INTERP_SOURCE} ${LIBMINI_POSIX_SOURCE}
-		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
-		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
 
 	if( APPLE OR ANDROID )
 		target_link_libraries( libmono "m" "dl" )
