@@ -983,7 +983,7 @@ else()
 	# target_compile_definitions( libmono PRIVATE "-mwindows" )
 
 	if( APPLE )
-		target_compile_definitions( libmono PRIVATE "-Wno-deprecated-declarations" )
+		target_compile_options( libmono PRIVATE "-Wno-deprecated-declarations" )
 		target_compile_definitions( libmono PRIVATE "_THREAD_SAFE" )
 		target_compile_definitions( libmono PRIVATE "GC_MACOSX_THREADS" )
 		target_compile_definitions( libmono PRIVATE "USE_MUNMAP" )
