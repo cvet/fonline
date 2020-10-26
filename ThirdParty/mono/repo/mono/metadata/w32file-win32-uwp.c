@@ -10,7 +10,8 @@
 #include "mono/utils/mono-compiler.h"
 
 #if G_HAVE_API_SUPPORT(HAVE_UWP_WINAPI_SUPPORT)
-#include <windows.h>
+#define _WIN32_WINNT 0x0602
+#include <Windows.h>
 #include "mono/metadata/w32file-win32-internals.h"
 
 gboolean

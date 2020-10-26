@@ -142,7 +142,7 @@ mono_process_create_process (MonoW32ProcessInfo *mono_process_info, MonoString *
 		api_name = "CreateProcess";
 	}
 
-	memset (&process_info, 0, sizeof (PROCESS_INFORMATION));
+	memset (process_info, 0, sizeof (PROCESS_INFORMATION));
 	g_unsupported_api (api_name);
 
 	error_init (&mono_error);

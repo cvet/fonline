@@ -937,59 +937,42 @@ set( MONOPOSIXHELPER_SOURCE
 	"repo/support/minizip/ioapi.h"
 )
 
-#add_definitions( "-DNDEBUG" )
-add_definitions( "-D_LIB" )
-add_definitions( "-D_UNICODE" )
-add_definitions( "-DUNICODE" )
-add_definitions( "-D__default_codegen__" )
-add_definitions( "-DHAVE_CONFIG_H" )
-add_definitions( "-DFD_SETSIZE=1024" )
-add_definitions( "-DNVALGRIND" )
-add_definitions( "-DHAVE_SGEN_GC" )
-add_definitions( "-DGC_NOT_DLL" )
-add_definitions( "-DHAVE_CONC_GC_AS_DEFAULT" )
-add_definitions( "-DHAVE_WRITE_BARRIERS" )
-add_definitions( "-DHAVE_MOVING_COLLECTOR" )
-
 include_directories( "." )
 include_directories( "repo" )
 include_directories( "repo/mono" )
 include_directories( "repo/mono/eglib" )
 
 if( WIN32 )
-	add_definitions( "-DWIN32_LEAN_AND_MEAN" )
-	add_definitions( "-DWIN32_THREADS" )
-	add_definitions( "-DWINVER=0x0600" )
-	add_definitions( "-D_WIN32_WINNT=0x0600" )
-	add_definitions( "-D_WIN32_IE=0x0501" )
-	add_definitions( "-D_UNICODE" )
-	add_definitions( "-DUNICODE" )
-	add_definitions( "-DFD_SETSIZE=1024" )
-	add_definitions( "-mms-bitfields" )
-	add_definitions( "-mwindows" )
-	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
-		add_definitions( "-DWIN64" )
-	endif()
-	
 	add_library( libmono STATIC
 		${EGLIB_COMMON_SOURCE} ${EGLIB_WIN32_SOURCE}
 		${LIBGCMONOSGEN_SOURCE}
 		${LIBMINI_ARCH_SOURCE} ${LIBMINI_COMMON_SOURCE} ${LIBMINI_INTERP_SOURCE} ${LIBMINI_WIN32_SOURCE}
 		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_WIN32_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
 		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_WIN32_SOURCE} )
-	
+
+	target_compile_definitions( libmono PRIVATE "HAVE_EXTERN_DEFINED_WINAPI_SUPPORT" "_CRT_SECURE_NO_WARNINGS" "_CRT_SECURE_NO_DEPRECATE" "_CRT_NONSTDC_NO_WARNINGS" "_WINSOCK_DEPRECATED_NO_WARNINGS" )
+	target_compile_definitions( libmono PRIVATE "WIN32_LEAN_AND_MEAN" "WIN32_THREADS" "WINVER=0x0600" "_WIN32_WINNT=0x0600" "_WIN32_IE=0x0501" "_UNICODE" "UNICODE" "FD_SETSIZE=1024" )
+	if( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+		target_compile_definitions( libmono PRIVATE "WIN64" )
+	endif()
+	target_compile_options( libmono PRIVATE "/wd4146" "/wd4703" "/wd4996" )
 	target_link_libraries( libmono "mswsock" "ws2_32" "ole32" "oleaut32" "psapi" "version" "advapi32" "winmm" "kernel32" "iphlpapi" )
-	
 else()
+	# target_compile_definitions( libmono PRIVATE "-mms-bitfields" )
+	# target_compile_definitions( libmono PRIVATE "-mwindows" )
+
 	if( APPLE )
-		add_definitions( "-Wno-deprecated-declarations" )
-		add_definitions( "-D_THREAD_SAFE" )
-		add_definitions( "-DGC_MACOSX_THREADS" )
-		add_definitions( "-DUSE_MUNMAP" )
+		target_compile_definitions( libmono PRIVATE "-Wno-deprecated-declarations" )
+		target_compile_definitions( libmono PRIVATE "_THREAD_SAFE" )
+		target_compile_definitions( libmono PRIVATE "GC_MACOSX_THREADS" )
+		target_compile_definitions( libmono PRIVATE "USE_MUNMAP" )
+		if( APPLE AND PLATFORM STREQUAL "SIMULATOR64" )
+			target_compile_definitions( libmono PRIVATE "IOS_SIMULATOR" )
+		endif()
 	else()
-		add_definitions( "-D_GNU_SOURCE" )
-		add_definitions( "-D_REENTRANT" )
-		add_definitions( "-DGC_LINUX_THREADS" )
+		target_compile_definitions( libmono PRIVATE "_GNU_SOURCE" )
+		target_compile_definitions( libmono PRIVATE "_REENTRANT" )
+		target_compile_definitions( libmono PRIVATE "GC_LINUX_THREADS" )
 	endif()
 	if( APPLE AND PLATFORM )
 		include_directories( "repo/support/ios" )
@@ -997,32 +980,49 @@ else()
 	if( EMSCRIPTEN )
 		set( EXTRA_SOURCE "${CMAKE_BINARY_DIR}/mono/driver_wasm.c" )
 		configure_file( "repo/sdks/wasm/driver.c" "${CMAKE_BINARY_DIR}/mono/driver_wasm.c" COPYONLY )
-		add_definitions( "-DNO_UNALIGNED_ACCESS" )
-		add_definitions( "-DBROKEN_64BIT_ATOMICS_INTRINSIC=1" )
+		target_compile_definitions( libmono PRIVATE "NO_UNALIGNED_ACCESS" )
+		target_compile_definitions( libmono PRIVATE "BROKEN_64BIT_ATOMICS_INTRINSIC=1" )
 	endif()
 	if( ANDROID )
 		include_directories( "repo/support/libm" )
 		set( EXTRA_SOURCE "tkill.c" "repo/support/libm/complex.c" )
-		add_definitions( "-DARM_FPU_NONE=1" )
-		add_definitions( "-DPAGE_SIZE=4096" )
-		add_definitions( "-DS_IWRITE=S_IWUSR" )
+		target_compile_definitions( libmono PRIVATE "ARM_FPU_NONE=1" )
+		target_compile_definitions( libmono PRIVATE "PAGE_SIZE=4096" )
+		target_compile_definitions( libmono PRIVATE "S_IWRITE=S_IWUSR" )
+		if( ANDROID_ABI STREQUAL "x86" )
+			target_compile_definitions( libmono PRIVATE "ANDROID_X86" )
+		endif()
 	endif()
-	
-	add_definitions( "-DUSE_MMAP" )
-	
+
+	target_compile_definitions( libmono PRIVATE "USE_MMAP" )
+
 	set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -g -fno-strict-aliasing -fwrapv" )
 	set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -g" )
-	
+
 	add_library( libmono STATIC ${EXTRA_SOURCE}
 		${EGLIB_COMMON_SOURCE} ${EGLIB_POSIX_SOURCE}
 		${LIBGCMONOSGEN_SOURCE}
 		${LIBMINI_ARCH_SOURCE} ${LIBMINI_COMMON_SOURCE} ${LIBMINI_INTERP_SOURCE} ${LIBMINI_POSIX_SOURCE}
 		${LIBMONORUNTIME_COMMON_SOURCE} ${LIBMONORUNTIME_POSIX_SOURCE} ${LIBMONOUTILS_ARCH_SOURCE}
 		${LIBMONOUTILS_COMMON_SOURCE} ${LIBMONOUTILS_POSIX_SOURCE} )
-	
+
 	if( APPLE OR ANDROID )
 		target_link_libraries( libmono "m" "dl" )
 	else()
 		target_link_libraries( libmono "m" "dl" "rt" )
 	endif()
 endif()
+
+# target_compile_definitions( libmono PRIVATE "NDEBUG" )
+target_compile_definitions( libmono PRIVATE "_LIB" )
+target_compile_definitions( libmono PRIVATE "_UNICODE" )
+target_compile_definitions( libmono PRIVATE "UNICODE" )
+target_compile_definitions( libmono PRIVATE "__default_codegen__" )
+target_compile_definitions( libmono PRIVATE "HAVE_CONFIG_H" )
+target_compile_definitions( libmono PRIVATE "FD_SETSIZE=1024" )
+target_compile_definitions( libmono PRIVATE "NVALGRIND" )
+target_compile_definitions( libmono PRIVATE "HAVE_SGEN_GC" )
+target_compile_definitions( libmono PRIVATE "GC_NOT_DLL" )
+target_compile_definitions( libmono PRIVATE "HAVE_CONC_GC_AS_DEFAULT" )
+target_compile_definitions( libmono PRIVATE "HAVE_WRITE_BARRIERS" )
+target_compile_definitions( libmono PRIVATE "HAVE_MOVING_COLLECTOR" )
