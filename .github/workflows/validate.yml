@@ -3,6 +3,15 @@ name: validate
 on: [push, pull_request]
 
 jobs:
+  check-formatting:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: DoozyX/clang-format-lint-action@v0.11
+        with:
+          source: ./Source
+          extensions: 'h,cpp'
+          clangFormatVersion: 10
   unit-tests:
     runs-on: ubuntu-20.04
     steps:
@@ -15,15 +24,6 @@ jobs:
       - env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: BuildTools/validate.sh code-coverage
-  check-formatting:
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/checkout@v2
-      - uses: DoozyX/clang-format-lint-action@v0.11
-        with:
-          source: ./Source
-          extensions: 'h,cpp'
-          clangFormatVersion: 10
   windows:
     runs-on: windows-2019
     strategy:
@@ -51,7 +51,6 @@ jobs:
           - linux-gcc-client
           - android-arm-client
           - android-arm64-client
-          - android-x86-client
           - web-client
           - linux-server
           - linux-gcc-server
@@ -59,7 +58,6 @@ jobs:
           - linux-gcc-single
           - android-arm-single
           - android-arm64-single
-          - android-x86-single
           - web-single
           - linux-mapper
           - linux-gcc-mapper
