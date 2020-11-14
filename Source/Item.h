@@ -40,7 +40,8 @@ extern const char* ItemEventFuncName[ ITEM_EVENT_MAX ];
 #define ITEM_TYPE_GENERIC             ( 11 )
 #define ITEM_TYPE_WALL                ( 12 )
 #define ITEM_TYPE_CAR                 ( 13 )
-#define ITEM_MAX_TYPES                ( 14 )
+#define ITEM_TYPE_EFFECT              ( 14 )
+#define ITEM_MAX_TYPES                ( 15 )
 
 // Grid Types
 #define GRID_EXITGRID                 ( 1 )
@@ -304,6 +305,7 @@ public:
     bool IsDoor()      { return Type == ITEM_TYPE_DOOR; }
     bool IsGeneric()   { return Type == ITEM_TYPE_GENERIC; }
     bool IsCar()       { return Type == ITEM_TYPE_CAR; }
+    bool IsEffect()    { return Type == ITEM_TYPE_EFFECT; }
 
     bool IsBlocks() { return BlockLines[ 0 ] != 0; }
     bool LockerIsChangeble()
