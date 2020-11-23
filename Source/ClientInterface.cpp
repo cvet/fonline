@@ -11058,15 +11058,15 @@ void FOClient::FixDraw()
         for( uint i = 0, j = (uint) cur_vec->size(); i < j; i++ )
         {
             SCraft* scraft = &( *cur_vec )[ i ];
-            uint col = COLOR_TEXT_DRED;
+            uint col = COLOR_FIXBOY_TXT_TRUE;
             if( !scraft->IsTrue )
-                col = COLOR_TEXT;
+                col = COLOR_FIXBOY_TXT_FALSE;
             if( i == (uint) FixCurCraft )
             {
                 if( IfaceHold == IFACE_FIX_CHOOSE )
-                    col = COLOR_TEXT_DBLUE;
+                    col = COLOR_FIXBOY_TXT_CLICK;
                 else
-                    col = COLOR_TEXT_DGREEN;
+                    col = COLOR_FIXBOY_TXT_SELECT;
             }
 
             SprMngr.DrawStr( Rect( scraft->Pos, FixX, FixY ), scraft->Name.c_str(), 0, col );
