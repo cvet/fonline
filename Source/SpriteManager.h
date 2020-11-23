@@ -59,7 +59,7 @@
 #define COLOR_YELLOW                       COLOR_XRGB( 0xFF, 0xFF, 0 )
 
 #define COLOR_FIXBOY_TXT_TRUE			   COLOR_TEXT
-#define COLOR_FIXBOY_TXT_SELECT            COLOR_YELLOW
+#define COLOR_FIXBOY_TXT_SELECT            COLOR_TEXT_DGREEN
 #define COLOR_FIXBOY_TXT_CLICK             COLOR_YELLOW
 #define COLOR_FIXBOY_TXT_FALSE             COLOR_DARK_GRAY
 
