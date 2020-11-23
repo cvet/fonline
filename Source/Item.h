@@ -520,6 +520,7 @@ public:
 
     #ifdef FONLINE_SERVER
     void SetLexems( const char* lexems );
+	void NotifyChangeLexems();
     #endif
 
     // Deterioration

@@ -4910,13 +4910,22 @@ void Client::Send_ItemLexems( Item* item ) // Already checks for client offline 
         return;
 
     uint   item_id = item->GetId();
-    ushort lexems_len = Str::Length( item->PLexems );
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( item_id ) + sizeof( lexems_len ) + lexems_len;
+	uint   crId = 0;
+	uchar  slot = 0;
+	if (item->Accessory == ITEM_ACCESSORY_CRITTER)
+	{
+		crId = item->AccCritter.Id;
+		slot = item->AccCritter.Slot;
+	}
+	ushort lexems_len = Str::Length( item->PLexems );
+    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( item_id ) + sizeof( lexems_len ) + lexems_len + sizeof(uint) + sizeof(uchar);
 
     BOUT_BEGIN( this );
     Bout << NETMSG_ITEM_LEXEMS;
     Bout << msg_len;
     Bout << item_id;
+	Bout << crId;
+	Bout << slot;
     Bout << lexems_len;
     Bout.Push( item->PLexems, lexems_len );
     BOUT_END( this );

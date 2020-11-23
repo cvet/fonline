@@ -11058,9 +11058,9 @@ void FOClient::FixDraw()
         for( uint i = 0, j = (uint) cur_vec->size(); i < j; i++ )
         {
             SCraft* scraft = &( *cur_vec )[ i ];
-            uint col = COLOR_TEXT;
+            uint col = COLOR_TEXT_DRED;
             if( !scraft->IsTrue )
-                col = COLOR_TEXT_DRED;
+                col = COLOR_TEXT;
             if( i == (uint) FixCurCraft )
             {
                 if( IfaceHold == IFACE_FIX_CHOOSE )

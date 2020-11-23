@@ -6831,10 +6831,14 @@ void FOClient::Net_OnItemLexems()
 {
     uint   msg_len;
     uint   item_id;
+    uint   crId;
+	uchar  slot;
     ushort lexems_len;
     char   lexems[ LEXEMS_SIZE ];
     Bin >> msg_len;
     Bin >> item_id;
+	Bin >> crId;
+	Bin >> slot;
     Bin >> lexems_len;
 
     if( lexems_len >= LEXEMS_SIZE )
@@ -6849,6 +6853,19 @@ void FOClient::Net_OnItemLexems()
     lexems[ lexems_len ] = 0;
 
     CHECK_IN_BUFF_ERROR;
+
+	if (crId != 0)
+	{
+		CritterCl* cr = GetCritter(crId);
+		if (cr)
+		{
+			Item* item = cr->GetItemSlot(slot);
+			if (item)
+			{
+				item->Lexems = lexems;
+			}
+		}
+	}
 
     // Find on map
     Item* item = GetItem( item_id );

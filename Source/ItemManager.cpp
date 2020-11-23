@@ -1045,6 +1045,8 @@ void ItemManager::NotifyChangeItem( Item* item )
     default:
         break;
     }
+
+	item->NotifyChangeLexems();
 }
 
 void ItemManager::EraseItemHolder( Item* item )

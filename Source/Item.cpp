@@ -468,6 +468,39 @@ void Item::SetLexems( const char* lexems )
         SAFEDELA( PLexems );
     }
 }
+
+void Item::NotifyChangeLexems()
+{
+	switch (Accessory)
+	{
+	case ITEM_ACCESSORY_CRITTER:
+	{
+		Critter* accCritter = CrMngr.GetCritter(AccCritter.Id, false);
+		if (accCritter)
+		{
+			CrVec critters;
+			accCritter->GetCrFromVisCr(critters, FIND_ONLY_PLAYERS, false, false);
+			if (!critters.empty() && AccCritter.Slot != SLOT_INV && Critter::SlotEnabled[AccCritter.Slot])
+			{
+				//if (Critter::SlotDataSendEnabled[AccCritter.Slot])
+				{
+					// Send all data
+					for (auto it = critters.begin(), end = critters.end(); it != end; ++it)
+					{
+						Critter* cr = *it;
+						if (PLexems)
+							((Client*)(cr))->Send_ItemLexems(this);
+						else ((Client*)(cr))->Send_ItemLexemsNull(this);
+					}
+				}
+			}
+		}
+	}
+	break;
+	default:
+		break;
+	}
+}
 #endif
 
 void Item::WeapLoadHolder()
