@@ -4938,12 +4938,16 @@ void Client::Send_ItemLexemsNull( Item* item ) // Already checks for client offl
 
     uint   item_id = item->GetId();
     ushort lexems_len = 0;
-    uint   msg_len = sizeof( uint ) + sizeof( msg_len ) + sizeof( item_id ) + sizeof( lexems_len );
+	uint   crId = 0;
+	uchar  slot = 0;
+	uint   msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(item_id) + sizeof(lexems_len) + lexems_len + sizeof(uint) + sizeof(uchar);
 
     BOUT_BEGIN( this );
     Bout << NETMSG_ITEM_LEXEMS;
     Bout << msg_len;
     Bout << item_id;
+	Bout << crId;
+	Bout << slot;
     Bout << lexems_len;
     BOUT_END( this );
 }
