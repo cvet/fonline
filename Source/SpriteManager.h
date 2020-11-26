@@ -55,13 +55,14 @@
 #define COLOR_TEXT_DARK                    COLOR_XRGB( 0x30, 0x30, 0x30 )
 #define COLOR_TEXT_GREEN_RED               COLOR_XRGB( 0, 0xC8, 0xC8 )
 #define COLOR_TEXT_SAND                    COLOR_XRGB( 0x8F, 0x6F, 0 )
-#define COLOR_DARK_GRAY					   COLOR_XRGB( 80, 80, 80 )
-#define COLOR_YELLOW                       COLOR_XRGB( 0xFF, 0xFF, 0 )
+#define COLOR_TEXT_DARK_GRAY			   COLOR_XRGB( 80, 80, 80 )
+#define COLOR_TEXT_YELLOW                  COLOR_XRGB( 0xFF, 0xFF, 0 )
+#define COLOR_TEXT_GRAY                    COLOR_XRGB( 127, 127, 127 )
 
 #define COLOR_FIXBOY_TXT_TRUE			   COLOR_TEXT
 #define COLOR_FIXBOY_TXT_SELECT            COLOR_TEXT_DGREEN
-#define COLOR_FIXBOY_TXT_CLICK             COLOR_YELLOW
-#define COLOR_FIXBOY_TXT_FALSE             COLOR_DARK_GRAY
+#define COLOR_FIXBOY_TXT_CLICK             COLOR_TEXT_YELLOW
+#define COLOR_FIXBOY_TXT_FALSE             COLOR_TEXT_GRAY
 
 // Default effects
 #define DEFAULT_EFFECT_CONTOUR             ( 0 )
