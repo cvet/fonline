@@ -1425,10 +1425,10 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
 
 auto ModelInstance::NeedDraw() const -> bool
 {
-    return (_combinedMeshesSize != 0u) && ((_lastDrawTick == 0u) || GetTick() - _lastDrawTick >= _modelMngr._animDelay);
+    return _combinedMeshesSize != 0u && (_lastDrawTick == 0u || GetTick() - _lastDrawTick >= _modelMngr._animDelay);
 }
 
-void ModelInstance::Draw(int x, int y)
+void ModelInstance::Draw(int x, int y, float scale)
 {
     // Skip drawing if no meshes generated
     if (_combinedMeshesSize == 0u) {
@@ -1441,7 +1441,7 @@ void ModelInstance::Draw(int x, int y)
     _lastDrawTick = tick;
 
     // Move animation
-    ProcessAnimation(elapsed, x != 0 ? x : _modelMngr._modeWidth / 2, y != 0 ? y : _modelMngr._modeHeight - _modelMngr._modeHeight / 4, 1.0f);
+    ProcessAnimation(elapsed, x != 0 ? x : _modelMngr._modeWidth / 2, y != 0 ? y : _modelMngr._modeHeight - _modelMngr._modeHeight / 4, scale);
 
     // Draw mesh
     DrawCombinedMeshes();
@@ -1548,8 +1548,6 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_
 
     effect->MainTex = combined_mesh->Textures[0]->MainTex;
     std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
-    effect->MainTexBuf->MainTexSamples = effect->MainTex->Samples;
-    effect->MainTexBuf->MainTexSamplesInt = static_cast<int>(effect->MainTexBuf->MainTexSamples);
 
     auto* wm = effect->ModelBuf->WorldMatrices;
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
@@ -1606,8 +1604,8 @@ auto ModelInstance::GetBonePos(hash name_hash) const -> optional<tuple<int, int>
 
 ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
-    _drawWidth = DEFAULT_DRAW_SIZE;
-    _drawHeight = DEFAULT_DRAW_SIZE;
+    _drawWidth = DEFAULT_DRAW_WIDTH;
+    _drawHeight = DEFAULT_DRAW_HEIGHT;
 }
 
 auto ModelInformation::Load(const string& name) -> bool

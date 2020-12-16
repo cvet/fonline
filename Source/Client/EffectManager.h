@@ -66,8 +66,6 @@ struct EffectCollection
     RenderEffect* FogDefault {};
     RenderEffect* FlushRenderTarget {};
     RenderEffect* FlushRenderTargetDefault {};
-    RenderEffect* FlushRenderTargetMS {};
-    RenderEffect* FlushRenderTargetMSDefault {};
     RenderEffect* FlushPrimitive {};
     RenderEffect* FlushPrimitiveDefault {};
     RenderEffect* FlushMap {};

@@ -251,7 +251,7 @@ public:
     void SetSpeed(float speed);
     void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
-    void Draw(int x, int y);
+    void Draw(int x, int y, float scale);
 
     uint SprId {};
     int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff

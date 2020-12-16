@@ -2431,9 +2431,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, effectType) FO_API_ARG_MARSHAL(int, effect
     if (effectType & EffectType_FlushRenderTarget) {
         _client->EffectMngr.Effects.FlushRenderTarget = (effect ? effect : _client->EffectMngr.Effects.FlushRenderTargetDefault);
     }
-    if (effectType & EffectType_FlushRenderTargetMultisampled) {
-        _client->EffectMngr.Effects.FlushRenderTargetMS = (effect ? effect : _client->EffectMngr.Effects.FlushRenderTargetMSDefault);
-    }
     if (effectType & EffectType_FlushPrimitive) {
         _client->EffectMngr.Effects.FlushPrimitive = (effect ? effect : _client->EffectMngr.Effects.FlushPrimitiveDefault);
     }
@@ -3320,7 +3317,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(bool, forceClear))
     }
 
     if (_client->OffscreenSurfaces.empty()) {
-        auto* const rt = _client->SprMngr.CreateRenderTarget(false, false, true, 0, 0, false);
+        auto* const rt = _client->SprMngr.CreateRenderTarget(false, true, 0, 0, false);
         if (!rt) {
             throw ScriptException("Can't create offscreen surface");
         }

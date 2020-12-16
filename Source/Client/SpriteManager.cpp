@@ -118,9 +118,9 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileManager& file_mngr, E
     MatrixHelper::MatrixOrtho(_projectionMatrixCm[0], 0.0f, static_cast<float>(_settings.ScreenWidth), static_cast<float>(_settings.ScreenHeight), 0.0f, -1.0f, 1.0f);
     _projectionMatrixCm.Transpose(); // Convert to column major order
 
-    _rtMain = CreateRenderTarget(false, false, true, 0, 0, true);
-    _rtContours = CreateRenderTarget(false, false, true, 0, 0, false);
-    _rtContoursMid = CreateRenderTarget(false, false, true, 0, 0, false);
+    _rtMain = CreateRenderTarget(false, true, 0, 0, true);
+    _rtContours = CreateRenderTarget(false, true, 0, 0, false);
+    _rtContoursMid = CreateRenderTarget(false, true, 0, 0, false);
     if (_rtMain != nullptr) {
         PushRenderTarget(_rtMain);
     }
@@ -263,30 +263,21 @@ void SpriteManager::OnResolutionChanged()
         }
 
         rt->MainTex = nullptr; // Clean up previous resources first
-        rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(_settings.ScreenWidth, _settings.ScreenHeight, rt->MainTex->LinearFiltered, rt->MainTex->Multisampled, rt->MainTex->WithDepth));
+        rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(_settings.ScreenWidth, _settings.ScreenHeight, rt->MainTex->LinearFiltered, rt->MainTex->WithDepth));
     }
 }
 
-auto SpriteManager::CreateRenderTarget(bool with_depth, bool multisampled, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*
+auto SpriteManager::CreateRenderTarget(bool with_depth, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*
 {
     Flush();
 
     width = screen_sized ? _settings.ScreenWidth : width;
     height = screen_sized ? _settings.ScreenHeight : height;
-    if (_effectMngr.Effects.FlushRenderTargetMS == nullptr) {
-        multisampled = false;
-    }
 
     auto* rt = new RenderTarget();
     rt->ScreenSized = screen_sized;
-    rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(width, height, linear_filtered, multisampled, with_depth));
-
-    if (!multisampled) {
-        rt->DrawEffect = _effectMngr.Effects.FlushRenderTarget;
-    }
-    else {
-        rt->DrawEffect = _effectMngr.Effects.FlushRenderTargetMS;
-    }
+    rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(width, height, linear_filtered, with_depth));
+    rt->DrawEffect = _effectMngr.Effects.FlushRenderTarget;
 
     auto* prev_tex = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(rt->MainTex.get());
@@ -545,7 +536,7 @@ auto SpriteManager::CreateAtlas(int w, int h) -> TextureAtlas*
         h = App->Render.MAX_ATLAS_HEIGHT;
     }
 
-    atlas->RT = CreateRenderTarget(false, false, false, w, h, true);
+    atlas->RT = CreateRenderTarget(false, false, w, h, true);
     atlas->RT->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
     atlas->MainTex = atlas->RT->MainTex.get();
     atlas->Width = w;
@@ -957,7 +948,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
         }
     }
     if (rt == nullptr) {
-        rt = CreateRenderTarget(true, true, false, si->Width, si->Height, false);
+        rt = CreateRenderTarget(true, false, si->Width * 2, si->Height * 2, true);
         _rt3D.push_back(rt);
     }
 
@@ -969,7 +960,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
     _modelMngr->SetScreenSize(rt->MainTex->Width, rt->MainTex->Height);
 
     // Draw model
-    model->Draw(0, 0);
+    model->Draw(0, 0, 2.0f);
 
     // Restore render target
     PopRenderTarget();
@@ -1128,16 +1119,7 @@ void SpriteManager::Flush()
                 GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[0]));
             if (IS_EFFECT_VALUE(effect_pass.ColorMap) && dip.MainTex)
             {
-                if (dip.MainTex->Samples == 0.0f)
-                {
-                    GL(glBindTexture(GL_TEXTURE_2D, dip.MainTex->Id));
-                }
-                else
-                {
-                    GL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, dip.MainTex->Id));
-                    if (IS_EFFECT_VALUE(effect_pass.ColorMapSamples))
-                        GL(glUniform1f(effect_pass.ColorMapSamples, dip.MainTex->Samples));
-                }
+                GL(glBindTexture(GL_TEXTURE_2D, dip.MainTex->Id));
                 GL(glUniform1i(effect_pass.ColorMap, 0));
                 if (IS_EFFECT_VALUE(effect_pass.ColorMapSize))
                     GL(glUniform4fv(effect_pass.ColorMapSize, 1, dip.MainTex->SizeData));

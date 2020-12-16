@@ -152,7 +152,6 @@ SETTING(bool, RenderDebug, false);
 SETTING(uint, Animation3dSmoothTime, 150);
 SETTING(uint, Animation3dFPS, 30);
 SETTING(bool, Enable3dRendering, false);
-SETTING(int, MultiSampling, -1);
 SETTING(bool, VSync, false);
 SETTING(bool, AlwaysOnTop, false);
 VAR_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);

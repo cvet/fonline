@@ -104,28 +104,9 @@ static constexpr auto RING_BUFFER_LENGTH = 300;
 #define GL_STENCIL_ATTACHMENT_EXT GL_STENCIL_ATTACHMENT
 #define glGetTexImage(a, b, c, d, e)
 #define glDrawBuffer(a)
-#ifndef GL_MAX_COLOR_TEXTURE_SAMPLES
-#define GL_MAX_COLOR_TEXTURE_SAMPLES 0x910E
-#endif
-#ifndef GL_TEXTURE_2D_MULTISAMPLE
-#define GL_TEXTURE_2D_MULTISAMPLE 0x9100
-#endif
 #ifndef GL_MAX
 #define GL_MAX GL_MAX_EXT
 #define GL_MIN GL_MIN_EXT
-#endif
-#if FO_IOS
-#define glTexImage2DMultisample(a, b, c, d, e, f)
-#define glRenderbufferStorageMultisample glRenderbufferStorageMultisampleAPPLE
-#define glRenderbufferStorageMultisampleEXT glRenderbufferStorageMultisampleAPPLE
-#elif FO_ANDROID
-#define glTexImage2DMultisample(a, b, c, d, e, f)
-#define glRenderbufferStorageMultisample glRenderbufferStorageMultisampleIMG
-#define glRenderbufferStorageMultisampleEXT glRenderbufferStorageMultisampleIMG
-#elif FO_WEB || (FO_WINDOWS && FO_UWP)
-#define glTexImage2DMultisample(a, b, c, d, e, f)
-#define glRenderbufferStorageMultisample(a, b, c, d, e)
-#define glRenderbufferStorageMultisampleEXT(a, b, c, d, e)
 #endif
 #endif
 #if !FO_DEBUG
@@ -177,14 +158,11 @@ static Application::AppAudio::AudioStreamCallback AudioStreamWriter {};
 #if FO_HAVE_OPENGL
 static SDL_GLContext GlContext {};
 static GLint BaseFBO {};
-static uint GlSamples {};
 // static OpenGLRenderBuffer;
 static bool OGL_version_2_0 {};
 static bool OGL_vertex_buffer_object {};
 static bool OGL_framebuffer_object {};
 static bool OGL_framebuffer_object_ext {};
-static bool OGL_framebuffer_multisample {};
-static bool OGL_texture_multisample {};
 static bool OGL_vertex_array_object {};
 #endif
 #if FO_HAVE_DIRECT_3D
@@ -192,8 +170,6 @@ static ID3D11Device* D3DDevice {};
 static ID3D11DeviceContext* D3DDeviceContext {};
 static IDXGISwapChain* SwapChain {};
 static ID3D11RenderTargetView* MainRenderTarget {};
-static UINT D3DSamplesCount {};
-static UINT D3DSamplesQuality {};
 static bool VSync {};
 #endif
 const uint Application::AppRender::MAX_ATLAS_WIDTH {};
@@ -494,8 +470,6 @@ Application::Application(GlobalSettings& settings)
         OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0;
         OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0;
         OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
-        OGL_framebuffer_multisample = GLEW_EXT_framebuffer_multisample != 0;
-        OGL_texture_multisample = GLEW_ARB_texture_multisample != 0;
 #if FO_MAC
         OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
 #else
@@ -509,16 +483,12 @@ Application::Application(GlobalSettings& settings)
         OGL_vertex_buffer_object = true;
         OGL_framebuffer_object = true;
         OGL_framebuffer_object_ext = false;
-        OGL_framebuffer_multisample = false;
-        OGL_texture_multisample = false;
         OGL_vertex_array_object = false;
 #if FO_ANDROID
         OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
-        OGL_framebuffer_multisample = SDL_GL_ExtensionSupported("GL_IMG_multisampled_render_to_texture");
 #endif
 #if FO_IOS
         OGL_vertex_array_object = true;
-        OGL_framebuffer_multisample = true;
 #endif
 #endif
 
@@ -531,15 +501,13 @@ Application::Application(GlobalSettings& settings)
             extension_errors++; \
     }
         uint extension_errors = 0;
-        CHECK_EXTENSION(version_2_0, true)
-        CHECK_EXTENSION(vertex_buffer_object, true)
-        CHECK_EXTENSION(vertex_array_object, false)
-        CHECK_EXTENSION(framebuffer_object, false)
+        CHECK_EXTENSION(version_2_0, true);
+        CHECK_EXTENSION(vertex_buffer_object, true);
+        CHECK_EXTENSION(vertex_array_object, false);
+        CHECK_EXTENSION(framebuffer_object, false);
         if (!GL_HAS(framebuffer_object)) {
-            CHECK_EXTENSION(framebuffer_object_ext, true)
-            CHECK_EXTENSION(framebuffer_multisample, false)
+            CHECK_EXTENSION(framebuffer_object_ext, true);
         }
-        CHECK_EXTENSION(texture_multisample, false)
         RUNTIME_ASSERT(!extension_errors);
 #undef CHECK_EXTENSION
     }
@@ -728,23 +696,6 @@ Application::Application(GlobalSettings& settings)
             }
 #endif
         }
-
-        // Calculate multisampling samples
-        if (GL_HAS(texture_multisample) && settings.MultiSampling != 0 && (GL_HAS(framebuffer_object) || (GL_HAS(framebuffer_object_ext) && GL_HAS(framebuffer_multisample)))) {
-            auto max_samples = 0;
-            GL(glGetIntegerv(GL_MAX_COLOR_TEXTURE_SAMPLES, &max_samples));
-            GlSamples = std::min(settings.MultiSampling > 0 ? settings.MultiSampling : 8, max_samples);
-
-            /*effectMngr.Effects.FlushRenderTargetMSDefault =
-                effectMngr.LoadEffect("Flush_RenderTargetMS.glsl", true, "", "Effects/");
-            if (effectMngr.Effects.FlushRenderTargetMSDefault)
-                effectMngr.Effects.FlushRenderTargetMS = effectMngr.Effects.FlushRenderTargetMSDefault;
-            else
-                GlSamples = 0;*/
-        }
-        if (GlSamples <= 1) {
-            GlSamples = 0;
-        }
     }
 #endif
 
@@ -814,21 +765,6 @@ Application::Application(GlobalSettings& settings)
             {D3D_FEATURE_LEVEL_9_1, "9.1"},
         };
         WriteLog("Direct3D device created with feature level {}.\n", FEATURE_LEVELS_STR.at(feature_level));
-
-        if (settings.MultiSampling > 0) {
-            D3DSamplesCount = settings.MultiSampling;
-            auto check_multisample = D3DDevice->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, D3DSamplesCount, &D3DSamplesQuality);
-            RUNTIME_ASSERT(check_multisample == S_OK);
-        }
-        if (settings.MultiSampling < 0 || (D3DSamplesQuality == 0u)) {
-            D3DSamplesCount = 4;
-            auto check_multisample = D3DDevice->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, D3DSamplesCount, &D3DSamplesQuality);
-            RUNTIME_ASSERT(check_multisample == S_OK);
-        }
-        if (D3DSamplesQuality == 0u) {
-            D3DSamplesCount = 1;
-            D3DSamplesQuality = 0;
-        }
 
         ID3D11Texture2D* back_buf = nullptr;
         SwapChain->GetBuffer(0, IID_PPV_ARGS(&back_buf));
@@ -1183,7 +1119,7 @@ void Application::AppWindow::AlwaysOnTop(bool enable)
 #endif
 }
 
-auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool multisampled, bool with_depth) -> RenderTexture*
+auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
 #if !FO_HEADLESS
     auto tex = unique_ptr<RenderTexture>(new RenderTexture());
@@ -1194,9 +1130,7 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
     const_cast<float&>(tex->SizeData[0]) = 1.0f / tex->SizeData[0];
     const_cast<float&>(tex->SizeData[0]) = 1.0f / tex->SizeData[1];
 #if FO_HAVE_OPENGL
-    const_cast<float&>(tex->Samples) = (multisampled && (GlSamples != 0u) ? static_cast<float>(GlSamples) : 1.0f);
     const_cast<bool&>(tex->LinearFiltered) = linear_filtered;
-    const_cast<bool&>(tex->Multisampled) = (multisampled && (GlSamples != 0u));
     const_cast<bool&>(tex->WithDepth) = with_depth;
 #endif
 
@@ -1208,31 +1142,20 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FBO));
         GL(glGenTextures(1, &opengl_tex->TexId));
 
-        if (multisampled && (GlSamples != 0u)) {
-            GL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, opengl_tex->TexId));
-            GL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, GlSamples, GL_RGBA, width, height, GL_TRUE));
-            GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, opengl_tex->TexId, 0));
-        }
-        else {
-            GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
-            GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filtered ? GL_LINEAR : GL_NEAREST));
-            GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear_filtered ? GL_LINEAR : GL_NEAREST));
-            GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP));
-            GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP));
-            GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
-            GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, opengl_tex->TexId, 0));
-        }
+        GL(glBindTexture(GL_TEXTURE_2D, opengl_tex->TexId));
+        GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear_filtered ? GL_LINEAR : GL_NEAREST));
+        GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear_filtered ? GL_LINEAR : GL_NEAREST));
+        GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP));
+        GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP));
+        GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+        GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, opengl_tex->TexId, 0));
+
         if (with_depth) {
             GLint cur_rb = 0;
             GL(glGetIntegerv(GL_RENDERBUFFER_BINDING, &cur_rb));
             GL(glGenRenderbuffers(1, &opengl_tex->DepthBuffer));
             GL(glBindRenderbuffer(GL_RENDERBUFFER, opengl_tex->DepthBuffer));
-            if (multisampled && (GlSamples != 0u)) {
-                GL(glRenderbufferStorageMultisample(GL_RENDERBUFFER, GlSamples, GL_DEPTH_COMPONENT16, width, height));
-            }
-            else {
-                GL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height));
-            }
+            GL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, width, height));
             GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, opengl_tex->DepthBuffer));
             GL(glBindRenderbuffer(GL_RENDERBUFFER, cur_rb));
         }
@@ -1255,8 +1178,8 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
         desc.MipLevels = 1;
         desc.ArraySize = 1;
         desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        desc.SampleDesc.Count = (multisampled ? D3DSamplesCount : 1);
-        desc.SampleDesc.Quality = (multisampled ? D3DSamplesQuality : 0);
+        desc.SampleDesc.Count = 1;
+        desc.SampleDesc.Quality = 0;
         desc.Usage = D3D11_USAGE_DYNAMIC;
         desc.BindFlags = D3D11_BIND_RENDER_TARGET;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE | D3D11_CPU_ACCESS_READ;

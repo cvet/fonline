@@ -860,7 +860,8 @@ static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr auto FADING_PERIOD = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
-static constexpr auto DEFAULT_DRAW_SIZE = 128;
+static constexpr auto DEFAULT_DRAW_WIDTH = 256;
+static constexpr auto DEFAULT_DRAW_HEIGHT = 128;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
 

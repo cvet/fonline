@@ -302,14 +302,14 @@ HexManager::HexManager(bool mapper_mode, HexSettings& settings, ProtoManager& pr
     _rtScreenOx = static_cast<uint>(ceilf(static_cast<float>(_settings.MapHexWidth) / MIN_ZOOM));
     _rtScreenOy = static_cast<uint>(ceilf(static_cast<float>(_settings.MapHexLineHeight * 2) / MIN_ZOOM));
 
-    _rtMap = _sprMngr.CreateRenderTarget(false, false, true, 0, 0, false);
+    _rtMap = _sprMngr.CreateRenderTarget(false, true, 0, 0, false);
     _rtMap->DrawEffect = _effectMngr.Effects.FlushMap;
 
-    _rtLight = _sprMngr.CreateRenderTarget(false, false, true, _rtScreenOx * 2, _rtScreenOy * 2, false);
+    _rtLight = _sprMngr.CreateRenderTarget(false, true, _rtScreenOx * 2, _rtScreenOy * 2, false);
     _rtLight->DrawEffect = _effectMngr.Effects.FlushLight;
 
     if (!_mapperMode) {
-        _rtFog = _sprMngr.CreateRenderTarget(false, false, true, _rtScreenOx * 2, _rtScreenOy * 2, false);
+        _rtFog = _sprMngr.CreateRenderTarget(false, true, _rtScreenOx * 2, _rtScreenOy * 2, false);
         _rtFog->DrawEffect = _effectMngr.Effects.FlushFog;
     }
 

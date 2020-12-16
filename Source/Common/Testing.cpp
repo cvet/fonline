@@ -872,10 +872,10 @@ static void ShowErrorMessage(const char* message, bool is_fatal)
 
     // Show message
     if (is_fatal) {
-        MessageBox::ShowErrorMessage("Fatal Exception!", GetTraceback());
+        MessageBox::ShowErrorMessage("Fatal Error!", GetTraceback());
     }
     else {
-        MessageBox::ShowErrorMessage("Exception!", GetTraceback());
+        MessageBox::ShowErrorMessage("Error!", GetTraceback());
     }
 }
 
