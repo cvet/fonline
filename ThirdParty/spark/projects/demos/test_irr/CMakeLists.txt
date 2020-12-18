@@ -9,7 +9,7 @@
 
 # Project declaration
 # ###############################################
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 project(Test_Irrlicht)
 set(DEMOS_IRRLICHT_LIB "" CACHE STRING "Store the name of the Irrlicht library file (release)")
 set(DEMOS_IRRLICHT_LIB_DEBUG "" CACHE STRING "Store the name of the Irrlicht library file (debug)")

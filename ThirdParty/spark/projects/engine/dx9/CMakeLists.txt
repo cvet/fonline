@@ -9,7 +9,7 @@
 
 # Project declaration
 # ###############################################
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 project(SPARK_DirectX9)
 set(SPARK_DIRECTX_DIR "" CACHE PATH "Store the path to the DirectX SDK (folder containing 'Lib' and 'Include')")
 set(SPARK_DIRECTX_LIB_X86 ON CACHE BOOL "Store whether to use 32bits (ON) or 64bits (OFF) libraries of DirectX")

@@ -1,4 +1,4 @@
-cmake_minimum_required( VERSION 2.8 )
+cmake_minimum_required( VERSION 2.8.12 )
 
 set( EGLIB_COMMON_SOURCE
 	"repo/mono/eglib/eglib-remap.h"
