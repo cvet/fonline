@@ -376,8 +376,8 @@ private:
     int _renderAnimProcTo {100};
     int _renderAnimDir {};
     bool _shadowDisabled {};
-    uint _drawWidth {};
-    uint _drawHeight {};
+    uint _drawWidth {DEFAULT_3D_DRAW_WIDTH};
+    uint _drawHeight {DEFAULT_3D_DRAW_HEIGHT};
 };
 
 class ModelHierarchy final

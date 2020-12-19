@@ -1604,8 +1604,6 @@ auto ModelInstance::GetBonePos(hash name_hash) const -> optional<tuple<int, int>
 
 ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
 {
-    _drawWidth = DEFAULT_DRAW_WIDTH;
-    _drawHeight = DEFAULT_DRAW_HEIGHT;
 }
 
 auto ModelInformation::Load(const string& name) -> bool

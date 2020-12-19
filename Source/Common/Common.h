@@ -401,7 +401,7 @@ public:
     RefCounter(const RefCounter&) = delete;
     RefCounter(RefCounter&&) = delete;
     auto operator=(const RefCounter&) -> RefCounter& = delete;
-    auto operator=(RefCounter &&) -> RefCounter& = delete;
+    auto operator=(RefCounter&&) -> RefCounter& = delete;
 
     virtual ~RefCounter()
     {
@@ -551,7 +551,7 @@ public:
     MemoryPool(const MemoryPool&) = delete;
     MemoryPool(MemoryPool&&) noexcept = default;
     auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool &&) -> MemoryPool& = delete;
+    auto operator=(MemoryPool&&) -> MemoryPool& = delete;
 
     ~MemoryPool()
     {
@@ -860,8 +860,8 @@ static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr auto FADING_PERIOD = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
-static constexpr auto DEFAULT_DRAW_WIDTH = 256;
-static constexpr auto DEFAULT_DRAW_HEIGHT = 128;
+static constexpr auto DEFAULT_3D_DRAW_WIDTH = 256;
+static constexpr auto DEFAULT_3D_DRAW_HEIGHT = 128;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
 
