@@ -131,7 +131,6 @@ FO_API_ENUM_ENTRY(EffectType, Primitive, 0x00100000)
 FO_API_ENUM_ENTRY(EffectType, Light, 0x00200000)
 FO_API_ENUM_ENTRY(EffectType, Fog, 0x00400000)
 FO_API_ENUM_ENTRY(EffectType, FlushRenderTarget, 0x01000000)
-FO_API_ENUM_ENTRY(EffectType, FlushRenderTargetMultisampled, 0x02000000) // Multisample
 FO_API_ENUM_ENTRY(EffectType, FlushPrimitive, 0x04000000)
 FO_API_ENUM_ENTRY(EffectType, FlushMap, 0x08000000)
 FO_API_ENUM_ENTRY(EffectType, FlushLight, 0x10000000)

@@ -9,7 +9,7 @@
 
 # Solution
 # ###############################################
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 project(SPARK_Demos)
 set(DEMOS_USE_STATIC_LIBS OFF CACHE BOOL "Store whether to link against static (ON) or dynamic (OFF) SPARK libraries")
 set(DEMOS_USE_IRRLICHT OFF CACHE BOOL "Store whether to include Irrlicht demos")

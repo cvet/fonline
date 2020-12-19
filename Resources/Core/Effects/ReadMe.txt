@@ -12,7 +12,6 @@ Flush_Map.glsl               // Game sprites flushing
 Flush_Map_BlackWhite.glsl    // Game sprites flushing with Black/White effect
 Flush_Primitive.glsl         // Primitive flushing
 Flush_RenderTarget.glsl      // Flushing render target
-Flush_RenderTargetMS.glsl    // Flushing multisample render target
 Font_Default.glsl            // Default effect for fonts
 Interface_Default.glsl       // Default effect for interface
 Primitive_Default.glsl       // Default effect for primitives
@@ -48,7 +47,6 @@ vec4 InBlendIndices;         // Index to WorldMatrices
 float     ZoomFactor;        // Current zoom in game
 sampler2D ColorMap;          // Main texture
 vec4      ColorMapSize;      // Main texture size: x - width, y - height, z - texel width, w - texel height
-float     ColorMapSamples;   // Count of samples
 sampler2D EggMap;            // Egg texture
 vec4      EggMapSize;        // Size same as ColorMapSize
 sampler2D Texture[0..9];     // Custom textures

@@ -249,7 +249,7 @@ public:
     [[nodiscard]] auto GetWindowPosition() const -> tuple<int, int>;
     [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, bool multisampled, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*;
+    [[nodiscard]] auto CreateRenderTarget(bool with_depth, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
     [[nodiscard]] auto GetSpritesColor() const -> uint { return _baseColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }

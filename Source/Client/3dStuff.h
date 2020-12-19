@@ -251,7 +251,7 @@ public:
     void SetSpeed(float speed);
     void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
-    void Draw(int x, int y);
+    void Draw(int x, int y, float scale);
 
     uint SprId {};
     int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
@@ -376,8 +376,8 @@ private:
     int _renderAnimProcTo {100};
     int _renderAnimDir {};
     bool _shadowDisabled {};
-    uint _drawWidth {};
-    uint _drawHeight {};
+    uint _drawWidth {DEFAULT_3D_DRAW_WIDTH};
+    uint _drawHeight {DEFAULT_3D_DRAW_HEIGHT};
 };
 
 class ModelHierarchy final

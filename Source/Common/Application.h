@@ -123,9 +123,7 @@ public:
     const uint Width {};
     const uint Height {};
     const float SizeData[4] {}; // Width, Height, TexelWidth, TexelHeight
-    const float Samples {};
     const bool LinearFiltered {};
-    const bool Multisampled {};
     const bool WithDepth {};
 
 private:
@@ -149,9 +147,6 @@ public:
     struct MainTexBuffer
     {
         float MainTexSize[4] {}; // vec4
-        float MainTexSamples {};
-        int MainTexSamplesInt {};
-        float Padding[2] {};
     };
 
     struct TimeBuffer
@@ -205,7 +200,7 @@ public:
     };
 
     static_assert(sizeof(ProjBuffer) % 16 == 0 && sizeof(ProjBuffer) == 64);
-    static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 32);
+    static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 16);
     static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 16);
     static_assert(sizeof(MapSpriteBuffer) % 16 == 0 && sizeof(MapSpriteBuffer) == 32);
     static_assert(sizeof(BorderBuffer) % 16 == 0 && sizeof(BorderBuffer) == 16);
@@ -250,7 +245,6 @@ private:
     string _effectDefines {};
     hash _nameHash {};
     uint _passCount {};
-    bool _isMultisampled {};
     bool _isShadow[EFFECT_MAX_PASSES] {};
     BlendFuncType _blendFuncParam1[EFFECT_MAX_PASSES] {};
     BlendFuncType _blendFuncParam2[EFFECT_MAX_PASSES] {};
@@ -393,7 +387,7 @@ public:
         [[nodiscard]] auto GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) -> vector<uint>;
         [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
 
-        [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool multisampled, bool with_depth) -> RenderTexture*;
+        [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*;
         [[nodiscard]] auto CreateEffect(const string& name, const string& defines, const RenderEffectLoader& loader) -> RenderEffect*;
 
         void UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data);

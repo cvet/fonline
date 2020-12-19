@@ -9,7 +9,7 @@
 
 # Project declaration
 # ###############################################
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 project(SPARK_OpenGL)
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
 	set(SPARK_OPENGL_LIB "GL" CACHE STRING "The name of the library file of OpenGL.")

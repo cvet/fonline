@@ -145,8 +145,6 @@ void EffectManager::Load3dEffects()
     if (effect_errors > 0) {
         throw EffectManagerException("Default 3D effects not loaded");
     }
-
-    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTargetMS, "Flush_RenderTargetMS");
 }
 
 #undef LOAD_DEFAULT_EFFECT
