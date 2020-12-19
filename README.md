@@ -397,7 +397,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Testing: fix script system
 * Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
 * Testing: send client dumps to server
-* WinApi-Include: move WinApi to separate module because it's give too much garbage in global namespace
 * MonoScripting: set Mono domain user data
 * MonoScripting: get Mono domain user data
 * ScriptApi-Client: solve recursion in GetMapPos
@@ -419,7 +418,6 @@ Please follow these instructions to understand how to use this engine by design:
 * AdminPanel: admin panel network to Asio
 * Critter: rework Client class to ClientConnection
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
-* DataBase: enable mongo db
 * Dialogs: check item name on DR_ITEM
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
