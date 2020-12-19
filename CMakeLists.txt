@@ -1544,7 +1544,12 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		COMMENT "Generate script API meta file" )
 
 	# Script API generation
-	set( genApiDepends "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt" )
+	if( APPLE ) # Workaraund for xcode builds
+		set( genApiDepends "" )
+	else()
+		set( genApiDepends "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt" )
+	endif()
+	
 	set( genApiCommands -meta "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt" -output ${FO_SCRIPTS_OUTPUT} )
 
 	list( APPEND genApiCommands -markdown )
