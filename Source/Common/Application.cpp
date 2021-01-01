@@ -673,7 +673,7 @@ Application::Application(GlobalSettings& settings)
         GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &BaseFBO));
 
         // Calculate atlas size
-        GLint max_texture_size = 0;
+        GLint max_texture_size;
         GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
         GLint max_viewport_size[2];
         GL(glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_size));
@@ -689,7 +689,7 @@ Application::Application(GlobalSettings& settings)
         // Check max bones
         if (settings.Enable3dRendering) {
 #if !FO_OPENGL_ES
-            GLint max_uniform_components = 0;
+            GLint max_uniform_components;
             GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
             if (max_uniform_components < 1024) {
                 WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}.\n", max_uniform_components);
@@ -755,7 +755,7 @@ Application::Application(GlobalSettings& settings)
             throw AppInitException("D3D11CreateDevice failed", d3d_create_device);
 #endif
 
-        static const map<D3D_FEATURE_LEVEL, string> FEATURE_LEVELS_STR = {
+        const map<D3D_FEATURE_LEVEL, string> feature_levels_str = {
             {D3D_FEATURE_LEVEL_11_1, "11.1"},
             {D3D_FEATURE_LEVEL_11_0, "11.0"},
             {D3D_FEATURE_LEVEL_10_1, "10.1"},
@@ -764,12 +764,12 @@ Application::Application(GlobalSettings& settings)
             {D3D_FEATURE_LEVEL_9_2, "9.2"},
             {D3D_FEATURE_LEVEL_9_1, "9.1"},
         };
-        WriteLog("Direct3D device created with feature level {}.\n", FEATURE_LEVELS_STR.at(feature_level));
+        WriteLog("Direct3D device created with feature level {}.\n", feature_levels_str.at(feature_level));
 
         ID3D11Texture2D* back_buf = nullptr;
         SwapChain->GetBuffer(0, IID_PPV_ARGS(&back_buf));
         RUNTIME_ASSERT(back_buf);
-        D3DDevice->CreateRenderTargetView(back_buf, NULL, &MainRenderTarget);
+        D3DDevice->CreateRenderTargetView(back_buf, nullptr, &MainRenderTarget);
         back_buf->Release();
     }
 #endif
@@ -968,7 +968,7 @@ void Application::EndFrame()
     _onFrameEndDispatcher();
 }
 
-auto Application::AppWindow::GetSize() -> tuple<int, int>
+auto Application::AppWindow::GetSize() const -> tuple<int, int>
 {
     auto w = 1000;
     auto h = 1000;
@@ -989,7 +989,7 @@ void Application::AppWindow::SetSize(int w, int h)
 #endif
 }
 
-auto Application::AppWindow::GetPosition() -> tuple<int, int>
+auto Application::AppWindow::GetPosition() const -> tuple<int, int>
 {
     auto x = 0;
     auto y = 0;
@@ -1010,7 +1010,7 @@ void Application::AppWindow::SetPosition(int x, int y)
 #endif
 }
 
-auto Application::AppWindow::GetMousePosition() -> tuple<int, int>
+auto Application::AppWindow::GetMousePosition() const -> tuple<int, int>
 {
     auto x = 100;
     auto y = 100;
@@ -1031,7 +1031,7 @@ void Application::AppWindow::SetMousePosition(int x, int y)
 #endif
 }
 
-auto Application::AppWindow::IsFocused() -> bool
+auto Application::AppWindow::IsFocused() const -> bool
 {
 #if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
@@ -1051,7 +1051,7 @@ void Application::AppWindow::Minimize()
 #endif
 }
 
-auto Application::AppWindow::IsFullscreen() -> bool
+auto Application::AppWindow::IsFullscreen() const -> bool
 {
 #if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
@@ -1064,6 +1064,8 @@ auto Application::AppWindow::IsFullscreen() -> bool
 
 auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
 {
+    NON_CONST_METHOD_HINT();
+
 #if !FO_HEADLESS
     if (CurRenderType == RenderType::Null) {
         return false;
@@ -1072,11 +1074,13 @@ auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
     const auto is_fullscreen = IsFullscreen();
     if (!is_fullscreen && enable) {
         if (SDL_SetWindowFullscreen(SdlWindow, SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
+            RUNTIME_ASSERT(IsFullscreen());
             return true;
         }
     }
     else if (is_fullscreen && !enable) {
         if (SDL_SetWindowFullscreen(SdlWindow, 0) == 0) {
+            RUNTIME_ASSERT(!IsFullscreen());
             return true;
         }
     }
@@ -1121,6 +1125,8 @@ void Application::AppWindow::AlwaysOnTop(bool enable)
 
 auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
+    NON_CONST_METHOD_HINT();
+
 #if !FO_HEADLESS
     auto tex = unique_ptr<RenderTexture>(new RenderTexture());
     const_cast<uint&>(tex->Width) = width;
@@ -1151,7 +1157,7 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
         GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, opengl_tex->TexId, 0));
 
         if (with_depth) {
-            GLint cur_rb = 0;
+            GLint cur_rb;
             GL(glGetIntegerv(GL_RENDERBUFFER_BINDING, &cur_rb));
             GL(glGenRenderbuffers(1, &opengl_tex->DepthBuffer));
             GL(glBindRenderbuffer(GL_RENDERBUFFER, opengl_tex->DepthBuffer));
@@ -1160,7 +1166,7 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
             GL(glBindRenderbuffer(GL_RENDERBUFFER, cur_rb));
         }
 
-        GLenum status = 0;
+        GLenum status;
         GL(status = glCheckFramebufferStatus(GL_FRAMEBUFFER));
         RUNTIME_ASSERT_STR(status == GL_FRAMEBUFFER_COMPLETE, _str("Framebuffer not created, status {:#X}", status));
 
@@ -1206,7 +1212,7 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
     return nullptr;
 }
 
-auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) -> uint
+auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) const -> uint
 {
 #if !FO_HEADLESS
 #if FO_HAVE_OPENGL
@@ -1229,15 +1235,16 @@ auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) -
     return 0;
 }
 
-auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) -> vector<uint>
+auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) const -> vector<uint>
 {
     RUNTIME_ASSERT(w && h);
-    vector<uint> result(w * h);
+    const auto size = w * h;
+    vector<uint> result(size);
 #if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
-        GLint prev_fbo = 0;
+        GLint prev_fbo;
         GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, opengl_tex->FBO));
         GL(glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, &result[0]));
@@ -1249,7 +1256,7 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
     }
 #endif
 #endif
-    return std::move(result);
+    return result;
 }
 
 void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data)
@@ -1828,7 +1835,7 @@ i).c_str()));
     return effect.release();
 }
 
-void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderTexture* /*tex*/)
+void Application::AppRender::DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, uint pos, RenderEffect* effect, RenderTexture* tex)
 {
 #if !FO_HEADLESS
 #if FO_HAVE_OPENGL
@@ -1836,12 +1843,10 @@ void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector
         // EnableVertexArray(quadsVertexArray, 4 * curDrawQuad);
         // EnableScissor();
 
-        /*uint pos = 0;
-        for (auto& dip : dipQueue)
-        {
-            for (size_t pass = 0; pass < dip.SourceEffect->Passes.size(); pass++)
+        /*
+            for (size_t pass = 0; pass < effect->Passes.size(); pass++)
             {
-                EffectPass& effect_pass = dip.SourceEffect->Passes[pass];
+                EffectPass& effect_pass = effect->Passes[pass];
 
                 GL(glUseProgram(effect_pass.Program));
 
@@ -1888,11 +1893,6 @@ void Application::AppRender::DrawQuads(const Vertex2DVec& /*vbuf*/, const vector
                     effectMngr.EffectProcessVariables(effect_pass, false);
             }
 
-            pos += 6 * dip.SpritesCount;
-        }
-        dipQueue.clear();
-        curDrawQuad = 0;
-
         GL(glUseProgram(0));
         DisableVertexArray(quadsVertexArray);
         DisableScissor();*/
@@ -1910,6 +1910,44 @@ void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const ve
 #if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
+        /*// Enable smooth
+#if !FO_OPENGL_ES
+        if (zoom && *zoom != 1.0f) {
+            GL(glEnable(prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH));
+        }
+#endif
+
+        // Draw
+        EnableVertexArray(pointsVertexArray, count);
+        EnableScissor();
+
+        for (size_t pass = 0; pass < draw_effect->Passes.size(); pass++) {
+            EffectPass& effect_pass = draw_effect->Passes[pass];
+
+            GL(glUseProgram(effect_pass.Program));
+
+            if (IS_EFFECT_VALUE(effect_pass.ProjectionMatrix))
+                GL(glUniformMatrix4fv(effect_pass.ProjectionMatrix, 1, GL_FALSE, projectionMatrixCM[0]));
+
+            if (effect_pass.IsNeedProcess)
+                effectMngr.EffectProcessVariables(effect_pass, true);
+
+            GL(glDrawElements(prim_type, count, GL_UNSIGNED_SHORT, (void*)0));
+
+            if (effect_pass.IsNeedProcess)
+                effectMngr.EffectProcessVariables(effect_pass, false);
+        }
+
+        GL(glUseProgram(0));
+        DisableVertexArray(pointsVertexArray);
+        DisableScissor();
+
+// Disable smooth
+#if !FO_OPENGL_ES
+        if (zoom && *zoom != 1.0f) {
+            GL(glDisable(prim == PRIMITIVE_POINTLIST ? GL_POINT_SMOOTH : GL_LINE_SMOOTH));
+        }
+#endif*/
     }
 #endif
 #if FO_HAVE_DIRECT_3D
@@ -2133,36 +2171,37 @@ void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
     UnlockDevice();
 }
 
+#if !FO_HEADLESS
+struct Application::AppAudio::AudioConverter
+{
+    int Format {};
+    int Channels {};
+    int Rate {};
+    SDL_AudioCVT Cvt {};
+    bool NeedConvert {};
+};
+#endif
+
 auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
     RUNTIME_ASSERT(IsEnabled());
 
 #if !FO_HEADLESS
-    struct AudioConverter
-    {
-        int Format {};
-        int Channels {};
-        int Rate {};
-        SDL_AudioCVT Cvt {};
-        bool NeedConvert {};
-    };
-    static vector<AudioConverter> converters {};
+    auto get_converter = [this, format, channels, rate]() -> AudioConverter* {
+        const auto it = std::find_if(_converters.begin(), _converters.end(), [format, channels, rate](AudioConverter* c) { return c->Format == format && c->Channels == channels && c->Rate == rate; });
 
-    auto get_converter = [format, channels, rate]() -> AudioConverter* {
-        const auto it = std::find_if(converters.begin(), converters.end(), [format, channels, rate](AudioConverter& f) { return f.Format == format && f.Channels == channels && f.Rate == rate; });
-
-        if (it == converters.end()) {
+        if (it == _converters.end()) {
             SDL_AudioCVT cvt;
-            const auto r = SDL_BuildAudioCVT(&cvt, static_cast<SDL_AudioFormat>(format), channels, rate, AudioSpec.format, AudioSpec.channels, AudioSpec.freq);
+            const auto r = SDL_BuildAudioCVT(&cvt, static_cast<SDL_AudioFormat>(format), static_cast<Uint8>(channels), rate, AudioSpec.format, AudioSpec.channels, AudioSpec.freq);
             if (r == -1) {
                 return nullptr;
             }
 
-            converters.push_back({format, channels, rate, cvt, r == 1});
-            return &converters.back();
+            _converters.push_back(new AudioConverter {format, channels, rate, cvt, r == 1});
+            return _converters.back();
         }
 
-        return &(*it);
+        return *it;
     };
 
     auto* converter = get_converter();

@@ -774,9 +774,6 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             case KeyCode::DIK_Q:
                 Settings.ShowCorners = !Settings.ShowCorners;
                 break;
-            case KeyCode::DIK_W:
-                Settings.ShowSpriteCuts = !Settings.ShowSpriteCuts;
-                break;
             case KeyCode::DIK_E:
                 Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
                 break;

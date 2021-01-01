@@ -353,13 +353,11 @@ Please follow these instructions to understand how to use this engine by design:
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
 * ResourceManager: why I disable offset adding?
 * SpriteManager: restore texture saving
-* SpriteManager: finish rendering
 * SpriteManager: improve DirectX rendering
 * SpriteManager: maybe restrict fps at 60?
 * SpriteManager: optimize sprite atlas filling
 * SpriteManager: improve client rendering brightness
 * SpriteManager: move fonts stuff to separate module
-* Sprites: exclude sprite cut system?
 * Sprites: MapSprite releasing
 * Sprites: : incapsulate all sprite data
 * Application: move different renderers to separate modules

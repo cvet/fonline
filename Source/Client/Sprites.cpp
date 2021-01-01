@@ -31,13 +31,8 @@
 // SOFTWARE.
 //
 
-// Todo: exclude sprite cut system?
-
 #include "Sprites.h"
-#include "Settings.h"
 #include "SpriteManager.h"
-
-SpriteVec Sprites::_spritesPool;
 
 void Sprite::Unvalidate()
 {
@@ -112,29 +107,11 @@ void Sprite::Unvalidate()
 
 auto Sprite::GetIntersected(int ox, int oy) -> Sprite*
 {
-    // Check for cutting
     if (ox < 0 || oy < 0) {
         return nullptr;
     }
-    if (CutType == 0) {
-        return Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true) ? this : nullptr;
-    }
 
-    // Find root sprite
-    auto* spr = this;
-    while (spr->Parent != nullptr) {
-        spr = spr->Parent;
-    }
-
-    // Check sprites
-    const auto oxf = static_cast<float>(ox) * Root->_settings.SpritesZoom;
-    while (spr != nullptr) {
-        if (oxf >= spr->CutX && oxf < spr->CutX + spr->CutW) {
-            return Root->_sprMngr.IsPixNoTransp(spr->PSprId != nullptr ? *spr->PSprId : spr->SprId, ox, oy, true) ? spr : nullptr;
-        }
-        spr = spr->Child;
-    }
-    return nullptr;
+    return Root->_sprMngr.IsPixNoTransp(PSprId != nullptr ? *PSprId : SprId, ox, oy, true) ? this : nullptr;
 }
 
 void Sprite::SetEgg(int egg)
@@ -240,7 +217,7 @@ void Sprite::SetFlash(uint mask)
     Valid = true;
 }
 
-void Sprite::SetLight(int corner, uchar* light, int maxhx, int maxhy)
+void Sprite::SetLight(int corner, uchar* light, ushort maxhx, ushort maxhy)
 {
     if (!Valid) {
         return;
@@ -312,7 +289,10 @@ void Sprite::SetFixedAlpha(uchar alpha)
 
 void Sprites::GrowPool()
 {
+    NON_CONST_METHOD_HINT();
+
     _spritesPool.reserve(_spritesPool.size() + SPRITES_POOL_GROW_SIZE);
+
     for (uint i = 0; i < SPRITES_POOL_GROW_SIZE; i++) {
         _spritesPool.push_back(new Sprite());
     }
@@ -325,7 +305,7 @@ auto Sprites::RootSprite() -> Sprite*
     return _rootSprite;
 }
 
-auto Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::PutSprite(Sprite* child, int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
     _spriteCount++;
 
@@ -392,7 +372,6 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, 
 
     spr->HexX = hx;
     spr->HexY = hy;
-    spr->CutType = 0;
     spr->ScrX = x;
     spr->ScrY = y;
     spr->PScrX = sx;
@@ -419,100 +398,34 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, int hx, int hy, int cut, 
     spr->Parent = nullptr;
     spr->Child = nullptr;
 
-    // Cutting
-    if (cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL) {
-        const auto hor = cut == SPRITE_CUT_HORIZONTAL;
-
-        auto stepi = _settings.MapHexWidth / 2;
-        if (_settings.MapHexagonal && hor) {
-            stepi = (_settings.MapHexWidth + _settings.MapHexWidth / 2) / 2;
-        }
-        const auto stepf = static_cast<float>(stepi);
-
-        const auto* si = _sprMngr.GetSpriteInfo(id_ptr != nullptr ? *id_ptr : id);
-        if (si == nullptr || si->Width < stepi * 2) {
-            return *spr;
-        }
-
-        spr->CutType = cut;
-
-        int h1;
-        int h2;
-        if (hor) {
-            h1 = spr->HexX + si->Width / 2 / stepi;
-            h2 = spr->HexX - si->Width / 2 / stepi - (si->Width / 2 % stepi != 0 ? 1 : 0);
-            spr->HexX = h1;
-        }
-        else {
-            h1 = spr->HexY - si->Width / 2 / stepi;
-            h2 = spr->HexY + si->Width / 2 / stepi + (si->Width / 2 % stepi != 0 ? 1 : 0);
-            spr->HexY = h1;
-        }
-
-        const auto widthf = static_cast<float>(si->Width);
-        auto xx = 0.0f;
-        auto* parent = spr;
-        for (auto i = h1;;) {
-            auto ww = stepf;
-            if (xx + ww > widthf) {
-                ww = widthf - xx;
-            }
-
-            auto& spr_ = i != h1 ? PutSprite(nullptr, draw_order, hor ? i : hx, hor ? hy : i, 0, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, nullptr) : *spr;
-            if (i != h1) {
-                spr_.Parent = parent;
-            }
-            parent->Child = &spr_;
-            parent = &spr_;
-
-            spr_.CutX = xx;
-            spr_.CutW = ww;
-            spr_.CutTexL = si->SprRect.Left + (si->SprRect.Right - si->SprRect.Left) * (xx / widthf);
-            spr_.CutTexR = si->SprRect.Left + (si->SprRect.Right - si->SprRect.Left) * ((xx + ww) / widthf);
-            spr_.CutType = cut;
-
-            if (_settings.ShowSpriteCuts) {
-                spr_.CutOyL = (hor ? -6 : -12) * ((hor ? hx : hy) - i);
-                spr_.CutOyR = spr_.CutOyL;
-                if (ww < stepf) {
-                    spr_.CutOyR += static_cast<int>((hor ? 3.6f : -8.0f) * (1.0f - ww / stepf));
-                }
-            }
-
-            xx += stepf;
-            if (xx > widthf) {
-                break;
-            }
-
-            if ((hor && (--i < h2)) || (!hor && (++i > h2))) {
-                break;
-            }
-        }
-    }
-
     // Draw order
     spr->DrawOrderType = draw_order;
-    spr->DrawOrderPos = draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER ? spr->HexY * MAXHEX_MAX + spr->HexX + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT) : MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + spr->HexY * DRAW_ORDER * MAXHEX_MAX + spr->HexX * DRAW_ORDER + (draw_order - DRAW_ORDER);
+
+    if (draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER) {
+        spr->DrawOrderPos = spr->HexY * MAXHEX_MAX + spr->HexX + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT);
+    }
+    else {
+        spr->DrawOrderPos = MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + spr->HexY * DRAW_ORDER * MAXHEX_MAX + spr->HexX * DRAW_ORDER + (draw_order - DRAW_ORDER);
+    }
 
     return *spr;
 }
 
-auto Sprites::AddSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::AddSprite(int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
-    return PutSprite(nullptr, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
+    return PutSprite(nullptr, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
-auto Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
+auto Sprites::InsertSprite(int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&
 {
-    // For cutted sprites need resort all tree
-    if (cut == SPRITE_CUT_HORIZONTAL || cut == SPRITE_CUT_VERTICAL) {
-        auto& spr = PutSprite(nullptr, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
-        SortByMapPos();
-        return spr;
-    }
-
     // Find place
-    const uint pos = draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER ? hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT) : MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + hy * DRAW_ORDER * MAXHEX_MAX + hx * DRAW_ORDER + (draw_order - DRAW_ORDER);
+    uint pos;
+    if (draw_order >= DRAW_ORDER_FLAT && draw_order < DRAW_ORDER) {
+        pos = hy * MAXHEX_MAX + hx + MAXHEX_MAX * MAXHEX_MAX * (draw_order - DRAW_ORDER_FLAT);
+    }
+    else {
+        pos = MAXHEX_MAX * MAXHEX_MAX * DRAW_ORDER + hy * DRAW_ORDER * MAXHEX_MAX + hx * DRAW_ORDER + (draw_order - DRAW_ORDER);
+    }
 
     auto* parent = _rootSprite;
     while (parent != nullptr) {
@@ -525,7 +438,7 @@ auto Sprites::InsertSprite(int draw_order, int hx, int hy, int cut, int x, int y
         parent = parent->ChainChild;
     }
 
-    return PutSprite(parent, draw_order, hx, hy, cut, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
+    return PutSprite(parent, draw_order, hx, hy, x, y, sx, sy, id, id_ptr, ox, oy, alpha, effect, callback);
 }
 
 void Sprites::Unvalidate()

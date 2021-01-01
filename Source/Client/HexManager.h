@@ -238,8 +238,8 @@ public:
     auto GetLights() -> vector<LightSource>& { return _lightSources; }
     void RebuildTiles();
     void RebuildRoof();
-    void SetSkipRoof(int hx, int hy);
-    void MarkRoofNum(int hx, int hy, int num);
+    void SetSkipRoof(ushort hx, ushort hy);
+    void MarkRoofNum(int hxi, int hyi, short num);
     auto GetHexPixel(int x, int y, ushort& hx, ushort& hy) -> bool;
     auto GetItemPixel(int x, int y, bool& item_egg) -> ItemHexView*; // With transparent egg
     auto GetCritterPixel(int x, int y, bool ignore_dead_and_chosen) -> CritterView*;
@@ -284,7 +284,7 @@ private:
         short DropCnt {};
     };
 
-    [[nodiscard]] auto IsVisible(uint spr_id, int ox, int oy) -> bool;
+    [[nodiscard]] auto IsVisible(uint spr_id, int ox, int oy) const -> bool;
     [[nodiscard]] auto GetViewWidth() const -> int;
     [[nodiscard]] auto GetViewHeight() const -> int;
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
@@ -315,6 +315,7 @@ private:
     ResourceManager& _resMngr;
     ClientScriptSystem& _scriptSys;
     GameTimer& _gameTime;
+    SpriteVec _spritesPool {};
     Sprites _mainTree;
     Sprites _tilesTree;
     Sprites _roofTree;

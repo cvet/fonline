@@ -1090,7 +1090,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance*
         vertices = mesh->Vertices;
         indices = mesh->Indices;
         combined_mesh->DrawEffect = mesh_instance->CurEffect;
-        std::memset(&combined_mesh->SkinBones[0], 0, combined_mesh->SkinBones.size() * sizeof(combined_mesh->SkinBones[0]));
+        std::memset(&combined_mesh->SkinBones[0], 0, combined_mesh->SkinBones.size() * sizeof(void*));
         std::memset(combined_mesh->Textures, 0, sizeof(combined_mesh->Textures));
         combined_mesh->CurBoneMatrix = 0;
     }
