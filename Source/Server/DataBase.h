@@ -68,8 +68,8 @@ public:
     explicit operator bool() const;
     ~DataBase();
 
-    [[nodiscard]] auto GetAllIds(const string& collection_name) -> vector<uint>;
-    [[nodiscard]] auto Get(const string& collection_name, uint id) -> Document;
+    [[nodiscard]] auto GetAllIds(const string& collection_name) const -> vector<uint>;
+    [[nodiscard]] auto Get(const string& collection_name, uint id) const -> Document;
 
     void StartChanges();
     void Insert(const string& collection_name, uint id, const Document& doc);
@@ -80,6 +80,7 @@ public:
 private:
     explicit DataBase(DataBaseImpl* impl);
     unique_ptr<DataBaseImpl> _impl {};
+    bool _nonConstHelper {};
 };
 
 extern auto ConnectToDataBase(const string& connection_info) -> DataBase;
