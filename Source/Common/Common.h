@@ -447,11 +447,13 @@ public:
     auto operator=(const type& other) -> ptr&
     {
         if (this != &other) {
-            if (_value)
+            if (_value) {
                 --_value->ptrCounter;
+            }
             _value = other._value;
-            if (_value)
+            if (_value) {
                 ++_value->ptrCounter;
+            }
         }
         return *this;
     }
@@ -462,11 +464,12 @@ public:
         other._value = nullptr;
     }
 
-    auto operator=(type&& other) noexcept -> ptr&&
+    auto operator=(type&& other) noexcept -> ptr&
     {
         if (this != &other) {
-            if (_value)
+            if (_value) {
                 --_value->ptrCounter;
+            }
             _value = other._value;
             other._value = nullptr;
         }
@@ -475,8 +478,9 @@ public:
 
     ~ptr()
     {
-        if (_value)
+        if (_value) {
             --_value->ptrCounter;
+        }
     }
 
     auto operator->() -> T* { return _value; }
@@ -857,7 +861,7 @@ static constexpr auto UTF8_BUF_SIZE(int count)
 }
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
-static constexpr auto FADING_PERIOD = 1000;
+static constexpr uint FADING_PERIOD = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr auto DEFAULT_3D_DRAW_WIDTH = 256;
@@ -887,25 +891,25 @@ static constexpr uchar FIND_ONLY_NPC = 0x20;
 static constexpr uchar FIND_ALL = 0x0F;
 
 // Ping
-#define PING_PING (0)
-#define PING_WAIT (1)
-#define PING_CLIENT (2)
+static constexpr uchar PING_PING = 0;
+static constexpr uchar PING_WAIT = 1;
+static constexpr uchar PING_CLIENT = 2;
 
 // Say types
-#define SAY_NORM (1)
-#define SAY_NORM_ON_HEAD (2)
-#define SAY_SHOUT (3)
-#define SAY_SHOUT_ON_HEAD (4)
-#define SAY_EMOTE (5)
-#define SAY_EMOTE_ON_HEAD (6)
-#define SAY_WHISP (7)
-#define SAY_WHISP_ON_HEAD (8)
-#define SAY_SOCIAL (9)
-#define SAY_RADIO (10)
-#define SAY_NETMSG (11)
-#define SAY_DIALOG (12)
-#define SAY_APPEND (13)
-#define SAY_FLASH_WINDOW (41)
+static constexpr uchar SAY_NORM = 1;
+static constexpr uchar SAY_NORM_ON_HEAD = 2;
+static constexpr uchar SAY_SHOUT = 3;
+static constexpr uchar SAY_SHOUT_ON_HEAD = 4;
+static constexpr uchar SAY_EMOTE = 5;
+static constexpr uchar SAY_EMOTE_ON_HEAD = 6;
+static constexpr uchar SAY_WHISP = 7;
+static constexpr uchar SAY_WHISP_ON_HEAD = 8;
+static constexpr uchar SAY_SOCIAL = 9;
+static constexpr uchar SAY_RADIO = 10;
+static constexpr uchar SAY_NETMSG = 11;
+static constexpr uchar SAY_DIALOG = 12;
+static constexpr uchar SAY_APPEND = 13;
+static constexpr uchar SAY_FLASH_WINDOW = 41;
 
 // Global map
 static constexpr auto GM_MAXZONEX = 100;

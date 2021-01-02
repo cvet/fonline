@@ -208,7 +208,6 @@ public:
     void ProcessInputEvents();
     void ProcessInputEvent(const InputEvent& event);
     void TryExit();
-    auto IsCurInWindow() const -> bool;
     void FlashGameWindow();
     void DrawIface();
     void GameDraw();
@@ -236,7 +235,7 @@ public:
     auto CheckSocketStatus(bool for_write) -> bool;
     auto NetConnect(const string& host, ushort port) -> bool;
     auto FillSockAddr(sockaddr_in& saddr, const string& host, ushort port) -> bool;
-    void ParseSocket();
+    void ProcessSocket();
     auto NetInput(bool unpack) -> int;
     auto NetOutput() -> bool;
     void NetProcess();
@@ -256,6 +255,7 @@ public:
     void Net_SendMove(vector<uchar> steps);
     void Net_SendPing(uchar ping);
     void Net_SendRefereshMe();
+
     void Net_OnWrongNetProto();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter(bool is_npc);
@@ -300,7 +300,6 @@ public:
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
 
-    auto FmtGameText(uint str_num, ...) -> string;
     void FormatTags(string& text, CritterView* player, CritterView* npc, const string& lexems);
     void AddMess(int mess_type, const string& msg);
     void AddMess(int mess_type, const string& msg, bool script_call);
@@ -340,7 +339,7 @@ public:
     auto GetCritter(uint crid) -> CritterView* { return HexMngr.GetCritter(crid); }
     auto GetItem(uint item_id) -> ItemHexView* { return HexMngr.GetItemById(item_id); }
     void DeleteCritters();
-    void DeleteCritter(uint remid);
+    void DeleteCritter(uint crid);
 
     ClientSettings& Settings;
     GeometryHelper GeomHelper;
@@ -381,8 +380,7 @@ public:
     vector<uchar> ComBuf {};
     NetBuffer Bin {};
     NetBuffer Bout {};
-    z_stream ZStream {};
-    bool ZStreamOk {};
+    z_stream* ZStream {};
     uint BytesReceive {};
     uint BytesRealReceive {};
     uint BytesSend {};
@@ -438,4 +436,5 @@ public:
     uint LmapPrepareNextTick {};
     uchar DlgIsNpc {};
     uint DlgNpcId {};
+    optional<uint> PrevDayTimeColor {};
 };

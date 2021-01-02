@@ -102,7 +102,6 @@ protected:
     Entity(uint id, EntityType type, PropertyRegistrator* registartor, const ProtoEntity* proto);
     virtual ~Entity();
 
-private:
     bool _nonConstHelper {};
 };
 

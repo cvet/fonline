@@ -284,6 +284,18 @@ auto GenericUtils::Percent(int full, int peace) -> int
     return std::clamp(percent, 0, 100);
 }
 
+auto GenericUtils::Percent(uint full, uint peace) -> uint
+{
+    RUNTIME_ASSERT(full >= 0);
+
+    if (full == 0u) {
+        return 0u;
+    }
+
+    const auto percent = peace * 100u / full;
+    return std::clamp(percent, 0u, 100u);
+}
+
 auto GenericUtils::NumericalNumber(uint num) -> uint
 {
     if ((num & 1) != 0u) {

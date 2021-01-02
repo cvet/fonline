@@ -2354,8 +2354,9 @@ void FOServer::Process_Update(Client* cl)
     if (!UpdateFilesList.empty()) {
         cl->Connection->Bout.Push(&UpdateFilesList[0], static_cast<uint>(UpdateFilesList.size()));
     }
-    if (!outdated)
-        NET_WRITE_PROPERTIES(cl->Connection->Bout, global_vars_data, global_vars_data_sizes)
+    if (!outdated) {
+        NET_WRITE_PROPERTIES(cl->Connection->Bout, global_vars_data, global_vars_data_sizes);
+    }
     CLIENT_OUTPUT_END(cl);
 }
 
@@ -2811,7 +2812,7 @@ void FOServer::Process_LogIn(Client*& cl)
     cl->Connection->Bout << msg_len;
     cl->Connection->Bout << bin_seed;
     cl->Connection->Bout << bout_seed;
-    NET_WRITE_PROPERTIES(cl->Connection->Bout, global_vars_data, global_vars_data_sizes)
+    NET_WRITE_PROPERTIES(cl->Connection->Bout, global_vars_data, global_vars_data_sizes);
     CLIENT_OUTPUT_END(cl);
 
     cl->Connection->Bin.SetEncryptKey(bin_seed);

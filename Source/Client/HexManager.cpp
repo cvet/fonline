@@ -4125,8 +4125,8 @@ void HexManager::GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles,
 {
     WriteLog("Get map info...");
 
-    hash_tiles = 0;
-    hash_scen = 0;
+    hash_tiles = 0u;
+    hash_scen = 0u;
 
     if (map_pid == _curPidMap) {
         hash_tiles = _curHashTiles;

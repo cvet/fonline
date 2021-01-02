@@ -338,7 +338,6 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: process default animations
 * 3dStuff: GetAnim1/GetAnim2 int to uint return type
 * 3dStuff: fix AtlasType referencing in 3dStuff
-* Client: remove CHECK_IN_BUFF_ERROR();
 * Client: handle mouse wheel
 * Client: synchronize effects showing (for example shot and kill)
 * Client: need attention!

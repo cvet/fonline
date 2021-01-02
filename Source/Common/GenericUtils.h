@@ -72,6 +72,7 @@ public:
     [[nodiscard]] static auto Random(int minimum, int maximum) -> int;
     [[nodiscard]] static auto Random(uint minimum, uint maximum) -> uint;
     [[nodiscard]] static auto Percent(int full, int peace) -> int;
+    [[nodiscard]] static auto Percent(uint full, uint peace) -> uint;
     [[nodiscard]] static auto NumericalNumber(uint num) -> uint;
     [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool;
     [[nodiscard]] static auto ConvertParamValue(const string& str, bool& fail) -> int;

@@ -169,12 +169,18 @@ void NetBuffer::Push(const void* buf, uint len, bool no_crypt)
 
 void NetBuffer::Pop(void* buf, uint len)
 {
-    if (_isError || len == 0u) {
+    if (_isError) {
+        std::memset(buf, 0, len);
+        return;
+    }
+
+    if (len == 0u) {
         return;
     }
 
     if (_bufReadPos + len > _bufEndPos) {
         _isError = true;
+        std::memset(buf, 0, len);
         return;
     }
 

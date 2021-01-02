@@ -1097,7 +1097,7 @@ void Client::PingClient()
 
     CLIENT_OUTPUT_BEGIN(this);
     Connection->Bout << NETMSG_PING;
-    Connection->Bout << static_cast<uchar> PING_CLIENT;
+    Connection->Bout << PING_CLIENT;
     CLIENT_OUTPUT_END(this);
 
     _pingNextTick = _gameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
@@ -1151,7 +1151,7 @@ void Client::Send_AddCritter(Critter* cr)
         Connection->Bout.Push(cl->Name.c_str(), UTF8_BUF_SIZE(MAX_NAME));
     }
 
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
 
     CLIENT_OUTPUT_END(this);
 
@@ -1225,8 +1225,8 @@ void Client::Send_LoadMap(Map* map, MapManager& map_mngr)
     Connection->Bout << hash_tiles;
     Connection->Bout << hash_scen;
     if (map != nullptr) {
-        NET_WRITE_PROPERTIES(Connection->Bout, map_data, map_data_sizes)
-        NET_WRITE_PROPERTIES(Connection->Bout, loc_data, loc_data_sizes)
+        NET_WRITE_PROPERTIES(Connection->Bout, map_data, map_data_sizes);
+        NET_WRITE_PROPERTIES(Connection->Bout, loc_data, loc_data_sizes);
     }
 
     CLIENT_OUTPUT_END(this);
@@ -1402,7 +1402,7 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
         Connection->Bout << item_->GetCritSlot();
         Connection->Bout << item_->GetId();
         Connection->Bout << item_->GetProtoId();
-        NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i])
+        NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i]);
     }
     CLIENT_OUTPUT_END(this);
 }
@@ -1467,7 +1467,7 @@ void Client::Send_AddItemOnMap(Item* item) const
     Connection->Bout << item->GetHexX();
     Connection->Bout << item->GetHexY();
     Connection->Bout << is_added;
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CLIENT_OUTPUT_END(this);
 }
 
@@ -1519,7 +1519,7 @@ void Client::Send_AddItem(Item* item) const
     Connection->Bout << item->GetId();
     Connection->Bout << item->GetProtoId();
     Connection->Bout << item->GetCritSlot();
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CLIENT_OUTPUT_END(this);
 }
 
@@ -1560,7 +1560,7 @@ void Client::Send_SomeItems(const vector<Item*>* items, int param) const
         const auto* item = items->at(i);
         Connection->Bout << item->GetId();
         Connection->Bout << item->GetProtoId();
-        NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i])
+        NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i]);
     }
     CLIENT_OUTPUT_END(this);
 }
@@ -1718,7 +1718,7 @@ void Client::Send_AllProperties()
     CLIENT_OUTPUT_BEGIN(this);
     Connection->Bout << NETMSG_ALL_PROPERTIES;
     Connection->Bout << msg_len;
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CLIENT_OUTPUT_END(this);
 }
 
@@ -2201,7 +2201,7 @@ void Client::Send_SomeItem(Item* item) const
     Connection->Bout << msg_len;
     Connection->Bout << item->GetId();
     Connection->Bout << item->GetProtoId();
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CLIENT_OUTPUT_END(this);
 }
 

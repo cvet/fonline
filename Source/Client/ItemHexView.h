@@ -110,9 +110,9 @@ private:
     ResourceManager& _resMngr;
     EffectManager& _effectMngr;
     GameTimer& _gameTime;
-    int _curSpr {};
-    int _begSpr {};
-    int _endSpr {};
+    uint _curSpr {};
+    uint _begSpr {};
+    uint _endSpr {};
     uint _animBegSpr {};
     uint _animEndSpr {};
     uint _animTick {};
