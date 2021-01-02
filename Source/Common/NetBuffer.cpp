@@ -232,8 +232,6 @@ auto NetBuffer::NeedProcess() -> bool
         return true; // Ping
     case NETMSG_DISCONNECT:
         return NETMSG_DISCONNECT_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_LOGIN:
-        return NETMSG_LOGIN_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_WRONG_NET_PROTO:
         return NETMSG_WRONG_NET_PROTO_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_REGISTER_SUCCESS:
@@ -366,6 +364,7 @@ auto NetBuffer::NeedProcess() -> bool
     CopyBuf(_bufData.get() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(-static_cast<int>(sizeof(msg))), sizeof(msg_len));
 
     switch (msg) {
+    case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:
@@ -415,9 +414,6 @@ void NetBuffer::SkipMsg(uint msg)
         break;
     case NETMSG_DISCONNECT:
         size = NETMSG_DISCONNECT_SIZE;
-        break;
-    case NETMSG_LOGIN:
-        size = NETMSG_LOGIN_SIZE;
         break;
     case NETMSG_WRONG_NET_PROTO:
         size = NETMSG_WRONG_NET_PROTO_SIZE;
@@ -597,6 +593,7 @@ void NetBuffer::SkipMsg(uint msg)
         size = NETMSG_POD_PROPERTY_SIZE(8, 2);
         break;
 
+    case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:

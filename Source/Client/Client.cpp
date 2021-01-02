@@ -154,7 +154,7 @@ void FOClient::ProcessAutoLogin()
         return;
     }
 
-    auto auto_login_args = _str(auto_login).split(' ');
+    const auto auto_login_args = _str(auto_login).split(' ');
     if (auto_login_args.size() != 2) {
         return;
     }
@@ -1647,7 +1647,7 @@ void FOClient::Net_SendLogIn()
 {
     WriteLog("Player login.\n");
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE + LoginName.length() + NetBuffer::STRING_LEN_SIZE + LoginPassword.length();
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(LoginName.length() + LoginPassword.length());
 
     Bout << NETMSG_LOGIN;
     Bout << msg_len;
@@ -1668,7 +1668,7 @@ void FOClient::Net_SendCreatePlayer()
 {
     WriteLog("Player registration.\n");
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE + LoginName.length() + NetBuffer::STRING_LEN_SIZE + LoginPassword.length();
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(LoginName.length() + LoginPassword.length());
 
     Bout << NETMSG_CREATE_CLIENT;
     Bout << msg_len;

@@ -554,7 +554,7 @@ void FOServer::DisconnectClient(Client* cl)
     if (cl_ != nullptr && cl_ == cl) {
         SetBit(cl->Flags, FCRIT_DISCONNECT);
         if (cl->GetMapId() != 0u) {
-            cl->SendA_Action(ACTION_DISCONNECT, 0, nullptr);
+            cl->Broadcast_Action(ACTION_DISCONNECT, 0, nullptr);
         }
         else {
             for (auto it = cl->GlobalMapGroup->begin(), end = cl->GlobalMapGroup->end(); it != end; ++it) {
@@ -891,10 +891,10 @@ void FOServer::Process_Text(Client* cl)
     switch (how_say) {
     case SAY_NORM: {
         if (cl->GetMapId() != 0u) {
-            cl->SendAA_Text(cl->VisCr, str, SAY_NORM, true);
+            cl->SendAndBroadcast_Text(cl->VisCr, str, SAY_NORM, true);
         }
         else {
-            cl->SendAA_Text(*cl->GlobalMapGroup, str, SAY_NORM, true);
+            cl->SendAndBroadcast_Text(*cl->GlobalMapGroup, str, SAY_NORM, true);
         }
     } break;
     case SAY_SHOUT: {
@@ -904,23 +904,23 @@ void FOServer::Process_Text(Client* cl)
                 return;
             }
 
-            cl->SendAA_Text(map->GetCritters(), str, SAY_SHOUT, true);
+            cl->SendAndBroadcast_Text(map->GetCritters(), str, SAY_SHOUT, true);
         }
         else {
-            cl->SendAA_Text(*cl->GlobalMapGroup, str, SAY_SHOUT, true);
+            cl->SendAndBroadcast_Text(*cl->GlobalMapGroup, str, SAY_SHOUT, true);
         }
     } break;
     case SAY_EMOTE: {
         if (cl->GetMapId() != 0u) {
-            cl->SendAA_Text(cl->VisCr, str, SAY_EMOTE, true);
+            cl->SendAndBroadcast_Text(cl->VisCr, str, SAY_EMOTE, true);
         }
         else {
-            cl->SendAA_Text(*cl->GlobalMapGroup, str, SAY_EMOTE, true);
+            cl->SendAndBroadcast_Text(*cl->GlobalMapGroup, str, SAY_EMOTE, true);
         }
     } break;
     case SAY_WHISP: {
         if (cl->GetMapId() != 0u) {
-            cl->SendAA_Text(cl->VisCr, str, SAY_WHISP, true);
+            cl->SendAndBroadcast_Text(cl->VisCr, str, SAY_WHISP, true);
         }
         else {
             cl->Send_TextEx(cl->GetId(), str, SAY_WHISP, true);
@@ -931,7 +931,7 @@ void FOServer::Process_Text(Client* cl)
     } break;
     case SAY_RADIO: {
         if (cl->GetMapId() != 0u) {
-            cl->SendAA_Text(cl->VisCr, str, SAY_WHISP, true);
+            cl->SendAndBroadcast_Text(cl->VisCr, str, SAY_WHISP, true);
         }
         else {
             cl->Send_TextEx(cl->GetId(), str, SAY_WHISP, true);
@@ -2236,7 +2236,7 @@ auto FOServer::Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> 
         cr->SetBreakTimeDelta(cr->GetWalkTime());
     }
 
-    cr->SendA_Move(move_params);
+    cr->Broadcast_Move(move_params);
     MapMngr.ProcessVisibleCritters(cr);
     MapMngr.ProcessVisibleItems(cr);
 
@@ -2497,9 +2497,6 @@ void FOServer::Process_CreateClient(Client* cl)
     const auto reg_port = cl->GetPort();
     cl->SetConnectionPort({reg_port});
 
-    // Assign base access
-    cl->Access = ACCESS_DEFAULT;
-
     // Notify
     cl->Send_TextMsg(cl, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME);
 
@@ -2678,7 +2675,7 @@ void FOServer::Process_LogIn(Client*& cl)
             cl = cl_old;
         }
 
-        cl->SendA_Action(ACTION_CONNECT, 0, nullptr);
+        cl->Broadcast_Action(ACTION_CONNECT, 0, nullptr);
     }
     // Avatar not in game
     else {
@@ -3003,7 +3000,7 @@ void FOServer::Process_Move(Client* cl)
     // The player informs that has stopped
     if (IsBitSet(move_params, MOVE_PARAM_STEP_DISALLOW)) {
         // cl->Send_XY(cl);
-        cl->SendA_XY();
+        cl->Broadcast_XY();
         return;
     }
 
@@ -3049,7 +3046,7 @@ void FOServer::Process_Dir(Client* cl)
     }
 
     cl->SetDir(dir);
-    cl->SendA_Dir();
+    cl->Broadcast_Dir();
 }
 
 void FOServer::Process_Ping(Client* cl)
@@ -3253,7 +3250,7 @@ void FOServer::OnSendCritterValue(Entity* entity, Property* prop)
         cr->Send_Property(NetProperty::Chosen, prop, cr);
     }
     if (is_public) {
-        cr->SendA_Property(NetProperty::Critter, prop, cr);
+        cr->Broadcast_Property(NetProperty::Critter, prop, cr);
     }
 }
 
@@ -3317,7 +3314,7 @@ void FOServer::ProcessMove(Critter* cr)
             auto* targ = cr->GetCrSelf(cr->Moving.TargId);
             if (targ == nullptr) {
                 cr->Moving.State = MOVING_TARGET_NOT_FOUND;
-                cr->SendA_XY();
+                cr->Broadcast_XY();
                 return;
             }
 
@@ -3414,7 +3411,7 @@ void FOServer::ProcessMove(Critter* cr)
             }
 
             cr->Moving.State = reason;
-            cr->SendA_XY();
+            cr->Broadcast_XY();
             return;
         }
 
@@ -3431,7 +3428,7 @@ void FOServer::ProcessMove(Critter* cr)
         if (!GeomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), ps.HexX, ps.HexY, 1) || !Act_Move(cr, ps.HexX, ps.HexY, ps.MoveParams)) {
             // Error
             cr->Moving.Steps.clear();
-            cr->SendA_XY();
+            cr->Broadcast_XY();
         }
         else {
             // Next
@@ -3998,9 +3995,9 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
         if (!ignore_distance) {
             const int dir = GeomHelper.GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
             npc->SetDir(GeomHelper.ReverseDir(dir));
-            npc->SendA_Dir();
+            npc->Broadcast_Dir();
             cl->SetDir(dir);
-            cl->SendA_Dir();
+            cl->Broadcast_Dir();
             cl->Send_Dir(cl);
         }
     }
@@ -4093,7 +4090,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
     // On head text
     if (cl->Talk.CurDialog.Answers.empty()) {
         if (npc != nullptr) {
-            npc->SendAA_MsgLex(npc->VisCr, cl->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cl->Talk.Lexems.c_str());
+            npc->SendAndBroadcast_MsgLex(npc->VisCr, cl->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cl->Talk.Lexems.c_str());
         }
         else {
             auto* map = MapMngr.GetMap(cl->GetMapId());
@@ -4282,7 +4279,7 @@ void FOServer::Process_Dialog(Client* cl)
     // On head text
     if (cl->Talk.CurDialog.Answers.empty()) {
         if (npc != nullptr) {
-            npc->SendAA_MsgLex(npc->VisCr, cl->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cl->Talk.Lexems.c_str());
+            npc->SendAndBroadcast_MsgLex(npc->VisCr, cl->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cl->Talk.Lexems.c_str());
         }
         else {
             auto* map = MapMngr.GetMap(cl->GetMapId());
@@ -4347,7 +4344,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
                         cr->Send_Property(NetProperty::ChosenItem, prop, item);
                     }
                     if (is_public) {
-                        cr->SendA_Property(NetProperty::CritterItem, prop, item);
+                        cr->Broadcast_Property(NetProperty::CritterItem, prop, item);
                     }
                 }
             }
@@ -4412,7 +4409,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, Property* prop, void* cur_val
             else {
                 cr->Send_AddItem(item);
             }
-            cr->SendAA_MoveItem(item, ACTION_REFRESH, 0);
+            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
         }
     }
 }

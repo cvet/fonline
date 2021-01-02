@@ -50,7 +50,6 @@ public:
 
     [[nodiscard]] static auto MurmurHash2(const uchar* data, uint len) -> hash;
     [[nodiscard]] static auto MurmurHash2_64(const uchar* data, uint len) -> uint64;
-    [[nodiscard]] static auto ClientPassHash(const string& name, const string& pass) -> string;
 };
 
 class Compressor final

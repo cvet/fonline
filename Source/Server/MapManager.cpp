@@ -881,10 +881,10 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
     }
 
     // Ring check
-    if (cut <= 1 && multihex == 0u) {
+    if (cut <= 1u && multihex == 0u) {
         auto [rsx, rsy] = _geomHelper.GetHexOffsets((to_hx % 2) != 0);
 
-        auto i = 0;
+        auto i = 0u;
         for (; i < dirs_count; i++, rsx++, rsy++) {
             const auto xx = static_cast<int>(to_hx + *rsx);
             const auto yy = static_cast<int>(to_hy + *rsy);
@@ -962,7 +962,7 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
 
             const auto [sx, sy] = _geomHelper.GetHexOffsets((cx & 1) != 0);
 
-            for (auto j = 0; j < dirs_count; j++) {
+            for (auto j = 0u; j < dirs_count; j++) {
                 short nx = static_cast<short>(cx) + sx[j];
                 short ny = static_cast<short>(cy) + sy[j];
                 if (nx < 0 || ny < 0 || nx >= maxhx || ny >= maxhy) {
@@ -1940,8 +1940,8 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (IsBitSet(_settings.LookChecks, LOOK_CHECK_DIR)) {
             // Self
             auto real_dir = _geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
-            auto i = dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self;
-            if (i > dirs_count / 2) {
+            auto i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
+            if (i > static_cast<int>(dirs_count / 2u)) {
                 i = dirs_count - i;
             }
             look_self -= look_self * _settings.LookDir[i] / 100;
@@ -1949,7 +1949,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             const int dir_opp = cr->GetDir();
             real_dir = (real_dir + dirs_count / 2) % dirs_count;
             i = dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp;
-            if (i > dirs_count / 2) {
+            if (i > static_cast<int>(dirs_count / 2u)) {
                 i = dirs_count - i;
             }
             look_opp -= look_opp * _settings.LookDir[i] / 100;
@@ -1978,8 +1978,8 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             auto sneak_opp = cr->GetSneakCoefficient();
             if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
                 const auto real_dir = _geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
-                auto i = dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self;
-                if (i > dirs_count / 2) {
+                auto i = (dir_self > real_dir ? dir_self - real_dir : real_dir - dir_self);
+                if (i > static_cast<int>(dirs_count / 2u)) {
                     i = dirs_count - i;
                 }
                 sneak_opp -= sneak_opp * _settings.LookSneakDir[i] / 100;
@@ -2053,8 +2053,8 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
                 const auto dir_opp = cr->GetDir();
                 const auto real_dir = _geomHelper.GetFarDir(cr->GetHexX(), cr->GetHexY(), view_cr->GetHexX(), view_cr->GetHexY());
-                auto i = dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp;
-                if (i > dirs_count / 2) {
+                auto i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
+                if (i > static_cast<int>(dirs_count / 2u)) {
                     i = dirs_count - i;
                 }
                 sneak_self -= sneak_self * _settings.LookSneakDir[i] / 100;
@@ -2213,8 +2213,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
         // Dir modifier
         if (IsBitSet(_settings.LookChecks, LOOK_CHECK_DIR)) {
             const auto real_dir = _geomHelper.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
-            auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
-            if (i > dirs_count / 2) {
+            auto i = (dir > real_dir ? dir - real_dir : real_dir - dir);
+            if (i > static_cast<int>(dirs_count / 2u)) {
                 i = dirs_count - i;
             }
             look_self -= look_self * _settings.LookDir[i] / 100;
@@ -2244,8 +2244,8 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
             auto sneak_opp = cr->GetSneakCoefficient();
             if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
                 const auto real_dir = _geomHelper.GetFarDir(hx, hy, cr->GetHexX(), cr->GetHexY());
-                auto i = dir > real_dir ? dir - real_dir : real_dir - dir;
-                if (i > dirs_count / 2) {
+                auto i = (dir > real_dir ? dir - real_dir : real_dir - dir);
+                if (i > static_cast<int>(dirs_count / 2u)) {
                     i = dirs_count - i;
                 }
                 sneak_opp -= sneak_opp * _settings.LookSneakDir[i] / 100;

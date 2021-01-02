@@ -1083,11 +1083,10 @@ static constexpr uchar LIGHT_GLOBAL = 0x40;
 static constexpr uchar LIGHT_INVERSE = 0x80;
 
 // Access
-#define ACCESS_CLIENT (0)
-#define ACCESS_TESTER (1)
-#define ACCESS_MODER (2)
-#define ACCESS_ADMIN (3)
-#define ACCESS_DEFAULT ACCESS_CLIENT
+static constexpr uchar ACCESS_CLIENT = 0;
+static constexpr uchar ACCESS_TESTER = 1;
+static constexpr uchar ACCESS_MODER = 2;
+static constexpr uchar ACCESS_ADMIN = 3;
 
 // Commands
 #define CMD_EXIT (1)

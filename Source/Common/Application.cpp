@@ -150,20 +150,22 @@ enum class RenderType
 static SDL_Window* SdlWindow {};
 static RenderType CurRenderType {RenderType::None};
 static bool RenderDebug {};
-static vector<InputEvent> EventsQueue {};
-static vector<InputEvent> NextFrameEventsQueue {};
+static vector<InputEvent>* EventsQueue {};
+static vector<InputEvent>* NextFrameEventsQueue {};
 static SDL_AudioDeviceID AudioDeviceId {};
 static SDL_AudioSpec AudioSpec {};
-static Application::AppAudio::AudioStreamCallback AudioStreamWriter {};
+static Application::AppAudio::AudioStreamCallback* AudioStreamWriter {};
 #if FO_HAVE_OPENGL
 static SDL_GLContext GlContext {};
 static GLint BaseFBO {};
 // static OpenGLRenderBuffer;
+// ReSharper disable CppInconsistentNaming
 static bool OGL_version_2_0 {};
 static bool OGL_vertex_buffer_object {};
 static bool OGL_framebuffer_object {};
 static bool OGL_framebuffer_object_ext {};
 static bool OGL_vertex_array_object {};
+// ReSharper restore CppInconsistentNaming
 #endif
 #if FO_HAVE_DIRECT_3D
 static ID3D11Device* D3DDevice {};
@@ -235,32 +237,23 @@ RenderMesh::~RenderMesh()
 }
 
 #if !FO_HEADLESS
-static unordered_map<SDL_Keycode, KeyCode> KeysMap {
-#define KEY_CODE(name, index, code) {code, KeyCode::name},
-#include "KeyCodes-Include.h"
-};
-
-static unordered_map<int, MouseButton> MouseButtonsMap {
-    {SDL_BUTTON_LEFT, MouseButton::Left},
-    {SDL_BUTTON_RIGHT, MouseButton::Right},
-    {SDL_BUTTON_MIDDLE, MouseButton::Middle},
-    {SDL_BUTTON(4), MouseButton::Ext0},
-    {SDL_BUTTON(5), MouseButton::Ext1},
-    {SDL_BUTTON(6), MouseButton::Ext2},
-    {SDL_BUTTON(7), MouseButton::Ext3},
-    {SDL_BUTTON(8), MouseButton::Ext4},
-};
+static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
+static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
 #if FO_HAVE_OPENGL
-struct OpenGLTexture : RenderTexture::Impl
+struct OpenGLTexture final : RenderTexture::Impl
 {
     ~OpenGLTexture() override
     {
         if (DepthBuffer != 0u) {
-            GL(glDeleteRenderbuffers(1, &DepthBuffer));
+            glDeleteRenderbuffers(1, &DepthBuffer);
         }
-        GL(glDeleteTextures(1, &TexId));
-        GL(glDeleteFramebuffers(1, &FBO));
+        if (TexId != 0u) {
+            glDeleteTextures(1, &TexId);
+        }
+        if (FBO != 0u) {
+            glDeleteFramebuffers(1, &FBO);
+        }
     }
 
     GLuint FBO {};
@@ -270,7 +263,7 @@ struct OpenGLTexture : RenderTexture::Impl
 #endif
 
 #if FO_HAVE_DIRECT_3D
-struct Direct3DTexture : RenderTexture::Impl
+struct Direct3DTexture final : RenderTexture::Impl
 {
     ~Direct3DTexture() override
     {
@@ -303,32 +296,32 @@ struct OpenGLRenderBuffer
 #endif
 
 #if FO_HAVE_OPENGL
-struct OpenGLEffect : RenderEffect::Impl
+struct OpenGLEffect final : RenderEffect::Impl
 {
     ~OpenGLEffect() override { }
 };
 #endif
 
 #if FO_HAVE_DIRECT_3D
-struct Direct3DEffect : RenderEffect::Impl
+struct Direct3DEffect final : RenderEffect::Impl
 {
     ~Direct3DEffect() override { }
 };
 #endif
 
 #if FO_HAVE_OPENGL
-struct OpenGLMesh : RenderMesh::Impl
+struct OpenGLMesh final : RenderMesh::Impl
 {
     ~OpenGLMesh() override
     {
         if (VBO != 0u) {
-            GL(glDeleteBuffers(1, &VBO));
+            glDeleteBuffers(1, &VBO);
         }
         if (IBO != 0u) {
-            GL(glDeleteBuffers(1, &IBO));
+            glDeleteBuffers(1, &IBO);
         }
         if (VAO != 0u) {
-            GL(glDeleteVertexArrays(1, &VAO));
+            glDeleteVertexArrays(1, &VAO);
         }
     }
 
@@ -339,7 +332,7 @@ struct OpenGLMesh : RenderMesh::Impl
 #endif
 
 #if FO_HAVE_DIRECT_3D
-struct Direct3DMesh : RenderMesh::Impl
+struct Direct3DMesh final : RenderMesh::Impl
 {
     ~Direct3DMesh() override { }
 };
@@ -367,9 +360,30 @@ Application::Application(GlobalSettings& settings)
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
     }
 
+    EventsQueue = new vector<InputEvent>();
+    NextFrameEventsQueue = new vector<InputEvent>();
+
+    KeysMap = new unordered_map<SDL_Keycode, KeyCode> {
+#define KEY_CODE(name, index, code) {code, KeyCode::name},
+#include "KeyCodes-Include.h"
+    };
+
+    MouseButtonsMap = new unordered_map<int, MouseButton> {
+        {SDL_BUTTON_LEFT, MouseButton::Left},
+        {SDL_BUTTON_RIGHT, MouseButton::Right},
+        {SDL_BUTTON_MIDDLE, MouseButton::Middle},
+        {SDL_BUTTON(4), MouseButton::Ext0},
+        {SDL_BUTTON(5), MouseButton::Ext1},
+        {SDL_BUTTON(6), MouseButton::Ext2},
+        {SDL_BUTTON(7), MouseButton::Ext3},
+        {SDL_BUTTON(8), MouseButton::Ext4},
+    };
+
     // Initialize audio
     if (!settings.DisableAudio) {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+            AudioStreamWriter = new Application::AppAudio::AudioStreamCallback();
+
             SDL_AudioSpec desired;
             std::memset(&desired, 0, sizeof(desired));
 #if FO_WEB
@@ -382,8 +396,8 @@ Application::Application(GlobalSettings& settings)
 #endif
             desired.callback = [](void*, Uint8* stream, int) {
                 std::memset(stream, AudioSpec.silence, AudioSpec.size);
-                if (AudioStreamWriter) {
-                    AudioStreamWriter(stream);
+                if (*AudioStreamWriter) {
+                    (*AudioStreamWriter)(stream);
                 }
             };
 
@@ -542,7 +556,7 @@ Application::Application(GlobalSettings& settings)
 
         auto ratio = static_cast<float>(settings.ScreenWidth) / static_cast<float>(settings.ScreenHeight);
         settings.ScreenHeight = 768;
-        settings.ScreenWidth = static_cast<int>(static_cast<float>(settings.ScreenHeight) * ratio + 0.5f);
+        settings.ScreenWidth = std::lround(static_cast<float>(settings.ScreenHeight) * ratio);
 
         settings.FullScreen = true;
     }
@@ -677,10 +691,10 @@ Application::Application(GlobalSettings& settings)
         GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
         GLint max_viewport_size[2];
         GL(glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_size));
-        auto atlas_w = std::min(max_texture_size, static_cast<GLint>(AppRender::MAX_ATLAS_SIZE));
+        auto atlas_w = std::min(static_cast<uint>(max_texture_size), AppRender::MAX_ATLAS_SIZE);
         auto atlas_h = atlas_w;
-        atlas_w = std::min(max_viewport_size[0], atlas_w);
-        atlas_h = std::min(max_viewport_size[1], atlas_h);
+        atlas_w = std::min(static_cast<uint>(max_viewport_size[0]), atlas_w);
+        atlas_h = std::min(static_cast<uint>(max_viewport_size[1]), atlas_h);
         RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
         RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
         const_cast<uint&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
@@ -799,9 +813,9 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 void Application::BeginFrame()
 {
 #if !FO_HEADLESS
-    if (!NextFrameEventsQueue.empty()) {
-        EventsQueue.insert(EventsQueue.end(), NextFrameEventsQueue.begin(), NextFrameEventsQueue.end());
-        NextFrameEventsQueue.clear();
+    if (!NextFrameEventsQueue->empty()) {
+        EventsQueue->insert(EventsQueue->end(), NextFrameEventsQueue->begin(), NextFrameEventsQueue->end());
+        NextFrameEventsQueue->clear();
     }
 
     SDL_PumpEvents();
@@ -815,70 +829,70 @@ void Application::BeginFrame()
             ev.MouseY = sdl_event.motion.y;
             ev.DeltaX = sdl_event.motion.xrel;
             ev.DeltaY = sdl_event.motion.yrel;
-            EventsQueue.emplace_back(ev);
+            EventsQueue->emplace_back(ev);
         } break;
         case SDL_MOUSEBUTTONDOWN: {
             InputEvent::MouseDownEvent ev;
-            ev.Button = MouseButtonsMap[sdl_event.button.button];
-            EventsQueue.emplace_back(ev);
+            ev.Button = (*MouseButtonsMap)[sdl_event.button.button];
+            EventsQueue->emplace_back(ev);
         } break;
         case SDL_MOUSEBUTTONUP: {
             InputEvent::MouseUpEvent ev;
-            ev.Button = MouseButtonsMap[sdl_event.button.button];
-            EventsQueue.emplace_back(ev);
+            ev.Button = (*MouseButtonsMap)[sdl_event.button.button];
+            EventsQueue->emplace_back(ev);
         } break;
         case SDL_FINGERMOTION: {
             InputEvent::MouseMoveEvent ev;
             ev.MouseX = sdl_event.motion.x;
             ev.MouseY = sdl_event.motion.y;
-            EventsQueue.emplace_back(ev);
+            EventsQueue->emplace_back(ev);
         } break;
         case SDL_FINGERDOWN: {
             InputEvent::MouseMoveEvent ev1;
             SDL_GetMouseState(&ev1.MouseX, &ev1.MouseY);
-            EventsQueue.emplace_back(ev1);
+            EventsQueue->emplace_back(ev1);
             InputEvent::MouseDownEvent ev2;
             ev2.Button = MouseButton::Left;
-            EventsQueue.emplace_back(ev2);
+            EventsQueue->emplace_back(ev2);
         } break;
         case SDL_FINGERUP: {
             InputEvent::MouseUpEvent ev;
             ev.Button = MouseButton::Left;
-            EventsQueue.emplace_back(ev);
+            EventsQueue->emplace_back(ev);
         } break;
         case SDL_MOUSEWHEEL: {
             InputEvent::MouseWheelEvent ev;
             ev.Delta = -sdl_event.wheel.y;
-            EventsQueue.emplace_back(ev);
+            EventsQueue->emplace_back(ev);
         } break;
         case SDL_KEYDOWN: {
             InputEvent::KeyDownEvent ev;
-            ev.Code = KeysMap[sdl_event.key.keysym.scancode];
+            ev.Code = (*KeysMap)[sdl_event.key.keysym.scancode];
             ev.Text = sdl_event.text.text;
-            EventsQueue.emplace_back(ev);
+            EventsQueue->emplace_back(ev);
         } break;
         case SDL_KEYUP: {
             InputEvent::KeyUpEvent ev;
-            ev.Code = KeysMap[sdl_event.key.keysym.scancode];
-            EventsQueue.emplace_back(ev);
+            ev.Code = (*KeysMap)[sdl_event.key.keysym.scancode];
+            EventsQueue->emplace_back(ev);
         } break;
         case SDL_TEXTINPUT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::DIK_TEXT;
             ev1.Text = sdl_event.text.text;
-            EventsQueue.emplace_back(ev1);
+            EventsQueue->emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::DIK_TEXT;
-            EventsQueue.emplace_back(ev2);
+            EventsQueue->emplace_back(ev2);
         } break;
         case SDL_DROPTEXT: {
             InputEvent::KeyDownEvent ev1;
             ev1.Code = KeyCode::DIK_TEXT;
             ev1.Text = sdl_event.drop.file;
-            EventsQueue.emplace_back(ev1);
+            EventsQueue->emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
             ev2.Code = KeyCode::DIK_TEXT;
-            EventsQueue.emplace_back(ev2);
+            EventsQueue->emplace_back(ev2);
             SDL_free(sdl_event.drop.file);
         } break;
         case SDL_DROPFILE: {
@@ -896,10 +910,10 @@ void Application::BeginFrame()
                     InputEvent::KeyDownEvent ev1;
                     ev1.Code = KeyCode::DIK_TEXT;
                     ev1.Text = _str("{}\n{}{}", sdl_event.drop.file, buf, stripped ? "..." : "");
-                    EventsQueue.emplace_back(ev1);
+                    EventsQueue->emplace_back(ev1);
                     InputEvent::KeyUpEvent ev2;
                     ev2.Code = KeyCode::DIK_TEXT;
-                    EventsQueue.emplace_back(ev2);
+                    EventsQueue->emplace_back(ev2);
                 }
             }
             SDL_free(sdl_event.drop.file);
@@ -918,9 +932,9 @@ void Application::BeginFrame()
         case SDL_APP_TERMINATING: {
             _onQuitDispatcher();
 
+#if FO_WINDOWS && FO_DEBUG
             DeleteGlobalData();
 
-#if FO_WINDOWS && FO_DEBUG
             ::_CrtMemDumpAllObjectsSince(&CrtMemState);
 #endif
 
@@ -1272,7 +1286,7 @@ void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect
 #endif
 #if FO_HAVE_DIRECT_3D
     if (CurRenderType == RenderType::Direct3D) {
-        const auto* d3d_tex = dynamic_cast<Direct3DTexture*>(tex->_pImpl.get());
+        // const auto* d3d_tex = dynamic_cast<Direct3DTexture*>(tex->_pImpl.get());
         // D3DDeviceContext->UpdateSubresource()
     }
 #endif
@@ -2097,9 +2111,9 @@ void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/
 auto Application::AppInput::PollEvent(InputEvent& event) -> bool
 {
 #if !FO_HEADLESS
-    if (!EventsQueue.empty()) {
-        event = EventsQueue.front();
-        EventsQueue.erase(EventsQueue.begin());
+    if (!EventsQueue->empty()) {
+        event = EventsQueue->front();
+        EventsQueue->erase(EventsQueue->begin());
         return true;
     }
 #endif
@@ -2109,7 +2123,7 @@ auto Application::AppInput::PollEvent(InputEvent& event) -> bool
 void Application::AppInput::PushEvent(const InputEvent& event)
 {
 #if !FO_HEADLESS
-    NextFrameEventsQueue.push_back(event);
+    NextFrameEventsQueue->push_back(event);
 #endif
 }
 
@@ -2166,7 +2180,7 @@ void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
 
     LockDevice();
 #if !FO_HEADLESS
-    AudioStreamWriter = std::move(stream_callback);
+    *AudioStreamWriter = std::move(stream_callback);
 #endif
     UnlockDevice();
 }

@@ -67,7 +67,7 @@ struct DiskFileSystemData
 #endif
     }
 
-    string InitialDir;
+    string InitialDir {};
 };
 GLOBAL_DATA(DiskFileSystemData, Data);
 

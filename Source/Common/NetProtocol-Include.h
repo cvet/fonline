@@ -56,13 +56,12 @@
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_LOGIN MAKE_NETMSG_HEADER(1)
-#define NETMSG_LOGIN_SIZE (sizeof(uint) + sizeof(ushort) + UTF8_BUF_SIZE(MAX_NAME) * 2 + sizeof(uint))
 // ////////////////////////////////////////////////////////////////////////
 // Enter to game
-// Params:
-// ushort protocol_version
-// char name[MAX_NAME]
-// char pass[MAX_NAME]
+// uint msg_len
+// uint proto_ver
+// string name
+// string password
 // uint msg_language
 // ////////////////////////////////////////////////////////////////////////
 
@@ -83,11 +82,10 @@
 #define NETMSG_CREATE_CLIENT MAKE_NETMSG_HEADER(3)
 // ////////////////////////////////////////////////////////////////////////
 // Registration query
-// Params:
 // uint mag_len
-// ushort proto_ver
-// MAX_NAME name
-// MAX_NAME password
+// uint proto_ver
+// string name
+// string password
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_REGISTER_SUCCESS MAKE_NETMSG_HEADER(4)

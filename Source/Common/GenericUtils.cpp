@@ -147,38 +147,6 @@ auto Hashing::MurmurHash2_64(const uchar* data, uint len) -> uint64
     return h;
 }
 
-auto Hashing::ClientPassHash(const string& name, const string& pass) -> string
-{
-    auto* bld = new char[MAX_NAME + 1];
-    std::memset(bld, 0, MAX_NAME + 1);
-
-    auto pass_len = pass.length();
-    const auto name_len = name.length();
-
-    if (pass_len > MAX_NAME) {
-        pass_len = MAX_NAME;
-    }
-
-    std::memcpy(bld, pass.c_str(), pass_len);
-    if (pass_len < MAX_NAME) {
-        bld[pass_len++] = '*';
-    }
-
-    for (; name_len != 0u && pass_len < MAX_NAME; pass_len++) {
-        bld[pass_len] = name[pass_len % name_len];
-    }
-
-    auto* pass_hash = new char[MAX_NAME + 1];
-    std::memset(pass_hash, 0, MAX_NAME + 1);
-
-    sha256(reinterpret_cast<const uchar*>(bld), MAX_NAME, reinterpret_cast<uchar*>(pass_hash));
-    string result = pass_hash;
-
-    delete[] bld;
-    delete[] pass_hash;
-    return result;
-}
-
 auto Compressor::Compress(const uchar* data, uint& data_len) -> uchar*
 {
     uLongf buf_len = data_len * 110 / 100 + 12;

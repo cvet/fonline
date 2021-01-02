@@ -370,7 +370,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_A
     else if (dir < _server->Settings.MapDirCount && _critter->GetDir() != dir) {
         _critter->SetDir(dir);
         _critter->Send_Dir(_critter);
-        _critter->SendA_Dir();
+        _critter->Broadcast_Dir();
     }
 }
 FO_API_EPILOG()
@@ -664,7 +664,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, howSay) FO_API_ARG_MARSHAL(string, text)
         _critter->Send_Text(_critter, howSay != SAY_FLASH_WINDOW ? text : " ", howSay);
     }
     else if (_critter->GetMapId()) {
-        _critter->SendAA_Text(_critter->VisCr, text, howSay, false);
+        _critter->SendAndBroadcast_Text(_critter->VisCr, text, howSay, false);
     }
 }
 FO_API_EPILOG()
@@ -689,7 +689,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, howSay) FO_API_ARG_MARSHAL(ushort, textM
         _critter->Send_TextMsg(_critter, numStr, howSay, textMsg);
     }
     else if (_critter->GetMapId()) {
-        _critter->SendAA_Msg(_critter->VisCr, numStr, howSay, textMsg);
+        _critter->SendAndBroadcast_Msg(_critter->VisCr, numStr, howSay, textMsg);
     }
 }
 FO_API_EPILOG()
@@ -715,7 +715,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, howSay) FO_API_ARG_MARSHAL(ushort, textM
         _critter->Send_TextMsgLex(_critter, numStr, howSay, textMsg, lexems.c_str());
     }
     else if (_critter->GetMapId()) {
-        _critter->SendAA_MsgLex(_critter->VisCr, numStr, howSay, textMsg, lexems.c_str());
+        _critter->SendAndBroadcast_MsgLex(_critter->VisCr, numStr, howSay, textMsg, lexems.c_str());
     }
 }
 FO_API_EPILOG()
@@ -743,7 +743,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, dir))
 
     if (_critter->GetMapId()) {
         _critter->Send_Dir(_critter);
-        _critter->SendA_Dir();
+        _critter->Broadcast_Dir();
     }
 }
 FO_API_EPILOG()
@@ -1111,7 +1111,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, itemId) FO_API_ARG_MARSHAL(uchar, slot))
         item_swap->SetCritSlot(from_slot);
     }
 
-    _critter->SendAA_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
+    _critter->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
 
     if (item_swap) {
         _server->ScriptSys.CritterMoveItemEvent(_critter, item_swap, slot);
@@ -1179,7 +1179,7 @@ FO_API_CRITTER_METHOD(Action, FO_API_RET(void), FO_API_ARG(int, action), FO_API_
 #if FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(int, action) FO_API_ARG_MARSHAL(int, actionExt) FO_API_ARG_OBJ_MARSHAL(Item, item))
 {
-    _critter->SendAA_Action(action, actionExt, item);
+    _critter->SendAndBroadcast_Action(action, actionExt, item);
 }
 FO_API_EPILOG()
 #endif
@@ -1198,7 +1198,7 @@ FO_API_CRITTER_METHOD(Animate, FO_API_RET(void), FO_API_ARG(uint, anim1), FO_API
 #if FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_OBJ_MARSHAL(Item, item) FO_API_ARG_MARSHAL(bool, clearSequence) FO_API_ARG_MARSHAL(bool, delayPlay))
 {
-    _critter->SendAA_Animate(anim1, anim2, item, clearSequence, delayPlay);
+    _critter->SendAndBroadcast_Animate(anim1, anim2, item, clearSequence, delayPlay);
 }
 FO_API_EPILOG()
 #endif
@@ -1227,7 +1227,8 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, cond) FO_API_ARG_MARSHAL(uint, anim1) FO_A
         _critter->SetAnim1Dead(anim1);
         _critter->SetAnim2Dead(anim2);
     }
-    _critter->SendAA_SetAnims(cond, anim1, anim2);
+
+    _critter->SendAndBroadcast_SetAnims(cond, anim1, anim2);
 }
 FO_API_EPILOG()
 #endif
