@@ -96,7 +96,6 @@ auto _str::isValidUtf8() const -> bool
     for (size_t i = 0; i < _s.length();) {
         uint length = 0;
         const auto ucs = utf8::Decode(_s.c_str() + i, &length);
-
         if (!utf8::IsValid(ucs)) {
             return false;
         }
@@ -627,19 +626,6 @@ void Str::Copy(char* to, size_t size, const char* from)
         std::memcpy(to, from, from_len);
         to[from_len] = 0;
     }
-}
-
-auto Str::Compare(const char* str1, const char* str2) -> bool
-{
-    while (*str1 != 0 && *str2 != 0) {
-        if (*str1 != *str2) {
-            return false;
-        }
-
-        str1++;
-        str2++;
-    }
-    return *str1 == 0 && *str2 == 0;
 }
 
 auto utf8::IsValid(uint ucs) -> bool

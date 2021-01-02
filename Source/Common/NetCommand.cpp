@@ -61,9 +61,6 @@ static const CmdDef CMD_LIST[] = {
     {"regenmap", CMD_REGENMAP},
     {"settime", CMD_SETTIME},
     {"ban", CMD_BAN},
-    {"deleteself", CMD_DELETE_ACCOUNT},
-    {"changepassword", CMD_CHANGE_PASSWORD},
-    {"changepass", CMD_CHANGE_PASSWORD},
     {"log", CMD_LOG},
 };
 
@@ -352,58 +349,6 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
         buf << params;
         buf << ban_hours;
         buf << info;
-    } break;
-    case CMD_DELETE_ACCOUNT: {
-        if (name.empty()) {
-            logcb("Can't execute this command.");
-            break;
-        }
-
-        string pass;
-        if (!(args_str >> pass)) {
-            logcb("Invalid arguments. Example: deleteself user_password.");
-            break;
-        }
-        pass = _str(pass).replace('*', ' ');
-        auto pass_hash = Hashing::ClientPassHash(name, pass);
-        msg_len += PASS_HASH_SIZE;
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf.Push(pass_hash.c_str(), PASS_HASH_SIZE);
-    } break;
-    case CMD_CHANGE_PASSWORD: {
-        if (name.empty()) {
-            logcb("Can't execute this command.");
-            break;
-        }
-
-        string pass;
-        string new_pass;
-        if (!(args_str >> pass >> new_pass)) {
-            logcb("Invalid arguments. Example: changepassword current_password new_password.");
-            break;
-        }
-        pass = _str(pass).replace('*', ' ');
-
-        // Check the new password's validity
-        auto pass_len = _str(new_pass).lengthUtf8();
-        if (pass_len < MIN_NAME || pass_len > MAX_NAME) {
-            logcb("Invalid new password.");
-            break;
-        }
-
-        auto pass_hash = Hashing::ClientPassHash(name, pass);
-        new_pass = _str(new_pass).replace('*', ' ');
-        auto new_pass_hash = Hashing::ClientPassHash(name, new_pass);
-        msg_len += PASS_HASH_SIZE * 2;
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf.Push(pass_hash.c_str(), PASS_HASH_SIZE);
-        buf.Push(new_pass_hash.c_str(), PASS_HASH_SIZE);
     } break;
     case CMD_LOG: {
         string flags;

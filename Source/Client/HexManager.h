@@ -166,10 +166,10 @@ public:
 
     [[nodiscard]] auto IsMapLoaded() const -> bool { return _curPidMap != 0; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
-    [[nodiscard]] auto GetField(ushort hx, ushort hy) -> Field& { return _hexField[hy * _maxHexX + hx]; }
+    [[nodiscard]] auto GetField(ushort hx, ushort hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _maxHexX + hx]; }
     [[nodiscard]] auto IsHexToDraw(ushort hx, ushort hy) const -> bool { return _hexField[hy * _maxHexX + hx].IsView; }
-    [[nodiscard]] auto GetHexTrack(ushort hx, ushort hy) -> char& { return _hexTrack[hy * _maxHexX + hx]; }
-    [[nodiscard]] auto GetLightHex(ushort hx, ushort hy) -> uchar* { return &_hexLight[hy * _maxHexX * 3 + hx * 3]; }
+    [[nodiscard]] auto GetHexTrack(ushort hx, ushort hy) -> char& { NON_CONST_METHOD_HINT_ONELINE() return _hexTrack[hy * _maxHexX + hx]; }
+    [[nodiscard]] auto GetLightHex(ushort hx, ushort hy) -> uchar* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _maxHexX * 3 + hx * 3]; }
     [[nodiscard]] auto GetWidth() const -> ushort { return _maxHexX; }
     [[nodiscard]] auto GetHeight() const -> ushort { return _maxHexY; }
     [[nodiscard]] auto GetDayTime() -> int;

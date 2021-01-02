@@ -704,7 +704,7 @@ void FOServer::Process(Client* cl)
             cl->LastActivityTime = GameTime.FrameTick();
         }
         else {
-            CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0)
+            CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0);
         }
 
         if (cl->State == ClientState::Connected && (cl->LastActivityTime != 0u) && GameTime.FrameTick() - cl->LastActivityTime > PING_CLIENT_LIFE_TIME) // Kick bot
@@ -745,7 +745,7 @@ void FOServer::Process(Client* cl)
             }
         }
         else {
-            CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0)
+            CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0);
         }
     }
     else if (cl->State == ClientState::Playing) {
@@ -760,7 +760,7 @@ void FOServer::Process(Client* cl)
             cl->Connection->Bin.Refresh();
 
             if (!cl->Connection->Bin.NeedProcess()) {
-                CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0)
+                CHECK_IN_BUFF_ERROR_EXT(cl, (void)0, (void)0);
                 break;
             }
 
@@ -852,7 +852,7 @@ void FOServer::Process_Text(Client* cl)
     cl->Connection->Bin >> msg_len;
     cl->Connection->Bin >> how_say;
     cl->Connection->Bin >> len;
-    CHECK_IN_BUFF_ERROR(cl)
+    CHECK_IN_BUFF_ERROR(cl);
 
     if ((len == 0u) || len >= sizeof(str)) {
         WriteLog("Buffer zero sized or too large, length {}. Disconnect.\n", len);
@@ -862,7 +862,7 @@ void FOServer::Process_Text(Client* cl)
 
     cl->Connection->Bin.Pop(str, len);
     str[len] = 0;
-    CHECK_IN_BUFF_ERROR(cl)
+    CHECK_IN_BUFF_ERROR(cl);
 
     if (!cl->IsAlive() && how_say >= SAY_NORM && how_say <= SAY_RADIO) {
         how_say = SAY_WHISP;
@@ -1458,7 +1458,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client*
         }
         else if (_str(params).compareIgnoreCase("add") || _str(params).compareIgnoreCase("add+")) {
             auto name_len = _str(name).lengthUtf8();
-            if (name_len < MIN_NAME || name_len < Settings.MinNameLength || name_len > MAX_NAME || name_len > Settings.MaxNameLength || (ban_hours == 0u)) {
+            if (name_len < Settings.MinNameLength || name_len > Settings.MaxNameLength || ban_hours == 0u) {
                 logcb("Invalid arguments.");
                 return;
             }
@@ -1466,14 +1466,13 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client*
             auto id = MAKE_CLIENT_ID(name);
             auto* cl_banned = CrMngr.GetPlayer(id);
             ClientBanned ban;
-            std::memset(&ban, 0, sizeof(ban));
-            Str::Copy(ban.ClientName, name.c_str());
-            ban.ClientIp = ((cl_banned != nullptr) && params.find('+') != string::npos ? cl_banned->GetIp() : 0);
+            ban.ClientName = name;
+            ban.ClientIp = (cl_banned != nullptr && params.find('+') != string::npos ? cl_banned->GetIp() : 0);
             ban.BeginTime = Timer::GetCurrentDateTime();
             ban.EndTime = ban.BeginTime;
             ban.EndTime = Timer::AdvanceTime(ban.EndTime, static_cast<int>(ban_hours) * 60 * 60);
-            Str::Copy(ban.BannedBy, cl_ != nullptr ? cl_->Name.c_str() : admin_panel.c_str());
-            Str::Copy(ban.BanInfo, info.c_str());
+            ban.BannedBy = (cl_ != nullptr ? cl_->Name : admin_panel);
+            ban.BanInfo = info;
 
             Banned.push_back(ban);
             SaveBan(ban, false);
@@ -1523,44 +1522,6 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client*
         }
         else {
             logcb("Unknown option.");
-        }
-    } break;
-    case CMD_DELETE_ACCOUNT: {
-        char pass_hash[PASS_HASH_SIZE];
-        buf.Pop(pass_hash, PASS_HASH_SIZE);
-
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
-        if (std::memcmp(cl_->GetPassword().c_str(), pass_hash, PASS_HASH_SIZE) != 0) {
-            logcb("Invalid password.");
-        }
-        else {
-            if (!cl_->GetClientToDelete()) {
-                cl_->SetClientToDelete(true);
-                logcb("Your account will be deleted after character exit from game.");
-            }
-            else {
-                cl_->SetClientToDelete(false);
-                logcb("Deleting canceled.");
-            }
-        }
-    } break;
-    case CMD_CHANGE_PASSWORD: {
-        char pass_hash[PASS_HASH_SIZE];
-        char new_pass_hash[PASS_HASH_SIZE];
-        buf.Pop(pass_hash, PASS_HASH_SIZE);
-        buf.Pop(new_pass_hash, PASS_HASH_SIZE);
-
-        CHECK_ALLOW_COMMAND();
-        CHECK_ADMIN_PANEL();
-
-        if (std::memcmp(cl_->GetPassword().c_str(), pass_hash, PASS_HASH_SIZE) != 0) {
-            logcb("Invalid current password.");
-        }
-        else {
-            cl_->SetPassword(new_pass_hash);
-            logcb("Password changed.");
         }
     } break;
     case CMD_LOG: {
@@ -1923,14 +1884,13 @@ void FOServer::LoadBans()
 
     while (bans.IsApp("Ban")) {
         ClientBanned ban;
-        std::memset(&ban, 0, sizeof(ban));
 
         DateTimeStamp time;
         std::memset(&time, 0, sizeof(time));
 
         string s;
         if (!(s = bans.GetStr("Ban", "User")).empty()) {
-            Str::Copy(ban.ClientName, s.c_str());
+            ban.ClientName = s;
         }
 
         ban.ClientIp = bans.GetInt("Ban", "UserIp", 0);
@@ -1944,11 +1904,11 @@ void FOServer::LoadBans()
         }
 
         if (!(s = bans.GetStr("Ban", "BannedBy")).empty()) {
-            Str::Copy(ban.BannedBy, s.c_str());
+            ban.BannedBy = s;
         }
 
         if (!(s = bans.GetStr("Ban", "Comment")).empty()) {
-            Str::Copy(ban.BanInfo, s.c_str());
+            ban.BanInfo = s;
         }
 
         Banned.push_back(ban);
@@ -2451,18 +2411,14 @@ void FOServer::Process_CreateClient(Client* cl)
     }
 
     // Name
-    char name[UTF8_BUF_SIZE(MAX_NAME)];
-    cl->Connection->Bin.Pop(name, sizeof(name));
-    name[sizeof(name) - 1] = 0;
-    cl->Name = name;
+    cl->Connection->Bin >> cl->Name;
 
-    // Password hash
-    char password[UTF8_BUF_SIZE(MAX_NAME)];
-    cl->Connection->Bin.Pop(password, sizeof(password));
-    password[sizeof(password) - 1] = 0;
+    // Password
+    string password;
+    cl->Connection->Bin >> password;
 
     // Check net
-    CHECK_IN_BUFF_ERROR_EXT(cl, cl->Send_TextMsg(cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME), return )
+    CHECK_IN_BUFF_ERROR_EXT(cl, cl->Send_TextMsg(cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME), return );
 
     // Check data
     if (!_str(cl->Name).isValidUtf8() || cl->Name.find('*') != string::npos) {
@@ -2471,15 +2427,16 @@ void FOServer::Process_CreateClient(Client* cl)
         return;
     }
 
+    // Check name length
     const auto name_len_utf8 = _str(cl->Name).lengthUtf8();
-    if (name_len_utf8 < MIN_NAME || name_len_utf8 < Settings.MinNameLength || name_len_utf8 > MAX_NAME || name_len_utf8 > Settings.MaxNameLength) {
+    if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
         cl->Send_TextMsg(cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
         cl->Disconnect();
         return;
     }
 
     // Check for exist
-    const auto id = MAKE_CLIENT_ID(name);
+    const auto id = MAKE_CLIENT_ID(cl->Name);
     RUNTIME_ASSERT(IS_CLIENT_ID(id));
     if (!DbStorage.Get("Players", id).empty()) {
         cl->Send_TextMsg(cl, STR_NET_ACCOUNT_ALREADY, SAY_NETMSG, TEXTMSG_GAME);
@@ -2580,19 +2537,17 @@ void FOServer::Process_LogIn(Client*& cl)
         return;
     }
 
-    // Login, password hash
-    char name[UTF8_BUF_SIZE(MAX_NAME)];
-    cl->Connection->Bin.Pop(name, sizeof(name));
-    name[sizeof(name) - 1] = 0;
-    cl->Name = name;
-    char password[UTF8_BUF_SIZE(MAX_NAME)];
-    cl->Connection->Bin.Pop(password, sizeof(password));
+    // Login, password
+    string name;
+    string password;
+    cl->Connection->Bin >> name;
+    cl->Connection->Bin >> password;
 
     // Bin hashes
     uint msg_language = 0;
     cl->Connection->Bin >> msg_language;
 
-    CHECK_IN_BUFF_ERROR_EXT(cl, cl->Send_TextMsg(cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME), return )
+    CHECK_IN_BUFF_ERROR_EXT(cl, cl->Send_TextMsg(cl, STR_NET_DATATRANS_ERR, SAY_NETMSG, TEXTMSG_GAME), return );
 
     // Language
     const auto it_l = std::find(LangPacks.begin(), LangPacks.end(), msg_language);
@@ -2604,7 +2559,7 @@ void FOServer::Process_LogIn(Client*& cl)
     }
 
     // If only cache checking than disconnect
-    if (name[0] == 0) {
+    if (name.empty()) {
         cl->Disconnect();
         return;
     }
@@ -2626,16 +2581,24 @@ void FOServer::Process_LogIn(Client*& cl)
         }
     }
 
-    // Check login/password
-    const auto name_len_utf8 = _str(cl->Name).lengthUtf8();
-    if (name_len_utf8 < MIN_NAME || name_len_utf8 < Settings.MinNameLength || name_len_utf8 > MAX_NAME || name_len_utf8 > Settings.MaxNameLength) {
+    // Check for null in login/password
+    if (cl->Name.find('\0') != string::npos || password.find('\0') != string::npos) {
         cl->Send_TextMsg(cl, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME);
         cl->Disconnect();
         return;
     }
 
+    // Check valid symbols in name
     if (!_str(cl->Name).isValidUtf8() || cl->Name.find('*') != string::npos) {
         cl->Send_TextMsg(cl, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+        cl->Disconnect();
+        return;
+    }
+
+    // Check for name length
+    const auto name_len_utf8 = _str(cl->Name).lengthUtf8();
+    if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
+        cl->Send_TextMsg(cl, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME);
         cl->Disconnect();
         return;
     }
@@ -2643,7 +2606,7 @@ void FOServer::Process_LogIn(Client*& cl)
     // Check password
     const auto id = MAKE_CLIENT_ID(cl->Name);
     auto doc = DbStorage.Get("Players", id);
-    if ((doc.count("Password") == 0u) || doc["Password"].index() != DataBase::STRING_VALUE || !Str::Compare(password, std::get<string>(doc["Password"]).c_str())) {
+    if (doc.count("Password") == 0u || doc["Password"].index() != DataBase::STRING_VALUE || std::get<string>(doc["Password"]).length() != password.length() || std::get<string>(doc["Password"]) != password) {
         cl->Send_TextMsg(cl, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
         cl->Disconnect();
         return;
@@ -2918,7 +2881,7 @@ void FOServer::Process_GiveMap(Client* cl)
     cl->Connection->Bin >> loc_id;
     cl->Connection->Bin >> hash_tiles;
     cl->Connection->Bin >> hash_scen;
-    CHECK_IN_BUFF_ERROR(cl)
+    CHECK_IN_BUFF_ERROR(cl);
 
     const auto tick = GameTime.FrameTick();
     if (tick - cl->LastSendedMapTick < Settings.Breaktime * 3) {
@@ -3031,7 +2994,7 @@ void FOServer::Process_Move(Client* cl)
     cl->Connection->Bin >> move_params;
     cl->Connection->Bin >> hx;
     cl->Connection->Bin >> hy;
-    CHECK_IN_BUFF_ERROR(cl)
+    CHECK_IN_BUFF_ERROR(cl);
 
     if (cl->GetMapId() == 0u) {
         return;
@@ -3076,7 +3039,7 @@ void FOServer::Process_Dir(Client* cl)
 {
     uchar dir = 0;
     cl->Connection->Bin >> dir;
-    CHECK_IN_BUFF_ERROR(cl)
+    CHECK_IN_BUFF_ERROR(cl);
 
     if ((cl->GetMapId() == 0u) || dir >= Settings.MapDirCount || cl->GetDir() == dir || cl->IsTalking()) {
         if (cl->GetDir() != dir) {
@@ -3094,7 +3057,7 @@ void FOServer::Process_Ping(Client* cl)
     uchar ping = 0;
 
     cl->Connection->Bin >> ping;
-    CHECK_IN_BUFF_ERROR(cl)
+    CHECK_IN_BUFF_ERROR(cl);
 
     if (ping == PING_CLIENT) {
         cl->PingOk(PING_CLIENT_LIFE_TIME);
@@ -3155,7 +3118,7 @@ void FOServer::Process_Property(Client* cl, uint data_size)
 
     cl->Connection->Bin >> property_index;
 
-    CHECK_IN_BUFF_ERROR(cl)
+    CHECK_IN_BUFF_ERROR(cl);
 
     vector<uchar> data;
     if (data_size != 0) {
@@ -3173,7 +3136,7 @@ void FOServer::Process_Property(Client* cl, uint data_size)
         cl->Connection->Bin.Pop(&data[0], len);
     }
 
-    CHECK_IN_BUFF_ERROR(cl)
+    CHECK_IN_BUFF_ERROR(cl);
 
     auto is_public = false;
     Property* prop = nullptr;
@@ -3993,7 +3956,6 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
 
             auto* map = MapMngr.GetMap(cl->GetMapId());
             if (map == nullptr) {
-                cl->Send_TextMsg(cl, STR_FINDPATH_AIMBLOCK, SAY_NETMSG, TEXTMSG_GAME);
                 return;
             }
 
@@ -4007,7 +3969,7 @@ void FOServer::Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, u
             trace.FindCr = npc;
             MapMngr.TraceBullet(trace);
             if (!trace.IsCritterFounded) {
-                cl->Send_TextMsg(cl, STR_FINDPATH_AIMBLOCK, SAY_NETMSG, TEXTMSG_GAME);
+                cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
                 return;
             }
         }

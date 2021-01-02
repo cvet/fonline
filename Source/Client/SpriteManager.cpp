@@ -136,7 +136,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileManager& file_mngr, E
             PopAtlasType();
 
             if (anim != nullptr) {
-                auto* si = GetSpriteInfo(anim->Ind[0]);
+                const auto* si = GetSpriteInfo(anim->Ind[0]);
                 mesh_tex->MainTex = si->Atlas->MainTex;
                 mesh_tex->AtlasOffsetData[0] = si->SprRect[0];
                 mesh_tex->AtlasOffsetData[1] = si->SprRect[1];
@@ -674,8 +674,8 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data
     si->Data = data;
     si->DataAtlasType = std::get<0>(_atlasStack.back());
     si->DataAtlasOneImage = std::get<1>(_atlasStack.back());
-    si->Width = w;
-    si->Height = h;
+    si->Width = static_cast<ushort>(w);
+    si->Height = static_cast<ushort>(h);
 
     // Find place on atlas
     if (_accumulatorActive) {
@@ -842,7 +842,7 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, const string& fname) -> Any
     // Release old images
     if (anim != nullptr) {
         for (uint i = 0; i < anim->CntFrm; i++) {
-            auto* si = GetSpriteInfo(anim->Ind[i]);
+            const auto* si = GetSpriteInfo(anim->Ind[i]);
             if (si != nullptr) {
                 DestroyAtlases(si->Atlas->Type);
             }
@@ -1896,7 +1896,7 @@ void SpriteManager::DrawContours()
     }
 }
 
-void SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
+void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr)
 {
     if (_rtContours == nullptr || _rtContoursMid == nullptr || _effectMngr.Effects.Contour == nullptr) {
         return;
@@ -1907,7 +1907,9 @@ void SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
     FRect textureuv;
     FRect sprite_border;
 
-    if (borders.Left >= _settings.ScreenWidth * _settings.SpritesZoom || borders.Right < 0 || borders.Top >= _settings.ScreenHeight * _settings.SpritesZoom || borders.Bottom < 0) {
+    const auto zoomed_screen_width = static_cast<int>(static_cast<float>(_settings.ScreenWidth) * _settings.SpritesZoom);
+    const auto zoomed_screen_height = static_cast<int>(static_cast<float>(_settings.ScreenHeight) * _settings.SpritesZoom);
+    if (borders.Left >= zoomed_screen_width || borders.Right < 0 || borders.Top >= zoomed_screen_height || borders.Bottom < 0) {
         return;
     }
 
@@ -1915,13 +1917,17 @@ void SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
         auto& sr = si->SprRect;
         const auto txw = texture->SizeData[2];
         const auto txh = texture->SizeData[3];
-        textureuv(sr.Left - txw, sr.Top - txh, sr.Right + txw, sr.Bottom + txh);
+        textureuv = {sr.Left - txw, sr.Top - txh, sr.Right + txw, sr.Bottom + txh};
         sprite_border = textureuv;
     }
     else {
         auto& sr = si->SprRect;
-        borders(static_cast<int>(x / _settings.SpritesZoom), static_cast<int>(y / _settings.SpritesZoom), static_cast<int>((x + si->Width) / _settings.SpritesZoom), static_cast<int>((y + si->Height) / _settings.SpritesZoom));
-        const FRect bordersf(static_cast<float>(borders.Left), static_cast<float>(borders.Top), static_cast<float>(borders.Right), static_cast<float>(borders.Bottom));
+        const auto zoomed_x = static_cast<int>(static_cast<float>(x) / _settings.SpritesZoom);
+        const auto zoomed_y = static_cast<int>(static_cast<float>(y) / _settings.SpritesZoom);
+        const auto zoomed_x2 = static_cast<int>(static_cast<float>(x + si->Width) / _settings.SpritesZoom);
+        const auto zoomed_y2 = static_cast<int>(static_cast<float>(y + si->Height) / _settings.SpritesZoom);
+        borders = {zoomed_x, zoomed_y, zoomed_x2, zoomed_y2};
+        const auto bordersf = FRect(borders);
         const auto mid_height = _rtContoursMid->MainTex->SizeData[1];
 
         PushRenderTarget(_rtContoursMid);
@@ -1957,7 +1963,9 @@ void SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
         borders.Top--;
         borders.Right++;
         borders.Bottom++;
-        textureuv(static_cast<float>(borders.Left) / tw, static_cast<float>(borders.Top) / th, static_cast<float>(borders.Right) / tw, static_cast<float>(borders.Bottom) / th);
+
+        textureuv = FRect(borders);
+        textureuv = {textureuv.Left / tw, textureuv.Top / th, textureuv.Right / tw, textureuv.Bottom / th};
         sprite_border = textureuv;
     }
 
@@ -1976,28 +1984,28 @@ void SpriteManager::CollectContour(int x, int y, SpriteInfo* si, Sprite* spr)
     }
     contour_color = COLOR_SWAP_RB(contour_color);
 
-    const FRect borders_pos(static_cast<float>(borders.Left), static_cast<float>(borders.Top), static_cast<float>(borders.Right), static_cast<float>(borders.Bottom));
+    const auto bordersf = FRect(borders);
 
     PushRenderTarget(_rtContours);
 
     uint pos = 0;
-    _vBuffer[pos].X = borders_pos.Left;
-    _vBuffer[pos].Y = borders_pos.Bottom;
+    _vBuffer[pos].X = bordersf.Left;
+    _vBuffer[pos].Y = bordersf.Bottom;
     _vBuffer[pos].TU = textureuv.Left;
     _vBuffer[pos].TV = textureuv.Bottom;
     _vBuffer[pos++].Diffuse = contour_color;
-    _vBuffer[pos].X = borders_pos.Left;
-    _vBuffer[pos].Y = borders_pos.Top;
+    _vBuffer[pos].X = bordersf.Left;
+    _vBuffer[pos].Y = bordersf.Top;
     _vBuffer[pos].TU = textureuv.Left;
     _vBuffer[pos].TV = textureuv.Top;
     _vBuffer[pos++].Diffuse = contour_color;
-    _vBuffer[pos].X = borders_pos.Right;
-    _vBuffer[pos].Y = borders_pos.Top;
+    _vBuffer[pos].X = bordersf.Right;
+    _vBuffer[pos].Y = bordersf.Top;
     _vBuffer[pos].TU = textureuv.Right;
     _vBuffer[pos].TV = textureuv.Top;
     _vBuffer[pos++].Diffuse = contour_color;
-    _vBuffer[pos].X = borders_pos.Right;
-    _vBuffer[pos].Y = borders_pos.Bottom;
+    _vBuffer[pos].X = bordersf.Right;
+    _vBuffer[pos].Y = bordersf.Bottom;
     _vBuffer[pos].TU = textureuv.Right;
     _vBuffer[pos].TV = textureuv.Bottom;
     _vBuffer[pos].Diffuse = contour_color;
@@ -2058,7 +2066,7 @@ void SpriteManager::BuildFont(int index)
     font.Builded = true;
 
     // Fix texture coordinates
-    auto* si = GetSpriteInfo(font.ImageNormal->GetSprId(0));
+    const auto* si = GetSpriteInfo(font.ImageNormal->GetSprId(0));
     auto tex_w = static_cast<float>(si->Atlas->Width);
     auto tex_h = static_cast<float>(si->Atlas->Height);
     auto image_x = tex_w * si->SprRect.Left;
@@ -2087,7 +2095,7 @@ void SpriteManager::BuildFont(int index)
         font.SpaceWidth = font.Letters[' '].XAdvance;
     }
 
-    auto* si_bordered = font.ImageBordered != nullptr ? GetSpriteInfo(font.ImageBordered->GetSprId(0)) : nullptr;
+    const auto* si_bordered = (font.ImageBordered != nullptr ? GetSpriteInfo(font.ImageBordered->GetSprId(0)) : nullptr);
     font.FontTexBordered = si_bordered != nullptr ? si_bordered->Atlas->MainTex : nullptr;
 
     const auto normal_ox = static_cast<uint>(tex_w * si->SprRect.Left);
@@ -2376,28 +2384,28 @@ auto SpriteManager::LoadFontBmf(int index, const string& font_name) -> bool
 
     // Chars
     file.SetCurPos(next_block);
-    const int count = file.GetLEUInt() / 20;
-    for (auto i = 0; i < count; i++) {
+    const auto count = file.GetLEUInt() / 20u;
+    for (const auto i : xrange(count)) {
         // Read data
-        auto id = file.GetLEUInt();
-        const int x = file.GetLEUShort();
-        const int y = file.GetLEUShort();
-        const int w = file.GetLEUShort();
-        const int h = file.GetLEUShort();
-        const int ox = file.GetLEUShort();
-        const int oy = file.GetLEUShort();
-        const int xa = file.GetLEUShort();
+        const auto id = file.GetLEUInt();
+        const auto x = file.GetLEUShort();
+        const auto y = file.GetLEUShort();
+        const auto w = file.GetLEUShort();
+        const auto h = file.GetLEUShort();
+        const auto ox = file.GetLEUShort();
+        const auto oy = file.GetLEUShort();
+        const auto xa = file.GetLEUShort();
         file.GoForward(2);
 
         // Fill data
         auto& let = font.Letters[id];
-        let.PosX = x + 1;
-        let.PosY = y + 1;
-        let.Width = w - 2;
-        let.Height = h - 2;
-        let.OffsX = -ox;
-        let.OffsY = -oy + (line_height - base_height);
-        let.XAdvance = xa + 1;
+        let.PosX = static_cast<short>(x + 1);
+        let.PosY = static_cast<short>(y + 1);
+        let.Width = static_cast<short>(w - 2);
+        let.Height = static_cast<short>(h - 2);
+        let.OffsX = static_cast<short>(-static_cast<int>(ox));
+        let.OffsY = static_cast<short>(-static_cast<int>(oy) + (line_height - base_height));
+        let.XAdvance = static_cast<short>(xa + 1);
     }
 
     font.LineHeight = font.Letters.count('W') != 0u ? font.Letters['W'].Height : base_height;
@@ -2753,9 +2761,9 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
     // Up text
     if (IsBitSet(flags, FT_UPPER) && fi.LinesAll > fi.LinesInRect) {
-        uint j = 0;
-        uint line_cur = 0;
-        uint last_col = 0;
+        auto j = 0;
+        auto line_cur = 0;
+        auto last_col = 0;
         for (; str[j] != 0; ++j) {
             if (str[j] == '\n') {
                 line_cur++;
@@ -2786,8 +2794,8 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     curx = r.Left;
     cury = r.Top;
 
-    for (uint i = 0; i < fi.LinesAll; i++) {
-        fi.LineWidth[i] = curx;
+    for (const auto i : xrange(fi.LinesAll)) {
+        fi.LineWidth[i] = static_cast<short>(curx);
     }
 
     auto can_count = false;
@@ -2810,7 +2818,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
             break;
         case 0:
         case '\n':
-            fi.LineWidth[curstr] = curx;
+            fi.LineWidth[curstr] = static_cast<short>(curx);
             cury += font->LineHeight + font->YAdvance;
             curx = r.Left;
 
@@ -2913,7 +2921,7 @@ void SpriteManager::DrawStr(const IRect& r, const string& str, uint flags, uint 
     }
 
     if (!IsBitSet(flags, FT_NO_COLORIZE)) {
-        for (int i = offs_col; i >= 0; i--) {
+        for (auto i = offs_col; i >= 0; i--) {
             if (fi.ColorDots[i] != 0u) {
                 if ((fi.ColorDots[i] & 0xFF000000) != 0u) {
                     color = fi.ColorDots[i]; // With alpha
@@ -2989,7 +2997,7 @@ void SpriteManager::DrawStr(const IRect& r, const string& str, uint flags, uint 
             const auto y2 = texture_uv[3];
 
             _vBuffer[pos].X = static_cast<float>(x);
-            _vBuffer[pos].Y = static_cast<float>(y) + h;
+            _vBuffer[pos].Y = static_cast<float>(y + h);
             _vBuffer[pos].TU = x1;
             _vBuffer[pos].TV = y2;
             _vBuffer[pos++].Diffuse = color;
@@ -3000,14 +3008,14 @@ void SpriteManager::DrawStr(const IRect& r, const string& str, uint flags, uint 
             _vBuffer[pos].TV = y1;
             _vBuffer[pos++].Diffuse = color;
 
-            _vBuffer[pos].X = static_cast<float>(x) + w;
+            _vBuffer[pos].X = static_cast<float>(x + w);
             _vBuffer[pos].Y = static_cast<float>(y);
             _vBuffer[pos].TU = x2;
             _vBuffer[pos].TV = y1;
             _vBuffer[pos++].Diffuse = color;
 
-            _vBuffer[pos].X = static_cast<float>(x) + w;
-            _vBuffer[pos].Y = static_cast<float>(y) + h;
+            _vBuffer[pos].X = static_cast<float>(x + w);
+            _vBuffer[pos].Y = static_cast<float>(y + h);
             _vBuffer[pos].TU = x2;
             _vBuffer[pos].TV = y2;
             _vBuffer[pos].Diffuse = color;

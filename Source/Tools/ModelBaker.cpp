@@ -595,7 +595,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         auto prop_diffuse = (fbx_material != nullptr ? fbx_material->FindProperty("DiffuseColor") : FbxProperty());
         if (prop_diffuse.IsValid() && prop_diffuse.GetSrcObjectCount() > 0) {
             for (auto i = 0, j = prop_diffuse.GetSrcObjectCount(); i < j; i++) {
-                if (Str::Compare(prop_diffuse.GetSrcObject(i)->GetClassId().GetName(), "FbxFileTexture")) {
+                if (string(prop_diffuse.GetSrcObject(i)->GetClassId().GetName()) == "FbxFileTexture") {
                     auto* fbx_file_texture = dynamic_cast<FbxFileTexture*>(prop_diffuse.GetSrcObject(i));
                     mesh->DiffuseTexture = _str(fbx_file_texture->GetFileName()).extractFileName();
                     break;

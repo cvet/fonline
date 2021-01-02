@@ -1645,22 +1645,20 @@ void FOClient::Net_SendUpdate()
 
 void FOClient::Net_SendLogIn()
 {
-    char name_[UTF8_BUF_SIZE(MAX_NAME)] = {0};
-    char pass_[UTF8_BUF_SIZE(MAX_NAME)] = {0};
-    std::memset(name_, 0, sizeof(name_));
-    Str::Copy(name_, LoginName.c_str());
-    std::memset(pass_, 0, sizeof(pass_));
-    Str::Copy(pass_, LoginPassword.c_str());
+    WriteLog("Player login.\n");
+
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE + LoginName.length() + NetBuffer::STRING_LEN_SIZE + LoginPassword.length();
 
     Bout << NETMSG_LOGIN;
-    Bout << static_cast<ushort>(FO_VERSION);
+    Bout << msg_len;
+    Bout << FO_VERSION;
 
     // Begin data encrypting
     Bout.SetEncryptKey(12345);
     Bin.SetEncryptKey(12345);
 
-    Bout.Push(name_, sizeof(name_));
-    Bout.Push(pass_, sizeof(pass_));
+    Bout << LoginName;
+    Bout << LoginPassword;
     Bout << CurLang.NameCode;
 
     AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
@@ -1668,28 +1666,20 @@ void FOClient::Net_SendLogIn()
 
 void FOClient::Net_SendCreatePlayer()
 {
-    WriteLog("Player registration...");
+    WriteLog("Player registration.\n");
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + UTF8_BUF_SIZE(MAX_NAME) * 2;
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE + LoginName.length() + NetBuffer::STRING_LEN_SIZE + LoginPassword.length();
 
     Bout << NETMSG_CREATE_CLIENT;
     Bout << msg_len;
-
-    Bout << static_cast<ushort>(FO_VERSION);
+    Bout << FO_VERSION;
 
     // Begin data encrypting
     Bout.SetEncryptKey(1234567890);
     Bin.SetEncryptKey(1234567890);
 
-    char buf[UTF8_BUF_SIZE(MAX_NAME)];
-    std::memset(buf, 0, sizeof(buf));
-    Str::Copy(buf, LoginName.c_str());
-    Bout.Push(buf, UTF8_BUF_SIZE(MAX_NAME));
-    std::memset(buf, 0, sizeof(buf));
-    Str::Copy(buf, LoginPassword.c_str());
-    Bout.Push(buf, UTF8_BUF_SIZE(MAX_NAME));
-
-    WriteLog("complete.\n");
+    Bout << LoginName;
+    Bout << LoginPassword;
 }
 
 void FOClient::Net_SendText(const char* send_str, uchar how_say)
@@ -1940,10 +1930,9 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     }
 
     // Player
-    char cl_name[UTF8_BUF_SIZE(MAX_NAME)];
+    string cl_name;
     if (!is_npc) {
-        Bin.Pop(cl_name, sizeof(cl_name));
-        cl_name[sizeof(cl_name) - 1] = 0;
+        Bin >> cl_name;
     }
 
     // Properties
@@ -2121,26 +2110,32 @@ void FOClient::OnText(const string& str, uint crid, int how_say)
     switch (how_say) {
     case SAY_NORM:
         fstr_mb = STR_MBNORM;
-        [[fallthrough]];
+        fstr_cr = STR_CRNORM;
+        break;
     case SAY_NORM_ON_HEAD:
         fstr_cr = STR_CRNORM;
         break;
     case SAY_SHOUT:
         fstr_mb = STR_MBSHOUT;
-        [[fallthrough]];
+        fstr_cr = STR_CRSHOUT;
+        fstr = _str(fstr).upperUtf8();
+        break;
     case SAY_SHOUT_ON_HEAD:
         fstr_cr = STR_CRSHOUT;
         fstr = _str(fstr).upperUtf8();
         break;
     case SAY_EMOTE:
         fstr_mb = STR_MBEMOTE;
-        [[fallthrough]];
+        fstr_cr = STR_CREMOTE;
+        break;
     case SAY_EMOTE_ON_HEAD:
         fstr_cr = STR_CREMOTE;
         break;
     case SAY_WHISP:
         fstr_mb = STR_MBWHISP;
-        [[fallthrough]];
+        fstr_cr = STR_CRWHISP;
+        fstr = _str(fstr).lowerUtf8();
+        break;
     case SAY_WHISP_ON_HEAD:
         fstr_cr = STR_CRWHISP;
         fstr = _str(fstr).lowerUtf8();

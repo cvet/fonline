@@ -249,7 +249,8 @@ public:
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
     [[nodiscard]] auto GetSpritesColor() const -> uint { return _baseColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
-    [[nodiscard]] auto GetSpriteInfo(uint id) -> SpriteInfo* { return _sprData[id]; }
+    [[nodiscard]] auto GetSpriteInfo(uint id) -> const SpriteInfo* { return _sprData[id]; }
+    [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetDrawRect(Sprite* prep) const -> IRect;
     [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
@@ -324,7 +325,7 @@ private:
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
-    void CollectContour(int x, int y, SpriteInfo* si, Sprite* spr);
+    void CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr);
 
     RenderSettings& _settings;
     FileManager& _fileMngr;
@@ -360,7 +361,7 @@ private:
     ushort _eggHy {};
     int _eggX {};
     int _eggY {};
-    SpriteInfo* _sprEgg {};
+    const SpriteInfo* _sprEgg {};
     vector<uint> _eggData {};
     int _eggSprWidth {};
     int _eggSprHeight {};
@@ -428,15 +429,15 @@ private:
         IRect Region {};
         char Str[FONT_BUF_LEN] {};
         char* PStr {};
-        uint LinesAll {};
-        uint LinesInRect {};
+        int LinesAll {};
+        int LinesInRect {};
         int CurX {};
         int CurY {};
         int MaxCurX {};
         uint ColorDots[FONT_BUF_LEN] {};
-        short LineWidth[FONT_MAX_LINES] {};
-        ushort LineSpaceWidth[FONT_MAX_LINES] {};
-        uint OffsColDots {};
+        int LineWidth[FONT_MAX_LINES] {};
+        int LineSpaceWidth[FONT_MAX_LINES] {};
+        int OffsColDots {};
         uint DefColor {};
         vector<string>* StrLines {};
         bool IsError {};

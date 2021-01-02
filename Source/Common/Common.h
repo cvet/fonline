@@ -510,6 +510,7 @@ auto constexpr operator"" _len(const char* /*str*/, size_t size) -> size_t
 #define LINE_STR STRINGIFY(__LINE__)
 #define UNUSED_VARIABLE(x) (void)(x)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
+#define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
@@ -741,22 +742,12 @@ struct TRect
 
     [[nodiscard]] auto operator[](int index) const -> const T& { return (*const_cast<TRect<T>*>(this))[index]; }
 
-    auto operator()(T l, T t, T r, T b) -> TRect&
-    {
-        Left = l;
-        Top = t;
-        Right = r;
-        Bottom = b;
-        return *this;
-    }
-
-    auto operator()(T ox, T oy) -> TRect&
+    void Advance(T ox, T oy)
     {
         Left += ox;
         Top += oy;
         Right += ox;
         Bottom += oy;
-        return *this;
     }
 
     auto Interpolate(const TRect<T>& to, int procent) -> TRect<T>
@@ -951,11 +942,8 @@ static constexpr ushort MAXHEX_MIN = 10;
 static constexpr ushort MAXHEX_MAX = 4000;
 
 // Client parameters
-#define MAX_NAME (30)
-#define MIN_NAME (1)
 #define MAX_CHAT_MESSAGE (100)
 #define MAX_DLG_LEXEMS_TEXT (1000)
-#define PASS_HASH_SIZE (32)
 #define FILE_UPDATE_PORTION (16384)
 
 // Answer
@@ -1051,12 +1039,12 @@ static constexpr uint MOVE_PARAM_STEP_DISALLOW = 0x10;
 static constexpr uint MOVE_PARAM_RUN = 0x80000000;
 
 // Corner type
-#define CORNER_NORTH_SOUTH (0)
-#define CORNER_WEST (1)
-#define CORNER_EAST (2)
-#define CORNER_SOUTH (3)
-#define CORNER_NORTH (4)
-#define CORNER_EAST_WEST (5)
+static constexpr uchar CORNER_NORTH_SOUTH = 0;
+static constexpr uchar CORNER_WEST = 1;
+static constexpr uchar CORNER_EAST = 2;
+static constexpr uchar CORNER_SOUTH = 3;
+static constexpr uchar CORNER_NORTH = 4;
+static constexpr uchar CORNER_EAST_WEST = 5;
 
 // Items accessory
 #define ITEM_ACCESSORY_NONE (0)
@@ -1119,8 +1107,6 @@ static constexpr uchar LIGHT_INVERSE = 0x80;
 #define CMD_REGENMAP (25)
 #define CMD_SETTIME (32)
 #define CMD_BAN (33)
-#define CMD_DELETE_ACCOUNT (34)
-#define CMD_CHANGE_PASSWORD (35)
 #define CMD_LOG (37)
 
 static constexpr ushort ANIMRUN_TO_END = 0x0001;

@@ -65,12 +65,14 @@ DECLARE_EXCEPTION(ServerInitException);
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR(client) CHECK_IN_BUFF_ERROR_EXT(client, (void)0, return )
 #define CHECK_IN_BUFF_ERROR_EXT(client, before_disconnect, after_disconnect) \
-    if ((client)->Connection->Bin.IsError()) { \
-        WriteLog("Wrong network data from client '{}', line {}.\n", (client)->GetName(), __LINE__); \
-        before_disconnect; \
-        (client)->Disconnect(); \
-        after_disconnect; \
-    }
+    do { \
+        if ((client)->Connection->Bin.IsError()) { \
+            WriteLog("Wrong network data from client '{}', line {}.\n", (client)->GetName(), __LINE__); \
+            before_disconnect; \
+            (client)->Disconnect(); \
+            after_disconnect; \
+        } \
+    } while (0)
 
 class FOServer final // Todo: rename FOServer to just Server
 {
@@ -131,9 +133,9 @@ public:
         DateTimeStamp BeginTime {};
         DateTimeStamp EndTime {};
         uint ClientIp {};
-        char ClientName[UTF8_BUF_SIZE(MAX_NAME)] {};
-        char BannedBy[UTF8_BUF_SIZE(MAX_NAME)] {};
-        char BanInfo[UTF8_BUF_SIZE(128)] {};
+        string ClientName {};
+        string BannedBy {};
+        string BanInfo {};
     };
 
     static constexpr auto TEXT_LISTEN_FIRST_STR_MAX_LEN = 63;

@@ -706,7 +706,7 @@ ZipFile::ZipFile(const string& fname)
         };
 
         ffunc.zopen_file = [](voidpf, const char* filename, int) -> voidpf {
-            if (Str::Compare(filename, "$Basic")) {
+            if (string(filename) == "$Basic") {
                 auto* mem_stream = new MemStream();
                 mem_stream->Buf = Resource_Basic_zipped;
                 mem_stream->Length = sizeof(Resource_Basic_zipped);

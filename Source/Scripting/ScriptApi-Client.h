@@ -2703,7 +2703,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
         FO_API_RETURN(0);
     }
 
-    auto* const si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto* si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (!si) {
         FO_API_RETURN(0);
     }
@@ -2728,7 +2728,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
         FO_API_RETURN(0);
     }
-    auto* const si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto* si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (!si) {
         FO_API_RETURN(0);
     }
@@ -2853,7 +2853,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 
     const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs) {
-        auto* const si = _client->SprMngr.GetSpriteInfo(spr_id_);
+        const auto* si = _client->SprMngr.GetSpriteInfo(spr_id_);
         if (!si) {
             FO_API_RETURN_VOID();
         }
@@ -2902,7 +2902,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 
     const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs) {
-        auto* const si = _client->SprMngr.GetSpriteInfo(spr_id_);
+        const auto* si = _client->SprMngr.GetSpriteInfo(spr_id_);
         if (!si) {
             FO_API_RETURN_VOID();
         }

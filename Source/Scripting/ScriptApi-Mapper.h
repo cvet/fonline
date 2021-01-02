@@ -1841,7 +1841,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
         FO_API_RETURN(0);
     }
 
-    auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
+    const auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
     if (!si) {
         FO_API_RETURN(0);
     }
@@ -1867,7 +1867,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
         FO_API_RETURN(0);
     }
 
-    auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
+    const auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
     if (!si) {
         FO_API_RETURN(0);
     }
@@ -1986,9 +1986,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     auto x_ = x;
     auto y_ = y;
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto spr_id = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs) {
-        auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
+        const auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id);
         if (!si) {
             FO_API_RETURN_VOID();
         }
@@ -1997,7 +1997,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
         y_ += -si->Height + si->OffsY;
     }
 
-    _mapper->SprMngr.DrawSprite(spr_id_, x_, y_, COLOR_SCRIPT_SPRITE(color));
+    _mapper->SprMngr.DrawSprite(spr_id, x_, y_, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
 #endif
@@ -2031,9 +2031,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     auto x_ = x;
     auto y_ = y;
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto spr_id = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs) {
-        auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
+        const auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id);
         if (!si) {
             FO_API_RETURN_VOID();
         }
@@ -2042,7 +2042,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
         y_ += si->OffsY;
     }
 
-    _mapper->SprMngr.DrawSpriteSizeExt(spr_id_, x_, y_, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
+    _mapper->SprMngr.DrawSpriteSizeExt(spr_id, x_, y_, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
 #endif

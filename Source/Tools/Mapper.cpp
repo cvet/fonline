@@ -2545,7 +2545,7 @@ void FOMapper::IntMouseMove()
 
                     for (auto i = fx; i <= tx; i++) {
                         for (auto j = fy; j <= ty; j++) {
-                            HexMngr.GetHexTrack(i, j) = 1;
+                            HexMngr.GetHexTrack(static_cast<ushort>(i), static_cast<ushort>(j)) = 1;
                         }
                     }
                 }
@@ -3491,9 +3491,9 @@ void FOMapper::CurDraw()
     switch (CurMode) {
     case CUR_MODE_DEFAULT:
     case CUR_MODE_MOVE_SELECTION: {
-        AnyFrames* anim = (CurMode == CUR_MODE_DEFAULT ? CurPDef : CurPHand);
+        auto* anim = (CurMode == CUR_MODE_DEFAULT ? CurPDef : CurPHand);
         if (anim != nullptr) {
-            auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
+            const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si != nullptr) {
                 SprMngr.DrawSprite(anim, Settings.MouseX, Settings.MouseY, COLOR_IFACE);
             }
@@ -3509,16 +3509,16 @@ void FOMapper::CurDraw()
                 break;
             }
 
-            const uint spr_id = GetProtoItemCurSprId(proto_item);
-            auto* si = SprMngr.GetSpriteInfo(spr_id);
+            const auto spr_id = GetProtoItemCurSprId(proto_item);
+            const auto* si = SprMngr.GetSpriteInfo(spr_id);
             if (si != nullptr) {
-                const int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
-                const int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
+                const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
+                const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
                 SprMngr.DrawSpriteSize(spr_id, static_cast<int>(x / Settings.SpritesZoom), static_cast<int>(y / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
             }
         }
         else if (IsTileMode() && !CurTileHashes->empty()) {
-            AnyFrames* anim = ResMngr.GetItemAnim((*CurTileHashes)[GetTabIndex()]);
+            auto* anim = ResMngr.GetItemAnim((*CurTileHashes)[GetTabIndex()]);
             if (anim == nullptr) {
                 anim = ResMngr.ItemHexDefaultAnim;
             }
@@ -3529,12 +3529,12 @@ void FOMapper::CurDraw()
                 break;
             }
 
-            SpriteInfo* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
+            const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si != nullptr) {
                 hx -= hx % Settings.MapTileStep;
                 hy -= hy % Settings.MapTileStep;
-                int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
-                int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
+                auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
+                auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
                 if (!DrawRoof) {
                     x += Settings.MapTileOffsX;
                     y += Settings.MapTileOffsY;
@@ -3548,8 +3548,8 @@ void FOMapper::CurDraw()
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
-            const hash model_name = (*CurNpcProtos)[GetTabIndex()]->Props.GetValue<hash>(CritterView::PropertyModelName);
-            uint spr_id = ResMngr.GetCritterSprId(model_name, 1, 1, NpcDir, nullptr);
+            const auto model_name = (*CurNpcProtos)[GetTabIndex()]->Props.GetValue<hash>(CritterView::PropertyModelName);
+            auto spr_id = ResMngr.GetCritterSprId(model_name, 1, 1, NpcDir, nullptr);
             if (spr_id == 0u) {
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId(0);
             }
@@ -3560,10 +3560,10 @@ void FOMapper::CurDraw()
                 break;
             }
 
-            SpriteInfo* si = SprMngr.GetSpriteInfo(spr_id);
+            const auto* si = SprMngr.GetSpriteInfo(spr_id);
             if (si != nullptr) {
-                const int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
-                const int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
+                const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
+                const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
 
                 SprMngr.DrawSpriteSize(spr_id, static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
             }
@@ -3664,12 +3664,10 @@ void FOMapper::ConsoleDraw()
 {
     if (ConsoleEdit) {
         SprMngr.DrawSprite(ConsolePic, IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, 0);
-    }
 
-    if (ConsoleEdit) {
-        string buf = ConsoleStr;
-        buf.insert(ConsoleCur, GameTime.FrameTick() % 800 < 400 ? "!" : ".");
-        SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), buf, FT_NOBREAK, 0, FONT_DEFAULT);
+        auto str = ConsoleStr;
+        str.insert(ConsoleCur, GameTime.FrameTick() % 800 < 400 ? "!" : ".");
+        SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, 0, FONT_DEFAULT);
     }
 }
 
