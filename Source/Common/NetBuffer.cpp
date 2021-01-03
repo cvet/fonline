@@ -47,6 +47,7 @@ void NetBuffer::SetEncryptKey(uint seed)
     }
 
     std::mt19937 rnd_generator {seed};
+    // ReSharper disable once CppLocalVariableMayBeConst
     std::uniform_int_distribution<> rnd_distr {1, 255};
 
     for (auto& key : _encryptKeys) {
