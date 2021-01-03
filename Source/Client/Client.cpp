@@ -1215,7 +1215,7 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
 auto FOClient::FillSockAddr(sockaddr_in& saddr, const string& host, ushort port) -> bool
 {
     saddr.sin_family = AF_INET;
-    saddr.sin_port = ::htons(port);
+    saddr.sin_port = htons(port);
     if ((saddr.sin_addr.s_addr = ::inet_addr(host.c_str())) == static_cast<uint>(-1)) {
         const auto* h = ::gethostbyname(host.c_str());
         if (h == nullptr) {
