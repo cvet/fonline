@@ -131,7 +131,7 @@ FOClient::~FOClient()
 
 void FOClient::ProcessAutoLogin()
 {
-    const auto auto_login = Settings.AutoLogin;
+    auto auto_login = Settings.AutoLogin;
 
 #if FO_WEB
     char* auto_login_web = (char*)EM_ASM_INT({
@@ -143,11 +143,16 @@ void FOClient::ProcessAutoLogin()
         }
         return null;
     });
+
     if (auto_login_web) {
         auto_login = auto_login_web;
         free(auto_login_web);
         auto_login_web = nullptr;
     }
+
+#else
+    // Non-const hint
+    auto_login = auto_login.substr(0);
 #endif
 
     if (auto_login.empty()) {
