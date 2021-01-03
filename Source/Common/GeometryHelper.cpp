@@ -103,7 +103,7 @@ void GeometryHelper::InitializeHexOffsets() const
 
             for (auto j = 0; j < 5; j++) {
                 uchar dir;
-                auto steps = 0;
+                int steps;
 
                 switch (j) {
                 case 0:
@@ -127,7 +127,7 @@ void GeometryHelper::InitializeHexOffsets() const
                     steps = i + 1;
                     break;
                 default:
-                    break;
+                    throw UnreachablePlaceException(LINE_STR);
                 }
 
                 for (auto k = 0; k < steps; k++) {

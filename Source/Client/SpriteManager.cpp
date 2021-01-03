@@ -2385,7 +2385,7 @@ auto SpriteManager::LoadFontBmf(int index, const string& font_name) -> bool
     // Chars
     file.SetCurPos(next_block);
     const auto count = file.GetLEUInt() / 20u;
-    for (const auto i : xrange(count)) {
+    for ([[maybe_unused]] const auto i : xrange(count)) {
         // Read data
         const auto id = file.GetLEUInt();
         const auto x = file.GetLEUShort();

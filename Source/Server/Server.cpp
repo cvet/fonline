@@ -3034,6 +3034,8 @@ void FOServer::Process_Move(Client* cl)
 
 void FOServer::Process_Dir(Client* cl)
 {
+    NON_CONST_METHOD_HINT();
+
     uchar dir = 0;
     cl->Connection->Bin >> dir;
     CHECK_IN_BUFF_ERROR(cl);
@@ -3076,11 +3078,10 @@ void FOServer::Process_Ping(Client* cl)
 
 void FOServer::Process_Property(Client* cl, uint data_size)
 {
-    uint msg_len = 0;
-    auto type = NetProperty::None;
-    uint cr_id = 0;
-    uint item_id = 0;
-    ushort property_index = 0;
+    uint msg_len;
+    uint cr_id;
+    uint item_id;
+    ushort property_index;
 
     if (data_size == 0) {
         cl->Connection->Bin >> msg_len;
@@ -3088,7 +3089,7 @@ void FOServer::Process_Property(Client* cl, uint data_size)
 
     char type_ = 0;
     cl->Connection->Bin >> type_;
-    type = static_cast<NetProperty::Type>(type_);
+    const auto type = static_cast<NetProperty::Type>(type_);
 
     uint additional_args = 0;
     switch (type) {
@@ -3455,7 +3456,7 @@ auto FOServer::Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dial
             it_a = compiled_dlg.Answers.erase(it_a);
         }
         else {
-            it_a++;
+            ++it_a;
         }
     }
 

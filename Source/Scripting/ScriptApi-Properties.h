@@ -254,7 +254,7 @@ FO_API_CRITTER_READONLY_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(int), T
 /*******************************************************************************
  * ...
  ******************************************************************************/
-FO_API_CRITTER_PROPERTY(VirtualPrivateServer, FO_API_PROPERTY_TYPE(int), SneakCoefficient)
+FO_API_CRITTER_PROPERTY(VirtualPrivateServer, FO_API_PROPERTY_TYPE(uint), SneakCoefficient)
 
 /*******************************************************************************
  * ...

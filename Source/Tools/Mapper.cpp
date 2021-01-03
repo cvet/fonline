@@ -2446,9 +2446,8 @@ void FOMapper::IntLMouseUp()
                         }
                     }
                 }
-                else // SELECT_TYPE_NEW
-                {
-                    HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2), hexes);
+                else {
+                    hexes = HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2));
                 }
 
                 vector<ItemHexView*> items;
@@ -2550,10 +2549,7 @@ void FOMapper::IntMouseMove()
                     }
                 }
                 else if (SelectType == SELECT_TYPE_NEW) {
-                    vector<pair<ushort, ushort>> hexes;
-                    HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2), hexes);
-
-                    for (auto [hx, hy] : hexes) {
+                    for (auto [hx, hy] : HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2))) {
                         HexMngr.GetHexTrack(hx, hy) = 1;
                     }
                 }
@@ -2851,19 +2847,18 @@ void FOMapper::SelectAll()
 {
     SelectClear();
 
-    for (uint i = 0; i < HexMngr.GetWidth(); i++) {
-        for (uint j = 0; j < HexMngr.GetHeight(); j++) {
+    for (const auto hx : xrange(HexMngr.GetWidth())) {
+        for (const auto hy : xrange(HexMngr.GetHeight())) {
             if (IsSelectTile && Settings.ShowTile) {
-                SelectAddTile(i, j, false);
+                SelectAddTile(hx, hy, false);
             }
             if (IsSelectRoof && Settings.ShowRoof) {
-                SelectAddTile(i, j, true);
+                SelectAddTile(hx, hy, true);
             }
         }
     }
 
-    auto& items = HexMngr.GetItems();
-    for (auto* item : items) {
+    for (auto* item : HexMngr.GetItems()) {
         if (HexMngr.IsIgnorePid(item->GetProtoId())) {
             continue;
         }
@@ -2930,13 +2925,13 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         static auto small_oy = 0.0f;
         auto ox = static_cast<float>(offs_x) * Settings.SpritesZoom + small_ox;
         auto oy = static_cast<float>(offs_y) * Settings.SpritesZoom + small_oy;
-        if ((offs_x != 0) && fabs(ox) < 1.0f) {
+        if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
         }
         else {
             small_ox = 0.0f;
         }
-        if ((offs_y != 0) && fabs(oy) < 1.0f) {
+        if (offs_y != 0 && std::fabs(oy) < 1.0f) {
             small_oy = oy;
         }
         else {
@@ -2951,10 +2946,11 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         for (auto* entity : SelectedEntities) {
             int hx = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexX() : (dynamic_cast<ItemHexView*>(entity))->GetHexX());
             int hy = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexY() : (dynamic_cast<ItemHexView*>(entity))->GetHexY());
+
             if (Settings.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4u : 3u) : ((sw & 1) != 0 ? 0u : 1u));
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
                 }
                 for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
                     GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2u : 5u);
@@ -2964,6 +2960,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hx += offs_hx;
                 hy += offs_hy;
             }
+
             if (hx < 0 || hy < 0 || hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
                 return false; // Disable moving
             }
@@ -3006,13 +3003,14 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 ox = oy = 0;
             }
 
-            item->SetOffsetX(ox);
-            item->SetOffsetY(oy);
+            item->SetOffsetX(static_cast<short>(ox));
+            item->SetOffsetY(static_cast<short>(oy));
             item->RefreshAnim();
         }
         else {
             int hx = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexX() : (dynamic_cast<ItemHexView*>(entity))->GetHexX());
             int hy = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexY() : (dynamic_cast<ItemHexView*>(entity))->GetHexY());
+
             if (Settings.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
@@ -3026,21 +3024,22 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hx += offs_hx;
                 hy += offs_hy;
             }
+
             hx = std::clamp(hx, 0, HexMngr.GetWidth() - 1);
             hy = std::clamp(hy, 0, HexMngr.GetHeight() - 1);
 
             if (entity->Type == EntityType::ItemHexView) {
                 auto* item = dynamic_cast<ItemHexView*>(entity);
                 HexMngr.DeleteItem(item, false, nullptr);
-                item->SetHexX(hx);
-                item->SetHexY(hy);
+                item->SetHexX(static_cast<ushort>(hx));
+                item->SetHexY(static_cast<ushort>(hy));
                 HexMngr.PushItem(item);
             }
             else if (entity->Type == EntityType::CritterView) {
                 auto* cr = dynamic_cast<CritterView*>(entity);
                 HexMngr.RemoveCritter(cr);
-                cr->SetHexX(hx);
-                cr->SetHexY(hy);
+                cr->SetHexX(static_cast<ushort>(hx));
+                cr->SetHexY(static_cast<ushort>(hy));
                 HexMngr.SetCritter(cr);
             }
         }

@@ -176,7 +176,7 @@ public:
     void PathSetMoveParams(vector<PathStep>& path, bool is_run);
     void ProcessVisibleCritters(Critter* view_cr);
     void ProcessVisibleItems(Critter* view_cr);
-    void ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort hy, int dir);
+    void ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushort hy, int dir);
     void AddKnownLoc(Critter* cr, uint loc_id);
     void EraseKnownLoc(Critter* cr, uint loc_id);
 

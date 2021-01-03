@@ -493,7 +493,7 @@ auto FileCollection::GetPath() const -> const string&
 auto FileCollection::GetCurFile() const -> File
 {
     RUNTIME_ASSERT(_curFileIndex >= 0);
-    RUNTIME_ASSERT(_curFileIndex < _allFiles.size());
+    RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
     auto fs = fh._fileSize;
@@ -506,7 +506,7 @@ auto FileCollection::GetCurFile() const -> File
 auto FileCollection::GetCurFileHeader() const -> FileHeader
 {
     RUNTIME_ASSERT(_curFileIndex >= 0);
-    RUNTIME_ASSERT(_curFileIndex < _allFiles.size());
+    RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
     return FileHeader(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource);

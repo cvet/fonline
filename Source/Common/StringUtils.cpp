@@ -585,7 +585,6 @@ auto _str::parseHash(hash /*h*/) -> _str&
 {
     // Todo: restore hash parsing
     throw UnreachablePlaceException(LINE_STR);
-    return *this;
 }
 
 auto _str::toHash() -> hash
@@ -630,116 +629,145 @@ void Str::Copy(char* to, size_t size, const char* from)
 
 auto utf8::IsValid(uint ucs) -> bool
 {
-    return ucs != 0xFFFD /* Unicode REPLACEMENT CHARACTER */ && ucs <= 0x10FFFF;
+    // 0xFFFD - Unicode REPLACEMENT CHARACTER
+    return ucs != 0xFFFD && ucs <= 0x10FFFF;
 }
 
 auto utf8::Decode(const char* str, uint* length) -> uint
 {
-    // Taked from FLTK
-    const auto c = *(unsigned char*)str;
+#define DECODE_FAIL() \
+    do { \
+        if (length) { \
+            *length = 1; \
+        } \
+        return 0xFFFD; \
+    } while (0)
+
+    const auto c = *reinterpret_cast<const uchar*>(str);
     if (c < 0x80) {
         if (length != nullptr) {
             *length = 1;
         }
         return c;
     }
+
     if (c < 0xc2) {
-        goto FAIL;
+        DECODE_FAIL();
     }
     if ((str[1] & 0xc0) != 0x80) {
-        goto FAIL;
+        DECODE_FAIL();
     }
+
     if (c < 0xe0) {
         if (length != nullptr) {
             *length = 2;
         }
         return ((str[0] & 0x1f) << 6) + (str[1] & 0x3f);
     }
-    else if (c == 0xe0) {
-        if (((unsigned char*)str)[1] < 0xa0) {
-            goto FAIL;
+
+    if (c == 0xe0) {
+        if (reinterpret_cast<const uchar*>(str)[1] < 0xa0) {
+            DECODE_FAIL();
         }
-        goto UTF8_3;
-    }
-    else if (c < 0xf0) {
-    UTF8_3:
+
         if ((str[2] & 0xc0) != 0x80) {
-            goto FAIL;
+            DECODE_FAIL();
         }
         if (length) {
             *length = 3;
         }
         return ((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f);
     }
-    else if (c == 0xf0) {
-        if (((unsigned char*)str)[1] < 0x90) {
-            goto FAIL;
+
+    if (c < 0xf0) {
+        if ((str[2] & 0xc0) != 0x80) {
+            DECODE_FAIL();
         }
-        goto UTF8_4;
+        if (length) {
+            *length = 3;
+        }
+        return ((str[0] & 0x0f) << 12) + ((str[1] & 0x3f) << 6) + (str[2] & 0x3f);
     }
-    else if (c < 0xf4) {
-    UTF8_4:
+
+    if (c == 0xf0) {
+        if (reinterpret_cast<const uchar*>(str)[1] < 0x90) {
+            DECODE_FAIL();
+        }
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
-            goto FAIL;
+            DECODE_FAIL();
         }
         if (length) {
             *length = 4;
         }
         return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
     }
-    else if (c == 0xf4) {
-        if (((unsigned char*)str)[1] > 0x8f) {
-            goto FAIL; /* after 0x10ffff */
+
+    if (c < 0xf4) {
+        if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
+            DECODE_FAIL();
         }
-        goto UTF8_4;
-    }
-    else {
-    FAIL:
         if (length) {
-            *length = 1;
+            *length = 4;
         }
-        return 0xfffd; /* Unicode REPLACEMENT CHARACTER */
+        return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
     }
+
+    if (c == 0xf4) {
+        if (reinterpret_cast<const uchar*>(str)[1] > 0x8f) {
+            DECODE_FAIL();
+        }
+        if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
+            DECODE_FAIL();
+        }
+        if (length) {
+            *length = 4;
+        }
+        return ((str[0] & 0x07) << 18) + ((str[1] & 0x3f) << 12) + ((str[2] & 0x3f) << 6) + (str[3] & 0x3f);
+    }
+
+    DECODE_FAIL();
+
+#undef DECODE_FAIL
 }
 
 auto utf8::Encode(uint ucs, char (&buf)[4]) -> uint
 {
-    // Taked from FLTK
-    if (ucs < 0x000080U) {
-        buf[0] = ucs;
+    if (ucs < 0x000080u) {
+        buf[0] = static_cast<char>(ucs);
         return 1;
     }
-    if (ucs < 0x000800U) {
-        buf[0] = 0xc0 | (ucs >> 6);
-        buf[1] = 0x80 | (ucs & 0x3F);
+
+    if (ucs < 0x000800u) {
+        buf[0] = static_cast<char>(0xc0 | (ucs >> 6));
+        buf[1] = static_cast<char>(0x80 | (ucs & 0x3F));
         return 2;
     }
-    else if (ucs < 0x010000U) {
-        buf[0] = 0xe0 | (ucs >> 12);
-        buf[1] = 0x80 | ((ucs >> 6) & 0x3F);
-        buf[2] = 0x80 | (ucs & 0x3F);
+
+    if (ucs < 0x010000u) {
+        buf[0] = static_cast<char>(0xe0 | (ucs >> 12));
+        buf[1] = static_cast<char>(0x80 | ((ucs >> 6) & 0x3F));
+        buf[2] = static_cast<char>(0x80 | (ucs & 0x3F));
         return 3;
     }
-    else if (ucs <= 0x0010ffffU) {
-        buf[0] = 0xf0 | (ucs >> 18);
-        buf[1] = 0x80 | ((ucs >> 12) & 0x3F);
-        buf[2] = 0x80 | ((ucs >> 6) & 0x3F);
-        buf[3] = 0x80 | (ucs & 0x3F);
+
+    if (ucs <= 0x0010ffffu) {
+        buf[0] = static_cast<char>(0xf0 | (ucs >> 18));
+        buf[1] = static_cast<char>(0x80 | ((ucs >> 12) & 0x3F));
+        buf[2] = static_cast<char>(0x80 | ((ucs >> 6) & 0x3F));
+        buf[3] = static_cast<char>(0x80 | (ucs & 0x3F));
         return 4;
     }
-    else {
-        /* encode 0xfffd: */
-        buf[0] = 0xefU;
-        buf[1] = 0xbfU;
-        buf[2] = 0xbdU;
-        return 3;
-    }
+
+    // Encode 0xFFFD
+    buf[0] = static_cast<char>(0xef);
+    buf[1] = static_cast<char>(0xbf);
+    buf[2] = static_cast<char>(0xbd);
+    return 3;
 }
 
 auto utf8::Lower(uint ucs) -> uint
 {
-    // Taked from FLTK
-    uint ret = 0;
+    uint ret;
     if (ucs <= 0x02B6) {
         if (ucs >= 0x0041) {
             ret = UCS_TABLE_0041[ucs - 0x0041];
@@ -749,6 +777,7 @@ auto utf8::Lower(uint ucs) -> uint
         }
         return ucs;
     }
+
     if (ucs <= 0x0556) {
         if (ucs >= 0x0386) {
             ret = UCS_TABLE_0386[ucs - 0x0386];
@@ -758,6 +787,7 @@ auto utf8::Lower(uint ucs) -> uint
         }
         return ucs;
     }
+
     if (ucs <= 0x10C5) {
         if (ucs >= 0x10A0) {
             ret = UCS_TABLE_10_A0[ucs - 0x10A0];
@@ -767,6 +797,7 @@ auto utf8::Lower(uint ucs) -> uint
         }
         return ucs;
     }
+
     if (ucs <= 0x1FFC) {
         if (ucs >= 0x1E00) {
             ret = UCS_TABLE_1_E00[ucs - 0x1E00];
@@ -776,6 +807,7 @@ auto utf8::Lower(uint ucs) -> uint
         }
         return ucs;
     }
+
     if (ucs <= 0x2133) {
         if (ucs >= 0x2102) {
             ret = UCS_TABLE_2102[ucs - 0x2102];
@@ -785,6 +817,7 @@ auto utf8::Lower(uint ucs) -> uint
         }
         return ucs;
     }
+
     if (ucs <= 0x24CF) {
         if (ucs >= 0x24B6) {
             ret = UCS_TABLE_24_B6[ucs - 0x24B6];
@@ -794,6 +827,7 @@ auto utf8::Lower(uint ucs) -> uint
         }
         return ucs;
     }
+
     if (ucs <= 0x33CE) {
         if (ucs >= 0x33CE) {
             ret = UCS_TABLE_33_CE[ucs - 0x33CE];
@@ -803,6 +837,7 @@ auto utf8::Lower(uint ucs) -> uint
         }
         return ucs;
     }
+
     if (ucs <= 0xFF3A) {
         if (ucs >= 0xFF21) {
             ret = UCS_TABLE_FF21[ucs - 0xFF21];
@@ -815,24 +850,32 @@ auto utf8::Lower(uint ucs) -> uint
     return ucs;
 }
 
-auto utf8::Upper(uint ucs) -> uint
+struct Utf8Data
 {
-    // Taken from FLTK
-    static unsigned short* table = nullptr;
-    if (table == nullptr) {
-        table = static_cast<unsigned short*>(malloc(sizeof(unsigned short) * 0x10000));
+    Utf8Data()
+    {
+        UpperTable.resize(0x10000);
+
         for (uint i = 0; i < 0x10000; i++) {
-            table[i] = static_cast<unsigned short>(i);
+            UpperTable[i] = static_cast<ushort>(i);
         }
+
         for (uint i = 0; i < 0x10000; i++) {
-            const auto l = Lower(i);
+            const auto l = utf8::Lower(i);
             if (l != i) {
-                table[l] = static_cast<unsigned short>(i);
+                UpperTable[l] = static_cast<ushort>(i);
             }
         }
     }
+
+    vector<ushort> UpperTable {};
+};
+GLOBAL_DATA(Utf8Data, Data);
+
+auto utf8::Upper(uint ucs) -> uint
+{
     if (ucs >= 0x10000) {
         return ucs;
     }
-    return table[ucs];
+    return Data->UpperTable[ucs];
 }

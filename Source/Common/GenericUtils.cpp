@@ -327,8 +327,8 @@ auto GenericUtils::GetColorDay(const int* day_time, const uchar* colors, int gam
     int color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
 
     game_time %= 1440;
-    auto time = 0;
-    auto duration = 0;
+    int time;
+    int duration;
     if (game_time >= day_time[0] && game_time < day_time[1]) {
         time = 0;
         game_time -= day_time[0];

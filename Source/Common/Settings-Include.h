@@ -46,6 +46,7 @@ SETTING(uint, MaxNameLength, 12);
 SETTING(uint, Breaktime, 1200);
 SETTING(string, Language, "engl");
 VAR_SETTING(bool, Quit, false); // Todo: rework global Quit setting
+SETTING(vector<int>, DummyIntVec);
 SETTING_GROUP_END();
 
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);

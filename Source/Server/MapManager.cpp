@@ -132,8 +132,8 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
         }*/
     }
 
-    for (auto& cr : static_map.CrittersVec) {
-        /*if (cr->GetScriptId())
+    /*for (auto& cr : static_map.CrittersVec) {
+        if (cr->GetScriptId())
         {
             string func_name = _str().parseHash(cr->GetScriptId());
             hash func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Critter, bool)");
@@ -142,8 +142,8 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
                 WriteLog("Map '{}', can't bind critter function '{}'.\n", pmap->GetName(), func_name);
                 errors++;
             }
-        }*/
-    }
+        }
+    }*/
 
     for (auto& item : static_map.AllItemsVec) {
         if (!item->IsStatic() && item->GetScriptId() != 0u) {
@@ -242,7 +242,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
 
         if (item->IsNonEmptyBlockLines()) {
             auto raked = item->GetIsShootThru();
-            _geomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, maxhx, maxhy, [&static_map, maxhx, maxhy, raked](auto hx2, auto hy2) {
+            _geomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, maxhx, maxhy, [&static_map, maxhx, raked](auto hx2, auto hy2) {
                 SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_BLOCK);
                 if (!raked) {
                     SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_NOTRAKE);
@@ -963,14 +963,16 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
             const auto [sx, sy] = _geomHelper.GetHexOffsets((cx & 1) != 0);
 
             for (auto j = 0u; j < dirs_count; j++) {
-                short nx = static_cast<short>(cx) + sx[j];
-                short ny = static_cast<short>(cy) + sy[j];
-                if (nx < 0 || ny < 0 || nx >= maxhx || ny >= maxhy) {
+                const auto nxi = cx + sx[j];
+                const auto nyi = cy + sy[j];
+                if (nxi < 0 || nyi < 0 || nxi >= maxhx || nyi >= maxhy) {
                     continue;
                 }
 
-                auto& g = GRID(nx, ny);
-                if (g != 0) {
+                const auto nx = static_cast<ushort>(nxi);
+                const auto ny = static_cast<ushort>(nyi);
+                auto& grid_cell = GRID(nx, ny);
+                if (grid_cell != 0) {
                     continue;
                 }
 
@@ -978,18 +980,18 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
                     auto flags = map->GetHexFlags(nx, ny);
                     if (!IsBitSet(flags, FH_NOWAY)) {
                         coords.emplace_back(nx, ny);
-                        g = numindex;
+                        grid_cell = numindex;
                     }
                     else if (check_gag_items && IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
                         gag_coords.emplace_back(nx, ny);
-                        g = numindex | 0x4000;
+                        grid_cell = numindex | 0x4000;
                     }
                     else if (check_cr && IsBitSet(flags, static_cast<ushort>(FH_CRITTER << 8))) {
                         cr_coords.emplace_back(nx, ny);
-                        g = numindex | 0x8000;
+                        grid_cell = numindex | 0x8000;
                     }
                     else {
-                        g = -1;
+                        grid_cell = -1;
                     }
                 }
                 else {
@@ -1024,12 +1026,12 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
                        }
                      */
 
-                    if (map->IsMovePassed(nx, ny, j, multihex)) {
+                    if (map->IsMovePassed(nx, ny, static_cast<uchar>(j), multihex)) {
                         coords.emplace_back(nx, ny);
-                        g = numindex;
+                        grid_cell = numindex;
                     }
                     else {
-                        g = -1;
+                        grid_cell = -1;
                     }
                 }
             }
@@ -1800,8 +1802,8 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     auto* map = GetMap(view_cr->GetMapId());
     RUNTIME_ASSERT(map);
 
-    auto vis = 0;
-    const int look_base_self = view_cr->GetLookDistance();
+    uint vis;
+    const auto look_base_self = view_cr->GetLookDistance();
     const int dir_self = view_cr->GetDir();
     const auto dirs_count = _settings.MapDirCount;
     const auto show_cr_dist1 = view_cr->GetShowCritterDist1();
@@ -1810,9 +1812,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     const auto show_cr1 = show_cr_dist1 > 0;
     const auto show_cr2 = show_cr_dist2 > 0;
     const auto show_cr3 = show_cr_dist3 > 0;
-
-    const auto show_cr = show_cr1 || show_cr2 || show_cr3;
-    // Sneak self
+    const auto show_cr = (show_cr1 || show_cr2 || show_cr3);
     const auto sneak_base_self = view_cr->GetSneakCoefficient();
 
     for (auto* cr : map->GetCritters()) {
@@ -1820,7 +1820,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             continue;
         }
 
-        int dist = _geomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
+        auto dist = _geomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
 
         if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SCRIPT)) {
             const auto allow_self = _scriptSys.MapCheckLookEvent(map, view_cr, cr);
@@ -1854,7 +1854,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
 
             if (show_cr) {
                 if (show_cr1) {
-                    if (static_cast<int>(show_cr_dist1) >= dist) {
+                    if (show_cr_dist1 >= dist) {
                         if (view_cr->AddCrIntoVisSet1(cr->GetId())) {
                             _scriptSys.CritterShowDist1Event(view_cr, cr);
                         }
@@ -1866,7 +1866,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                     }
                 }
                 if (show_cr2) {
-                    if (static_cast<int>(show_cr_dist2) >= dist) {
+                    if (show_cr_dist2 >= dist) {
                         if (view_cr->AddCrIntoVisSet2(cr->GetId())) {
                             _scriptSys.CritterShowDist2Event(view_cr, cr);
                         }
@@ -1878,7 +1878,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                     }
                 }
                 if (show_cr3) {
-                    if (static_cast<int>(show_cr_dist3) >= dist) {
+                    if (show_cr_dist3 >= dist) {
                         if (view_cr->AddCrIntoVisSet3(cr->GetId())) {
                             _scriptSys.CritterShowDist3Event(view_cr, cr);
                         }
@@ -1893,7 +1893,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
 
             auto cr_dist = cr->GetShowCritterDist1();
             if (cr_dist != 0u) {
-                if (static_cast<int>(cr_dist) >= dist) {
+                if (cr_dist >= dist) {
                     if (cr->AddCrIntoVisSet1(view_cr->GetId())) {
                         _scriptSys.CritterShowDist1Event(cr, view_cr);
                     }
@@ -1906,7 +1906,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             }
             cr_dist = cr->GetShowCritterDist2();
             if (cr_dist != 0u) {
-                if (static_cast<int>(cr_dist) >= dist) {
+                if (cr_dist >= dist) {
                     if (cr->AddCrIntoVisSet2(view_cr->GetId())) {
                         _scriptSys.CritterShowDist2Event(cr, view_cr);
                     }
@@ -1919,7 +1919,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             }
             cr_dist = cr->GetShowCritterDist3();
             if (cr_dist != 0u) {
-                if (static_cast<int>(cr_dist) >= dist) {
+                if (cr_dist >= dist) {
                     if (cr->AddCrIntoVisSet3(view_cr->GetId())) {
                         _scriptSys.CritterShowDist1Event(cr, view_cr);
                     }
@@ -1934,7 +1934,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         }
 
         auto look_self = look_base_self;
-        int look_opp = cr->GetLookDistance();
+        auto look_opp = cr->GetLookDistance();
 
         // Dir modifier
         if (IsBitSet(_settings.LookChecks, LOOK_CHECK_DIR)) {
@@ -1944,23 +1944,23 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (i > static_cast<int>(dirs_count / 2u)) {
                 i = dirs_count - i;
             }
-            look_self -= look_self * _settings.LookDir[i] / 100;
+            look_self -= look_self * _settings.LookDir[i] / 100u;
             // Opponent
             const int dir_opp = cr->GetDir();
-            real_dir = (real_dir + dirs_count / 2) % dirs_count;
-            i = dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp;
+            real_dir = static_cast<uchar>((real_dir + dirs_count / 2u) % dirs_count);
+            i = (dir_opp > real_dir ? dir_opp - real_dir : real_dir - dir_opp);
             if (i > static_cast<int>(dirs_count / 2u)) {
                 i = dirs_count - i;
             }
-            look_opp -= look_opp * _settings.LookDir[i] / 100;
+            look_opp -= look_opp * _settings.LookDir[i] / 100u;
         }
 
         if (dist > look_self && dist > look_opp) {
-            dist = std::numeric_limits<int>::max();
+            dist = std::numeric_limits<uint>::max();
         }
 
         // Trace
-        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<int>::max()) {
+        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint>::max()) {
             TraceData trace;
             trace.TraceMap = map;
             trace.BeginHx = view_cr->GetHexX();
@@ -1969,12 +1969,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             trace.EndHy = cr->GetHexY();
             TraceBullet(trace);
             if (!trace.IsFullTrace) {
-                dist = std::numeric_limits<int>::max();
+                dist = std::numeric_limits<uint>::max();
             }
         }
 
         // Self
-        if (cr->GetIsHide() && dist != std::numeric_limits<int>::max()) {
+        if (cr->GetIsHide() && dist != std::numeric_limits<uint>::max()) {
             auto sneak_opp = cr->GetSneakCoefficient();
             if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
                 const auto real_dir = _geomHelper.GetFarDir(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
@@ -1984,16 +1984,14 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 }
                 sneak_opp -= sneak_opp * _settings.LookSneakDir[i] / 100;
             }
-            sneak_opp /= static_cast<int>(_settings.SneakDivider);
-            if (sneak_opp < 0) {
-                sneak_opp = 0;
-            }
-            vis = look_self - sneak_opp;
+            sneak_opp /= _settings.SneakDivider;
+            vis = (look_self > sneak_opp ? look_self - sneak_opp : 0u);
         }
         else {
             vis = look_self;
         }
-        if (vis < static_cast<int>(_settings.LookMinimum)) {
+
+        if (vis < _settings.LookMinimum) {
             vis = _settings.LookMinimum;
         }
 
@@ -2011,7 +2009,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         }
 
         if (show_cr1) {
-            if (static_cast<int>(show_cr_dist1) >= dist) {
+            if (show_cr_dist1 >= dist) {
                 if (view_cr->AddCrIntoVisSet1(cr->GetId())) {
                     _scriptSys.CritterShowDist1Event(view_cr, cr);
                 }
@@ -2023,7 +2021,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             }
         }
         if (show_cr2) {
-            if (static_cast<int>(show_cr_dist2) >= dist) {
+            if (show_cr_dist2 >= dist) {
                 if (view_cr->AddCrIntoVisSet2(cr->GetId())) {
                     _scriptSys.CritterShowDist2Event(view_cr, cr);
                 }
@@ -2035,7 +2033,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             }
         }
         if (show_cr3) {
-            if (static_cast<int>(show_cr_dist3) >= dist) {
+            if (show_cr_dist3 >= dist) {
                 if (view_cr->AddCrIntoVisSet3(cr->GetId())) {
                     _scriptSys.CritterShowDist3Event(view_cr, cr);
                 }
@@ -2048,7 +2046,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         }
 
         // Opponent
-        if (view_cr->GetIsHide() && dist != std::numeric_limits<int>::max()) {
+        if (view_cr->GetIsHide() && dist != std::numeric_limits<uint>::max()) {
             auto sneak_self = sneak_base_self;
             if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
                 const auto dir_opp = cr->GetDir();
@@ -2059,16 +2057,13 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 }
                 sneak_self -= sneak_self * _settings.LookSneakDir[i] / 100;
             }
-            sneak_self /= static_cast<int>(_settings.SneakDivider);
-            if (sneak_self < 0) {
-                sneak_self = 0;
-            }
-            vis = look_opp - sneak_self;
+            sneak_self /= _settings.SneakDivider;
+            vis = (look_opp > sneak_self ? look_opp - sneak_self : 0u);
         }
         else {
             vis = look_opp;
         }
-        if (vis < static_cast<int>(_settings.LookMinimum)) {
+        if (vis < _settings.LookMinimum) {
             vis = _settings.LookMinimum;
         }
 
@@ -2087,7 +2082,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
 
         auto cr_dist = cr->GetShowCritterDist1();
         if (cr_dist != 0u) {
-            if (static_cast<int>(cr_dist) >= dist) {
+            if (cr_dist >= dist) {
                 if (cr->AddCrIntoVisSet1(view_cr->GetId())) {
                     _scriptSys.CritterShowDist1Event(cr, view_cr);
                 }
@@ -2100,7 +2095,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         }
         cr_dist = cr->GetShowCritterDist2();
         if (cr_dist != 0u) {
-            if (static_cast<int>(cr_dist) >= dist) {
+            if (cr_dist >= dist) {
                 if (cr->AddCrIntoVisSet2(view_cr->GetId())) {
                     _scriptSys.CritterShowDist2Event(cr, view_cr);
                 }
@@ -2113,7 +2108,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         }
         cr_dist = cr->GetShowCritterDist3();
         if (cr_dist != 0u) {
-            if (static_cast<int>(cr_dist) >= dist) {
+            if (cr_dist >= dist) {
                 if (cr->AddCrIntoVisSet3(view_cr->GetId())) {
                     _scriptSys.CritterShowDist3Event(cr, view_cr);
                 }
@@ -2183,7 +2178,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
     }
 }
 
-void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort hy, int dir)
+void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushort hy, int dir)
 {
     NON_CONST_METHOD_HINT();
 
@@ -2207,7 +2202,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
             continue;
         }
 
-        const int dist = _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY());
+        const auto dist = _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY());
         auto look_self = look;
 
         // Dir modifier
@@ -2225,7 +2220,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
         }
 
         // Trace
-        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<int>::max()) {
+        if (IsBitSet(_settings.LookChecks, LOOK_CHECK_TRACE) && dist != std::numeric_limits<uint>::max()) {
             TraceData trace;
             trace.TraceMap = map;
             trace.BeginHx = hx;
@@ -2239,7 +2234,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
         }
 
         // Hide modifier
-        int vis;
+        uint vis;
         if (cr->GetIsHide()) {
             auto sneak_opp = cr->GetSneakCoefficient();
             if (IsBitSet(_settings.LookChecks, LOOK_CHECK_SNEAK_DIR)) {
@@ -2248,19 +2243,16 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
                 if (i > static_cast<int>(dirs_count / 2u)) {
                     i = dirs_count - i;
                 }
-                sneak_opp -= sneak_opp * _settings.LookSneakDir[i] / 100;
+                sneak_opp -= sneak_opp * _settings.LookSneakDir[i] / 100u;
             }
-            sneak_opp /= static_cast<int>(_settings.SneakDivider);
-            if (sneak_opp < 0) {
-                sneak_opp = 0;
-            }
-            vis = look_self - sneak_opp;
+            sneak_opp /= _settings.SneakDivider;
+            vis = (look_self > sneak_opp ? look_self - sneak_opp : 0u);
         }
         else {
             vis = look_self;
         }
 
-        if (vis < static_cast<int>(_settings.LookMinimum)) {
+        if (vis < _settings.LookMinimum) {
             vis = _settings.LookMinimum;
         }
         if (vis >= dist) {
@@ -2282,11 +2274,11 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, int look, ushort hx, ushort
                 allowed = _scriptSys.MapCheckTrapLookEvent(map, view_cr, item);
             }
             else {
-                int dist = _geomHelper.DistGame(hx, hy, item->GetHexX(), item->GetHexY());
+                auto dist = _geomHelper.DistGame(hx, hy, item->GetHexX(), item->GetHexY());
                 if (item->GetIsTrap()) {
                     dist += item->GetTrapValue();
                 }
-                allowed = look >= dist;
+                allowed = (look >= dist);
             }
 
             if (allowed) {

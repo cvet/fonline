@@ -116,8 +116,8 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
         buf << type;
     } break;
     case CMD_CRITID: {
-        string name;
-        if (!(args_str >> name)) {
+        string cr_name;
+        if (!(args_str >> cr_name)) {
             logcb("Invalid arguments. Example: id name.");
             break;
         }
@@ -126,7 +126,7 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf << name;
+        buf << cr_name;
     } break;
     case CMD_MOVECRIT: {
         uint crid = 0;
@@ -321,12 +321,12 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
     } break;
     case CMD_BAN: {
         string params;
-        string name;
+        string cl_name;
         uint ban_hours = 0;
         string info;
         args_str >> params;
         if (!args_str.fail()) {
-            args_str >> name;
+            args_str >> cl_name;
         }
         if (!args_str.fail()) {
             args_str >> ban_hours;
@@ -338,14 +338,14 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
             logcb("Invalid arguments. Example: ban [add,add+,delete,list] [user] [hours] [comment].");
             break;
         }
-        name = _str(name).replace('*', ' ').trim();
+        cl_name = _str(cl_name).replace('*', ' ').trim();
         info = _str(info).replace('$', '*').trim();
-        msg_len += NetBuffer::STRING_LEN_SIZE * 3 + static_cast<uint>(name.length() + params.length() + info.length()) + sizeof(ban_hours);
+        msg_len += NetBuffer::STRING_LEN_SIZE * 3 + static_cast<uint>(cl_name.length() + params.length() + info.length()) + sizeof(ban_hours);
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf << name;
+        buf << cl_name;
         buf << params;
         buf << ban_hours;
         buf << info;

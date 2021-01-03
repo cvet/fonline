@@ -311,25 +311,13 @@ void CritterView::Move(uchar dir)
             _curSpr = _lastEndSpr;
 
             if (!IsRunning) {
-                const uint s0 = 4;
-                const uint s1 = 8;
-                const uint s2 = 0;
-                const uint s3 = 0;
+                const auto s0 = 4u;
+                const auto s1 = 8u;
 
-                if (static_cast<int>(_curSpr) == s0 - 1 && s1 != 0u) {
+                if (_curSpr == s0 - 1u) {
                     beg_spr = s0;
                     end_spr = s1 - 1;
                     step = 2;
-                }
-                else if (static_cast<int>(_curSpr) == s1 - 1 && s2 != 0u) {
-                    beg_spr = s1;
-                    end_spr = s2 - 1;
-                    step = 3;
-                }
-                else if (static_cast<int>(_curSpr) == s2 - 1 && s3 != 0u) {
-                    beg_spr = s2;
-                    end_spr = s3 - 1;
-                    step = 4;
                 }
                 else {
                     beg_spr = 0;
@@ -817,41 +805,47 @@ void CritterView::Process()
     // Extra offsets
     if (_offsExtNextTick != 0u && _gameTime.GameTick() >= _offsExtNextTick) {
         _offsExtNextTick = _gameTime.GameTick() + 30;
+
+        SprOx = static_cast<short>(SprOx - _oxExtI);
+        SprOy = static_cast<short>(SprOy - _oyExtI);
+
         const auto dist = GenericUtils::DistSqrt(0, 0, _oxExtI, _oyExtI);
-        SprOx -= _oxExtI;
-        SprOy -= _oyExtI;
-        auto mul = static_cast<float>(dist / 10);
+        const auto dist_div = dist / 10u;
+        auto mul = static_cast<float>(dist_div);
         if (mul < 1.0f) {
             mul = 1.0f;
         }
+
         _oxExtF += _oxExtSpeed * mul;
         _oyExtF += _oyExtSpeed * mul;
         _oxExtI = static_cast<short>(_oxExtF);
         _oyExtI = static_cast<short>(_oyExtF);
+
         if (GenericUtils::DistSqrt(0, 0, _oxExtI, _oyExtI) > dist) // End of work
         {
             _offsExtNextTick = 0;
             _oxExtI = 0;
             _oyExtI = 0;
         }
+
         SetOffs(SprOx, SprOy, true);
     }
 
     // Animation
     auto& cr_anim = (!_animSequence.empty() ? _animSequence[0] : _stayAnim);
-    int anim_proc = (_gameTime.GameTick() - _animStartTick) * 100 / (cr_anim.AnimTick != 0u ? cr_anim.AnimTick : 1);
-    if (anim_proc >= 100) {
+    auto anim_proc = (_gameTime.GameTick() - _animStartTick) * 100u / (cr_anim.AnimTick != 0u ? cr_anim.AnimTick : 1u);
+    if (anim_proc >= 100u) {
         if (!_animSequence.empty()) {
-            anim_proc = 100;
+            anim_proc = 100u;
         }
         else {
-            anim_proc %= 100;
+            anim_proc %= 100u;
         }
     }
 
     // Change frames
-    if (_model == nullptr && anim_proc < 100) {
-        const auto cur_spr = cr_anim.BeginFrm + (cr_anim.EndFrm - cr_anim.BeginFrm + 1) * anim_proc / 100;
+    if (_model == nullptr && anim_proc < 100u) {
+        const auto cur_spr = cr_anim.BeginFrm + (cr_anim.EndFrm - cr_anim.BeginFrm + 1u) * anim_proc / 100u;
         if (cur_spr != _curSpr) {
             // Change frame
             const auto old_spr = _curSpr;
@@ -863,12 +857,12 @@ void CritterView::Process()
             short oy = 0;
 
             for (uint i = 0, j = old_spr % cr_anim.Anim->CntFrm; i <= j; i++) {
-                ox -= cr_anim.Anim->NextX[i];
-                oy -= cr_anim.Anim->NextY[i];
+                ox = static_cast<short>(ox - cr_anim.Anim->NextX[i]);
+                oy = static_cast<short>(oy - cr_anim.Anim->NextY[i]);
             }
             for (uint i = 0, j = cur_spr % cr_anim.Anim->CntFrm; i <= j; i++) {
-                ox += cr_anim.Anim->NextX[i];
-                oy += cr_anim.Anim->NextY[i];
+                ox = static_cast<short>(ox + cr_anim.Anim->NextX[i]);
+                oy = static_cast<short>(oy + cr_anim.Anim->NextY[i]);
             }
 
             ChangeOffs(ox, oy, cr_anim.MoveText);
@@ -878,11 +872,11 @@ void CritterView::Process()
     if (!_animSequence.empty()) {
         // Move offsets
         if (cr_anim.DirOffs != 0) {
-            const auto [ox, oy] = GetWalkHexOffsets(cr_anim.DirOffs - 1);
+            const auto [ox, oy] = GetWalkHexOffsets(static_cast<uchar>(cr_anim.DirOffs - 1));
 
-            SetOffs(ox - ox * anim_proc / 100, oy - oy * anim_proc / 100, true);
+            SetOffs(static_cast<short>(ox - ox * anim_proc / 100), static_cast<short>(oy - oy * anim_proc / 100), true);
 
-            if (anim_proc >= 100) {
+            if (anim_proc >= 100u) {
                 NextAnim(true);
                 if (!MoveSteps.empty()) {
                     return;
@@ -891,7 +885,7 @@ void CritterView::Process()
         }
         else {
             if (_model == nullptr) {
-                if (anim_proc >= 100) {
+                if (anim_proc >= 100u) {
                     NextAnim(true);
                 }
             }
@@ -934,13 +928,13 @@ void CritterView::Process()
 
 void CritterView::ChangeOffs(short change_ox, short change_oy, bool move_text)
 {
-    SetOffs(SprOx - _oxExtI + change_ox, SprOy - _oyExtI + change_oy, move_text);
+    SetOffs(static_cast<short>(SprOx - _oxExtI + change_ox), static_cast<short>(SprOy - _oyExtI + change_oy), move_text);
 }
 
 void CritterView::SetOffs(short set_ox, short set_oy, bool move_text)
 {
-    SprOx = set_ox + _oxExtI;
-    SprOy = set_oy + _oyExtI;
+    SprOx = static_cast<short>(set_ox + _oxExtI);
+    SprOy = static_cast<short>(set_oy + _oyExtI);
 
     if (SprDrawValid) {
         DRect = _sprMngr.GetDrawRect(SprDraw);
@@ -986,10 +980,10 @@ auto CritterView::GetTextRect() const -> IRect
 
 void CritterView::AddOffsExt(short ox, short oy)
 {
-    SprOx -= _oxExtI;
-    SprOy -= _oyExtI;
-    ox += _oxExtI;
-    oy += _oyExtI;
+    SprOx = static_cast<short>(SprOx - _oxExtI);
+    SprOy = static_cast<short>(SprOy - _oyExtI);
+    ox = static_cast<short>(ox + _oxExtI);
+    oy = static_cast<short>(oy + _oyExtI);
     _oxExtI = ox;
     _oyExtI = oy;
     _oxExtF = static_cast<float>(ox);
@@ -1045,7 +1039,8 @@ void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, in
     }
 
     const auto tr = GetTextRect();
-    x = static_cast<int>(static_cast<float>(tr.Left + tr.Width() / 2 + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
+    const auto tr_half_width = tr.Width() / 2;
+    x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
     y = static_cast<int>(static_cast<float>(tr.Top + _settings.ScrOy) / _settings.SpritesZoom - 70.0f);
 
     if (_sprMngr.GetTextInfo(200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines)) {
@@ -1067,7 +1062,8 @@ void CritterView::DrawTextOnHead()
 
     if (SprDrawValid) {
         const auto tr = GetTextRect();
-        const auto x = static_cast<int>(static_cast<float>(tr.Left + tr.Width() / 2 + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
+        const auto tr_half_width = tr.Width() / 2;
+        const auto x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
         const auto y = static_cast<int>(static_cast<float>(tr.Top + _settings.ScrOy) / _settings.SpritesZoom - 70.0f);
         const IRect r(x, y, x + 200, y + 70);
 

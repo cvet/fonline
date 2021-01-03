@@ -763,8 +763,8 @@ void HexManager::ProcessRain()
 
     for (auto* cur_drop : _rainData) {
         if (cur_drop->DropCnt == -1) {
-            cur_drop->OffsX += _settings.RainSpeedX;
-            cur_drop->OffsY += _settings.RainSpeedY;
+            cur_drop->OffsX = static_cast<short>(cur_drop->OffsX + _settings.RainSpeedX);
+            cur_drop->OffsY = static_cast<short>(cur_drop->OffsY + _settings.RainSpeedY);
             if (cur_drop->OffsY >= cur_drop->GroundOffsY) {
                 cur_drop->DropCnt = 0;
                 cur_drop->CurSprId = _picRainDrop->GetSprId(0);
@@ -775,8 +775,8 @@ void HexManager::ProcessRain()
             if (static_cast<uint>(cur_drop->DropCnt) >= _picRainDrop->CntFrm) {
                 cur_drop->CurSprId = _picRainFall->GetCurSprId(_gameTime.GameTick());
                 cur_drop->DropCnt = -1;
-                cur_drop->OffsX = GenericUtils::Random(-10, 10);
-                cur_drop->OffsY = -100 - GenericUtils::Random(0, 100);
+                cur_drop->OffsX = static_cast<short>(GenericUtils::Random(-10, 10));
+                cur_drop->OffsY = static_cast<short>(-100 - GenericUtils::Random(0, 100));
             }
             else {
                 cur_drop->CurSprId = _picRainDrop->GetSprId(cur_drop->DropCnt);
@@ -995,11 +995,11 @@ void HexManager::RebuildMap(int rx, int ry)
             }
 
             if (new_drop != nullptr) {
-                new_drop->OffsX = GenericUtils::Random(-10, 10);
-                new_drop->OffsY = -100 - GenericUtils::Random(0, 100);
+                new_drop->OffsX = static_cast<short>(GenericUtils::Random(-10, 10));
+                new_drop->OffsY = static_cast<short>(-100 - GenericUtils::Random(0, 100));
 
                 if (new_drop->OffsY < 0) {
-                    new_drop->OffsY = GenericUtils::Random(new_drop->OffsY, 0);
+                    new_drop->OffsY = static_cast<short>(GenericUtils::Random(new_drop->OffsY, 0));
                 }
             }
         }
@@ -1242,11 +1242,11 @@ void HexManager::RebuildMapOffset(int ox, int oy)
             }
 
             if (new_drop != nullptr) {
-                new_drop->OffsX = GenericUtils::Random(-10, 10);
-                new_drop->OffsY = -100 - GenericUtils::Random(0, 100);
+                new_drop->OffsX = static_cast<short>(GenericUtils::Random(-10, 10));
+                new_drop->OffsY = static_cast<short>(-100 - GenericUtils::Random(0, 100));
 
                 if (new_drop->OffsY < 0) {
-                    new_drop->OffsY = GenericUtils::Random(new_drop->OffsY, 0);
+                    new_drop->OffsY = static_cast<short>(GenericUtils::Random(new_drop->OffsY, 0));
                 }
             }
         }
@@ -1479,8 +1479,8 @@ void HexManager::MarkLightEndNeighbor(ushort hx, ushort hy, bool north_south, ui
         const int lt = field.Corner;
         if ((north_south && (lt == CORNER_NORTH_SOUTH || lt == CORNER_NORTH || lt == CORNER_WEST)) || (!north_south && (lt == CORNER_EAST_WEST || lt == CORNER_EAST)) || lt == CORNER_SOUTH) {
             auto* p = &_hexLight[hy * _maxHexX * 3 + hx * 3];
-            const int light_full = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
-            const int light_self = static_cast<int>(inten / 2u) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
+            const auto light_full = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
+            const auto light_self = static_cast<int>(inten / 2u) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
             const auto lr_full = light_full * _lightProcentR / 100;
             const auto lg_full = light_full * _lightProcentG / 100;
             const auto lb_full = light_full * _lightProcentB / 100;
@@ -1575,54 +1575,52 @@ void HexManager::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ush
 void HexManager::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy, int dist, uint inten)
 {
     const auto [base_sx, base_sy] = GenericUtils::GetStepsXY(from_hx, from_hy, hx, hy);
-    const auto sx1f = base_sx;
-    const auto sy1f = base_sy;
-    auto curx1f = static_cast<float>(from_hx);
-    auto cury1f = static_cast<float>(from_hy);
-    int curx1i = from_hx;
-    int cury1i = from_hy;
-    auto old_curx1i = 0;
-    auto old_cury1i = 0;
+    const auto sx1_f = base_sx;
+    const auto sy1_f = base_sy;
+    auto curx1_f = static_cast<float>(from_hx);
+    auto cury1_f = static_cast<float>(from_hy);
+    int curx1_i = from_hx;
+    int cury1_i = from_hy;
     const auto inten_sub = inten / dist;
 
     for (;;) {
         inten -= inten_sub;
-        curx1f += sx1f;
-        cury1f += sy1f;
-        old_curx1i = curx1i;
-        old_cury1i = cury1i;
+        curx1_f += sx1_f;
+        cury1_f += sy1_f;
+        const auto old_curx1_i = curx1_i;
+        const auto old_cury1_i = cury1_i;
 
         // Casts
-        curx1i = static_cast<int>(curx1f);
-        if (curx1f - static_cast<float>(curx1i) >= 0.5f) {
-            curx1i++;
+        curx1_i = static_cast<int>(curx1_f);
+        if (curx1_f - static_cast<float>(curx1_i) >= 0.5f) {
+            curx1_i++;
         }
-        cury1i = static_cast<int>(cury1f);
-        if (cury1f - static_cast<float>(cury1i) >= 0.5f) {
-            cury1i++;
+        cury1_i = static_cast<int>(cury1_f);
+        if (cury1_f - static_cast<float>(cury1_i) >= 0.5f) {
+            cury1_i++;
         }
-        const auto can_mark = (curx1i >= _lightMinHx && curx1i <= _lightMaxHx && cury1i >= _lightMinHy && cury1i <= _lightMaxHy);
+        const auto can_mark = (curx1_i >= _lightMinHx && curx1_i <= _lightMaxHx && cury1_i >= _lightMinHy && cury1_i <= _lightMaxHy);
 
         // Left&Right trace
         auto ox = 0;
         auto oy = 0;
 
-        if ((old_curx1i & 1) != 0) {
-            if (old_curx1i + 1 == curx1i && old_cury1i + 1 == cury1i) {
+        if ((old_curx1_i & 1) != 0) {
+            if (old_curx1_i + 1 == curx1_i && old_cury1_i + 1 == cury1_i) {
                 ox = 1;
                 oy = 1;
             }
-            if (old_curx1i - 1 == curx1i && old_cury1i + 1 == cury1i) {
+            if (old_curx1_i - 1 == curx1_i && old_cury1_i + 1 == cury1_i) {
                 ox = -1;
                 oy = 1;
             }
         }
         else {
-            if (old_curx1i - 1 == curx1i && old_cury1i - 1 == cury1i) {
+            if (old_curx1_i - 1 == curx1_i && old_cury1_i - 1 == cury1_i) {
                 ox = -1;
                 oy = -1;
             }
-            if (old_curx1i + 1 == curx1i && old_cury1i - 1 == cury1i) {
+            if (old_curx1_i + 1 == curx1_i && old_cury1_i - 1 == cury1_i) {
                 ox = 1;
                 oy = -1;
             }
@@ -1630,47 +1628,47 @@ void HexManager::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& 
 
         if (ox != 0) {
             // Left side
-            ox = old_curx1i + ox;
-            if (ox < 0 || ox >= _maxHexX || GetField(ox, old_cury1i).Flags.IsNoLight) {
-                hx = (ox < 0 || ox >= _maxHexX ? old_curx1i : ox);
-                hy = old_cury1i;
+            ox = old_curx1_i + ox;
+            if (ox < 0 || ox >= _maxHexX || GetField(ox, old_cury1_i).Flags.IsNoLight) {
+                hx = (ox < 0 || ox >= _maxHexX ? old_curx1_i : ox);
+                hy = old_cury1_i;
                 if (can_mark) {
-                    MarkLightEnd(old_curx1i, old_cury1i, hx, hy, inten);
+                    MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
                 }
                 break;
             }
             if (can_mark) {
-                MarkLightStep(old_curx1i, old_cury1i, ox, old_cury1i, inten);
+                MarkLightStep(old_curx1_i, old_cury1_i, ox, old_cury1_i, inten);
             }
 
             // Right side
-            oy = old_cury1i + oy;
-            if (oy < 0 || oy >= _maxHexY || GetField(old_curx1i, oy).Flags.IsNoLight) {
-                hx = old_curx1i;
-                hy = (oy < 0 || oy >= _maxHexY ? old_cury1i : oy);
+            oy = old_cury1_i + oy;
+            if (oy < 0 || oy >= _maxHexY || GetField(old_curx1_i, oy).Flags.IsNoLight) {
+                hx = old_curx1_i;
+                hy = (oy < 0 || oy >= _maxHexY ? old_cury1_i : oy);
                 if (can_mark) {
-                    MarkLightEnd(old_curx1i, old_cury1i, hx, hy, inten);
+                    MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
                 }
                 break;
             }
             if (can_mark) {
-                MarkLightStep(old_curx1i, old_cury1i, old_curx1i, oy, inten);
+                MarkLightStep(old_curx1_i, old_cury1_i, old_curx1_i, oy, inten);
             }
         }
 
         // Main trace
-        if (curx1i < 0 || curx1i >= _maxHexX || cury1i < 0 || cury1i >= _maxHexY || GetField(curx1i, cury1i).Flags.IsNoLight) {
-            hx = (curx1i < 0 || curx1i >= _maxHexX ? old_curx1i : curx1i);
-            hy = (cury1i < 0 || cury1i >= _maxHexY ? old_cury1i : cury1i);
+        if (curx1_i < 0 || curx1_i >= _maxHexX || cury1_i < 0 || cury1_i >= _maxHexY || GetField(curx1_i, cury1_i).Flags.IsNoLight) {
+            hx = (curx1_i < 0 || curx1_i >= _maxHexX ? old_curx1_i : curx1_i);
+            hy = (cury1_i < 0 || cury1_i >= _maxHexY ? old_cury1_i : cury1_i);
             if (can_mark) {
-                MarkLightEnd(old_curx1i, old_cury1i, hx, hy, inten);
+                MarkLightEnd(old_curx1_i, old_cury1_i, hx, hy, inten);
             }
             break;
         }
         if (can_mark) {
-            MarkLightEnd(old_curx1i, old_cury1i, curx1i, cury1i, inten);
+            MarkLightEnd(old_curx1_i, old_cury1_i, curx1_i, cury1_i, inten);
         }
-        if (curx1i == hx && cury1i == hy) {
+        if (curx1_i == hx && cury1_i == hy) {
             break;
         }
     }
@@ -1726,11 +1724,11 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
 
     // Begin
     MarkLight(hx, hy, inten);
-    int base_x = 0;
-    int base_y = 0;
+    auto base_x = 0;
+    auto base_y = 0;
     GetHexCurrentPosition(hx, hy, base_x, base_y);
-    base_x += (_settings.MapHexWidth / 2);
-    base_y += (_settings.MapHexHeight / 2);
+    base_x += _settings.MapHexWidth / 2;
+    base_y += _settings.MapHexHeight / 2;
 
     _lightPointsCount++;
     if (_lightPoints.size() < _lightPointsCount) {
@@ -1748,7 +1746,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
     ushort last_hy = -1;
 
     for (auto i = 0, ii = (_settings.MapHexagonal ? 6 : 4); i < ii; i++) {
-        const auto dir = (_settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+        const auto dir = static_cast<uchar>(_settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
 
         for (auto j = 0, jj = (_settings.MapHexagonal ? dist : dist * 2); j < jj; j++) {
             if (seek_start) {
@@ -1764,8 +1762,8 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
                 _geomHelper.MoveHexByDirUnsafe(hx_far, hy_far, dir);
             }
 
-            ushort hx_ = std::clamp(hx_far, 0, _maxHexX - 1);
-            ushort hy_ = std::clamp(hy_far, 0, _maxHexY - 1);
+            auto hx_ = static_cast<ushort>(std::clamp(hx_far, 0, _maxHexX - 1));
+            auto hy_ = static_cast<ushort>(std::clamp(hy_far, 0, _maxHexY - 1));
             if (j >= 0 && IsBitSet(ls.Flags, LIGHT_DISABLE_DIR(i))) {
                 hx_ = hx;
                 hy_ = hy;
@@ -2194,7 +2192,7 @@ void HexManager::InitView(int cx, int cy)
         auto xa = -(_wRight * _settings.MapHexWidth);
         auto xb = -(_settings.MapHexWidth / 2) - (_wRight * _settings.MapHexWidth);
         auto oy = -_settings.MapHexLineHeight * _hTop;
-        const auto wx = static_cast<int>(_settings.ScreenWidth * _settings.SpritesZoom);
+        const auto wx = static_cast<int>(static_cast<float>(_settings.ScreenWidth) * _settings.SpritesZoom);
 
         for (auto yv = 0; yv < _hVisible; yv++) {
             auto hx = cx + yv / 2 + (yv & 1);
@@ -2230,23 +2228,19 @@ void HexManager::InitView(int cx, int cy)
         auto basehx = cx - halfh / 2 - halfw;
         auto basehy = cy - halfh / 2 + halfw;
         auto y2 = 0;
-        auto vpos = 0;
-        auto x = 0;
         auto xa = -_settings.MapHexWidth * _wRight;
         auto xb = -_settings.MapHexWidth * _wRight - _settings.MapHexWidth / 2;
         auto y = -_settings.MapHexLineHeight * _hTop;
-        const auto wx = static_cast<int>(_settings.ScreenWidth * _settings.SpritesZoom);
-        int hx = 0;
-        int hy = 0;
+        const auto wx = static_cast<int>(static_cast<float>(_settings.ScreenWidth) * _settings.SpritesZoom);
 
         // Initialize field
         for (auto j = 0; j < _hVisible; j++) {
-            x = ((j & 1) != 0 ? xa : xb);
-            hx = basehx;
-            hy = basehy;
+            auto x = ((j & 1) != 0 ? xa : xb);
+            auto hx = basehx;
+            auto hy = basehy;
 
             for (auto i = 0; i < _wVisible; i++) {
-                vpos = y2 + i;
+                const auto vpos = y2 + i;
                 _viewField[vpos].ScrX = wx - x;
                 _viewField[vpos].ScrY = y;
                 _viewField[vpos].ScrXf = static_cast<float>(_viewField[vpos].ScrX);
@@ -2371,8 +2365,8 @@ void HexManager::DrawMap()
     PrepareFogToDraw();
 
     // Prerendered offsets
-    const int ox = _rtScreenOx - static_cast<int>(std::round(static_cast<float>(_settings.ScrOx) / _settings.SpritesZoom));
-    const int oy = _rtScreenOy - static_cast<int>(std::round(static_cast<float>(_settings.ScrOy) / _settings.SpritesZoom));
+    const auto ox = static_cast<int>(_rtScreenOx) - static_cast<int>(std::round(static_cast<float>(_settings.ScrOx) / _settings.SpritesZoom));
+    const auto oy = static_cast<int>(_rtScreenOy) - static_cast<int>(std::round(static_cast<float>(_settings.ScrOy) / _settings.SpritesZoom));
     auto prerenderedRect = IRect(ox, oy, ox + _settings.ScreenWidth, oy + _settings.ScreenHeight);
 
     // Separate render target
@@ -2440,8 +2434,8 @@ void HexManager::SetFog(PrimitivePoints& look_points, PrimitivePoints& shoot_poi
 
     _fogOffsX = offs_x;
     _fogOffsY = offs_y;
-    _fogLastOffsX = (_fogOffsX != nullptr ? *_fogOffsX : 0);
-    _fogLastOffsY = (_fogOffsY != nullptr ? *_fogOffsY : 0);
+    _fogLastOffsX = static_cast<short>(_fogOffsX != nullptr ? *_fogOffsX : 0);
+    _fogLastOffsY = static_cast<short>(_fogOffsY != nullptr ? *_fogOffsY : 0);
     _fogForceRerender = true;
     _fogLookPoints = look_points;
     _fogShootPoints = shoot_points;
@@ -2507,7 +2501,7 @@ auto HexManager::Scroll() -> bool
 
     if ((AutoScroll.SoftLockedCritter != 0u) && !is_scroll) {
         auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
-        if ((cr != nullptr) && (cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY)) {
+        if (cr != nullptr && (cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY)) {
             const auto [ox, oy] = _geomHelper.GetHexInterval(AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY());
             ScrollOffset(ox, oy, 0.02f, true);
             AutoScroll.CritterLastHexX = cr->GetHexX();
@@ -2520,8 +2514,10 @@ auto HexManager::Scroll() -> bool
     if (AutoScroll.Active) {
         AutoScroll.OffsXStep += AutoScroll.OffsX * AutoScroll.Speed * time_k;
         AutoScroll.OffsYStep += AutoScroll.OffsY * AutoScroll.Speed * time_k;
+
         xscroll = static_cast<int>(AutoScroll.OffsXStep);
         yscroll = static_cast<int>(AutoScroll.OffsYStep);
+
         if (xscroll > _settings.MapHexWidth) {
             xscroll = _settings.MapHexWidth;
             AutoScroll.OffsXStep = static_cast<float>(_settings.MapHexWidth);
@@ -2530,22 +2526,24 @@ auto HexManager::Scroll() -> bool
             xscroll = -_settings.MapHexWidth;
             AutoScroll.OffsXStep = -static_cast<float>(_settings.MapHexWidth);
         }
-        if (yscroll > (_settings.MapHexLineHeight * 2)) {
-            yscroll = (_settings.MapHexLineHeight * 2);
+        if (yscroll > _settings.MapHexLineHeight * 2) {
+            yscroll = _settings.MapHexLineHeight * 2;
             AutoScroll.OffsYStep = static_cast<float>(_settings.MapHexLineHeight * 2);
         }
-        if (yscroll < -(_settings.MapHexLineHeight * 2)) {
-            yscroll = -(_settings.MapHexLineHeight * 2);
+        if (yscroll < -_settings.MapHexLineHeight * 2) {
+            yscroll = -_settings.MapHexLineHeight * 2;
             AutoScroll.OffsYStep = -static_cast<float>(_settings.MapHexLineHeight * 2);
         }
 
-        AutoScroll.OffsX -= xscroll;
-        AutoScroll.OffsY -= yscroll;
-        AutoScroll.OffsXStep -= xscroll;
-        AutoScroll.OffsYStep -= yscroll;
-        if ((xscroll == 0) && (yscroll == 0)) {
+        AutoScroll.OffsX -= static_cast<float>(xscroll);
+        AutoScroll.OffsY -= static_cast<float>(yscroll);
+        AutoScroll.OffsXStep -= static_cast<float>(xscroll);
+        AutoScroll.OffsYStep -= static_cast<float>(yscroll);
+
+        if (xscroll == 0 && yscroll == 0) {
             return false;
         }
+
         if (GenericUtils::DistSqrt(0, 0, static_cast<int>(AutoScroll.OffsX), static_cast<int>(AutoScroll.OffsY)) == 0u) {
             AutoScroll.Active = false;
         }
@@ -2571,8 +2569,8 @@ auto HexManager::Scroll() -> bool
             return false;
         }
 
-        xscroll = static_cast<int>(xscroll * _settings.ScrollStep * _settings.SpritesZoom * time_k);
-        yscroll = static_cast<int>(yscroll * (_settings.ScrollStep * (_settings.MapHexLineHeight * 2) / _settings.MapHexWidth) * _settings.SpritesZoom * time_k);
+        xscroll = static_cast<int>(static_cast<float>(xscroll * _settings.ScrollStep) * _settings.SpritesZoom * time_k);
+        yscroll = static_cast<int>(static_cast<float>(yscroll * (_settings.ScrollStep * (_settings.MapHexLineHeight * 2) / _settings.MapHexWidth)) * _settings.SpritesZoom * time_k);
     }
     scr_ox += xscroll;
     scr_oy += yscroll;
@@ -2682,11 +2680,12 @@ auto HexManager::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool
             return true;
         }
 
-        ushort hx = _viewField[pos].HexX;
-        ushort hy = _viewField[pos].HexY;
-        if (hx >= _maxHexX || hy >= _maxHexY) {
+        if (_viewField[pos].HexX < 0 || _viewField[pos].HexY < 0 || _viewField[pos].HexX >= _maxHexX || _viewField[pos].HexY >= _maxHexY) {
             return true;
         }
+
+        auto hx = static_cast<ushort>(_viewField[pos].HexX);
+        auto hy = static_cast<ushort>(_viewField[pos].HexY);
 
         _geomHelper.MoveHexByDir(hx, hy, dir1, _maxHexX, _maxHexY);
         if (GetField(hx, hy).Flags.ScrollBlock) {
@@ -2720,8 +2719,14 @@ auto HexManager::ScrollCheck(int xmod, int ymod) -> bool
 
     int dirs[8] = {0, 5, 2, 3, 4, -1, 1, -1}; // Hexagonal
     if (!_settings.MapHexagonal) {
-        dirs[0] = 7, dirs[1] = -1, dirs[2] = 3, dirs[3] = -1, dirs[4] = 5, dirs[5] = -1, dirs[6] = 1,
-        dirs[7] = -1; // Square
+        dirs[0] = 7; // Square
+        dirs[1] = -1;
+        dirs[2] = 3;
+        dirs[3] = -1;
+        dirs[4] = 5;
+        dirs[5] = -1;
+        dirs[6] = 1;
+        dirs[7] = -1;
     }
 
     if (_settings.MapHexagonal) {
@@ -2796,8 +2801,8 @@ auto HexManager::ScrollCheck(int xmod, int ymod) -> bool
 
 void HexManager::ScrollToHex(int hx, int hy, float speed, bool can_stop)
 {
-    int sx = 0;
-    int sy = 0;
+    auto sx = 0;
+    auto sy = 0;
     GetScreenHexes(sx, sy);
 
     const auto [ox, oy] = _geomHelper.GetHexInterval(sx, sy, hx, hy);
@@ -2818,8 +2823,8 @@ void HexManager::ScrollOffset(int ox, int oy, float speed, bool can_stop)
 
     AutoScroll.CanStop = can_stop;
     AutoScroll.Speed = speed;
-    AutoScroll.OffsX += -ox;
-    AutoScroll.OffsY += -oy;
+    AutoScroll.OffsX += -static_cast<float>(ox);
+    AutoScroll.OffsY += -static_cast<float>(oy);
 }
 
 void HexManager::SetCritter(CritterView* cr)
@@ -2947,8 +2952,7 @@ void HexManager::DeleteCritter(uint crid)
 
 void HexManager::DeleteCritters()
 {
-    for (auto& _allCritter : _critters) {
-        auto* cr = _allCritter.second;
+    for (auto& [id, cr] : _critters) {
         RemoveCritter(cr);
         cr->DeleteAllItems();
         cr->IsDestroyed = true;
@@ -2960,18 +2964,18 @@ void HexManager::DeleteCritters()
     _chosenId = 0;
 }
 
-void HexManager::GetCritters(ushort hx, ushort hy, vector<CritterView*>& crits, int find_type)
+void HexManager::GetCritters(ushort hx, ushort hy, vector<CritterView*>& crits, uchar find_type)
 {
-    auto* f = &GetField(hx, hy);
+    auto& field = GetField(hx, hy);
 
-    if ((f->Crit != nullptr) && f->Crit->CheckFind(find_type)) {
-        crits.push_back(f->Crit);
+    if (field.Crit != nullptr && field.Crit->CheckFind(find_type)) {
+        crits.push_back(field.Crit);
     }
 
-    if (f->DeadCrits != nullptr) {
-        for (auto& DeadCrit : *f->DeadCrits) {
-            if (DeadCrit->CheckFind(find_type)) {
-                crits.push_back(DeadCrit);
+    if (field.DeadCrits != nullptr) {
+        for (auto* cr : *field.DeadCrits) {
+            if (cr->CheckFind(find_type)) {
+                crits.push_back(cr);
             }
         }
     }
@@ -3010,8 +3014,7 @@ void HexManager::SetCrittersContour(int contour)
 
     _crittersContour = contour;
 
-    for (auto& _allCritter : _critters) {
-        auto* cr = _allCritter.second;
+    for (auto& [id, cr] : _critters) {
         if (!cr->IsChosen() && cr->SprDrawValid && !cr->IsDead() && cr->GetId() != _critterContourCrId) {
             cr->SprDraw->SetContour(contour);
         }
@@ -3070,13 +3073,13 @@ auto HexManager::TransitCritter(CritterView* cr, ushort hx, ushort hy, bool anim
         if (_geomHelper.DistGame(old_hx, old_hy, hx, hy) > 1) {
             if (_geomHelper.MoveHexByDir(hx, hy, _geomHelper.ReverseDir(dir), _maxHexX, _maxHexY)) {
                 const auto [ox, oy] = _geomHelper.GetHexInterval(hx, hy, old_hx, old_hy);
-                cr->AddOffsExt(ox, oy);
+                cr->AddOffsExt(static_cast<short>(ox), static_cast<short>(oy));
             }
         }
     }
     else {
         const auto [ox, oy] = _geomHelper.GetHexInterval(hx, hy, old_hx, old_hy);
-        cr->AddOffsExt(ox, oy);
+        cr->AddOffsExt(static_cast<short>(ox), static_cast<short>(oy));
     }
 
     SetCritter(cr);
@@ -3100,7 +3103,7 @@ void HexManager::SetMultihex(ushort hx, ushort hy, uint multihex, bool set)
     }
 }
 
-auto HexManager::GetHexPixel(int x, int y, ushort& hx, ushort& hy) -> bool
+auto HexManager::GetHexPixel(int x, int y, ushort& hx, ushort& hy) const -> bool
 {
     if (!IsMapLoaded()) {
         return false;
@@ -3780,7 +3783,7 @@ auto HexManager::CutPath(CritterView* cr, ushort start_x, ushort start_y, ushort
     return FindPath(cr, start_x, start_y, end_x, end_y, dummy, cut);
 }
 
-auto HexManager::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, int find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool
+auto HexManager::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, uchar find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool
 {
     if (_isShowTrack) {
         ClearHexTrack();
@@ -3852,107 +3855,110 @@ void HexManager::FindSetCenter(int cx, int cy)
 
     RebuildMap(cx, cy);
 
-    if (!_mapperMode) {
-        const auto iw = GetViewWidth() / 2 + 2;
-        const auto ih = GetViewHeight() / 2 + 2;
-        ushort hx = cx;
-        ushort hy = cy;
-
-        auto find_set_center_dir = [this, &hx, &hy](const array<int, 2>& dirs, int steps) {
-            auto sx = hx;
-            auto sy = hy;
-            const auto dirs_index = (dirs[1] == -1 ? 1 : 2);
-
-            auto i = 0;
-            for (i = 0; i < steps; i++) {
-                if (!_geomHelper.MoveHexByDir(sx, sy, dirs[i % dirs_index], _maxHexX, _maxHexY)) {
-                    break;
-                }
-
-                if (_isShowTrack) {
-                    GetHexTrack(sx, sy) = 1;
-                }
-
-                if (GetField(sx, sy).Flags.ScrollBlock) {
-                    break;
-                }
-
-                if (_isShowTrack) {
-                    GetHexTrack(sx, sy) = 2;
-                }
-            }
-
-            for (; i < steps; i++) {
-                _geomHelper.MoveHexByDir(hx, hy, _geomHelper.ReverseDir(dirs[i % dirs_index]), _maxHexX, _maxHexY);
-            }
-        };
-
-        // Up
-        if (_settings.MapHexagonal) {
-            find_set_center_dir({0, 5}, ih);
-        }
-        else {
-            find_set_center_dir({0, 6}, ih);
-        }
-
-        // Down
-        if (_settings.MapHexagonal) {
-            find_set_center_dir({3, 2}, ih);
-        }
-        else {
-            find_set_center_dir({4, 2}, ih);
-        }
-
-        // Right
-        if (_settings.MapHexagonal) {
-            find_set_center_dir({1, -1}, iw);
-        }
-        else {
-            find_set_center_dir({1, -1}, iw);
-        }
-
-        // Left
-        if (_settings.MapHexagonal) {
-            find_set_center_dir({4, -1}, iw);
-        }
-        else {
-            find_set_center_dir({5, -1}, iw);
-        }
-
-        // Up-Right
-        if (_settings.MapHexagonal) {
-            find_set_center_dir({0, -1}, ih);
-        }
-        else {
-            find_set_center_dir({0, -1}, ih);
-        }
-
-        // Down-Left
-        if (_settings.MapHexagonal) {
-            find_set_center_dir({3, -1}, ih);
-        }
-        else {
-            find_set_center_dir({4, -1}, ih);
-        }
-
-        // Up-Left
-        if (_settings.MapHexagonal) {
-            find_set_center_dir({5, -1}, ih);
-        }
-        else {
-            find_set_center_dir({6, -1}, ih);
-        }
-
-        // Down-Right
-        if (_settings.MapHexagonal) {
-            find_set_center_dir({2, -1}, ih);
-        }
-        else {
-            find_set_center_dir({2, 1}, ih);
-        }
-
-        RebuildMap(hx, hy);
+    if (_mapperMode) {
+        return;
     }
+
+    const auto iw = GetViewWidth() / 2 + 2;
+    const auto ih = GetViewHeight() / 2 + 2;
+    auto hx = static_cast<ushort>(cx);
+    auto hy = static_cast<ushort>(cy);
+
+    auto find_set_center_dir = [this, &hx, &hy](const array<int, 2>& dirs, int steps) {
+        auto sx = hx;
+        auto sy = hy;
+        const auto dirs_index = (dirs[1] == -1 ? 1 : 2);
+
+        auto i = 0;
+
+        for (; i < steps; i++) {
+            if (!_geomHelper.MoveHexByDir(sx, sy, static_cast<uchar>(dirs[i % dirs_index]), _maxHexX, _maxHexY)) {
+                break;
+            }
+
+            if (_isShowTrack) {
+                GetHexTrack(sx, sy) = 1;
+            }
+
+            if (GetField(sx, sy).Flags.ScrollBlock) {
+                break;
+            }
+
+            if (_isShowTrack) {
+                GetHexTrack(sx, sy) = 2;
+            }
+        }
+
+        for (; i < steps; i++) {
+            _geomHelper.MoveHexByDir(hx, hy, _geomHelper.ReverseDir(static_cast<uchar>(dirs[i % dirs_index])), _maxHexX, _maxHexY);
+        }
+    };
+
+    // Up
+    if (_settings.MapHexagonal) {
+        find_set_center_dir({0, 5}, ih);
+    }
+    else {
+        find_set_center_dir({0, 6}, ih);
+    }
+
+    // Down
+    if (_settings.MapHexagonal) {
+        find_set_center_dir({3, 2}, ih);
+    }
+    else {
+        find_set_center_dir({4, 2}, ih);
+    }
+
+    // Right
+    if (_settings.MapHexagonal) {
+        find_set_center_dir({1, -1}, iw);
+    }
+    else {
+        find_set_center_dir({1, -1}, iw);
+    }
+
+    // Left
+    if (_settings.MapHexagonal) {
+        find_set_center_dir({4, -1}, iw);
+    }
+    else {
+        find_set_center_dir({5, -1}, iw);
+    }
+
+    // Up-Right
+    if (_settings.MapHexagonal) {
+        find_set_center_dir({0, -1}, ih);
+    }
+    else {
+        find_set_center_dir({0, -1}, ih);
+    }
+
+    // Down-Left
+    if (_settings.MapHexagonal) {
+        find_set_center_dir({3, -1}, ih);
+    }
+    else {
+        find_set_center_dir({4, -1}, ih);
+    }
+
+    // Up-Left
+    if (_settings.MapHexagonal) {
+        find_set_center_dir({5, -1}, ih);
+    }
+    else {
+        find_set_center_dir({6, -1}, ih);
+    }
+
+    // Down-Right
+    if (_settings.MapHexagonal) {
+        find_set_center_dir({2, -1}, ih);
+    }
+    else {
+        find_set_center_dir({2, 1}, ih);
+    }
+
+    RebuildMap(hx, hy);
 }
 
 auto HexManager::LoadMap(CacheStorage& cache, hash map_pid) -> bool
@@ -4594,9 +4600,9 @@ void HexManager::ClearIgnorePids()
     _ignorePids.clear();
 }
 
-void HexManager::GetHexesRect(const IRect& rect, vector<pair<ushort, ushort>>& hexes)
+auto HexManager::GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushort>>
 {
-    hexes.clear();
+    vector<pair<ushort, ushort>> hexes;
 
     if (_settings.MapHexagonal) {
         auto [x, y] = _geomHelper.GetHexInterval(rect.Left, rect.Top, rect.Right, rect.Bottom);
@@ -4710,6 +4716,8 @@ void HexManager::GetHexesRect(const IRect& rect, vector<pair<ushort, ushort>>& h
             }
         }
     }
+
+    return hexes;
 }
 
 void HexManager::MarkPassedHexes()
