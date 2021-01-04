@@ -58,8 +58,8 @@ public:
     auto operator=(DataBaseImpl&&) noexcept = delete;
     virtual ~DataBaseImpl() = default;
 
-    [[nodiscard]] virtual auto GetAllIds(const string& collection_name) -> vector<uint> = 0;
-    [[nodiscard]] auto Get(const string& collection_name, uint id) -> DataBase::Document;
+    [[nodiscard]] virtual auto GetAllIds(const string& collection_name) const -> vector<uint> = 0;
+    [[nodiscard]] auto Get(const string& collection_name, uint id) const -> DataBase::Document;
 
     void StartChanges();
     void Insert(const string& collection_name, uint id, const DataBase::Document& doc);
@@ -68,7 +68,7 @@ public:
     void CommitChanges();
 
 protected:
-    [[nodiscard]] virtual auto GetRecord(const string& collection_name, uint id) -> DataBase::Document = 0;
+    [[nodiscard]] virtual auto GetRecord(const string& collection_name, uint id) const -> DataBase::Document = 0;
     virtual void InsertRecord(const string& collection_name, uint id, const DataBase::Document& doc) = 0;
     virtual void UpdateRecord(const string& collection_name, uint id, const DataBase::Document& doc) = 0;
     virtual void DeleteRecord(const string& collection_name, uint id) = 0;
@@ -95,38 +95,48 @@ DataBase::operator bool() const
     return _impl != nullptr;
 }
 
-auto DataBase::GetAllIds(const string& collection_name) -> vector<uint>
+auto DataBase::GetAllIds(const string& collection_name) const -> vector<uint>
 {
     return _impl->GetAllIds(collection_name);
 }
 
-auto DataBase::Get(const string& collection_name, uint id) -> Document
+auto DataBase::Get(const string& collection_name, uint id) const -> Document
 {
     return _impl->Get(collection_name, id);
 }
 
 void DataBase::StartChanges()
 {
+    NON_CONST_METHOD_HINT();
+
     _impl->StartChanges();
 }
 
 void DataBase::Insert(const string& collection_name, uint id, const Document& doc)
 {
+    NON_CONST_METHOD_HINT();
+
     _impl->Insert(collection_name, id, doc);
 }
 
 void DataBase::Update(const string& collection_name, uint id, const string& key, const Value& value)
 {
+    NON_CONST_METHOD_HINT();
+
     _impl->Update(collection_name, id, key, value);
 }
 
 void DataBase::Delete(const string& collection_name, uint id)
 {
+    NON_CONST_METHOD_HINT();
+
     _impl->Delete(collection_name, id);
 }
 
 void DataBase::CommitChanges()
 {
+    NON_CONST_METHOD_HINT();
+
     _impl->CommitChanges();
 }
 
@@ -212,40 +222,40 @@ static void ValueToBson(const string& key, const DataBase::Value& value, bson_t*
         }
 
         const auto& dict = std::get<DataBase::DICT_VALUE>(value);
-        for (const auto& [fst, snd] : dict) {
-            const auto dict_value_index = snd.index();
+        for (const auto& [key, value] : dict) {
+            const auto dict_value_index = value.index();
             if (dict_value_index == DataBase::INT_VALUE) {
-                if (!bson_append_int32(&bson_doc, fst.c_str(), static_cast<int>(fst.length()), std::get<DataBase::INT_VALUE>(snd))) {
-                    throw DataBaseException("ValueToBson bson_append_int32", fst, std::get<DataBase::INT_VALUE>(snd));
+                if (!bson_append_int32(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::INT_VALUE>(value))) {
+                    throw DataBaseException("ValueToBson bson_append_int32", key, std::get<DataBase::INT_VALUE>(value));
                 }
             }
             else if (dict_value_index == DataBase::INT64_VALUE) {
-                if (!bson_append_int64(&bson_doc, fst.c_str(), static_cast<int>(fst.length()), std::get<DataBase::INT64_VALUE>(snd))) {
-                    throw DataBaseException("ValueToBson bson_append_int64", fst, std::get<DataBase::INT64_VALUE>(snd));
+                if (!bson_append_int64(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::INT64_VALUE>(value))) {
+                    throw DataBaseException("ValueToBson bson_append_int64", key, std::get<DataBase::INT64_VALUE>(value));
                 }
             }
             else if (dict_value_index == DataBase::DOUBLE_VALUE) {
-                if (!bson_append_double(&bson_doc, fst.c_str(), static_cast<int>(fst.length()), std::get<DataBase::DOUBLE_VALUE>(snd))) {
-                    throw DataBaseException("ValueToBson bson_append_double", fst, std::get<DataBase::DOUBLE_VALUE>(snd));
+                if (!bson_append_double(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::DOUBLE_VALUE>(value))) {
+                    throw DataBaseException("ValueToBson bson_append_double", key, std::get<DataBase::DOUBLE_VALUE>(value));
                 }
             }
             else if (dict_value_index == DataBase::BOOL_VALUE) {
-                if (!bson_append_bool(&bson_doc, fst.c_str(), static_cast<int>(fst.length()), std::get<DataBase::BOOL_VALUE>(snd))) {
-                    throw DataBaseException("ValueToBson bson_append_bool", fst, std::get<DataBase::BOOL_VALUE>(snd));
+                if (!bson_append_bool(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::BOOL_VALUE>(value))) {
+                    throw DataBaseException("ValueToBson bson_append_bool", key, std::get<DataBase::BOOL_VALUE>(value));
                 }
             }
             else if (dict_value_index == DataBase::STRING_VALUE) {
-                if (!bson_append_utf8(&bson_doc, fst.c_str(), static_cast<int>(fst.length()), std::get<DataBase::STRING_VALUE>(snd).c_str(), static_cast<int>(std::get<DataBase::STRING_VALUE>(snd).length()))) {
-                    throw DataBaseException("ValueToBson bson_append_utf8", fst, std::get<DataBase::STRING_VALUE>(snd));
+                if (!bson_append_utf8(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<DataBase::STRING_VALUE>(value).length()))) {
+                    throw DataBaseException("ValueToBson bson_append_utf8", key, std::get<DataBase::STRING_VALUE>(value));
                 }
             }
             else if (dict_value_index == DataBase::ARRAY_VALUE) {
                 bson_t bson_arr;
-                if (!bson_append_array_begin(&bson_doc, fst.c_str(), static_cast<int>(fst.length()), &bson_arr)) {
-                    throw DataBaseException("ValueToBson bson_append_array_begin", fst);
+                if (!bson_append_array_begin(&bson_doc, key.c_str(), static_cast<int>(key.length()), &bson_arr)) {
+                    throw DataBaseException("ValueToBson bson_append_array_begin", key);
                 }
 
-                const auto& arr = std::get<DataBase::ARRAY_VALUE>(snd);
+                const auto& arr = std::get<DataBase::ARRAY_VALUE>(value);
                 auto arr_key_index = 0;
                 for (const auto& arr_value : arr) {
                     string arr_key = _str("{}", arr_key_index);
@@ -302,8 +312,8 @@ static void ValueToBson(const string& key, const DataBase::Value& value, bson_t*
 
 static void DocumentToBson(const DataBase::Document& doc, bson_t* bson)
 {
-    for (const auto& [fst, snd] : doc) {
-        ValueToBson(fst, snd, bson);
+    for (const auto& [key, value] : doc) {
+        ValueToBson(key, value, bson);
     }
 }
 
@@ -444,21 +454,21 @@ static void BsonToDocument(const bson_t* bson, DataBase::Document& doc)
     }
 }
 
-auto DataBaseImpl::Get(const string& collection_name, uint id) -> DataBase::Document
+auto DataBaseImpl::Get(const string& collection_name, uint id) const -> DataBase::Document
 {
-    if (_deletedRecords[collection_name].count(id) != 0u) {
+    if (_deletedRecords.at(collection_name).count(id) != 0u) {
         return DataBase::Document();
     }
 
-    if (_newRecords[collection_name].count(id) != 0u) {
-        return _recordChanges[collection_name][id];
+    if (_newRecords.at(collection_name).count(id) != 0u) {
+        return _recordChanges.at(collection_name).at(id);
     }
 
     auto doc = GetRecord(collection_name, id);
 
-    if (_recordChanges[collection_name].count(id) != 0u) {
-        for (auto& [fst, snd] : _recordChanges[collection_name][id]) {
-            doc[fst] = snd;
+    if (_recordChanges.at(collection_name).count(id) != 0u) {
+        for (auto& [key, value] : _recordChanges.at(collection_name).at(id)) {
+            doc[key] = value;
         }
     }
 
@@ -482,8 +492,8 @@ void DataBaseImpl::Insert(const string& collection_name, uint id, const DataBase
     RUNTIME_ASSERT(!_deletedRecords[collection_name].count(id));
 
     _newRecords[collection_name].insert(id);
-    for (const auto& [fst, snd] : doc) {
-        _recordChanges[collection_name][id][fst] = snd;
+    for (const auto& [key, value] : doc) {
+        _recordChanges[collection_name][id][key] = value;
     }
 }
 
@@ -511,21 +521,21 @@ void DataBaseImpl::CommitChanges()
 
     _changesStarted = false;
 
-    for (auto& [fst, snd] : _recordChanges) {
-        for (auto& [fst2, snd2] : snd) {
-            auto it = _newRecords.find(fst);
-            if (it != _newRecords.end() && it->second.count(fst2) != 0u) {
-                InsertRecord(fst, fst2, snd2);
+    for (auto& [key, value] : _recordChanges) {
+        for (auto& [key2, value2] : value) {
+            auto it = _newRecords.find(key);
+            if (it != _newRecords.end() && it->second.count(key2) != 0u) {
+                InsertRecord(key, key2, value2);
             }
             else {
-                UpdateRecord(fst, fst2, snd2);
+                UpdateRecord(key, key2, value2);
             }
         }
     }
 
-    for (auto& [fst, snd] : _deletedRecords) {
-        for (const auto& id : snd) {
-            DeleteRecord(fst, id);
+    for (auto& [key, value] : _deletedRecords) {
+        for (const auto& id : value) {
+            DeleteRecord(key, id);
         }
     }
 
@@ -554,7 +564,7 @@ public:
         _storageDir = storage_dir;
     }
 
-    auto GetAllIds(const string& collection_name) -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(const string& collection_name) const -> vector<uint> override
     {
         vector<uint> ids;
         DiskFileSystem::IterateDir(_storageDir + "/" + collection_name + "/", "json", false, [&ids](const string& path, uint /*size*/, uint64 /*write_time*/) {
@@ -570,7 +580,7 @@ public:
     }
 
 protected:
-    auto GetRecord(const string& collection_name, uint id) -> DataBase::Document override
+    [[nodiscard]] auto GetRecord(const string& collection_name, uint id) const -> DataBase::Document override
     {
         const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -741,12 +751,12 @@ public:
 
     ~DbUnQLite() override
     {
-        for (auto& [fst, snd] : _collections) {
-            unqlite_close(snd);
+        for (auto& [key, value] : _collections) {
+            unqlite_close(value);
         }
     }
 
-    auto GetAllIds(const string& collection_name) -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(const string& collection_name) const -> vector<uint> override
     {
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
@@ -795,7 +805,7 @@ public:
     }
 
 protected:
-    auto GetRecord(const string& collection_name, uint id) -> DataBase::Document override
+    [[nodiscard]] auto GetRecord(const string& collection_name, uint id) const -> DataBase::Document override
     {
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
@@ -872,8 +882,8 @@ protected:
             throw DataBaseException("DbUnQLite Document not found", collection_name, id);
         }
 
-        for (const auto& [fst, snd] : doc) {
-            actual_doc[fst] = snd;
+        for (const auto& [key, value] : doc) {
+            actual_doc[key] = value;
         }
 
         bson_t bson;
@@ -909,8 +919,8 @@ protected:
 
     void CommitRecords() override
     {
-        for (const auto& [fst, snd] : _collections) {
-            const auto commit = unqlite_commit(snd);
+        for (const auto& [key, value] : _collections) {
+            const auto commit = unqlite_commit(value);
             if (commit != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite unqlite_commit", commit);
             }
@@ -918,9 +928,10 @@ protected:
     }
 
 private:
-    auto GetCollection(const string& collection_name) -> unqlite*
+    [[nodiscard]] auto GetCollection(const string& collection_name) const -> unqlite*
     {
-        unqlite* db = nullptr;
+        unqlite* db;
+
         const auto it = _collections.find(collection_name);
         if (it == _collections.end()) {
             const string db_path = _str("{}/{}.unqlite", _storageDir, collection_name);
@@ -934,11 +945,12 @@ private:
         else {
             db = it->second;
         }
+
         return db;
     }
 
     string _storageDir {};
-    map<string, unqlite*> _collections {};
+    mutable map<string, unqlite*> _collections {};
 };
 #endif
 
@@ -989,8 +1001,8 @@ public:
 
     ~DbMongo() override
     {
-        for (auto& [fst, snd] : _collections) {
-            mongoc_collection_destroy(snd);
+        for (auto& [key, value] : _collections) {
+            mongoc_collection_destroy(value);
         }
 
         mongoc_database_destroy(_database);
@@ -998,7 +1010,7 @@ public:
         mongoc_cleanup();
     }
 
-    auto GetAllIds(const string& collection_name) -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(const string& collection_name) const -> vector<uint> override
     {
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1050,7 +1062,7 @@ public:
     }
 
 protected:
-    auto GetRecord(const string& collection_name, uint id) -> DataBase::Document override
+    [[nodiscard]] auto GetRecord(const string& collection_name, uint id) const -> DataBase::Document override
     {
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1177,9 +1189,10 @@ protected:
     }
 
 private:
-    auto GetCollection(const string& collection_name) -> mongoc_collection_t*
+    [[nodiscard]] auto GetCollection(const string& collection_name) const -> mongoc_collection_t*
     {
-        mongoc_collection_t* collection = nullptr;
+        mongoc_collection_t* collection;
+
         const auto it = _collections.find(collection_name);
         if (it == _collections.end()) {
             collection = mongoc_client_get_collection(_client, _databaseName.c_str(), collection_name.c_str());
@@ -1192,13 +1205,14 @@ private:
         else {
             collection = it->second;
         }
+
         return collection;
     }
 
     mongoc_client_t* _client {};
     mongoc_database_t* _database {};
     string _databaseName {};
-    map<string, mongoc_collection_t*> _collections {};
+    mutable map<string, mongoc_collection_t*> _collections {};
 };
 #endif
 
@@ -1212,23 +1226,24 @@ public:
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override = default;
 
-    auto GetAllIds(const string& collection_name) -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(const string& collection_name) const -> vector<uint> override
     {
-        auto& collection = _collections[collection_name];
+        const auto& collection = _collections.at(collection_name);
 
         vector<uint> ids;
         ids.reserve(collection.size());
-        for (auto& [fst, snd] : collection) {
-            ids.push_back(fst);
+
+        for (auto& [key, value] : collection) {
+            ids.push_back(key);
         }
 
         return ids;
     }
 
 protected:
-    auto GetRecord(const string& collection_name, uint id) -> DataBase::Document override
+    [[nodiscard]] auto GetRecord(const string& collection_name, uint id) const -> DataBase::Document override
     {
-        auto& collection = _collections[collection_name];
+        const auto& collection = _collections.at(collection_name);
 
         const auto it = collection.find(id);
         return it != collection.end() ? it->second : DataBase::Document();
@@ -1253,8 +1268,8 @@ protected:
         auto it = collection.find(id);
         RUNTIME_ASSERT(it != collection.end());
 
-        for (const auto& [fst, snd] : doc) {
-            it->second[fst] = snd;
+        for (const auto& [key, value] : doc) {
+            it->second[key] = value;
         }
     }
 

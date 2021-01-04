@@ -774,9 +774,6 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             case KeyCode::DIK_Q:
                 Settings.ShowCorners = !Settings.ShowCorners;
                 break;
-            case KeyCode::DIK_W:
-                Settings.ShowSpriteCuts = !Settings.ShowSpriteCuts;
-                break;
             case KeyCode::DIK_E:
                 Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
                 break;
@@ -2449,9 +2446,8 @@ void FOMapper::IntLMouseUp()
                         }
                     }
                 }
-                else // SELECT_TYPE_NEW
-                {
-                    HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2), hexes);
+                else {
+                    hexes = HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2));
                 }
 
                 vector<ItemHexView*> items;
@@ -2548,15 +2544,12 @@ void FOMapper::IntMouseMove()
 
                     for (auto i = fx; i <= tx; i++) {
                         for (auto j = fy; j <= ty; j++) {
-                            HexMngr.GetHexTrack(i, j) = 1;
+                            HexMngr.GetHexTrack(static_cast<ushort>(i), static_cast<ushort>(j)) = 1;
                         }
                     }
                 }
                 else if (SelectType == SELECT_TYPE_NEW) {
-                    vector<pair<ushort, ushort>> hexes;
-                    HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2), hexes);
-
-                    for (auto [hx, hy] : hexes) {
+                    for (auto [hx, hy] : HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2))) {
                         HexMngr.GetHexTrack(hx, hy) = 1;
                     }
                 }
@@ -2854,19 +2847,18 @@ void FOMapper::SelectAll()
 {
     SelectClear();
 
-    for (uint i = 0; i < HexMngr.GetWidth(); i++) {
-        for (uint j = 0; j < HexMngr.GetHeight(); j++) {
+    for (const auto hx : xrange(HexMngr.GetWidth())) {
+        for (const auto hy : xrange(HexMngr.GetHeight())) {
             if (IsSelectTile && Settings.ShowTile) {
-                SelectAddTile(i, j, false);
+                SelectAddTile(hx, hy, false);
             }
             if (IsSelectRoof && Settings.ShowRoof) {
-                SelectAddTile(i, j, true);
+                SelectAddTile(hx, hy, true);
             }
         }
     }
 
-    auto& items = HexMngr.GetItems();
-    for (auto* item : items) {
+    for (auto* item : HexMngr.GetItems()) {
         if (HexMngr.IsIgnorePid(item->GetProtoId())) {
             continue;
         }
@@ -2933,13 +2925,13 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         static auto small_oy = 0.0f;
         auto ox = static_cast<float>(offs_x) * Settings.SpritesZoom + small_ox;
         auto oy = static_cast<float>(offs_y) * Settings.SpritesZoom + small_oy;
-        if ((offs_x != 0) && fabs(ox) < 1.0f) {
+        if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
         }
         else {
             small_ox = 0.0f;
         }
-        if ((offs_y != 0) && fabs(oy) < 1.0f) {
+        if (offs_y != 0 && std::fabs(oy) < 1.0f) {
             small_oy = oy;
         }
         else {
@@ -2954,10 +2946,11 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         for (auto* entity : SelectedEntities) {
             int hx = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexX() : (dynamic_cast<ItemHexView*>(entity))->GetHexX());
             int hy = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexY() : (dynamic_cast<ItemHexView*>(entity))->GetHexY());
+
             if (Settings.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4u : 3u) : ((sw & 1) != 0 ? 0u : 1u));
+                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
                 }
                 for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
                     GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2u : 5u);
@@ -2967,6 +2960,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hx += offs_hx;
                 hy += offs_hy;
             }
+
             if (hx < 0 || hy < 0 || hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
                 return false; // Disable moving
             }
@@ -3009,13 +3003,14 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 ox = oy = 0;
             }
 
-            item->SetOffsetX(ox);
-            item->SetOffsetY(oy);
+            item->SetOffsetX(static_cast<short>(ox));
+            item->SetOffsetY(static_cast<short>(oy));
             item->RefreshAnim();
         }
         else {
             int hx = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexX() : (dynamic_cast<ItemHexView*>(entity))->GetHexX());
             int hy = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexY() : (dynamic_cast<ItemHexView*>(entity))->GetHexY());
+
             if (Settings.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
@@ -3029,21 +3024,22 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hx += offs_hx;
                 hy += offs_hy;
             }
+
             hx = std::clamp(hx, 0, HexMngr.GetWidth() - 1);
             hy = std::clamp(hy, 0, HexMngr.GetHeight() - 1);
 
             if (entity->Type == EntityType::ItemHexView) {
                 auto* item = dynamic_cast<ItemHexView*>(entity);
                 HexMngr.DeleteItem(item, false, nullptr);
-                item->SetHexX(hx);
-                item->SetHexY(hy);
+                item->SetHexX(static_cast<ushort>(hx));
+                item->SetHexY(static_cast<ushort>(hy));
                 HexMngr.PushItem(item);
             }
             else if (entity->Type == EntityType::CritterView) {
                 auto* cr = dynamic_cast<CritterView*>(entity);
                 HexMngr.RemoveCritter(cr);
-                cr->SetHexX(hx);
-                cr->SetHexY(hy);
+                cr->SetHexX(static_cast<ushort>(hx));
+                cr->SetHexY(static_cast<ushort>(hy));
                 HexMngr.SetCritter(cr);
             }
         }
@@ -3494,9 +3490,9 @@ void FOMapper::CurDraw()
     switch (CurMode) {
     case CUR_MODE_DEFAULT:
     case CUR_MODE_MOVE_SELECTION: {
-        AnyFrames* anim = (CurMode == CUR_MODE_DEFAULT ? CurPDef : CurPHand);
+        auto* anim = (CurMode == CUR_MODE_DEFAULT ? CurPDef : CurPHand);
         if (anim != nullptr) {
-            auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
+            const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si != nullptr) {
                 SprMngr.DrawSprite(anim, Settings.MouseX, Settings.MouseY, COLOR_IFACE);
             }
@@ -3512,16 +3508,16 @@ void FOMapper::CurDraw()
                 break;
             }
 
-            const uint spr_id = GetProtoItemCurSprId(proto_item);
-            auto* si = SprMngr.GetSpriteInfo(spr_id);
+            const auto spr_id = GetProtoItemCurSprId(proto_item);
+            const auto* si = SprMngr.GetSpriteInfo(spr_id);
             if (si != nullptr) {
-                const int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
-                const int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
+                const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
+                const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
                 SprMngr.DrawSpriteSize(spr_id, static_cast<int>(x / Settings.SpritesZoom), static_cast<int>(y / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
             }
         }
         else if (IsTileMode() && !CurTileHashes->empty()) {
-            AnyFrames* anim = ResMngr.GetItemAnim((*CurTileHashes)[GetTabIndex()]);
+            auto* anim = ResMngr.GetItemAnim((*CurTileHashes)[GetTabIndex()]);
             if (anim == nullptr) {
                 anim = ResMngr.ItemHexDefaultAnim;
             }
@@ -3532,12 +3528,12 @@ void FOMapper::CurDraw()
                 break;
             }
 
-            SpriteInfo* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
+            const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si != nullptr) {
                 hx -= hx % Settings.MapTileStep;
                 hy -= hy % Settings.MapTileStep;
-                int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
-                int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
+                auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
+                auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
                 if (!DrawRoof) {
                     x += Settings.MapTileOffsX;
                     y += Settings.MapTileOffsY;
@@ -3551,8 +3547,8 @@ void FOMapper::CurDraw()
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
-            const hash model_name = (*CurNpcProtos)[GetTabIndex()]->Props.GetValue<hash>(CritterView::PropertyModelName);
-            uint spr_id = ResMngr.GetCritterSprId(model_name, 1, 1, NpcDir, nullptr);
+            const auto model_name = (*CurNpcProtos)[GetTabIndex()]->Props.GetValue<hash>(CritterView::PropertyModelName);
+            auto spr_id = ResMngr.GetCritterSprId(model_name, 1, 1, NpcDir, nullptr);
             if (spr_id == 0u) {
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId(0);
             }
@@ -3563,10 +3559,10 @@ void FOMapper::CurDraw()
                 break;
             }
 
-            SpriteInfo* si = SprMngr.GetSpriteInfo(spr_id);
+            const auto* si = SprMngr.GetSpriteInfo(spr_id);
             if (si != nullptr) {
-                const int x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
-                const int y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
+                const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
+                const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
 
                 SprMngr.DrawSpriteSize(spr_id, static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
             }
@@ -3667,12 +3663,10 @@ void FOMapper::ConsoleDraw()
 {
     if (ConsoleEdit) {
         SprMngr.DrawSprite(ConsolePic, IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, 0);
-    }
 
-    if (ConsoleEdit) {
-        string buf = ConsoleStr;
-        buf.insert(ConsoleCur, GameTime.FrameTick() % 800 < 400 ? "!" : ".");
-        SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), buf, FT_NOBREAK, 0, FONT_DEFAULT);
+        auto str = ConsoleStr;
+        str.insert(ConsoleCur, GameTime.FrameTick() % 800 < 400 ? "!" : ".");
+        SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, 0, FONT_DEFAULT);
     }
 }
 

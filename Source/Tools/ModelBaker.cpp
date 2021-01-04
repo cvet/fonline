@@ -42,9 +42,11 @@
 #endif
 
 // Linker errors workaround
+// ReSharper disable CppInconsistentNaming
 #define MeshData BakerMeshData
 #define Bone BakerBone
 #define AnimSet BakerAnimSet
+// ReSharper restore CppInconsistentNaming
 
 struct MeshData
 {
@@ -332,13 +334,13 @@ auto ModelBaker::BakeFile(const string& fname, File& file) -> vector<uchar>
     if (!fbx_importer->Initialize(&fbx_stream, &file, -1, _fbxManager->GetIOSettings())) {
         string error_desc = fbx_importer->GetStatus().GetErrorString();
         if (fbx_importer->GetStatus().GetCode() == FbxStatus::eInvalidFileVersion) {
-            int sdk_major = 0;
-            int sdk_minor = 0;
-            int sdk_revision = 0;
+            int sdk_major;
+            int sdk_minor;
+            int sdk_revision;
             FbxManager::GetFileFormatVersion(sdk_major, sdk_minor, sdk_revision);
-            int file_major = 0;
-            int file_minor = 0;
-            int file_revision = 0;
+            int file_major;
+            int file_minor;
+            int file_revision;
             fbx_importer->GetFileVersion(file_major, file_minor, file_revision);
             error_desc += _str(" (minimum version {}.{}.{}, file version {}.{}.{})", sdk_major, sdk_minor, sdk_revision, file_major, file_minor, file_revision);
         }
@@ -406,19 +408,22 @@ auto ModelBaker::BakeFile(const string& fname, File& file) -> vector<uchar>
 
                     // Manage duplicates
                     if (f < 2 || sv.back() != s || sv[sv.size() - 2] != s) {
-                        st.push_back(time), sv.push_back(s);
+                        st.push_back(time);
+                        sv.push_back(s);
                     }
                     else {
                         st.back() = time;
                     }
                     if (f < 2 || rv.back() != r || rv[rv.size() - 2] != r) {
-                        rt.push_back(time), rv.push_back(r);
+                        rt.push_back(time);
+                        rv.push_back(r);
                     }
                     else {
                         rt.back() = time;
                     }
                     if (f < 2 || tv.back() != t || tv[tv.size() - 2] != t) {
-                        tt.push_back(time), tv.push_back(t);
+                        tt.push_back(time);
+                        tv.push_back(t);
                     }
                     else {
                         tt.back() = time;
@@ -470,7 +475,7 @@ auto ModelBaker::BakeFile(const string& fname, File& file) -> vector<uchar>
         delete loaded_animation;
     }
 
-    return std::move(data);
+    return data;
 }
 
 static void FixTexCoord(float& x, float& y)
@@ -587,7 +592,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         // Faces
         mesh->Indices.resize(vertices_count);
         for (auto i = 0; i < vertices_count; i++) {
-            mesh->Indices[i] = i;
+            mesh->Indices[i] = static_cast<ushort>(i);
         }
 
         // Material
@@ -595,7 +600,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         auto prop_diffuse = (fbx_material != nullptr ? fbx_material->FindProperty("DiffuseColor") : FbxProperty());
         if (prop_diffuse.IsValid() && prop_diffuse.GetSrcObjectCount() > 0) {
             for (auto i = 0, j = prop_diffuse.GetSrcObjectCount(); i < j; i++) {
-                if (Str::Compare(prop_diffuse.GetSrcObject(i)->GetClassId().GetName(), "FbxFileTexture")) {
+                if (string(prop_diffuse.GetSrcObject(i)->GetClassId().GetName()) == "FbxFileTexture") {
                     auto* fbx_file_texture = dynamic_cast<FbxFileTexture*>(prop_diffuse.GetSrcObject(i));
                     mesh->DiffuseTexture = _str(fbx_file_texture->GetFileName()).extractFileName();
                     break;
@@ -643,11 +648,11 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
                 auto num_weights = fbx_cluster->GetControlPointIndicesCount();
                 auto* indices = fbx_cluster->GetControlPointIndices();
                 auto* weights = fbx_cluster->GetControlPointWeights();
-                auto vertices_count = fbx_mesh->GetPolygonVertexCount();
-                auto* vertices = fbx_mesh->GetPolygonVertices();
+                auto mesh_vertices_count = fbx_mesh->GetPolygonVertexCount();
+                auto* mesh_vertices = fbx_mesh->GetPolygonVertices();
                 for (auto j = 0; j < num_weights; j++) {
-                    for (auto k = 0; k < vertices_count; k++) {
-                        if (vertices[k] != indices[j]) {
+                    for (auto k = 0; k < mesh_vertices_count; k++) {
+                        if (mesh_vertices[k] != indices[j]) {
                             continue;
                         }
 
@@ -665,6 +670,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
                         else {
                             index = 3;
                         }
+
                         v.BlendIndices[index] = bone_index;
                         v.BlendWeights[index] = static_cast<float>(weights[j]);
                     }

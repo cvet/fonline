@@ -544,7 +544,7 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     _storeDataComplexIndicies = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
     for (size_t i = 0; i < _storeDataComplexIndicies.size();) {
         auto* prop = _registrator->_registeredProperties[_storeDataComplexIndicies[i]];
-        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         if (_complexDataSizes[prop->_complexDataIndex] == 0u) {
             _storeDataComplexIndicies.erase(_storeDataComplexIndicies.begin() + i);
         }
@@ -590,7 +590,7 @@ void Properties::RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_si
         for (size_t i = 0; i < complex_indicies.size(); i++) {
             RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
             auto* prop = _registrator->_registeredProperties[complex_indicies[i]];
-            RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+            RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
             const auto data_size = all_data_sizes[2 + i];
             auto* data = all_data[2 + i];
             SetRawData(prop, data, data_size);
@@ -615,7 +615,7 @@ static auto ReadToken(const char* str, string& result) -> const char*
         return nullptr;
     }
 
-    const char* begin = nullptr;
+    const char* begin;
     const auto* s = str;
 
     uint length = 0;
@@ -1101,7 +1101,7 @@ auto Properties::SavePropertyToText(Property* prop) const -> string
 {
     RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(_registrator == prop->_registrator);
-    RUNTIME_ASSERT(prop->_podDataOffset != uint(-1) || prop->_complexDataIndex != uint(-1));
+    RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
 
     uint data_size = 0;
     // void* data = GetRawData(prop, data_size);
@@ -1156,12 +1156,12 @@ auto Properties::GetRawDataSize(Property* prop) const -> uint
 auto Properties::GetRawData(Property* prop, uint& data_size) const -> const uchar*
 {
     if (prop->_dataType == Property::POD) {
-        RUNTIME_ASSERT(prop->_podDataOffset != uint(-1));
+        RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
         data_size = prop->_baseSize;
         return &_podData[prop->_podDataOffset];
     }
 
-    RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+    RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
     data_size = _complexDataSizes[prop->_complexDataIndex];
     return _complexData[prop->_complexDataIndex];
 }
@@ -1174,13 +1174,13 @@ auto Properties::GetRawData(Property* prop, uint& data_size) -> uchar*
 void Properties::SetRawData(Property* prop, uchar* data, uint data_size)
 {
     if (prop->IsPOD()) {
-        RUNTIME_ASSERT(prop->_podDataOffset != uint(-1));
+        RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
         RUNTIME_ASSERT(prop->_baseSize == data_size);
 
         std::memcpy(&_podData[prop->_podDataOffset], data, data_size);
     }
     else {
-        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
 
         if (data_size != _complexDataSizes[prop->_complexDataIndex]) {
             _complexDataSizes[prop->_complexDataIndex] = data_size;
@@ -1544,10 +1544,9 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     if (!_isServer && ((access & Property::PublicMask) != 0 || (access & Property::ProtectedMask) != 0) && (access & Property::ModifiableMask) == 0) {
         disable_set = true;
     }
-    // if (is_const)
+    // if (is_const) {
     //    disable_set = true;
-
-    disable_get = false;
+    //}
 
     // Register default getter
     if (disable_get) {

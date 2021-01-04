@@ -278,7 +278,6 @@ You can easily contribute to this API using provided by engine functionality.
 * Public const uint8 AnimShow1
 * Public const uint8 AnimHide0
 * Public const uint8 AnimHide1
-* Public const uint8 SpriteCut
 * Public const int8 DrawOrderOffsetHexY
 * Public const uint8[] BlockLines
 * Public const bool IsStatic
@@ -776,7 +775,6 @@ You can easily contribute to this API using provided by engine functionality.
 * int ScrOx
 * int ScrOy
 * bool ShowCorners
-* bool ShowSpriteCuts
 * bool ShowDrawOrder
 * bool ShowSpriteBorders
 * vector<float> EffectValues
@@ -790,7 +788,7 @@ You can easily contribute to this API using provided by engine functionality.
 * uint MapTileStep
 * int MapRoofOffsX
 * int MapRoofOffsY
-* uint MapRoofSkipSize
+* int MapRoofSkipSize
 * float MapCameraAngle
 * bool MapSmoothPath
 * string MapDataPrefix
@@ -804,7 +802,6 @@ You can easily contribute to this API using provided by engine functionality.
 * uint Animation3dSmoothTime
 * uint Animation3dFPS
 * bool Enable3dRendering
-* int MultiSampling
 * bool VSync
 * bool AlwaysOnTop
 * vector<float> EffectValues
@@ -1077,7 +1074,6 @@ You can easily contribute to this API using provided by engine functionality.
 * Light = 0x00200000
 * Fog = 0x00400000
 * FlushRenderTarget = 0x01000000
-* FlushRenderTargetMultisampled = 0x02000000
 * FlushPrimitive = 0x04000000
 * FlushMap = 0x08000000
 * FlushLight = 0x10000000

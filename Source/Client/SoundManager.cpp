@@ -420,8 +420,8 @@ auto SoundManager::LoadOGG(Sound* sound, const string& fname) -> bool
     sound->BaseBuf.resize(_streamingPortion);
     sound->BaseBufLen = _streamingPortion;
 
-    int result = 0;
-    uint decoded = 0;
+    int result;
+    auto decoded = 0u;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[0]);
@@ -454,8 +454,8 @@ auto SoundManager::StreamOGG(Sound* sound) -> bool
 {
     NON_CONST_METHOD_HINT();
 
-    long result = 0;
-    uint decoded = 0;
+    long result;
+    auto decoded = 0u;
 
     while (true) {
         auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[decoded]);

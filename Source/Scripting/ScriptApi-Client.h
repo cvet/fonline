@@ -184,7 +184,7 @@ FO_API_CRITTER_VIEW_METHOD(IsModel, FO_API_RET(bool))
 #if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG()
 {
-    FO_API_RETURN(_critterView->Model != nullptr);
+    FO_API_RETURN(_critterView->IsModel());
 }
 FO_API_EPILOG(0)
 #endif
@@ -559,18 +559,18 @@ FO_API_CRITTER_VIEW_METHOD(AddAnimCallback, FO_API_RET(void), FO_API_ARG(uint, a
 #if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, anim1) FO_API_ARG_MARSHAL(uint, anim2) FO_API_ARG_MARSHAL(float, normalizedTime) FO_API_ARG_CALLBACK_MARSHAL(CritterView, animCallback))
 {
-    if (_critterView->Model == nullptr) {
+    if (!_critterView->IsModel()) {
         throw ScriptException("Critter is not 3D model");
     }
     if (normalizedTime < 0.0f || normalizedTime > 1.0f) {
         throw ScriptException("Normalized time is not in range 0..1", normalizedTime);
     }
 
-    _critterView->Model->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [_critterView, animCallback] {
-                                                           if (!_critterView->IsDestroyed) {
-                                                               animCallback(_critterView);
-                                                           }
-                                                       }});
+    _critterView->GetModel()->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [_critterView, animCallback] {
+                                                                if (!_critterView->IsDestroyed) {
+                                                                    animCallback(_critterView);
+                                                                }
+                                                            }});
 }
 FO_API_EPILOG()
 #endif
@@ -587,11 +587,11 @@ FO_API_CRITTER_VIEW_METHOD(GetBonePos, FO_API_RET(bool), FO_API_ARG(hash, boneNa
 #if FO_API_CRITTER_VIEW_METHOD_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, boneName) FO_API_ARG_REF_MARSHAL(int, boneX) FO_API_ARG_REF_MARSHAL(int, boneY))
 {
-    if (!_critterView->Model) {
+    if (!_critterView->IsModel()) {
         throw ScriptException("Critter is not 3d");
     }
 
-    const auto bone_pos = _critterView->Model->GetBonePos(boneName);
+    const auto bone_pos = _critterView->GetModel()->GetBonePos(boneName);
     if (!bone_pos) {
         FO_API_RETURN(false);
     }
@@ -2703,7 +2703,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
         FO_API_RETURN(0);
     }
 
-    auto* const si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto* si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (!si) {
         FO_API_RETURN(0);
     }
@@ -2728,7 +2728,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
         FO_API_RETURN(0);
     }
-    auto* const si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto* si = _client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (!si) {
         FO_API_RETURN(0);
     }
@@ -2853,7 +2853,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 
     const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs) {
-        auto* const si = _client->SprMngr.GetSpriteInfo(spr_id_);
+        const auto* si = _client->SprMngr.GetSpriteInfo(spr_id_);
         if (!si) {
             FO_API_RETURN_VOID();
         }
@@ -2902,7 +2902,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
 
     const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs) {
-        auto* const si = _client->SprMngr.GetSpriteInfo(spr_id_);
+        const auto* si = _client->SprMngr.GetSpriteInfo(spr_id_);
         if (!si) {
             FO_API_RETURN_VOID();
         }
@@ -3109,7 +3109,7 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
 
     auto& f = _client->HexMngr.GetField(mapSpr->HexX, mapSpr->HexY);
     auto& tree = _client->HexMngr.GetDrawTree();
-    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, 0, (_client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
+    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, (_client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(_client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();

@@ -118,7 +118,7 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
     if (send) {
         cr->Send_AddItem(item);
         if (item->GetCritSlot() != 0u) {
-            cr->SendAA_MoveItem(item, ACTION_REFRESH, 0);
+            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
         }
     }
 
@@ -143,7 +143,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
         cr->Send_EraseItem(item);
     }
     if (item->GetCritSlot() != 0u) {
-        cr->SendAA_MoveItem(item, ACTION_REFRESH, 0);
+        cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
     }
 
     _scriptSys.CritterMoveItemEvent(cr, item, item->GetCritSlot());

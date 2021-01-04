@@ -358,11 +358,11 @@ class Application final
 public:
     struct AppWindow
     {
-        [[nodiscard]] auto GetSize() -> tuple<int, int>;
-        [[nodiscard]] auto GetPosition() -> tuple<int, int>;
-        [[nodiscard]] auto GetMousePosition() -> tuple<int, int>;
-        [[nodiscard]] auto IsFocused() -> bool;
-        [[nodiscard]] auto IsFullscreen() -> bool;
+        [[nodiscard]] auto GetSize() const -> tuple<int, int>;
+        [[nodiscard]] auto GetPosition() const -> tuple<int, int>;
+        [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
+        [[nodiscard]] auto IsFocused() const -> bool;
+        [[nodiscard]] auto IsFullscreen() const -> bool;
 
         void SetSize(int w, int h);
         void SetPosition(int x, int y);
@@ -371,6 +371,9 @@ public:
         auto ToggleFullscreen(bool enable) -> bool;
         void Blink();
         void AlwaysOnTop(bool enable);
+
+    private:
+        int _nonConstHelper {};
     };
 
     struct AppRender
@@ -383,8 +386,8 @@ public:
 
         using RenderEffectLoader = std::function<vector<uchar>(const string&)>;
 
-        [[nodiscard]] auto GetTexturePixel(RenderTexture* tex, int x, int y) -> uint;
-        [[nodiscard]] auto GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) -> vector<uint>;
+        [[nodiscard]] auto GetTexturePixel(RenderTexture* tex, int x, int y) const -> uint;
+        [[nodiscard]] auto GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) const -> vector<uint>;
         [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
 
         [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*;
@@ -396,9 +399,12 @@ public:
         void ClearRenderTargetDepth();
         void EnableScissor(int x, int y, uint w, uint h);
         void DisableScissor();
-        void DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, RenderEffect* effect, RenderTexture* tex);
+        void DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, uint pos, RenderEffect* effect, RenderTexture* tex);
         void DrawPrimitive(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, RenderEffect* effect, RenderPrimitiveType prim);
         void DrawMesh(RenderMesh* mesh, RenderEffect* effect);
+
+    private:
+        int _nonConstHelper {};
     };
 
     struct AppInput
@@ -430,6 +436,10 @@ public:
         void MixAudio(uchar* output, uchar* buf, int volume);
         void LockDevice();
         void UnlockDevice();
+
+    private:
+        struct AudioConverter;
+        vector<AudioConverter*> _converters {};
     };
 
     Application(const Application&) = delete;

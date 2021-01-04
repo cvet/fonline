@@ -1841,7 +1841,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
         FO_API_RETURN(0);
     }
 
-    auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
+    const auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
     if (!si) {
         FO_API_RETURN(0);
     }
@@ -1867,7 +1867,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, sprIndex))
         FO_API_RETURN(0);
     }
 
-    auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
+    const auto* si = _mapper->SprMngr.GetSpriteInfo(sprIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(sprIndex));
     if (!si) {
         FO_API_RETURN(0);
     }
@@ -1986,9 +1986,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     auto x_ = x;
     auto y_ = y;
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto spr_id = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs) {
-        auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
+        const auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id);
         if (!si) {
             FO_API_RETURN_VOID();
         }
@@ -1997,7 +1997,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
         y_ += -si->Height + si->OffsY;
     }
 
-    _mapper->SprMngr.DrawSprite(spr_id_, x_, y_, COLOR_SCRIPT_SPRITE(color));
+    _mapper->SprMngr.DrawSprite(spr_id, x_, y_, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
 #endif
@@ -2031,9 +2031,9 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
     auto x_ = x;
     auto y_ = y;
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto spr_id = (frameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(frameIndex));
     if (offs) {
-        auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id_);
+        const auto* si = _mapper->SprMngr.GetSpriteInfo(spr_id);
         if (!si) {
             FO_API_RETURN_VOID();
         }
@@ -2042,7 +2042,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, sprId) FO_API_ARG_MARSHAL(int, frameIndex
         y_ += si->OffsY;
     }
 
-    _mapper->SprMngr.DrawSpriteSizeExt(spr_id_, x_, y_, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
+    _mapper->SprMngr.DrawSpriteSizeExt(spr_id, x_, y_, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
 }
 FO_API_EPILOG()
 #endif
@@ -2232,7 +2232,7 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(MapSprite, mapSpr))
 
     auto& f = _mapper->HexMngr.GetField(mapSpr->HexX, mapSpr->HexY);
     auto& tree = _mapper->HexMngr.GetDrawTree();
-    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, 0, (_mapper->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_mapper->Settings.MapHexHeight / 2) + mapSpr->OffsY, &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, nullptr);
+    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, (_mapper->Settings.MapHexWidth / 2) + mapSpr->OffsX, (_mapper->Settings.MapHexHeight / 2) + mapSpr->OffsY, &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(_mapper->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, nullptr);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();

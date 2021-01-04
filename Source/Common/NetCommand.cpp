@@ -61,9 +61,6 @@ static const CmdDef CMD_LIST[] = {
     {"regenmap", CMD_REGENMAP},
     {"settime", CMD_SETTIME},
     {"ban", CMD_BAN},
-    {"deleteself", CMD_DELETE_ACCOUNT},
-    {"changepassword", CMD_CHANGE_PASSWORD},
-    {"changepass", CMD_CHANGE_PASSWORD},
     {"log", CMD_LOG},
 };
 
@@ -119,8 +116,8 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
         buf << type;
     } break;
     case CMD_CRITID: {
-        string name;
-        if (!(args_str >> name)) {
+        string cr_name;
+        if (!(args_str >> cr_name)) {
             logcb("Invalid arguments. Example: id name.");
             break;
         }
@@ -129,7 +126,7 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf << name;
+        buf << cr_name;
     } break;
     case CMD_MOVECRIT: {
         uint crid = 0;
@@ -324,12 +321,12 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
     } break;
     case CMD_BAN: {
         string params;
-        string name;
+        string cl_name;
         uint ban_hours = 0;
         string info;
         args_str >> params;
         if (!args_str.fail()) {
-            args_str >> name;
+            args_str >> cl_name;
         }
         if (!args_str.fail()) {
             args_str >> ban_hours;
@@ -341,69 +338,17 @@ auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb
             logcb("Invalid arguments. Example: ban [add,add+,delete,list] [user] [hours] [comment].");
             break;
         }
-        name = _str(name).replace('*', ' ').trim();
+        cl_name = _str(cl_name).replace('*', ' ').trim();
         info = _str(info).replace('$', '*').trim();
-        msg_len += NetBuffer::STRING_LEN_SIZE * 3 + static_cast<uint>(name.length() + params.length() + info.length()) + sizeof(ban_hours);
+        msg_len += NetBuffer::STRING_LEN_SIZE * 3 + static_cast<uint>(cl_name.length() + params.length() + info.length()) + sizeof(ban_hours);
 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf << name;
+        buf << cl_name;
         buf << params;
         buf << ban_hours;
         buf << info;
-    } break;
-    case CMD_DELETE_ACCOUNT: {
-        if (name.empty()) {
-            logcb("Can't execute this command.");
-            break;
-        }
-
-        string pass;
-        if (!(args_str >> pass)) {
-            logcb("Invalid arguments. Example: deleteself user_password.");
-            break;
-        }
-        pass = _str(pass).replace('*', ' ');
-        auto pass_hash = Hashing::ClientPassHash(name, pass);
-        msg_len += PASS_HASH_SIZE;
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf.Push(pass_hash.c_str(), PASS_HASH_SIZE);
-    } break;
-    case CMD_CHANGE_PASSWORD: {
-        if (name.empty()) {
-            logcb("Can't execute this command.");
-            break;
-        }
-
-        string pass;
-        string new_pass;
-        if (!(args_str >> pass >> new_pass)) {
-            logcb("Invalid arguments. Example: changepassword current_password new_password.");
-            break;
-        }
-        pass = _str(pass).replace('*', ' ');
-
-        // Check the new password's validity
-        auto pass_len = _str(new_pass).lengthUtf8();
-        if (pass_len < MIN_NAME || pass_len > MAX_NAME) {
-            logcb("Invalid new password.");
-            break;
-        }
-
-        auto pass_hash = Hashing::ClientPassHash(name, pass);
-        new_pass = _str(new_pass).replace('*', ' ');
-        auto new_pass_hash = Hashing::ClientPassHash(name, new_pass);
-        msg_len += PASS_HASH_SIZE * 2;
-
-        buf << msg;
-        buf << msg_len;
-        buf << cmd;
-        buf.Push(pass_hash.c_str(), PASS_HASH_SIZE);
-        buf.Push(new_pass_hash.c_str(), PASS_HASH_SIZE);
     } break;
     case CMD_LOG: {
         string flags;

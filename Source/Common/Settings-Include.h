@@ -46,6 +46,7 @@ SETTING(uint, MaxNameLength, 12);
 SETTING(uint, Breaktime, 1200);
 SETTING(string, Language, "engl");
 VAR_SETTING(bool, Quit, false); // Todo: rework global Quit setting
+SETTING(vector<int>, DummyIntVec);
 SETTING_GROUP_END();
 
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
@@ -115,7 +116,6 @@ VAR_SETTING(float, SpritesZoom, 1.0f);
 VAR_SETTING(int, ScrOx, 0);
 VAR_SETTING(int, ScrOy, 0);
 VAR_SETTING(bool, ShowCorners, false);
-VAR_SETTING(bool, ShowSpriteCuts, false);
 VAR_SETTING(bool, ShowDrawOrder, false);
 VAR_SETTING(bool, ShowSpriteBorders, false);
 SETTING_GROUP_END();
@@ -135,7 +135,7 @@ SETTING(int, MapTileOffsY, 32);
 SETTING(uint, MapTileStep, 2);
 SETTING(int, MapRoofOffsX, -8);
 SETTING(int, MapRoofOffsY, -66);
-SETTING(uint, MapRoofSkipSize, 2);
+SETTING(int, MapRoofSkipSize, 2);
 SETTING(float, MapCameraAngle, 25.7f);
 SETTING(bool, MapSmoothPath, true);
 SETTING(string, MapDataPrefix, "art/geometry/fallout_");

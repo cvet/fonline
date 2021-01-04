@@ -83,9 +83,9 @@ public:
     [[nodiscard]] auto GetAnim1() const -> uint;
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
-    [[nodiscard]] auto Is3dAnim() const -> bool { return Model != nullptr; }
-    [[nodiscard]] auto GetModel() const -> ModelInstance* { return Model; }
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
+    [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
+    [[nodiscard]] auto GetModel() const -> ModelInstance* { return _model; }
     [[nodiscard]] auto IsWalkAnim() const -> bool;
     [[nodiscard]] auto GetWalkHexOffsets(uchar dir) const -> tuple<short, short>;
     [[nodiscard]] auto IsFinishing() const -> bool;
@@ -122,7 +122,7 @@ public:
     void SetOffs(short set_ox, short set_oy, bool move_text);
     void ChangeOffs(short change_ox, short change_oy, bool move_text);
     void AddOffsExt(short ox, short oy);
-    void SetText(const char* str, uint color, uint text_delay);
+    void SetText(const string& str, uint color, uint text_delay);
     void DrawTextOnHead();
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
     void NextAnim(bool erase_front);
@@ -136,7 +136,6 @@ public:
     bool IsRunning {};
     vector<pair<ushort, ushort>> MoveSteps {};
     int CurMoveStep {};
-    ModelInstance* Model {};
     bool Visible {true};
     uchar Alpha {};
     IRect DRect {};
@@ -201,6 +200,7 @@ private:
     uint _tickStartText {};
     uint _tickTextDelay {};
     uint _textOnHeadColor {COLOR_CRITTER_NAME};
+    ModelInstance* _model {};
     ModelInstance* _modelStay {};
     short _oxExtI {};
     short _oyExtI {};

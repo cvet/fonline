@@ -401,212 +401,7 @@ auto Critter::SetScript(const string& /*func*/, bool /*first_time*/) -> bool
     return true;
 }
 
-void Critter::Send_Property(NetProperty::Type type, Property* prop, Entity* entity)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_Property(type, prop, entity);
-    }
-}
-void Critter::Send_Move(Critter* from_cr, uint move_params)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_Move(from_cr, move_params);
-    }
-}
-void Critter::Send_Dir(Critter* from_cr)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_Dir(from_cr);
-    }
-}
-void Critter::Send_AddCritter(Critter* cr)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_AddCritter(cr);
-    }
-}
-void Critter::Send_RemoveCritter(Critter* cr)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_RemoveCritter(cr);
-    }
-}
-void Critter::Send_LoadMap(Map* map, MapManager& map_mngr)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_LoadMap(map, map_mngr);
-    }
-}
-void Critter::Send_XY(Critter* cr)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_XY(cr);
-    }
-}
-void Critter::Send_AddItemOnMap(Item* item)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_AddItemOnMap(item);
-    }
-}
-void Critter::Send_EraseItemFromMap(Item* item)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_EraseItemFromMap(item);
-    }
-}
-void Critter::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_AnimateItem(item, from_frm, to_frm);
-    }
-}
-void Critter::Send_AddItem(Item* item)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_AddItem(item);
-    }
-}
-void Critter::Send_EraseItem(Item* item)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_EraseItem(item);
-    }
-}
-void Critter::Send_GlobalInfo(uchar flags, MapManager& map_mngr)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_GlobalInfo(flags, map_mngr);
-    }
-}
-void Critter::Send_GlobalLocation(Location* loc, bool add)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_GlobalLocation(loc, add);
-    }
-}
-void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_GlobalMapFog(zx, zy, fog);
-    }
-}
-void Critter::Send_AllProperties()
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_AllProperties();
-    }
-}
-void Critter::Send_CustomCommand(Critter* cr, ushort cmd, int val)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_CustomCommand(cr, cmd, val);
-    }
-}
-void Critter::Send_Talk()
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_Talk();
-    }
-}
-void Critter::Send_GameInfo(Map* map)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_GameInfo(map);
-    }
-}
-void Critter::Send_Text(Critter* from_cr, const string& text, uchar how_say)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_Text(from_cr, text, how_say);
-    }
-}
-void Critter::Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_TextEx(from_id, text, how_say, unsafe_text);
-    }
-}
-void Critter::Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_TextMsg(from_cr, str_num, how_say, num_msg);
-    }
-}
-void Critter::Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_TextMsg(from_id, str_num, how_say, num_msg);
-    }
-}
-void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_TextMsgLex(from_cr, num_str, how_say, num_msg, lexems);
-    }
-}
-void Critter::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_TextMsgLex(from_id, num_str, how_say, num_msg, lexems);
-    }
-}
-void Critter::Send_Action(Critter* from_cr, int action, int action_ext, Item* item)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_Action(from_cr, action, action_ext, item);
-    }
-}
-void Critter::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_MoveItem(from_cr, item, action, prev_slot);
-    }
-}
-void Critter::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_Animate(from_cr, anim1, anim2, item, clear_sequence, delay_play);
-    }
-}
-void Critter::Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_SetAnims(from_cr, cond, anim1, anim2);
-    }
-}
-void Critter::Send_CombatResult(uint* combat_res, uint len)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_CombatResult(combat_res, len);
-    }
-}
-void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_AutomapsInfo(locs_vec, loc);
-    }
-}
-void Critter::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_Effect(eff_pid, hx, hy, radius);
-    }
-}
-void Critter::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
-    }
-}
-void Critter::Send_PlaySound(uint crid_synchronize, const string& sound_name)
-{
-    if (IsPlayer()) {
-        dynamic_cast<Client*>(this)->Send_PlaySound(crid_synchronize, sound_name);
-    }
-}
-
-void Critter::SendA_Property(NetProperty::Type type, Property* prop, Entity* entity)
+void Critter::Broadcast_Property(NetProperty::Type type, Property* prop, Entity* entity)
 {
     if (VisCr.empty()) {
         return;
@@ -619,7 +414,7 @@ void Critter::SendA_Property(NetProperty::Type type, Property* prop, Entity* ent
     }
 }
 
-void Critter::SendA_Move(uint move_params)
+void Critter::Broadcast_Move(uint move_params)
 {
     if (VisCr.empty()) {
         return;
@@ -632,7 +427,7 @@ void Critter::SendA_Move(uint move_params)
     }
 }
 
-void Critter::SendA_XY()
+void Critter::Broadcast_XY()
 {
     if (VisCr.empty()) {
         return;
@@ -645,7 +440,7 @@ void Critter::SendA_XY()
     }
 }
 
-void Critter::SendA_Action(int action, int action_ext, Item* item)
+void Critter::Broadcast_Action(int action, int action_ext, Item* item)
 {
     if (VisCr.empty()) {
         return;
@@ -658,7 +453,33 @@ void Critter::SendA_Action(int action, int action_ext, Item* item)
     }
 }
 
-void Critter::SendAA_Action(int action, int action_ext, Item* item)
+void Critter::Broadcast_Dir()
+{
+    if (VisCr.empty()) {
+        return;
+    }
+
+    for (auto* cr : VisCr) {
+        if (cr->IsPlayer()) {
+            cr->Send_Dir(this);
+        }
+    }
+}
+
+void Critter::Broadcast_CustomCommand(ushort num_param, int val)
+{
+    if (VisCr.empty()) {
+        return;
+    }
+
+    for (auto* cr : VisCr) {
+        if (cr->IsPlayer()) {
+            cr->Send_CustomCommand(this, num_param, val);
+        }
+    }
+}
+
+void Critter::SendAndBroadcast_Action(int action, int action_ext, Item* item)
 {
     if (IsPlayer()) {
         Send_Action(this, action, action_ext, item);
@@ -675,7 +496,7 @@ void Critter::SendAA_Action(int action, int action_ext, Item* item)
     }
 }
 
-void Critter::SendAA_MoveItem(Item* item, uchar action, uchar prev_slot)
+void Critter::SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot)
 {
     if (IsPlayer()) {
         Send_MoveItem(this, item, action, prev_slot);
@@ -692,7 +513,7 @@ void Critter::SendAA_MoveItem(Item* item, uchar action, uchar prev_slot)
     }
 }
 
-void Critter::SendAA_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
+void Critter::SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
 {
     if (IsPlayer()) {
         Send_Animate(this, anim1, anim2, item, clear_sequence, delay_play);
@@ -709,7 +530,7 @@ void Critter::SendAA_Animate(uint anim1, uint anim2, Item* item, bool clear_sequ
     }
 }
 
-void Critter::SendAA_SetAnims(int cond, uint anim1, uint anim2)
+void Critter::SendAndBroadcast_SetAnims(int cond, uint anim1, uint anim2)
 {
     if (IsPlayer()) {
         Send_SetAnims(this, cond, anim1, anim2);
@@ -726,7 +547,7 @@ void Critter::SendAA_SetAnims(int cond, uint anim1, uint anim2)
     }
 }
 
-void Critter::SendAA_Text(const vector<Critter*>& to_cr, const string& text, uchar how_say, bool unsafe_text)
+void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, const string& text, uchar how_say, bool unsafe_text)
 {
     if (text.empty()) {
         return;
@@ -764,7 +585,7 @@ void Critter::SendAA_Text(const vector<Critter*>& to_cr, const string& text, uch
     }
 }
 
-void Critter::SendAA_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg)
+void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg)
 {
     if (IsPlayer()) {
         Send_TextMsg(this, num_str, how_say, num_msg);
@@ -801,7 +622,7 @@ void Critter::SendAA_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_
     }
 }
 
-void Critter::SendAA_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
+void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
 {
     if (IsPlayer()) {
         Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
@@ -836,69 +657,6 @@ void Critter::SendAA_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar h
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
     }
-}
-
-void Critter::SendA_Dir()
-{
-    if (VisCr.empty()) {
-        return;
-    }
-
-    for (auto* cr : VisCr) {
-        if (cr->IsPlayer()) {
-            cr->Send_Dir(this);
-        }
-    }
-}
-
-void Critter::SendA_CustomCommand(ushort num_param, int val)
-{
-    if (VisCr.empty()) {
-        return;
-    }
-
-    for (auto* cr : VisCr) {
-        if (cr->IsPlayer()) {
-            cr->Send_CustomCommand(this, num_param, val);
-        }
-    }
-}
-
-void Critter::Send_AddAllItems()
-{
-    if (!IsPlayer()) {
-        return;
-    }
-
-    auto* cl = dynamic_cast<Client*>(this);
-    CLIENT_OUTPUT_BEGIN(cl);
-    cl->Connection->Bout << NETMSG_CLEAR_ITEMS;
-    CLIENT_OUTPUT_END(cl);
-
-    for (auto* item : _invItems) {
-        Send_AddItem(item);
-    }
-
-    CLIENT_OUTPUT_BEGIN(cl);
-    cl->Connection->Bout << NETMSG_ALL_ITEMS_SEND;
-    CLIENT_OUTPUT_END(cl);
-}
-
-void Critter::Send_AllAutomapsInfo(MapManager& map_mngr)
-{
-    if (!IsPlayer()) {
-        return;
-    }
-
-    vector<Location*> locs;
-    for (auto loc_id : GetKnownLocations()) {
-        auto* loc = map_mngr.GetLocation(loc_id);
-        if (loc != nullptr && loc->IsNonEmptyAutomaps()) {
-            locs.push_back(loc);
-        }
-    }
-
-    Send_AutomapsInfo(&locs, nullptr);
 }
 
 void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
@@ -951,9 +709,9 @@ auto Critter::IsTransferTimeouts(bool send) -> bool
 
 void Critter::AddCrTimeEvent(hash /*func_num*/, uint /*rate*/, uint duration, int /*identifier*/) const
 {
-    if (duration != 0u) {
-        duration += _gameTime.GetFullSecond();
-    }
+    // if (duration != 0u) {
+    //    duration += _gameTime.GetFullSecond();
+    //}
 
     /*CScriptArray* te_next_time = GetTE_NextTime();
     CScriptArray* te_func_num = GetTE_FuncNum();
@@ -1066,8 +824,10 @@ auto Client::IsOffline() const -> bool
     return Connection->IsDisconnected;
 }
 
-void Client::Disconnect() const
+void Client::Disconnect()
 {
+    NON_CONST_METHOD_HINT();
+
     CLIENT_OUTPUT_BEGIN(this);
     Connection->Bout << NETMSG_DISCONNECT;
     CLIENT_OUTPUT_END(this);
@@ -1097,7 +857,7 @@ void Client::PingClient()
 
     CLIENT_OUTPUT_BEGIN(this);
     Connection->Bout << NETMSG_PING;
-    Connection->Bout << static_cast<uchar> PING_CLIENT;
+    Connection->Bout << PING_CLIENT;
     CLIENT_OUTPUT_END(this);
 
     _pingNextTick = _gameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
@@ -1110,6 +870,11 @@ void Client::PingOk(uint next_ping)
     _pingNextTick = _gameTime.FrameTick() + next_ping;
 }
 
+auto Client::IsTalking() const -> bool
+{
+    return Talk.Type != TalkType::None;
+}
+
 void Client::Send_AddCritter(Critter* cr)
 {
     if (IsSendDisabled() || IsOffline()) {
@@ -1117,8 +882,16 @@ void Client::Send_AddCritter(Critter* cr)
     }
 
     const auto is_npc = cr->IsNpc();
-    auto msg = is_npc ? NETMSG_ADD_NPC : NETMSG_ADD_PLAYER;
-    uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(uchar) + sizeof(int) + sizeof(uint) * 6 + sizeof(uint) + (is_npc ? sizeof(hash) : UTF8_BUF_SIZE(MAX_NAME));
+    auto msg = (is_npc ? NETMSG_ADD_NPC : NETMSG_ADD_PLAYER);
+    uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(uchar) + sizeof(int) + sizeof(uint) * 6 + sizeof(uint);
+
+    if (is_npc) {
+        msg_len += sizeof(hash);
+    }
+    else {
+        const auto* cl = dynamic_cast<Client*>(cr);
+        msg_len += NetBuffer::STRING_LEN_SIZE + static_cast<uint>(cl->Name.length());
+    }
 
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
@@ -1148,10 +921,10 @@ void Client::Send_AddCritter(Critter* cr)
     }
     else {
         const auto* cl = dynamic_cast<Client*>(cr);
-        Connection->Bout.Push(cl->Name.c_str(), UTF8_BUF_SIZE(MAX_NAME));
+        Connection->Bout << cl->Name;
     }
 
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
 
     CLIENT_OUTPUT_END(this);
 
@@ -1160,7 +933,7 @@ void Client::Send_AddCritter(Critter* cr)
     }
 }
 
-void Client::Send_RemoveCritter(Critter* cr) const
+void Client::Send_RemoveCritter(Critter* cr)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1225,8 +998,8 @@ void Client::Send_LoadMap(Map* map, MapManager& map_mngr)
     Connection->Bout << hash_tiles;
     Connection->Bout << hash_scen;
     if (map != nullptr) {
-        NET_WRITE_PROPERTIES(Connection->Bout, map_data, map_data_sizes)
-        NET_WRITE_PROPERTIES(Connection->Bout, loc_data, loc_data_sizes)
+        NET_WRITE_PROPERTIES(Connection->Bout, map_data, map_data_sizes);
+        NET_WRITE_PROPERTIES(Connection->Bout, loc_data, loc_data_sizes);
     }
 
     CLIENT_OUTPUT_END(this);
@@ -1310,7 +1083,7 @@ void Client::Send_Property(NetProperty::Type type, Property* prop, Entity* entit
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_Move(Critter* from_cr, uint move_params) const
+void Client::Send_Move(Critter* from_cr, uint move_params)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1325,7 +1098,7 @@ void Client::Send_Move(Critter* from_cr, uint move_params) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_Dir(Critter* from_cr) const
+void Client::Send_Dir(Critter* from_cr)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1338,7 +1111,7 @@ void Client::Send_Dir(Critter* from_cr) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_Action(Critter* from_cr, int action, int action_ext, Item* item) const
+void Client::Send_Action(Critter* from_cr, int action, int action_ext, Item* item)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1359,7 +1132,7 @@ void Client::Send_Action(Critter* from_cr, int action, int action_ext, Item* ite
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot) const
+void Client::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1402,12 +1175,12 @@ void Client::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
         Connection->Bout << item_->GetCritSlot();
         Connection->Bout << item_->GetId();
         Connection->Bout << item_->GetProtoId();
-        NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i])
+        NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i]);
     }
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play) const
+void Client::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1430,7 +1203,7 @@ void Client::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, 
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2) const
+void Client::Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1445,7 +1218,7 @@ void Client::Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2) c
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_AddItemOnMap(Item* item) const
+void Client::Send_AddItemOnMap(Item* item)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1467,11 +1240,11 @@ void Client::Send_AddItemOnMap(Item* item) const
     Connection->Bout << item->GetHexX();
     Connection->Bout << item->GetHexY();
     Connection->Bout << is_added;
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_EraseItemFromMap(Item* item) const
+void Client::Send_EraseItemFromMap(Item* item)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1484,7 +1257,7 @@ void Client::Send_EraseItemFromMap(Item* item) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm) const
+void Client::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1498,7 +1271,7 @@ void Client::Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_AddItem(Item* item) const
+void Client::Send_AddItem(Item* item)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1519,11 +1292,11 @@ void Client::Send_AddItem(Item* item) const
     Connection->Bout << item->GetId();
     Connection->Bout << item->GetProtoId();
     Connection->Bout << item->GetCritSlot();
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_EraseItem(Item* item) const
+void Client::Send_EraseItem(Item* item)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1535,39 +1308,10 @@ void Client::Send_EraseItem(Item* item) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_SomeItems(const vector<Item*>* items, int param) const
-{
-    if (IsSendDisabled() || IsOffline()) {
-        return;
-    }
-
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(param) + sizeof(bool) + sizeof(uint);
-
-    vector<vector<uchar*>*> items_data(items != nullptr ? items->size() : 0);
-    vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
-    for (size_t i = 0, j = items_data.size(); i < j; i++) {
-        const auto whole_data_size = items->at(i)->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
-        msg_len += sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
-    }
-
-    CLIENT_OUTPUT_BEGIN(this);
-    Connection->Bout << NETMSG_SOME_ITEMS;
-    Connection->Bout << msg_len;
-    Connection->Bout << param;
-    Connection->Bout << (items == nullptr);
-    Connection->Bout << static_cast<uint>(items != nullptr ? items->size() : 0);
-    for (size_t i = 0, j = items_data.size(); i < j; i++) {
-        const auto* item = items->at(i);
-        Connection->Bout << item->GetId();
-        Connection->Bout << item->GetProtoId();
-        NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i])
-    }
-    CLIENT_OUTPUT_END(this);
-}
-
-#define SEND_LOCATION_SIZE (sizeof(uint) + sizeof(hash) + sizeof(ushort) * 2 + sizeof(ushort) + sizeof(uint) + sizeof(uchar))
 void Client::Send_GlobalInfo(uchar info_flags, MapManager& map_mngr)
 {
+#define SEND_LOCATION_SIZE (sizeof(uint) + sizeof(hash) + sizeof(ushort) * 2 + sizeof(ushort) + sizeof(uint) + sizeof(uchar))
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -1640,7 +1384,7 @@ void Client::Send_GlobalInfo(uchar info_flags, MapManager& map_mngr)
     }
 }
 
-void Client::Send_GlobalLocation(Location* loc, bool add) const
+void Client::Send_GlobalLocation(Location* loc, bool add)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1666,9 +1410,11 @@ void Client::Send_GlobalLocation(Location* loc, bool add) const
     }
     Connection->Bout << count;
     CLIENT_OUTPUT_END(this);
+
+#undef SEND_LOCATION_SIZE
 }
 
-void Client::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog) const
+void Client::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1687,7 +1433,7 @@ void Client::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_XY(Critter* cr) const
+void Client::Send_XY(Critter* cr)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1704,6 +1450,8 @@ void Client::Send_XY(Critter* cr) const
 
 void Client::Send_AllProperties()
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -1718,11 +1466,11 @@ void Client::Send_AllProperties()
     CLIENT_OUTPUT_BEGIN(this);
     Connection->Bout << NETMSG_ALL_PROPERTIES;
     Connection->Bout << msg_len;
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_CustomCommand(Critter* cr, ushort cmd, int val) const
+void Client::Send_CustomCommand(Critter* cr, ushort cmd, int val)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1785,7 +1533,7 @@ void Client::Send_Talk()
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_GameInfo(Map* /*map*/) const
+void Client::Send_GameInfo(Map* map)
 {
     if (IsSendDisabled() || IsOffline()) {
     }
@@ -1831,7 +1579,7 @@ void Client::Send_GameInfo(Map* /*map*/) const
     CLIENT_OUTPUT_END(this);*/
 }
 
-void Client::Send_Text(Critter* from_cr, const string& text, uchar how_say) const
+void Client::Send_Text(Critter* from_cr, const string& text, uchar how_say)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1844,7 +1592,7 @@ void Client::Send_Text(Critter* from_cr, const string& text, uchar how_say) cons
     Send_TextEx(from_id, text, how_say, false);
 }
 
-void Client::Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text) const
+void Client::Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1862,7 +1610,7 @@ void Client::Send_TextEx(uint from_id, const string& text, uchar how_say, bool u
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg) const
+void Client::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1870,7 +1618,8 @@ void Client::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort 
     if (num_str == 0u) {
         return;
     }
-    const auto from_id = from_cr != nullptr ? from_cr->GetId() : 0;
+
+    const auto from_id = (from_cr != nullptr ? from_cr->GetId() : 0u);
 
     CLIENT_OUTPUT_BEGIN(this);
     Connection->Bout << NETMSG_MSG;
@@ -1881,7 +1630,7 @@ void Client::Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort 
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_TextMsg(uint from_id, uint num_str, uchar how_say, ushort num_msg) const
+void Client::Send_TextMsg(uint from_id, uint num_str, uchar how_say, ushort num_msg)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1899,7 +1648,7 @@ void Client::Send_TextMsg(uint from_id, uint num_str, uchar how_say, ushort num_
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems) const
+void Client::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1914,7 +1663,7 @@ void Client::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
         return;
     }
 
-    const auto from_id = from_cr != nullptr ? from_cr->GetId() : 0;
+    const auto from_id = (from_cr != nullptr ? from_cr->GetId() : 0u);
     const uint msg_len = NETMSG_MSG_SIZE + sizeof(lex_len) + lex_len;
 
     CLIENT_OUTPUT_BEGIN(this);
@@ -1929,7 +1678,7 @@ void Client::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems) const
+void Client::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -1958,8 +1707,10 @@ void Client::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort n
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text) const
+void Client::Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text)
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -1977,8 +1728,10 @@ void Client::Send_MapText(ushort hx, ushort hy, uint color, const string& text, 
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str) const
+void Client::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str)
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -1993,8 +1746,10 @@ void Client::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, u
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len) const
+void Client::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len)
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -2016,7 +1771,7 @@ void Client::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_CombatResult(uint* combat_res, uint len) const
+void Client::Send_CombatResult(uint* combat_res, uint len)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -2037,7 +1792,7 @@ void Client::Send_CombatResult(uint* combat_res, uint len) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_AutomapsInfo(void* /*locs_vec*/, Location* /*loc*/) const
+void Client::Send_AutomapsInfo(void* locs_vec, Location* loc)
 {
     if (IsSendDisabled() || IsOffline()) {
     }
@@ -2120,7 +1875,7 @@ void Client::Send_AutomapsInfo(void* /*locs_vec*/, Location* /*loc*/) const
     }*/
 }
 
-void Client::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius) const
+void Client::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -2135,7 +1890,7 @@ void Client::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius) cons
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) const
+void Client::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -2153,7 +1908,7 @@ void Client::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort f
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_PlaySound(uint crid_synchronize, const string& sound_name) const
+void Client::Send_PlaySound(uint crid_synchronize, const string& sound_name)
 {
     if (IsSendDisabled() || IsOffline()) {
         return;
@@ -2169,8 +1924,10 @@ void Client::Send_PlaySound(uint crid_synchronize, const string& sound_name) con
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_ViewMap() const
+void Client::Send_ViewMap()
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -2184,8 +1941,10 @@ void Client::Send_ViewMap() const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_SomeItem(Item* item) const
+void Client::Send_SomeItem(Item* item)
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -2201,12 +1960,14 @@ void Client::Send_SomeItem(Item* item) const
     Connection->Bout << msg_len;
     Connection->Bout << item->GetId();
     Connection->Bout << item->GetProtoId();
-    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes)
+    NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_CustomMessage(uint msg) const
+void Client::Send_CustomMessage(uint msg)
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -2216,8 +1977,10 @@ void Client::Send_CustomMessage(uint msg) const
     CLIENT_OUTPUT_END(this);
 }
 
-void Client::Send_CustomMessage(uint msg, uchar* data, uint data_size) const
+void Client::Send_CustomMessage(uint msg, uchar* data, uint data_size)
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled() || IsOffline()) {
         return;
     }
@@ -2233,9 +1996,74 @@ void Client::Send_CustomMessage(uint msg, uchar* data, uint data_size) const
     CLIENT_OUTPUT_END(this);
 }
 
-auto Client::IsTalking() const -> bool
+void Client::Send_AddAllItems()
 {
-    return Talk.Type != TalkType::None;
+    if (IsSendDisabled() || IsOffline()) {
+        return;
+    }
+
+    CLIENT_OUTPUT_BEGIN(this);
+    Connection->Bout << NETMSG_CLEAR_ITEMS;
+    CLIENT_OUTPUT_END(this);
+
+    for (auto* item : _invItems) {
+        Send_AddItem(item);
+    }
+
+    CLIENT_OUTPUT_BEGIN(this);
+    Connection->Bout << NETMSG_ALL_ITEMS_SEND;
+    CLIENT_OUTPUT_END(this);
+}
+
+void Client::Send_AllAutomapsInfo(MapManager& map_mngr)
+{
+    NON_CONST_METHOD_HINT();
+
+    if (IsSendDisabled() || IsOffline()) {
+        return;
+    }
+
+    vector<Location*> locs;
+    for (auto loc_id : GetKnownLocations()) {
+        auto* loc = map_mngr.GetLocation(loc_id);
+        if (loc != nullptr && loc->IsNonEmptyAutomaps()) {
+            locs.push_back(loc);
+        }
+    }
+
+    Send_AutomapsInfo(&locs, nullptr);
+}
+
+void Client::Send_SomeItems(const vector<Item*>* items, int param)
+{
+    NON_CONST_METHOD_HINT();
+
+    if (IsSendDisabled() || IsOffline()) {
+        return;
+    }
+
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(param) + sizeof(bool) + sizeof(uint);
+
+    vector<vector<uchar*>*> items_data(items != nullptr ? items->size() : 0);
+    vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
+    for (size_t i = 0, j = items_data.size(); i < j; i++) {
+        const auto whole_data_size = items->at(i)->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
+        msg_len += sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
+    }
+
+    CLIENT_OUTPUT_BEGIN(this);
+    Connection->Bout << NETMSG_SOME_ITEMS;
+    Connection->Bout << msg_len;
+    Connection->Bout << param;
+    Connection->Bout << (items == nullptr);
+    Connection->Bout << static_cast<uint>(items != nullptr ? items->size() : 0);
+    for (size_t i = 0, j = items_data.size(); i < j; i++) {
+        const auto* item = items->at(i);
+        Connection->Bout << item->GetId();
+        Connection->Bout << item->GetProtoId();
+        NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i]);
+    }
+    CLIENT_OUTPUT_END(this);
 }
 
 Npc::Npc(uint id, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Critter(id, EntityType::Npc, proto, settings, script_sys, game_time)

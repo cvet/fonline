@@ -49,6 +49,8 @@
 #include <DbgHelp.h>
 #include <Psapi.h>
 #include <TlHelp32.h>
+#define VerifyVersionInfo VerifyVersionInfoW
+#include <VersionHelpers.h>
 #endif
 #if !FO_WINDOWS && !FO_ANDROID && !FO_WEB && !FO_IOS
 #if __has_include(<bfd.h>)
@@ -65,8 +67,10 @@ static const char* ManualDumpMessage;
 
 #if FO_WINDOWS && !FO_UWP
 #if UINTPTR_MAX == 0xFFFFFFFF
-#define WIN32BIT 1
+#define WINX86 1
 #pragma warning(disable : 4748)
+#else
+#define WINX86 0
 #endif
 
 constexpr auto STACKWALK_MAX_NAMELEN = 1024;
@@ -120,12 +124,56 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         file.Write(_str("Application\n"));
         file.Write(_str("\tName        {}\n", GetAppName()));
         file.Write(_str("\tVersion     {}\n", FO_VERSION_STR));
-        OSVERSIONINFOW ver;
-        std::memset(&ver, 0, sizeof(OSVERSIONINFOW));
-        ver.dwOSVersionInfoSize = sizeof(ver);
-        if (::GetVersionExW(&ver) != 0) {
-            file.Write(_str("\tOS          {}.{}.{} ({})\n", ver.dwMajorVersion, ver.dwMinorVersion, ver.dwBuildNumber, _str().parseWideChar(ver.szCSDVersion)));
+
+#if FO_UWP
+        file.Write(_str("\tOS          UWP\n"));
+
+#else
+        if (::IsWindows10OrGreater()) {
+            file.Write(_str("\tOS          Windows 10\n"));
         }
+        else if (::IsWindows8Point1OrGreater()) {
+            file.Write(_str("\tOS          Windows 8.1\n"));
+        }
+        else if (::IsWindows8OrGreater()) {
+            file.Write(_str("\tOS          Windows 8\n"));
+        }
+        else if (::IsWindows7SP1OrGreater()) {
+            file.Write(_str("\tOS          Windows 7 SP1\n"));
+        }
+        else if (::IsWindows7OrGreater()) {
+            file.Write(_str("\tOS          Windows 7\n"));
+        }
+        else if (::IsWindowsVistaSP2OrGreater()) {
+            file.Write(_str("\tOS          Windows Vista SP2\n"));
+        }
+        else if (::IsWindowsVistaSP1OrGreater()) {
+            file.Write(_str("\tOS          Windows Vista SP1\n"));
+        }
+        else if (::IsWindowsVistaOrGreater()) {
+            file.Write(_str("\tOS          Windows Vista\n"));
+        }
+        else if (::IsWindowsXPSP3OrGreater()) {
+            file.Write(_str("\tOS          Windows XP SP3\n"));
+        }
+        else if (::IsWindowsXPSP2OrGreater()) {
+            file.Write(_str("\tOS          Windows XP SP2\n"));
+        }
+        else if (::IsWindowsXPSP1OrGreater()) {
+            file.Write(_str("\tOS          Windows XP SP1\n"));
+        }
+        else if (::IsWindowsXPOrGreater()) {
+            file.Write(_str("\tOS          Windows XP\n"));
+        }
+        else {
+            file.Write(_str("\tOS          Unknown\n"));
+        }
+
+        if (::IsWindowsServer()) {
+            file.Write(_str("\tOS          Server Edition\n"));
+        }
+#endif
+
         file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
         file.Write(_str("\n"));
 
@@ -249,7 +297,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
                     std::memcpy(&context, except->ContextRecord, sizeof(CONTEXT));
                 }
                 else {
-#if WIN32BIT
+#if WINX86
                     __asm label : __asm mov[context.Ebp], ebp;
                     __asm mov[context.Esp], esp;
                     __asm mov eax, [label];
@@ -268,7 +316,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
             STACKFRAME64 stack;
             std::memset(&stack, 0, sizeof(stack));
 
-#if WIN32BIT
+#if WINX86
             DWORD machine_type = IMAGE_FILE_MACHINE_I386;
             stack.AddrFrame.Mode = AddrModeFlat;
             stack.AddrFrame.Offset = context.Ebp;
@@ -374,21 +422,35 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
                 }
 
                 if (stack.AddrPC.Offset != 0) {
-                    if (SymFromAddr(process, stack.AddrPC.Offset, &callstack.OffsetFromSmybol, symbol) != 0) {
+                    if (::SymFromAddr(process, stack.AddrPC.Offset, &callstack.OffsetFromSmybol, symbol) != 0) {
                         strcpy_s(callstack.Name, symbol->Name);
-                        UnDecorateSymbolName(symbol->Name, callstack.UndName, STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY);
-                        UnDecorateSymbolName(symbol->Name, callstack.UndFullName, STACKWALK_MAX_NAMELEN, UNDNAME_COMPLETE);
+                        ::UnDecorateSymbolName(symbol->Name, callstack.UndName, STACKWALK_MAX_NAMELEN, UNDNAME_NAME_ONLY);
+                        ::UnDecorateSymbolName(symbol->Name, callstack.UndFullName, STACKWALK_MAX_NAMELEN, UNDNAME_COMPLETE);
                     }
 
-                    if (SymGetLineFromAddr64(process, stack.AddrPC.Offset, &callstack.OffsetFromLine, &line) != 0) {
+                    if (::SymGetLineFromAddr64(process, stack.AddrPC.Offset, &callstack.OffsetFromLine, &line) != 0) {
                         callstack.LineNumber = line.LineNumber;
                         strcpy_s(callstack.LineFileName, _str(line.FileName).extractFileName().c_str());
                     }
 
+                    auto module_info_ok = false;
+
                     IMAGEHLP_MODULE64 module;
                     std::memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
                     module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
-                    if ((SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) || ((module.SizeOfStruct = sizeof(ImagehlpModule64V2), SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)) != 0)) {
+                    if (::SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) {
+                        module_info_ok = true;
+                    }
+
+                    if (!module_info_ok) {
+                        std::memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
+                        module.SizeOfStruct = sizeof(ImagehlpModule64V2);
+                        if (::SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) {
+                            module_info_ok = true;
+                        }
+                    }
+
+                    if (module_info_ok) {
                         switch (module.SymType) {
                         case SymNone:
                             callstack.SymTypeString = "-nosymbols-";
@@ -496,7 +558,7 @@ static auto GetTraceback() -> string
     std::memset(&context, 0, sizeof(context));
     context.ContextFlags = CONTEXT_FULL;
 
-#if WIN32BIT
+#if WINX86
     __asm label : __asm mov[context.Ebp], ebp;
     __asm mov[context.Esp], esp;
     __asm mov eax, [label];
@@ -508,7 +570,7 @@ static auto GetTraceback() -> string
     STACKFRAME64 stack;
     std::memset(&stack, 0, sizeof(stack));
 
-#if WIN32BIT
+#if WINX86
     DWORD machine_type = IMAGE_FILE_MACHINE_I386;
     stack.AddrFrame.Mode = AddrModeFlat;
     stack.AddrFrame.Offset = context.Ebp;
@@ -617,10 +679,24 @@ static auto GetTraceback() -> string
                 strcpy_s(callstack.LineFileName, _str(line.FileName).extractFileName().c_str());
             }
 
+            auto module_info_ok = false;
+
             IMAGEHLP_MODULE64 module;
             std::memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
             module.SizeOfStruct = sizeof(IMAGEHLP_MODULE64);
-            if (SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0 || (module.SizeOfStruct = sizeof(ImagehlpModule64V2), SymGetModuleInfo64(process, stack.AddrPC.Offset, &module)) != 0) {
+            if (::SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) {
+                module_info_ok = true;
+            }
+
+            if (!module_info_ok) {
+                std::memset(&module, 0, sizeof(IMAGEHLP_MODULE64));
+                module.SizeOfStruct = sizeof(ImagehlpModule64V2);
+                if (::SymGetModuleInfo64(process, stack.AddrPC.Offset, &module) != 0) {
+                    module_info_ok = true;
+                }
+            }
+
+            if (module_info_ok) {
                 switch (module.SymType) {
                 case SymNone:
                     callstack.SymTypeString = "-nosymbols-";

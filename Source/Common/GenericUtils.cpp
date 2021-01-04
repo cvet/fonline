@@ -147,38 +147,6 @@ auto Hashing::MurmurHash2_64(const uchar* data, uint len) -> uint64
     return h;
 }
 
-auto Hashing::ClientPassHash(const string& name, const string& pass) -> string
-{
-    auto* bld = new char[MAX_NAME + 1];
-    std::memset(bld, 0, MAX_NAME + 1);
-
-    auto pass_len = pass.length();
-    const auto name_len = name.length();
-
-    if (pass_len > MAX_NAME) {
-        pass_len = MAX_NAME;
-    }
-
-    std::memcpy(bld, pass.c_str(), pass_len);
-    if (pass_len < MAX_NAME) {
-        bld[pass_len++] = '*';
-    }
-
-    for (; name_len != 0u && pass_len < MAX_NAME; pass_len++) {
-        bld[pass_len] = name[pass_len % name_len];
-    }
-
-    auto* pass_hash = new char[MAX_NAME + 1];
-    std::memset(pass_hash, 0, MAX_NAME + 1);
-
-    sha256(reinterpret_cast<const uchar*>(bld), MAX_NAME, reinterpret_cast<uchar*>(pass_hash));
-    string result = pass_hash;
-
-    delete[] bld;
-    delete[] pass_hash;
-    return result;
-}
-
 auto Compressor::Compress(const uchar* data, uint& data_len) -> uchar*
 {
     uLongf buf_len = data_len * 110 / 100 + 12;
@@ -284,6 +252,18 @@ auto GenericUtils::Percent(int full, int peace) -> int
     return std::clamp(percent, 0, 100);
 }
 
+auto GenericUtils::Percent(uint full, uint peace) -> uint
+{
+    RUNTIME_ASSERT(full >= 0);
+
+    if (full == 0u) {
+        return 0u;
+    }
+
+    const auto percent = peace * 100u / full;
+    return std::clamp(percent, 0u, 100u);
+}
+
 auto GenericUtils::NumericalNumber(uint num) -> uint
 {
     if ((num & 1) != 0u) {
@@ -347,8 +327,8 @@ auto GenericUtils::GetColorDay(const int* day_time, const uchar* colors, int gam
     int color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
 
     game_time %= 1440;
-    auto time = 0;
-    auto duration = 0;
+    int time;
+    int duration;
     if (game_time >= day_time[0] && game_time < day_time[1]) {
         time = 0;
         game_time -= day_time[0];

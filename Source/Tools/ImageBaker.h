@@ -111,4 +111,5 @@ private:
     FileCollection& _allFiles;
     map<string, vector<uchar>> _bakedFiles {};
     unordered_map<string, File> _cachedFiles {};
+    bool _nonConstHelper {};
 };

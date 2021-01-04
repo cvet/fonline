@@ -42,13 +42,12 @@ class Str final
 public:
     Str() = delete;
 
-    static void Copy(char* to, size_t size, const char* from);
     template<int Size>
     static void Copy(char (&to)[Size], const char* from)
     {
         return Copy(to, Size, from);
     }
-    static auto Compare(const char* str1, const char* str2) -> bool;
+    static void Copy(char* to, size_t size, const char* from);
 };
 
 // ReSharper disable once CppInconsistentNaming

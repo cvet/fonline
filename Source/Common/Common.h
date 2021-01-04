@@ -447,11 +447,13 @@ public:
     auto operator=(const type& other) -> ptr&
     {
         if (this != &other) {
-            if (_value)
+            if (_value) {
                 --_value->ptrCounter;
+            }
             _value = other._value;
-            if (_value)
+            if (_value) {
                 ++_value->ptrCounter;
+            }
         }
         return *this;
     }
@@ -462,11 +464,12 @@ public:
         other._value = nullptr;
     }
 
-    auto operator=(type&& other) noexcept -> ptr&&
+    auto operator=(type&& other) noexcept -> ptr&
     {
         if (this != &other) {
-            if (_value)
+            if (_value) {
                 --_value->ptrCounter;
+            }
             _value = other._value;
             other._value = nullptr;
         }
@@ -475,8 +478,9 @@ public:
 
     ~ptr()
     {
-        if (_value)
+        if (_value) {
             --_value->ptrCounter;
+        }
     }
 
     auto operator->() -> T* { return _value; }
@@ -506,6 +510,7 @@ auto constexpr operator"" _len(const char* /*str*/, size_t size) -> size_t
 #define LINE_STR STRINGIFY(__LINE__)
 #define UNUSED_VARIABLE(x) (void)(x)
 #define NON_CONST_METHOD_HINT() _nonConstHelper = !_nonConstHelper
+#define NON_CONST_METHOD_HINT_ONELINE() _nonConstHelper = !_nonConstHelper;
 #define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
@@ -737,22 +742,12 @@ struct TRect
 
     [[nodiscard]] auto operator[](int index) const -> const T& { return (*const_cast<TRect<T>*>(this))[index]; }
 
-    auto operator()(T l, T t, T r, T b) -> TRect&
-    {
-        Left = l;
-        Top = t;
-        Right = r;
-        Bottom = b;
-        return *this;
-    }
-
-    auto operator()(T ox, T oy) -> TRect&
+    void Advance(T ox, T oy)
     {
         Left += ox;
         Top += oy;
         Right += ox;
         Bottom += oy;
-        return *this;
     }
 
     auto Interpolate(const TRect<T>& to, int procent) -> TRect<T>
@@ -857,7 +852,7 @@ static constexpr auto UTF8_BUF_SIZE(int count)
 }
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
-static constexpr auto FADING_PERIOD = 1000;
+static constexpr uint FADING_PERIOD = 1000;
 static constexpr auto MAX_ADDED_NOGROUP_ITEMS = 1000;
 static constexpr auto LAYERS3D_COUNT = 30;
 static constexpr auto DEFAULT_3D_DRAW_WIDTH = 256;
@@ -887,25 +882,25 @@ static constexpr uchar FIND_ONLY_NPC = 0x20;
 static constexpr uchar FIND_ALL = 0x0F;
 
 // Ping
-#define PING_PING (0)
-#define PING_WAIT (1)
-#define PING_CLIENT (2)
+static constexpr uchar PING_PING = 0;
+static constexpr uchar PING_WAIT = 1;
+static constexpr uchar PING_CLIENT = 2;
 
 // Say types
-#define SAY_NORM (1)
-#define SAY_NORM_ON_HEAD (2)
-#define SAY_SHOUT (3)
-#define SAY_SHOUT_ON_HEAD (4)
-#define SAY_EMOTE (5)
-#define SAY_EMOTE_ON_HEAD (6)
-#define SAY_WHISP (7)
-#define SAY_WHISP_ON_HEAD (8)
-#define SAY_SOCIAL (9)
-#define SAY_RADIO (10)
-#define SAY_NETMSG (11)
-#define SAY_DIALOG (12)
-#define SAY_APPEND (13)
-#define SAY_FLASH_WINDOW (41)
+static constexpr uchar SAY_NORM = 1;
+static constexpr uchar SAY_NORM_ON_HEAD = 2;
+static constexpr uchar SAY_SHOUT = 3;
+static constexpr uchar SAY_SHOUT_ON_HEAD = 4;
+static constexpr uchar SAY_EMOTE = 5;
+static constexpr uchar SAY_EMOTE_ON_HEAD = 6;
+static constexpr uchar SAY_WHISP = 7;
+static constexpr uchar SAY_WHISP_ON_HEAD = 8;
+static constexpr uchar SAY_SOCIAL = 9;
+static constexpr uchar SAY_RADIO = 10;
+static constexpr uchar SAY_NETMSG = 11;
+static constexpr uchar SAY_DIALOG = 12;
+static constexpr uchar SAY_APPEND = 13;
+static constexpr uchar SAY_FLASH_WINDOW = 41;
 
 // Global map
 static constexpr auto GM_MAXZONEX = 100;
@@ -947,11 +942,8 @@ static constexpr ushort MAXHEX_MIN = 10;
 static constexpr ushort MAXHEX_MAX = 4000;
 
 // Client parameters
-#define MAX_NAME (30)
-#define MIN_NAME (1)
 #define MAX_CHAT_MESSAGE (100)
 #define MAX_DLG_LEXEMS_TEXT (1000)
-#define PASS_HASH_SIZE (32)
 #define FILE_UPDATE_PORTION (16384)
 
 // Answer
@@ -1047,12 +1039,12 @@ static constexpr uint MOVE_PARAM_STEP_DISALLOW = 0x10;
 static constexpr uint MOVE_PARAM_RUN = 0x80000000;
 
 // Corner type
-#define CORNER_NORTH_SOUTH (0)
-#define CORNER_WEST (1)
-#define CORNER_EAST (2)
-#define CORNER_SOUTH (3)
-#define CORNER_NORTH (4)
-#define CORNER_EAST_WEST (5)
+static constexpr uchar CORNER_NORTH_SOUTH = 0;
+static constexpr uchar CORNER_WEST = 1;
+static constexpr uchar CORNER_EAST = 2;
+static constexpr uchar CORNER_SOUTH = 3;
+static constexpr uchar CORNER_NORTH = 4;
+static constexpr uchar CORNER_EAST_WEST = 5;
 
 // Items accessory
 #define ITEM_ACCESSORY_NONE (0)
@@ -1091,11 +1083,10 @@ static constexpr uchar LIGHT_GLOBAL = 0x40;
 static constexpr uchar LIGHT_INVERSE = 0x80;
 
 // Access
-#define ACCESS_CLIENT (0)
-#define ACCESS_TESTER (1)
-#define ACCESS_MODER (2)
-#define ACCESS_ADMIN (3)
-#define ACCESS_DEFAULT ACCESS_CLIENT
+static constexpr uchar ACCESS_CLIENT = 0;
+static constexpr uchar ACCESS_TESTER = 1;
+static constexpr uchar ACCESS_MODER = 2;
+static constexpr uchar ACCESS_ADMIN = 3;
 
 // Commands
 #define CMD_EXIT (1)
@@ -1115,8 +1106,6 @@ static constexpr uchar LIGHT_INVERSE = 0x80;
 #define CMD_REGENMAP (25)
 #define CMD_SETTIME (32)
 #define CMD_BAN (33)
-#define CMD_DELETE_ACCOUNT (34)
-#define CMD_CHANGE_PASSWORD (35)
 #define CMD_LOG (37)
 
 static constexpr ushort ANIMRUN_TO_END = 0x0001;

@@ -231,20 +231,20 @@ auto ImageBaker::LoadAny(const string& fname_with_opt) -> FrameCollection
     throw ImageBakerException("Invalid image file extension", fname);
 }
 
-auto ImageBaker::LoadFofrm(const string& fname, const string& /*opt*/, File& file) -> FrameCollection
+auto ImageBaker::LoadFofrm(const string& fname, const string& opt, File& file) -> FrameCollection
 {
     FrameCollection collection;
 
     // Load ini parser
     ConfigFile fofrm(file.GetCStr());
 
-    ushort frm_fps = fofrm.GetInt("", "fps", 0);
-    if (frm_fps == 0u) {
+    auto frm_fps = fofrm.GetInt("", "fps", 0);
+    if (frm_fps <= 0) {
         frm_fps = 10;
     }
 
-    ushort frm_num = fofrm.GetInt("", "count", 0);
-    if (frm_num == 0u) {
+    auto frm_num = fofrm.GetInt("", "count", 0);
+    if (frm_num <= 0) {
         frm_num = 1;
     }
 
@@ -294,7 +294,7 @@ auto ImageBaker::LoadFofrm(const string& fname, const string& /*opt*/, File& fil
             auto next_x = fofrm.GetInt(dir_str, _str("next_x_{}", frm), 0);
             auto next_y = fofrm.GetInt(dir_str, _str("next_y_{}", frm), 0);
 
-            // sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
+            sub_collections.emplace_back(std::move(sub_collection), next_x, next_y);
         }
 
         // No frames found or error
@@ -307,17 +307,17 @@ auto ImageBaker::LoadFofrm(const string& fname, const string& /*opt*/, File& fil
         }
 
         // Allocate animation storage
-        if (dir == 0) {
-            collection.SequenceSize = frames;
-            collection.AnimTicks = 1000 * frm_num / frm_fps;
+        if (dir == 0u) {
+            collection.SequenceSize = static_cast<ushort>(frames);
+            collection.AnimTicks = static_cast<ushort>(1000 * frm_num / frm_fps);
         }
         else {
             collection.HaveDirs = true;
         }
 
-        auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        sequence.OffsX = ox;
-        sequence.OffsY = oy;
+        auto& sequence = (dir == 0 ? collection.Main : collection.Dirs[dir - 1]);
+        sequence.OffsX = static_cast<short>(ox);
+        sequence.OffsY = static_cast<short>(oy);
 
         // Merge many animations in one
         uint frm = 0;
@@ -325,8 +325,8 @@ auto ImageBaker::LoadFofrm(const string& fname, const string& /*opt*/, File& fil
             const auto& [sc, next_x, next_y] = sub_collection;
             for (uint j = 0; j < sc.SequenceSize; j++, frm++) {
                 auto& shot = sequence.Frames[frm];
-                shot.NextX = sc.Main.OffsX + next_x;
-                shot.NextY = sc.Main.OffsY + next_y;
+                shot.NextX = static_cast<short>(sc.Main.OffsX + next_x);
+                shot.NextY = static_cast<short>(sc.Main.OffsY + next_y);
             }
         }
     }
@@ -336,6 +336,8 @@ auto ImageBaker::LoadFofrm(const string& fname, const string& /*opt*/, File& fil
 
 auto ImageBaker::LoadFrm(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     auto anim_pix = opt.find('a') != string::npos;
 
     file.SetCurPos(0x4);
@@ -569,6 +571,8 @@ auto ImageBaker::LoadFrm(const string& fname, const string& opt, File& file) -> 
 
 auto ImageBaker::LoadFrX(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     auto anim_pix = opt.find('a') != string::npos;
 
     // Load from frm
@@ -810,8 +814,10 @@ auto ImageBaker::LoadFrX(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadRix(const string& /*fname*/, const string& /*opt*/, File& file) -> FrameCollection
+auto ImageBaker::LoadRix(const string& /*fname*/, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     file.SetCurPos(0x4);
     ushort w = 0;
     file.CopyMem(&w, 2);
@@ -844,6 +850,8 @@ auto ImageBaker::LoadRix(const string& /*fname*/, const string& /*opt*/, File& f
 
 auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     auto palette_index = 0; // 0..3
     auto transparent = false;
     auto mirror_hor = false;
@@ -951,8 +959,8 @@ auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> 
     if (frm_fps == 0u) {
         frm_fps = 10;
     }
+
     auto frm_count = header.FrameCount;
-    auto dir_count = header.RotationCount;
 
     if (frm_from >= frm_count) {
         frm_from = frm_count - 1;
@@ -964,9 +972,9 @@ auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> 
 
     // Create animation
     FrameCollection collection;
-    collection.SequenceSize = frm_count_anim;
-    collection.AnimTicks = 1000 / frm_fps * frm_count_anim;
-    collection.HaveDirs = header.RotationCount == 8;
+    collection.SequenceSize = static_cast<ushort>(frm_count_anim);
+    collection.AnimTicks = static_cast<ushort>(1000u / frm_fps * frm_count_anim);
+    collection.HaveDirs = (header.RotationCount == 8);
 
     for (const auto dir : xrange(_settings.MapDirCount)) {
         auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
@@ -1014,30 +1022,30 @@ auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> 
             auto* ptr = reinterpret_cast<uint*>(&data[0]);
 
             auto& shot = sequence.Frames[frm_write];
-            shot.Width = w;
-            shot.Height = h;
-            shot.NextX = (-frame_info.OffsetX + frame_info.FrameWidth / 2) * (mirror_hor ? -1 : 1);
-            shot.NextY = (-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1);
+            shot.Width = static_cast<ushort>(w);
+            shot.Height = static_cast<ushort>(h);
+            shot.NextX = static_cast<short>((-frame_info.OffsetX + frame_info.FrameWidth / 2) * (mirror_hor ? -1 : 1));
+            shot.NextY = static_cast<short>((-frame_info.OffsetY + frame_info.FrameHeight) * (mirror_ver ? -1 : 1));
 
-            uint color = 0;
-            auto art_get_color = [&file, &palette, &palette_index, &transparent]() {
+            auto color = 0u;
+            auto art_get_color = [&color, &file, &palette, &palette_index, &transparent]() {
                 const auto index = file.GetUChar();
-                auto color = palette[palette_index][index];
+                color = palette[palette_index][index];
                 std::swap(reinterpret_cast<uchar*>(&color)[0], reinterpret_cast<uchar*>(&color)[2]);
                 if (index == 0u) {
-                    color = 0;
+                    color = 0u;
                 }
                 else if (transparent) {
-                    color |= std::max((color >> 16) & 0xFF, std::max((color >> 8) & 0xFF, color & 0xFF)) << 24;
+                    color |= std::max((color >> 16) & 0xFFu, std::max((color >> 8) & 0xFFu, color & 0xFFu)) << 24u;
                 }
                 else {
-                    color |= 0xFF000000;
+                    color |= 0xFF000000u;
                 }
             };
 
-            uint pos = 0;
-            uint x = 0;
-            uint y = 0;
+            auto pos = 0u;
+            auto x = 0u;
+            auto y = 0u;
             auto mirror = mirror_hor || mirror_ver;
             auto art_write_color = [&color, &pos, &x, &y, &w, &h, ptr, &mirror, &mirror_hor, &mirror_ver]() {
                 if (mirror) {
@@ -1107,6 +1115,8 @@ auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> 
 
 auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     FrameCollection collection;
 
     for (const auto dir : xrange(_settings.MapDirCount)) {
@@ -1348,15 +1358,15 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
         }
 
         if (dir == 0) {
-            collection.SequenceSize = static_cast<uint>(anim_frames.size());
-            collection.AnimTicks = 1000 / 10 * static_cast<uint>(anim_frames.size());
+            collection.SequenceSize = static_cast<ushort>(anim_frames.size());
+            collection.AnimTicks = static_cast<ushort>(1000u / 10u * anim_frames.size());
         }
 
-        if (dir == 1) {
+        if (dir == 1u) {
             collection.HaveDirs = true;
         }
 
-        auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
+        auto& sequence = (dir == 0u ? collection.Main : collection.Dirs[dir - 1u]);
         for (uint f = 0, ff = static_cast<uint>(anim_frames.size()); f < ff; f++) {
             auto& shot = sequence.Frames[f];
             auto frm = anim_frames[f];
@@ -1366,7 +1376,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
             for (uint i = 0, j = f; i < j; i++) {
                 if (anim_frames[i] == frm) {
                     shot.Shared = true;
-                    shot.SharedIndex = i;
+                    shot.SharedIndex = static_cast<ushort>(i);
                     founded = true;
                     break;
                 }
@@ -1405,7 +1415,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
             }
 
             // Allocate data
-            vector<uchar> data(whole_w * whole_h * 4);
+            vector<uchar> whole_data(whole_w * whole_h * 4);
 
             for (uint part = 0; part < 4; part++) {
                 auto frm_index = type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : (frm * dir_cnt + (dir_spr << 2)) + part;
@@ -1434,7 +1444,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
                     throw ImageBakerException("Invalid SPR file innded ZAR header", fname);
                 }
 
-                auto* ptr = reinterpret_cast<uint*>(&data[0]) + posy * whole_w + posx;
+                auto* ptr = reinterpret_cast<uint*>(&whole_data[0]) + posy * whole_w + posx;
                 auto x = posx;
                 auto y = posy;
                 while (rle_size != 0u) {
@@ -1467,7 +1477,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
                         for (auto j = 0; j < 3; j++) {
                             if (rgb_offs[part][j] != 0) {
                                 auto val = static_cast<int>(reinterpret_cast<uchar*>(&col)[2 - j]) + rgb_offs[part][j];
-                                reinterpret_cast<uchar*>(&col)[2 - j] = std::clamp(val, 0, 255);
+                                reinterpret_cast<uchar*>(&col)[2 - j] = static_cast<uchar>(std::clamp(val, 0, 255));
                             }
                         }
 
@@ -1484,7 +1494,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
                         if (++x >= w + posx) {
                             x = posx;
                             y++;
-                            ptr = reinterpret_cast<uint*>(&data[0]) + y * whole_w + x;
+                            ptr = reinterpret_cast<uint*>(&whole_data[0]) + y * whole_w + x;
                         }
                     }
 
@@ -1499,11 +1509,11 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
                 }
             }
 
-            shot.Width = whole_w;
-            shot.Height = whole_h;
-            shot.NextX = bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0] - center_x + center_x_ex + whole_w / 2;
-            shot.NextY = bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1] - center_y + center_y_ex + whole_h;
-            shot.Data = std::move(data);
+            shot.Width = static_cast<ushort>(whole_w);
+            shot.Height = static_cast<ushort>(whole_h);
+            shot.NextX = static_cast<short>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0] - center_x + center_x_ex + whole_w / 2);
+            shot.NextY = static_cast<short>(bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1] - center_y + center_y_ex + whole_h);
+            shot.Data = std::move(whole_data);
         }
 
         if (dir_cnt == 1) {
@@ -1514,8 +1524,10 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadZar(const string& fname, const string& /*opt*/, File& file) -> FrameCollection
+auto ImageBaker::LoadZar(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     // Read header
     char head[6];
     file.CopyMem(head, 6);
@@ -1597,14 +1609,16 @@ auto ImageBaker::LoadZar(const string& fname, const string& /*opt*/, File& file)
     FrameCollection collection;
     collection.SequenceSize = 1;
     collection.AnimTicks = 100;
-    collection.Main.Frames[0].Width = w;
-    collection.Main.Frames[0].Height = h;
+    collection.Main.Frames[0].Width = static_cast<ushort>(w);
+    collection.Main.Frames[0].Height = static_cast<ushort>(h);
     collection.Main.Frames[0].Data = std::move(data);
     return collection;
 }
 
-auto ImageBaker::LoadTil(const string& fname, const string& /*opt*/, File& file) -> FrameCollection
+auto ImageBaker::LoadTil(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     // Read header
     char head[7];
     file.CopyMem(head, 7);
@@ -1613,6 +1627,7 @@ auto ImageBaker::LoadTil(const string& fname, const string& /*opt*/, File& file)
     }
 
     while (file.GetUChar() != 0u) {
+        // Nop
     }
 
     file.GoForward(7 + 4); // Unknown
@@ -1630,21 +1645,21 @@ auto ImageBaker::LoadTil(const string& fname, const string& /*opt*/, File& file)
     const auto frames_count = file.GetLEUInt();
 
     FrameCollection collection;
-    collection.SequenceSize = frames_count;
-    collection.AnimTicks = 1000 / 10 * frames_count;
+    collection.SequenceSize = static_cast<ushort>(frames_count);
+    collection.AnimTicks = static_cast<ushort>(1000u / 10u * frames_count);
 
     for (uint frm = 0; frm < frames_count; frm++) {
         // Read header
-        char head[6];
-        file.CopyMem(head, 6);
-        if (head[5] != 0 || strcmp(head, "<zar>") != 0) {
+        char zar_head[6];
+        file.CopyMem(zar_head, 6);
+        if (zar_head[5] != 0 || strcmp(zar_head, "<zar>") != 0) {
             throw ImageBakerException("ZAR header in TIL file not found", fname);
         }
 
         const auto type = file.GetUChar();
         file.GoForward(1); // \0
-        const auto w = file.GetLEUInt();
-        const auto h = file.GetLEUInt();
+        const auto zar_w = file.GetLEUInt();
+        const auto zar_h = file.GetLEUInt();
         const auto palette_present = file.GetUChar();
 
         // Read palette
@@ -1668,7 +1683,7 @@ auto ImageBaker::LoadTil(const string& fname, const string& /*opt*/, File& file)
         file.GoForward(rle_size);
 
         // Allocate data
-        vector<uchar> data(w * h * 4);
+        vector<uchar> data(zar_w * zar_h * 4);
         auto* ptr = reinterpret_cast<uint*>(&data[0]);
 
         // Decode
@@ -1713,16 +1728,18 @@ auto ImageBaker::LoadTil(const string& fname, const string& /*opt*/, File& file)
         }
 
         auto& shot = collection.Main.Frames[frm];
-        shot.Width = w;
-        shot.Height = h;
+        shot.Width = static_cast<ushort>(zar_w);
+        shot.Height = static_cast<ushort>(zar_h);
         shot.Data = std::move(data);
     }
 
     return collection;
 }
 
-auto ImageBaker::LoadMos(const string& fname, const string& /*opt*/, File& file) -> FrameCollection
+auto ImageBaker::LoadMos(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     // Read signature
     char head[8];
     file.CopyMem(head, 8);
@@ -1817,14 +1834,16 @@ auto ImageBaker::LoadMos(const string& fname, const string& /*opt*/, File& file)
     FrameCollection collection;
     collection.SequenceSize = 1;
     collection.AnimTicks = 100;
-    collection.Main.Frames[0].Width = w;
-    collection.Main.Frames[0].Height = h;
+    collection.Main.Frames[0].Width = static_cast<ushort>(w);
+    collection.Main.Frames[0].Height = static_cast<ushort>(h);
     collection.Main.Frames[0].Data = std::move(data);
     return collection;
 }
 
 auto ImageBaker::LoadBam(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     // Format: fileName$5-6.spr
     istringstream idelim(opt);
     uint need_cycle = 0;
@@ -1889,8 +1908,8 @@ auto ImageBaker::LoadBam(const string& fname, const string& opt, File& file) -> 
 
     // Create animation
     FrameCollection collection;
-    collection.SequenceSize = specific_frame == -1 ? cycle_frames : 1;
-    collection.AnimTicks = 100;
+    collection.SequenceSize = static_cast<ushort>(specific_frame == -1 ? cycle_frames : 1u);
+    collection.AnimTicks = 100u;
 
     // Palette
     uint palette[256] = {0};
@@ -1898,8 +1917,8 @@ auto ImageBaker::LoadBam(const string& fname, const string& opt, File& file) -> 
     file.CopyMem(palette, 256 * 4);
 
     // Find in lookup table
-    for (uint i = 0; i < cycle_frames; i++) {
-        if (specific_frame != -1 && specific_frame != i) {
+    for (auto i = 0u; i < cycle_frames; i++) {
+        if (specific_frame != -1 && specific_frame != static_cast<int>(i)) {
             continue;
         }
 
@@ -1950,10 +1969,10 @@ auto ImageBaker::LoadBam(const string& fname, const string& opt, File& file) -> 
 
         // Set in animation sequence
         auto& shot = collection.Main.Frames[specific_frame != -1 ? 0 : i];
-        shot.Width = w;
-        shot.Height = h;
-        shot.NextX = -ox + w / 2;
-        shot.NextY = -oy + h;
+        shot.Width = static_cast<ushort>(w);
+        shot.Height = static_cast<ushort>(h);
+        shot.NextX = static_cast<short>(-ox + w / 2);
+        shot.NextY = static_cast<short>(-oy + h);
         shot.Data = std::move(data);
 
         if (specific_frame != -1) {
@@ -1964,8 +1983,10 @@ auto ImageBaker::LoadBam(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadPng(const string& fname, const string& /*opt*/, File& file) -> FrameCollection
+auto ImageBaker::LoadPng(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     uint w = 0;
     uint h = 0;
     auto* png_data = LoadPNG(file.GetBuf(), w, h);
@@ -1979,14 +2000,16 @@ auto ImageBaker::LoadPng(const string& fname, const string& /*opt*/, File& file)
     FrameCollection collection;
     collection.SequenceSize = 1;
     collection.AnimTicks = 100;
-    collection.Main.Frames[0].Width = w;
-    collection.Main.Frames[0].Height = h;
+    collection.Main.Frames[0].Width = static_cast<ushort>(w);
+    collection.Main.Frames[0].Height = static_cast<ushort>(h);
     collection.Main.Frames[0].Data = std::move(data);
     return collection;
 }
 
-auto ImageBaker::LoadTga(const string& fname, const string& /*opt*/, File& file) -> FrameCollection
+auto ImageBaker::LoadTga(const string& fname, const string& opt, File& file) -> FrameCollection
 {
+    NON_CONST_METHOD_HINT();
+
     uint w = 0;
     uint h = 0;
     auto* tga_data = LoadTGA(file.GetBuf(), file.GetFsize(), w, h);
@@ -2000,8 +2023,8 @@ auto ImageBaker::LoadTga(const string& fname, const string& /*opt*/, File& file)
     FrameCollection collection;
     collection.SequenceSize = 1;
     collection.AnimTicks = 100;
-    collection.Main.Frames[0].Width = w;
-    collection.Main.Frames[0].Height = h;
+    collection.Main.Frames[0].Width = static_cast<ushort>(w);
+    collection.Main.Frames[0].Height = static_cast<ushort>(h);
     collection.Main.Frames[0].Data = std::move(data);
     return collection;
 }
@@ -2050,7 +2073,6 @@ static auto LoadPNG(const uchar* data, uint& result_width, uint& result_height) 
             *io_ptr += length;
         }
     };
-    const auto* io_ptr = data;
     png_set_read_fn(png_ptr, static_cast<png_voidp>(&data), &PNGReader::Read);
     png_read_info(png_ptr, info_ptr);
 
@@ -2172,12 +2194,8 @@ static auto LoadTGA(const uchar* data, uint data_size, uint& result_width, uint&
     }
     else {
         uint bytes_read = 0;
-        uint run_len = 0;
-        uint i = 0;
-        uint to_read = 0;
         uchar header = 0;
         uchar color[4];
-        auto c = 0;
         while (bytes_read < read_size) {
             READ_TGA(&header, 1)
             if ((header & 0x00000080) != 0) {
@@ -2187,16 +2205,17 @@ static auto LoadTGA(const uchar* data, uint data_size, uint& result_width, uint&
                     delete[] read_data;
                     return nullptr;
                 }
-                run_len = (header + 1) * bpp;
-                for (i = 0; i < run_len; i += bpp) {
-                    for (c = 0; c < bpp && bytes_read + i + c < read_size; c++) {
+                const uint run_len = (header + 1) * bpp;
+                for (uint i = 0; i < run_len; i += bpp) {
+                    for (auto c = 0; c < bpp && bytes_read + i + c < read_size; c++) {
                         read_data[bytes_read + i + c] = color[c];
                     }
                 }
                 bytes_read += run_len;
             }
             else {
-                run_len = (header + 1) * bpp;
+                const uint run_len = (header + 1) * bpp;
+                uint to_read;
                 if (bytes_read + run_len > read_size) {
                     to_read = read_size - bytes_read;
                 }

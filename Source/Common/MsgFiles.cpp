@@ -110,7 +110,7 @@ void FOMsg::AddBinary(uint num, const uchar* binary, uint len)
     AddStr(num, static_cast<char*>(&str[0]));
 }
 
-auto FOMsg::GetStr(uint num) -> string
+auto FOMsg::GetStr(uint num) const -> string
 {
     const auto str_count = static_cast<uint>(_strData.count(num));
     auto it = _strData.find(num);
@@ -130,7 +130,7 @@ auto FOMsg::GetStr(uint num) -> string
     return it->second;
 }
 
-auto FOMsg::GetStr(uint num, uint skip) -> string
+auto FOMsg::GetStr(uint num, uint skip) const -> string
 {
     const auto str_count = static_cast<uint>(_strData.count(num));
     auto it = _strData.find(num);
@@ -145,7 +145,7 @@ auto FOMsg::GetStr(uint num, uint skip) -> string
     return it->second;
 }
 
-auto FOMsg::GetStrNumUpper(uint num) -> uint
+auto FOMsg::GetStrNumUpper(uint num) const -> uint
 {
     const auto it = _strData.upper_bound(num);
     if (it == _strData.end()) {
@@ -154,7 +154,7 @@ auto FOMsg::GetStrNumUpper(uint num) -> uint
     return it->first;
 }
 
-auto FOMsg::GetStrNumLower(uint num) -> uint
+auto FOMsg::GetStrNumLower(uint num) const -> uint
 {
     const auto it = _strData.lower_bound(num);
     if (it == _strData.end()) {
@@ -163,7 +163,7 @@ auto FOMsg::GetStrNumLower(uint num) -> uint
     return it->first;
 }
 
-auto FOMsg::GetInt(uint num) -> int
+auto FOMsg::GetInt(uint num) const -> int
 {
     const auto str_count = static_cast<uint>(_strData.count(num));
     auto it = _strData.find(num);
@@ -183,21 +183,22 @@ auto FOMsg::GetInt(uint num) -> int
     return _str(it->second).toInt();
 }
 
-auto FOMsg::GetBinary(uint num, vector<uchar>& data) -> uint
+auto FOMsg::GetBinary(uint num) const -> vector<uchar>
 {
-    data.clear();
+    vector<uchar> result;
 
     if (Count(num) == 0u) {
-        return 0;
+        return result;
     }
 
     auto str = GetStr(num);
     const auto len = static_cast<uint>(str.length()) / 2;
-    data.resize(len);
+    result.resize(len);
     for (uint i = 0; i < len; i++) {
-        data[i] = StrToHex(&str[i * 2]);
+        result[i] = StrToHex(&str[i * 2]);
     }
-    return len;
+
+    return result;
 }
 
 auto FOMsg::Count(uint num) const -> uint
@@ -223,7 +224,7 @@ auto FOMsg::GetSize() const -> uint
     return static_cast<uint>(_strData.size());
 }
 
-auto FOMsg::IsIntersects(const FOMsg& other) -> bool
+auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
 {
     for (auto& [key, value] : _strData) {
         if (other._strData.count(key) != 0u) {
@@ -233,13 +234,15 @@ auto FOMsg::IsIntersects(const FOMsg& other) -> bool
     return false;
 }
 
-auto FOMsg::GetBinaryData() -> vector<uchar>
+auto FOMsg::GetBinaryData() const -> vector<uchar>
 {
     // Fill raw data
     auto count = static_cast<uint>(_strData.size());
+
     vector<uchar> data;
     data.resize(sizeof(count));
     std::memcpy(&data[0], &count, sizeof(count));
+
     for (auto& [num, str] : _strData) {
         auto str_len = static_cast<uint>(str.length());
 

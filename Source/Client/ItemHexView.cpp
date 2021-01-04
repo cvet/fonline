@@ -173,14 +173,14 @@ void ItemHexView::Process()
 
     // Fading
     if (_fading) {
-        auto fading_proc = 100 - GenericUtils::Percent(FADING_PERIOD, _fadingTick - _gameTime.GameTick());
-        fading_proc = std::clamp(fading_proc, 0, 100);
-        if (fading_proc >= 100) {
-            fading_proc = 100;
+        auto fading_proc = 100u - GenericUtils::Percent(FADING_PERIOD, _fadingTick - _gameTime.GameTick());
+        fading_proc = std::clamp(fading_proc, 0u, 100u);
+        if (fading_proc >= 100u) {
+            fading_proc = 100u;
             _fading = false;
         }
 
-        Alpha = _fadeUp ? fading_proc * 0xFF / 100 : (100 - fading_proc) * 0xFF / 100;
+        Alpha = static_cast<uchar>((_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u));
         if (Alpha > _maxAlpha) {
             Alpha = _maxAlpha;
         }
@@ -377,14 +377,14 @@ void ItemHexView::SetAnimOffs()
     ScrX = GetOffsetX();
     ScrY = GetOffsetY();
 
-    for (auto i = 1; i <= _curSpr; i++) {
-        ScrX += Anim->NextX[i];
-        ScrY += Anim->NextY[i];
+    for (const auto i : xrange(_curSpr + 1u)) {
+        ScrX = static_cast<short>(ScrX + Anim->NextX[i]);
+        ScrY = static_cast<short>(ScrY + Anim->NextY[i]);
     }
 
     if (IsDynamicEffect()) {
-        ScrX += static_cast<short>(EffOffsX);
-        ScrY += static_cast<short>(EffOffsY);
+        ScrX = static_cast<short>(ScrX + static_cast<short>(EffOffsX));
+        ScrY = static_cast<short>(ScrY + static_cast<short>(EffOffsY));
     }
 }
 

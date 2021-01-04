@@ -47,7 +47,9 @@ void NetBuffer::SetEncryptKey(uint seed)
     }
 
     std::mt19937 rnd_generator {seed};
+    // ReSharper disable once CppLocalVariableMayBeConst
     std::uniform_int_distribution<> rnd_distr {1, 255};
+
     for (auto& key : _encryptKeys) {
         key = static_cast<uchar>(rnd_distr(rnd_generator));
     }
@@ -169,12 +171,18 @@ void NetBuffer::Push(const void* buf, uint len, bool no_crypt)
 
 void NetBuffer::Pop(void* buf, uint len)
 {
-    if (_isError || len == 0u) {
+    if (_isError) {
+        std::memset(buf, 0, len);
+        return;
+    }
+
+    if (len == 0u) {
         return;
     }
 
     if (_bufReadPos + len > _bufEndPos) {
         _isError = true;
+        std::memset(buf, 0, len);
         return;
     }
 
@@ -226,8 +234,6 @@ auto NetBuffer::NeedProcess() -> bool
         return true; // Ping
     case NETMSG_DISCONNECT:
         return NETMSG_DISCONNECT_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_LOGIN:
-        return NETMSG_LOGIN_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_WRONG_NET_PROTO:
         return NETMSG_WRONG_NET_PROTO_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_REGISTER_SUCCESS:
@@ -360,6 +366,7 @@ auto NetBuffer::NeedProcess() -> bool
     CopyBuf(_bufData.get() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(-static_cast<int>(sizeof(msg))), sizeof(msg_len));
 
     switch (msg) {
+    case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:
@@ -409,9 +416,6 @@ void NetBuffer::SkipMsg(uint msg)
         break;
     case NETMSG_DISCONNECT:
         size = NETMSG_DISCONNECT_SIZE;
-        break;
-    case NETMSG_LOGIN:
-        size = NETMSG_LOGIN_SIZE;
         break;
     case NETMSG_WRONG_NET_PROTO:
         size = NETMSG_WRONG_NET_PROTO_SIZE;
@@ -591,6 +595,7 @@ void NetBuffer::SkipMsg(uint msg)
         size = NETMSG_POD_PROPERTY_SIZE(8, 2);
         break;
 
+    case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
     case NETMSG_CREATE_CLIENT:

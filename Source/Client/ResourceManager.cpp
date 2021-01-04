@@ -230,7 +230,7 @@ auto ResourceManager::GetCritterAnim(hash model_name, uint anim1, uint anim2, uc
                                         }
                                     }
                                     if (!fixed) {
-                                        auto* si = _sprMngr.GetSpriteInfo(spr_id);
+                                        auto* si = _sprMngr.GetSpriteInfoForEditing(spr_id);
                                         si->OffsX += ox;
                                         si->OffsY += oy;
                                     }
@@ -384,7 +384,7 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
         }
 
         for (uint i = 0; i < frames->CntFrm; i++) {
-            auto* si = _sprMngr.GetSpriteInfo(frames->Ind[i]);
+            auto* si = _sprMngr.GetSpriteInfoForEditing(frames->Ind[i]);
             if (si == nullptr) {
                 continue;
             }
@@ -420,7 +420,7 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
         }
 
         for (uint i = 0; i < frames->CntFrm; i++) {
-            auto* si = _sprMngr.GetSpriteInfo(frames->Ind[i]);
+            auto* si = _sprMngr.GetSpriteInfoForEditing(frames->Ind[i]);
             if (si == nullptr) {
                 continue;
             }

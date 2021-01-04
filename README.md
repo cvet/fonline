@@ -338,7 +338,6 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: process default animations
 * 3dStuff: GetAnim1/GetAnim2 int to uint return type
 * 3dStuff: fix AtlasType referencing in 3dStuff
-* Client: remove CHECK_IN_BUFF_ERROR();
 * Client: handle mouse wheel
 * Client: synchronize effects showing (for example shot and kill)
 * Client: need attention!
@@ -353,13 +352,11 @@ Please follow these instructions to understand how to use this engine by design:
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
 * ResourceManager: why I disable offset adding?
 * SpriteManager: restore texture saving
-* SpriteManager: finish rendering
 * SpriteManager: improve DirectX rendering
 * SpriteManager: maybe restrict fps at 60?
 * SpriteManager: optimize sprite atlas filling
 * SpriteManager: improve client rendering brightness
 * SpriteManager: move fonts stuff to separate module
-* Sprites: exclude sprite cut system?
 * Sprites: MapSprite releasing
 * Sprites: : incapsulate all sprite data
 * Application: move different renderers to separate modules

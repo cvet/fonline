@@ -117,10 +117,6 @@ static constexpr auto DRAW_ORDER_CRITTER = DRAW_ORDER + 9;
 static constexpr auto DRAW_ORDER_RAIN = DRAW_ORDER + 12;
 static constexpr auto DRAW_ORDER_LAST = 39;
 
-// Sprites cutting
-static constexpr auto SPRITE_CUT_HORIZONTAL = 1;
-static constexpr auto SPRITE_CUT_VERTICAL = 2;
-
 // Egg types
 static constexpr auto EGG_ALWAYS = 1;
 static constexpr auto EGG_X = 2;
@@ -171,8 +167,8 @@ struct TextureAtlas
     uint Width {};
     uint Height {};
     unique_ptr<SpaceNode> RootNode {};
-    uint CurX {};
-    uint CurY {};
+    int CurX {};
+    int CurY {};
     uint LineMaxH {};
     uint LineCurH {};
     uint LineW {};
@@ -182,8 +178,8 @@ struct SpriteInfo
 {
     TextureAtlas* Atlas {};
     FRect SprRect {};
-    short Width {};
-    short Height {};
+    ushort Width {};
+    ushort Height {};
     short OffsX {};
     short OffsY {};
     RenderEffect* DrawEffect {};
@@ -253,7 +249,8 @@ public:
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
     [[nodiscard]] auto GetSpritesColor() const -> uint { return _baseColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
-    [[nodiscard]] auto GetSpriteInfo(uint id) -> SpriteInfo* { return _sprData[id]; }
+    [[nodiscard]] auto GetSpriteInfo(uint id) -> const SpriteInfo* { return _sprData[id]; }
+    [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetDrawRect(Sprite* prep) const -> IRect;
     [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
@@ -317,7 +314,7 @@ public:
     AnyFrames* DummyAnimation {};
 
 private:
-    [[nodiscard]] auto CreateAtlas(int w, int h) -> TextureAtlas*;
+    [[nodiscard]] auto CreateAtlas(uint w, uint h) -> TextureAtlas*;
     [[nodiscard]] auto FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
     [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data) -> uint;
     [[nodiscard]] auto Load2dAnimation(const string& fname) -> AnyFrames*;
@@ -328,7 +325,7 @@ private:
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
-    void CollectContour(int x, int y, SpriteInfo* si, Sprite* spr);
+    void CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr);
 
     RenderSettings& _settings;
     FileManager& _fileMngr;
@@ -364,7 +361,7 @@ private:
     ushort _eggHy {};
     int _eggX {};
     int _eggY {};
-    SpriteInfo* _sprEgg {};
+    const SpriteInfo* _sprEgg {};
     vector<uint> _eggData {};
     int _eggSprWidth {};
     int _eggSprHeight {};
@@ -432,15 +429,15 @@ private:
         IRect Region {};
         char Str[FONT_BUF_LEN] {};
         char* PStr {};
-        uint LinesAll {};
-        uint LinesInRect {};
+        int LinesAll {};
+        int LinesInRect {};
         int CurX {};
         int CurY {};
         int MaxCurX {};
         uint ColorDots[FONT_BUF_LEN] {};
-        short LineWidth[FONT_MAX_LINES] {};
-        ushort LineSpaceWidth[FONT_MAX_LINES] {};
-        uint OffsColDots {};
+        int LineWidth[FONT_MAX_LINES] {};
+        int LineSpaceWidth[FONT_MAX_LINES] {};
+        int OffsColDots {};
         uint DefColor {};
         vector<string>* StrLines {};
         bool IsError {};

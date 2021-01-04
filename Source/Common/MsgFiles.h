@@ -51,7 +51,7 @@ static constexpr auto TEXTMSG_INTERNAL = 8;
 static constexpr auto TEXTMSG_LOCATIONS = 9;
 static constexpr auto TEXTMSG_COUNT = 10;
 
-class FOMsg
+class FOMsg final
 {
 public:
     using MsgMap = multimap<uint, string>;
@@ -66,16 +66,16 @@ public:
 
     static auto GetMsgType(const string& type_name) -> int;
 
-    [[nodiscard]] auto GetStr(uint num) -> string;
-    [[nodiscard]] auto GetStr(uint num, uint skip) -> string;
-    [[nodiscard]] auto GetStrNumUpper(uint num) -> uint;
-    [[nodiscard]] auto GetStrNumLower(uint num) -> uint;
-    [[nodiscard]] auto GetInt(uint num) -> int;
-    [[nodiscard]] auto GetBinary(uint num, vector<uchar>& data) -> uint;
+    [[nodiscard]] auto GetStr(uint num) const -> string;
+    [[nodiscard]] auto GetStr(uint num, uint skip) const -> string;
+    [[nodiscard]] auto GetStrNumUpper(uint num) const -> uint;
+    [[nodiscard]] auto GetStrNumLower(uint num) const -> uint;
+    [[nodiscard]] auto GetInt(uint num) const -> int;
+    [[nodiscard]] auto GetBinary(uint num) const -> vector<uchar>;
     [[nodiscard]] auto Count(uint num) const -> uint;
     [[nodiscard]] auto GetSize() const -> uint;
-    [[nodiscard]] auto IsIntersects(const FOMsg& other) -> bool;
-    [[nodiscard]] auto GetBinaryData() -> vector<uchar>;
+    [[nodiscard]] auto IsIntersects(const FOMsg& other) const -> bool;
+    [[nodiscard]] auto GetBinaryData() const -> vector<uchar>;
 
     auto LoadFromBinaryData(const vector<uchar>& data) -> bool;
     auto LoadFromString(const string& str) -> bool;

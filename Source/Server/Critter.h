@@ -152,55 +152,55 @@ public:
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
 
-    void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
-    void Send_Move(Critter* from_cr, uint move_params);
-    void Send_Dir(Critter* from_cr);
-    void Send_AddCritter(Critter* cr);
-    void Send_RemoveCritter(Critter* cr);
-    void Send_LoadMap(Map* map, MapManager& map_mngr);
-    void Send_XY(Critter* cr);
-    void Send_AddItemOnMap(Item* item);
-    void Send_EraseItemFromMap(Item* item);
-    void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm);
-    void Send_AddItem(Item* item);
-    void Send_EraseItem(Item* item);
-    void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
-    void Send_GlobalLocation(Location* loc, bool add);
-    void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog);
-    void Send_CustomCommand(Critter* cr, ushort cmd, int val);
-    void Send_AllProperties();
-    void Send_Talk();
-    void Send_GameInfo(Map* map);
-    void Send_Text(Critter* from_cr, const string& text, uchar how_say);
-    void Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text);
-    void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg);
-    void Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg);
-    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
-    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
-    void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
-    void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
-    void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2);
-    void Send_CombatResult(uint* combat_res, uint len);
-    void Send_AutomapsInfo(void* locs_vec, Location* loc);
-    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-    void Send_PlaySound(uint crid_synchronize, const string& sound_name);
-    void SendA_Property(NetProperty::Type type, Property* prop, Entity* entity);
-    void SendA_Move(uint move_params);
-    void SendA_XY();
-    void SendA_Action(int action, int action_ext, Item* item);
-    void SendAA_Action(int action, int action_ext, Item* item);
-    void SendAA_MoveItem(Item* item, uchar action, uchar prev_slot);
-    void SendAA_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void SendAA_SetAnims(int cond, uint anim1, uint anim2);
-    void SendAA_Text(const vector<Critter*>& to_cr, const string& text, uchar how_say, bool unsafe_text);
-    void SendAA_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
-    void SendAA_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
-    void SendA_Dir();
-    void SendA_CustomCommand(ushort num_param, int val);
-    void Send_AddAllItems();
-    void Send_AllAutomapsInfo(MapManager& map_mngr);
+    void Broadcast_Property(NetProperty::Type type, Property* prop, Entity* entity);
+    void Broadcast_Move(uint move_params);
+    void Broadcast_XY();
+    void Broadcast_Action(int action, int action_ext, Item* item);
+    void Broadcast_Dir();
+    void Broadcast_CustomCommand(ushort num_param, int val);
+
+    void SendAndBroadcast_Action(int action, int action_ext, Item* item);
+    void SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot);
+    void SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
+    void SendAndBroadcast_SetAnims(int cond, uint anim1, uint anim2);
+    void SendAndBroadcast_Text(const vector<Critter*>& to_cr, const string& text, uchar how_say, bool unsafe_text);
+    void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
+    void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
+
+    virtual void Send_Property(NetProperty::Type type, Property* prop, Entity* entity) { }
+    virtual void Send_Move(Critter* from_cr, uint move_params) { }
+    virtual void Send_Dir(Critter* from_cr) { }
+    virtual void Send_AddCritter(Critter* cr) { }
+    virtual void Send_RemoveCritter(Critter* cr) { }
+    virtual void Send_LoadMap(Map* map, MapManager& map_mngr) { }
+    virtual void Send_XY(Critter* cr) { }
+    virtual void Send_AddItemOnMap(Item* item) { }
+    virtual void Send_EraseItemFromMap(Item* item) { }
+    virtual void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm) { }
+    virtual void Send_AddItem(Item* item) { }
+    virtual void Send_EraseItem(Item* item) { }
+    virtual void Send_GlobalInfo(uchar flags, MapManager& map_mngr) { }
+    virtual void Send_GlobalLocation(Location* loc, bool add) { }
+    virtual void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog) { }
+    virtual void Send_CustomCommand(Critter* cr, ushort cmd, int val) { }
+    virtual void Send_AllProperties() { }
+    virtual void Send_Talk() { }
+    virtual void Send_GameInfo(Map* map) { }
+    virtual void Send_Text(Critter* from_cr, const string& text, uchar how_say) { }
+    virtual void Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text) { }
+    virtual void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg) { }
+    virtual void Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg) { }
+    virtual void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems) { }
+    virtual void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems) { }
+    virtual void Send_Action(Critter* from_cr, int action, int action_ext, Item* item) { }
+    virtual void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot) { }
+    virtual void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play) { }
+    virtual void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2) { }
+    virtual void Send_CombatResult(uint* combat_res, uint len) { }
+    virtual void Send_AutomapsInfo(void* locs_vec, Location* loc) { }
+    virtual void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius) { }
+    virtual void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) { }
+    virtual void Send_PlaySound(uint crid_synchronize, const string& sound_name) { }
 
     bool CritterIsNpc {};
     uint Flags {};
@@ -272,61 +272,63 @@ public:
     [[nodiscard]] auto GetPort() const -> ushort;
     [[nodiscard]] auto IsOnline() const -> bool;
     [[nodiscard]] auto IsOffline() const -> bool;
-    void Disconnect() const;
-    void RemoveFromGame();
     [[nodiscard]] auto GetOfflineTime() const -> uint;
-
     [[nodiscard]] auto IsToPing() const -> bool;
+    [[nodiscard]] auto IsTalking() const -> bool;
+
+    void Disconnect();
+    void RemoveFromGame();
     void PingClient();
     void PingOk(uint next_ping);
 
-    void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
-    void Send_Move(Critter* from_cr, uint move_params) const;
-    void Send_Dir(Critter* from_cr) const;
-    void Send_AddCritter(Critter* cr);
-    void Send_RemoveCritter(Critter* cr) const;
-    void Send_LoadMap(Map* map, MapManager& map_mngr);
-    void Send_XY(Critter* cr) const;
-    void Send_AddItemOnMap(Item* item) const;
-    void Send_EraseItemFromMap(Item* item) const;
-    void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm) const;
-    void Send_AddItem(Item* item) const;
-    void Send_EraseItem(Item* item) const;
-    void Send_SomeItems(const vector<Item*>* items, int param) const;
-    void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
-    void Send_GlobalLocation(Location* loc, bool add) const;
-    void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog) const;
-    void Send_CustomCommand(Critter* cr, ushort cmd, int val) const;
-    void Send_AllProperties();
-    void Send_Talk();
-    void Send_GameInfo(Map* map) const;
-    void Send_Text(Critter* from_cr, const string& text, uchar how_say) const;
-    void Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text) const;
-    void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg) const;
-    void Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg) const;
-    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems) const;
-    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems) const;
-    void Send_Action(Critter* from_cr, int action, int action_ext, Item* item) const;
-    void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot) const;
-    void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play) const;
-    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2) const;
-    void Send_CombatResult(uint* combat_res, uint len) const;
-    void Send_AutomapsInfo(void* locs_vec, Location* loc) const;
-    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius) const;
-    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) const;
-    void Send_PlaySound(uint crid_synchronize, const string& sound_name) const;
-    void Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text) const;
-    void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str) const;
-    void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len) const;
-    void Send_ViewMap() const;
-    void Send_SomeItem(Item* item) const; // Without checks
-    void Send_CustomMessage(uint msg) const;
-    void Send_CustomMessage(uint msg, uchar* data, uint data_size) const;
+    void Send_Property(NetProperty::Type type, Property* prop, Entity* entity) override;
+    void Send_Move(Critter* from_cr, uint move_params) override;
+    void Send_Dir(Critter* from_cr) override;
+    void Send_AddCritter(Critter* cr) override;
+    void Send_RemoveCritter(Critter* cr) override;
+    void Send_LoadMap(Map* map, MapManager& map_mngr) override;
+    void Send_XY(Critter* cr) override;
+    void Send_AddItemOnMap(Item* item) override;
+    void Send_EraseItemFromMap(Item* item) override;
+    void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm) override;
+    void Send_AddItem(Item* item) override;
+    void Send_EraseItem(Item* item) override;
+    void Send_GlobalInfo(uchar flags, MapManager& map_mngr) override;
+    void Send_GlobalLocation(Location* loc, bool add) override;
+    void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog) override;
+    void Send_CustomCommand(Critter* cr, ushort cmd, int val) override;
+    void Send_AllProperties() override;
+    void Send_Talk() override;
+    void Send_GameInfo(Map* map) override;
+    void Send_Text(Critter* from_cr, const string& text, uchar how_say) override;
+    void Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text) override;
+    void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg) override;
+    void Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg) override;
+    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems) override;
+    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems) override;
+    void Send_Action(Critter* from_cr, int action, int action_ext, Item* item) override;
+    void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot) override;
+    void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play) override;
+    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2) override;
+    void Send_CombatResult(uint* combat_res, uint len) override;
+    void Send_AutomapsInfo(void* locs_vec, Location* loc) override;
+    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius) override;
+    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) override;
+    void Send_PlaySound(uint crid_synchronize, const string& sound_name) override;
 
-    [[nodiscard]] auto IsTalking() const -> bool;
+    void Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text);
+    void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
+    void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len);
+    void Send_ViewMap();
+    void Send_SomeItem(Item* item); // Without checks
+    void Send_CustomMessage(uint msg);
+    void Send_CustomMessage(uint msg, uchar* data, uint data_size);
+    void Send_AddAllItems();
+    void Send_AllAutomapsInfo(MapManager& map_mngr);
+    void Send_SomeItems(const vector<Item*>* items, int param);
 
     NetConnection* Connection {};
-    uchar Access {ACCESS_DEFAULT};
+    uchar Access {ACCESS_CLIENT};
     uint LanguageMsg {};
     ClientState State {};
     uint LastActivityTime {};
