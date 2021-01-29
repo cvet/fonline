@@ -1521,7 +1521,7 @@ bool FOServer::SScriptFunc::Crit_MoveToDir( Critter* cr, uchar direction )
     return true;
 }
 
-bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir )
+bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir, uchar radius )
 {
     if( cr->IsNotValid )
         SCRIPT_ERROR_R0( "This nullptr." );
@@ -1536,7 +1536,7 @@ bool FOServer::SScriptFunc::Crit_TransitToHex( Critter* cr, ushort hx, ushort hy
     {
         if( dir < DIRS_COUNT && cr->Data.Dir != dir )
             cr->Data.Dir = dir;
-        if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), 2, true ) )
+        if( !MapMngr.Transit( cr, map, hx, hy, cr->GetDir(), radius, true ) )
             SCRIPT_ERROR_R0( "Transit fail." );
     }
     else if( dir < DIRS_COUNT && cr->Data.Dir != dir )
