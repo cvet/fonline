@@ -15,5 +15,6 @@ EXPORT Critter* Global_GetCritter(uint crid);
 EXPORT ScriptString* Global_GetMsgStr(size_t lang, size_t textMsg, uint strNum);
 EXPORT ScriptString* Item_GetLexems(Item* item);
 EXPORT int ConstantsManager_GetValue(size_t collection, ScriptString* string);
+EXPORT uint StatisticsCurOnline();
 
 #endif // __API_SERVER__

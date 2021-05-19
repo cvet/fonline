@@ -101,3 +101,7 @@ int ConstantsManager_GetValue(size_t collection, ScriptString* string)
 
 	return ConstantsManager::GetValue(collection, c_str);
 }
+
+EXPORT uint StatisticsCurOnline() {
+	return FOServer::Statistics.CurOnline;
+}
