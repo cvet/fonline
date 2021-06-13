@@ -503,7 +503,7 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
     {
         // if(cr->IsPlayer()) WriteLogF(_FUNC_," - Target critter is dead, critter<%s>, target critter<%s>.\n",cr->GetInfo(),t_cr->GetInfo());
         cr->Send_AddCritter( t_cr );       // Refresh
-        return false;
+        //return false;
     }
 
     int hx = cr->GetHexX();
@@ -640,15 +640,15 @@ bool FOServer::Act_Attack( Critter* cr, uchar rate_weap, uint target_id )
         }
     }
 
-    // No ammo
-    if( weap->WeapGetMaxAmmoCount() && !cr->IsRawParam( MODE_UNLIMITED_AMMO ) )
+    // No ammo - Handled by main.fos
+    /*if( weap->WeapGetMaxAmmoCount() && !cr->IsRawParam( MODE_UNLIMITED_AMMO ) )
     {
         if( !weap->Data.AmmoCount )
         {
             WriteLogF( _FUNC_, " - Critter bullets count is zero, critter<%s>.\n", cr->GetInfo() );
             return false;
         }
-    }
+    }*/
 
     ushort ammo_round = weap->Proto->Weapon_Round[ use ];
     if( !ammo_round )

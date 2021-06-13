@@ -7976,9 +7976,10 @@ label_EndMove:
                 break;
             if( !item->IsWeapon() )
                 break;
-            if( target_cr->IsDead() )
+			/* This should not be in engine
+			if( target_cr->IsDead() )
                 break;
-            if( !Chosen->IsRawParam( MODE_UNLIMITED_AMMO ) && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty() )
+			if( !Chosen->IsRawParam( MODE_UNLIMITED_AMMO ) && item->WeapGetMaxAmmoCount() && item->WeapIsEmpty() )
             {
                 SndMngr.PlaySoundType( 'W', 'O', item->Proto->Weapon_SoundId[ use ], '1' );
                 break;
@@ -7997,7 +7998,7 @@ label_EndMove:
             {
                 AddMess( FOMB_GAME, FmtGameText( STR_INV_WEAR_WEAPON_BROKEN ) );
                 break;
-            }
+            }*/
         }
         else if( is_reload )
         {
