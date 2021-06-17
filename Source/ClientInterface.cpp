@@ -2873,7 +2873,7 @@ void FOClient::IntDraw()
 
     if( ( Chosen->GetParam( ST_CURRENT_HP ) * 100 ) / Chosen->GetParam( ST_MAX_LIFE ) <= 20 )
         Str::ChangeValue( bin_str, 0x20 );                                                         // Red
-    else if( ( Chosen->GetParam( ST_CURRENT_HP ) * 100 ) / Chosen->GetParam( ST_MAX_LIFE ) <= 40 ) // TODO:
+    else if( ( Chosen->GetParam( ST_CURRENT_HP ) * 100 ) / Chosen->GetParam( ST_MAX_LIFE ) <= 40 )
         Str::ChangeValue( bin_str, 0x10 );                                                         // Yellow
 
     SprMngr.DrawStr( IntHP, bin_str, 0, COLOR_IFACE, FONT_NUM );
@@ -2881,8 +2881,8 @@ void FOClient::IntDraw()
     // Ac
     SprMngr.DrawStr( IntAC, Str::FormatBuf( "%c%03d", '9' + 4, Chosen->GetParam( ST_ARMOR_CLASS ) ), 0, COLOR_IFACE, FONT_NUM );
 
-    // Indicator
-    Item* item = Chosen->ItemSlotMain;
+    // Indicator 
+    /*Item* item = Chosen->ItemSlotMain;
     int indicator_max = item->Proto->IndicatorMax;
     int indicator_cur = item->Data.Indicator;
 
@@ -2915,7 +2915,7 @@ void FOClient::IntDraw()
     else if( GameOpt.IndicatorType == INDICATOR_LINES || GameOpt.IndicatorType == INDICATOR_BOTH )
     {
         DrawIndicator( IntWWearProcent, IntWearPoints, COLOR_TEXT_RED, 0, IntWearTick, true, false );
-    }
+    }*/
 }
 
 int FOClient::IntLMouseDown()
