@@ -1664,7 +1664,7 @@ void Client::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
     }
 
     const auto from_id = (from_cr != nullptr ? from_cr->GetId() : 0u);
-    const uint msg_len = NETMSG_MSG_SIZE + sizeof(lex_len) + lex_len;
+    const uint msg_len = sizeof(msg_len) + NETMSG_MSG_SIZE + sizeof(lex_len) + lex_len;
 
     CLIENT_OUTPUT_BEGIN(this);
     Connection->Bout << NETMSG_MSG_LEX;
@@ -1693,7 +1693,7 @@ void Client::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort n
         return;
     }
 
-    const uint msg_len = NETMSG_MSG_SIZE + sizeof(lex_len) + lex_len;
+    const uint msg_len = sizeof(msg_len) + NETMSG_MSG_SIZE + sizeof(lex_len) + lex_len;
 
     CLIENT_OUTPUT_BEGIN(this);
     Connection->Bout << NETMSG_MSG_LEX;
