@@ -323,7 +323,7 @@ private:
 
     // Ap cost
 public:
-    int GetApCostCritterMove( bool is_run ) { return IsTurnBased() ? GameOpt.TbApCostCritterMove * AP_DIVIDER * ( IsDmgTwoLeg() ? 4 : ( IsDmgLeg() ? 2 : 1 ) ) : ( GetParam( TO_BATTLE ) ? ( is_run ? GameOpt.RtApCostCritterRun : GameOpt.RtApCostCritterWalk ) : 0 ); }
+    int GetApCostCritterMove( bool is_run ) { return is_run ? GetParam( QST_AP_COST_RUN ) : 0; }
     int GetApCostMoveItemContainer()        { return IsTurnBased() ? GameOpt.TbApCostMoveItemContainer : GameOpt.RtApCostMoveItemContainer; }
     int GetApCostMoveItemInventory()
     {

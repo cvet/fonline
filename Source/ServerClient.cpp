@@ -30,11 +30,13 @@ void FOServer::ProcessCritter( Critter* cr )
         else
         {
             uint delta = tick - cr->ApRegenerationTick;
-            if( delta >= 500 )
+            if( delta >= 250 )
             {
-                cr->Data.Params[ ST_CURRENT_AP ] += max_ap * delta / GameOpt.ApRegeneration;
-                if( cr->Data.Params[ ST_CURRENT_AP ] > max_ap )
+                int ap_regen = cr->GetParam( ST_APREGEN );
+                cr->Data.Params[ ST_CURRENT_AP ] += ap_regen * delta / 1000;
+                if( cr->Data.Params[ ST_CURRENT_AP ] > max_ap ) {
                     cr->Data.Params[ ST_CURRENT_AP ] = max_ap;
+                }
                 cr->ApRegenerationTick = tick;
                 // if(cr->IsPlayer()) WriteLog("ap<%u.%u>\n",cr->Data.St[ST_CURRENT_AP]/AP_DIVIDER,cr->Data.St[ST_CURRENT_AP]%AP_DIVIDER);
             }
@@ -359,7 +361,7 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
                 map->EndCritterTurn();
         }
     }
-    else if( cr->GetParam( TO_BATTLE ) )
+    else
     {
         int ap_cost = cr->GetApCostCritterMove( is_run );
         if( cr->GetRealAp() < ap_cost && !Singleplayer )

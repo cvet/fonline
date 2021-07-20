@@ -7614,12 +7614,14 @@ void FOClient::CrittersProcess()
         else
         {
             uint delta = tick - Chosen->ApRegenerationTick;
-            if( delta >= 500 )
+            if( delta >= 250 )
             {
                 int max_ap = Chosen->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER;
-                Chosen->Params[ ST_CURRENT_AP ] += max_ap * delta / GameOpt.ApRegeneration;
-                if( Chosen->Params[ ST_CURRENT_AP ] > max_ap )
+                int ap_regen = Chosen->GetParam( ST_APREGEN );
+                Chosen->Params[ ST_CURRENT_AP ] += ap_regen * delta / 1000;
+                if( Chosen->Params[ ST_CURRENT_AP ] > max_ap ) {
                     Chosen->Params[ ST_CURRENT_AP ] = max_ap;
+                }
                 Chosen->ApRegenerationTick = tick;
             }
         }
@@ -7792,8 +7794,8 @@ void FOClient::CrittersProcess()
 label_EndMove:
         if( IsTurnBased && ap_cost_real > 0 && (int) MoveDirs.size() / ( ap_cost_real / AP_DIVIDER ) > Chosen->GetParam( ST_CURRENT_AP ) + Chosen->GetParam( ST_MOVE_AP ) )
             MoveDirs.resize( Chosen->GetParam( ST_CURRENT_AP ) + Chosen->GetParam( ST_MOVE_AP ) );
-        if( !IsTurnBased && ap_cost_real > 0 && (int) MoveDirs.size() > Chosen->GetRealAp() / ap_cost_real )
-            MoveDirs.resize( Chosen->GetRealAp() / ap_cost_real );
+        //if( !IsTurnBased && ap_cost_real > 0 && (int) MoveDirs.size() > Chosen->GetRealAp() / ap_cost_real )
+        //    MoveDirs.resize( Chosen->GetRealAp() / ap_cost_real );
         if( MoveDirs.size() > 1 && Chosen->IsDmgTwoLeg() )
             MoveDirs.resize( 1 );
 
@@ -7823,7 +7825,7 @@ label_EndMove:
                     Chosen->SubAp( ap_cost );
                 }
             }
-            else if( Chosen->GetParam( TO_BATTLE ) )
+            else
             {
                 Chosen->Params[ ST_CURRENT_AP ] -= ap_cost_real;
             }

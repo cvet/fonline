@@ -558,6 +558,11 @@ const char ClientSaveSignature[ 4 ] = { 'F', 'O', 0, CLIENT_SAVE_LAST };
 #define REPUTATION_BEGIN             ( GameOpt.ReputationBegin )
 #define REPUTATION_END               ( GameOpt.ReputationEnd )
 
+// FORP AP stuff
+#define ST_APREGEN                   ( 192 )
+// Hardcoded! Used by client and server engine. 1 AP == 100, maximim 255. Used instead of RtApCostCritterRun.
+#define QST_AP_COST_RUN              ( 782 )
+
 // Special send params
 #define OTHER_BREAK_TIME             ( 0 + MAX_PARAMS )
 #define OTHER_WAIT_TIME              ( 1 + MAX_PARAMS )
