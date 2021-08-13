@@ -129,11 +129,38 @@ public:
         ChangeParam( ST_CURRENT_AP );
         Params[ ST_MOVE_AP ] -= val;
     }
+    void RegenerateAp(uint min_delta)
+    {
+        int st_ap = GetParam( ST_ACTION_POINTS );
+        uint tick = Timer::GameTick();
+        if( !IsTurnBased() && GetParam( ST_CURRENT_AP ) < st_ap && ApRegenerationTick)
+        {
+            uint delta = tick - ApRegenerationTick;
+            if( delta >= min_delta )
+            {
+                int max_ap = st_ap * AP_DIVIDER;
+                int ap_regen = GetParam( ST_APREGEN );
+                Params[ ST_CURRENT_AP ] += ap_regen * delta / 1000;
+                if( Params[ ST_CURRENT_AP ] > max_ap ) {
+                    Params[ ST_CURRENT_AP ] = max_ap;
+                }
+                ApRegenerationTick = tick;
+            }
+        }
+        else
+        {
+            ApRegenerationTick = tick;
+        }
+        if( GetParam( ST_CURRENT_AP ) > GetParam( ST_ACTION_POINTS ) )
+        {
+            Params[ ST_CURRENT_AP ] = GetParam( ST_ACTION_POINTS ) * AP_DIVIDER;
+        }
+    }
     void SubAp( int val )
     {
         ChangeParam( ST_CURRENT_AP );
+        RegenerateAp(1);
         Params[ ST_CURRENT_AP ] -= val * AP_DIVIDER;
-        ApRegenerationTick = 0;
     }
     bool IsHideMode() { return GetRawParam( MODE_HIDE ) != 0; }
 

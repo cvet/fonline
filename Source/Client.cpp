@@ -5089,7 +5089,7 @@ void FOClient::Net_OnChosenParam()
     {
     case ST_CURRENT_AP:
     {
-        Chosen->ApRegenerationTick = 0;
+        Chosen->ApRegenerationTick = Timer::GameTick();
     }
     break;
     case TO_BATTLE:
@@ -7597,37 +7597,16 @@ void FOClient::CrittersProcess()
             Chosen->Alpha = 0xFF;
     }
 
-    // Actions
-    if( !Chosen->IsFree() )
-        return;
-
     // Game pause
     if( Timer::IsGamePaused() )
         return;
 
     // Ap regeneration
-    if( Chosen->GetParam( ST_CURRENT_AP ) < Chosen->GetParam( ST_ACTION_POINTS ) && !IsTurnBased )
-    {
-        uint tick = Timer::GameTick();
-        if( !Chosen->ApRegenerationTick )
-            Chosen->ApRegenerationTick = tick;
-        else
-        {
-            uint delta = tick - Chosen->ApRegenerationTick;
-            if( delta >= 250 )
-            {
-                int max_ap = Chosen->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER;
-                int ap_regen = Chosen->GetParam( ST_APREGEN );
-                Chosen->Params[ ST_CURRENT_AP ] += ap_regen * delta / 1000;
-                if( Chosen->Params[ ST_CURRENT_AP ] > max_ap ) {
-                    Chosen->Params[ ST_CURRENT_AP ] = max_ap;
-                }
-                Chosen->ApRegenerationTick = tick;
-            }
-        }
-    }
-    if( Chosen->GetParam( ST_CURRENT_AP ) > Chosen->GetParam( ST_ACTION_POINTS ) )
-        Chosen->Params[ ST_CURRENT_AP ] = Chosen->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER;
+    Chosen->RegenerateAp(250);
+
+    // Actions
+    if( !Chosen->IsFree() )
+        return;
 
     if( ChosenAction.empty() )
         return;
@@ -7738,6 +7717,9 @@ void FOClient::CrittersProcess()
             CHECK_NEED_REAL_AP( ap_cost_real );
         Chosen->IsRunning = is_run;
 
+        // hacky way to prevent jumpy walk-run cycle, prevents random disconnects
+        ChosenAction[ 0 ].Param[ 2 ] = is_run ? 1 : 0;
+
         if( hx == MoveLastHx && hy == MoveLastHy && MoveDirs.size() )
         {
             ushort hx_ = from_hx;
@@ -7825,11 +7807,10 @@ label_EndMove:
                     Chosen->SubAp( ap_cost );
                 }
             }
-            else
+            else if (ap_cost_real != 0)
             {
                 Chosen->Params[ ST_CURRENT_AP ] -= ap_cost_real;
             }
-            Chosen->ApRegenerationTick = 0;
             HexMngr.SetCursorPos( GameOpt.MouseX, GameOpt.MouseY, Keyb::CtrlDwn, true );
             RebuildLookBorders = true;
         }

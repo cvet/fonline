@@ -317,7 +317,6 @@ public:
     {
         breakTime = ms;
         startBreakTime = Timer::GameTick();
-        ApRegenerationTick = 0;
     }
     void SetBreakTimeDelta( uint ms )
     {
@@ -456,11 +455,37 @@ public:
     bool CheckFind( int find_type );
     int  GetRealAp() { return Data.Params[ ST_CURRENT_AP ]; }
     int  GetAllAp()  { return GetParam( ST_CURRENT_AP ) + GetParam( ST_MOVE_AP ); }
+    void RegenerateAp(uint min_delta)
+    {
+        int max_ap = GetParam( ST_ACTION_POINTS ) * AP_DIVIDER;
+        uint tick = Timer::GameTick();
+        if( !IsTurnBased() && GetRealAp() < max_ap && ApRegenerationTick )
+        {
+            uint delta = tick - ApRegenerationTick;
+            if( delta >= min_delta )
+            {
+                int ap_regen = GetParam( ST_APREGEN );
+                Data.Params[ ST_CURRENT_AP ] += ap_regen * delta / 1000;
+                if( Data.Params[ ST_CURRENT_AP ] > max_ap ) {
+                    Data.Params[ ST_CURRENT_AP ] = max_ap;
+                }
+                ApRegenerationTick = tick;
+            }
+        }
+        else
+        {
+            ApRegenerationTick = tick;
+        }
+        if( Data.Params[ ST_CURRENT_AP ] > max_ap )
+        {
+            Data.Params[ ST_CURRENT_AP ] = max_ap;
+        }
+    }
     void SubAp( int val )
     {
         ChangeParam( ST_CURRENT_AP );
+        RegenerateAp(1);
         Data.Params[ ST_CURRENT_AP ] -= val * AP_DIVIDER;
-        ApRegenerationTick = 0;
     }
     void SubMoveAp( int val )
     {

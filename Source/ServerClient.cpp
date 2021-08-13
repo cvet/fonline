@@ -22,28 +22,7 @@ void FOServer::ProcessCritter( Critter* cr )
     }
 
     // Ap regeneration
-    int max_ap = cr->GetParam( ST_ACTION_POINTS ) * AP_DIVIDER;
-    if( cr->IsFree() && cr->GetRealAp() < max_ap && !cr->IsTurnBased() )
-    {
-        if( !cr->ApRegenerationTick )
-            cr->ApRegenerationTick = tick;
-        else
-        {
-            uint delta = tick - cr->ApRegenerationTick;
-            if( delta >= 250 )
-            {
-                int ap_regen = cr->GetParam( ST_APREGEN );
-                cr->Data.Params[ ST_CURRENT_AP ] += ap_regen * delta / 1000;
-                if( cr->Data.Params[ ST_CURRENT_AP ] > max_ap ) {
-                    cr->Data.Params[ ST_CURRENT_AP ] = max_ap;
-                }
-                cr->ApRegenerationTick = tick;
-                // if(cr->IsPlayer()) WriteLog("ap<%u.%u>\n",cr->Data.St[ST_CURRENT_AP]/AP_DIVIDER,cr->Data.St[ST_CURRENT_AP]%AP_DIVIDER);
-            }
-        }
-    }
-    if( cr->Data.Params[ ST_CURRENT_AP ] > max_ap )
-        cr->Data.Params[ ST_CURRENT_AP ] = max_ap;
+    cr->RegenerateAp(250);
 
     // Internal misc/drugs time events
     // One event per cycle
@@ -364,19 +343,24 @@ bool FOServer::Act_Move( Critter* cr, ushort hx, ushort hy, uint move_params )
     else
     {
         int ap_cost = cr->GetApCostCritterMove( is_run );
-        if( cr->GetRealAp() < ap_cost && !Singleplayer )
+        if( ap_cost != 0 )
         {
-            cr->Send_XY( cr );
-            cr->Send_Param( ST_CURRENT_AP );
-            return false;
-        }
-        if( ap_cost )
-        {
-            int steps = cr->GetRealAp() / ap_cost - 1;
+            if( cr->GetRealAp() < ap_cost * 2 ) {
+                cr->RegenerateAp(1);
+            }
+            uint real_ap = cr->GetRealAp();
+
+            if ( !Singleplayer && real_ap < ap_cost)
+            {
+                cr->Send_Param( ST_CURRENT_AP );
+                cr->Send_XY( cr );
+                return false;
+            }
+
+            int steps = real_ap / ap_cost - 1;
             if( steps < MOVE_PARAM_STEP_COUNT )
                 move_params |= ( MOVE_PARAM_STEP_DISALLOW << ( steps * MOVE_PARAM_STEP_BITS ) );                               // Cut steps
             cr->Data.Params[ ST_CURRENT_AP ] -= ap_cost;
-            cr->ApRegenerationTick = 0;
         }
     }
 
