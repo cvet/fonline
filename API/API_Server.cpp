@@ -102,6 +102,13 @@ int ConstantsManager_GetValue(size_t collection, ScriptString* string)
 	return ConstantsManager::GetValue(collection, c_str);
 }
 
-EXPORT uint StatisticsCurOnline() {
-	return FOServer::Statistics.CurOnline;
+const ServerStatistics* Server_Statistics() {
+	return &FOServer::Statistics;
+}
+
+uint Timer_GameTick() {
+	return Timer::GameTick();
+}
+uint Timer_FastTick() {
+	return Timer::FastTick();
 }
