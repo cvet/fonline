@@ -1452,8 +1452,8 @@ void HexManager::CollectLightSources()
         }
 
         // Default chosen light
-        if( cr->IsChosen() && !added )
-            lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), 0, 4, MAX_LIGHT_VALUE / 4, 0 ) );
+        //if( cr->IsChosen() && !added )
+        //    lightSources.push_back( LightSource( cr->GetHexX(), cr->GetHexY(), 0, 4, MAX_LIGHT_VALUE / 4, 0 ) );
     }
     #endif
 }
