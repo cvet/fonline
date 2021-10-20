@@ -1375,6 +1375,14 @@ bool FOServer::SScriptFunc::Crit_SetEvent( Critter* cr, int event_type, ScriptSt
     return true;
 }
 
+
+ScriptString* FOServer::SScriptFunc::Crit_GetLexems( Critter* cr )
+{
+	if( cr->IsNotValid )
+		SCRIPT_ERROR_R0( "This nullptr." );
+	return new ScriptString( cr->Data.Lexems );
+}
+
 void FOServer::SScriptFunc::Crit_SetLexems( Critter* cr, ScriptString* lexems )
 {
     if( cr->IsNotValid )
