@@ -369,6 +369,7 @@ public:
     void FinishScriptSystem();
     void RunStartScript();
     void RunMapLoadScript( Map* map );
+	void RunMapNewScript(Map* map, const string& command);
     void RunMapSaveScript( Map* map );
     void DrawIfaceLayer( uint layer );
 
@@ -384,6 +385,10 @@ public:
         static Item*         Crit_AddChild( CritterCl* cr, hash pid );
         static CScriptArray* Item_GetChildren( Item* item );
         static CScriptArray* Crit_GetChildren( CritterCl* cr );
+
+
+		static ushort Global_GetMapWidth();
+		static ushort Global_GetMapHeight();
 
         static Item*         Global_AddItem( hash pid, ushort hx, ushort hy );
         static CritterCl*    Global_AddCritter( hash pid, ushort hx, ushort hy );
@@ -402,11 +407,12 @@ public:
         static uint   Global_GetTilesCount( ushort hx, ushort hy, bool roof );
         static void   Global_DeleteTile( ushort hx, ushort hy, bool roof, int layer );
         static hash   Global_GetTileHash( ushort hx, ushort hy, bool roof, int layer );
-        static void   Global_AddTileHash( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash pic_hash );
+        static void   Global_AddTileHash( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash pic_hash, bool isrefresh );
         static string Global_GetTileName( ushort hx, ushort hy, bool roof, int layer );
         static void   Global_AddTileName( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string pic_name );
 
         static void          Global_AllowSlot( uchar index, bool enable_send );
+		static void          Global_RefreshMap();
         static Map*          Global_LoadMap( string file_name );
         static void          Global_UnloadMap( Map* pmap );
         static bool          Global_SaveMap( Map* pmap, string custom_name );
@@ -449,7 +455,7 @@ public:
         static string Global_ReplaceTextStr( string text, string replace, string str );
         static string Global_ReplaceTextInt( string text, string replace, int i );
 
-        static void    Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
+        static void    Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist, bool _passed );
         static uint    Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static bool    Global_GetHexPos( ushort hx, ushort hy, int& x, int& y );
         static bool    Global_GetMonitorHex( int x, int y, ushort& hx, ushort& hy, bool ignore_interface );
@@ -463,6 +469,7 @@ public:
         static uint Global_GetSpriteTicks( uint spr_id );
         static uint Global_GetPixelColor( uint spr_id, int frame_index, int x, int y );
         static void Global_GetTextInfo( string text, int w, int h, int font, int flags, int& tw, int& th, int& lines );
+		static void Global_DrawDirSprite(uint spr_id, uchar direction, int frame_index, int x, int y, uint color, bool offs);
         static void Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs );
         static void Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs );
         static void Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
@@ -473,6 +480,9 @@ public:
         static void Global_DrawCritter3d( uint instance, hash model_name, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color );
         static void Global_PushDrawScissor( int x, int y, int w, int h );
         static void Global_PopDrawScissor();
+		static void Global_SetPropertyGetCallback(asIScriptGeneric* gen);
+		static void Global_AddPropertySetCallback(asIScriptGeneric* gen);
+		static string FOMapper::SScriptFunc::Global_GetClipboardText();
 
         static Map*          ClientCurMap;
         static Location*     ClientCurLocation;

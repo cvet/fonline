@@ -4,6 +4,7 @@
 #include "Defines.h"
 #include "SpriteManager.h"
 #include "FileManager.h"
+#include "CritterCl.h"
 
 #define RES_ATLAS_STATIC           ( 1 )
 #define RES_ATLAS_DYNAMIC          ( 2 )
@@ -44,6 +45,7 @@ public:
 
     void Refresh();
     void Finish();
+	void FreeResourcesCritter(CritterCl* critter);
     void FreeResources( int type );
     void ReinitializeDynamicAtlas();
 
@@ -53,9 +55,9 @@ public:
     AnyFrames* GetSkDxAnim( hash name_hash )  { return GetAnim( name_hash, RES_ATLAS_STATIC ); }
     AnyFrames* GetItemAnim( hash name_hash )  { return GetAnim( name_hash, RES_ATLAS_DYNAMIC ); }
 
-    AnyFrames*   GetCrit2dAnim( hash model_name, uint anim1, uint anim2, int dir );
+    AnyFrames*   GetCrit2dAnim( hash model_name, uint anim1, uint anim2, int dir, CritterCl* critter );
     Animation3d* GetCrit3dAnim( hash model_name, uint anim1, uint anim2, int dir, int* layers3d = nullptr );
-    uint         GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, int* layers3d = nullptr );
+    uint         GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, CritterCl* critter, int* layers3d = nullptr );
 
     AnyFrames* GetRandomSplash();
 

@@ -10,6 +10,29 @@
 # include "Item.h"
 #endif
 
+struct PositionFlag
+{
+	char Stand : 1;
+	char Prone : 1;
+	char Crouch : 1;
+};
+
+struct HexData
+{
+	char Block : 3;
+	char NoTrake : 3;
+	char StaticTrigger : 1;
+	char Critter : 1;
+	char DeadCritter : 1;
+	char Door : 1;
+	char BlockItem : 3;
+	char NrakeItem : 3;
+	char Trigger : 1;
+	char GagItem : 1;
+	char NoWay : 3;
+	char NoShot : 3;
+};
+
 class ProtoMap: public ProtoEntity
 {
 public:
@@ -31,7 +54,7 @@ public:
     #endif
 
     // Tiles
-    struct Tile     // 16 bytes
+    struct Tile     // 20 bytes
     {
         hash   Name;
         ushort HexX, HexY;
@@ -43,7 +66,7 @@ public:
         #endif
 
         Tile() { memzero( this, sizeof( Tile ) ); }
-        Tile( hash name, ushort hx, ushort hy, char ox, char oy, uchar layer, bool is_roof ): Name( name ), HexX( hx ), HexY( hy ), OffsX( ox ), OffsY( oy ), Layer( layer ), IsRoof( is_roof ) {}
+        Tile( hash name, ushort hx, ushort hy, char ox, char oy, uchar layer, bool is_roof ): Name( name ), HexX( hx ), HexY( hy ), OffsX( ox ), OffsY( oy ), Layer( layer ), IsRoof( is_roof ){}
     };
     typedef vector< Tile > TileVec;
     TileVec Tiles;
@@ -67,7 +90,7 @@ public:
     ItemVec  ChildItemsVec;
     ItemVec  StaticItemsVec;
     ItemVec  TriggerItemsVec;
-    uchar*   HexFlags;
+	HexData*   HexFlags;
 
 private:
     bool BindScripts( EntityVec& entities );
@@ -93,7 +116,7 @@ public:
     UIntVec  TextsLang;
     FOMsgVec Texts;
 
-    ProtoMap( hash pid );
+    ProtoMap( hash pid, uint subType);
     ~ProtoMap();
 };
 typedef vector< ProtoMap* >    ProtoMapVec;
@@ -104,7 +127,7 @@ class ProtoLocation: public ProtoEntity
 public:
     CLASS_PROPERTY_ALIAS( CScriptArray *, MapProtos );
 
-    ProtoLocation( hash pid );
+    ProtoLocation( hash pid, uint subType);
 
     UIntVec  TextsLang;
     FOMsgVec Texts;

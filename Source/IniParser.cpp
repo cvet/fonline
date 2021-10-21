@@ -16,9 +16,10 @@ void IniParser::AppendStr( const string& buf )
 bool IniParser::AppendFile( const string& fname )
 {
     FileManager fm;
-    if( !fm.LoadFile( fname ) )
-        return false;
-
+	if (!fm.LoadFile(fname))
+	{
+		return false;
+	}
     ParseStr( fm.GetCStr() );
     return true;
 }

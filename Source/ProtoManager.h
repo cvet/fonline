@@ -19,6 +19,17 @@ private:
     ProtoMapMap     mapProtos;
     ProtoLocMap     locProtos;
 
+	struct CustomProtoData
+	{
+		string fileExt;
+		string appName;
+		ProtoCustomEntityMap map;
+	};
+
+	CustomProtoData nullCustomProtos;
+	std::vector<CustomProtoData*> customProtos;
+
+
 public:
     void ClearProtos();
     bool LoadProtosFromFiles();
@@ -26,15 +37,19 @@ public:
     void LoadProtosFromBinaryData( UCharVec& data );
     bool ValidateProtoResources( StrVec& resource_names );
 
+	void CreateCustomProtoMap( uint subType, string fileExt, string appName );
+
     ProtoItem*     GetProtoItem( hash pid );
     ProtoCritter*  GetProtoCritter( hash pid );
     ProtoMap*      GetProtoMap( hash pid );
     ProtoLocation* GetProtoLocation( hash pid );
+	ProtoCustomEntity* GetProtoCustom(uint subType, hash pid);
 
-    const ProtoItemMap&    GetProtoItems()     { return itemProtos; }
-    const ProtoCritterMap& GetProtoCritters()  { return crProtos; }
-    const ProtoMapMap&     GetProtoMaps()      { return mapProtos; }
-    const ProtoLocMap&     GetProtoLocations() { return locProtos; }
+	const ProtoItemMap& GetProtoItems();
+	const ProtoCritterMap& GetProtoCritters();
+	const ProtoMapMap& GetProtoMaps();
+	const ProtoLocMap& GetProtoLocations();
+	const ProtoCustomEntityMap& GetProtoCustoms(uint subType);
 };
 
 extern ProtoManager ProtoMngr;

@@ -29,6 +29,7 @@
 
 #define SCRIPT_ERROR_R( error, ... )     do { Script::RaiseException( _str( error, ## __VA_ARGS__ ) ); return; } while( 0 )
 #define SCRIPT_ERROR_R0( error, ... )    do { Script::RaiseException( _str( error, ## __VA_ARGS__ ) ); return 0; } while( 0 )
+#define SCRIPT_ERROR_RETURN( error, ret, ... )    do { Script::RaiseException( _str( error, ## __VA_ARGS__ ) ); return ret; } while( 0 )
 
 typedef void ( *EndExecutionCallback )();
 typedef vector< asIScriptContext* >             ContextVec;
@@ -53,8 +54,32 @@ struct ScriptEntry
     string Content;
     int    SortValue;
     int    SortValueExt;
+	bool   IsDynamic;
 };
+
 using ScriptEntryVec = vector< ScriptEntry >;
+
+class ModuleUserData
+{
+	Preprocessor::LineNumberTranslator* LineTranslator;
+	string Name;
+
+public:
+	ModuleUserData( Preprocessor::LineNumberTranslator* translator, string name );
+	void Clear( );
+	Preprocessor::LineNumberTranslator* GetLineTranslator( );
+	string GetName( );
+};
+
+class FunctionUserData
+{
+	hash* func_num_ptr;
+
+public:
+	FunctionUserData( hash* func_ptr );
+	void Clear( );
+	hash* GetFunctionNumPtr( );
+};
 
 class Script
 {
@@ -68,7 +93,8 @@ public:
     static void UnloadScripts();
     static bool ReloadScripts( const string& target );
     static bool PostInitScriptSystem();
-    static bool RunModuleInitFunctions();
+    static bool RunModuleInitFunctions( asIScriptModule* module );
+    static bool RunAllModuleInitFunctions();
 
     static asIScriptEngine* GetEngine();
     static void             SetEngine( asIScriptEngine* engine );
@@ -101,6 +127,8 @@ public:
     static string GetProfilerStatistics();
 
     static StrVec GetCustomEntityTypes();
+	static PropertyRegistrator* GetCustomEntityRegistrationBySubType(uint subType);
+	static PropertyRegistrator* GetEntityRegistration(string class_name);
     #ifdef FONLINE_SERVER
     static bool RestoreCustomEntity( const string& type_name, uint id, const DataBase::Document& doc );
     #endif
@@ -115,6 +143,11 @@ public:
 
     static void Watcher( void* );
     static void SetRunTimeout( uint abort_timeout, uint message_timeout );
+
+	static void DynamicScriptObserver( void* );
+	static void DynamicScriptCheck( );
+	static void ProcessDynamicScripts( ); 
+	static void TryProcessDynamicScripts( );
 
     static void Define( const string& define );
     static void Undef( const string& define );
@@ -165,6 +198,9 @@ public:
     static float             GetReturnedFloat();
     static double            GetReturnedDouble();
     static void*             GetReturnedRawAddress();
+
+	static size_t GetCurrentArg();
+	static size_t GetCountArg();
 
     // Logging
     static void Log( const string& str );

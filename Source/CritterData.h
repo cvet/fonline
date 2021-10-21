@@ -9,7 +9,7 @@
 class ProtoCritter: public ProtoEntity
 {
 public:
-    ProtoCritter( hash pid );
+    ProtoCritter( hash pid, uint subType);
 
     CLASS_PROPERTY_ALIAS( uint, Multihex );
 

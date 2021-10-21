@@ -256,6 +256,8 @@ public:
     void Send_Effect( hash eff_pid, ushort hx, ushort hy, ushort radius );
     void Send_FlyEffect( hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy );
     void Send_PlaySound( uint crid_synchronize, const string& sound_name );
+	void Send_AddCustomEntity(CustomEntity* entity);
+	void Send_RemoveCustomEntity(CustomEntity* entity);
 
     // Send all
     void SendA_Property( NetProperty::Type type, Property* prop, Entity* entity );
@@ -392,6 +394,8 @@ public:
     void Send_SomeItem( Item* item );                                     // Without checks
     void Send_CustomMessage( uint msg );
     void Send_CustomMessage( uint msg, uchar* data, uint data_size );
+	void Send_AddCustomEntity(CustomEntity* entity);
+	void Send_RemoveCustomEntity(CustomEntity* entity);
 
     // Dialogs
 private:
@@ -402,6 +406,15 @@ public:
     bool IsTalking() { return Talk.TalkType != TALK_NONE; }
     void ProcessTalk( bool force );
     void CloseTalk();
+
+	// CustomEntity
+protected:
+	std::vector<uint> CustomEntityListeninig;
+
+public:
+	void AddListening(uint entityid);
+	void EraseListening(uint entityid);
+	void EraseAllListening();
 };
 
 class Npc: public Critter

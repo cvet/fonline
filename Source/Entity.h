@@ -4,6 +4,7 @@
 #include "Common.h"
 #include "Properties.h"
 #include "Methods.h"
+#include "Interface.h"
 
 enum class EntityType
 {
@@ -26,6 +27,7 @@ using EntityMap = map< uint, Entity* >;
 class ProtoEntity;
 using ProtoEntityVec = vector< ProtoEntity* >;
 using ProtoEntityMap = map< hash, ProtoEntity* >;
+class FOMsg;
 
 class ProtoEntity
 {
@@ -70,11 +72,40 @@ public:
     void      Release() const;
 };
 
-class CustomEntity: public Entity
+class ProtoCustomEntity : public ProtoEntity
 {
 public:
-    CustomEntity( uint id, uint sub_type, PropertyRegistrator* registrator );
+	ProtoCustomEntity(hash pid, uint subType);
+
+	vector< uint >  TextsLang;
+	vector< FOMsg* > Texts;
+};
+
+typedef map< hash, ProtoCustomEntity* > ProtoCustomEntityMap;
+typedef vector< ProtoCustomEntity* >    ProtoCustomEntityVec;
+
+class CustomEntity: public Entity
+{
+#ifdef FONLINE_SERVER
+	std::vector<uint> Observers;
+#endif
+
+public:
+	PROPERTIES_HEADER();
+    CustomEntity( uint id, uint sub_type, PropertyRegistrator* registrator, ProtoCustomEntity* proto);
+	CustomEntity(uint id, uint sub_type, ProtoCustomEntity* proto);
     const uint SubType;
+
+	uint GetSubType();
+#ifdef FONLINE_SERVER
+	bool IsObserver(uint entityId);
+	bool AddObserver(uint entityId);
+	bool EraseObserver(uint entityId);
+	std::vector<uint> GetObservers();
+#endif
+#if defined FONLINE_CLIENT || defined ( FONLINE_MAPPER )
+	static CustomEntity* GetCustomEntity(uint sub, uint id);
+#endif
 };
 
 class GlobalVars: public Entity

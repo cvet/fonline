@@ -196,6 +196,7 @@ public:
     bool         IsAnim()    { return animSequence.size() > 0; }
     bool         IsWalkAnim();
     void         ClearAnim();
+	void         EraseAnim();
 
     void SetOffs( short set_ox, short set_oy, bool move_text );
     void ChangeOffs( short change_ox, short change_oy, bool move_text );
@@ -245,5 +246,4 @@ private:
 typedef map< uint, CritterCl* > CritMap;
 typedef vector< CritterCl* >    CritVec;
 typedef CritterCl*              CritterClPtr;
-
 #endif // __CRITTER_CL__

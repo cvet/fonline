@@ -411,6 +411,10 @@ struct BindClass
     static int  IsConnected;
     static int  IsConnecting;
     static int  UpdateFilesInProgress;
+	static int  StatisticHardTime;
+	static int  StatisticLoopTime;
+	static int  StatisticInputTime;
+	static int  StatisticNetworkTime;
     #endif
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
@@ -418,16 +422,20 @@ struct BindClass
     static void DataVal_Index() {}
 
     static void Global_GetTime()                                       {}
-    static void Global_SetPropertyGetCallback( asIScriptGeneric* gen ) {}
-    static void Global_AddPropertySetCallback( asIScriptGeneric* gen ) {}
     static void Global_GetGlobalMapRelief()                            {}
     #endif
+
+	static void Global_SetPropertyGetCallback(asIScriptGeneric* gen) {}
+	static void Global_AddPropertySetCallback(asIScriptGeneric* gen) {}
 
     #ifdef BIND_MAPPER
     static void Item_AddChild()    {}
     static void Crit_AddChild()    {}
     static void Item_GetChildren() {}
     static void Crit_GetChildren() {}
+
+	static void Global_GetMapWidth() {}
+	static void Global_GetMapHeight() {}
 
     static void Global_AddItem()             {}
     static void Global_AddCritter()          {}
@@ -505,6 +513,7 @@ struct BindClass
     static void Global_GetSpriteTicks()     {}
     static void Global_GetPixelColor()      {}
     static void Global_GetTextInfo()        {}
+	static void Global_DrawDirSprite()      {}
     static void Global_DrawSprite()         {}
     static void Global_DrawSpritePattern()  {}
     static void Global_DrawSpriteOffs()     {}
@@ -517,6 +526,7 @@ struct BindClass
     static void Global_DrawCritter3d()      {}
     static void Global_PushDrawScissor()    {}
     static void Global_PopDrawScissor()     {}
+	static void Global_GetClipboardText()   {}
     static void Global_GetKeybLang()        {}
     static void Global_GetHexPos()          {}
     static void Global_GetMonitorHex()      {}
@@ -541,6 +551,10 @@ int BindClass::ClientCurLocation;
 int BindClass::IsConnected;
 int BindClass::IsConnecting;
 int BindClass::UpdateFilesInProgress;
+int BindClass::StatisticHardTime;
+int BindClass::StatisticLoopTime;
+int BindClass::StatisticInputTime;
+int BindClass::StatisticNetworkTime;
 #endif
 
 #ifdef BIND_MAPPER

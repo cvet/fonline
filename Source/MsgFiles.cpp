@@ -79,7 +79,10 @@ string FOMsg::GetStr( uint num )
     switch( str_count )
     {
     case 0:
-        return MSG_ERROR_MESSAGE;
+	{
+		WriteLog("No fount msg{}<{}>\n",num,_str().parseHash(num).str());
+		return MSG_ERROR_MESSAGE;
+	}
     case 1:
         break;
     default:
@@ -96,8 +99,11 @@ string FOMsg::GetStr( uint num, uint skip )
     uint str_count = (uint) strData.count( num );
     auto it = strData.find( num );
 
-    if( skip >= str_count )
-        return MSG_ERROR_MESSAGE;
+	if (skip >= str_count)
+	{
+		WriteLog("No fount msg{} skip:{} count:{}\n", num, skip,str_count);
+		return MSG_ERROR_MESSAGE;
+	}
     for( uint i = 0; i < skip; i++ )
         ++it;
 

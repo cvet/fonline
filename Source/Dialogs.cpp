@@ -13,11 +13,11 @@ DialogManager DlgMngr;
 int GetPropEnumIndex( const string& str, bool is_demand, int& type, bool& is_hash )
 {
     #ifdef FONLINE_SERVER
-    Property* prop_global = GlobalVars::PropertiesRegistrator->Find( str );
-    Property* prop_critter = Critter::PropertiesRegistrator->Find( str );
-    Property* prop_item = Item::PropertiesRegistrator->Find( str );
-    Property* prop_location = Location::PropertiesRegistrator->Find( str );
-    Property* prop_map = Map::PropertiesRegistrator->Find( str );
+    Property* prop_global = GlobalVars::PropertiesRegistrators[0]->Find( str );
+    Property* prop_critter = Critter::PropertiesRegistrators[0]->Find( str );
+    Property* prop_item = Item::PropertiesRegistrators[0]->Find( str );
+    Property* prop_location = Location::PropertiesRegistrators[0]->Find( str );
+    Property* prop_map = Map::PropertiesRegistrators[0]->Find( str );
     int       count = ( prop_global ? 1 : 0 ) + ( prop_critter ? 1 : 0 ) + ( prop_item ? 1 : 0 ) + ( prop_location ? 1 : 0 ) + ( prop_map ? 1 : 0 );
     if( count == 0 )
     {

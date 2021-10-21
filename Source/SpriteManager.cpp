@@ -5,6 +5,10 @@
 #include "F2Palette.h"
 #include <time.h>
 
+#ifdef FONLINE_CLIENT
+#include "Client.h"
+#endif
+
 #ifdef FO_WEB
 # define SDL_GL_SwapWindow( a )    (void) 0
 #endif
@@ -1452,6 +1456,7 @@ void SpriteManager::FillAtlas( SpriteInfo* si )
 
 AnyFrames* SpriteManager::LoadAnimation( const string& fname, bool use_dummy /* = false */, bool frm_anim_pix /* = false */ )
 {
+	double workTick = Timer::AccurateTick();
     AnyFrames* dummy = ( use_dummy ? DummyAnimation : nullptr );
 
     if( fname.empty() )
@@ -1477,8 +1482,10 @@ AnyFrames* SpriteManager::LoadAnimation( const string& fname, bool use_dummy /* 
         result = LoadAnimationFofrm( fname );
     else if( ext == "art" )
         result = LoadAnimationArt( fname );
-    else if( ext == "spr" )
-        result = LoadAnimationSpr( fname );
+	else if (ext == "spr")
+	{
+		result = LoadAnimationSpr(fname);
+	}
     else if( ext == "zar" )
         result = LoadAnimationZar( fname );
     else if( ext == "til" )
@@ -1491,7 +1498,13 @@ AnyFrames* SpriteManager::LoadAnimation( const string& fname, bool use_dummy /* 
         result = LoadAnimation3d( fname );
     else
         WriteLog( "Unsupported image file format '{}', file '{}'.\n", ext, fname );
-
+#ifdef FONLINE_CLIENT
+	if (!result)
+	{
+		WriteLog("error sprite load '{}'.\n", fname);
+	}
+	FOClient::Self->StatisticHardTime += Timer::AccurateTick() - workTick;
+#endif
     return result ? result : dummy;
 }
 
@@ -2387,10 +2400,183 @@ AnyFrames* SpriteManager::LoadAnimationArt( const string& fname )
     return base_anim;
 }
 
-#define SPR_CACHED_COUNT    ( 10 )
+#define SPR_COUNT_LAYER 4
+
+struct TacticsFrameMemmory
+{
+	uint Id;
+	int w;
+	int h;
+	bool noempty[SPR_COUNT_LAYER];
+	uchar* img_data[SPR_COUNT_LAYER];
+
+	short offX;
+	short offY;
+
+	void Init(int _w, int _h)
+	{
+		Id = 0;
+		w = _w;
+		h = _h;
+
+		offX = 0;
+		offY = 0;
+
+		for (uint i = 0; i < 4;i++)
+		{
+			img_data[i] = new uchar[w * h * 4];
+			memzero(img_data[i], w*h * 4);
+		}
+	}
+
+	void SetData( uchar layer, uchar* data )
+	{
+		if (w == 0 || h == 0 || !data )
+			return; // assert?
+
+		memcpy(img_data[layer], data, w*h * 4);
+		noempty[layer] = true;
+	}
+
+	uchar Color(uchar c1, uchar c2, float a)
+	{
+		int val = c1 + (int)(a * c2);
+		return CLAMP(val, 0, 255);
+	}
+
+	uchar* GetData( int colorize[4][4] )
+	{
+		uchar* result = new uchar[w * h * 4];
+		memzero(result, w*h * 4);
+		bool first = true;
+		for (uint layer = 0; layer < SPR_COUNT_LAYER; layer++)
+		{
+			if (!noempty[layer])
+				continue;
+			for (uint i = 0, iend = w * h ; i < iend; i++)
+			{
+				uint index = 4 * i;
+				if (first)
+				{
+					float ca = (float)(colorize[layer][3]) / 255;
+
+					result[index] = Color( img_data[layer][index], colorize[layer][0], ca);
+					result[index+1] = Color( img_data[layer][index + 1], colorize[layer][1], ca);
+					result[index+2] = Color( img_data[layer][index + 2], colorize[layer][2], ca);
+					result[index+3] = img_data[layer][index+3];
+				}
+				else
+				{
+					if (img_data[layer][index + 3] > 0)
+					{
+						uchar color[4] = { img_data[layer][index], img_data[layer][index + 1], img_data[layer][index + 2], img_data[layer][index + 3] };
+						for( int j = 0; j < 3; j++ )
+						{
+						   if( colorize[layer][ j ] )
+						   {
+							   int c = (int)((colorize[layer][3]/255)*colorize[layer][j]);
+							   int val = (int) color[j] + c;
+							   color[j] = CLAMP( val, 0, 255 );
+						   }
+						}
+
+						float ca = (float)(img_data[layer][index + 3]) / 255;
+						result[index] = Color(img_data[layer][index], color[0], ca);
+						result[index + 1] = Color(img_data[layer][index + 1], color[1], ca);
+						result[index + 2] = Color(img_data[layer][index + 2], color[2], ca);
+						if (result[index + 3] < color[3])
+							result[index + 3] = color[3];
+					}
+				}
+			}
+
+			first = false;
+		}
+		return result;
+	}
+};
+
+struct SprCache
+{
+	vector<TacticsFrameMemmory*> frames[8];
+};
+map<hash, SprCache*> Memmory_sprs;
+
+#define SPR_CACHED_COUNT    ( 20 )
 AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
 {
-    AnyFrames* base_anim = nullptr;
+	// Parameters
+	string file_name = fname;
+
+	// Animation
+	string seq_name;
+
+	// Color offsets
+	// 0 - other
+	// 1 - skin
+	// 2 - hair
+	// 3 - armor
+	int rgb_offs[4][4] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
+
+	size_t delim = file_name.find('$');
+	if (delim != string::npos)
+	{
+		// Format: fileName$[1 100 0 0][2 0 0 100]animName.spr
+		string opt = file_name.substr(delim + 1);
+		string ext = _str(opt).getFileExtension();
+		opt = _str(opt).eraseFileExtension();
+
+		size_t first = opt.find_first_of('[');
+		size_t last = opt.find_last_of(']');
+		seq_name = (last != string::npos ? opt.substr(last + 1) : opt);
+
+		while (first != string::npos && last != string::npos)
+		{
+			last = opt.find_first_of(']');
+			string entry = opt.substr(first + 1, last - first - 1);
+			istringstream ientry(entry);
+
+			int index = -1;
+			ientry >> index;
+			// To one part
+			if (index >= 0 && index <= 3)
+			{
+				ientry >> rgb_offs[index][0];                                   // R
+				ientry >> rgb_offs[index][1];                        // G
+				ientry >> rgb_offs[index][2];                        // B
+				ientry >> rgb_offs[index][3];                        // A
+			}
+
+			opt = opt.substr(last + 1);
+			first = opt.find_first_of('[');
+		}
+
+		file_name.erase(delim);
+		file_name += "." + ext;
+	}
+	if (file_name.empty())
+		return nullptr;
+
+	AnyFrames* base_anim = nullptr;
+
+	SprCache* memm_frames = nullptr;
+	bool load_proccess = false;
+	auto memit = Memmory_sprs.find(_str("{}&{}", seq_name, file_name).toHash());
+	if (memit != Memmory_sprs.end())
+	{
+		memm_frames = memit->second;
+		load_proccess = true;
+
+		base_anim = AnyFrames::Create((uint)memm_frames->frames[0].size(), 1000 / 10 * (uint)memm_frames->frames[0].size());
+		base_anim->CreateDirAnims();
+	}
+	else
+	{
+		memm_frames = new SprCache;
+		for (int i = 0; i < DIRS_COUNT; i++)
+			memm_frames->frames[i].clear();
+		Memmory_sprs.insert(std::make_pair(_str("{}&{}", seq_name, file_name).toHash(), memm_frames));
+	}
 
     for( int dir = 0; dir < DIRS_COUNT; dir++ )
     {
@@ -2427,136 +2613,120 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
             dir_spr = ( dir + 2 ) % 8;
         }
 
-        // Parameters
-        string file_name = fname;
+		if (load_proccess)
+		{
+			if (memm_frames)
+			{
+				AnyFrames* anim = base_anim->GetDir(dir);
+				for (size_t f = 0, fend = memm_frames->frames[dir].size(); f < fend; f++ )
+				{
+					anim->NextX[f] = 0;
+					anim->NextY[f] = 0;
 
-        // Animation
-        string seq_name;
+					TacticsFrameMemmory* frame = memm_frames->frames[dir][f];
+					if (frame)
+					{
+						// Optimization, share frames
+						bool founded = false;
 
-        // Color offsets
-        // 0 - other
-        // 1 - skin
-        // 2 - hair
-        // 3 - armor
-        int   rgb_offs[ 4 ][ 3 ] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 } };
+						for (size_t i = 0; i < f; i++)
+						{
+							if (memm_frames->frames[dir][i]->Id == frame->Id)
+							{
+								anim->Ind[f] = anim->Ind[i];
+								founded = true;
+								break;
+							}
+						}
+						if (founded)
+							continue;
 
-        size_t delim = file_name.find( '$' );
-        if( delim != string::npos )
-        {
-            // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
-            string opt = file_name.substr( delim + 1 );
-            string ext = _str( opt ).getFileExtension();
-            opt = _str( opt ).eraseFileExtension();
+						SpriteInfo* si = new SpriteInfo();
+						si->OffsX = frame->offX;
+						si->OffsY = frame->offY;
+						uint result = RequestFillAtlas(si, frame->w, frame->h, frame->GetData(rgb_offs));
+						if (!result)
+						{
+							AnyFrames::Destroy(base_anim);
+							return nullptr;
+						}
+						anim->Ind[f] = result;
+					}
+				}
+				continue; // NextDir
+			}
+		}
 
-            size_t first = opt.find_first_of( '[' );
-            size_t last = opt.find_last_of( ']', first );
-            seq_name = ( last != string::npos ? opt.substr( last + 1 ) : opt );
+		// Cache last 10 big SPR files (for critters)
+		struct SprFmCache
+		{
+			string      fileName;
+			FileManager fm;
+		} static* cached[SPR_CACHED_COUNT + 1] = { 0 };         // Last index for last loaded
 
-            while( first != string::npos && last != string::npos )
-            {
-                last = opt.find_first_of( ']', first );
-                string entry = opt.substr( first, last - first - 1 );
-                istringstream ientry( entry );
+		// Find already opened
+		int index = -1;
+		if (!load_proccess)
+		{
+			for (int i = 0; i <= SPR_CACHED_COUNT; i++)
+			{
+				if (!cached[i])
+					break;
+				if (_str(file_name).compareIgnoreCase(cached[i]->fileName))
+				{
+					index = i;
+					break;
+				}
+			}
 
-                // Parse numbers
-                int rgb[ 4 ];
-                if( ientry >> rgb[ 0 ] >> rgb[ 1 ] >> rgb[ 2 ] >> rgb[ 3 ] )
-                {
-                    // To one part
-                    if( rgb[ 0 ] >= 0 && rgb[ 0 ] <= 3 )
-                    {
-                        rgb_offs[ rgb[ 0 ] ][ 0 ] = rgb[ 1 ];                                   // R
-                        rgb_offs[ rgb[ 0 ] ][ 1 ] = rgb[ 2 ];                                   // G
-                        rgb_offs[ rgb[ 0 ] ][ 2 ] = rgb[ 3 ];                                   // B
-                    }
-                    // To all parts
-                    else
-                    {
-                        for( int i = 0; i < 4; i++ )
-                        {
-                            rgb_offs[ i ][ 0 ] = rgb[ 1 ];                                             // R
-                            rgb_offs[ i ][ 1 ] = rgb[ 2 ];                                             // G
-                            rgb_offs[ i ][ 2 ] = rgb[ 3 ];                                             // B
-                        }
-                    }
-                }
+			// Open new
+			if (index == -1)
+			{
+				FileManager fm;
+				if (!fm.LoadFile(file_name))
+					return nullptr;
 
-                first = opt.find_first_of( '[', last );
-            }
+				if (fm.GetFsize() > 1000000)                 // 1mb
+				{
+					// Find place in cache
+					for (int i = 0; i < SPR_CACHED_COUNT; i++)
+					{
+						if (!cached[i])
+						{
+							index = i;
+							break;
+						}
+					}
 
-            file_name.erase( delim );
-            file_name += "." + ext;
-        }
-        if( file_name.empty() )
-            return nullptr;
+					// Delete old element
+					if (index == -1)
+					{
+						delete cached[0];
+						index = SPR_CACHED_COUNT - 1;
+						for (int i = 0; i < SPR_CACHED_COUNT - 1; i++)
+							cached[i] = cached[i + 1];
+					}
 
-        // Cache last 10 big SPR files (for critters)
-        struct SprCache
-        {
-            string      fileName;
-            FileManager fm;
-        } static* cached[ SPR_CACHED_COUNT + 1 ] = { 0 };         // Last index for last loaded
-
-        // Find already opened
-        int index = -1;
-        for( int i = 0; i <= SPR_CACHED_COUNT; i++ )
-        {
-            if( !cached[ i ] )
-                break;
-            if( _str( file_name ).compareIgnoreCase( cached[ i ]->fileName ) )
-            {
-                index = i;
-                break;
-            }
-        }
-
-        // Open new
-        if( index == -1 )
-        {
-            FileManager fm;
-            if( !fm.LoadFile( file_name ) )
-                return nullptr;
-
-            if( fm.GetFsize() > 1000000 )                 // 1mb
-            {
-                // Find place in cache
-                for( int i = 0; i < SPR_CACHED_COUNT; i++ )
-                {
-                    if( !cached[ i ] )
-                    {
-                        index = i;
-                        break;
-                    }
-                }
-
-                // Delete old element
-                if( index == -1 )
-                {
-                    delete cached[ 0 ];
-                    index = SPR_CACHED_COUNT - 1;
-                    for( int i = 0; i < SPR_CACHED_COUNT - 1; i++ )
-                        cached[ i ] = cached[ i + 1 ];
-                }
-
-                cached[ index ] = new SprCache();
-                if( !cached[ index ] )
-                    return nullptr;
-                cached[ index ]->fileName = file_name;
-                cached[ index ]->fm = fm;
-                fm.ReleaseBuffer();
-            }
-            else
-            {
-                index = SPR_CACHED_COUNT;
-                if( !cached[ index ] )
-                    cached[ index ] = new SprCache();
-                else
-                    cached[ index ]->fm.UnloadFile();
-                cached[ index ]->fileName = file_name;
-                cached[ index ]->fm = fm;
-                fm.ReleaseBuffer();
-            }
-        }
+					cached[index] = new SprFmCache();
+					if (!cached[index])
+						return nullptr;
+					cached[index]->fileName = file_name;
+					cached[index]->fm = fm;
+					fm.ReleaseBuffer();
+				}
+				else
+				{
+					index = SPR_CACHED_COUNT;
+					if (!cached[index])
+						cached[index] = new SprFmCache();
+					else
+						cached[index]->fm.UnloadFile();
+					cached[index]->fileName = file_name;
+					cached[index]->fm = fm;
+					fm.ReleaseBuffer();
+				}
+			}
+		}
 
         FileManager& fm = cached[ index ]->fm;
         fm.SetCurPos( 0 );
@@ -2581,7 +2751,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
 
         uint    anim_index = 0;
         UIntVec frames;
-        frames.reserve( 1000 );
+        frames.reserve( 50 );
 
         // Find sequence
         bool seq_founded = false;
@@ -2724,6 +2894,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
         // Create animation
         if( frames.empty() )
             frames.push_back( 0 );
+
         if( !base_anim )
             base_anim = AnyFrames::Create( (uint) frames.size(), 1000 / 10 * (uint) frames.size() );
         if( dir == 1 )
@@ -2747,9 +2918,10 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                     break;
                 }
             }
-            if( founded )
-                continue;
-
+			if (founded)
+			{
+				continue;
+			}
             // Compute whole image size
             uint whole_w = 0, whole_h = 0;
             for( uint part = 0; part < 4; part++ )
@@ -2776,13 +2948,18 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
 
             // Allocate data
             uchar* img_data = new uchar[ whole_w * whole_h * 4 ];
-            memzero( img_data, whole_w * whole_h * 4 );
+            //memzero( img_data, whole_w * whole_h * 4 );
+
+			TacticsFrameMemmory* spr_frame_mem = new TacticsFrameMemmory;
+			spr_frame_mem->Init(whole_w, whole_h);
 
             for( uint part = 0; part < 4; part++ )
             {
                 uint frm_index = ( type == 0x32 ? frame_cnt * dir_cnt * part + dir_spr * frame_cnt + frm : ( ( frm * dir_cnt + dir_spr ) << 2 ) + part );
-                if( !image_indices[ frm_index ] )
-                    continue;
+				if (!image_indices[frm_index])
+				{
+					continue;
+				}
                 fm_images.SetCurPos( image_indices[ frm_index ] );
 
                 uint   posx = fm_images.GetLEUInt();
@@ -2806,7 +2983,7 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                     AnyFrames::Destroy( anim );
                     return nullptr;
                 }
-
+				memzero(img_data, whole_w * whole_h * 4);
                 uint* ptr = (uint*) img_data + ( posy * whole_w ) + posx;
                 uint  x = posx, y = posy;
                 while( rle_size )
@@ -2839,21 +3016,33 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                             break;
                         }
 
-                        for( int j = 0; j < 3; j++ )
+                        /*for( int j = 0; j < 3; j++ )
                         {
                             if( rgb_offs[ part ][ j ] )
                             {
-                                int val = (int) ( ( (uchar*) &col )[ 2 - j ] ) + rgb_offs[ part ][ j ];
+								int c = (int)((rgb_offs[part][3]/255)*rgb_offs[part][j]);
+                                int val = (int) ( ( (uchar*) &col )[ 2 - j ] ) + c;
                                 ( (uchar*) &col )[ 2 - j ] = CLAMP( val, 0, 255 );
                             }
-                        }
+							if(((uchar*)ptr)[3] < (col >> 24))
+								((uchar*)ptr)[3] = (col >> 24);
+                        }*/
 
                         std::swap( ( (uchar*) &col )[ 0 ], ( (uchar*) &col )[ 2 ] );
 
-                        if( !part )
+                        //if( !part )
                             *ptr = col;
-                        else if( ( col >> 24 ) >= 128 )
-                            *ptr = col;
+						/*else if ((col >> 24) > 0)
+						{
+							for (int j = 0; j < 3; j++)
+							{
+								int c = (int)(((col >> 24) / 255)*((uchar*)&col)[j]);
+								int val = ((uchar*)ptr)[j] + c;
+								((uchar*)ptr)[j] = CLAMP(val, 0, 255);
+							}
+							if(((uchar*)(ptr))[3] < (col >> 24))
+								((uchar*)(ptr))[3] = (col >> 24);
+						}*/
                         ptr++;
 
                         if( ++x >= w + posx )
@@ -2875,24 +3064,30 @@ AnyFrames* SpriteManager::LoadAnimationSpr( const string& fname )
                         }
                     }
                 }
+				spr_frame_mem->SetData(part, img_data);
             }
 
+			SAFEDEL(img_data);
+			spr_frame_mem->offX = bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 0] - center_x + center_x_ex + whole_w / 2;
+			spr_frame_mem->offY = bboxes[frm * dir_cnt * 4 + dir_spr * 4 + 1] - center_y + center_y_ex + whole_h;
+			if(memm_frames)
+				memm_frames->frames[dir].push_back(spr_frame_mem);
             SpriteInfo* si = new SpriteInfo();
-            si->OffsX = bboxes[ frm * dir_cnt * 4 + dir_spr * 4 + 0 ] - center_x + center_x_ex + whole_w / 2;
-            si->OffsY = bboxes[ frm * dir_cnt * 4 + dir_spr * 4 + 1 ] - center_y + center_y_ex + whole_h;
-            uint result = RequestFillAtlas( si, whole_w, whole_h, img_data );
+            si->OffsX = spr_frame_mem->offX;
+            si->OffsY = spr_frame_mem->offY;
+            uint result = RequestFillAtlas( si, whole_w, whole_h, spr_frame_mem->GetData(rgb_offs) );
             if( !result )
             {
                 AnyFrames::Destroy( base_anim );
                 return nullptr;
             }
+			spr_frame_mem->Id = f;
             anim->Ind[ f ] = result;
         }
 
-        if( dir_cnt == 1 )
-            break;
+		if (dir_cnt == 1)
+			break;
     }
-
     return base_anim;
 }
 
@@ -2981,6 +3176,8 @@ AnyFrames* SpriteManager::LoadAnimationZar( const string& fname )
         }
     }
 
+	RUNTIME_ASSERT_STR(fm.IsEOF(), _str("!IsEOF<{}><{}>", fm.GetFsize() - fm.GetCurPos(), fname));
+
     // Fill animation
     SpriteInfo* si = new SpriteInfo();
     uint        result = RequestFillAtlas( si, w, h, img_data );
@@ -2996,23 +3193,23 @@ AnyFrames* SpriteManager::LoadAnimationTil( const string& fname )
 {
     // Open file
     FileManager fm;
-    if( !fm.LoadFile( fname ) )
-        return nullptr;
+	if (!fm.LoadFile(fname))
+		return nullptr;
 
-    // Read header
+	// Read header
     char head[ 7 ];
-    if( !fm.CopyMem( head, 7 ) || head[ 6 ] || strcmp( head, "<tile>" ) )
-        return nullptr;
+	if (!fm.CopyMem(head, 7) || head[6] || strcmp(head, "<tile>"))
+		return nullptr;
     while( fm.GetUChar() )
         ;
     fm.GoForward( 7 + 4 ); // Unknown
-    uint w = fm.GetLEUInt();
-    UNUSED_VARIABLE( w );
-    uint h = fm.GetLEUInt();
-    UNUSED_VARIABLE( h );
+    uint _w = fm.GetLEUInt();
+    UNUSED_VARIABLE( _w );
+    uint _h = fm.GetLEUInt();
+    UNUSED_VARIABLE( _h );
 
-    if( !fm.FindFragment( (uchar*) "<tiledata>", 10, fm.GetCurPos() ) )
-        return nullptr;
+	if (!fm.FindFragment((uchar*) "<tiledata>", 10, fm.GetCurPos()))
+		return nullptr;
     fm.GoForward( 10 + 3 ); // Signature
     uint frames_count = fm.GetLEUInt();
 
@@ -3021,34 +3218,31 @@ AnyFrames* SpriteManager::LoadAnimationTil( const string& fname )
 
     for( uint frm = 0; frm < frames_count; frm++ )
     {
-        // Read header
-        char head[ 6 ];
-        if( !fm.CopyMem( head, 6 ) || head[ 5 ] || strcmp( head, "<zar>" ) )
-            return nullptr;
-        uchar type = fm.GetUChar();
-        fm.GoForward( 1 );       // \0
-        uint  w = fm.GetLEUInt();
-        uint  h = fm.GetLEUInt();
-        uchar palette_present = fm.GetUChar();
+		if (!fm.FindFragment((uchar*) "<zar>", 5, fm.GetCurPos()))
+			return nullptr;
+		fm.GoForward( 6 );
+		// Read header
+		uchar type = fm.GetUChar();
+		fm.GoForward(1); // \0
+		uint  w = fm.GetLEUInt();
+		uint  h = fm.GetLEUInt();
+		uchar palette_present = fm.GetUChar();
 
-        // Read palette
-        uint  palette[ 256 ] = { 0 };
-        uchar def_color = 0;
-        if( palette_present )
-        {
-            uint palette_count = fm.GetLEUInt();
-            if( palette_count > 256 )
-                return nullptr;
-            fm.CopyMem( palette, sizeof( uint ) * palette_count );
-            if( type == 0x34 )
-                def_color = fm.GetUChar();
-        }
+		// Read palette
+		uint  palette[256] = { 0 };
+		uchar def_color = 0;
+		if (palette_present)
+		{
+			uint palette_count = fm.GetLEUInt();
+			if (palette_count > 256)
+				return nullptr;
+			fm.CopyMem(palette, sizeof(uint) * palette_count);
+			if (type == 0x34)
+				def_color = fm.GetUChar();
+		}
 
-        // Read image
-        uint   rle_size = fm.GetLEUInt();
-        uchar* rle_buf = fm.GetCurBuf();
-        fm.GoForward( rle_size );
-
+		// Read image
+		uint rle_size = fm.GetLEUInt();
         // Allocate data
         uchar* img_data = new uchar[ w * h * 4 ];
         uint*  ptr = (uint*) img_data;
@@ -3056,8 +3250,7 @@ AnyFrames* SpriteManager::LoadAnimationTil( const string& fname )
         // Decode
         while( rle_size )
         {
-            int control = *rle_buf;
-            rle_buf++;
+			int control = fm.GetUChar();
             rle_size--;
 
             int control_mode = ( control & 3 );
@@ -3069,16 +3262,16 @@ AnyFrames* SpriteManager::LoadAnimationTil( const string& fname )
                 switch( control_mode )
                 {
                 case 1:
-                    col = palette[ rle_buf[ i ] ];
+                    col = palette[fm.GetUChar()];
                     ( (uchar*) &col )[ 3 ] = 0xFF;
                     break;
                 case 2:
-                    col = palette[ rle_buf[ 2 * i ] ];
-                    ( (uchar*) &col )[ 3 ] = rle_buf[ 2 * i + 1 ];
+                    col = palette[fm.GetUChar()];
+                    ( (uchar*) &col )[ 3 ] = fm.GetUChar();
                     break;
                 case 3:
                     col = palette[ def_color ];
-                    ( (uchar*) &col )[ 3 ] = rle_buf[ i ];
+                    ( (uchar*) &col )[ 3 ] = fm.GetUChar();
                     break;
                 default:
                     break;
@@ -3090,24 +3283,18 @@ AnyFrames* SpriteManager::LoadAnimationTil( const string& fname )
             if( control_mode )
             {
                 rle_size -= control_count;
-                rle_buf += control_count;
                 if( control_mode == 2 )
-                {
                     rle_size -= control_count;
-                    rle_buf += control_count;
-                }
             }
         }
 
         // Fill animation
         SpriteInfo* si = new SpriteInfo();
         uint        result = RequestFillAtlas( si, w, h, img_data );
-        if( !result )
-            return nullptr;
-
+		if (!result)
+			return nullptr;
         anim->Ind[ frm ] = result;
     }
-
     return anim;
 }
 

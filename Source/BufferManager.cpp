@@ -311,6 +311,8 @@ bool BufferManager::NeedProcess()
         return ( NETMSG_POD_PROPERTY_SIZE( 4, 2  ) + bufReadPos <= bufEndPos );
     case NETMSG_POD_PROPERTY( 8, 2  ):
         return ( NETMSG_POD_PROPERTY_SIZE( 8, 2  ) + bufReadPos <= bufEndPos );
+	case NETMSG_REMOVE_CUSTOM_ENTITY:
+		return ( NETMSG_REMOVE_CUSTOM_ENTITY_SIZE + bufReadPos <= bufEndPos );
     default:
         break;
     }
@@ -352,6 +354,7 @@ bool BufferManager::NeedProcess()
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
     case NETMSG_ALL_PROPERTIES:
+	case NETMSG_ADD_CUSTOM_ENTITY:
         return bufReadPos + msg_len <= bufEndPos;
     default:
         // Unknown message
@@ -558,6 +561,9 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_POD_PROPERTY( 8, 2 ):
         size = NETMSG_POD_PROPERTY_SIZE( 8, 2 );
         break;
+	case NETMSG_REMOVE_CUSTOM_ENTITY:
+		size = NETMSG_REMOVE_CUSTOM_ENTITY_SIZE;
+		break;
 
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
@@ -586,6 +592,7 @@ void BufferManager::SkipMsg( uint msg )
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
     case NETMSG_ALL_PROPERTIES:
+	case NETMSG_ADD_CUSTOM_ENTITY:
     {
         // Changeable size
         uint msg_len = 0;

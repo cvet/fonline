@@ -204,7 +204,7 @@ int Compile( string target, FileManager& file, string path, string fname_prep, c
         pragma_type = PRAGMA_MAPPER;
 
     ScriptPragmaCallback* pragma_callback = new ScriptPragmaCallback( pragma_type );
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
+	std::vector<PropertyRegistrator*> registrators = pragma_callback->GetPropertyRegistrators();
 
     // Engine
     if( !Script::Init( pragma_callback, target.c_str(), true, 0, false, false ) )

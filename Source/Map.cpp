@@ -29,7 +29,7 @@ CLASS_PROPERTY_IMPL( Map, DayTime );
 CLASS_PROPERTY_IMPL( Map, DayColor );
 CLASS_PROPERTY_IMPL( Map, IsNoLogOut );
 
-Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType::Map, PropertiesRegistrator, proto )
+Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType::Map, PropertiesRegistrators[0], proto )
 {
     RUNTIME_ASSERT( proto );
 
@@ -37,20 +37,33 @@ Map::Map( uint id, ProtoMap* proto, Location* location ): Entity( id, EntityType
     MEMORY_PROCESS( MEMORY_MAP_FIELD, GetWidth() * GetHeight() );
 
     mapLocation = location;
-
-    hexFlags = nullptr;
-    memzero( loopLastTick, sizeof( loopLastTick ) );
+	memzero( loopLastTick, sizeof( loopLastTick ) );
 
     hexFlagsSize = GetWidth() * GetHeight();
-    hexFlags = new uchar[ hexFlagsSize ];
-    memzero( hexFlags, hexFlagsSize );
+
+	HexFlags = new HexData[ hexFlagsSize ];
+	for( int i = 0; i < hexFlagsSize; i++ )
+	{
+		HexFlags[ i ].Block = 0;
+		HexFlags[ i ].NoTrake = 0;
+		HexFlags[ i ].StaticTrigger = 0;
+		HexFlags[ i ].Critter = 0;
+		HexFlags[ i ].DeadCritter = 0;
+		HexFlags[ i ].Door = 0;
+		HexFlags[ i ].BlockItem = 0;
+		HexFlags[ i ].NrakeItem = 0;
+		HexFlags[ i ].Trigger = 0;
+		HexFlags[ i ].GagItem = 0;
+		HexFlags[ i ].NoWay = 0;
+		HexFlags[ i ].NoShot = 0;
+	}
 }
 
 Map::~Map()
 {
     MEMORY_PROCESS( MEMORY_MAP, -(int) sizeof( Map ) );
     MEMORY_PROCESS( MEMORY_MAP_FIELD, -hexFlagsSize );
-    SAFEDELA( hexFlags );
+	SAFEDELA( HexFlags );
     hexFlagsSize = 0;
 }
 
@@ -678,35 +691,89 @@ void Map::RecacheHexFlags( ushort hx, ushort hy )
         SetHexFlag( hx, hy, FH_TRIGGER );
 }
 
-ushort Map::GetHexFlags( ushort hx, ushort hy )
+HexData Map::GetHexFlags( ushort hx, ushort hy )
 {
-    return ( hexFlags[ hy * GetWidth() + hx ] << 8 ) | GetProtoMap()->HexFlags[ hy * GetWidth() + hx ];
+	HexData flag = HexFlags[ hy * GetWidth( ) + hx ];
+	flag.StaticTrigger = GetProtoMap( )->HexFlags[ hy * GetWidth( ) + hx ].StaticTrigger;
+	flag.Block = GetProtoMap( )->HexFlags[ hy * GetWidth( ) + hx ].Block;
+	flag.NoTrake = GetProtoMap( )->HexFlags[ hy * GetWidth( ) + hx ].NoTrake;
+	return flag;// ( HexFlags[ hy * GetWidth( ) + hx ] << 8 ) | GetProtoMap( )->HexFlags[ hy * GetWidth( ) + hx ];
 }
 
 void Map::SetHexFlag( ushort hx, ushort hy, uchar flag )
 {
-    SETFLAG( hexFlags[ hy * GetWidth() + hx ], flag );
+	if( FLAG( flag, FH_BLOCK ) )
+		HexFlags[ hy * GetWidth( ) + hx ].Block = 1;
+	if( FLAG( flag, FH_NOTRAKE ) )
+		HexFlags[ hy * GetWidth( ) + hx ].NoTrake = 1;
+	if( FLAG( flag, FH_STATIC_TRIGGER ) )
+		HexFlags[ hy * GetWidth( ) + hx ].StaticTrigger = 1;
+
+	if( FLAG( flag, FH_CRITTER ) )
+		HexFlags[ hy * GetWidth( ) + hx ].Critter = 1;
+	if( FLAG( flag, FH_DEAD_CRITTER ) )
+		HexFlags[ hy * GetWidth( ) + hx ].DeadCritter = 1;
+	if( FLAG( flag, FH_DOOR ) )
+		HexFlags[ hy * GetWidth( ) + hx ].Door = 1;
+	if( FLAG( flag, FH_BLOCK_ITEM ) )
+		HexFlags[ hy * GetWidth( ) + hx ].BlockItem = 1;
+	if( FLAG( flag, FH_NRAKE_ITEM ) )
+		HexFlags[ hy * GetWidth( ) + hx ].NrakeItem = 1;
+	if( FLAG( flag, FH_TRIGGER ) )
+		HexFlags[ hy * GetWidth( ) + hx ].Trigger = 1;
+	if( FLAG( flag, FH_GAG_ITEM ) )
+		HexFlags[ hy * GetWidth( ) + hx ].GagItem = 1;
+
+	if( FLAG( flag, FH_NOWAY ) )
+		HexFlags[ hy * GetWidth( ) + hx ].NoWay = 1;
+	if( FLAG( flag, FH_NOSHOOT ) )
+		HexFlags[ hy * GetWidth( ) + hx ].NoShot = 1;
 }
 
 void Map::UnsetHexFlag( ushort hx, ushort hy, uchar flag )
 {
-    UNSETFLAG( hexFlags[ hy * GetWidth() + hx ], flag );
+	if( FLAG( flag, FH_BLOCK ) )
+		HexFlags[ hy * GetWidth( ) + hx ].Block = 0;
+	if( FLAG( flag, FH_NOTRAKE ) )
+		HexFlags[ hy * GetWidth( ) + hx ].NoTrake = 0;
+	if( FLAG( flag, FH_STATIC_TRIGGER ) )
+		HexFlags[ hy * GetWidth( ) + hx ].StaticTrigger = 0;
+
+	if( FLAG( flag, FH_CRITTER ) )
+		HexFlags[ hy * GetWidth( ) + hx ].Critter = 0;
+	if( FLAG( flag, FH_DEAD_CRITTER ) )
+		HexFlags[ hy * GetWidth( ) + hx ].DeadCritter = 0;
+	if( FLAG( flag, FH_DOOR ) )
+		HexFlags[ hy * GetWidth( ) + hx ].Door = 0;
+	if( FLAG( flag, FH_BLOCK_ITEM ) )
+		HexFlags[ hy * GetWidth( ) + hx ].BlockItem = 0;
+	if( FLAG( flag, FH_NRAKE_ITEM ) )
+		HexFlags[ hy * GetWidth( ) + hx ].NrakeItem = 0;
+	if( FLAG( flag, FH_TRIGGER ) )
+		HexFlags[ hy * GetWidth( ) + hx ].Trigger = 0;
+	if( FLAG( flag, FH_GAG_ITEM ) )
+		HexFlags[ hy * GetWidth( ) + hx ].GagItem = 0;
+
+	if( FLAG( flag, FH_NOWAY ) )
+		HexFlags[ hy * GetWidth( ) + hx ].NoWay = 0;
+	if( FLAG( flag, FH_NOSHOOT ) )
+		HexFlags[ hy * GetWidth( ) + hx ].NoShot = 0;
 }
 
 bool Map::IsHexPassed( ushort hx, ushort hy )
 {
-    return !FLAG( GetHexFlags( hx, hy ), FH_NOWAY );
+    return !GetHexFlags( hx, hy ).NoWay;
 }
 
 bool Map::IsHexRaked( ushort hx, ushort hy )
 {
-    return !FLAG( GetHexFlags( hx, hy ), FH_NOSHOOT );
+    return !GetHexFlags( hx, hy ).NoShot;
 }
 
 bool Map::IsHexesPassed( ushort hx, ushort hy, uint radius )
 {
     // Base
-    if( FLAG( GetHexFlags( hx, hy ), FH_NOWAY ) )
+    if( GetHexFlags( hx, hy ).NoWay )
         return false;
     if( !radius )
         return true;
@@ -721,7 +788,7 @@ bool Map::IsHexesPassed( ushort hx, ushort hy, uint radius )
     {
         short hx_ = (short) hx + sx[ i ];
         short hy_ = (short) hy + sy[ i ];
-        if( hx_ >= 0 && hy_ >= 0 && hx_ < maxhx && hy_ < maxhy && FLAG( GetHexFlags( hx_, hy_ ), FH_NOWAY ) )
+        if( hx_ >= 0 && hy_ >= 0 && hx_ < maxhx && hy_ < maxhy && GetHexFlags( hx_, hy_ ).NoWay )
             return false;
     }
     return true;
@@ -774,9 +841,9 @@ bool Map::IsMovePassed( ushort hx, ushort hy, uchar dir, uint multihex )
 bool Map::IsFlagCritter( ushort hx, ushort hy, bool dead )
 {
     if( dead )
-        return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_DEAD_CRITTER );
+        return HexFlags[ hy * GetWidth() + hx ].DeadCritter;
     else
-        return FLAG( hexFlags[ hy * GetWidth() + hx ], FH_CRITTER );
+        return HexFlags[ hy * GetWidth() + hx ].Critter;
 }
 
 void Map::SetFlagCritter( ushort hx, ushort hy, uint multihex, bool dead )
@@ -1023,7 +1090,7 @@ CLASS_PROPERTY_IMPL( Location, Hidden );
 CLASS_PROPERTY_IMPL( Location, ToGarbage );
 CLASS_PROPERTY_IMPL( Location, Color );
 
-Location::Location( uint id, ProtoLocation* proto ): Entity( id, EntityType::Location, PropertiesRegistrator, proto )
+Location::Location( uint id, ProtoLocation* proto ): Entity( id, EntityType::Location, PropertiesRegistrators[0], proto )
 {
     RUNTIME_ASSERT( proto );
     GeckCount = 0;

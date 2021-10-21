@@ -1,3 +1,6 @@
+#include "Critter.h"
+#include "Critter.h"
+#include "Critter.h"
 #include "Common.h"
 #include "Critter.h"
 #include "Script.h"
@@ -6,8 +9,9 @@
 #include "Access.h"
 #include "CritterManager.h"
 #include "ProtoManager.h"
+#include "EntityManager.h"
 
-ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, Critter::PropertiesRegistrator ) {}
+ProtoCritter::ProtoCritter( hash pid, uint subType ): ProtoEntity( pid, Critter::PropertiesRegistrators[0]) {}
 CLASS_PROPERTY_ALIAS_IMPL( ProtoCritter, Critter, uint, Multihex );
 
 /************************************************************************/
@@ -84,7 +88,7 @@ CLASS_PROPERTY_IMPL( Critter, ShowCritterDist2 );
 CLASS_PROPERTY_IMPL( Critter, ShowCritterDist3 );
 CLASS_PROPERTY_IMPL( Critter, ScriptId );
 
-Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, type, PropertiesRegistrator, proto )
+Critter::Critter( uint id, EntityType type, ProtoCritter* proto ): Entity( id, type, PropertiesRegistrators[0], proto )
 {
     CritterIsNpc = false;
     GlobalMapGroup = nullptr;
@@ -236,7 +240,7 @@ void Critter::ProcessVisibleCritters()
     bool show_cr = ( show_cr1 || show_cr2 || show_cr3 );
     // Sneak self
     int  sneak_base_self = GetSneakCoefficient();
-
+	
     for( Critter* cr : map->GetCritters() )
     {
         if( cr == this || cr->IsDestroyed )
@@ -1295,6 +1299,18 @@ void Critter::Send_PlaySound( uint crid_synchronize, const string& sound_name )
         ( (Client*) this )->Send_PlaySound( crid_synchronize, sound_name );
 }
 
+void Critter::Send_AddCustomEntity(CustomEntity * entity)
+{
+	if (IsPlayer())
+		((Client*)this)->Send_AddCustomEntity(entity);
+}
+
+void Critter::Send_RemoveCustomEntity(CustomEntity * entity)
+{
+	if (IsPlayer())
+		((Client*)this)->Send_RemoveCustomEntity(entity);
+}
+
 void Critter::SendA_Property( NetProperty::Type type, Property* prop, Entity* entity )
 {
     if( VisCr.empty() )
@@ -2030,6 +2046,9 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, Entity* enti
     case NetProperty::ChosenItem:
         additional_args = 1;
         break;
+	case NetProperty::CustomEntity:
+		additional_args = 2;
+		break;
     default:
         break;
     }
@@ -2068,6 +2087,10 @@ void Client::Send_Property( NetProperty::Type type, Property* prop, Entity* enti
     case NetProperty::ChosenItem:
         Connection->Bout << entity->Id;
         break;
+	case NetProperty::CustomEntity:
+		Connection->Bout << ((CustomEntity*)(entity))->GetId();
+		Connection->Bout << ((CustomEntity*)(entity))->GetSubType();
+		break;
     default:
         break;
     }
@@ -2976,6 +2999,45 @@ void Client::Send_CustomMessage( uint msg, uchar* data, uint data_size )
     BOUT_END( this );
 }
 
+void Client::Send_AddCustomEntity(CustomEntity * entity)
+{
+	if (IsSendDisabled() || IsOffline())
+		return;
+	if (!entity)
+		return;
+
+	uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(entity->GetId())
+		+ sizeof(entity->GetSubType()) + sizeof( entity->GetProtoId() );
+
+	PUCharVec* data;
+	UIntVec*   data_sizes;
+	uint       whole_data_size = entity->Props.StoreData(false, &data, &data_sizes);
+	msg_len += sizeof(ushort) + whole_data_size;
+
+	BOUT_BEGIN(this);
+	Connection->Bout << NETMSG_ADD_CUSTOM_ENTITY;
+	Connection->Bout << msg_len;
+	Connection->Bout << entity->GetId();
+	Connection->Bout << entity->GetSubType();
+	Connection->Bout << entity->GetProtoId();
+
+	NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
+
+	BOUT_END(this);
+}
+
+void Client::Send_RemoveCustomEntity(CustomEntity * entity)
+{
+	if (IsSendDisabled() || IsOffline())
+		return;
+
+	BOUT_BEGIN(this);
+	Connection->Bout << NETMSG_REMOVE_CUSTOM_ENTITY;
+	Connection->Bout << entity->GetId();
+	Connection->Bout << entity->GetSubType();
+	BOUT_END(this);
+}
+
 /************************************************************************/
 /* Dialogs                                                              */
 /************************************************************************/
@@ -3077,6 +3139,38 @@ void Client::CloseTalk()
 
     Talk.Clear();
     Send_Talk();
+}
+
+void Client::AddListening(uint entityid)
+{
+	if (IsSendDisabled() || IsOffline())
+		return;
+
+	EraseListening(entityid);
+	CustomEntityListeninig.push_back(entityid);
+}
+
+void Client::EraseListening(uint entityid)
+{
+	for (auto it = CustomEntityListeninig.begin(); it != CustomEntityListeninig.end(); it++)
+	{
+		if (entityid == *it)
+		{
+			CustomEntityListeninig.erase(it);
+			return;
+		}
+	}
+}
+
+void Client::EraseAllListening()
+{
+	for (auto it = CustomEntityListeninig.begin(); it != CustomEntityListeninig.end(); it++)
+	{
+		CustomEntity* entity = (CustomEntity*)EntityMngr.GetEntity(*it, EntityType::Custom);
+		if (entity)
+			entity->EraseObserver(Id);
+	}
+	CustomEntityListeninig.clear();
 }
 
 /************************************************************************/

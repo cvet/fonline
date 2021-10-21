@@ -6,23 +6,32 @@
 # include "DataBase.h"
 #endif
 
-#define PROPERTIES_HEADER()                                          \
-    static PropertyRegistrator * PropertiesRegistrator;              \
-    static vector< pair< const char*, Property** > > PropertiesList; \
-    static void SetPropertyRegistrator( PropertyRegistrator * registrator )
+#define PROPERTIES_HEADER()                                                  \
+    static vector<PropertyRegistrator *> PropertiesRegistrators;             \
+    static vector< pair< const char*, Property** > > PropertiesList;         \
+    static void SetPropertyRegistrator( PropertyRegistrator * registrator ); \
+    static PropertyRegistrator * GetPropertyRegistrator(uint subType)
 #define PROPERTIES_IMPL( class_name )                                             \
-    PropertyRegistrator * class_name::PropertiesRegistrator;                      \
+    vector<PropertyRegistrator *> class_name::PropertiesRegistrators;             \
     vector< pair< const char*, Property** > > class_name::PropertiesList;         \
     void class_name::SetPropertyRegistrator( PropertyRegistrator * registrator )  \
     {                                                                             \
-        PropertiesRegistrator = registrator;                                      \
-        PropertiesRegistrator->FinishRegistration();                              \
+        PropertiesRegistrators.push_back( registrator );                          \
+        registrator->FinishRegistration();                                        \
         for( auto it = PropertiesList.begin(); it != PropertiesList.end(); it++ ) \
         {                                                                         \
-            *it->second = PropertiesRegistrator->Find( it->first );               \
+            *it->second = registrator->Find( it->first );                         \
             RUNTIME_ASSERT_STR( *it->second, it->first );                         \
         }                                                                         \
+    }                                                                             \
+    PropertyRegistrator * class_name::GetPropertyRegistrator(uint subType)        \
+    {                                                                             \
+        RUNTIME_ASSERT(PropertiesRegistrators.size() > subType);                  \
+        return PropertiesRegistrators[subType];                                   \
     }
+#define PROPERTIES_IMPL_NO_REGISTRATOR( class_name )                              \
+    vector<PropertyRegistrator *> class_name::PropertiesRegistrators;             \
+    vector< pair< const char*, Property** > > class_name::PropertiesList;
 
 #define CLASS_PROPERTY( prop_type, prop )                                                                       \
     static Property * Property ## prop;                                                                         \
@@ -127,6 +136,7 @@ public:
     void   SetPODValueAsInt( Entity* entity, int value );
     string SetGetCallback( asIScriptFunction* func );
     string AddSetCallback( asIScriptFunction* func, bool deferred );
+	string GetStringValue(Entity* entity);
 
 private:
     enum DataType
@@ -201,6 +211,7 @@ class Properties
 {
     friend class PropertyRegistrator;
     friend class Property;
+	friend string WriteValue(void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep);
 
 public:
     Properties( PropertyRegistrator* reg );
@@ -307,7 +318,8 @@ public:
     ~PropertyRegistrator();
     bool      Init();
     Property* Register( const string& type_name, const string& name, Property::AccessType access, bool is_const, const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false, bool is_no_history = false );
-    bool      RegisterComponent( const string& name );
+	std::string GetComponentName( const string& name );
+	bool      RegisterComponent( const string& name );
     void      SetDefaults( const char* group = nullptr, int64* min_value = nullptr, int64* max_value = nullptr, bool is_temporary = false, bool is_no_history = false );
     void      FinishRegistration();
     uint      GetCount();
@@ -319,10 +331,15 @@ public:
     void      SetNativeSendCallback( NativeSendCallback callback );
     uint      GetWholeDataSize();
     string    GetClassName();
+	void      SetSubType(uint sub);
+	uint      GetSubType();
+
 
     static NativeCallbackVec GlobalSetCallbacks;
 
 private:
+	uint subType;
+
     bool                         registrationFinished;
     bool                         isServer;
     string                       scriptClassName;

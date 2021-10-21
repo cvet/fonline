@@ -1,4 +1,5 @@
 #include "Entity.h"
+#include "Script.h"
 #if defined ( FONLINE_SERVER )
 # include "Item.h"
 # include "Critter.h"
@@ -9,6 +10,24 @@
 # include "ItemHex.h"
 # include "CritterCl.h"
 # include "MapCl.h"
+map< uint64, CustomEntity* > CustomEntityLib;
+
+CustomEntity* CustomEntity::GetCustomEntity(uint sub, uint id)
+{
+	//return CustomEntityLib[sub | id];
+	return nullptr;
+}
+
+void SetCustomEntity(CustomEntity* custom)
+{
+	//CustomEntityLib[custom->SubType| custom->Id] = custom;
+}
+
+void DeleteCustomEntity(  CustomEntity* custom)
+{
+	//CustomEntityLib[custom->SubType| custom->Id] = nullptr;
+}
+
 #endif
 
 ProtoEntity::ProtoEntity( hash proto_id, PropertyRegistrator* registartor ): Props( registartor ), ProtoId( proto_id ), RefCounter( 1 )
@@ -123,8 +142,13 @@ void Entity::Release() const
     {
         if( Type == EntityType::Global )
             delete (GlobalVars*) this;
-        else if( Type == EntityType::Custom )
-            delete (CustomEntity*) this;
+		else if (Type == EntityType::Custom)
+		{
+#if defined ( FONLINE_CLIENT )  || defined ( FONLINE_MAPPER )
+			DeleteCustomEntity((CustomEntity*)this);
+#endif
+			delete (CustomEntity*)this;
+		}
         #if defined ( FONLINE_SERVER )
         else if( Type == EntityType::Item )
             delete (Item*) this;
@@ -150,17 +174,75 @@ void Entity::Release() const
             delete (Map*) this;
         #endif
         else
-            RUNTIME_ASSERT( !"Unreachable place" );
+			RUNTIME_ASSERT_STR(false, _str("Unknow entity type '{}'", (int)Type).c_str());
     }
 }
 
-CustomEntity::CustomEntity( uint id, uint sub_type, PropertyRegistrator* registrator ): Entity( id, EntityType::Custom, registrator, nullptr ),
+CustomEntity::CustomEntity( uint id, uint sub_type, PropertyRegistrator* registrator, ProtoCustomEntity* proto ): Entity( id, EntityType::Custom, registrator, proto ),
                                                                                         SubType( sub_type )
 {
-    //
+#ifdef FONLINE_SERVER
+	Observers.clear();
+#endif
+#if defined FONLINE_CLIENT || defined ( FONLINE_MAPPER )
+	// RUNTIME_ASSERT(!GetCustomEntity(sub_type,id));
+	// SetCustomEntity( (CustomEntity*)this );
+#endif
 }
 
-GlobalVars::GlobalVars(): Entity( 0, EntityType::Global, PropertiesRegistrator, nullptr ) {}
+CustomEntity::CustomEntity(uint id, uint sub_type, ProtoCustomEntity* proto) : Entity(id, EntityType::Custom, CustomEntity::GetPropertyRegistrator(sub_type - 1), proto),
+SubType(sub_type)
+{
+#ifdef FONLINE_SERVER
+	Observers.clear();
+#endif
+}
+
+uint CustomEntity::GetSubType()
+{
+	return uint(SubType);
+}
+
+#ifdef FONLINE_SERVER
+
+bool CustomEntity::IsObserver(uint entityId)
+{
+	for (auto observerid : Observers)
+	{
+		if (entityId == observerid)
+			return true;
+	}
+	return false;
+}
+
+bool CustomEntity::AddObserver(uint entityId)
+{
+	if (IsObserver(entityId))
+		return false;
+	Observers.push_back(entityId);
+	return true;
+}
+
+bool CustomEntity::EraseObserver( uint entityId )
+{
+	for (auto it = Observers.begin(); it != Observers.end(); it++ )
+	{
+		if (entityId == *it)
+		{
+			Observers.erase(it);
+			return true;
+		}
+	}
+	return false;
+}
+std::vector<uint> CustomEntity::GetObservers()
+{
+	return std::vector<uint>(Observers);
+}
+#endif
+PROPERTIES_IMPL(CustomEntity);
+
+GlobalVars::GlobalVars(): Entity( 0, EntityType::Global, PropertiesRegistrators[0], nullptr ) {}
 GlobalVars* Globals;
 
 PROPERTIES_IMPL( GlobalVars );
@@ -175,3 +257,8 @@ CLASS_PROPERTY_IMPL( GlobalVars, TimeMultiplier );
 CLASS_PROPERTY_IMPL( GlobalVars, LastEntityId );
 CLASS_PROPERTY_IMPL( GlobalVars, LastDeferredCallId );
 CLASS_PROPERTY_IMPL( GlobalVars, HistoryRecordsId );
+
+ProtoCustomEntity::ProtoCustomEntity(hash pid, uint subType) : ProtoEntity(pid, CustomEntity::GetPropertyRegistrator(subType - 1)) 
+{
+}
+

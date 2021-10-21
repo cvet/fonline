@@ -15,7 +15,7 @@ CLASS_PROPERTY_IMPL( Map, DayTime );
 CLASS_PROPERTY_IMPL( Map, DayColor );
 CLASS_PROPERTY_IMPL( Map, IsNoLogOut );
 
-Map::Map( uint id, ProtoMap* proto ): Entity( id, EntityType::Map, PropertiesRegistrator, proto )
+Map::Map( uint id, ProtoMap* proto ): Entity( id, EntityType::Map, PropertiesRegistrators[0], proto )
 {
     RUNTIME_ASSERT( proto );
 }
@@ -39,7 +39,7 @@ CLASS_PROPERTY_IMPL( Location, Hidden );
 CLASS_PROPERTY_IMPL( Location, ToGarbage );
 CLASS_PROPERTY_IMPL( Location, Color );
 
-Location::Location( uint id, ProtoLocation* proto ): Entity( id, EntityType::Location, PropertiesRegistrator, proto )
+Location::Location( uint id, ProtoLocation* proto ): Entity( id, EntityType::Location, PropertiesRegistrators[0], proto )
 {
     RUNTIME_ASSERT( proto );
 }

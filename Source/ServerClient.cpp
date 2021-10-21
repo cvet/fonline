@@ -55,13 +55,13 @@ void FOServer::ProcessCritter( Critter* cr )
     // Client
     if( cr->IsPlayer() )
     {
-        // Cast
+		// Cast
         Client* cl = (Client*) cr;
 
         // Talk
         cl->ProcessTalk( false );
 
-        // Ping client
+		// Ping client
         if( cl->IsToPing() )
             cl->PingClient();
 
@@ -425,7 +425,7 @@ void FOServer::Process_CreateClient( Client* cl )
 
     uint   disallow_msg_num = 0, disallow_str_num = 0;
     string lexems;
-    bool   allow = Script::RaiseInternalEvent( ServerFunctions.PlayerRegistration, cl->GetIp(), &cl->Name, &disallow_msg_num, &disallow_str_num, &lexems );
+    bool allow = Script::RaiseInternalEvent( ServerFunctions.PlayerRegistration, cl->GetIp(), &cl->Name, &disallow_msg_num, &disallow_str_num, &lexems );
     if( !allow )
     {
         if( disallow_msg_num < TEXTMSG_COUNT && disallow_str_num )
@@ -1062,6 +1062,8 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     NetProperty::Type type = NetProperty::None;
     uint              cr_id = 0;
     uint              item_id = 0;
+	uint              entity_id = 0;
+	uint              entity_sub_type = 0;
     ushort            property_index = 0;
 
     if( data_size == 0 )
@@ -1091,6 +1093,11 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         additional_args = 1;
         cl->Connection->Bin >> item_id;
         break;
+	case NetProperty::CustomEntity:
+		additional_args = 2;
+		cl->Connection->Bin >> entity_id;
+		cl->Connection->Bin >> entity_sub_type;
+		break;
     default:
         break;
     }
@@ -1124,30 +1131,30 @@ void FOServer::Process_Property( Client* cl, uint data_size )
     {
     case NetProperty::Global:
         is_public = true;
-        prop = GlobalVars::PropertiesRegistrator->Get( property_index );
+        prop = GlobalVars::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = Globals;
         break;
     case NetProperty::Critter:
         is_public = true;
-        prop = Critter::PropertiesRegistrator->Get( property_index );
+        prop = Critter::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = CrMngr.GetCritter( cr_id );
         break;
     case NetProperty::Chosen:
-        prop = Critter::PropertiesRegistrator->Get( property_index );
+        prop = Critter::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = cl;
         break;
     case NetProperty::MapItem:
         is_public = true;
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = Item::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = ItemMngr.GetItem( item_id );
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = Item::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
         {
             Critter* cr = CrMngr.GetCritter( cr_id );
@@ -1156,19 +1163,19 @@ void FOServer::Process_Property( Client* cl, uint data_size )
         }
         break;
     case NetProperty::ChosenItem:
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = Item::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = cl->GetItem( item_id, true );
         break;
     case NetProperty::Map:
         is_public = true;
-        prop = Map::PropertiesRegistrator->Get( property_index );
+        prop = Map::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = MapMngr.GetMap( cl->GetMapId() );
         break;
     case NetProperty::Location:
         is_public = true;
-        prop = Location::PropertiesRegistrator->Get( property_index );
+        prop = Location::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
         {
             Map* map = cl->GetMap();
@@ -1176,6 +1183,14 @@ void FOServer::Process_Property( Client* cl, uint data_size )
                 entity = map->GetLocation();
         }
         break;
+	case NetProperty::CustomEntity:
+		is_public = true;
+		prop = CustomEntity::GetPropertyRegistrator(entity_sub_type-1)->Get(property_index);
+		if (prop)
+		{
+			entity = (CustomEntity*)EntityMngr.GetEntity(entity_id, EntityType::Custom);
+		}
+		break;
     default:
         break;
     }
@@ -1243,4 +1258,31 @@ void FOServer::OnSendLocationValue( Entity* entity, Property* prop )
         for( Map* map : loc->GetMaps() )
             map->SendProperty( NetProperty::Location, prop, loc );
     }
+}
+
+void FOServer::OnSendCustomEntityValue(Entity * entity, Property * prop)
+{
+	if ((prop->GetAccess() & Property::PublicMask) != 0)
+	{
+		CustomEntity* custom_entity = (CustomEntity*)entity;
+		auto observers = custom_entity->GetObservers();
+		std::vector<uint> clearIds = std::vector<uint>();
+		for (auto observerId : observers)
+		{
+			Critter* critter = CrMngr.GetCritter(observerId);
+			if (critter && critter->IsPlayer() && ((Client*)critter)->IsOnline())
+			{
+				critter->Send_Property(NetProperty::CustomEntity, prop, entity);
+			}
+			else
+			{
+				clearIds.push_back(observerId);
+			}
+		}
+
+		for (auto clearid : clearIds)
+		{
+			custom_entity->EraseObserver(clearid);
+		}
+	}
 }

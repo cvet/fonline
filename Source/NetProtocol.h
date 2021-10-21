@@ -672,6 +672,25 @@
 // Data
 // ////////////////////////////////////////////////////////////////////////
 
+#define NETMSG_ADD_CUSTOM_ENTITY                    MAKE_NETMSG_HEADER( 136 )
+// ////////////////////////////////////////////////////////////////////////
+//
+// Params:
+// uint msg_len
+// uint entity_id
+// uint entity_subtype
+// hash entity_pid
+// Properties data
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_REMOVE_CUSTOM_ENTITY               MAKE_NETMSG_HEADER( 137 )
+#define NETMSG_REMOVE_CUSTOM_ENTITY_SIZE          ( sizeof( uint ) + sizeof( uint ) + sizeof( uint ) )
+// ////////////////////////////////////////////////////////////////////////
+// Params:
+// uint entity_id
+// uint sub_type
+// ////////////////////////////////////////////////////////////////////////
+
 // ************************************************************************
 // Automaps info
 // ************************************************************************
@@ -708,6 +727,7 @@ public:
         ChosenItem,          // 1 item_id
         Map,                 // 0
         Location,            // 0
+		CustomEntity,        // 2 entity_id sub_type
     };
 };
 

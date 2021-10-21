@@ -118,8 +118,7 @@ bool FOServer::InitScriptSystem()
 
     // Bind vars and functions, look bind.h
     asIScriptEngine*      engine = Script::GetEngine();
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-    if( ServerBind::Bind( engine, registrators ) )
+    if( ServerBind::Bind( engine, pragma_callback->GetPropertyRegistrators()) )
         return false;
 
     // Load script modules
@@ -198,32 +197,40 @@ bool FOServer::InitScriptSystem()
 
     ASDbgMemoryCanWork = true;
 
+	std::vector<PropertyRegistrator*> registrators = pragma_callback->GetPropertyRegistrators();
+
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
-    GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
+    GlobalVars::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendGlobalValue );
     Globals = new GlobalVars();
     Critter::SetPropertyRegistrator( registrators[ 1 ] );
-    Critter::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
+    Critter::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendCritterValue );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
-    Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "Count", OnSetItemCount );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsHidden", OnSetItemChangeView );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsAlwaysView", OnSetItemChangeView );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsTrap", OnSetItemChangeView );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "TrapValue", OnSetItemChangeView );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemRecacheHex );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemRecacheHex );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsGag", OnSetItemRecacheHex );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsTrigger", OnSetItemRecacheHex );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "BlockLines", OnSetItemBlockLines );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsGeck", OnSetItemIsGeck );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsRadio", OnSetItemIsRadio );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
+    Item::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendItemValue );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "Count", OnSetItemCount );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsHidden", OnSetItemChangeView );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsAlwaysView", OnSetItemChangeView );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsTrap", OnSetItemChangeView );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "TrapValue", OnSetItemChangeView );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsNoBlock", OnSetItemRecacheHex );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsShootThru", OnSetItemRecacheHex );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsGag", OnSetItemRecacheHex );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsTrigger", OnSetItemRecacheHex );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "BlockLines", OnSetItemBlockLines );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsGeck", OnSetItemIsGeck );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsRadio", OnSetItemIsRadio );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "Opened", OnSetItemOpened );
     Map::SetPropertyRegistrator( registrators[ 3 ] );
-    Map::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
+    Map::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendMapValue );
     Location::SetPropertyRegistrator( registrators[ 4 ] );
-    Location::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
-
+    Location::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendLocationValue );
+	for (size_t i = 5, iend = registrators.size(); i < iend; i++)
+	{
+		registrators[i]->SetNativeSendCallback(OnSendCustomEntityValue);
+		ProtoMngr.CreateCustomProtoMap(registrators[i]->GetSubType(), _str("fo{}", registrators[i]->GetClassName().c_str()).lower().c_str(), _str("Proto{}", registrators[i]->GetClassName().c_str()).str());
+		CustomEntity::SetPropertyRegistrator(registrators[i]);
+	}
     WriteLog( "Script system initialization complete.\n" );
+
     return true;
 }
 
@@ -297,7 +304,7 @@ bool FOServer::ReloadClientScripts()
         Script::SetEngine( engine );
 
     // Properties
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
+	std::vector<PropertyRegistrator*> registrators = pragma_callback->GetPropertyRegistrators();
 
     // Bind vars and functions
     int bind_errors = 0;
@@ -335,7 +342,7 @@ bool FOServer::ReloadClientScripts()
     int   errors = 0;
     if( Script::ReloadScripts( "Client" ) )
     {
-        RUNTIME_ASSERT( engine->GetModuleCount() == 1 );
+        //RUNTIME_ASSERT( engine->GetModuleCount() == 1 );
         asIScriptModule* module = engine->GetModuleByIndex( 0 );
         CBytecodeStream  binary;
         if( module->SaveByteCode( &binary ) >= 0 )
@@ -343,7 +350,7 @@ bool FOServer::ReloadClientScripts()
             std::vector< asBYTE >&              buf = binary.GetBuf();
 
             UCharVec                            lnt_data;
-            Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) module->GetUserData();
+            Preprocessor::LineNumberTranslator* lnt = ((ModuleUserData*) module->GetUserData() )->GetLineTranslator();
             Preprocessor::StoreLineNumberTranslator( lnt, lnt_data );
 
             // Store data for client
@@ -719,6 +726,39 @@ Map* FOServer::SScriptFunc::Crit_GetMap( Critter* cr )
         SCRIPT_ERROR_R0( "Attempt to call method on destroyed object." );
 
     return MapMngr.GetMap( cr->GetMapId() );
+}
+
+bool FOServer::SScriptFunc::Crit_IsMovePassed(Critter* cr, uchar direction)
+{
+	if (cr->IsDestroyed)
+		SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
+	Map* map = MapMngr.GetMap(cr->GetMapId());
+	if (!map)
+		SCRIPT_ERROR_R0("Critter is on global.");
+	if (direction >= DIRS_COUNT)
+		SCRIPT_ERROR_R0("Invalid direction arg.");
+
+	ushort hx = cr->GetHexX();
+	ushort hy = cr->GetHexY();
+	MoveHexByDir(hx, hy, direction, map->GetWidth(), map->GetHeight());
+	// Check passed
+	ushort fx = cr->GetHexX();
+	ushort fy = cr->GetHexY();
+	uchar  dir = GetNearDir(fx, fy, hx, hy);
+	uint   multihex = cr->GetMultihex();
+
+	if (!map->IsMovePassed(hx, hy, dir, multihex))
+	{
+		if (cr->IsPlayer())
+		{
+			cr->Send_XY(cr);
+			Critter* cr_hex = map->GetHexCritter(hx, hy, false);
+			if (cr_hex)
+				cr->Send_XY(cr_hex);
+		}
+		return false;
+	}
+	return true;
 }
 
 bool FOServer::SScriptFunc::Crit_MoveToDir( Critter* cr, uchar direction )
@@ -1901,7 +1941,7 @@ Item* FOServer::SScriptFunc::Map_AddItem( Map* map, ushort hx, ushort hy, hash p
         count = 1;
     if( props )
     {
-        Properties props_( Item::PropertiesRegistrator );
+        Properties props_( Item::PropertiesRegistrators[0]);
         props_ = proto->Props;
         for( uint i = 0, j = props->GetSize(); i < j; i++ )
             if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
@@ -2413,7 +2453,7 @@ Critter* FOServer::SScriptFunc::Map_AddNpc( Map* map, hash proto_id, ushort hx, 
     Critter* npc = nullptr;
     if( props )
     {
-        Properties props_( Critter::PropertiesRegistrator );
+        Properties props_( Critter::PropertiesRegistrators[0]);
         props_ = proto->Props;
         for( uint i = 0, j = props->GetSize(); i < j; i++ )
             if( !Properties::SetValueAsIntProps( &props_, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
@@ -3515,12 +3555,12 @@ void FOServer::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
     gen->SetReturnByte( 0 );
     RUNTIME_ASSERT( ref );
 
-    Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
-    prop = ( prop ? prop : Critter::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    Property* prop = GlobalVars::PropertiesRegistrators[0]->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : Critter::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Item::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Map::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Location::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : GlobalVars::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
@@ -3539,11 +3579,11 @@ void FOServer::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
     gen->SetReturnByte( 0 );
     RUNTIME_ASSERT( ref );
 
-    Property* prop = Critter::PropertiesRegistrator->FindByEnum( prop_enum_value );
-    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    Property* prop = Critter::PropertiesRegistrators[0]->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : Item::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Map::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Location::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : GlobalVars::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 

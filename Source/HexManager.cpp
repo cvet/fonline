@@ -93,6 +93,7 @@ Field::Tile& Field::AddTile( AnyFrames* anim, short ox, short oy, uchar layer, b
     tile->OffsX = ox;
     tile->OffsY = oy;
     tile->Layer = layer;
+	tile->SprId = 0;
     return *tile;
 }
 
@@ -1336,16 +1337,16 @@ void HexManager::RebuildMapOffset( int ox, int oy )
             for( uint i = 0; i < tiles_count; i++ )
             {
                 Field::Tile& tile = f.GetTile( i, false );
-                uint         spr_id = tile.Anim->GetSprId( 0 );
+				tile.SprId = tile.Anim->GetCurSprId();
 
                 #ifdef FONLINE_MAPPER
                 ProtoMap::TileVec& tiles = GetTiles( nx, ny, false );
                 Sprite&            spr = tilesTree.InsertSprite( DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
-                                                                 &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
+                                                                 &f.ScrX, &f.ScrY, 0, &tile.SprId, nullptr, nullptr,
                                                                  tiles[ i ].IsSelected ? (uchar*) &SELECT_ALPHA : nullptr, &Effect::Tile, nullptr );
                 #else
                 Sprite& spr = tilesTree.InsertSprite( DRAW_ORDER_TILE + tile.Layer, nx, ny, 0, tile.OffsX + TILE_OX, tile.OffsY + TILE_OY,
-                                                      &f.ScrX, &f.ScrY, spr_id, nullptr, nullptr, nullptr,
+                                                      &f.ScrX, &f.ScrY, 0, nullptr, nullptr, nullptr,
                                                       nullptr, &Effect::Tile, nullptr );
                 #endif
                 f.AddSpriteToChain( &spr );
@@ -1924,7 +1925,7 @@ void HexManager::RebuildTiles()
             for( uint i = 0; i < tiles_count; i++ )
             {
                 Field::Tile& tile = f.GetTile( i, false );
-                uint         spr_id = tile.Anim->GetSprId( 0 );
+                uint         spr_id = tile.Anim->GetCurSprId();
 
                 #ifdef FONLINE_MAPPER
                 ProtoMap::TileVec& tiles = GetTiles( hx, hy, false );
@@ -2635,7 +2636,7 @@ bool HexManager::Scroll()
     if( final_scr_ox || final_scr_oy )
         Script::RaiseInternalEvent( ClientFunctions.ScreenScroll, final_scr_ox, final_scr_oy );
     #endif
-
+	RefreshMap();
     return xmod || ymod;
 }
 
@@ -4024,7 +4025,7 @@ bool HexManager::LoadMap( hash map_pid )
                 fm.CopyMem( &props_data[ i ][ 0 ], data_size );
             }
         }
-        Properties props( Item::PropertiesRegistrator );
+        Properties props( Item::PropertiesRegistrators[0]);
         props.RestoreData( props_data );
 
         GenerateItem( id, proto_id, props );
@@ -4494,7 +4495,7 @@ void HexManager::ParseSelTiles()
     }
 }
 
-void HexManager::SetTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select )
+void HexManager::SetTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select, bool isrefresh)
 {
     if( hx >= maxHexX || hy >= maxHexY )
         return;
@@ -4514,15 +4515,21 @@ void HexManager::SetTile( hash name, ushort hx, ushort hy, short ox, short oy, u
 
     if( CheckTilesBorder( ftile, is_roof ) )
     {
-        ResizeView();
-        RefreshMap();
+		if (isrefresh)
+		{
+			ResizeView();
+			RefreshMap();
+		}
     }
     else
     {
-        if( is_roof )
-            RebuildRoof();
-        else
-            RebuildTiles();
+		if (isrefresh)
+		{
+			if (is_roof)
+				RebuildRoof();
+			else
+				RebuildTiles();
+		}
     }
 }
 

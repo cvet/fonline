@@ -28,11 +28,13 @@ public:
 private:
     Method();
     static void Wrap( asIScriptGeneric* gen );
+	static void FakeWrap( asIScriptGeneric* gen );
 
     // Static data
     string   methodDecl;
     string   bindFunc;
     string   bindDecl;
+	string   fileName;
     CallType callType;
 
     // Dynamic data
@@ -63,7 +65,7 @@ public:
     MethodRegistrator( bool is_server, const char* class_name );
     ~MethodRegistrator();
     bool    Init();
-    Method* Register( const char* decl, const char* bind_func, Method::CallType call );
+    Method* Register( const char* decl, const char* bind_func, Method::CallType call, const string& cur_file);
     bool    FinishRegistration();
     Method* Get( uint reg_index );
 

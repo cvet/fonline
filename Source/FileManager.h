@@ -39,6 +39,7 @@ public:
     void GoBack( uint offs );
     bool FindFragment( const uchar* fragment, uint fragment_len, uint begin_offs );
 
+	string GetStringToSymbol( string symbols );
     string GetNonEmptyLine();
     bool   CopyMem( void* ptr, uint size );
     string GetStrNT(); // Null terminated

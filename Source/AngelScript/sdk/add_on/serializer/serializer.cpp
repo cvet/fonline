@@ -15,6 +15,14 @@ using namespace std;
 BEGIN_AS_NAMESPACE
 
 ///////////////////////////////////////////////////////////////////////////////////
+string CSerializer::GetTypeFullName( asITypeInfo * type, int typeId )
+{
+	string name = type->GetNamespace( );
+	if( !name.empty( ) )
+		name += "::";
+	name += type->GetName( );
+	return name;
+}
 
 CSerializer::CSerializer()
 {
@@ -154,12 +162,40 @@ void CSerializer::AddExtraObjectToStore( asIScriptObject *object )
 
 	SExtraObject o;
 	o.originalObject    = object;
-	o.originalClassName = object->GetObjectType()->GetName();
+	o.originalClassName = GetTypeFullName( object->GetObjectType(), object->GetTypeId( ) );
 	o.originalTypeId    = object->GetTypeId();
 
 	m_extraObjects.push_back( o );
 }
 
+void CSerializer::Info( string info )
+{
+	m_engine->WriteMessage( "", 0, 0, asMSGTYPE_INFORMATION, info.c_str( ) );
+}
+
+asIScriptModule *CSerializer::GetModule( )
+{
+	return m_mod;
+}
+
+asITypeInfo *CSerializer::GetType( std::string typeName )
+{
+	if( !typeName.empty( ) )
+	{
+		int newTypeId = m_mod->GetTypeIdByDecl( typeName.c_str( ) );
+		if( newTypeId == asINVALID_TYPE )
+			return m_engine->GetTypeInfoByName( typeName.c_str( ) );
+		return m_engine->GetTypeInfoById( newTypeId );
+	}
+	return 0;
+}
+
+asITypeInfo *CSerializer::GetTypeById( int typeId )
+{
+	if( typeId != asINVALID_TYPE && typeId != asTYPEID_VOID)
+		return m_engine->GetTypeInfoById( typeId );
+	return 0;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////
 
@@ -351,14 +387,29 @@ void CSerializedValue::Store(void *ref, int typeId)
 void CSerializedValue::Restore(void *ref, int typeId)
 {
 	if( !this || !m_isInit || !ref )
+	{
+		Info( " Bad object ");
+		Info( string( " ref " ) + ( ref ? "good" : "nullptr" ) );
+		Info( string( " m_isInit " ) + ( m_isInit ? "true" : "false" ) );
+		Info( string( " this " ) + ( this ? "good" : "nullptr" ) );
 		return;
+	}
 
 	// Verify that the stored type matched the new type of the value being restored
 	if( typeId <= asTYPEID_DOUBLE && typeId != m_typeId ) return; // TODO: We may try to do a type conversion for primitives
 	if( (typeId & ~asTYPEID_MASK_SEQNBR) ^ (m_typeId & ~asTYPEID_MASK_SEQNBR) ) return;
 	asITypeInfo *type = m_serializer->m_engine->GetTypeInfoById(typeId);
-	if( type && m_typeName != type->GetName() ) return;
-
+	if( type && m_typeName != CSerializer::GetTypeFullName( type, typeId ) )
+	{
+		std::string str = "incorrect type '";
+		str += m_typeName;
+		str += "' '";
+		str += CSerializer::GetTypeFullName( type, typeId );
+		str += "' ";
+		Info( str );
+		return;
+	}
+	
 	// Set the new pointer and type
 	m_restorePtr = ref;
 	SetType(typeId);
@@ -370,7 +421,6 @@ void CSerializedValue::Restore(void *ref, int typeId)
 		if( m_children.size() == 1 )
 		{
 			asITypeInfo *ctype = m_children[0]->GetType();
-
 			if( ctype->GetFactoryCount() == 0 )
 			{
 				// There are no factories, so assume the same pointer is going to be used
@@ -385,7 +435,19 @@ void CSerializedValue::Restore(void *ref, int typeId)
 				// Calling the constructor may have unwanted side effects if for example the constructor changes
 				// any outside entities, such as setting global variables to point to new objects, etc.
 				void *newObject = m_serializer->m_engine->CreateUninitializedScriptObject(ctype);
-				m_children[0]->Restore(newObject, ctype->GetTypeId());
+				if( newObject )
+					m_children[ 0 ]->Restore( newObject, ctype->GetTypeId( ) );
+				else
+				{
+					if( m_serializer->m_userTypes[ m_typeName ] )
+					{
+						newObject = m_serializer->m_userTypes[ m_typeName ]->Create( m_children[ 0 ], m_serializer->m_engine, ctype );
+						// user type restore
+						m_serializer->m_userTypes[ m_typeName ]->Restore( m_children[ 0 ], newObject );
+						m_children[ 0 ]->Restore( newObject, ctype->GetTypeId( ) );
+						// m_children[ 0 ]->m_restorePtr = newObject;
+					}
+				}
 			}
 		}
 	}
@@ -420,7 +482,7 @@ void CSerializedValue::Restore(void *ref, int typeId)
 		else
 		{
 			std::string str = "Cannot restore type '";
-			str += type->GetName();
+			str += CSerializer::GetTypeFullName( type, typeId );
 			str += "'";
 			m_serializer->m_engine->WriteMessage("", 0, 0, asMSGTYPE_ERROR, str.c_str());
 		}
@@ -459,6 +521,16 @@ void CSerializedValue::ReplaceHandles()
 		{
 			// Store the object now
 			asITypeInfo *type = GetType();
+			if( !type )
+			{
+				type = m_serializer->m_engine->GetTypeInfoByName( m_typeName.c_str( ) );
+
+				std::string str = "Unknow type '";
+				str += m_typeName.empty() ? "Unknow" : m_typeName.c_str();
+				str += "' ";
+				m_serializer->m_engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, str.c_str( ) );
+				return;
+			}
 			CSerializedValue *need_create = new CSerializedValue(this, m_name, m_nameSpace, m_handlePtr, type->GetTypeId()); 
 
 			// Make sure all other handles that point to the same object 
@@ -470,8 +542,12 @@ void CSerializedValue::ReplaceHandles()
 	}
 
 	// Replace the handles in the children too
-	for( size_t i = 0; i < m_children.size(); ++i )
-		m_children[i]->ReplaceHandles();
+	for( size_t i = 0; i < m_children.size( ); ++i )
+	{
+		if( !m_children[ i ] )
+			continue;
+		m_children[ i ]->ReplaceHandles( );
+	}
 }
 
 void CSerializedValue::RestoreHandles()
@@ -519,9 +595,10 @@ void CSerializedValue::SetType(int typeId)
 	m_typeId = typeId;
 
 	asITypeInfo *type = m_serializer->m_engine->GetTypeInfoById(typeId);
-
 	if( type )
-		m_typeName = type->GetName();
+	{
+		m_typeName = CSerializer::GetTypeFullName( type, typeId );
+	}
 }
 
 asITypeInfo *CSerializedValue::GetType()
@@ -529,9 +606,10 @@ asITypeInfo *CSerializedValue::GetType()
 	if( !m_typeName.empty() )
 	{
 		int newTypeId = m_serializer->m_mod->GetTypeIdByDecl(m_typeName.c_str());
+		if( newTypeId == asINVALID_TYPE )
+			return m_serializer->m_engine->GetTypeInfoByName( m_typeName.c_str( ) );
 		return m_serializer->m_engine->GetTypeInfoById(newTypeId);
-	}	
-
+	}
 	return 0;
 }
 
@@ -545,4 +623,13 @@ void *CSerializedValue::GetUserData()
 	return m_userData;
 }
 
+void CSerializedValue::Info( string info )
+{
+	m_serializer->Info( info );
+}
+
+CSerializer * CSerializedValue::GetSerializer( )
+{
+	return m_serializer;
+}
 END_AS_NAMESPACE

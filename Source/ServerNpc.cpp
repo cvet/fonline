@@ -255,33 +255,33 @@ bool FOServer::Dialog_CheckDemand( Npc* npc, Client* cl, DialogAnswer& answer, b
             if( demand.Type == DR_PROP_GLOBAL )
             {
                 entity = master;
-                prop_registrator = GlobalVars::PropertiesRegistrator;
+                prop_registrator = GlobalVars::PropertiesRegistrators[0];
             }
             else if( demand.Type == DR_PROP_CRITTER )
             {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = Critter::PropertiesRegistrators[0];
             }
             else if( demand.Type == DR_PROP_CRITTER_DICT )
             {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = Critter::PropertiesRegistrators[0];
             }
             else if( demand.Type == DR_PROP_ITEM )
             {
                 entity = master->GetItemSlot( 1 );
-                prop_registrator = Item::PropertiesRegistrator;
+                prop_registrator = Item::PropertiesRegistrators[0];
             }
             else if( demand.Type == DR_PROP_LOCATION )
             {
                 Map* map = MapMngr.GetMap( master->GetMapId() );
                 entity = ( map ? map->GetLocation() : nullptr );
-                prop_registrator = Location::PropertiesRegistrator;
+                prop_registrator = Location::PropertiesRegistrators[0];
             }
             else if( demand.Type == DR_PROP_MAP )
             {
                 entity = MapMngr.GetMap( master->GetMapId() );
-                prop_registrator = Map::PropertiesRegistrator;
+                prop_registrator = Map::PropertiesRegistrators[0];
             }
             if( !entity )
                 break;
@@ -476,33 +476,33 @@ uint FOServer::Dialog_UseResult( Npc* npc, Client* cl, DialogAnswer& answer )
             if( result.Type == DR_PROP_GLOBAL )
             {
                 entity = master;
-                prop_registrator = GlobalVars::PropertiesRegistrator;
+                prop_registrator = GlobalVars::PropertiesRegistrators[0];
             }
             else if( result.Type == DR_PROP_CRITTER )
             {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = Critter::PropertiesRegistrators[0];
             }
             else if( result.Type == DR_PROP_CRITTER_DICT )
             {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = Critter::PropertiesRegistrators[0];
             }
             else if( result.Type == DR_PROP_ITEM )
             {
                 entity = master->GetItemSlot( 1 );
-                prop_registrator = Item::PropertiesRegistrator;
+                prop_registrator = Item::PropertiesRegistrators[0];
             }
             else if( result.Type == DR_PROP_LOCATION )
             {
                 Map* map = MapMngr.GetMap( master->GetMapId() );
                 entity = ( map ? map->GetLocation() : nullptr );
-                prop_registrator = Location::PropertiesRegistrator;
+                prop_registrator = Location::PropertiesRegistrators[0];
             }
             else if( result.Type == DR_PROP_MAP )
             {
                 entity = MapMngr.GetMap( master->GetMapId() );
-                prop_registrator = Map::PropertiesRegistrator;
+                prop_registrator = Map::PropertiesRegistrators[0];
             }
             if( !entity )
                 break;

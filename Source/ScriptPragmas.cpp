@@ -3,6 +3,15 @@
 #include "angelscript.h"
 #include "Script.h"
 #include "ProtoManager.h"
+#ifdef FONLINE_SERVER
+#include "CritterManager.h"
+#include "EntityManager.h"
+#include "Dialogs.h"
+#include "Critter.h"
+#endif
+#ifdef FONLINE_CLIENT
+#include "Client.h"
+#endif
 
 // #pragma ignore "other_pragma"
 // #pragma other_pragma "arguments" <- not processed
@@ -23,6 +32,57 @@ public:
             ignoredPragmas.push_back( text );
         return true;
     }
+};
+
+class InterfacePragma
+{
+	friend ScriptPragmaCallback;
+
+	InterfacePragma( int pragmaType )
+	{
+		PragmaType = pragmaType;
+	}
+
+protected:
+
+	int PragmaType;
+
+public:
+
+	bool Call( const string& text )
+	{
+		string interface_decl, interface_method;
+		istringstream str( text );
+		str >> interface_decl;
+
+		while( true )
+		{
+			string s;
+			str >> s;
+			if( str.fail( ) )
+				break;
+			if( interface_method != "" )
+				interface_method += " ";
+			interface_method += s;
+		}
+
+		if( interface_decl.empty( ) )
+		{
+			WriteLog( "Interface not found, pragma '{}'.\n", text );
+			return false;
+		}
+		std::string result = Interface::Register( PragmaType, interface_decl, interface_method );
+		if( result.empty( ) )
+			return true;
+
+		WriteLog( result, text );
+		return false;
+	}
+
+	Interface *GetInterface( )
+	{
+		return nullptr;
+	}
 };
 
 // #pragma globalvar "int __MyGlobalVar = 100"
@@ -189,10 +249,6 @@ public:
 };
 
 // #pragma entity EntityName Movable = true
-#ifdef FONLINE_SERVER
-# include "EntityManager.h"
-#endif
-
 class EntityCreator
 {
 public:
@@ -202,28 +258,57 @@ public:
         Registrator = new PropertyRegistrator( is_server, class_name );
         static uint sub_type_id = 0;
         SubType = ++sub_type_id;
+		Registrator->SetSubType(SubType);
+		methodRegistrator = new MethodRegistrator(is_server, class_name.c_str());
     }
 
     string               ClassName;
     PropertyRegistrator* Registrator;
+	MethodRegistrator*   methodRegistrator;
     uint                 SubType;
 
+	Entity* EntityDownCast(CustomEntity* a)
+	{
+		if (!a)
+			return nullptr;
+		Entity* b = (Entity*)a;
+		b->AddRef();
+		return b;
+	}
+
+	CustomEntity* EntityUpCast(Entity* a)
+	{
+		if (!a)
+			return nullptr;
+		if (a->Type == EntityType::Custom)
+		{
+			CustomEntity* custom = (CustomEntity*)(a);
+			if (custom->SubType == SubType)
+			{
+				custom->AddRef();
+				return custom;
+			}
+		}
+		return nullptr;
+	}
+
     #ifdef FONLINE_SERVER
-    CustomEntity* CreateEntity()
+    CustomEntity* CreateEntity(uint protoId)
     {
-        CustomEntity* entity = new CustomEntity( 0, SubType, Registrator );
+		auto proto = ProtoMngr.GetProtoCustom(SubType, protoId);
+        CustomEntity* entity = new CustomEntity( 0, SubType, Registrator, proto);
         EntityMngr.RegisterEntity( entity );
         return entity;
     }
 
     static void CreateEntity_Generic( asIScriptGeneric* gen )
     {
-        gen->SetReturnObject( ( (EntityCreator*) gen->GetAuxiliary() )->CreateEntity() );
+        gen->SetReturnObject( ( (EntityCreator*) gen->GetAuxiliary() )->CreateEntity(gen->GetArgDWord(0)) );
     }
 
     bool RestoreEntity( uint id, const DataBase::Document& doc )
     {
-        CustomEntity* entity = new CustomEntity( id, SubType, Registrator );
+        CustomEntity* entity = new CustomEntity( id, SubType, Registrator, nullptr );
         if( !entity->Props.LoadFromDbDocument( doc ) )
         {
             WriteLog( "Fail to restore properties for custom entity '{}' ({}).\n", Registrator->GetClassName(), id );
@@ -236,7 +321,19 @@ public:
 
     void DeleteEntity( CustomEntity* entity )
     {
+		if (!entity)
+			return;
         RUNTIME_ASSERT( entity->SubType == SubType );
+
+		std::vector<uint> observers = entity->GetObservers();
+		for (auto observerId : observers)
+		{
+			Critter* critter = CrMngr.GetCritter(observerId);
+			if (critter)
+				critter->Send_RemoveCustomEntity(entity);
+			entity->EraseObserver(observerId);
+		}
+
         entity->IsDestroyed = true;
         EntityMngr.UnregisterEntity( entity );
         entity->Release();
@@ -249,13 +346,48 @@ public:
 
     void DeleteEntityById( uint id )
     {
-        CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
-        if( !entity || entity->SubType != SubType )
-            return;
-        entity->IsDestroyed = true;
-        EntityMngr.UnregisterEntity( entity );
-        entity->Release();
+       return DeleteEntity((CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom ));
     }
+
+	bool IsListening( Critter* critter, CustomEntity* entity )
+	{
+		if (!entity || !critter || critter->IsNpc() || entity->IsDestroyed)
+			return false;
+		RUNTIME_ASSERT(entity->SubType == SubType);
+		if (critter->IsDestroyed)
+			SCRIPT_ERROR_RETURN("Attempt to call method on destroyed object.", false);
+		return entity->IsObserver(critter->Id);
+	}
+
+	void StartListening(Critter* critter, CustomEntity* entity)
+	{
+		if (!entity || !critter || critter->IsNpc() || entity->IsDestroyed )
+			return;
+		RUNTIME_ASSERT(entity->SubType == SubType);
+		if (critter->IsDestroyed)
+			SCRIPT_ERROR_R("Attempt to call method on destroyed object.");
+
+		if (entity->AddObserver(critter->Id))
+		{
+			critter->Send_AddCustomEntity(entity);
+			((Client*)critter)->AddListening(entity->Id);
+		}
+	}
+
+	void FinishListening(Critter* critter, CustomEntity* entity)
+	{
+		if (!entity || !critter || critter->IsNpc() || entity->IsDestroyed)
+			return;
+		RUNTIME_ASSERT(entity->SubType == SubType);
+		if (critter->IsDestroyed)
+			SCRIPT_ERROR_R("Attempt to call method on destroyed object.");
+
+		if (entity->EraseObserver(critter->Id))
+		{
+			critter->Send_RemoveCustomEntity(entity);
+			((Client*)critter)->EraseListening(entity->Id);
+		}
+	}
 
     static void DeleteEntityById_Generic( asIScriptGeneric* gen )
     {
@@ -265,8 +397,8 @@ public:
     CustomEntity* GetEntity( uint id )
     {
         CustomEntity* entity = (CustomEntity*) EntityMngr.GetEntity( id, EntityType::Custom );
-        if( entity && entity->SubType == SubType )
-            return entity;
+		if (entity && entity->SubType == SubType)
+			return entity;
         return nullptr;
     }
 
@@ -276,7 +408,7 @@ public:
     }
 
     #else
-    CustomEntity* CreateEntity()                                { return nullptr; }
+    CustomEntity* CreateEntity(uint protoId)                                { return nullptr; }
     static void   CreateEntity_Generic( asIScriptGeneric* gen ) {}
     # ifdef FONLINE_SERVER
     bool RestoreEntity( uint id, const DataBase::Document& doc ) { return false; }
@@ -285,14 +417,25 @@ public:
     static void   DeleteEntity_Generic( asIScriptGeneric* gen )     {}
     void          DeleteEntityById( uint id )                       {}
     static void   DeleteEntityById_Generic( asIScriptGeneric* gen ) {}
-    CustomEntity* GetEntity( uint id )                              { return nullptr; }
     static void   GetEntity_Generic( asIScriptGeneric* gen )        {}
+    #ifdef FONLINE_CLIENT
+	CustomEntity* GetEntity(uint id) 
+	{
+		CustomEntity* entity = FOClient::Self->GetCustomEntity(SubType, id);
+		if (entity && entity->SubType == SubType)
+			return entity;
+		return nullptr; 
+	}
+    #else
+	CustomEntity* GetEntity(uint id) { return nullptr; }
+    #endif
     #endif
 };
 
 class EntityPragma
 {
     friend class PropertyPragma;
+    friend class MethodPragma;
 
 private:
     map< string, EntityCreator* > entityCreators;
@@ -306,8 +449,8 @@ public:
 
     ~EntityPragma()
     {
-        for( auto it = entityCreators.begin(); it != entityCreators.end(); ++it )
-            SAFEDEL( it->second );
+		for (auto it = entityCreators.begin(); it != entityCreators.end(); ++it)
+			SAFEDEL(it->second);
         entityCreators.clear();
     }
 
@@ -343,21 +486,47 @@ public:
         if( isServer )
         {
             #ifdef AS_MAX_PORTABILITY
-            if( engine->RegisterGlobalFunction( _str( "{}@+ Create{}()", class_name, class_name ).c_str(), asFUNCTION( EntityCreator::CreateEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
+            if( engine->RegisterGlobalFunction( _str( "{}@+ Create{}(hash protoId)", class_name, class_name ).c_str(), asFUNCTION( EntityCreator::CreateEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
                 engine->RegisterGlobalFunction( _str( "void Delete{}({}@+ entity)", class_name, class_name ).c_str(), asFUNCTION( EntityCreator::DeleteEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( _str( "void Delete{}(uint id)", class_name ).c_str(), asFUNCTION( EntityCreator::DeleteEntityById_Generic ), asCALL_GENERIC, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( _str( "{}@+ Get{}(uint id)", class_name, class_name ).c_str(), asFUNCTION( EntityCreator::GetEntity_Generic ), asCALL_GENERIC, entity_creator ) < 0 )
+                engine->RegisterGlobalFunction( _str( "void Delete{}(uint id)", class_name ).c_str(), asFUNCTION( EntityCreator::DeleteEntityById_Generic ), asCALL_GENERIC, entity_creator ) < 0 )
             #else
-            if( engine->RegisterGlobalFunction( _str( "{}@+ Create{}()", class_name, class_name ).c_str(), asMETHOD( EntityCreator, CreateEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
+            if( engine->RegisterGlobalFunction( _str( "{}@+ Create{}(hash protoId)", class_name, class_name ).c_str(), asMETHOD( EntityCreator, CreateEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
                 engine->RegisterGlobalFunction( _str( "void Delete{}({}@+ entity)", class_name, class_name ).c_str(), asMETHOD( EntityCreator, DeleteEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( _str( "void Delete{}(uint id)", class_name ).c_str(), asMETHOD( EntityCreator, DeleteEntityById ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 ||
-                engine->RegisterGlobalFunction( _str( "{}@+ Get{}(uint id)", class_name, class_name ).c_str(), asMETHOD( EntityCreator, GetEntity ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 )
+                engine->RegisterGlobalFunction( _str( "void Delete{}(uint id)", class_name ).c_str(), asMETHOD( EntityCreator, DeleteEntityById ), asCALL_THISCALL_ASGLOBAL, entity_creator ) < 0 )
             #endif
             {
                 WriteLog( "Error in 'entity' pragma '{}', fail to register management functions.\n", text );
                 return false;
             }
         }
+
+#ifdef AS_MAX_PORTABILITY
+		if (engine->RegisterGlobalFunction(_str("{}@+ Get{}(uint id)", class_name, class_name).c_str(), asFUNCTION(EntityCreator::GetEntity_Generic), asCALL_GENERIC, entity_creator) < 0)
+#else
+		if (engine->RegisterGlobalFunction(_str("{}@+ Get{}(uint id)", class_name, class_name).c_str(), asMETHOD(EntityCreator, GetEntity), asCALL_THISCALL_ASGLOBAL, entity_creator) < 0)
+#endif
+		{
+			WriteLog("Error in 'entity' pragma '{}', fail to register get function.\n", text);
+			return false;
+		}
+
+		if (engine->RegisterObjectMethod(class_name.c_str(), "const Entity@ opImplCast() const", asMETHOD(EntityCreator, EntityDownCast), asCALL_THISCALL_OBJFIRST, entity_creator) < 0 ||
+			engine->RegisterObjectMethod(class_name.c_str(), "Entity@ opImplCast()", asMETHOD(EntityCreator, EntityDownCast), asCALL_THISCALL_OBJFIRST, entity_creator) < 0 ||
+			engine->RegisterObjectMethod("Entity",_str( "{}@ opCast()", class_name.c_str() ).c_str(), asMETHOD(EntityCreator, EntityUpCast), asCALL_THISCALL_OBJFIRST, entity_creator) < 0 ||
+			engine->RegisterObjectMethod("Entity",_str( "const {}@ opCast() const", class_name.c_str()).c_str(), asMETHOD(EntityCreator, EntityUpCast), asCALL_THISCALL_OBJFIRST, entity_creator) < 0 )
+		{
+			WriteLog("Error in 'entity' pragma '{}', fail to register cast.\n", text);
+			return false;
+		}
+
+#ifdef FONLINE_SERVER
+		if (engine->RegisterObjectMethod("Critter", _str("void StartListening( {}@ entity )", class_name.c_str()).c_str(), asMETHOD(EntityCreator, StartListening), asCALL_THISCALL_OBJFIRST, entity_creator) < 0 ||
+			engine->RegisterObjectMethod("Critter", _str("void FinishListening( {}@ entity )", class_name.c_str()).c_str(), asMETHOD(EntityCreator, FinishListening), asCALL_THISCALL_OBJFIRST, entity_creator) < 0)
+		{
+			WriteLog("Error in 'entity' pragma '{}', fail to register listener.\n", text);
+			return false;
+		}
+#endif
 
         // Init registrator
         if( !entity_creator->Registrator->Init() )
@@ -374,9 +543,12 @@ public:
 
     bool Finish()
     {
-        for( auto it = entityCreators.begin(); it != entityCreators.end(); ++it )
-            it->second->Registrator->FinishRegistration();
-        return true;
+		for (auto it = entityCreators.begin(); it != entityCreators.end(); ++it)
+		{
+			if (!it->second->methodRegistrator->FinishRegistration())
+				return false;
+		}
+		return true;
     }
 
     #ifdef FONLINE_SERVER
@@ -386,6 +558,16 @@ public:
         return entity_creator->RestoreEntity( id, doc );
     }
     #endif
+
+	PropertyRegistrator * GetCustomEntityRegistrationBySubType(uint subType)
+	{
+		for (auto& creator : entityCreators)
+		{
+			if (creator.second->SubType == subType)
+				return creator.second->Registrator;
+		}
+		return nullptr;
+	}
 
     StrVec GetTypeNames()
     {
@@ -402,10 +584,13 @@ class PropertyPragma
 private:
     PropertyRegistrator** propertyRegistrators;
     EntityPragma*         entitiesRegistrators;
+	map<std::string, MethodRegistrator* > ComponentMethodRegistrator;
+	int PragmaType;
 
 public:
     PropertyPragma( int pragma_type, EntityPragma* entities_registrators )
     {
+		PragmaType = pragma_type;
         bool is_server = ( pragma_type == PRAGMA_SERVER );
         bool is_mapper = ( pragma_type == PRAGMA_MAPPER );
 
@@ -424,12 +609,42 @@ public:
         for( int i = 0; i < 5; i++ )
             SAFEDEL( propertyRegistrators[ i ] );
         SAFEDEL( propertyRegistrators );
+		entitiesRegistrators = nullptr;
+		for( auto mapIter : ComponentMethodRegistrator )
+			delete mapIter.second;
+		ComponentMethodRegistrator.clear( );
     }
 
-    PropertyRegistrator** GetPropertyRegistrators()
+    std::vector<PropertyRegistrator*> GetPropertyRegistrators()
     {
-        return propertyRegistrators;
+		std::vector<PropertyRegistrator*> result;
+		result.push_back(propertyRegistrators[0]);
+		result.push_back(propertyRegistrators[1]);
+		result.push_back(propertyRegistrators[2]);
+		result.push_back(propertyRegistrators[3]);
+		result.push_back(propertyRegistrators[4]);
+		for(auto entity: entitiesRegistrators->entityCreators)
+			result.push_back(entity.second->Registrator);
+        return result;
     }
+
+	PropertyRegistrator* GetEntityRegistration( string class_name )
+	{
+		PropertyRegistrator* registrator = nullptr;
+		if (class_name == "Global")
+			registrator = propertyRegistrators[0];
+		else if (class_name == "Critter")
+			registrator = propertyRegistrators[1];
+		else if (class_name == "Item")
+			registrator = propertyRegistrators[2];
+		else if (class_name == "Map")
+			registrator = propertyRegistrators[3];
+		else if (class_name == "Location")
+			registrator = propertyRegistrators[4];
+		else if (entitiesRegistrators->entityCreators.count(class_name))
+			registrator = entitiesRegistrators->entityCreators[class_name]->Registrator;
+		return registrator;
+	}
 
     bool Call( const string& text )
     {
@@ -593,24 +808,12 @@ public:
         }
 
         // Choose registrator
-        PropertyRegistrator* registrator = nullptr;
-        if( class_name == "Global" )
-            registrator = propertyRegistrators[ 0 ];
-        else if( class_name == "Critter" )
-            registrator = propertyRegistrators[ 1 ];
-        else if( class_name == "Item" )
-            registrator = propertyRegistrators[ 2 ];
-        else if( class_name == "Map" )
-            registrator = propertyRegistrators[ 3 ];
-        else if( class_name == "Location" )
-            registrator = propertyRegistrators[ 4 ];
-        else if( entitiesRegistrators->entityCreators.count( class_name ) )
-            registrator = entitiesRegistrators->entityCreators[ class_name ]->Registrator;
-        else
-            WriteLog( "Invalid class in 'property' pragma '{}'.\n", text );
-        if( !registrator )
-            return false;
-
+        PropertyRegistrator* registrator = GetEntityRegistration( class_name );
+		if (!registrator)
+		{
+			WriteLog("Invalid class in 'property' pragma '{}'.\n", text);
+			return false;
+		}
         // Register
         if( !is_component && !is_defaults )
         {
@@ -632,6 +835,10 @@ public:
                 WriteLog( "Unable to register component '{}' for 'property' pragma '{}'.\n", component_name, text );
                 return false;
             }
+			else
+			{
+				ComponentMethodRegistrator.insert( std::pair<std::string,MethodRegistrator*>( registrator->GetComponentName( component_name ), new MethodRegistrator( PragmaType == PRAGMA_SERVER, registrator->GetComponentName( component_name ).c_str()) ) );
+			}
         }
 
         // Work with defaults
@@ -645,8 +852,21 @@ public:
         return true;
     }
 
+	MethodRegistrator* GetComponentMethodRegistrator( std::string component )
+	{
+		auto result = ComponentMethodRegistrator.find( component );
+		if( result == ComponentMethodRegistrator.end( ) )
+			return nullptr;
+		return result->second;
+	}
+
     bool Finish()
     {
+		for( auto mapIter : ComponentMethodRegistrator )
+		{
+			if( !mapIter.second->FinishRegistration( ) )
+				return false;
+		}
         return true;
     }
 };
@@ -657,14 +877,16 @@ class MethodPragma
 private:
     MethodRegistrator** methodRegistrator;
     EntityPragma*       entitiesRegistrators;
+	PropertyPragma* propertyPragma;
 
+	const size_t methodRegistratorCount = 5;
 public:
-    MethodPragma( int pragma_type, EntityPragma* entities_registrators )
+    MethodPragma( int pragma_type, EntityPragma* entities_registrators, PropertyPragma* property_pragma )
     {
         bool is_server = ( pragma_type == PRAGMA_SERVER );
         bool is_mapper = ( pragma_type == PRAGMA_MAPPER );
 
-        methodRegistrator = new MethodRegistrator*[ 6 ];
+        methodRegistrator = new MethodRegistrator*[methodRegistratorCount];
         methodRegistrator[ 0 ] = new MethodRegistrator( is_server || is_mapper, "GlobalVars" );
         methodRegistrator[ 1 ] = new MethodRegistrator( is_server || is_mapper, "Critter" );
         methodRegistrator[ 2 ] = new MethodRegistrator( is_server || is_mapper, "Item" );
@@ -672,9 +894,15 @@ public:
         methodRegistrator[ 4 ] = new MethodRegistrator( is_server || is_mapper, "Location" );
 
         entitiesRegistrators = entities_registrators;
+		propertyPragma = property_pragma;
     }
 
-    bool Call( const string& text )
+	MethodRegistrator * GetComponentMethodRegistrator( std::string component )
+	{
+		return propertyPragma->GetComponentMethodRegistrator( component );
+	}
+
+    bool Call( const string& text, const string& cur_file)
     {
         // Read all
         istringstream str( text );
@@ -711,7 +939,7 @@ public:
             call_type = Method::RemoteServer;
         else if( call_type_str == "RemoteClient" )
             call_type = Method::RemoteClient;
-        if( call_type == (Method::CallType) 0 )
+		else
         {
             WriteLog( "Error in 'method' pragma '{}', invalid call type '{}'.\n", text, call_type_str );
             return false;
@@ -729,15 +957,18 @@ public:
             registrator = methodRegistrator[ 3 ];
         else if( class_name == "Location" )
             registrator = methodRegistrator[ 4 ];
-        // else if (entitiesRegistrators->entityCreators.count(class_name))
-        //	registrator = entitiesRegistrators->entityCreators[class_name]->Registrator;
-        else
-            WriteLog( "Invalid class in 'property' pragma '{}'.\n", text );
-        if( !registrator )
-            return false;
+        else if (entitiesRegistrators->entityCreators.count(class_name))
+        	registrator = entitiesRegistrators->entityCreators[class_name]->methodRegistrator;
+		else
+			registrator = GetComponentMethodRegistrator( class_name );
 
+		if( !registrator )
+		{
+			WriteLog( "Invalid class in 'method' pragma '{}'.\n", text );
+			return false;
+		}
         // Register
-        if( !registrator->Register( decl.c_str(), script_func.c_str(), call_type ) )
+        if( !registrator->Register( decl.c_str(), script_func.c_str(), call_type, cur_file) )
         {
             WriteLog( "Unable to register 'method' pragma '{}'.\n", text );
             return false;
@@ -748,20 +979,22 @@ public:
 
     bool Finish()
     {
-        return true; // methodRegistrator->FinishRegistration();
+		for (size_t i = 0; i < methodRegistratorCount;i++)
+		{
+			if (!methodRegistrator[i]->FinishRegistration())
+				return false;
+		}
+        return true;
     }
 };
 
 // #pragma content Group fileName
-#ifdef FONLINE_SERVER
-# include "Dialogs.h"
-#endif
 
 class ContentPragma
 {
 private:
     list< hash > dataStorage;
-    StrUIntMap   filesToCheck[ 5 ];
+    StrUIntMap   filesToCheck[ 6 ];
 
 public:
     bool Call( const string& text )
@@ -780,7 +1013,7 @@ public:
         // Verify file
         asIScriptEngine* engine = Script::GetEngine();
         int              group_index;
-        const char*      ns;
+        std::string ns;
         if( group == "Dialog" )
         {
             group_index = 0;
@@ -808,8 +1041,8 @@ public:
         }
         else
         {
-            WriteLog( "Invalid group name in 'content' pragma '{}'.\n", text );
-            return false;
+			group_index = 5;
+			ns = _str( "Content::{}", group ).c_str();
         }
 
         // Ignore redundant calls
@@ -821,12 +1054,13 @@ public:
         filesToCheck[ group_index ].insert( std::make_pair( name, h ) );
 
         // Register file
-        engine->SetDefaultNamespace( "Content" );
-        engine->SetDefaultNamespace( ns );
+		const char* backupNamespace = engine->GetDefaultNamespace();
+		engine->SetDefaultNamespace("Content");
+        engine->SetDefaultNamespace( ns.c_str() );
         string prop_name = _str( "const hash {}", name );
         dataStorage.push_back( h );
-        int    result = engine->RegisterGlobalProperty( prop_name.c_str(), &dataStorage.back() );
-        engine->SetDefaultNamespace( "" );
+        int result = engine->RegisterGlobalProperty( prop_name.c_str(), &dataStorage.back() );
+        engine->SetDefaultNamespace( backupNamespace );
         if( result < 0 )
         {
             WriteLog( "Error in 'content' pragma '{}', error {}.\n", text, result );
@@ -1261,7 +1495,7 @@ public:
 public:
     EventPragma()
     {
-        // ...
+
     }
 
     ~EventPragma()
@@ -1291,21 +1525,24 @@ public:
             return false;
         }
 
+		string event_class_name = _str("{}", event_name.c_str()).str();
+
         string           args = _str( text.substr( args_begin + 1, args_end - args_begin - 1 ) ).trim();
         asIScriptEngine* engine = Script::GetEngine();
         int              func_def_id;
         as_builder_ForceAutoHandles = true;
+
         if( ( func_def_id = engine->RegisterFuncdef( _str( "void {}Func({})", event_name, args ).c_str() ) ) < 0 ||
             engine->RegisterFuncdef( _str( "bool {}FuncBool({})", event_name, args ).c_str() ) < 0 ||
-            engine->RegisterObjectType( event_name.c_str(), 0, asOBJ_REF ) < 0 ||
-            engine->RegisterObjectBehaviour( event_name.c_str(), asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( ScriptEvent, AddRef ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectBehaviour( event_name.c_str(), asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( ScriptEvent, Release ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name.c_str(), _str( "void Subscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name.c_str(), _str( "void Subscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name.c_str(), _str( "void Unsubscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name.c_str(), _str( "void Unsubscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name.c_str(), "void UnsubscribeAll()", SCRIPT_METHOD( ScriptEvent, UnsubscribeAll ), SCRIPT_METHOD_CONV ) < 0 ||
-            engine->RegisterObjectMethod( event_name.c_str(), _str( "bool Raise({})", args ).c_str(), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
+            engine->RegisterObjectType(event_class_name.c_str(), 0, asOBJ_REF ) < 0 ||
+            engine->RegisterObjectBehaviour(event_class_name.c_str(), asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD( ScriptEvent, AddRef ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectBehaviour(event_class_name.c_str(), asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD( ScriptEvent, Release ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod(event_class_name.c_str(), _str( "void Subscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod(event_class_name.c_str(), _str( "void Subscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Subscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod(event_class_name.c_str(), _str( "void Unsubscribe({}Func@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod(event_class_name.c_str(), _str( "void Unsubscribe({}FuncBool@+)", event_name ).c_str(), SCRIPT_METHOD( ScriptEvent, Unsubscribe ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod(event_class_name.c_str(), "void UnsubscribeAll()", SCRIPT_METHOD( ScriptEvent, UnsubscribeAll ), SCRIPT_METHOD_CONV ) < 0 ||
+            engine->RegisterObjectMethod(event_class_name.c_str(), _str( "bool Raise({})", args ).c_str(), asFUNCTION( ScriptEvent::Raise ), asCALL_GENERIC ) < 0 )
         {
             as_builder_ForceAutoHandles = false;
             return false;
@@ -1355,10 +1592,10 @@ public:
 
                 string arg_name = name;
                 arg_name = _str( arg_name.substr( 0, 1 ) ).upper() + _str( arg_name.substr( 1 ) );
-                if( engine->RegisterObjectMethod( event_name.c_str(), _str( "void SubscribeTo{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name.c_str(), _str( "void SubscribeTo{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name.c_str(), _str( "void UnsubscribeFrom{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
-                    engine->RegisterObjectMethod( event_name.c_str(), _str( "void UnsubscribeFrom{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
+                if( engine->RegisterObjectMethod(event_class_name.c_str(), _str( "void SubscribeTo{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod(event_class_name.c_str(), _str( "void SubscribeTo{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::SubscribeTo ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod(event_class_name.c_str(), _str( "void UnsubscribeFrom{}({}, {}Func@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 ||
+                    engine->RegisterObjectMethod(event_class_name.c_str(), _str( "void UnsubscribeFrom{}({}, {}FuncBool@+)", arg_name, arg_type, event_name ).c_str(), asFUNCTION( ScriptEvent::UnsubscribeFrom ), asCALL_GENERIC, new int(i) ) < 0 )
                     return false;
             }
         }
@@ -1367,13 +1604,16 @@ public:
         options = text.substr( args_end + 1 );
         event->Deferred = ( options.find( "deferred" ) != string::npos );
 
-        events.push_back( event );
-        if( engine->RegisterGlobalProperty( _str( "{}@ __{}", event_name, event_name ).c_str(), &events.back() ) < 0 )
+		const char* backupNamespace = engine->GetDefaultNamespace();
+		engine->SetDefaultNamespace("Event");
+		events.push_back(event);
+        if( engine->RegisterGlobalProperty( _str( "{}@ {}", event_name, event_name ).c_str(), &events.back()) < 0 )
         {
-            events.pop_back();
+			engine->SetDefaultNamespace(backupNamespace);
+			events.pop_back();
             return false;
         }
-
+		engine->SetDefaultNamespace(backupNamespace);
         return true;
     }
 
@@ -1408,12 +1648,6 @@ public:
 };
 
 // #pragma rpc
-#ifdef FONLINE_SERVER
-# include "Critter.h"
-#endif
-#ifdef FONLINE_CLIENT
-# include "Client.h"
-#endif
 class RpcPragma
 {
     typedef vector< pair< string, string > > FuncDescVec;
@@ -1527,11 +1761,25 @@ public:
                         return false;
                     }
                 }
-                else if( !Str::Compare( obj_type->GetName(), "string" ) )
-                {
-                    WriteLog( "Invalid type '{}' in 'rpc' pragma '{}'.\n", obj_type->GetName(), text );
-                    return false;
-                }
+				else if (!Str::Compare(obj_type->GetName(), "string"))
+				{
+					int  matches = 0;
+					if(type_id & asTYPEID_APPOBJECT)
+						for (asUINT j = 0; j < obj_type->GetPropertyCount() && matches < 3; j++)
+						{
+							const char* decl = obj_type->GetPropertyDeclaration(j);
+							if (Str::Compare(decl, "const uint Id") ||
+								Str::Compare(decl, "const bool IsDestroyed") ||
+								Str::Compare(decl, "const bool IsDestroying"))
+								matches++;
+						}
+
+					if (matches != 3)
+					{
+						WriteLog("Invalid type '{}' in 'rpc' pragma '{}'.\n", obj_type->GetName(), text);
+						return false;
+					}
+				}
             }
         }
 
@@ -1741,6 +1989,7 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
     enumPragma = nullptr;
     eventPragma = nullptr;
     rpcPragma = nullptr;
+	interfacePragma = nullptr;
 
     if( pragmaType != PRAGMA_UNKNOWN )
     {
@@ -1749,11 +1998,12 @@ ScriptPragmaCallback::ScriptPragmaCallback( int pragma_type )
         bindFuncPragma = new BindFuncPragma();
         entityPragma = new EntityPragma( pragmaType );
         propertyPragma = new PropertyPragma( pragmaType, entityPragma );
-        methodPragma = new MethodPragma( pragmaType, entityPragma );
+        methodPragma = new MethodPragma( pragmaType, entityPragma, propertyPragma );
         contentPragma = new ContentPragma();
         enumPragma = new EnumPragma();
         eventPragma = new EventPragma();
         rpcPragma = new RpcPragma( pragmaType );
+		interfacePragma = new InterfacePragma( pragmaType );
     }
 }
 
@@ -1768,6 +2018,7 @@ ScriptPragmaCallback::~ScriptPragmaCallback()
     SAFEDEL( contentPragma );
     SAFEDEL( enumPragma );
     SAFEDEL( eventPragma );
+	SAFEDEL( interfacePragma );
 }
 
 void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragma )
@@ -1776,26 +2027,28 @@ void ScriptPragmaCallback::CallPragma( const Preprocessor::PragmaInstance& pragm
         return;
 
     bool ok = false;
-    if( _str( pragma.Name ).compareIgnoreCase( "ignore" ) && ignorePragma )
-        ok = ignorePragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "globalvar" ) && globalVarPragma )
-        ok = globalVarPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "bindfunc" ) && bindFuncPragma )
-        ok = bindFuncPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "property" ) && propertyPragma )
-        ok = propertyPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "method" ) && methodPragma )
-        ok = methodPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "entity" ) && entityPragma )
-        ok = entityPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "content" ) && contentPragma )
-        ok = contentPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "enum" ) && enumPragma )
-        ok = enumPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "event" ) && eventPragma )
-        ok = eventPragma->Call( pragma.Text );
-    else if( _str( pragma.Name ).compareIgnoreCase( "rpc" ) && rpcPragma )
-        ok = rpcPragma->Call( pragma.Text, pragma.CurrentFile );
+	if( _str( pragma.Name ).compareIgnoreCase( "ignore" ) && ignorePragma )
+		ok = ignorePragma->Call( pragma.Text );
+	else if( _str( pragma.Name ).compareIgnoreCase( "globalvar" ) && globalVarPragma )
+		ok = globalVarPragma->Call( pragma.Text );
+	else if( _str( pragma.Name ).compareIgnoreCase( "bindfunc" ) && bindFuncPragma )
+		ok = bindFuncPragma->Call( pragma.Text );
+	else if( _str( pragma.Name ).compareIgnoreCase( "property" ) && propertyPragma )
+		ok = propertyPragma->Call( pragma.Text );
+	else if( _str( pragma.Name ).compareIgnoreCase( "method" ) && methodPragma )
+		ok = methodPragma->Call( pragma.Text, pragma.CurrentFile );
+	else if( _str( pragma.Name ).compareIgnoreCase( "entity" ) && entityPragma )
+		ok = entityPragma->Call( pragma.Text );
+	else if( _str( pragma.Name ).compareIgnoreCase( "content" ) && contentPragma )
+		ok = contentPragma->Call( pragma.Text );
+	else if( _str( pragma.Name ).compareIgnoreCase( "enum" ) && enumPragma )
+		ok = enumPragma->Call( pragma.Text );
+	else if( _str( pragma.Name ).compareIgnoreCase( "event" ) && eventPragma )
+		ok = eventPragma->Call( pragma.Text );
+	else if( _str( pragma.Name ).compareIgnoreCase( "rpc" ) && rpcPragma )
+		ok = rpcPragma->Call( pragma.Text, pragma.CurrentFile );
+	else if( _str( pragma.Name ).compareIgnoreCase( "interface" ) && interfacePragma )
+		ok = interfacePragma->Call( pragma.Text );
     else
         WriteLog( "Unknown pragma instance, name '{}' text '{}'.\n", pragma.Name, pragma.Text ), ok = false;
 
@@ -1829,9 +2082,19 @@ bool ScriptPragmaCallback::IsError()
     return isError;
 }
 
-PropertyRegistrator** ScriptPragmaCallback::GetPropertyRegistrators()
+PropertyRegistrator * ScriptPragmaCallback::GetCustomEntityRegistrationBySubType(uint subType)
+{
+	return entityPragma->GetCustomEntityRegistrationBySubType(subType);
+}
+
+std::vector<PropertyRegistrator*> ScriptPragmaCallback::GetPropertyRegistrators()
 {
     return propertyPragma->GetPropertyRegistrators();
+}
+
+PropertyRegistrator* ScriptPragmaCallback::GetEntityRegistration(string class_name)
+{
+	return propertyPragma->GetEntityRegistration(class_name);
 }
 
 StrVec ScriptPragmaCallback::GetCustomEntityTypes()

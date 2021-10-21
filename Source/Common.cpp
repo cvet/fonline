@@ -1118,6 +1118,7 @@ GameOptions::GameOptions()
     DialogDemandRecheck = false;
     SneakDivider = 6;
     LookMinimum = 6;
+	LookMaximum = 100;
     DeadHitPoints = -6;
 
     Breaktime = 1200;

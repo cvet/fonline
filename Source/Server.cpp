@@ -193,6 +193,8 @@ void FOServer::RemoveClient( Client* cl )
                 ItemMngr.RadioRegister( item, false );
         }
 
+		cl->EraseAllListening();
+
         // Full delete
         if( full_delete )
         {
@@ -234,6 +236,9 @@ void FOServer::LogicTick()
     DbStorage->StartChanges();
     if( DbHistory )
         DbHistory->StartChanges();
+
+	// Process dynamic scripts
+	Script::ProcessDynamicScripts( );
 
     // Process clients
     ConnectedClientsLocker.Lock();
@@ -277,7 +282,6 @@ void FOServer::LogicTick()
         // Check for removing
         if( cr->IsDestroyed )
             continue;
-
         // Process logic
         ProcessCritter( cr );
     }
@@ -335,10 +339,11 @@ void FOServer::LogicTick()
     // Calculate fps
     static uint   fps = 0;
     static double fps_tick = Timer::AccurateTick();
-    if( fps_tick >= 1000.0 )
+    if(Timer::AccurateTick() - fps_tick >= 1000.0 )
     {
         Statistics.FPS = fps;
         fps = 0;
+		fps_tick = Timer::AccurateTick();
     }
     else
     {
@@ -1060,7 +1065,7 @@ void FOServer::Process_CommandReal( BufferManager& buf, LogFunc logcb, Client* c
         Critter* cr = ( !crid ? cl_ : CrMngr.GetCritter( crid ) );
         if( cr )
         {
-            Property* prop = Critter::PropertiesRegistrator->Find( property_name );
+            Property* prop = Critter::PropertiesRegistrators[0]->Find( property_name );
             if( !prop )
             {
                 logcb( "Property not found." );
@@ -1757,7 +1762,6 @@ bool FOServer::Init()
 bool FOServer::InitReal()
 {
     WriteLog( "***   Starting initialization   ***\n" );
-
     FileManager::InitDataFiles( "./" );
 
     // Delete intermediate files if engine have been updated
@@ -1859,7 +1863,7 @@ bool FOServer::InitReal()
 
     // Modules initialization
     Timer::UpdateTick();
-    if( !Script::RunModuleInitFunctions() )
+    if( !Script::RunAllModuleInitFunctions() )
         return false;
 
     // Update files

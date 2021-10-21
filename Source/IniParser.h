@@ -3,7 +3,7 @@
 
 #include "Common.h"
 
-#define CONFIG_NAME    "FOnline.cfg"
+#define CONFIG_NAME    ".\\FOnline.cfg"
 
 class IniParser
 {

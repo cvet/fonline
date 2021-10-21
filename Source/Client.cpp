@@ -152,6 +152,10 @@ FOClient::FOClient()
     UpdateFilesWholeSize = 0;
     UpdateFileDownloading = false;
     UpdateFileTemp = nullptr;
+	StatisticHardTime = 0.0f;
+	StatisticLoopTime = 0.0f;
+	StatisticInputTime = 0.0f;
+	StatisticNetworkTime = 0.0f;
 
     Chosen = nullptr;
     PingTick = 0;
@@ -311,7 +315,7 @@ bool FOClient::PostInit()
     SprMngr.PushAtlasType( RES_ATLAS_STATIC );
 
     // Modules initialization
-    if( !Script::RunModuleInitFunctions() )
+    if( !Script::RunAllModuleInitFunctions() )
     {
         AddMess( FOMB_GAME, CurLang.Msg[ TEXTMSG_GAME ].GetStr( STR_NET_FAIL_RUN_START_SCRIPT ) );
         return false;
@@ -791,6 +795,63 @@ void FOClient::DeleteCritter( uint remid )
     HexMngr.DeleteCritter( remid );
 }
 
+void FOClient::CreateSubCustomEntityMngr(uint subType)
+{
+	for (size_t size = CustomEntityMngrs.size(); size <= subType; size++)
+	{
+		CustomEntityMngrs.push_back(std::map<uint, CustomEntity*>());
+	}
+}
+
+std::map<uint, CustomEntity*>* FOClient::GetCustomEntityMngr(uint subType)
+{
+	RUNTIME_ASSERT_STR(CustomEntityMngrs.size() > subType, _str("CustomEntityMngrs'{}'>subType'{}'", CustomEntityMngrs.size(), subType));
+	return &CustomEntityMngrs[subType];
+}
+
+CustomEntity * FOClient::GetCustomEntity(uint subType, uint id)
+{
+	auto mngr = GetCustomEntityMngr(subType);
+	if (mngr->count(id) == 0)
+		return nullptr;
+	return mngr->at(id);
+}
+
+void FOClient::DeleteCustomEntity(uint subType, uint id)
+{
+	auto entity = GetCustomEntity(subType, id);
+	if (!entity)
+		return;
+	entity->Release();
+	GetCustomEntityMngr(subType)->erase(id);
+}
+
+void FOClient::DeleteAllCustomEntity()
+{
+	for (auto itMngr : CustomEntityMngrs)
+	{
+		for (auto it : itMngr)
+			it.second->Release();
+		itMngr.clear();
+	}
+}
+
+void FOClient::DeleteCustomEntitys(uint subType)
+{
+	auto mngr = GetCustomEntityMngr(subType);
+	for (auto it : *mngr)
+		it.second->Release();
+	mngr->clear();
+}
+
+void FOClient::AddCustomEntity(CustomEntity* entity)
+{
+	DeleteCustomEntity(entity->GetSubType(), entity->GetId());
+	auto mngr = GetCustomEntityMngr(entity->GetSubType());
+	mngr->insert(std::pair<uint, CustomEntity*>(entity->GetId(), entity));
+	entity->AddRef();
+}
+
 void FOClient::LookBordersPrepare()
 {
     LookBorders.clear();
@@ -901,6 +962,8 @@ void FOClient::LookBordersPrepare()
     HexMngr.SetFog( LookBorders, ShootBorders, &Chosen->SprOx, &Chosen->SprOy );
 }
 
+#define DebugLog( str )               WriteLog(str)
+
 void FOClient::MainLoop()
 {
     Timer::UpdateTick();
@@ -918,6 +981,10 @@ void FOClient::MainLoop()
     {
         call_counter++;
     }
+	StatisticHardTime = 0.0f;
+	StatisticLoopTime = 0.0f;
+	StatisticInputTime = 0.0f;
+	StatisticNetworkTime = 0.0f;
 
     // Check for quit, poll pending events
     if( InitCalls < 2 )
@@ -1085,9 +1152,11 @@ void FOClient::MainLoop()
         ShowMainScreen( SCREEN_LOGIN );
 
     // Input
+	static double inputtick = Timer::AccurateTick();
+	inputtick = Timer::AccurateTick();
     ParseKeyboard();
     ParseMouse();
-
+	StatisticInputTime = Timer::AccurateTick() - inputtick;
     // Process
     AnimProcess();
 
@@ -1121,9 +1190,11 @@ void FOClient::MainLoop()
     // Process pending invocations
     Script::ProcessDeferredCalls();
 
+	static double idletick = Timer::FastTick();
+	idletick = Timer::FastTick();
     // Script loop
     Script::RaiseInternalEvent( ClientFunctions.Loop );
-
+	StatisticLoopTime = (Timer::AccurateTick() - idletick);
     // Suspended contexts
     Script::RunSuspended();
 
@@ -1150,9 +1221,10 @@ void FOClient::DrawIface()
         PreDirtyOffscreenSurfaces.clear();
     }
 
+	bool old = CanDrawInScripts;
     CanDrawInScripts = true;
     Script::RaiseInternalEvent( ClientFunctions.RenderIface );
-    CanDrawInScripts = false;
+    CanDrawInScripts = old;
 }
 
 void FOClient::ScreenFade( uint time, uint from_color, uint to_color, bool push_back )
@@ -2008,6 +2080,14 @@ void FOClient::NetProcess()
             Net_OnCritterXY();
             break;
 
+		case NETMSG_ADD_CUSTOM_ENTITY:
+			Net_OnAddCustomEntity();
+			break;
+
+		case NETMSG_REMOVE_CUSTOM_ENTITY:
+			Net_OnRemoveCustomEntity();
+			break;
+
         case NETMSG_POD_PROPERTY( 1, 0 ):
         case NETMSG_POD_PROPERTY( 1, 1 ):
         case NETMSG_POD_PROPERTY( 1, 2 ):
@@ -2507,7 +2587,7 @@ void FOClient::Net_OnAddCritter( bool is_npc )
 
 void FOClient::Net_OnRemoveCritter()
 {
-    uint remove_crid;
+    uint remove_crid = 0;
     Bin >> remove_crid;
 
     CHECK_IN_BUFF_ERROR;
@@ -2519,6 +2599,40 @@ void FOClient::Net_OnRemoveCritter()
     cr->Finish();
 
     Script::RaiseInternalEvent( ClientFunctions.CritterOut, cr );
+}
+
+void FOClient::Net_OnAddCustomEntity()
+{
+	uint msg_len = 0;
+	Bin >> msg_len;
+
+	uint id = 0;
+	uint sub_type = 0;
+	uint protoid = 0; 
+	Bin >> id;
+	Bin >> sub_type;
+	Bin >> protoid;
+
+	// Properties
+	NET_READ_PROPERTIES(Bin, TempPropertiesData);
+
+	CHECK_IN_BUFF_ERROR;
+
+	CustomEntity* entity = new CustomEntity(id, sub_type, ProtoMngr.GetProtoCustom( sub_type, protoid ) );
+	entity->Props.RestoreData(TempPropertiesData);
+	AddCustomEntity(entity);
+}
+
+void FOClient::Net_OnRemoveCustomEntity()
+{
+	uint subType = 0;
+	uint id = 0;
+	Bin >> id;
+	Bin >> subType;
+	
+	CHECK_IN_BUFF_ERROR;
+
+	DeleteCustomEntity( subType, id);
 }
 
 void FOClient::Net_OnText()
@@ -3593,6 +3707,8 @@ void FOClient::Net_OnProperty( uint data_size )
     NetProperty::Type type = NetProperty::None;
     uint              cr_id = 0;
     uint              item_id = 0;
+	uint              entity_id = 0;
+	uint              sub_type = 0;
     ushort            property_index = 0;
 
     if( data_size == 0 )
@@ -3622,6 +3738,11 @@ void FOClient::Net_OnProperty( uint data_size )
         additional_args = 1;
         Bin >> item_id;
         break;
+	case NetProperty::CustomEntity:
+		additional_args = 2;
+		Bin >> entity_id;
+		Bin >> sub_type;
+		break;
     default:
         break;
     }
@@ -3648,27 +3769,27 @@ void FOClient::Net_OnProperty( uint data_size )
     switch( type )
     {
     case NetProperty::Global:
-        prop = GlobalVars::PropertiesRegistrator->Get( property_index );
+        prop = GlobalVars::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = Globals;
         break;
     case NetProperty::Critter:
-        prop = CritterCl::PropertiesRegistrator->Get( property_index );
+        prop = CritterCl::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = GetCritter( cr_id );
         break;
     case NetProperty::Chosen:
-        prop = CritterCl::PropertiesRegistrator->Get( property_index );
+        prop = CritterCl::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = Chosen;
         break;
     case NetProperty::MapItem:
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = Item::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = HexMngr.GetItemById( item_id );
         break;
     case NetProperty::CritterItem:
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = Item::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
         {
             CritterCl* cr = GetCritter( cr_id );
@@ -3677,26 +3798,33 @@ void FOClient::Net_OnProperty( uint data_size )
         }
         break;
     case NetProperty::ChosenItem:
-        prop = Item::PropertiesRegistrator->Get( property_index );
+        prop = Item::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = ( Chosen ? Chosen->GetItem( item_id ) : nullptr );
         break;
     case NetProperty::Map:
-        prop = Map::PropertiesRegistrator->Get( property_index );
+        prop = Map::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = ScriptFunc.ClientCurMap;
         break;
     case NetProperty::Location:
-        prop = Location::PropertiesRegistrator->Get( property_index );
+        prop = Location::PropertiesRegistrators[0]->Get( property_index );
         if( prop )
             entity = ScriptFunc.ClientCurLocation;
         break;
+	case NetProperty::CustomEntity:
+		prop = CustomEntity::GetPropertyRegistrator(sub_type-1)->Get(property_index);
+		if (prop)
+		{
+			entity = GetCustomEntity(sub_type, entity_id);
+		}
+		break;
     default:
         RUNTIME_ASSERT( false );
         break;
     }
-    if( !prop || !entity )
-        return;
+	if (!prop || !entity)
+		return;
 
     entity->Props.SetSendIgnore( prop, entity );
     prop->SetData( entity, !TempPropertyData.empty() ? &TempPropertyData[ 0 ] : nullptr, (uint) TempPropertyData.size() );
@@ -5271,8 +5399,7 @@ bool FOClient::ReloadScripts()
 
     // Bind stuff
     asIScriptEngine*      engine = Script::GetEngine();
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
-    int                   bind_errors = ClientBind::Bind( engine, registrators );
+    int                   bind_errors = ClientBind::Bind( engine, pragma_callback->GetPropertyRegistrators());
     if( bind_errors )
     {
         WriteLog( "Bind fail, errors {}.\n", bind_errors );
@@ -5392,6 +5519,7 @@ bool FOClient::ReloadScripts()
     BIND_INTERNAL_EVENT( CritterAnimationFallout );
     BIND_INTERNAL_EVENT( CritterCheckMoveItem );
     BIND_INTERNAL_EVENT( CritterGetAttackDistantion );
+	BIND_INTERNAL_EVENT( CritterNameRender );
     #undef BIND_INTERNAL_EVENT
 
     if( errors )
@@ -5401,33 +5529,39 @@ bool FOClient::ReloadScripts()
     ASDbgMemoryCanWork = true;
     #endif
 
+	std::vector<PropertyRegistrator*> registrators = pragma_callback->GetPropertyRegistrators();
     GlobalVars::SetPropertyRegistrator( registrators[ 0 ] );
-    GlobalVars::PropertiesRegistrator->SetNativeSendCallback( OnSendGlobalValue );
+    GlobalVars::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendGlobalValue );
     Globals = new GlobalVars();
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
-    CritterCl::PropertiesRegistrator->SetNativeSendCallback( OnSendCritterValue );
-    CritterCl::PropertiesRegistrator->SetNativeSetCallback( "ModelName", OnSetCritterModelName );
+    CritterCl::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendCritterValue );
+    CritterCl::PropertiesRegistrators[0]->SetNativeSetCallback( "ModelName", OnSetCritterModelName );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
-    Item::PropertiesRegistrator->SetNativeSendCallback( OnSendItemValue );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
+    Item::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendItemValue );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "Opened", OnSetItemOpened );
     Map::SetPropertyRegistrator( registrators[ 3 ] );
-    Map::PropertiesRegistrator->SetNativeSendCallback( OnSendMapValue );
+    Map::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendMapValue );
     Location::SetPropertyRegistrator( registrators[ 4 ] );
-    Location::PropertiesRegistrator->SetNativeSendCallback( OnSendLocationValue );
-
+    Location::PropertiesRegistrators[0]->SetNativeSendCallback( OnSendLocationValue );
+	for (size_t i = 5, iend = registrators.size(); i < iend; i++)
+	{
+		ProtoMngr.CreateCustomProtoMap(registrators[i]->GetSubType(), _str("fo{}", registrators[i]->GetClassName().c_str()).lower().c_str(), _str("Proto{}", registrators[i]->GetClassName().c_str()).str());
+		CustomEntity::SetPropertyRegistrator(registrators[i]);
+		CreateSubCustomEntityMngr(registrators[i]->GetSubType());
+	}
     Globals->Props.RestoreData( GlovalVarsPropertiesData );
 
     WriteLog( "Load scripts complete.\n" );
@@ -5782,6 +5916,66 @@ bool FOClient::SScriptFunc::Crit_GetBonePosition( CritterCl* cr, hash bone_name,
     bone_x += cr->SprOx;
     bone_y += cr->SprOy;
     return true;
+}
+
+bool FOClient::SScriptFunc::Crit_IsMovePassed(CritterCl* cr, uchar direction)
+{
+	if (cr->IsDestroyed)
+		SCRIPT_ERROR_R0("Attempt to call method on destroyed object.");
+	if (!Self->HexMngr.IsMapLoaded())
+		SCRIPT_ERROR_R0("Map is not loaded.");
+	if (direction >= DIRS_COUNT)
+		SCRIPT_ERROR_R0("Invalid direction arg.");
+
+	ushort hx = cr->GetHexX();
+	ushort hy = cr->GetHexY();
+	MoveHexByDir(hx, hy, direction, Self->HexMngr.GetWidth(), Self->HexMngr.GetHeight());
+	// Check passed
+	ushort fx = cr->GetHexX();
+	ushort fy = cr->GetHexY();
+	uchar  dir = GetNearDir(fx, fy, hx, hy);
+	uint   multihex = cr->GetMultihex();
+
+	// Single hex
+	if (!multihex)
+		return !Self->HexMngr.GetField(hx, hy).Flags.IsNotPassed;
+
+	// Multihex
+	// Base hex
+	int hx_ = hx, hy_ = hy;
+	for (uint k = 0; k < multihex; k++)
+		MoveHexByDirUnsafe(hx_, hy_, dir);
+	if (hx_ < 0 || hy_ < 0 || hx_ >= Self->HexMngr.GetWidth() || hy_ >= Self->HexMngr.GetHeight())
+		return false;
+	if (Self->HexMngr.GetField(hx_, hy_).Flags.IsNotPassed)
+		return false;
+
+	// Clock wise hexes
+	bool is_square_corner = (!GameOpt.MapHexagonal && IS_DIR_CORNER(dir));
+	uint steps_count = (is_square_corner ? multihex * 2 : multihex);
+	int  dir_ = (GameOpt.MapHexagonal ? ((dir + 2) % 6) : ((dir + 2) % 8));
+	if (is_square_corner)
+		dir_ = (dir_ + 1) % 8;
+	int hx__ = hx_, hy__ = hy_;
+	for (uint k = 0; k < steps_count; k++)
+	{
+		MoveHexByDirUnsafe(hx__, hy__, dir_);
+		if (Self->HexMngr.GetField(hx__, hy__).Flags.IsNotPassed)
+			return false;
+	}
+
+	// Counter clock wise hexes
+	dir_ = (GameOpt.MapHexagonal ? ((dir + 4) % 6) : ((dir + 6) % 8));
+	if (is_square_corner)
+		dir_ = (dir_ + 7) % 8;
+	hx__ = hx_, hy__ = hy_;
+	for (uint k = 0; k < steps_count; k++)
+	{
+		MoveHexByDirUnsafe(hx__, hy__, dir_);
+		if (Self->HexMngr.GetField(hx__, hy__).Flags.IsNotPassed)
+			return false;
+	}
+	return true;
 }
 
 Item* FOClient::SScriptFunc::Item_Clone( Item* item, uint count )
@@ -6245,10 +6439,14 @@ string FOClient::SScriptFunc::Global_CustomCall( string command, string separato
                 if( next )
                     SDL_StartTextInput();
                 else
-                    SDL_StopTextInput();
+					SDL_StopTextInput();
             }
         }
-    }
+	}
+	else if ( cmd == "RefreshAtlas")
+	{
+	    ResMngr.FreeResourcesCritter(nullptr);
+	}
     else
     {
         SCRIPT_ERROR_R0( "Invalid custom call command." );
@@ -6400,10 +6598,10 @@ CScriptArray* FOClient::SScriptFunc::Global_GetCrittersInPathBlock( ushort from_
     return Script::CreateArrayRef( "Critter[]", critters );
 }
 
-void FOClient::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
+void FOClient::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist, bool _passed )
 {
     UShortPair pre_block, block;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, true );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, _passed);
     to_hx = pre_block.first;
     to_hy = pre_block.second;
 }
@@ -7065,12 +7263,12 @@ void FOClient::SScriptFunc::Global_SetPropertyGetCallback( asIScriptGeneric* gen
     gen->SetReturnByte( 0 );
     RUNTIME_ASSERT( ref );
 
-    Property* prop = GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value );
-    prop = ( prop ? prop : CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    Property* prop = GlobalVars::PropertiesRegistrators[0]->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : CritterCl::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Item::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Map::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Location::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : GlobalVars::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
@@ -7089,11 +7287,11 @@ void FOClient::SScriptFunc::Global_AddPropertySetCallback( asIScriptGeneric* gen
     gen->SetReturnByte( 0 );
     RUNTIME_ASSERT( ref );
 
-    Property* prop = CritterCl::PropertiesRegistrator->FindByEnum( prop_enum_value );
-    prop = ( prop ? prop : Item::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Map::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : Location::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
-    prop = ( prop ? prop : GlobalVars::PropertiesRegistrator->FindByEnum( prop_enum_value ) );
+    Property* prop = CritterCl::PropertiesRegistrators[0]->FindByEnum( prop_enum_value );
+    prop = ( prop ? prop : Item::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Map::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : Location::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
+    prop = ( prop ? prop : GlobalVars::PropertiesRegistrators[0]->FindByEnum( prop_enum_value ) );
     if( !prop )
         SCRIPT_ERROR_R( "Property '{}' not found.", _str().parseHash( prop_enum_value ) );
 
@@ -7181,28 +7379,39 @@ void FOClient::SScriptFunc::Global_GetTextInfo( string text, int w, int h, int f
     SprMngr.GetTextInfo( w, h, text, font, flags, tw, th, lines );
 }
 
+void FOClient::SScriptFunc::Global_DrawDirSprite(uint spr_id, uchar direction, int frame_index, int x, int y, uint color, bool offs)
+{
+	if (!Self->CanDrawInScripts)
+		SCRIPT_ERROR_R("You can use this function only in RenderIface event.");
+	if (!spr_id)
+		return;
+
+	AnyFrames* anim = Self->AnimGetFrames(spr_id);
+	if (!anim )
+		return;
+
+	if (direction != 0)
+		anim = anim->GetDir(direction);
+
+	if (frame_index >= (int)anim->GetCnt())
+		return;
+
+	uint spr_id_ = (frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
+	if (offs)
+	{
+		SpriteInfo* si = SprMngr.GetSpriteInfo(spr_id_);
+		if (!si)
+			return;
+		x += -si->Width / 2 + si->OffsX;
+		y += -si->Height + si->OffsY;
+	}
+
+	SprMngr.DrawSprite(spr_id_, x, y, COLOR_SCRIPT_SPRITE(color));
+}
+
 void FOClient::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
 {
-    if( !Self->CanDrawInScripts )
-        SCRIPT_ERROR_R( "You can use this function only in RenderIface event." );
-    if( !spr_id )
-        return;
-
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || frame_index >= (int) anim->GetCnt() )
-        return;
-
-    uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
-    if( offs )
-    {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id_ );
-        if( !si )
-            return;
-        x += -si->Width / 2 + si->OffsX;
-        y += -si->Height + si->OffsY;
-    }
-
-    SprMngr.DrawSprite( spr_id_, x, y, COLOR_SCRIPT_SPRITE( color ) );
+	Global_DrawDirSprite(spr_id, 0, frame_index, x, y, color, offs);
 }
 
 void FOClient::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs )
@@ -7398,7 +7607,7 @@ void FOClient::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
 
 void FOClient::SScriptFunc::Global_DrawCritter2d( hash model_name, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color )
 {
-    AnyFrames* anim = ResMngr.GetCrit2dAnim( model_name, anim1, anim2, dir );
+    AnyFrames* anim = ResMngr.GetCrit2dAnim( model_name, anim1, anim2, dir, nullptr );
     if( anim )
         SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
 }
@@ -7770,3 +7979,11 @@ void FOClient::SScriptFunc::Global_SetUserConfig( CScriptArray* key_values )
     }
     cfg_user.SaveFile( CONFIG_NAME );
 }
+
+string FOClient::SScriptFunc::Global_GetClipboardText()
+{
+	string result = SDL_GetClipboardText();
+	return result;
+}
+
+

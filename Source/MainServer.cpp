@@ -115,6 +115,12 @@ int main( int argc, char** argv )
 
     WriteLog( "FOnline server, version {}.\n", FONLINE_VERSION );
 
+	// Md5
+	if( !Md5::InitMD5( ) )
+	{
+		WriteLog( "Md5 init fail.\n" );
+	}
+
     // Autostart
     if( !MainConfig->IsKey( "", "NoStart" ) )
     {
@@ -131,6 +137,7 @@ int main( int argc, char** argv )
 
     // Start admin manager
     InitAdminManager();
+
 
     // Loop
     if( GuiWindow )

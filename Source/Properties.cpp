@@ -3,7 +3,9 @@
 #include "Entity.h"
 #include "IniParser.h"
 #include "Script.h"
+#include "ProtoManager.h"
 #ifdef FONLINE_SERVER
+# include "EntityManager.h"
 # include "DataBase.h"
 #endif
 
@@ -1159,7 +1161,7 @@ Properties::~Properties()
 
 Properties& Properties::operator=( const Properties& other )
 {
-    RUNTIME_ASSERT( registrator == other.registrator );
+    RUNTIME_ASSERT_STR( registrator == other.registrator, _str("Different registrator {} - {}", registrator->GetClassName(), other.registrator->GetClassName()) );
 
     // Copy POD data
     memcpy( &podData[ 0 ], &other.podData[ 0 ], registrator->wholePodDataSize );
@@ -1548,6 +1550,40 @@ string WriteValue( void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_ha
             result.append( "}" );
         return result;
     }
+	else if (type_id & asTYPEID_APPOBJECT)
+	{
+		int matches = 0;
+		for (asUINT j = 0; j < as_obj_type->GetPropertyCount() && matches < 3; j++)
+		{
+			const char* decl = as_obj_type->GetPropertyDeclaration(j);
+			if (Str::Compare(decl, "const uint Id") ||
+				Str::Compare(decl, "const bool IsDestroyed") ||
+				Str::Compare(decl, "const bool IsDestroying"))
+				matches++;
+		}
+
+		if (matches == 3)
+		{
+			Entity* entity = (Entity*)ptr;
+			if (entity->Type == EntityType::Custom)
+			{
+				Properties* props = &entity->Props;
+				PropertyRegistrator* registrator = props->GetRegistrator();
+
+				string result = (deep > 0 ? "{" : "");
+
+				result.append("{").append(_str("{}", entity->Id)).append("}");
+
+				for (uint i = 0, iend = registrator->GetCount(); i < iend; i++)
+					result.append("{").append(props->SavePropertyToText(registrator->Get(i))).append("}");
+
+				if (deep > 0)
+					result.append("}");
+				// WriteLog("Write entity '{}' '{}' '{}'\n", (uint)entity->Type, registrator->GetClassName(), result);
+				return result;
+			}
+		}
+	}
     RUNTIME_ASSERT( !"Unreachable place" );
     return "";
 }
@@ -1638,6 +1674,49 @@ void* ReadValue( const char* value, int type_id, asITypeInfo* as_obj_type, bool*
         }
         return dict;
     }
+	else if (type_id & asTYPEID_APPOBJECT)
+	{
+		int matches = 0;
+		for (asUINT j = 0; j < as_obj_type->GetPropertyCount() && matches < 3; j++)
+		{
+			const char* decl = as_obj_type->GetPropertyDeclaration(j);
+			if (Str::Compare(decl, "const uint Id") ||
+				Str::Compare(decl, "const bool IsDestroyed") ||
+				Str::Compare(decl, "const bool IsDestroying"))
+				matches++;
+		}
+
+		if (matches == 3)
+		{
+			PropertyRegistrator* registrator = Script::GetEntityRegistration(as_obj_type->GetName());
+			string str;
+			
+			CustomEntity* entity = nullptr;
+			if (value = ReadToken(value, str))
+			{
+				uint id = (uint)_str(str).toUInt();
+				if (id)
+				{
+#ifdef FONLINE_CLIENT
+					entity = CustomEntity::GetCustomEntity(registrator->GetSubType(), id);
+					if (!entity)
+						entity = new CustomEntity(id, registrator->GetSubType(), registrator, nullptr);
+#endif // FONLINE_CLIENT
+				}
+			}
+
+			if(!entity)
+				return nullptr;
+
+			Properties* props = &entity->Props;
+			for (uint i = 0, iend = registrator->GetCount(); i < iend; i++)
+			{
+				value = ReadToken(value, str);
+				RUNTIME_ASSERT(props->LoadPropertyFromText(registrator->Get(i), str));
+			}
+			return entity;
+		}
+	}
     RUNTIME_ASSERT( !"Unreachable place" );
     return nullptr;
 }
@@ -1658,8 +1737,8 @@ bool Properties::LoadFromText( const StrMap& key_values )
         Property* prop = registrator->Find( key );
         if( !prop || ( prop->podDataOffset == uint( -1 ) && prop->complexDataIndex == uint( -1 ) ) )
         {
-            if( !prop )
-                WriteLog( "Unknown property '{}'.\n", key );
+			if (!prop)
+				WriteLog("Unknown property '{}' - '{}'.\n", key, registrator->registeredProperties.size());
             else
                 WriteLog( "Invalid property '{}' for reading.\n", prop->GetName() );
 
@@ -2915,6 +2994,7 @@ PropertyRegistrator::PropertyRegistrator( bool is_server, const string& script_c
     defaultTemporary = false;
     defaultNoHistory = false;
     getPropertiesCount = 0;
+	subType = 0;
 }
 
 PropertyRegistrator::~PropertyRegistrator()
@@ -2932,7 +3012,7 @@ PropertyRegistrator::~PropertyRegistrator()
     for( size_t i = 0; i < podDataPool.size(); i++ )
         delete[] podDataPool[ i ];
     podDataPool.clear();
-
+	subType = 0;
     SetDefaults();
 }
 
@@ -3427,11 +3507,16 @@ Property* PropertyRegistrator::Register(
     return prop;
 }
 
+std::string PropertyRegistrator::GetComponentName( const string & name )
+{
+	return scriptClassName + name;
+}
+
 static void GetEntityComponent( asIScriptGeneric* gen )
 {
     Entity* entity = (Entity*) gen->GetObject();
     hash component_name = *(hash*) gen->GetAuxiliary();
-    if( entity->Proto->HaveComponent( component_name ) )
+	if(entity->Proto && entity->Proto->HaveComponent( component_name ) )
         *(Entity**) gen->GetAddressOfReturnLocation() = entity;
     else
         *(Entity**) gen->GetAddressOfReturnLocation() = nullptr;
@@ -3442,7 +3527,7 @@ bool PropertyRegistrator::RegisterComponent( const string& name )
     asIScriptEngine* engine = Script::GetEngine();
     RUNTIME_ASSERT( engine );
 
-    string class_name = scriptClassName + name;
+    string class_name = GetComponentName( name );
     int r = engine->RegisterObjectType( class_name.c_str(), 0, asOBJ_REF );
     if( r < 0 )
     {
@@ -3471,7 +3556,6 @@ bool PropertyRegistrator::RegisterComponent( const string& name )
         WriteLog( "Can't register '{}' component '{}' const method '{}'.\n", scriptClassName, class_name, const_decl );
         return false;
     }
-
     registeredComponents.insert( *name_hash );
     return true;
 }
@@ -3506,7 +3590,6 @@ void PropertyRegistrator::FinishRegistration()
 {
     RUNTIME_ASSERT( !registrationFinished );
     registrationFinished = true;
-
     // Fix POD data offsets
     for( size_t i = 0, j = registeredProperties.size(); i < j; i++ )
     {
@@ -3574,6 +3657,17 @@ void PropertyRegistrator::SetNativeSendCallback( NativeSendCallback callback )
 uint PropertyRegistrator::GetWholeDataSize()
 {
     return wholePodDataSize;
+}
+
+
+void PropertyRegistrator::SetSubType(uint sub) 
+{ 
+	subType = sub; 
+}
+
+uint PropertyRegistrator::GetSubType()
+{ 
+	return subType; 
 }
 
 string PropertyRegistrator::GetClassName()

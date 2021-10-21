@@ -3,6 +3,8 @@
 #include "Entity.h"
 #include "Script.h"
 
+extern bool as_builder_ForceAutoHandles;
+
 Method::Method()
 {
     callType = (CallType) 0;
@@ -11,9 +13,14 @@ Method::Method()
     callbackBindId = 0;
 }
 
+void Method::FakeWrap( asIScriptGeneric* gen )
+{
+
+}
+
 void Method::Wrap( asIScriptGeneric* gen )
 {
-    Method*  self = nullptr;    // gen->GetObjForThiscall();
+    Method*  self = (Method*)gen->GetAuxiliary();
     Entity*  entity = (Entity*) gen->GetObject();
     Methods* methods = &entity->Meths;
 
@@ -25,15 +32,47 @@ void Method::Wrap( asIScriptGeneric* gen )
     for( size_t cbk = 0; cbk < bind_ids.size(); cbk++ )
     {
         Script::PrepareContext( bind_ids[ cbk ], "Method" );
-
-        // First arg is entity
-        Script::SetArgEntity( entity );
-
-        // Arguments
-        int arg_count = gen->GetArgCount();
-        for( int i = 1; i < arg_count; i++ )
-            Script::SetArgAddress( gen->GetArgAddress( i ) );
-
+		auto engine = Script::GetEngine();
+		for (size_t index = 0; index < Script::GetCountArg(); index++)
+		{
+			if (index == 0)
+			{
+				Script::SetArgEntity(entity);
+				continue;
+			}
+			asUINT i = (asUINT)index - 1;
+			void* value = gen->GetAddressOfArg(i);
+			int type_id = gen->GetArgTypeId(i);
+			asITypeInfo* obj_type = (type_id & asTYPEID_MASK_OBJECT ? engine->GetTypeInfoById(type_id) : nullptr);
+			if (!(type_id & asTYPEID_MASK_OBJECT))
+			{
+				int size = engine->GetSizeOfPrimitiveType(type_id);
+				if (size == 1)
+					Script::SetArgUChar(*(uchar*)value);
+				else if (size == 2)
+					Script::SetArgUShort(*(ushort*)value);
+				else if (size == 4)
+					Script::SetArgUInt(*(uint*)value);
+				else if (size == 8)
+					Script::SetArgUInt64(*(uint64*)value);
+				else
+					RUNTIME_ASSERT(!"Unreachable place");
+			}
+			else
+			{
+				if (type_id & asTYPEID_OBJHANDLE)
+				{
+					if (*(void**)value)
+						engine->AddRefScriptObject(*(void**)value, obj_type);
+					Script::SetArgObject(*(void**)value);
+				}
+				else
+				{
+					engine->AddRefScriptObject(value, obj_type);
+					Script::SetArgObject(value);
+				}
+			}
+		}
         // Run
         if( cbk == 0 )
         {
@@ -42,8 +81,46 @@ void Method::Wrap( asIScriptGeneric* gen )
                 int type_id = gen->GetReturnTypeId();
                 if( cbk == 0 && type_id != asTYPEID_VOID )
                 {
-                    RUNTIME_ASSERT( false );
-                    // gen->SetReturnAddress( Script::GetReturnedRawAddress() );
+					void* ptr = Script::GetReturnedRawAddress();
+					switch (type_id)
+					{
+					case asTYPEID_INT8:
+					case asTYPEID_UINT8:
+					case asTYPEID_BOOL:
+						gen->SetReturnByte(*(unsigned char*)ptr);
+						break;
+					case asTYPEID_INT16:
+					case asTYPEID_UINT16:
+						gen->SetReturnWord(*(unsigned short*)ptr);
+						break;
+					case asTYPEID_INT32:
+					case asTYPEID_UINT32:
+						gen->SetReturnDWord(*(unsigned int*)ptr);
+						break;
+					case asTYPEID_INT64:
+					case asTYPEID_UINT64:
+						gen->SetReturnQWord(*(unsigned long long*)ptr);
+						break;
+					case asTYPEID_FLOAT:
+						gen->SetReturnFloat(*(float*)ptr);
+						break;
+					case asTYPEID_DOUBLE:
+						gen->SetReturnDouble(*(double*)ptr);
+						break;
+					default:
+						if (type_id & asTYPEID_MASK_OBJECT)
+						{
+							void *ptr = Script::GetReturnedObject();
+							auto type = engine->GetTypeInfoById(type_id);
+							engine->AddRefScriptObject(ptr, type);
+							gen->SetReturnObject(ptr);
+						}
+						else
+						{
+							RUNTIME_ASSERT(!"Unreachable place");
+						}
+						break;
+					}
                 }
             }
             else
@@ -91,6 +168,7 @@ MethodRegistrator::MethodRegistrator( bool is_server, const char* class_name )
 {
     registrationFinished = false;
     isServer = is_server;
+	scriptClassName = class_name;
 }
 
 MethodRegistrator::~MethodRegistrator()
@@ -103,7 +181,7 @@ bool MethodRegistrator::Init()
     return true;
 }
 
-Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Method::CallType call )
+Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Method::CallType call, const string& cur_file)
 {
     if( registrationFinished )
     {
@@ -158,23 +236,27 @@ Method* MethodRegistrator::Register( const char* decl, const char* bind_func, Me
         // void DonThisThing(int a, int b)
         // funcdef void DonThisThingFunc(int a, int b)
         // void SetWatcher_DoThisThing( DonThisThingFunc@ func )
-
+		// WriteLog("'{}' '{}'.\n", scriptClassName, decl);
+		as_builder_ForceAutoHandles = true;
         int result = engine->RegisterObjectMethod( scriptClassName.c_str(), decl, asFUNCTION( Method::Wrap ), asCALL_GENERIC, method );
         if( result < 0 )
         {
             WriteLog( "Register entity method '{}' fail, error {}.\n", decl, result );
+			as_builder_ForceAutoHandles = false;
             return nullptr;
         }
+		as_builder_ForceAutoHandles = false;
 
         asIScriptFunction* func = engine->GetFunctionById( result );
         string             bind_decl = _str( decl ).replace( func->GetName(), "%s" );
         size_t             args_pos = bind_decl.find( '(' );
-        bind_decl.insert( args_pos + 1, _str( "{}&{}", scriptClassName, func->GetParamCount() > 0 ? ", " : "" ) );
+        bind_decl.insert( args_pos + 1, _str( "{} {}", scriptClassName, func->GetParamCount() > 0 ? ", " : "" ) );
         method->bindFunc = bind_func;
         method->bindDecl = bind_decl;
     }
 
     // Make entry
+	method->fileName = cur_file;
     method->registrator = this;
     method->regIndex = reg_index;
     method->methodDecl = decl;
@@ -187,14 +269,16 @@ bool MethodRegistrator::FinishRegistration()
 {
     int errors = 0;
     #ifndef FONLINE_SCRIPT_COMPILER
+	as_builder_ForceAutoHandles = true;
     for( size_t i = 0; i < registeredMethods.size(); i++ )
     {
         Method* method = registeredMethods[ i ];
         RUNTIME_ASSERT( method->bindFunc.length() > 0 );
-        method->callbackBindId = Script::BindByFuncName( method->bindFunc, method->bindDecl, false );
+        method->callbackBindId = Script::BindByFuncName( _str( "{}::{}", method->fileName, method->bindFunc ).str(), method->bindDecl, false );
         if( !method->callbackBindId )
             errors++;
     }
+	as_builder_ForceAutoHandles = false;
     #endif
     return errors == 0;
 }

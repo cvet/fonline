@@ -31,6 +31,7 @@ struct CUserType
 	virtual void Store(CSerializedValue *val, void *ptr) = 0;
 	virtual void Restore(CSerializedValue *val, void *ptr) = 0;
 	virtual void CleanupUserData(CSerializedValue * /*val*/) {}
+	virtual void *Create( CSerializedValue * val, asIScriptEngine* engine, asITypeInfo *ctype ) { return engine->CreateUninitializedScriptObject( ctype ); }
 };
 
 
@@ -68,6 +69,9 @@ public:
 	// is already a variable)
 	std::vector<CSerializedValue*> m_children;
 
+	CSerializer * GetSerializer( );
+
+	void Info( std::string info );
 protected:
 	friend class CSerializer;
 
@@ -168,6 +172,12 @@ public:
 	// Return new pointer to restored object
 	void *GetPointerToRestoredObject(void *originalObject);
 
+	void Info( std::string info );
+
+	asITypeInfo *GetType( std::string typeName );
+	asITypeInfo *GetTypeById( int typeId );
+	asIScriptModule *GetModule( );
+	static std::string GetTypeFullName( asITypeInfo * type, int typeId );
 protected:
 	friend class CSerializedValue;
 

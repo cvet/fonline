@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <functional>
 #include <math.h>
+#include "md5.h"
 #ifndef FO_WINDOWS
 # include <errno.h>
 # include <string.h> // strerror
@@ -321,6 +322,7 @@ struct ClientScriptFunctions
     void* CritterAnimationFallout;
     void* CritterCheckMoveItem;
     void* CritterGetAttackDistantion;
+	void* CritterNameRender;
 } extern ClientFunctions;
 
 struct MapperScriptFunctions
@@ -341,6 +343,7 @@ struct MapperScriptFunctions
     void* CritterAnimationSubstitute;
     void* CritterAnimationFallout;
     void* MapLoad;
+	void* MapNew;
     void* MapSave;
     void* InspectorProperties;
 } extern MapperFunctions;
@@ -442,6 +445,7 @@ struct GameOptions
     bool   DialogDemandRecheck;
     uint   SneakDivider;
     uint   LookMinimum;
+	uint   LookMaximum;
     int    DeadHitPoints;
     uint   Breaktime;
     uint   TimeoutTransfer;

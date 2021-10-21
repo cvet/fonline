@@ -12,6 +12,7 @@
 #include "AngelScript/sdk/add_on/scriptmath/scriptmath.h"
 #include "AngelScript/sdk/add_on/weakref/weakref.h"
 #include "AngelScript/sdk/add_on/scripthelper/scripthelper.h"
+#include "AngelScript/sdk/add_on/serializer/serializer.h"
 #include <strstream>
 
 #pragma MESSAGE("Rework native calls.")
@@ -102,6 +103,480 @@ static uint   RunTimeoutAbort = 600000;   // 10 minutes
 static uint   RunTimeoutMessage = 300000; // 5 minutes
 #endif
 
+// File loader
+class MemoryFileLoader: public Preprocessor::FileLoader
+{
+	string*        rootScript;
+	ScriptEntryVec includeScripts;
+	int            includeDeep;
+
+public:
+	MemoryFileLoader( string& root, const ScriptEntryVec& scripts ): rootScript( &root ), includeScripts( scripts ), includeDeep( 0 ) {}
+	virtual ~MemoryFileLoader( ) = default;
+
+	virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data, std::string& file_path ) override
+	{
+		if( rootScript )
+		{
+			data.resize( rootScript->length( ) );
+			memcpy( &data[ 0 ], rootScript->c_str( ), rootScript->length( ) );
+			rootScript = nullptr;
+			file_path = "(Root)";
+			return true;
+		}
+
+		includeDeep++;
+		RUNTIME_ASSERT( includeDeep <= 1 );
+
+		if( includeDeep == 1 && !includeScripts.empty( ) )
+		{
+			data.resize( includeScripts.front( ).Content.length( ) );
+			memcpy( &data[ 0 ], includeScripts.front( ).Content.c_str( ), includeScripts.front( ).Content.length( ) );
+		#ifdef FONLINE_SCRIPT_COMPILER
+			file_path = _str( includeScripts.front( ).Path ).resolvePath( );
+		#else
+			file_path = includeScripts.front( ).Name;
+		#endif
+			includeScripts.erase( includeScripts.begin( ) );
+			return true;
+		}
+
+		bool loaded = Preprocessor::FileLoader::LoadFile( dir, file_name, data, file_path );
+	#ifdef FONLINE_SCRIPT_COMPILER
+		if( loaded )
+			file_path = _str( includeScripts.front( ).Path ).resolvePath( );
+	#endif
+		return loaded;
+	}
+
+	virtual void FileLoaded( ) override
+	{
+		includeDeep--;
+	}
+};
+
+#ifdef FONLINE_SERVER
+
+class ModuleHash
+{
+	CSerializer serializer;
+
+	struct CStringType: public CUserType
+	{
+		void Store( CSerializedValue *val, void *ptr )
+		{
+			val->SetUserData( new std::string( *( std::string* )ptr ) );
+		}
+		void Restore( CSerializedValue *val, void *ptr )
+		{
+			std::string *buffer = ( std::string* )val->GetUserData( );
+			*( std::string* )ptr = *buffer;
+		}
+		void CleanupUserData( CSerializedValue *val )
+		{
+			std::string *buffer = ( std::string* )val->GetUserData( );
+			delete buffer;
+		}
+	};
+
+	struct CArrayType: public CUserType
+	{
+		struct elementInfo
+		{
+			bool isModule = false;
+			std::string declaration = "";
+			int typeId = 0;
+		};
+
+		void Store( CSerializedValue *val, void *ptr )
+		{
+			CScriptArray *arr = ( CScriptArray* )ptr;
+			asITypeInfo* type = val->GetSerializer( )->GetTypeById( arr->GetElementTypeId( ) );
+			elementInfo *info = new elementInfo { type ? type->GetModule( ) != 0 : false ,
+				std::string( Script::GetEngine( )->GetTypeDeclaration( arr->GetElementTypeId( ), true ) ), // new std::string( CSerializer::GetTypeFullName( val->GetSerializer( )->GetTypeById( arr->GetElementTypeId( ) ) ) );
+				arr->GetElementTypeId( )
+			};
+			val->SetUserData( info );
+
+			for( unsigned int i = 0; i < arr->GetSize( ); i++ )
+				val->m_children.push_back( new CSerializedValue( val, "", "", arr->At( i ), arr->GetElementTypeId( ) ) );
+		} 
+		void Restore( CSerializedValue *val, void *ptr )
+		{
+			CScriptArray *arr = ( CScriptArray* )ptr;
+			if( arr )
+			{
+				arr->Resize( asUINT( val->m_children.size( ) ) );
+
+				for( size_t i = 0; i < val->m_children.size( ); ++i )
+					val->m_children[ i ]->Restore( arr->At( asUINT( i ) ), arr->GetElementTypeId( ) );
+			}
+		}
+		void CleanupUserData( CSerializedValue *val )
+		{
+			elementInfo *buffer = ( elementInfo* )val->GetUserData( );
+			delete buffer;
+		}
+
+		void *Create( CSerializedValue * val, asIScriptEngine* engine, asITypeInfo *ctype )
+		{
+			elementInfo *einfo = ( elementInfo* )val->GetUserData( );
+			if( !einfo->isModule )
+			{
+				CScriptArray* arr = CScriptArray::Create( Script::GetEngine( )->GetTypeInfoById( Script::GetEngine( )->GetTypeIdByDecl( _str( "{}[]", einfo->declaration ).c_str( ) ) ) );
+				if( einfo->typeId != arr->GetElementTypeId( ) )
+				{
+					arr->Release( );
+					return nullptr;
+				}
+				return arr;
+			}
+			else
+			{
+				return CScriptArray::Create( Script::GetEngine( )->GetTypeInfoById( val->GetSerializer( )->GetModule( )->GetTypeIdByDecl( _str( "{}[]", einfo->declaration ).c_str( ) ) ) );
+			}
+			return nullptr;
+		}
+	};
+
+public:
+	void Store( asIScriptModule* module )
+	{
+		serializer.AddUserType( new CStringType( ), "string" );
+		serializer.AddUserType( new CArrayType( ), "array" );
+
+		serializer.Store( module );
+	}
+
+	void Restore( asIScriptModule* module )
+	{
+		serializer.Restore( module );
+	}
+};
+
+class DynamicScriptData
+{
+	std::string filePath;
+	std::string moduleName;
+	std::string md5;
+	std::string moduleTarget;
+
+	std::string hashMd5;
+	std::string code;
+	std::vector<std::string> md5Fails;
+
+	DynamicScriptData( ) : filePath( "" ), md5( "" ), moduleName( "" ), moduleTarget( "" ), hashMd5( "" ), code( "" )
+	{
+
+	}
+
+public:
+
+	static DynamicScriptData* Create( std::string path, std::string name, std::string target )
+	{
+		if( path.empty( ) )
+			return nullptr;
+		DynamicScriptData* script = new DynamicScriptData( );
+		script->moduleTarget = target;
+		script->filePath = path;
+		script->moduleName = name;
+		return script;
+	}
+
+	DynamicScriptData* Copy( )
+	{
+		if( filePath.empty( ) )
+			return nullptr;
+		
+		DynamicScriptData* script = new DynamicScriptData( );
+		UpdateToScript( script );
+		return script;
+	}
+
+	bool CheckFailMd5( std::string checkMd5 )
+	{
+		for( auto iMd5 : md5Fails )
+		{
+			if( iMd5 == checkMd5 )
+				return true;
+		}
+		return false;
+	}
+
+	void AddFailMd5( std::string failMd5 )
+	{
+		if( failMd5.empty( ) )
+			return;
+		if( CheckFailMd5( failMd5 ) )
+			return;
+		md5Fails.push_back( failMd5 );
+	}
+
+	bool IsNeedRebuild( )
+	{
+		hashMd5 = Md5::GetMD5File( filePath );
+		if( md5.empty( ) )
+			return true;
+		if( hashMd5 != md5 )
+			return !CheckFailMd5( hashMd5 );
+		return false;
+	}
+
+	int TestBuild( asIScriptEngine* engine )
+	{
+		int result = -1;
+		code = LoadScriptFile(  );
+		if( code.empty( ) )
+		{
+			AddFailMd5( hashMd5 );
+			return -2;
+		}
+		code = _str( "namespace {}{{{}\n}}\n", moduleName, code );
+		asIScriptModule* module = tryBuild( engine, _str( "_dynamic_test_build_{}", moduleName ).str(), moduleName );
+		if( module )
+		{
+			result = 0;
+			module->Discard( );
+			md5 = hashMd5;
+		}
+		else
+		{
+			AddFailMd5( hashMd5 );
+		}
+		return result;
+	}
+
+	asIScriptModule* Build( asIScriptEngine* engine )
+	{
+		WriteLog( "Build dynamic module: '{}' target '{}'\n", moduleName, moduleTarget );
+		asIScriptModule* module = engine->GetModule( moduleName.c_str( ) );
+		ModuleHash* moduleHash = preBuild( module );
+		module = tryBuild( engine, moduleName, moduleName );
+		if( moduleHash )
+		{
+			postBuild( module, moduleHash );
+			delete moduleHash;
+			moduleHash = nullptr;
+		}
+		return module;
+	}
+
+	std::string GetMd5( )
+	{
+		return md5;
+	}
+
+	std::string GetFilePath( )
+	{
+		return filePath;
+	}
+
+	void SetCode( std::string newCode )
+	{
+		code = newCode;
+	}
+
+	std::string GetName( )
+	{
+		return std::string( moduleName );
+	}
+
+	std::string GetCode( )
+	{
+		return std::string( code );
+	}
+
+	void AcceptHashMd5( )
+	{
+		md5 = hashMd5;
+	}
+
+	void UpdateToScript( DynamicScriptData* script )
+	{
+		script->moduleTarget = moduleTarget;
+		script->filePath = filePath;
+		script->moduleName = moduleName;
+		script->code = code;
+		script->md5 = md5;
+		script->hashMd5 = hashMd5;
+	}
+
+private:
+	ModuleHash* preBuild( asIScriptModule* module )
+	{
+		if( !module )
+			return nullptr;
+
+		RunRebuild( module, true );
+		ModuleHash* moduleHash = new ModuleHash( );
+		moduleHash->Store( module );
+		module->ResetGlobalVars( );
+		module->UnbindAllImportedFunctions( );
+		return moduleHash;
+	}
+
+	void postBuild( asIScriptModule* module, ModuleHash* moduleHash )
+	{
+		moduleHash->Restore( module );
+		RunRebuild( module, false );
+	}
+
+	asIScriptModule* tryBuild( asIScriptEngine* engine, std::string name, std::string fileName )
+	{
+		if( code.empty( ) )
+			return nullptr;
+
+		engine->DiscardModule( name.c_str( ) );
+		asIScriptModule* module = engine->GetModule( name.c_str( ), asGM_ALWAYS_CREATE );
+		if( module )
+		{
+			module->SetUserData( new ModuleUserData( nullptr, name ) );
+			module->AddScriptSection( name.c_str(), code.c_str( ) );
+
+			if( module->Build( ) < 0 )
+			{
+				module->Discard( );
+				module = nullptr;
+			}
+		}
+		return module;
+	}
+
+	string LoadScriptFile( )
+	{
+		string script;
+		FilesCollection fos_files( "fos" );
+		FileManager& file = fos_files.FindFile( moduleName );
+
+		if( !file.IsLoaded( ) )
+			return "";
+		string line = file.GetStringToSymbol( "\r\n" ); 
+		if( line.empty( ) )
+			return "";
+
+		// Check signature
+		if( line.find( "FOS" ) == string::npos )
+			return "";
+
+		// Skip different targets
+		if( ( line.find( moduleTarget ) == string::npos && line.find( "Common" ) == string::npos ) || line.find( "Dynamic" ) == string::npos )
+			return "";
+
+		line = file.GetStringToSymbol( "\r\n" );
+		while( !line.empty( ) )
+		{
+			script += line;
+			script += "\n";
+			line = file.GetStringToSymbol( "\r\n" );
+		}
+		return script;
+	}
+
+	void RunRebuild( asIScriptModule* module, bool isPre )
+	{
+		if( !module )
+			return;
+
+		for( asUINT i = 0; i < module->GetFunctionCount( ); i++ )
+		{
+			asIScriptFunction* func = module->GetFunctionByIndex( i );
+			if( !Str::Compare( func->GetName( ), "ModuleRebuild" ) )
+				continue;
+
+			int type = 0;
+			if( func->GetParamCount( ) != 1 || func->GetParam( 0, &type ) != asSUCCESS )
+				continue;
+
+			if( func->GetReturnTypeId( ) != asTYPEID_VOID && type != asTYPEID_BOOL )
+				continue;
+
+			uint bind_id = Script::BindByFunc( func, true );
+			Script::PrepareContext( bind_id, "Script" );
+			Script::SetArgBool( isPre );
+			if( !Script::RunPrepared( ) )
+			{
+				WriteLog( "Error executing rebuild function '{}::{}'.\n", func->GetNamespace( ), func->GetName( ) );
+				return;
+			}
+		}
+	}
+};
+
+static Thread DynamicScriptThread;
+static bool   DynamicScriptFinish = false;
+
+static Mutex ScriptBuildMutex;
+
+static std::vector<DynamicScriptData*> AllDynamicScript;
+static std::vector<DynamicScriptData*> PendingRebuildDynamicScripts;
+#endif
+
+inline void ScriptBuildMutexLock( )
+{
+#ifdef FONLINE_SERVER
+	ScriptBuildMutex.Lock( );
+#endif
+}
+
+inline bool ScriptBuildMutexTryLock( )
+{
+#ifdef FONLINE_SERVER
+	return ScriptBuildMutex.TryLock( );
+#else
+	return true;
+#endif
+}
+
+inline void ScriptBuildMutexUnlock( )
+{
+#ifdef FONLINE_SERVER
+	ScriptBuildMutex.Unlock( );
+#endif
+}
+
+ModuleUserData::ModuleUserData( Preprocessor::LineNumberTranslator* translator, string name ) : LineTranslator( translator ), Name( name )
+{
+
+}
+
+void ModuleUserData::Clear( )
+{
+	if( LineTranslator )
+	{
+		Preprocessor::DeleteLineNumberTranslator( ( Preprocessor::LineNumberTranslator* ) LineTranslator );
+		LineTranslator = nullptr;
+	}
+}
+
+Preprocessor::LineNumberTranslator* ModuleUserData::GetLineTranslator( )
+{
+	return LineTranslator;
+}
+
+string ModuleUserData::GetName( )
+{
+	return string( Name );
+}
+
+FunctionUserData::FunctionUserData( hash* func_ptr ): func_num_ptr( func_ptr )
+{
+
+}
+
+void FunctionUserData::Clear( )
+{
+	if( func_num_ptr )
+	{
+		delete func_num_ptr;
+		func_num_ptr = nullptr;
+	}
+}
+
+hash* FunctionUserData::GetFunctionNumPtr( )
+{
+	return func_num_ptr;
+}
+
 bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_target, bool allow_native_calls,
                    uint profiler_sample_time, bool profiler_save_to_file, bool profiler_dynamic_display )
 {
@@ -132,20 +607,26 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
     BindedFunctions.push_back( BindFunction() );     // Temp
     ScriptFuncBinds.clear();
 
-    Engine->SetModuleUserDataCleanupCallback([] ( asIScriptModule * module )
-                                             {
-                                                 Preprocessor::DeleteLineNumberTranslator( (Preprocessor::LineNumberTranslator*) module->GetUserData() );
-                                                 module->SetUserData( nullptr );
-                                             } );
-    Engine->SetFunctionUserDataCleanupCallback([] ( asIScriptFunction * func )
-                                               {
-                                                   hash* func_num_ptr = (hash*) func->GetUserData();
-                                                   if( func_num_ptr )
-                                                   {
-                                                       delete func_num_ptr;
-                                                       func->SetUserData( nullptr );
-                                                   }
-                                               } );
+	Engine->SetModuleUserDataCleanupCallback( []( asIScriptModule * module )
+	{
+		ModuleUserData* data = ( ModuleUserData* )module->GetUserData( );
+		if( data )
+		{
+			data->Clear( );
+			delete data;
+			module->SetUserData( nullptr );
+		}
+	} );
+	Engine->SetFunctionUserDataCleanupCallback( []( asIScriptFunction * func )
+	{
+		FunctionUserData* data = ( FunctionUserData* )func->GetUserData( );
+		if( data )
+		{
+			data->Clear( );
+			delete data;
+			func->SetUserData( nullptr );
+		}
+	} );
 
     while( FreeContexts.size() < 10 )
         CreateContext();
@@ -304,6 +785,10 @@ bool Script::Init( ScriptPragmaCallback* pragma_callback, const string& dll_targ
     ScriptWatcherFinish = false;
     ScriptWatcherThread.Start( Script::Watcher, "ScriptWatcher" );
     #endif
+#ifdef FONLINE_SERVER
+	DynamicScriptFinish = false;
+	DynamicScriptThread.Start( Script::DynamicScriptObserver, "DynamicObserver" );
+#endif
     return true;
 }
 
@@ -325,6 +810,9 @@ void Script::Finish()
     ScriptWatcherThread.Wait();
     #endif
 
+#ifdef FONLINE_SERVER
+	DynamicScriptFinish = true;
+#endif
     if( !BindedFunctions.empty() )
         BindedFunctions[ 1 ].ScriptFunc = nullptr;
     for( auto it = BindedFunctions.begin(), end = BindedFunctions.end(); it != end; ++it )
@@ -502,7 +990,7 @@ void Script::UnloadScripts()
 bool Script::ReloadScripts( const string& target )
 {
     WriteLog( "Reload scripts...\n" );
-
+	ScriptBuildMutexLock();
     Script::UnloadScripts();
 
     EngineData* edata = (EngineData*) Engine->GetUserData();
@@ -543,24 +1031,38 @@ bool Script::ReloadScripts( const string& target )
         // Skip different targets
         if( line.find( target ) == string::npos && line.find( "Common" ) == string::npos )
             continue;
+		bool dynamic = line.find( "Dynamic" ) != string::npos;
 
         // Sort value
         int    sort_value = 0;
         string sort_str = _str( line ).substringAfter( "Sort " );
         if( !sort_str.empty() )
             sort_value = _str( sort_str ).toInt();
-
-        // Append
-        ScriptEntry entry;
-        entry.Name = name;
-        entry.Path = path;
-        entry.Content = _str( "namespace {}{{{}\n}}\n", name, (const char*) file.GetBuf() );
-        entry.SortValue = sort_value;
-        entry.SortValueExt = ++file_index;
-        scripts.push_back( entry );
+		if( dynamic )
+		{
+		#ifdef FONLINE_SERVER
+			if( target == "Server" )
+				AllDynamicScript.push_back( DynamicScriptData::Create( path, name, target ) );
+		#endif
+		}
+		else
+		{
+			// Append
+			ScriptEntry entry;
+			entry.Name = name;
+			entry.Path = path;
+			entry.Content = _str( "namespace {}{{{}\n}}\n", name, ( const char* )file.GetBuf( ) );
+			entry.SortValue = sort_value;
+			entry.SortValueExt = ++file_index;
+			entry.IsDynamic = dynamic;
+			scripts.push_back( entry );
+		}
     }
-    if( errors )
-        return false;
+	if( errors )
+	{
+		ScriptBuildMutexUnlock( );
+		return false;
+	}
 
     std::sort( scripts.begin(), scripts.end(), [] ( ScriptEntry & a, ScriptEntry & b )
                {
@@ -571,6 +1073,7 @@ bool Script::ReloadScripts( const string& target )
     if( scripts.empty() )
     {
         WriteLog( "No scripts found.\n" );
+		ScriptBuildMutexUnlock( );
         return false;
     }
 
@@ -579,6 +1082,7 @@ bool Script::ReloadScripts( const string& target )
     if( !LoadRootModule( scripts, result_code ) )
     {
         WriteLog( "Load scripts from files fail.\n" );
+		ScriptBuildMutexUnlock( );
         return false;
     }
 
@@ -592,8 +1096,16 @@ bool Script::ReloadScripts( const string& target )
         edata->Profiler->EndModules();
     }
 
+	if( target == "Server" )
+	{
+		WriteLog( "Dynamic script.\n" );
+		DynamicScriptCheck( );
+		WriteLog( "Dynamic script process.\n" );
+		TryProcessDynamicScripts( ); 
+	}
     // Done
     WriteLog( "Reload scripts complete.\n" );
+	ScriptBuildMutexUnlock( );
     return true;
 }
 
@@ -615,44 +1127,53 @@ bool Script::PostInitScriptSystem()
     return true;
 }
 
-bool Script::RunModuleInitFunctions()
+bool Script::RunModuleInitFunctions( asIScriptModule* module )
 {
-    RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
+	if( !module )
+		return false;
 
-    asIScriptModule* module = Engine->GetModuleByIndex( 0 );
-    for( asUINT i = 0; i < module->GetFunctionCount(); i++ )
-    {
-        asIScriptFunction* func = module->GetFunctionByIndex( i );
-        if( !Str::Compare( func->GetName(), "ModuleInit" ) )
-            continue;
+	for( asUINT i = 0; i < module->GetFunctionCount( ); i++ )
+	{
+		asIScriptFunction* func = module->GetFunctionByIndex( i );
+		if( !Str::Compare( func->GetName( ), "ModuleInit" ) )
+			continue;
 
-        if( func->GetParamCount() != 0 )
-        {
-            WriteLog( "Init function '{}::{}' can't have arguments.\n", func->GetNamespace(), func->GetName() );
-            return false;
-        }
-        if( func->GetReturnTypeId() != asTYPEID_VOID && func->GetReturnTypeId() != asTYPEID_BOOL )
-        {
-            WriteLog( "Init function '{}::{}' must have void or bool return type.\n", func->GetNamespace(), func->GetName() );
-            return false;
-        }
+		if( func->GetParamCount( ) != 0 )
+		{
+			WriteLog( "Init function '{}::{}' can't have arguments.\n", func->GetNamespace( ), func->GetName( ) );
+			return false;
+		}
+		if( func->GetReturnTypeId( ) != asTYPEID_VOID && func->GetReturnTypeId( ) != asTYPEID_BOOL )
+		{
+			WriteLog( "Init function '{}::{}' must have void or bool return type.\n", func->GetNamespace( ), func->GetName( ) );
+			return false;
+		}
 
-        uint bind_id = Script::BindByFunc( func, true );
-        Script::PrepareContext( bind_id, "Script" );
+		uint bind_id = Script::BindByFunc( func, true );
+		Script::PrepareContext( bind_id, "Script" );
 
-        if( !Script::RunPrepared() )
-        {
-            WriteLog( "Error executing init function '{}::{}'.\n", func->GetNamespace(), func->GetName() );
-            return false;
-        }
+		if( !Script::RunPrepared( ) )
+		{
+			WriteLog( "Error executing init function '{}::{}'.\n", func->GetNamespace( ), func->GetName( ) );
+			return false;
+		}
 
-        if( func->GetReturnTypeId() == asTYPEID_BOOL && !Script::GetReturnedBool() )
-        {
-            WriteLog( "Initialization stopped by init function '{}::{}'.\n", func->GetNamespace(), func->GetName() );
-            return false;
-        }
-    }
+		if( func->GetReturnTypeId( ) == asTYPEID_BOOL && !Script::GetReturnedBool( ) )
+		{
+			WriteLog( "Initialization stopped by init function '{}::{}'.\n", func->GetNamespace( ), func->GetName( ) );
+			return false;
+		}
+	}
+	return true;
+}
 
+bool Script::RunAllModuleInitFunctions()
+{
+	for( uint i = 0; i < Engine->GetModuleCount( ); i++ )
+	{
+		if( !RunModuleInitFunctions( Engine->GetModuleByIndex( i ) ) )
+			return false;
+	}
     return true;
 }
 
@@ -869,7 +1390,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
     }
     if( func )
     {
-        Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
+        Preprocessor::LineNumberTranslator* lnt = ((ModuleUserData*) func->GetModule()->GetUserData())->GetLineTranslator();
         result += _str( "\t{} : Line {}\n", func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ) );
     }
 
@@ -880,7 +1401,7 @@ string Script::MakeContextTraceback( asIScriptContext* ctx )
         line = ctx->GetLineNumber( i );
         if( func )
         {
-            Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
+            Preprocessor::LineNumberTranslator* lnt = ( ( ModuleUserData* )func->GetModule( )->GetUserData( ) )->GetLineTranslator( );
             result += _str( "\t{} : Line {}\n", func->GetDeclaration( true, true ), Preprocessor::ResolveOriginalLine( line, lnt ) );
         }
     }
@@ -932,6 +1453,18 @@ StrVec Script::GetCustomEntityTypes()
 {
     EngineData* edata = (EngineData*) Engine->GetUserData();
     return edata->PragmaCB->GetCustomEntityTypes();
+}
+
+PropertyRegistrator* Script::GetCustomEntityRegistrationBySubType(uint subType)
+{
+	EngineData* edata = (EngineData*)Engine->GetUserData();
+	return edata->PragmaCB->GetCustomEntityRegistrationBySubType(subType);
+}
+
+PropertyRegistrator* Script::GetEntityRegistration(string class_name)
+{
+	EngineData* edata = (EngineData*)Engine->GetUserData();
+	return edata->PragmaCB->GetEntityRegistration(class_name);
 }
 
 #ifdef FONLINE_SERVER
@@ -1014,6 +1547,90 @@ void Script::SetRunTimeout( uint abort_timeout, uint message_timeout )
     #endif
 }
 
+void Script::DynamicScriptObserver( void * )
+{
+#ifdef FONLINE_SERVER
+	while( !DynamicScriptFinish )
+	{
+		ScriptBuildMutexLock( );
+		DynamicScriptCheck( );
+		ScriptBuildMutexUnlock( );
+		Thread_Sleep( 50 );
+	}
+
+	for( auto script : AllDynamicScript )
+	{
+		delete script;
+		script = nullptr;
+	}
+	AllDynamicScript.clear( );
+
+	ScriptBuildMutexLock( );
+	for( auto script : PendingRebuildDynamicScripts )
+	{
+		delete script;
+		script = nullptr;
+	}
+	PendingRebuildDynamicScripts.clear( );
+	ScriptBuildMutexUnlock( );
+#endif
+}
+
+void Script::DynamicScriptCheck( )
+{
+#ifdef FONLINE_SERVER
+	for( auto script : AllDynamicScript )
+	{
+		if( script->IsNeedRebuild( ) )
+		{
+			bool isrepeat = false;
+			for( auto iscript : PendingRebuildDynamicScripts )
+			{
+				if( iscript->GetName() == script->GetName() )
+				{
+					isrepeat = true;
+					script->UpdateToScript( iscript );
+					script->AcceptHashMd5( );
+					break;
+				}
+			}
+
+			if( !isrepeat )
+			{
+				PendingRebuildDynamicScripts.push_back( script->Copy( ) );
+				script->AcceptHashMd5( );
+			}
+		}
+	}
+#endif
+}
+
+void Script::TryProcessDynamicScripts( )
+{
+#ifdef FONLINE_SERVER
+	for( auto script : PendingRebuildDynamicScripts )
+	{
+		if( script->TestBuild( GetEngine( ) ) >= 0 )
+		{
+			script->Build( GetEngine( ) );
+		}
+		delete script;
+	}
+	PendingRebuildDynamicScripts.clear( );
+#endif
+}
+
+void Script::ProcessDynamicScripts( )
+{
+#ifdef FONLINE_SERVER
+	if( ScriptBuildMutexTryLock( ) )
+	{
+		TryProcessDynamicScripts( );
+		ScriptBuildMutexUnlock( );
+	}
+#endif
+}
+
 /************************************************************************/
 /* Load / Bind                                                          */
 /************************************************************************/
@@ -1050,58 +1667,6 @@ bool Script::LoadRootModule( const ScriptEntryVec& scripts, string& result_code 
     // Set current pragmas
     EngineData* edata = (EngineData*) Engine->GetUserData();
     Preprocessor::SetPragmaCallback( edata->PragmaCB );
-
-    // File loader
-    class MemoryFileLoader: public Preprocessor::FileLoader
-    {
-        string*        rootScript;
-        ScriptEntryVec includeScripts;
-        int            includeDeep;
-
-public:
-        MemoryFileLoader( string& root, const ScriptEntryVec& scripts ): rootScript( &root ), includeScripts( scripts ), includeDeep( 0 ) {}
-        virtual ~MemoryFileLoader() = default;
-
-        virtual bool LoadFile( const std::string& dir, const std::string& file_name, std::vector< char >& data, std::string& file_path ) override
-        {
-            if( rootScript )
-            {
-                data.resize( rootScript->length() );
-                memcpy( &data[ 0 ], rootScript->c_str(), rootScript->length() );
-                rootScript = nullptr;
-                file_path = "(Root)";
-                return true;
-            }
-
-            includeDeep++;
-            RUNTIME_ASSERT( includeDeep <= 1 );
-
-            if( includeDeep == 1 && !includeScripts.empty() )
-            {
-                data.resize( includeScripts.front().Content.length() );
-                memcpy( &data[ 0 ], includeScripts.front().Content.c_str(), includeScripts.front().Content.length() );
-                #ifdef FONLINE_SCRIPT_COMPILER
-                file_path = _str( includeScripts.front().Path ).resolvePath();
-                #else
-                file_path = includeScripts.front().Name;
-                #endif
-                includeScripts.erase( includeScripts.begin() );
-                return true;
-            }
-
-            bool loaded = Preprocessor::FileLoader::LoadFile( dir, file_name, data, file_path );
-            #ifdef FONLINE_SCRIPT_COMPILER
-            if( loaded )
-                file_path = _str( includeScripts.front().Path ).resolvePath();
-            #endif
-            return loaded;
-        }
-
-        virtual void FileLoaded() override
-        {
-            includeDeep--;
-        }
-    };
 
     // Make Root scripts
     string root;
@@ -1193,7 +1758,7 @@ public:
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
     UCharVec                            lnt_data;
     Preprocessor::StoreLineNumberTranslator( lnt, lnt_data );
-    module->SetUserData( lnt );
+    module->SetUserData( new ModuleUserData( lnt, "Root" ) );
 
     // Add single script section
     int as_result = module->AddScriptSection( "Root", result.String.c_str() );
@@ -1219,7 +1784,7 @@ public:
 
 bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_data )
 {
-    RUNTIME_ASSERT( Engine->GetModuleCount() == 0 );
+    //RUNTIME_ASSERT( Engine->GetModuleCount() == 0 );
     RUNTIME_ASSERT( !bytecode.empty() );
     RUNTIME_ASSERT( !lnt_data.empty() );
 
@@ -1231,7 +1796,7 @@ bool Script::RestoreRootModule( const UCharVec& bytecode, const UCharVec& lnt_da
     }
 
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator( lnt_data );
-    module->SetUserData( lnt );
+    module->SetUserData( new ModuleUserData( lnt, "Root" ) );
 
     CBytecodeStream binary;
     binary.Write( &bytecode[ 0 ], (asUINT) bytecode.size() );
@@ -1253,7 +1818,7 @@ uint Script::BindByFuncName( const string& func_name, const string& decl, bool i
     if( dll_pos == string::npos )
     {
         // Collect functions in all modules
-        RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
+        // RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
 
         // Find function
         string func_decl;
@@ -1408,7 +1973,7 @@ hash Script::GetFuncNum( asIScriptFunction* func )
     {
         string script_name = _str( "{}::{}", func->GetNamespace(), func->GetName() );
         func_num_ptr = new hash( _str( script_name ).toHash() );
-        func->SetUserData( func_num_ptr );
+        func->SetUserData( new FunctionUserData( func_num_ptr ) );
     }
     return *func_num_ptr;
 }
@@ -1534,7 +2099,7 @@ void Script::CacheEnumValues()
     }
 
     // Script enums
-    RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
+    // RUNTIME_ASSERT( Engine->GetModuleCount() == 1 );
     asIScriptModule* module = Engine->GetModuleByIndex( 0 );
     for( asUINT i = 0; i < module->GetEnumCount(); i++ )
     {
@@ -1610,6 +2175,7 @@ static asIScriptContext* CurrentCtx = nullptr;
 static size_t            NativeFuncAddr = 0;
 static size_t            NativeArgs[ 256 ] = { 0 };
 static size_t            CurrentArg = 0;
+static size_t            CountArg = 0;
 static void*             RetValue;
 
 void Script::PrepareContext( uint bind_id, const string& ctx_info )
@@ -1621,7 +2187,7 @@ void Script::PrepareContext( uint bind_id, const string& ctx_info )
     bool               is_script = bf.IsScriptCall;
     asIScriptFunction* script_func = bf.ScriptFunc;
     size_t             func_addr = bf.NativeFuncAddr;
-
+	CountArg = 0;
     if( is_script )
     {
         RUNTIME_ASSERT( script_func );
@@ -1638,6 +2204,8 @@ void Script::PrepareContext( uint bind_id, const string& ctx_info )
         RUNTIME_ASSERT( !CurrentCtx );
         CurrentCtx = ctx;
         ScriptCall = true;
+
+		CountArg = script_func->GetParamCount();
     }
     else
     {
@@ -2119,6 +2687,16 @@ void* Script::GetReturnedRawAddress()
     return RetValue;
 }
 
+size_t Script::GetCurrentArg()
+{
+	return size_t(CurrentArg);
+}
+
+size_t Script::GetCountArg()
+{
+	return size_t(CountArg);
+}
+
 /************************************************************************/
 /* Logging                                                              */
 /************************************************************************/
@@ -2139,8 +2717,9 @@ void Script::Log( const string& str )
     }
 
     int                                 line = ctx->GetLineNumber( 0 );
-    Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*) func->GetModule()->GetUserData();
-    WriteLog( "{} : {}\n", Preprocessor::ResolveOriginalFile( line, lnt ), str );
+	ModuleUserData* data = ( ModuleUserData* )func->GetModule( )->GetUserData( );
+	auto translator = data->GetLineTranslator( );
+    WriteLog( "{} : {}\n", translator ? Preprocessor::ResolveOriginalFile( line, translator ) : data->GetName() , str );
 }
 
 void Script::CallbackMessage( const asSMessageInfo* msg, void* param )

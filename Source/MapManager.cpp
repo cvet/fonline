@@ -466,7 +466,7 @@ int MapManager::FindPath( PathFindData& pfd )
 
     if( CheckDist( from_hx, from_hy, to_hx, to_hy, cut ) )
         return FPATH_ALREADY_HERE;
-    if( !cut && FLAG( map->GetHexFlags( to_hx, to_hy ), FH_NOWAY ) )
+    if( !cut && map->GetHexFlags( to_hx, to_hy ).NoWay )
         return FPATH_HEX_BUSY;
 
     // Ring check
@@ -482,10 +482,10 @@ int MapManager::FindPath( PathFindData& pfd )
             short yy = to_hy + *rsy;
             if( xx >= 0 && xx < maxhx && yy >= 0 && yy < maxhy )
             {
-                ushort flags = map->GetHexFlags( xx, yy );
-                if( FLAG( flags, FH_GAG_ITEM << 8 ) )
+				HexData flags = map->GetHexFlags( xx, yy );
+                if( flags.GagItem )
                     break;
-                if( !FLAG( flags, FH_NOWAY ) )
+                if( !flags.NoWay )
                     break;
             }
         }
@@ -558,18 +558,18 @@ int MapManager::FindPath( PathFindData& pfd )
 
                 if( !multihex )
                 {
-                    ushort flags = map->GetHexFlags( nx, ny );
-                    if( !FLAG( flags, FH_NOWAY ) )
+					HexData flags = map->GetHexFlags( nx, ny );
+                    if( !flags.NoWay )
                     {
                         coords.push_back( std::make_pair( nx, ny ) );
                         g = numindex;
                     }
-                    else if( check_gag_items && FLAG( flags, FH_GAG_ITEM << 8 ) )
+                    else if( check_gag_items && flags.GagItem )
                     {
                         gag_coords.push_back( std::make_pair( nx, ny ) );
                         g = numindex | 0x4000;
                     }
-                    else if( check_cr && FLAG( flags, FH_CRITTER << 8 ) )
+                    else if( check_cr && flags.Critter )
                     {
                         cr_coords.push_back( std::make_pair( nx, ny ) );
                         g = numindex | 0x8000;

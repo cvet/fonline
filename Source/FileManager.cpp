@@ -304,40 +304,45 @@ bool FileManager::FindFragment( const uchar* fragment, uint fragment_len, uint b
     return false;
 }
 
+string FileManager::GetStringToSymbol( string symbols )
+{
+	RUNTIME_ASSERT( fileBuf );
+	if( curPos >= fileSize )
+		return "";
+
+	while( curPos < fileSize )
+	{
+		uint start = curPos;
+		uint len = 0;
+		while( curPos < fileSize )
+		{
+			if( symbols.find( fileBuf[ curPos ], 1 ) != string::npos )
+			{
+				for( ; curPos < fileSize; curPos++ )
+					if( fileBuf[ curPos ] == '\n' )
+						break;
+				curPos++;
+				break;
+			}
+
+			curPos++;
+			len++;
+		}
+
+		if( len )
+		{
+			string line = _str( string( ( const char* )&fileBuf[ start ], len ) ).trim( );
+			if( !line.empty( ) )
+				return line;
+		}
+	}
+
+	return "";
+}
+
 string FileManager::GetNonEmptyLine()
 {
-    RUNTIME_ASSERT( fileBuf );
-    if( curPos >= fileSize )
-        return "";
-
-    while( curPos < fileSize )
-    {
-        uint start = curPos;
-        uint len = 0;
-        while( curPos < fileSize )
-        {
-            if( fileBuf[ curPos ] == '\r' || fileBuf[ curPos ] == '\n' || fileBuf[ curPos ] == '#' || fileBuf[ curPos ] == ';' )
-            {
-                for( ; curPos < fileSize; curPos++ )
-                    if( fileBuf[ curPos ] == '\n' )
-                        break;
-                curPos++;
-                break;
-            }
-
-            curPos++;
-            len++;
-        }
-
-        if( len )
-        {
-            string line = _str( string( (const char*) &fileBuf[ start ], len ) ).trim();
-            if( !line.empty() )
-                return line;
-        }
-    }
-
-    return "";
+	return GetStringToSymbol( "\r\n#;" );
 }
 
 bool FileManager::CopyMem( void* ptr, uint size )

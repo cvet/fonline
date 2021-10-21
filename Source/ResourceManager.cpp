@@ -57,6 +57,18 @@ void ResourceManager::Finish()
     WriteLog( "Resource manager finish complete.\n" );
 }
 
+void ResourceManager::FreeResourcesCritter(CritterCl* critter)
+{
+	if (!critter)
+	{
+		for (auto it = critterFrames.begin(), end = critterFrames.end(); it != end; ++it)
+		{
+			AnyFrames::Destroy(it->second);
+		}
+		critterFrames.clear();
+	}
+}
+
 void ResourceManager::FreeResources( int type )
 {
     SprMngr.DestroyAtlases( type );
@@ -107,12 +119,12 @@ void ResourceManager::ReinitializeDynamicAtlas()
 
 AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
 {
-    // Find already loaded
+	// Find already loaded
     auto it = loadedAnims.find( name_hash );
     if( it != loadedAnims.end() )
         return it->second.Anim;
 
-    // Load new animation
+	// Load new animation
     string fname = _str().parseHash( name_hash );
     if( fname.empty() )
         return nullptr;
@@ -120,11 +132,12 @@ AnyFrames* ResourceManager::GetAnim( hash name_hash, int res_type )
     SprMngr.PushAtlasType( res_type );
     AnyFrames* anim = SprMngr.LoadAnimation( fname, false, true );
     SprMngr.PopAtlasType();
+	if (!anim)
+		return nullptr;
 
     anim->NameHash = name_hash;
-
     loadedAnims.insert( std::make_pair( name_hash, LoadedAnim( res_type, anim ) ) );
-    return anim;
+	return anim;
 }
 
 uint AnimMapId( hash model_name, uint anim1, uint anim2, bool is_fallout )
@@ -133,13 +146,20 @@ uint AnimMapId( hash model_name, uint anim1, uint anim2, bool is_fallout )
     return Crypt.MurmurHash2( (uchar*) &dw[ 0 ], sizeof( dw ) );
 }
 
-AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint anim2, int dir )
+AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint anim2, int dir, CritterCl* critter )
 {
     // Process dir
     dir = CLAMP( dir, 0, DIRS_COUNT - 1 );
-
+	hash model_name_id = model_name;
+	if (critter)
+	{
+		_str check;
+		check.parseHash(model_name_id);
+		if (check.getFileExtension() == "spr")
+			model_name_id = _str( "{}/{}", critter->Id,check.str()).toHash();
+	}
     // Make animation id
-    uint id = AnimMapId( model_name, anim1, anim2, false );
+    uint id = AnimMapId(model_name_id, anim1, anim2, false );
 
     // Check already loaded
     auto it = critterFrames.find( id );
@@ -171,9 +191,9 @@ AnyFrames* ResourceManager::GetCrit2dAnim( hash model_name, uint anim1, uint ani
                 int ox = 0, oy = 0;
                 string str;
                 #ifdef FONLINE_CLIENT
-                if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str ) )
+                if( Script::RaiseInternalEvent( ClientFunctions.CritterAnimation, critter, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str ) )
                 #else // FONLINE_MAPPER
-                if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimation, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str ) )
+                if( Script::RaiseInternalEvent( MapperFunctions.CritterAnimation, critter, model_name, anim1, anim2, &pass, &flags, &ox, &oy, &str ) )
                 #endif
                 {
                     if( !str.empty() )
@@ -611,13 +631,13 @@ Animation3d* ResourceManager::GetCrit3dAnim( hash model_name, uint anim1, uint a
     return anim3d;
 }
 
-uint ResourceManager::GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, int* layers3d /* = NULL */ )
+uint ResourceManager::GetCritSprId( hash model_name, uint anim1, uint anim2, int dir, CritterCl* critter, int* layers3d /* = NULL */ )
 {
     uint spr_id = 0;
     string ext = _str( _str().parseHash( model_name ) ).getFileExtension();
     if( ext != "fo3d" )
     {
-        AnyFrames* anim = GetCrit2dAnim( model_name, anim1, anim2, dir );
+        AnyFrames* anim = GetCrit2dAnim( model_name, anim1, anim2, dir, critter );
         spr_id = ( anim ? anim->GetSprId( 0 ) : 0 );
     }
     else

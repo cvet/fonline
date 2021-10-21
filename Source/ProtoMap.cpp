@@ -32,7 +32,7 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, CScriptArray *, DayTime );    // 4 int
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, CScriptArray *, DayColor );   // 12 uchar
 CLASS_PROPERTY_ALIAS_IMPL( ProtoMap, Map, bool, IsNoLogOut );
 
-ProtoMap::ProtoMap( hash pid ): ProtoEntity( pid, Map::PropertiesRegistrator )
+ProtoMap::ProtoMap( hash pid, uint subType): ProtoEntity( pid, Map::PropertiesRegistrators[subType] )
 {
     #ifdef FONLINE_SERVER
     MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) );
@@ -609,7 +609,7 @@ bool ProtoMap::LoadOldTextFormat( const char* buf )
                     {
                         if( field.substr( 13, 5 ) == "Index" )
                         {
-                            cur_prop = MUTUAL_CRITTER::PropertiesRegistrator->Find( svalue.c_str() );
+                            cur_prop = MUTUAL_CRITTER::PropertiesRegistrators[0]->Find( svalue.c_str() );
                             if( !cur_prop )
                             {
                                 WriteLog( "Critter property '{}' not found.\n", svalue );
@@ -775,8 +775,22 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
     // Parse objects
     ushort maxhx = GetWidth();
     ushort maxhy = GetHeight();
-    HexFlags = new uchar[ maxhx * maxhy ];
-    memzero( HexFlags, maxhx * maxhy );
+    HexFlags = new HexData[ maxhx * maxhy ];
+	for( int i = 0, iend = maxhx * maxhy; i < iend; i++ )
+	{
+		HexFlags[ i ].Block = 0;
+		HexFlags[ i ].NoTrake = 0;
+		HexFlags[ i ].StaticTrigger = 0;
+		HexFlags[ i ].Critter = 0;
+		HexFlags[ i ].DeadCritter = 0;
+		HexFlags[ i ].Door = 0;
+		HexFlags[ i ].BlockItem = 0;
+		HexFlags[ i ].NrakeItem = 0;
+		HexFlags[ i ].Trigger = 0;
+		HexFlags[ i ].GagItem = 0;
+		HexFlags[ i ].NoWay = 0;
+		HexFlags[ i ].NoShot = 0;
+	}
 
     uint scenery_count = 0;
     UCharVec scenery_data;
@@ -820,12 +834,12 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
         }
 
         if( !item->GetIsNoBlock() )
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
+			HexFlags[ hy * maxhx + hx ].Block = 1;
 
         if( !item->GetIsShootThru() )
         {
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_BLOCK );
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_NOTRAKE );
+			HexFlags[ hy * maxhx + hx ].Block = 1;
+			HexFlags[ hy * maxhx + hx ].NoTrake = 1;
         }
 
         if( item->GetIsScrollBlock() )
@@ -835,7 +849,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             {
                 ushort hx_ = hx, hy_ = hy;
                 MoveHexByDir( hx_, hy_, k, maxhx, maxhy );
-                SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
+				HexFlags[ hy_ * maxhx + hx_ ].Block = 1;
             }
         }
 
@@ -844,7 +858,7 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             item->AddRef();
             TriggerItemsVec.push_back( item );
 
-            SETFLAG( HexFlags[ hy * maxhx + hx ], FH_STATIC_TRIGGER );
+			HexFlags[ hy * maxhx + hx ].StaticTrigger = 1;
         }
 
         if( item->IsNonEmptyBlockLines() )
@@ -852,9 +866,9 @@ bool ProtoMap::OnAfterLoad( EntityVec& entities )
             ushort hx_ = hx, hy_ = hy;
             bool raked = item->GetIsShootThru();
             FOREACH_PROTO_ITEM_LINES( item->GetBlockLines(), hx_, hy_, maxhx, maxhy,
-                                      SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_BLOCK );
+									  HexFlags[ hy_ * maxhx + hx_ ].Block = 1;
                                       if( !raked )
-                                          SETFLAG( HexFlags[ hy_ * maxhx + hx_ ], FH_NOTRAKE );
+										  HexFlags[ hy_ * maxhx + hx_ ].NoTrake = 1;
                                       );
         }
 
@@ -1046,6 +1060,7 @@ bool ProtoMap::Save( const string& custom_name )
         WriteLog( "Unable write file '{}' in modules.\n", save_fname );
         return false;
     }
+	WriteLog("Save map{}\n", save_fname);
     return true;
 }
 
@@ -1109,7 +1124,7 @@ void ProtoMap::GetStaticItemsByPid( hash pid, ItemVec& items )
 
 CLASS_PROPERTY_ALIAS_IMPL( ProtoLocation, Location, CScriptArray *, MapProtos );
 
-ProtoLocation::ProtoLocation( hash pid ): ProtoEntity( pid, Location::PropertiesRegistrator )
+ProtoLocation::ProtoLocation( hash pid, uint subType): ProtoEntity( pid, Location::PropertiesRegistrators[subType] )
 {
     //
 }

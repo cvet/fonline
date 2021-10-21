@@ -27,7 +27,7 @@ static void DummyFunc( asIScriptGeneric* gen ) {}
 # define BIND_CLASS_EXT           BIND_CLASS
 #endif
 
-static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
+static int Bind( asIScriptEngine* engine, std::vector<PropertyRegistrator*> registrators )
 {
     int errors = 0;
     BIND_ASSERT( engine->RegisterTypedef( "hash", "uint" ) );
@@ -107,7 +107,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
 
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "Map@+ GetMap()", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetMap ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "const Map@+ GetMap() const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetMap ), SCRIPT_FUNC_THIS_CONV ) );
-
+	
+	BIND_ASSERT(engine->RegisterObjectMethod("Critter", "bool IsMoveToDirPassed(uint8 dir)", SCRIPT_FUNC_THIS(BIND_CLASS Crit_IsMovePassed), SCRIPT_FUNC_THIS_CONV));
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool MoveToDir(uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_MoveToDir ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToHex(uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToHex ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void TransitToMap(Map@+ map, uint16 hexX, uint16 hexY, uint8 dir)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_TransitToMapHex ), SCRIPT_FUNC_THIS_CONV ) );
@@ -386,6 +387,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterFuncdef( "void AnimationCallbackFunc(Critter@+ cr)" ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "void AddAnimationCallback(uint anim1, uint anim2, float normalizedTime, AnimationCallbackFunc@+ animationCallback) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_AddAnimationCallback ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "bool GetBonePosition(hash boneName, int& boneX, int& boneY) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetBonePosition ), SCRIPT_FUNC_THIS_CONV ) );
+	BIND_ASSERT(engine->RegisterObjectMethod("Critter", "bool IsMoveToDirPassed(uint8 dir)", SCRIPT_FUNC_THIS(BIND_CLASS Crit_IsMovePassed), SCRIPT_FUNC_THIS_CONV));
 
     BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string Name", OFFSETOF( CritterCl, Name ) ) );
     BIND_ASSERT( engine->RegisterObjectProperty( "Critter", "string NameOnHead", OFFSETOF( CritterCl, NameOnHead ) ) );
@@ -410,7 +412,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Critter@>@ GetCritters(hash pid, int findType)", SCRIPT_FUNC( BIND_CLASS Global_GetCrittersByPids ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Critter@>@ GetCrittersPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType)", SCRIPT_FUNC( BIND_CLASS Global_GetCrittersInPath ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<Critter@>@ GetCrittersPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, float angle, uint dist, int findType, uint16& preBlockHx, uint16& preBlockHy, uint16& blockHx, uint16& blockHy)", SCRIPT_FUNC( BIND_CLASS Global_GetCrittersInPathBlock ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)", SCRIPT_FUNC( BIND_CLASS Global_GetHexInPath ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist, bool passed = true )", SCRIPT_FUNC( BIND_CLASS Global_GetHexInPath ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<uint8>@ GetPath(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)", SCRIPT_FUNC( BIND_CLASS Global_GetPathHex ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "array<uint8>@ GetPath(Critter@+ cr, uint16 toHx, uint16 toHy, uint cut)", SCRIPT_FUNC( BIND_CLASS Global_GetPathCr ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)", SCRIPT_FUNC( BIND_CLASS Global_GetPathLengthHex ), SCRIPT_FUNC_CONV ) );
@@ -481,14 +483,19 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IsConnected", &BIND_CLASS_EXT IsConnected ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IsConnecting", &BIND_CLASS_EXT IsConnecting ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __IsUpdating", &BIND_CLASS_EXT UpdateFilesInProgress ) );
+	BIND_ASSERT(engine->RegisterGlobalProperty(  "const double __StatisticHardTime", &BIND_CLASS_EXT StatisticHardTime) );
+	BIND_ASSERT(engine->RegisterGlobalProperty("const double __StatisticLoopTime", &BIND_CLASS_EXT StatisticLoopTime));
+	BIND_ASSERT(engine->RegisterGlobalProperty("const double __StatisticInputTime", &BIND_CLASS_EXT StatisticInputTime));
+	BIND_ASSERT(engine->RegisterGlobalProperty("const double __StatisticNetworkTime", &BIND_CLASS_EXT StatisticNetworkTime));
     #endif
+	BIND_ASSERT(engine->RegisterGlobalFunction("bool SetPropertyGetCallback(int propertyValue, ?&in func)", asFUNCTION(BIND_CLASS Global_SetPropertyGetCallback), asCALL_GENERIC));
+	BIND_ASSERT(engine->RegisterGlobalFunction("bool AddPropertySetCallback(int propertyValue, ?&in func, bool deferred)", asFUNCTION(BIND_CLASS Global_AddPropertySetCallback), asCALL_GENERIC));
 
     #if defined ( BIND_CLIENT ) || defined ( BIND_SERVER )
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint16 minute, uint16 second)", SCRIPT_FUNC( BIND_CLASS Global_GetFullSecond ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTime(uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second, uint16& milliseconds)", SCRIPT_FUNC( BIND_CLASS Global_GetTime ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetGameTime(uint fullSecond, uint16& year, uint16& month, uint16& day, uint16& dayOfWeek, uint16& hour, uint16& minute, uint16& second)", SCRIPT_FUNC( BIND_CLASS Global_GetGameTime ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool SetPropertyGetCallback(int propertyValue, ?&in func)", asFUNCTION( BIND_CLASS Global_SetPropertyGetCallback ), asCALL_GENERIC ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "bool AddPropertySetCallback(int propertyValue, ?&in func, bool deferred)", asFUNCTION( BIND_CLASS Global_AddPropertySetCallback ), asCALL_GENERIC ) );
+
 
     BIND_ASSERT( engine->RegisterGlobalProperty( "const uint __FullSecond", &GameOpt.FullSecond ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DisableTcpNagle", &GameOpt.DisableTcpNagle ) );
@@ -498,6 +505,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __DialogDemandRecheck", &GameOpt.DialogDemandRecheck ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __SneakDivider", &GameOpt.SneakDivider ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookMinimum", &GameOpt.LookMinimum ) );
+    BIND_ASSERT( engine->RegisterGlobalProperty( "uint __LookMaximum", &GameOpt.LookMaximum ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "int __DeadHitPoints", &GameOpt.DeadHitPoints ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __Breaktime", &GameOpt.Breaktime ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "uint __TimeoutTransfer", &GameOpt.TimeoutTransfer ) );
@@ -544,6 +552,9 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<Item@>@ GetChildren(uint16 hexX, uint16 hexY)", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetChildren ), SCRIPT_FUNC_THIS_CONV ) );
     BIND_ASSERT( engine->RegisterObjectMethod( "Critter", "array<const Item@>@ GetChildren(uint16 hexX, uint16 hexY) const", SCRIPT_FUNC_THIS( BIND_CLASS Crit_GetChildren ), SCRIPT_FUNC_THIS_CONV ) );
 
+	BIND_ASSERT(engine->RegisterGlobalFunction("uint16 GetMapWidth()", SCRIPT_FUNC(BIND_CLASS Global_GetMapWidth), SCRIPT_FUNC_CONV));
+	BIND_ASSERT(engine->RegisterGlobalFunction("uint16 GetMapHeight()", SCRIPT_FUNC(BIND_CLASS Global_GetMapHeight), SCRIPT_FUNC_CONV));
+
     BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ AddItem(hash protoId, uint16 hexX, uint16 hexY)", SCRIPT_FUNC( BIND_CLASS Global_AddItem ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Critter@+ AddCritter(hash protoId, uint16 hexX, uint16 hexY)", SCRIPT_FUNC( BIND_CLASS Global_AddCritter ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "Item@+ GetItemByHex(uint16 hexX, uint16 hexY)", SCRIPT_FUNC( BIND_CLASS Global_GetItemByHex ), SCRIPT_FUNC_CONV ) );
@@ -561,10 +572,11 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTilesCount(uint16 hexX, uint16 hexY, bool roof)", SCRIPT_FUNC( BIND_CLASS Global_GetTilesCount ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DeleteTile(uint16 hexX, uint16 hexY, bool roof, int layer)", SCRIPT_FUNC( BIND_CLASS Global_DeleteTile ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetTile(uint16 hexX, uint16 hexY, bool roof, int layer)", SCRIPT_FUNC( BIND_CLASS Global_GetTileHash ), SCRIPT_FUNC_CONV ) );
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void AddTile(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, hash picHash)", SCRIPT_FUNC( BIND_CLASS Global_AddTileHash ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void AddTile(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, hash picHash, bool isrefresh = true )", SCRIPT_FUNC( BIND_CLASS Global_AddTileHash ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "string GetTileName(uint16 hexX, uint16 hexY, bool roof, int layer)", SCRIPT_FUNC( BIND_CLASS Global_GetTileName ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void AddTileName(uint16 hexX, uint16 hexY, int offsX, int offsY, int layer, bool roof, string picName)", SCRIPT_FUNC( BIND_CLASS Global_AddTileName ), SCRIPT_FUNC_CONV ) );
 
+	BIND_ASSERT(engine->RegisterGlobalFunction("void RefreshMap( )", SCRIPT_FUNC(BIND_CLASS Global_RefreshMap), SCRIPT_FUNC_CONV));
     BIND_ASSERT( engine->RegisterGlobalFunction( "Map@+ LoadMap(string fileName)", SCRIPT_FUNC( BIND_CLASS Global_LoadMap ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void UnloadMap(Map@+ map)", SCRIPT_FUNC( BIND_CLASS Global_UnloadMap ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "bool SaveMap(Map@+ map, string customName = \"\")", SCRIPT_FUNC( BIND_CLASS Global_SaveMap ), SCRIPT_FUNC_CONV ) );
@@ -583,7 +595,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSelect(int tab, string subTab, bool show = false)", SCRIPT_FUNC( BIND_CLASS Global_TabSelect ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void TabSetName(int tab, string tabName)", SCRIPT_FUNC( BIND_CLASS Global_TabSetName ), SCRIPT_FUNC_CONV ) );
 
-    BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist)", SCRIPT_FUNC( BIND_CLASS Global_GetHexInPath ), SCRIPT_FUNC_CONV ) );
+    BIND_ASSERT( engine->RegisterGlobalFunction( "void GetHexCoord(uint16 fromHx, uint16 fromHy, uint16& toHx, uint16& toHy, float angle, uint dist, bool passed = true )", SCRIPT_FUNC( BIND_CLASS Global_GetHexInPath ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPathLength(uint16 fromHx, uint16 fromHy, uint16 toHx, uint16 toHy, uint cut)", SCRIPT_FUNC( BIND_CLASS Global_GetPathLengthHex ), SCRIPT_FUNC_CONV ) );
 
     BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string text)", SCRIPT_FUNC( BIND_CLASS Global_Message ), SCRIPT_FUNC_CONV ) );
@@ -655,6 +667,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetSpriteTicks(uint sprId)", SCRIPT_FUNC( BIND_CLASS Global_GetSpriteTicks ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetPixelColor(uint sprId, int frameIndex, int x, int y)", SCRIPT_FUNC( BIND_CLASS Global_GetPixelColor ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void GetTextInfo(string text, int w, int h, int font, int flags, int& tw, int& th, int& lines)", SCRIPT_FUNC( BIND_CLASS Global_GetTextInfo ), SCRIPT_FUNC_CONV ) );
+	BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawDirSprite(uint sprId, uint8 dir, int frameIndex, int x, int y, uint color = 0, bool applyOffsets = false)", SCRIPT_FUNC(BIND_CLASS Global_DrawDirSprite), SCRIPT_FUNC_CONV));
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int frameIndex, int x, int y, uint color = 0, bool applyOffsets = false)", SCRIPT_FUNC( BIND_CLASS Global_DrawSprite ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSprite(uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom = false, uint color = 0, bool applyOffsets = false)", SCRIPT_FUNC( BIND_CLASS Global_DrawSpriteSize ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawSpritePattern(uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color = 0)", SCRIPT_FUNC( BIND_CLASS Global_DrawSpritePattern ), SCRIPT_FUNC_CONV ) );
@@ -665,6 +678,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "void DrawCritter3d(uint instance, hash modelName, uint anim1, uint anim2, const array<int>@+ layers, const array<float>@+ position, uint color)", SCRIPT_FUNC( BIND_CLASS Global_DrawCritter3d ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void PushDrawScissor(int x, int y, int w, int h)", SCRIPT_FUNC( BIND_CLASS Global_PushDrawScissor ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void PopDrawScissor()", SCRIPT_FUNC( BIND_CLASS Global_PopDrawScissor ), SCRIPT_FUNC_CONV ) );
+
+	BIND_ASSERT(engine->RegisterGlobalFunction("string GetClipboardText()", SCRIPT_FUNC(BIND_CLASS Global_GetClipboardText), SCRIPT_FUNC_CONV));
 
     BIND_ASSERT( engine->RegisterGlobalProperty( "bool __Quit", &GameOpt.Quit ) );
     BIND_ASSERT( engine->RegisterGlobalProperty( "const bool __WaitPing", &GameOpt.WaitPing ) );
@@ -812,11 +827,8 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     #endif
 
     #define BIND_ASSERT_EXT( expr )    BIND_ASSERT( ( expr ) ? 0 : -1 )
-    BIND_ASSERT_EXT( registrators[ 0 ]->Init() );
-    BIND_ASSERT_EXT( registrators[ 1 ]->Init() );
-    BIND_ASSERT_EXT( registrators[ 2 ]->Init() );
-    BIND_ASSERT_EXT( registrators[ 3 ]->Init() );
-    BIND_ASSERT_EXT( registrators[ 4 ]->Init() );
+	for( auto registrator:registrators)
+		BIND_ASSERT_EXT(registrator->Init());
 
     #if defined ( BIND_SERVER )
     BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ AddNpc(hash protoId, uint16 hexX, uint16 hexY, uint8 dir, dict<CritterProperty, int>@+ props = null)", SCRIPT_FUNC_THIS( BIND_CLASS Map_AddNpc ), SCRIPT_FUNC_THIS_CONV ) );
@@ -851,6 +863,7 @@ static int Bind( asIScriptEngine* engine, PropertyRegistrator** registrators )
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 GetDirection(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY)", SCRIPT_FUNC( Global_GetDirection ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint8 GetOffsetDir(uint16 fromHexX, uint16 fromHexY, uint16 toHexX, uint16 toHexY, float offset)", SCRIPT_FUNC( Global_GetOffsetDir ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTick()", SCRIPT_FUNC( Global_GetTick ), SCRIPT_FUNC_CONV ) );
+	BIND_ASSERT(engine->RegisterGlobalFunction("double AccurateTick()", SCRIPT_FUNC(Timer::AccurateTick), SCRIPT_FUNC_CONV));
     BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetAngelScriptProperty(int property)", SCRIPT_FUNC( Global_GetAngelScriptProperty ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "void SetAngelScriptProperty(int property, uint value)", SCRIPT_FUNC( Global_SetAngelScriptProperty ), SCRIPT_FUNC_CONV ) );
     BIND_ASSERT( engine->RegisterGlobalFunction( "hash GetStrHash(string str)", SCRIPT_FUNC( Global_GetStrHash ), SCRIPT_FUNC_CONV ) );

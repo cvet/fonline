@@ -30,7 +30,7 @@ static void WriteProtosToBinary( UCharVec& data, const map< hash, T* >& protos )
 }
 
 template< class T >
-static void ReadProtosFromBinary( UCharVec& data, uint& pos, map< hash, T* >& protos )
+static void ReadProtosFromBinary( UCharVec& data, uint& pos, map< hash, T* >& protos, uint subType )
 {
     PUCharVec props_data;
     UIntVec   props_data_sizes;
@@ -38,7 +38,7 @@ static void ReadProtosFromBinary( UCharVec& data, uint& pos, map< hash, T* >& pr
     for( uint i = 0; i < protos_count; i++ )
     {
         hash   proto_id = ReadData< hash >( data, pos );
-        T*     proto = new T( proto_id );
+        T*     proto = new T( proto_id, subType);
 
         ushort components_count = ReadData< ushort >( data, pos );
         for( ushort j = 0; j < components_count; j++ )
@@ -82,7 +82,7 @@ static void InsertMapValues( const StrMap& from_kv, StrMap& to_kv, bool overwrit
 
 #pragma warning( disable : 4503 )
 template< class T >
-static int ParseProtos( const string& ext, const string& app_name, map< hash, T* >& protos )
+static int ParseProtos( const string& ext, const string& app_name, map< hash, T* >& protos, uint subType)
 {
     int errors = 0;
 
@@ -227,7 +227,7 @@ static int ParseProtos( const string& ext, const string& app_name, map< hash, T*
             return errors;
 
         // Create proto
-        T* proto = new T( pid );
+        T* proto = new T( pid, subType);
         if( !proto->Props.LoadFromText( final_kv ) )
         {
             WriteLog( "Proto item '{}' fail to load properties.\n", base_name );
@@ -304,7 +304,14 @@ void ProtoManager::ClearProtos()
     mapProtos.clear();
     for( auto& proto : locProtos )
         proto.second->Release();
-    locProtos.clear();
+	locProtos.clear();
+	for (auto& custom : customProtos)
+	{
+		for ( auto& proto : custom->map)
+			proto.second->Release();
+		custom->map.clear();
+	}
+
 }
 
 bool ProtoManager::LoadProtosFromFiles()
@@ -315,10 +322,15 @@ bool ProtoManager::LoadProtosFromFiles()
 
     // Load protos
     int errors = 0;
-    errors += ParseProtos( "foitem", "ProtoItem", itemProtos );
-    errors += ParseProtos( "focr", "ProtoCritter", crProtos );
-    errors += ParseProtos( "fomap", "ProtoMap", mapProtos );
-    errors += ParseProtos( "foloc", "ProtoLocation", locProtos );
+    errors += ParseProtos( "foitem", "ProtoItem", itemProtos, 0 );
+    errors += ParseProtos( "focr", "ProtoCritter", crProtos, 0);
+    errors += ParseProtos( "fomap", "ProtoMap", mapProtos, 0);
+    errors += ParseProtos( "foloc", "ProtoLocation", locProtos, 0);
+	for (size_t i = 0, iend = customProtos.size(); i < iend; i++)
+	{
+		if (!customProtos[i]->fileExt.empty() && !customProtos[i]->appName.empty())
+			errors += ParseProtos(customProtos[i]->fileExt, customProtos[i]->appName, customProtos[i]->map, (uint)i);
+	}
     if( errors )
         return false;
 
@@ -391,6 +403,8 @@ void ProtoManager::GetBinaryData( UCharVec& data )
     WriteProtosToBinary( data, crProtos );
     WriteProtosToBinary( data, mapProtos );
     WriteProtosToBinary( data, locProtos );
+	for (size_t i = 0, iend = customProtos.size(); i < iend; i++)
+		WriteProtosToBinary(data, customProtos[i]->map);
     Crypt.Compress( data );
 }
 
@@ -404,10 +418,12 @@ void ProtoManager::LoadProtosFromBinaryData( UCharVec& data )
         return;
 
     uint pos = 0;
-    ReadProtosFromBinary( data, pos, itemProtos );
-    ReadProtosFromBinary( data, pos, crProtos );
-    ReadProtosFromBinary( data, pos, mapProtos );
-    ReadProtosFromBinary( data, pos, locProtos );
+    ReadProtosFromBinary( data, pos, itemProtos, 0 );
+    ReadProtosFromBinary( data, pos, crProtos, 0);
+    ReadProtosFromBinary( data, pos, mapProtos, 0);
+    ReadProtosFromBinary( data, pos, locProtos, 0);
+	for (size_t i = 0, iend = customProtos.size(); i < iend; i++)
+		ReadProtosFromBinary(data, pos, customProtos[i]->map, (uint)i);
 }
 
 template< typename T >
@@ -446,7 +462,18 @@ bool ProtoManager::ValidateProtoResources( StrVec& resource_names )
     errors += ValidateProtoResourcesExt( crProtos, hashes );
     errors += ValidateProtoResourcesExt( mapProtos, hashes );
     errors += ValidateProtoResourcesExt( locProtos, hashes );
+	for (size_t i = 0, iend = customProtos.size(); i < iend; i++)
+		errors += ValidateProtoResourcesExt(customProtos[i]->map, hashes);
     return errors == 0;
+}
+
+void ProtoManager::CreateCustomProtoMap(uint subType, string fileExt, string appName)
+{
+	for (size_t i = customProtos.size(); i <= subType; i++)
+		customProtos.push_back(new ProtoManager::CustomProtoData());
+
+	customProtos[subType]->appName = appName;
+	customProtos[subType]->fileExt = fileExt;
 }
 
 ProtoItem* ProtoManager::GetProtoItem( hash pid )
@@ -471,4 +498,40 @@ ProtoLocation* ProtoManager::GetProtoLocation( hash pid )
 {
     auto it = locProtos.find( pid );
     return it != locProtos.end() ? it->second : nullptr;
+}
+
+ProtoCustomEntity * ProtoManager::GetProtoCustom(uint subType, hash pid)
+{
+	if (subType >= customProtos.size())
+		return nullptr;
+	auto map = GetProtoCustoms( subType);
+	auto it = map.find(pid);
+	return it != map.end() ? it->second : nullptr;
+}
+
+const ProtoItemMap& ProtoManager::GetProtoItems()
+{
+	return itemProtos;
+}
+
+const ProtoCritterMap& ProtoManager::GetProtoCritters()
+{
+	return crProtos;
+}
+
+const ProtoMapMap& ProtoManager::GetProtoMaps()
+{
+	return mapProtos;
+}
+
+const ProtoLocMap& ProtoManager::GetProtoLocations()
+{
+	return locProtos;
+}
+
+const ProtoCustomEntityMap& ProtoManager::GetProtoCustoms(uint subType)
+{
+	if (subType >= customProtos.size())
+		return nullCustomProtos.map;
+	return customProtos[subType]->map;
 }

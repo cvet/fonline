@@ -35,7 +35,7 @@ CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay0 );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, uchar, AnimStay1 );
 CLASS_PROPERTY_ALIAS_IMPL( ProtoItem, Item, CScriptArray *, BlockLines );
 
-ProtoItem::ProtoItem( hash pid ): ProtoEntity( pid, Item::PropertiesRegistrator )
+ProtoItem::ProtoItem( hash pid, uint subType): ProtoEntity( pid, Item::PropertiesRegistrators[subType] )
 {
     InstanceCount = 0;
 }
@@ -112,11 +112,11 @@ CLASS_PROPERTY_IMPL( Item, RadioBroadcastSend );
 CLASS_PROPERTY_IMPL( Item, RadioBroadcastRecv );
 CLASS_PROPERTY_IMPL( Item, FlyEffectSpeed );
 
-Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, PropertiesRegistrator, proto )
+Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, PropertiesRegistrators[0], proto )
 {
     RUNTIME_ASSERT( proto );
 
-    MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() );
+    MEMORY_PROCESS( MEMORY_ITEM, sizeof( Item ) + PropertiesRegistrators[0]->GetWholeDataSize() );
 
     ChildItems = nullptr;
     ViewPlaceOnMap = false;
@@ -132,7 +132,7 @@ Item::Item( uint id, ProtoItem* proto ): Entity( id, EntityType::Item, Propertie
 
 Item::~Item()
 {
-    MEMORY_PROCESS( MEMORY_ITEM, -(int) ( sizeof( Item ) + PropertiesRegistrator->GetWholeDataSize() ) );
+    MEMORY_PROCESS( MEMORY_ITEM, -(int) ( sizeof( Item ) + PropertiesRegistrators[0]->GetWholeDataSize() ) );
 }
 
 void Item::SetProto( ProtoItem* proto )

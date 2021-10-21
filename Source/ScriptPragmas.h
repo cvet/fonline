@@ -23,6 +23,7 @@ class ContentPragma;   // improve dynamic scan
 class EnumPragma;      // extend enum MyEnum { NewA, NewB }
 class EventPragma;     // [Event] void MyEvent(...)
 class RpcPragma;       // [ServerRpc] void MyRpc(...)
+class InterfacePragma; //
 // add [Export] to allow access from other modules
 // ???
 
@@ -44,6 +45,7 @@ private:
     EnumPragma*      enumPragma;
     EventPragma*     eventPragma;
     RpcPragma*       rpcPragma;
+	InterfacePragma* interfacePragma;
 
 public:
     ScriptPragmaCallback( int pragma_type );
@@ -52,7 +54,9 @@ public:
     const Pragmas&        GetProcessedPragmas();
     void                  Finish();
     bool                  IsError();
-    PropertyRegistrator** GetPropertyRegistrators();
+	PropertyRegistrator*  GetCustomEntityRegistrationBySubType(uint subType);
+	PropertyRegistrator*  GetEntityRegistration(string class_name);
+	std::vector<PropertyRegistrator*> GetPropertyRegistrators();
     StrVec                GetCustomEntityTypes();
     #ifdef FONLINE_SERVER
     bool RestoreCustomEntity( const string& class_name, uint id, const DataBase::Document& doc );

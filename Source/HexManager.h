@@ -72,6 +72,7 @@ struct Field
         short      OffsX;
         short      OffsY;
         uchar      Layer;
+		uint       SprId;
     };
     typedef vector< Tile > TileVec;
 
@@ -209,7 +210,6 @@ private:
     int           wVisible, hVisible;
 
     void InitView( int cx, int cy );
-    void ResizeView();
     bool IsVisible( uint spr_id, int ox, int oy );
     bool ProcessHexBorders( uint spr_id, int ox, int oy, bool resize_map );
 
@@ -230,6 +230,7 @@ public:
     void GetScreenHexes( int& sx, int& sy );
     void GetHexCurrentPosition( ushort hx, ushort hy, int& x, int& y );
     bool ProcessHexBorders( ItemHex* item );
+	void ResizeView();
 
     void     RebuildMap( int rx, int ry );
     void     RebuildMapOffset( int ox, int oy );
@@ -417,7 +418,7 @@ public:
 
     void ClearSelTiles();
     void ParseSelTiles();
-    void SetTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select );
+    void SetTile( hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select, bool isrefresh = true);
     void EraseTile( ushort hx, ushort hy, uchar layer, bool is_roof, uint skip_index );
 
     // Ignore pids to draw

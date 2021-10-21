@@ -129,6 +129,11 @@ public:
     bool           UpdateFileDownloading;
     void*          UpdateFileTemp;
 
+	double         StatisticHardTime;
+	double         StatisticLoopTime;
+	double         StatisticInputTime;
+	double         StatisticNetworkTime;
+
     void UpdateFilesStart();
     void UpdateFilesLoop();
     void UpdateFilesAddText( uint num_str, const string& num_str_str );
@@ -226,6 +231,9 @@ public:
 
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
+
+	void Net_OnAddCustomEntity();
+	void Net_OnRemoveCustomEntity();
 
     void OnText( const string& str, uint crid, int how_say );
     void OnMapText( const string& str, ushort hx, ushort hy, uint color );
@@ -405,6 +413,7 @@ public:
         static void          Crit_GetNameTextInfo( CritterCl* cr, bool& name_visible, int& x, int& y, int& w, int& h, int& lines );
         static void          Crit_AddAnimationCallback( CritterCl* cr, uint anim1, uint anim2, float normalized_time, asIScriptFunction* animation_callback );
         static bool          Crit_GetBonePosition( CritterCl* cr, hash bone_name, int& bone_x, int& bone_y );
+		static bool          Crit_IsMovePassed(CritterCl* cr, uchar direction);
 
         static Item*         Item_Clone( Item* item, uint count );
         static bool          Item_GetMapPosition( Item* item, ushort& hx, ushort& hy );
@@ -422,7 +431,7 @@ public:
         static CScriptArray* Global_GetCrittersByPids( hash pid, int find_type );
         static CScriptArray* Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type );
         static CScriptArray* Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy );
-        static void          Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
+        static void          Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist, bool _passed );
         static CScriptArray* Global_GetPathHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static CScriptArray* Global_GetPathCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut );
         static uint          Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
@@ -471,6 +480,7 @@ public:
         static uint Global_GetSpriteTicks( uint spr_id );
         static uint Global_GetPixelColor( uint spr_id, int frame_index, int x, int y );
         static void Global_GetTextInfo( string text, int w, int h, int font, int flags, int& tw, int& th, int& lines );
+		static void Global_DrawDirSprite(uint spr_id, uchar direction, int frame_index, int x, int y, uint color, bool offs);
         static void Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs );
         static void Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs );
         static void Global_DrawSpritePattern( uint spr_id, int frame_index, int x, int y, int w, int h, int spr_width, int spr_height, uint color );
@@ -519,6 +529,7 @@ public:
         static bool          Global_IsCacheData( string name );
         static void          Global_EraseCacheData( string name );
         static void          Global_SetUserConfig( CScriptArray* key_values );
+		static string        Global_GetClipboardText();
 
         static Map*          ClientCurMap;
         static Location*     ClientCurLocation;
@@ -643,6 +654,17 @@ public:
     ItemHex*   GetItem( uint item_id ) { return HexMngr.GetItemById( item_id ); }
     void       DeleteCritters();
     void       DeleteCritter( uint remid );
+
+	std::vector < std::map<uint, CustomEntity*> > CustomEntityMngrs;
+
+	std::map<uint, CustomEntity*>* GetCustomEntityMngr(uint subType);
+	void CreateSubCustomEntityMngr( uint subType );
+
+	CustomEntity* GetCustomEntity(uint subType, uint id);
+	void DeleteCustomEntity(uint subType, uint id);
+	void DeleteAllCustomEntity();
+	void DeleteCustomEntitys(uint subType);
+	void AddCustomEntity(CustomEntity* entity);
 
     bool     NoLogOut;
     bool     RebuildLookBorders;

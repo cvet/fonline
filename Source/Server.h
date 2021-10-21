@@ -105,6 +105,7 @@ public:
     static void OnSendCritterValue( Entity* entity, Property* prop );
     static void OnSendMapValue( Entity* entity, Property* prop );
     static void OnSendLocationValue( Entity* entity, Property* prop );
+	static void OnSendCustomEntityValue(Entity* entity, Property* prop);
 
     // Items
     static Item* CreateItemOnHex( Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks );
@@ -246,6 +247,7 @@ public:
         static bool          Cl_SetAccess( Critter* cl, int access );
         static Map*          Crit_GetMap( Critter* cr );
         static bool          Crit_MoveToDir( Critter* cr, uchar direction );
+		static bool          Crit_IsMovePassed(Critter* cr, uchar direction);
         static void          Crit_TransitToHex( Critter* cr, ushort hx, ushort hy, uchar dir );
         static void          Crit_TransitToMapHex( Critter* cr, Map* map, ushort hx, ushort hy, uchar dir );
         static void          Crit_TransitToGlobal( Critter* cr );

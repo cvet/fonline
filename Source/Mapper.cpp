@@ -242,7 +242,7 @@ bool FOMapper::Init()
         FileManager::SetCurrentDir( ServerWritePath, "./" );
 
         string    map_name = MainConfig->GetStr( "", "Map" );
-        ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
+        ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash(), 0 );
         bool      initialized = pmap->Load();
 
         FileManager::SetCurrentDir( ClientWritePath, CLIENT_DATA );
@@ -2192,7 +2192,7 @@ void FOMapper::IntLMouseDown()
                         ushort   hx = cr->GetHexX();
                         ushort   hy = cr->GetHexY();
                         UCharVec steps;
-                        if( HexMngr.FindPath( nullptr, hx, hy, SelectHX1, SelectHY1, steps, -1 ) )
+                        if( HexMngr.FindPath( cr, hx, hy, SelectHX1, SelectHY1, steps, -1 ) )
                         {
                             for( uint k = 0; k < steps.size(); k++ )
                             {
@@ -2201,6 +2201,10 @@ void FOMapper::IntLMouseDown()
                             }
                             cr->IsRunning = is_run;
                         }
+						else
+						{
+							AddMess("No find path");
+						}
 
                         break;
                     }
@@ -3716,7 +3720,7 @@ void FOMapper::CurDraw()
         else if( IsCritMode() && CurNpcProtos->size() )
         {
             hash model_name = ( *CurNpcProtos )[ GetTabIndex() ]->Props.GetPropValue< hash >( CritterCl::PropertyModelName );
-            uint spr_id = ResMngr.GetCritSprId( model_name, 1, 1, NpcDir );
+            uint spr_id = ResMngr.GetCritSprId( model_name, 1, 1, NpcDir, nullptr );
             if( !spr_id )
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId( 0 );
 
@@ -3944,7 +3948,7 @@ void FOMapper::ParseCommand( const string& command )
             return;
         }
 
-        ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash() );
+        ProtoMap* pmap = new ProtoMap( _str( map_name ).toHash(), 0 );
         FileManager::SetCurrentDir( ServerWritePath, "./" );
         if( !pmap->Load() )
         {
@@ -4087,7 +4091,7 @@ void FOMapper::ParseCommand( const string& command )
 
         if( command_ext == "new" )
         {
-            ProtoMap* pmap = new ProtoMap( _str( "new" ).toHash() );
+            ProtoMap* pmap = new ProtoMap( _str( "new" ).toHash(), 0 );
             pmap->GenNew();
 
             if( ActiveMap )
@@ -4104,6 +4108,7 @@ void FOMapper::ParseCommand( const string& command )
             Map* map = new Map( 0, pmap );
             ActiveMap = map;
             LoadedMaps.push_back( map );
+			RunMapNewScript(map, command);
         }
         else if( command_ext == "unload" )
         {
@@ -4277,7 +4282,7 @@ bool FOMapper::InitScriptSystem()
 
     // Bind vars and functions, look bind.h
     asIScriptEngine*      engine = Script::GetEngine();
-    PropertyRegistrator** registrators = pragma_callback->GetPropertyRegistrators();
+    std::vector<PropertyRegistrator*> registrators = pragma_callback->GetPropertyRegistrators();
     int                   errors = MapperBind::Bind( engine, registrators );
     if( errors )
         return false;
@@ -4311,6 +4316,7 @@ bool FOMapper::InitScriptSystem()
     BIND_INTERNAL_EVENT( CritterAnimationSubstitute );
     BIND_INTERNAL_EVENT( CritterAnimationFallout );
     BIND_INTERNAL_EVENT( MapLoad );
+	BIND_INTERNAL_EVENT( MapNew );
     BIND_INTERNAL_EVENT( MapSave );
     BIND_INTERNAL_EVENT( InspectorProperties );
     #undef BIND_INTERNAL_EVENT
@@ -4320,30 +4326,34 @@ bool FOMapper::InitScriptSystem()
     Globals = new GlobalVars();
     CritterCl::SetPropertyRegistrator( registrators[ 1 ] );
     Item::SetPropertyRegistrator( registrators[ 2 ] );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
-    Item::PropertiesRegistrator->SetNativeSetCallback( "Opened", OnSetItemOpened );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsColorize", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsBadItem", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsShootThru", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsLightThru", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsNoBlock", OnSetItemFlags );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "IsLight", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "LightIntensity", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "LightDistance", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "LightFlags", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "LightColor", OnSetItemSomeLight );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "PicMap", OnSetItemPicMap );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "OffsetX", OnSetItemOffsetXY );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "OffsetY", OnSetItemOffsetXY );
+    Item::PropertiesRegistrators[0]->SetNativeSetCallback( "Opened", OnSetItemOpened );
     Map::SetPropertyRegistrator( registrators[ 3 ] );
     Location::SetPropertyRegistrator( registrators[ 4 ] );
-
+	for (size_t i = 5, iend = registrators.size(); i < iend; i++)
+	{
+		ProtoMngr.CreateCustomProtoMap(registrators[i]->GetSubType(), _str("fo{}", registrators[i]->GetClassName().c_str()).lower().c_str(), _str("Proto{}", registrators[i]->GetClassName().c_str()).str());
+		CustomEntity::SetPropertyRegistrator(registrators[i]);
+	}
     if( !Script::PostInitScriptSystem() )
     {
         WriteLog( "Post init fail.\n" );
         return false;
     }
 
-    if( !Script::RunModuleInitFunctions() )
+    if( !Script::RunAllModuleInitFunctions() )
     {
         WriteLog( "Run module init functions fail.\n" );
         return false;
@@ -4368,6 +4378,12 @@ void FOMapper::RunMapLoadScript( Map* map )
 {
     RUNTIME_ASSERT( map );
     Script::RaiseInternalEvent( MapperFunctions.MapLoad, map );
+}
+
+void FOMapper::RunMapNewScript( Map* map, const string& command )
+{
+    RUNTIME_ASSERT( map );
+    Script::RaiseInternalEvent( MapperFunctions.MapNew, map, command);
 }
 
 void FOMapper::RunMapSaveScript( Map* map )
@@ -4484,6 +4500,16 @@ CScriptArray* FOMapper::SScriptFunc::Item_GetChildren( Item* item )
 CScriptArray* FOMapper::SScriptFunc::Crit_GetChildren( CritterCl* cr )
 {
     return Script::CreateArrayRef( "Item[]", cr->InvItems );
+}
+
+ushort FOMapper::SScriptFunc::Global_GetMapWidth()
+{
+	return Self->HexMngr.GetWidth();
+}
+
+ushort FOMapper::SScriptFunc::Global_GetMapHeight()
+{
+	return Self->HexMngr.GetHeight();
 }
 
 Item* FOMapper::SScriptFunc::Global_AddItem( hash pid, ushort hx, ushort hy )
@@ -4676,7 +4702,7 @@ hash FOMapper::SScriptFunc::Global_GetTileHash( ushort hx, ushort hy, bool roof,
     return 0;
 }
 
-void FOMapper::SScriptFunc::Global_AddTileHash( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash pic_hash )
+void FOMapper::SScriptFunc::Global_AddTileHash( ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash pic_hash, bool isrefresh )
 {
     if( !Self->HexMngr.IsMapLoaded() )
         SCRIPT_ERROR_R( "Map not loaded." );
@@ -4691,7 +4717,7 @@ void FOMapper::SScriptFunc::Global_AddTileHash( ushort hx, ushort hy, int ox, in
     oy = CLAMP( oy, -MAX_MOVE_OY, MAX_MOVE_OY );
     layer = CLAMP( layer, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END );
 
-    Self->HexMngr.SetTile( pic_hash, hx, hy, ox, oy, layer, roof, false );
+    Self->HexMngr.SetTile( pic_hash, hx, hy, ox, oy, layer, roof, false, isrefresh );
 }
 
 string FOMapper::SScriptFunc::Global_GetTileName( ushort hx, ushort hy, bool roof, int layer )
@@ -4737,9 +4763,15 @@ void FOMapper::SScriptFunc::Global_AllowSlot( uchar index, bool enable_send )
     //
 }
 
+void FOMapper::SScriptFunc::Global_RefreshMap()
+{
+	Self->HexMngr.ResizeView();
+	Self->HexMngr.RefreshMap();
+}
+
 Map* FOMapper::SScriptFunc::Global_LoadMap( string file_name )
 {
-    ProtoMap* pmap = new ProtoMap( _str( file_name ).toHash() );
+    ProtoMap* pmap = new ProtoMap( _str( file_name ).toHash(), 0 );
     FileManager::SetCurrentDir( ServerWritePath, "./" );
     if( !pmap->Load() )
     {
@@ -5278,10 +5310,10 @@ string FOMapper::SScriptFunc::Global_ReplaceTextInt( string text, string replace
     return string( text ).replace( pos, replace.length(), _str( "{}", i ) );
 }
 
-void FOMapper::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist )
+void FOMapper::SScriptFunc::Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist, bool _passed)
 {
     UShortPair pre_block, block;
-    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, true );
+    Self->HexMngr.TraceBullet( from_hx, from_hy, to_hx, to_hy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, _passed);
     to_hx = pre_block.first;
     to_hy = pre_block.second;
 }
@@ -5564,23 +5596,28 @@ void FOMapper::SScriptFunc::Global_GetTextInfo( string text, int w, int h, int f
     SprMngr.GetTextInfo( w, h, !text.empty() ? text.c_str() : nullptr, font, flags, tw, th, lines );
 }
 
+void FOMapper::SScriptFunc::Global_DrawDirSprite(uint spr_id, uchar direction, int frame_index, int x, int y, uint color, bool offs)
+{
+	if (!SpritesCanDraw || !spr_id)
+		return;
+	AnyFrames* anim = Self->AnimGetFrames(spr_id);
+	if (!anim || frame_index >= (int)anim->GetCnt())
+		return;
+	uint spr_id_ = (frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId(frame_index));
+	if (offs)
+	{
+		SpriteInfo* si = SprMngr.GetSpriteInfo(spr_id_);
+		if (!si)
+			return;
+		x += -si->Width / 2 + si->OffsX;
+		y += -si->Height + si->OffsY;
+	}
+	SprMngr.DrawSprite(spr_id_, x, y, COLOR_SCRIPT_SPRITE(color));
+}
+
 void FOMapper::SScriptFunc::Global_DrawSprite( uint spr_id, int frame_index, int x, int y, uint color, bool offs )
 {
-    if( !SpritesCanDraw || !spr_id )
-        return;
-    AnyFrames* anim = Self->AnimGetFrames( spr_id );
-    if( !anim || frame_index >= (int) anim->GetCnt() )
-        return;
-    uint spr_id_ = ( frame_index < 0 ? anim->GetCurSprId() : anim->GetSprId( frame_index ) );
-    if( offs )
-    {
-        SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id_ );
-        if( !si )
-            return;
-        x += -si->Width / 2 + si->OffsX;
-        y += -si->Height + si->OffsY;
-    }
-    SprMngr.DrawSprite( spr_id_, x, y, COLOR_SCRIPT_SPRITE( color ) );
+	Global_DrawDirSprite(spr_id, 0, frame_index, x, y, color, offs);
 }
 
 void FOMapper::SScriptFunc::Global_DrawSpriteSize( uint spr_id, int frame_index, int x, int y, int w, int h, bool zoom, uint color, bool offs )
@@ -5762,7 +5799,7 @@ void FOMapper::SScriptFunc::Global_DrawMapSprite( MapSprite* map_spr )
 
 void FOMapper::SScriptFunc::Global_DrawCritter2d( hash model_name, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color )
 {
-    AnyFrames* anim = ResMngr.GetCrit2dAnim( model_name, anim1, anim2, dir );
+    AnyFrames* anim = ResMngr.GetCrit2dAnim( model_name, anim1, anim2, dir, nullptr );
     if( anim )
         SprMngr.DrawSpriteSize( anim->Ind[ 0 ], l, t, r - l, b - t, scratch, center, COLOR_SCRIPT_SPRITE( color ) );
 }
@@ -5849,3 +5886,56 @@ void FOMapper::SScriptFunc::Global_PopDrawScissor()
 {
     SprMngr.PopScissor();
 }
+
+void FOMapper::SScriptFunc::Global_SetPropertyGetCallback(asIScriptGeneric* gen)
+{
+	int   prop_enum_value = gen->GetArgDWord(0);
+	void* ref = gen->GetArgAddress(1);
+	gen->SetReturnByte(0);
+	RUNTIME_ASSERT(ref);
+
+	Property* prop = GlobalVars::PropertiesRegistrators[0]->FindByEnum(prop_enum_value);
+	prop = (prop ? prop : CritterCl::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	prop = (prop ? prop : Item::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	prop = (prop ? prop : Map::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	prop = (prop ? prop : Location::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	prop = (prop ? prop : GlobalVars::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	if (!prop)
+		SCRIPT_ERROR_R("Property '{}' not found.", _str().parseHash(prop_enum_value));
+
+	string result = prop->SetGetCallback(*(asIScriptFunction**)ref);
+	if (result != "")
+		SCRIPT_ERROR_R(result.c_str());
+
+	gen->SetReturnByte(1);
+}
+
+void FOMapper::SScriptFunc::Global_AddPropertySetCallback(asIScriptGeneric* gen)
+{
+	int   prop_enum_value = gen->GetArgDWord(0);
+	void* ref = gen->GetArgAddress(1);
+	bool  deferred = gen->GetArgByte(2) != 0;
+	gen->SetReturnByte(0);
+	RUNTIME_ASSERT(ref);
+
+	Property* prop = CritterCl::PropertiesRegistrators[0]->FindByEnum(prop_enum_value);
+	prop = (prop ? prop : Item::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	prop = (prop ? prop : Map::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	prop = (prop ? prop : Location::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	prop = (prop ? prop : GlobalVars::PropertiesRegistrators[0]->FindByEnum(prop_enum_value));
+	if (!prop)
+		SCRIPT_ERROR_R("Property '{}' not found.", _str().parseHash(prop_enum_value));
+
+	string result = prop->AddSetCallback(*(asIScriptFunction**)ref, deferred);
+	if (result != "")
+		SCRIPT_ERROR_R(result);
+
+	gen->SetReturnByte(1);
+}
+
+string FOMapper::SScriptFunc::Global_GetClipboardText()
+{
+	string result = SDL_GetClipboardText();
+	return result;
+}
+

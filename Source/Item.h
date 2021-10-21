@@ -51,7 +51,7 @@ class Critter;
 class ProtoItem: public ProtoEntity
 {
 public:
-    ProtoItem( hash pid );
+    ProtoItem( hash pid, uint subType);
 
     int64    InstanceCount;
 

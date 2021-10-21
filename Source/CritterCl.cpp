@@ -4,11 +4,12 @@
 #include "ProtoManager.h"
 
 #ifdef FONLINE_CLIENT
+# include "Client.h"
 # include "SoundManager.h"
 # include "Script.h"
 #endif
 
-ProtoCritter::ProtoCritter( hash pid ): ProtoEntity( pid, CritterCl::PropertiesRegistrator ) {}
+ProtoCritter::ProtoCritter( hash pid, uint subType): ProtoEntity( pid, CritterCl::GetPropertyRegistrator(subType)) {}
 CLASS_PROPERTY_ALIAS_IMPL( ProtoCritter, CritterCl, uint, Multihex );
 
 bool CritterCl::SlotEnabled[ 0x100 ];
@@ -49,7 +50,7 @@ CLASS_PROPERTY_IMPL( CritterCl, IsNoTalk );
 CLASS_PROPERTY_IMPL( CritterCl, IsHide );
 CLASS_PROPERTY_IMPL( CritterCl, IsNoFlatten );
 
-CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterCl, PropertiesRegistrator, proto )
+CritterCl::CritterCl( uint id, ProtoCritter* proto ): Entity( id, EntityType::CritterCl, PropertiesRegistrators[0], proto )
 {
     SprId = 0;
     NameColor = 0;
@@ -320,7 +321,7 @@ void CritterCl::DrawStay( Rect r )
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
+        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir, this );
         if( anim )
         {
             uint spr_id = ( IsLife() ? anim->Ind[ 0 ] : anim->Ind[ anim->CntFrm - 1 ] );
@@ -380,7 +381,7 @@ void CritterCl::Move( int dir )
         {
             uint       anim1 = ( IsRunning ? ANIM1_UNARMED : GetAnim1() );
             uint       anim2 = ( IsRunning ? ANIM2_RUN : ANIM2_WALK );
-            AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
+            AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir, this );
             if( !anim )
                 anim = ResMngr.CritterDefaultAnim;
 
@@ -465,7 +466,7 @@ void CritterCl::Move( int dir )
             if( GetIsHide() )
                 anim2 = ( IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK );
 
-            AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
+            AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir, this );
             if( !anim )
                 anim = ResMngr.CritterDefaultAnim;
 
@@ -579,6 +580,7 @@ void CritterCl::NextAnim( bool erase_front )
     {
         lastEndSpr = cr_anim.EndFrm;
         curSpr = cr_anim.BeginFrm;
+		RUNTIME_ASSERT(cr_anim.Anim);
         SprId = cr_anim.Anim->GetSprId( curSpr );
 
         short ox = 0, oy = 0;
@@ -606,7 +608,7 @@ void CritterCl::Animate( uint anim1, uint anim2, Item* item )
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir );
+        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, dir, this );
         if( !anim )
         {
             if( !IsAnim() )
@@ -646,7 +648,7 @@ void CritterCl::AnimateStay()
 
     if( !Anim3d )
     {
-        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() );
+        AnyFrames* anim = ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir(), this );
         if( !anim )
             anim = ResMngr.CritterDefaultAnim;
 
@@ -712,6 +714,11 @@ void CritterCl::ClearAnim()
     for( uint i = 0, j = (uint) animSequence.size(); i < j; i++ )
         SAFEREL( animSequence[ i ].ActiveItem );
     animSequence.clear();
+}
+
+void CritterCl::EraseAnim()
+{
+
 }
 
 bool CritterCl::IsHaveLightSources()
@@ -799,7 +806,7 @@ bool CritterCl::IsAnimAviable( uint anim1, uint anim2 )
     if( Anim3d )
         return Anim3d->IsAnimation( anim1, anim2 );
     // 2d
-    return ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir() ) != nullptr;
+    return ResMngr.GetCrit2dAnim( GetModelName(), anim1, anim2, GetDir(), this ) != nullptr;
 }
 
 void CritterCl::RefreshAnim()
@@ -1087,58 +1094,96 @@ void CritterCl::GetNameTextInfo( bool& nameVisible, int& x, int& y, int& w, int&
 
 void CritterCl::DrawTextOnHead()
 {
-    if( strTextOnHead.empty() )
-    {
-        if( IsPlayer() && !GameOpt.ShowPlayerNames )
-            return;
-        if( IsNpc() && !GameOpt.ShowNpcNames )
-            return;
-    }
-
     if( SprDrawValid )
     {
-        Rect   tr = GetTextRect();
-        int    x = (int) ( (float) ( tr.L + tr.W() / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
-        int    y = (int) ( (float) ( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
-        Rect   r( x, y, x + 200, y + 70 );
-
-        string str;
+		bool nameVis;
+		int x, y, w, h, lines;
+		GetNameTextInfo(nameVis, x, y, w, h, lines);
+        Rect   r( x, y, w + x, h + y );
+		
+        string str = "";
         uint   color;
-        if( strTextOnHead.empty() )
-        {
-            str = ( NameOnHead.empty() ? Name : NameOnHead );
-            if( GameOpt.ShowCritId )
-                str += _str( " ({})", GetId() );
-            if( FLAG( Flags, FCRIT_DISCONNECT ) )
-                str += GameOpt.PlayerOffAppendix;
-            color = ( NameColor ? NameColor : COLOR_CRITTER_NAME );
-        }
-        else
-        {
-            str = strTextOnHead;
-            color = textOnHeadColor;
+        
+		uint draw_count = 0;
 
-            if( tickTextDelay > 500 )
-            {
-                uint dt = Timer::GameTick() - tickStartText;
-                uint hide = tickTextDelay - 200;
-                if( dt >= hide )
-                {
-                    uint alpha = 0xFF * ( 100 - Procent( tickTextDelay - hide, dt - hide ) ) / 100;
-                    color = ( alpha << 24 ) | ( color & 0xFFFFFF );
-                }
-            }
-        }
+		uint alpha = 0;
+		if (!strTextOnHead.empty())
+		{
+			color = textOnHeadColor;
 
-        if( fadingEnable )
-        {
-            uint alpha = GetFadeAlpha();
-            SprMngr.DrawStr( r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, ( alpha << 24 ) | ( color & 0xFFFFFF ) );
-        }
-        else if( !IsFinishing() )
-        {
-            SprMngr.DrawStr( r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color );
-        }
+			if (tickTextDelay > 500)
+			{
+				uint dt = Timer::GameTick() - tickStartText;
+				uint hide = tickTextDelay - 200;
+				if (dt >= hide)
+				{
+					uint alpha = 0xFF * (100 - Procent(tickTextDelay - hide, dt - hide)) / 100;
+					color = (alpha << 24) | (color & 0xFFFFFF);
+				}
+			}
+			if (fadingEnable)
+			{
+				draw_count++;
+				alpha = GetFadeAlpha();
+				SprMngr.DrawStr(r, strTextOnHead, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF));
+			}
+			else if (!IsFinishing())
+			{
+				draw_count++;
+				SprMngr.DrawStr(r, strTextOnHead, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color);
+			}
+
+			r[1] -= h/lines;
+			r[3] = r[1] + h / lines;
+			r[2] += 50;
+			r[0] -= 50;
+		}
+
+		{
+			bool isDraw = true;
+			if (IsPlayer() && !GameOpt.ShowPlayerNames)
+				isDraw = false;
+			if (IsNpc() && !GameOpt.ShowNpcNames)
+				isDraw = false;
+			if (isDraw)
+			{
+				str = (NameOnHead.empty() ? Name : NameOnHead);
+				if (GameOpt.ShowCritId)
+					str += _str(" ({})", GetId());
+				if (FLAG(Flags, FCRIT_DISCONNECT))
+					str += GameOpt.PlayerOffAppendix;
+				color = (NameColor ? NameColor : COLOR_CRITTER_NAME);
+			}
+
+			if (!str.empty())
+			{
+				if (fadingEnable)
+				{
+					draw_count++;
+					alpha = GetFadeAlpha();
+					SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF));
+				}
+				else if (!IsFinishing())
+				{
+					draw_count++;
+					SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color);
+				}
+			}
+		}
+		
+#ifdef FONLINE_CLIENT
+		if (!draw_count)
+		{
+			Rect   tr = GetTextRect();
+			int    x = (int)((float)(tr.L + tr.W() / 2 + GameOpt.ScrOx) / GameOpt.SpritesZoom - 100.0f);
+			int    y = (int)((float)(tr.T + GameOpt.ScrOy) / GameOpt.SpritesZoom - 70.0f);
+			r = Rect(x, y, x + 200, y + 70);
+		}
+		bool old = FOClient::Self->CanDrawInScripts;
+		FOClient::Self->CanDrawInScripts = true;
+		Script::RaiseInternalEvent( ClientFunctions.CritterNameRender, this, r[0], r[1], r[2], r[3], alpha );
+		FOClient::Self->CanDrawInScripts = old;
+#endif
     }
 
     if( Timer::GameTick() - tickStartText >= tickTextDelay && !strTextOnHead.empty() )
