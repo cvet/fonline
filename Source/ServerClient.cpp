@@ -1151,6 +1151,20 @@ bool FOServer::Act_PickItem( Critter* cr, ushort hx, ushort hy, ushort pid )
         case GRID_LADDERTOP:
         case GRID_ELEVATOR:
         {
+			MapObject* grid_scenery = map->Proto->GetMapGrid( hx, hy );
+			if( !grid_scenery )
+			{
+				cr->Send_Text( cr, "Grid not found, maybe map outdated.", SAY_NETMSG );
+				return false;
+			}
+			if( Script::PrepareContext( ServerFunctions.CritterGridTransfer, _FUNC_, cr->GetInfo( ) ) )
+			{
+				Script::SetArgObject( cr );
+				Script::SetArgObject( grid_scenery );
+				if( Script::RunPrepared( ) && !Script::GetReturnedBool( ) )
+					return true;
+			}
+
             Item pick_item;
             pick_item.Id = uint( -1 );
             pick_item.Init( proto );

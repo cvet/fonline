@@ -162,6 +162,7 @@ bool FOServer::InitScriptSystem()
         { &ServerFunctions.CritterRespawn, "critter_respawn", "void %s(Critter&)" },
         { &ServerFunctions.CritterCheckMoveItem, "critter_check_move_item", "bool %s(Critter&,Item&,uint8,Item@)" },
         { &ServerFunctions.CritterMoveItem, "critter_move_item", "void %s(Critter&,Item&,uint8)" },
+        { &ServerFunctions.CritterGridTransfer, "critter_grid_transfer", "bool %s(Critter&,Scenery&)" },
         { &ServerFunctions.MapCritterIn, "map_critter_in", "void %s(Map&,Critter&)" },
         { &ServerFunctions.MapCritterOut, "map_critter_out", "void %s(Map&,Critter&)" },
         { &ServerFunctions.NpcPlaneBegin, "npc_plane_begin", "bool %s(Critter&,NpcPlane&,int,Critter@,Item@)" },

@@ -392,6 +392,7 @@ struct ServerScriptFunctions
     int CritterRespawn;
     int CritterCheckMoveItem;
     int CritterMoveItem;
+	int CritterGridTransfer;
     int MapCritterIn;
     int MapCritterOut;
     int NpcPlaneBegin;

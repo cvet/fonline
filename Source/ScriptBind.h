@@ -376,6 +376,20 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 ProtoId", 
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 HexX", OFFSETOF( MapObject, MapX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 HexY", OFFSETOF( MapObject, MapY ) ) );
 
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const bool CanUse", OFFSETOF( MapObject, MScenery.CanUse ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const bool CanTalk", OFFSETOF( MapObject, MScenery.CanTalk ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint TriggerNum", OFFSETOF( MapObject, MScenery.TriggerNum ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint8 ParamsCount", OFFSETOF( MapObject, MScenery.ParamsCount ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const int Param0", OFFSETOF( MapObject, MScenery.Param[ 0 ] ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const int Param1", OFFSETOF( MapObject, MScenery.Param[ 1 ] ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const int Param2", OFFSETOF( MapObject, MScenery.Param[ 2 ] ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const int Param3", OFFSETOF( MapObject, MScenery.Param[ 3 ] ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const int Param4", OFFSETOF( MapObject, MScenery.Param[ 4 ] ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 ToMapPid", OFFSETOF( MapObject, MScenery.ToMapPid ) ) ); 
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint ToEntire", OFFSETOF( MapObject, MScenery.ToEntire ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint8 ToDir", OFFSETOF( MapObject, MScenery.ToDir ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint8 SpriteCut", OFFSETOF( MapObject, MScenery.SpriteCut ) ) );
+
 /************************************************************************/
 /* Critter                                                              */
 /************************************************************************/
