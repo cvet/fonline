@@ -84,6 +84,16 @@ FO_API_GLOBAL_READONLY_PROPERTY(PrivateCommon, FO_API_PROPERTY_TYPE(uint), Histo
 /*******************************************************************************
  * ...
  ******************************************************************************/
+FO_API_PLAYER_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(uint), ConnectionIp)
+
+/*******************************************************************************
+ * ...
+ ******************************************************************************/
+FO_API_PLAYER_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(ushort), ConnectionPort)
+
+/*******************************************************************************
+ * ...
+ ******************************************************************************/
 FO_API_CRITTER_PROPERTY(Public, FO_API_PROPERTY_TYPE(hash), ModelName)
 
 /*******************************************************************************
@@ -330,16 +340,6 @@ FO_API_CRITTER_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE(uchar), HomeDir)
  * ...
  ******************************************************************************/
 FO_API_CRITTER_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(uint), KnownLocations)
-
-/*******************************************************************************
- * ...
- ******************************************************************************/
-FO_API_CRITTER_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(uint), ConnectionIp)
-
-/*******************************************************************************
- * ...
- ******************************************************************************/
-FO_API_CRITTER_PROPERTY(PrivateServer, FO_API_PROPERTY_TYPE_ARR(ushort), ConnectionPort)
 
 /*******************************************************************************
  * ...

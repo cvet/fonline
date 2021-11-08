@@ -38,6 +38,49 @@
 /*******************************************************************************
  * ...
  *
+ * @return ...
+ ******************************************************************************/
+FO_API_PLAYER_METHOD(GetAccess, FO_API_RET(int))
+#if FO_API_PLAYER_METHOD_IMPL
+FO_API_PROLOG()
+{
+    FO_API_RETURN(_player->Access);
+}
+FO_API_EPILOG(0)
+#endif
+
+/*******************************************************************************
+ * ...
+ *
+ * @param access ...
+ * @return ...
+ ******************************************************************************/
+FO_API_PLAYER_METHOD(SetAccess, FO_API_RET(bool), FO_API_ARG(int, access))
+#if FO_API_PLAYER_METHOD_IMPL
+FO_API_PROLOG(FO_API_ARG_MARSHAL(int, access))
+{
+    if (access < ACCESS_CLIENT || access > ACCESS_ADMIN) {
+        throw ScriptException("Wrong access type");
+    }
+
+    if (access == _player->Access) {
+        FO_API_RETURN(true);
+    }
+
+    string pass;
+    const auto allow = _server->ScriptSys.PlayerGetAccessEvent(_player, access, pass);
+    if (allow) {
+        _player->Access = static_cast<uchar>(access);
+    }
+
+    FO_API_RETURN(allow);
+}
+FO_API_EPILOG(0)
+#endif
+
+/*******************************************************************************
+ * ...
+ *
  * @param pid ...
  * @param count ...
  * @param stackId ...
@@ -235,56 +278,6 @@ FO_API_CRITTER_METHOD(IsNpc, FO_API_RET(bool))
 FO_API_PROLOG()
 {
     FO_API_RETURN(_critter->IsNpc());
-}
-FO_API_EPILOG(0)
-#endif
-
-/*******************************************************************************
- * ...
- *
- * @return ...
- ******************************************************************************/
-FO_API_CRITTER_METHOD(GetAccess, FO_API_RET(int))
-#if FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG()
-{
-    if (!_critter->IsPlayer()) {
-        throw ScriptException("Critter is not player");
-    }
-
-    FO_API_RETURN((dynamic_cast<Client*>(_critter))->Access);
-}
-FO_API_EPILOG(0)
-#endif
-
-/*******************************************************************************
- * ...
- *
- * @param access ...
- * @return ...
- ******************************************************************************/
-FO_API_CRITTER_METHOD(SetAccess, FO_API_RET(bool), FO_API_ARG(int, access))
-#if FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(int, access))
-{
-    if (!_critter->IsPlayer()) {
-        throw ScriptException("Critter is not player");
-    }
-    if (access < ACCESS_CLIENT || access > ACCESS_ADMIN) {
-        throw ScriptException("Wrong access type");
-    }
-
-    if (access == dynamic_cast<Client*>(_critter)->Access) {
-        FO_API_RETURN(true);
-    }
-
-    string pass;
-    const auto allow = _server->ScriptSys.PlayerGetAccessEvent(_critter, access, pass);
-    if (allow) {
-        dynamic_cast<Client*>(_critter)->Access = static_cast<uchar>(access);
-    }
-
-    FO_API_RETURN(allow);
 }
 FO_API_EPILOG(0)
 #endif
@@ -537,54 +530,6 @@ FO_API_EPILOG(0)
 /*******************************************************************************
  * ...
  *
- * @return ...
- ******************************************************************************/
-FO_API_CRITTER_METHOD(IsFree, FO_API_RET(bool))
-#if FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG()
-{
-    FO_API_RETURN(_critter->IsFree() && !_critter->IsWait());
-}
-FO_API_EPILOG(0)
-#endif
-
-/*******************************************************************************
- * ...
- *
- * @return ...
- ******************************************************************************/
-FO_API_CRITTER_METHOD(IsBusy, FO_API_RET(bool))
-#if FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG()
-{
-    FO_API_RETURN(_critter->IsBusy() || _critter->IsWait());
-}
-FO_API_EPILOG(0)
-#endif
-
-/*******************************************************************************
- * ...
- *
- * @param ms ...
- ******************************************************************************/
-FO_API_CRITTER_METHOD(Wait, FO_API_RET(void), FO_API_ARG(uint, ms))
-#if FO_API_CRITTER_METHOD_IMPL
-FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, ms))
-{
-    _critter->SetWait(ms);
-
-    if (_critter->IsPlayer()) {
-        auto* cl = dynamic_cast<Client*>(_critter);
-        cl->SetBreakTime(ms);
-        cl->Send_CustomCommand(_critter, OTHER_BREAK_TIME, ms);
-    }
-}
-FO_API_EPILOG()
-#endif
-
-/*******************************************************************************
- * ...
- *
  ******************************************************************************/
 FO_API_CRITTER_METHOD(RefreshView, FO_API_RET(void))
 #if FO_API_CRITTER_METHOD_IMPL
@@ -786,7 +731,7 @@ FO_API_EPILOG(0)
  *
  * @return ...
  ******************************************************************************/
-FO_API_CRITTER_METHOD(GetTalkedPlayers, FO_API_RET_OBJ_ARR(Critter))
+FO_API_CRITTER_METHOD(GetTalkingCritters, FO_API_RET_OBJ_ARR(Critter))
 #if FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG()
 {
@@ -794,26 +739,23 @@ FO_API_PROLOG()
         throw ScriptException("Critter is not npc");
     }
 
-    vector<Critter*> players;
+    vector<Critter*> result;
 
-    for (auto* cr_ : _critter->VisCr) {
-        if (cr_->IsPlayer()) {
-            auto* cl = dynamic_cast<Client*>(cr_);
-            if (cl->Talk.Type == TalkType::Npc && cl->Talk.TalkNpc == _critter->GetId()) {
-                players.push_back(cl);
-            }
+    for (auto* cr : _critter->VisCr) {
+        if (cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == _critter->GetId()) {
+            result.push_back(cr);
         }
     }
 
     int hx = _critter->GetHexX();
     int hy = _critter->GetHexY();
-    std::sort(players.begin(), players.end(), [_server, hx, hy](Critter* cr1, Critter* cr2) {
+    std::sort(result.begin(), result.end(), [_server, hx, hy](Critter* cr1, Critter* cr2) {
         const auto dist1 = _server->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
         const auto dist2 = _server->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
         return dist1 < dist2;
     });
 
-    FO_API_RETURN(players);
+    FO_API_RETURN(result);
 }
 FO_API_EPILOG(0)
 #endif
@@ -1161,8 +1103,8 @@ FO_API_CRITTER_METHOD(CloseDialog, FO_API_RET(void))
 #if FO_API_CRITTER_METHOD_IMPL
 FO_API_PROLOG()
 {
-    if (_critter->IsPlayer() && dynamic_cast<Client*>(_critter)->IsTalking()) {
-        _server->CrMngr.CloseTalk(dynamic_cast<Client*>(_critter));
+    if (_critter->IsTalking()) {
+        _server->CrMngr.CloseTalk(_critter);
     }
 }
 FO_API_EPILOG()
@@ -1423,7 +1365,7 @@ FO_API_PROLOG(FO_API_ARG_OBJ_ARR_MARSHAL(Item, items) FO_API_ARG_MARSHAL(int, pa
         FO_API_RETURN_VOID();
     }
 
-    dynamic_cast<Client*>(_critter)->Send_SomeItems(&items, param);
+    _critter->Send_SomeItems(&items, param);
 }
 FO_API_EPILOG()
 #endif
@@ -1441,9 +1383,8 @@ FO_API_PROLOG()
         throw ScriptException("Critter is not player");
     }
 
-    auto* cl_ = dynamic_cast<Client*>(_critter);
-    if (cl_->IsOnline()) {
-        cl_->Disconnect();
+    if (auto* owner = _critter->GetOwner(); owner != nullptr) {
+        owner->Connection->GracefulDisconnect();
     }
 }
 FO_API_EPILOG()
@@ -1464,8 +1405,7 @@ FO_API_PROLOG()
         throw ScriptException("Critter is not player");
     }
 
-    auto* cl_ = dynamic_cast<Client*>(_critter);
-    FO_API_RETURN(cl_->IsOnline());
+    FO_API_RETURN(_critter->GetOwner() != nullptr);
 }
 FO_API_EPILOG(0)
 #endif
@@ -3635,8 +3575,7 @@ FO_API_GLOBAL_SERVER_FUNC(DeleteNpcById, FO_API_RET(void), FO_API_ARG(uint, npcI
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(uint, npcId))
 {
-    Critter* npc = _server->CrMngr.GetNpc(npcId);
-    if (npc != nullptr) {
+    if (Critter* npc = _server->CrMngr.GetCritter(npcId); npc != nullptr) {
         _server->CrMngr.DeleteNpc(npc);
     }
 }
@@ -3912,37 +3851,36 @@ FO_API_EPILOG(0)
  * @param name ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(GetPlayer, FO_API_RET_OBJ(Critter), FO_API_ARG(string, name))
+FO_API_GLOBAL_SERVER_FUNC(GetPlayer, FO_API_RET_OBJ(Player), FO_API_ARG(string, name))
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, name))
 {
     // Check existence
-    const auto id = MAKE_CLIENT_ID(name);
+    const auto id = MAKE_PLAYER_ID(name);
     const auto doc = _server->DbStorage.Get("Players", id);
     if (doc.empty()) {
-        FO_API_RETURN(static_cast<Critter*>(nullptr));
+        FO_API_RETURN(static_cast<Player*>(nullptr));
     }
 
     // Find online
-    auto* cl = _server->CrMngr.GetPlayer(id);
-    if (cl) {
-        cl->AddRef();
-        FO_API_RETURN(cl);
+    auto* player = _server->CrMngr.GetPlayerById(id);
+    if (player != nullptr) {
+        player->AddRef();
+        FO_API_RETURN(player);
     }
 
     // Load from db
-    const auto* cl_proto = _server->ProtoMngr.GetProtoCritter(_str("Player").toHash());
-    RUNTIME_ASSERT(cl_proto);
+    const auto* player_proto = _server->ProtoMngr.GetProtoCritter(_str("Player").toHash());
+    RUNTIME_ASSERT(player_proto);
 
-    cl = new Client(nullptr, cl_proto, _server->Settings, _server->ScriptSys, _server->GameTime);
-    cl->SetId(id);
-    cl->Name = name;
+    player = new Player(id, nullptr, player_proto, _server->Settings, _server->ScriptSys, _server->GameTime);
+    player->Name = name;
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&cl->Props, doc, _server->ScriptSys)) {
-        throw ScriptException("Client data db read failed");
+    if (!PropertiesSerializator::LoadFromDbDocument(&player->Props, doc, _server->ScriptSys)) {
+        throw ScriptException("Player data db read failed");
     }
 
-    FO_API_RETURN(cl);
+    FO_API_RETURN(player);
 }
 FO_API_EPILOG(0)
 #endif
@@ -4121,19 +4059,19 @@ FO_API_EPILOG(0)
 /*******************************************************************************
  * ...
  *
- * @param player ...
+ * @param cr ...
  * @param npc ...
  * @param ignoreDistance ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(RunNpcDialog, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player), FO_API_ARG_OBJ(Critter, npc), FO_API_ARG(bool, ignoreDistance))
+FO_API_GLOBAL_SERVER_FUNC(RunNpcDialog, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG_OBJ(Critter, npc), FO_API_ARG(bool, ignoreDistance))
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player) FO_API_ARG_OBJ_MARSHAL(Critter, npc) FO_API_ARG_MARSHAL(bool, ignoreDistance))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr) FO_API_ARG_OBJ_MARSHAL(Critter, npc) FO_API_ARG_MARSHAL(bool, ignoreDistance))
 {
-    if (player == nullptr) {
+    if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!player->IsPlayer()) {
+    if (!cr->IsPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
@@ -4143,14 +4081,13 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player) FO_API_ARG_OBJ_MARSHAL(Cri
         throw ScriptException("Npc arg is not npc");
     }
 
-    auto* cl = dynamic_cast<Client*>(player);
-    if (cl->Talk.Locked) {
+    if (cr->Talk.Locked) {
         throw ScriptException("Can't open new dialog from demand, result or dialog functions");
     }
 
-    _server->Dialog_Begin(cl, dynamic_cast<Npc*>(npc), 0, 0, 0, ignoreDistance);
+    _server->Dialog_Begin(cr, npc, 0, 0, 0, ignoreDistance);
 
-    FO_API_RETURN(cl->Talk.Type == TalkType::Npc && cl->Talk.TalkNpc == npc->GetId());
+    FO_API_RETURN(cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == npc->GetId());
 }
 FO_API_EPILOG(0)
 #endif
@@ -4158,20 +4095,20 @@ FO_API_EPILOG(0)
 /*******************************************************************************
  * ...
  *
- * @param player ...
+ * @param cr ...
  * @param npc ...
  * @param dlgPack ...
  * @param ignoreDistance ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(RunCustomNpcDialog, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player), FO_API_ARG_OBJ(Critter, npc), FO_API_ARG(uint, dlgPack), FO_API_ARG(bool, ignoreDistance))
+FO_API_GLOBAL_SERVER_FUNC(RunCustomNpcDialog, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG_OBJ(Critter, npc), FO_API_ARG(uint, dlgPack), FO_API_ARG(bool, ignoreDistance))
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player) FO_API_ARG_OBJ_MARSHAL(Critter, npc) FO_API_ARG_MARSHAL(uint, dlgPack) FO_API_ARG_MARSHAL(bool, ignoreDistance))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr) FO_API_ARG_OBJ_MARSHAL(Critter, npc) FO_API_ARG_MARSHAL(uint, dlgPack) FO_API_ARG_MARSHAL(bool, ignoreDistance))
 {
-    if (player == nullptr) {
+    if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!player->IsPlayer()) {
+    if (!cr->IsPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
@@ -4181,14 +4118,13 @@ FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player) FO_API_ARG_OBJ_MARSHAL(Cri
         throw ScriptException("Npc arg is not npc");
     }
 
-    auto* cl = dynamic_cast<Client*>(player);
-    if (cl->Talk.Locked) {
+    if (cr->Talk.Locked) {
         throw ScriptException("Can't open new dialog from demand, result or dialog functions");
     }
 
-    _server->Dialog_Begin(cl, dynamic_cast<Npc*>(npc), dlgPack, 0, 0, ignoreDistance);
+    _server->Dialog_Begin(cr, npc, dlgPack, 0, 0, ignoreDistance);
 
-    FO_API_RETURN(cl->Talk.Type == TalkType::Npc && cl->Talk.TalkNpc == npc->GetId());
+    FO_API_RETURN(cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == npc->GetId());
 }
 FO_API_EPILOG(0)
 #endif
@@ -4196,35 +4132,34 @@ FO_API_EPILOG(0)
 /*******************************************************************************
  * ...
  *
- * @param player ...
+ * @param cr ...
  * @param dlgPack ...
  * @param hx ...
  * @param hy ...
  * @param ignoreDistance ...
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(RunCustomDialogOnHex, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, player), FO_API_ARG(uint, dlgPack), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, ignoreDistance))
+FO_API_GLOBAL_SERVER_FUNC(RunCustomDialogOnHex, FO_API_RET(bool), FO_API_ARG_OBJ(Critter, cr), FO_API_ARG(uint, dlgPack), FO_API_ARG(ushort, hx), FO_API_ARG(ushort, hy), FO_API_ARG(bool, ignoreDistance))
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, player) FO_API_ARG_MARSHAL(uint, dlgPack) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, ignoreDistance))
+FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr) FO_API_ARG_MARSHAL(uint, dlgPack) FO_API_ARG_MARSHAL(ushort, hx) FO_API_ARG_MARSHAL(ushort, hy) FO_API_ARG_MARSHAL(bool, ignoreDistance))
 {
-    if (player == nullptr) {
+    if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!player->IsPlayer()) {
+    if (!cr->IsPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (!_server->DlgMngr.GetDialog(dlgPack)) {
         throw ScriptException("Dialog not found");
     }
 
-    auto* cl = dynamic_cast<Client*>(player);
-    if (cl->Talk.Locked) {
+    if (cr->Talk.Locked) {
         throw ScriptException("Can't open new dialog from demand, result or dialog functions");
     }
 
-    _server->Dialog_Begin(cl, nullptr, dlgPack, hx, hy, ignoreDistance);
+    _server->Dialog_Begin(cr, nullptr, dlgPack, hx, hy, ignoreDistance);
 
-    FO_API_RETURN(cl->Talk.Type == TalkType::Hex && cl->Talk.TalkHexX == hx && cl->Talk.TalkHexY == hy);
+    FO_API_RETURN(cr->Talk.Type == TalkType::Hex && cr->Talk.TalkHexX == hx && cr->Talk.TalkHexY == hy);
 }
 FO_API_EPILOG(0)
 #endif
@@ -4307,178 +4242,6 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, sayType) FO_API_ARG_MARSHAL(string, firstS
 FO_API_EPILOG()
 #endif
 
-#if FO_API_GLOBAL_SERVER_FUNC_IMPL
-static void SwapCrittersRefreshNpc(Npc* npc)
-{
-    UnsetBit(npc->Flags, FCRIT_PLAYER);
-    SetBit(npc->Flags, FCRIT_NPC);
-}
-#endif
-/*******************************************************************************
- * ...
- *
- * @param cr1 ...
- * @param cr2 ...
- * @param withInventory ...
- * @return ...
- ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(SwapCritters, FO_API_RET(void), FO_API_ARG_OBJ(Critter, cr1), FO_API_ARG_OBJ(Critter, cr2), FO_API_ARG(bool, withInventory))
-#if FO_API_GLOBAL_SERVER_FUNC_IMPL
-FO_API_PROLOG(FO_API_ARG_OBJ_MARSHAL(Critter, cr1) FO_API_ARG_OBJ_MARSHAL(Critter, cr2) FO_API_ARG_MARSHAL(bool, withInventory))
-{
-    // Check
-    if (cr1 == nullptr) {
-        throw ScriptException("Critter1 arg is null");
-    }
-    if (cr2 == nullptr) {
-        throw ScriptException("Critter2 arg is null");
-    }
-    if (cr1 == cr2) {
-        throw ScriptException("Critter1 is equal to Critter2");
-    }
-    if (cr1->GetMapId() == 0u) {
-        throw ScriptException("Critter1 is on global map");
-    }
-    if (cr2->GetMapId() == 0u) {
-        throw ScriptException("Critter2 is on global map");
-    }
-
-    // Swap positions
-    auto* map1 = _server->MapMngr.GetMap(cr1->GetMapId());
-    if (!map1) {
-        throw ScriptException("Map of Critter1 not found");
-    }
-    auto* map2 = _server->MapMngr.GetMap(cr2->GetMapId());
-    if (!map2) {
-        throw ScriptException("Map of Critter2 not found");
-    }
-
-    auto& cr_map1 = map1->GetCrittersRaw();
-    auto& cl_map1 = map1->GetPlayersRaw();
-    auto& npc_map1 = map1->GetNpcsRaw();
-    auto it_cr = std::find(cr_map1.begin(), cr_map1.end(), cr1);
-    if (it_cr != cr_map1.end()) {
-        cr_map1.erase(it_cr);
-    }
-    auto it_cl = std::find(cl_map1.begin(), cl_map1.end(), dynamic_cast<Client*>(cr1));
-    if (it_cl != cl_map1.end()) {
-        cl_map1.erase(it_cl);
-    }
-    auto it_pc = std::find(npc_map1.begin(), npc_map1.end(), dynamic_cast<Npc*>(cr1));
-    if (it_pc != npc_map1.end()) {
-        npc_map1.erase(it_pc);
-    }
-
-    auto& cr_map2 = map2->GetCrittersRaw();
-    auto& cl_map2 = map2->GetPlayersRaw();
-    auto& npc_map2 = map2->GetNpcsRaw();
-    it_cr = std::find(cr_map2.begin(), cr_map2.end(), cr1);
-    if (it_cr != cr_map2.end()) {
-        cr_map2.erase(it_cr);
-    }
-    it_cl = std::find(cl_map2.begin(), cl_map2.end(), dynamic_cast<Client*>(cr1));
-    if (it_cl != cl_map2.end()) {
-        cl_map2.erase(it_cl);
-    }
-    it_pc = std::find(npc_map2.begin(), npc_map2.end(), dynamic_cast<Npc*>(cr1));
-    if (it_pc != npc_map2.end()) {
-        npc_map2.erase(it_pc);
-    }
-
-    cr_map2.push_back(cr1);
-    if (cr1->IsNpc()) {
-        npc_map2.push_back(dynamic_cast<Npc*>(cr1));
-    }
-    else {
-        cl_map2.push_back(dynamic_cast<Client*>(cr1));
-    }
-
-    cr_map1.push_back(cr2);
-
-    if (cr2->IsNpc()) {
-        npc_map1.push_back(dynamic_cast<Npc*>(cr2));
-    }
-    else {
-        cl_map1.push_back(dynamic_cast<Client*>(cr2));
-    }
-
-    // Swap data
-    // std::swap(cr1->Props, cr2->Props);
-    std::swap(cr1->Flags, cr2->Flags);
-
-    cr1->SetBreakTime(0);
-    cr2->SetBreakTime(0);
-
-    // Swap inventory
-    if (withInventory) {
-        auto items1 = cr1->GetInventory();
-        auto items2 = cr2->GetInventory();
-        for (auto it = items1.begin(), end = items1.end(); it != end; ++it) {
-            _server->CrMngr.EraseItemFromCritter(cr1, *it, false);
-        }
-        for (auto it = items2.begin(), end = items2.end(); it != end; ++it) {
-            _server->CrMngr.EraseItemFromCritter(cr2, *it, false);
-        }
-        for (auto it = items1.begin(), end = items1.end(); it != end; ++it) {
-            _server->CrMngr.AddItemToCritter(cr2, *it, false);
-        }
-        for (auto it = items2.begin(), end = items2.end(); it != end; ++it) {
-            _server->CrMngr.AddItemToCritter(cr1, *it, false);
-        }
-    }
-
-    // Refresh
-    cr1->ClearVisible();
-    cr2->ClearVisible();
-
-    auto swap_critters_refresh_client = [_server](Client* cl, Map* map, Map* prev_map) {
-        UnsetBit(cl->Flags, FCRIT_NPC);
-        SetBit(cl->Flags, FCRIT_PLAYER);
-
-        if (cl->Talk.Type != TalkType::None) {
-            _server->CrMngr.CloseTalk(cl);
-        }
-
-        if (map != prev_map) {
-            cl->Send_LoadMap(nullptr, _server->MapMngr);
-        }
-        else {
-            cl->Send_AllProperties();
-            cl->Send_AddAllItems();
-            cl->Send_AllAutomapsInfo(_server->MapMngr);
-        }
-    };
-
-    if (cr1->IsNpc()) {
-        SwapCrittersRefreshNpc(dynamic_cast<Npc*>(cr1));
-    }
-    else {
-        swap_critters_refresh_client(dynamic_cast<Client*>(cr1), map2, map1);
-    }
-
-    if (cr2->IsNpc()) {
-        SwapCrittersRefreshNpc(dynamic_cast<Npc*>(cr2));
-    }
-    else {
-        swap_critters_refresh_client(dynamic_cast<Client*>(cr2), map1, map2);
-    }
-
-    if (map1 == map2) {
-        cr1->Send_CustomCommand(cr1, OTHER_CLEAR_MAP, 0);
-        cr2->Send_CustomCommand(cr2, OTHER_CLEAR_MAP, 0);
-        cr1->Send_Dir(cr1);
-        cr2->Send_Dir(cr2);
-        cr1->Send_CustomCommand(cr1, OTHER_TELEPORT, (cr1->GetHexX() << 16) | (cr1->GetHexY()));
-        cr2->Send_CustomCommand(cr2, OTHER_TELEPORT, (cr2->GetHexX() << 16) | (cr2->GetHexY()));
-        _server->MapMngr.ProcessVisibleCritters(cr1);
-        _server->MapMngr.ProcessVisibleCritters(cr2);
-        _server->MapMngr.ProcessVisibleItems(cr1);
-        _server->MapMngr.ProcessVisibleItems(cr2);
-    }
-}
-FO_API_EPILOG()
-#endif
-
 /*******************************************************************************
  * ...
  *
@@ -4507,19 +4270,11 @@ FO_API_EPILOG(0)
  *
  * @return ...
  ******************************************************************************/
-FO_API_GLOBAL_SERVER_FUNC(GetOnlinePlayers, FO_API_RET_OBJ_ARR(Critter))
+FO_API_GLOBAL_SERVER_FUNC(GetOnlinePlayers, FO_API_RET_OBJ_ARR(Player))
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG()
 {
-    vector<Critter*> clients;
-
-    for (auto* cl : _server->CrMngr.GetClients(false)) {
-        if (!cl->IsDestroyed) {
-            clients.push_back(cl);
-        }
-    }
-
-    FO_API_RETURN(clients);
+    FO_API_RETURN(_server->EntityMngr.GetPlayers());
 }
 FO_API_EPILOG(0)
 #endif
@@ -4553,7 +4308,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(hash, pid))
 {
     vector<Critter*> npcs;
 
-    for (auto* npc_ : _server->CrMngr.GetNpcs()) {
+    for (auto* npc_ : _server->CrMngr.GetAllNpc()) {
         if (!npc_->IsDestroyed && (pid == 0u || pid == npc_->GetProtoId())) {
             npcs.push_back(npc_);
         }

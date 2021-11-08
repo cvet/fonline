@@ -40,6 +40,7 @@
 #include "ScriptSystem.h"
 
 class Entity;
+class PlayerView;
 class ItemView;
 class CritterView;
 class MapView;

@@ -53,6 +53,7 @@
 #include "MapView.h"
 #include "MsgFiles.h"
 #include "NetBuffer.h"
+#include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "Settings.h"
@@ -300,13 +301,14 @@ public:
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
 
-    void FormatTags(string& text, CritterView* player, CritterView* npc, const string& lexems);
+    void FormatTags(string& text, CritterView* cr, CritterView* npc, const string& lexems);
     void AddMess(int mess_type, const string& msg);
     void AddMess(int mess_type, const string& msg, bool script_call);
     void OnText(const string& str, uint crid, int how_say);
     void OnMapText(const string& str, ushort hx, ushort hy, uint color);
 
     void OnSendGlobalValue(Entity* entity, Property* prop);
+    void OnSendPlayerValue(Entity* entity, Property* prop);
     void OnSendCritterValue(Entity* entity, Property* prop);
     void OnSetCritterModelName(Entity* entity, Property* prop, void* cur_value, void* old_value);
     void OnSendItemValue(Entity* entity, Property* prop);
@@ -366,6 +368,7 @@ public:
     string LoginPassword {};
     bool CanDrawInScripts {};
     bool IsAutoLogin {};
+    PlayerView* CurPlayer {};
     MapView* CurMap {};
     LocationView* CurLocation {};
     uint FpsTick {};
@@ -395,6 +398,7 @@ public:
     int InitNetReason {INIT_NET_REASON_NONE};
     bool InitialItemsSend {};
     vector<vector<uchar>> GlovalVarsPropertiesData {};
+    vector<vector<uchar>> PlayerPropertiesData {};
     vector<vector<uchar>> TempPropertiesData {};
     vector<vector<uchar>> TempPropertiesDataExt {};
     vector<uchar> TempPropertyData {};

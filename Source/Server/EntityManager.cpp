@@ -51,7 +51,7 @@ void EntityManager::RegisterEntity(Entity* entity)
         entity->SetId(id);
 
         auto doc = PropertiesSerializator::SaveToDbDocument(&entity->Props, entity->Proto != nullptr ? &entity->Proto->Props : nullptr, _scriptSys);
-        doc["_Proto"] = entity->Proto != nullptr ? entity->Proto->GetName() : "";
+        doc["_Proto"] = (entity->Proto != nullptr ? entity->Proto->GetName() : "");
 
         if (entity->Type == EntityType::Location) {
             _dbStorage.Insert("Locations", id, doc);
@@ -59,11 +59,14 @@ void EntityManager::RegisterEntity(Entity* entity)
         else if (entity->Type == EntityType::Map) {
             _dbStorage.Insert("Maps", id, doc);
         }
-        else if (entity->Type == EntityType::Npc) {
+        else if (entity->Type == EntityType::Critter) {
             _dbStorage.Insert("Critters", id, doc);
         }
         else if (entity->Type == EntityType::Item) {
             _dbStorage.Insert("Items", id, doc);
+        }
+        else if (entity->Type == EntityType::Player) {
+            _dbStorage.Insert("Players", id, doc);
         }
         else if (entity->Type == EntityType::Custom) {
             _dbStorage.Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
@@ -91,11 +94,14 @@ void EntityManager::UnregisterEntity(Entity* entity)
     else if (entity->Type == EntityType::Map) {
         _dbStorage.Delete("Maps", entity->Id);
     }
-    else if (entity->Type == EntityType::Npc) {
+    else if (entity->Type == EntityType::Critter) {
         _dbStorage.Delete("Critters", entity->Id);
     }
     else if (entity->Type == EntityType::Item) {
         _dbStorage.Delete("Items", entity->Id);
+    }
+    else if (entity->Type == EntityType::Player) {
+        _dbStorage.Delete("Players", entity->Id);
     }
     else if (entity->Type == EntityType::Custom) {
         _dbStorage.Delete(entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id);
@@ -116,7 +122,7 @@ auto EntityManager::GetEntity(uint id, EntityType type) -> Entity*
 auto EntityManager::GetEntities(EntityType type) -> vector<Entity*>
 {
     vector<Entity*> entities;
-    entities.reserve(entities.size() + _entitiesCount[static_cast<int>(type)]);
+    entities.reserve(_entitiesCount[static_cast<int>(type)]);
 
     for (auto [id, entity] : _allEntities) {
         if (entity->Type == type) {
@@ -132,6 +138,29 @@ auto EntityManager::GetEntitiesCount(EntityType type) const -> uint
     return _entitiesCount[static_cast<int>(type)];
 }
 
+auto EntityManager::GetPlayer(uint id) -> Player*
+{
+    const auto it = _allEntities.find(id);
+    if (it != _allEntities.end() && it->second->Type == EntityType::Player) {
+        return dynamic_cast<Player*>(it->second);
+    }
+    return nullptr;
+}
+
+auto EntityManager::GetPlayers() -> vector<Player*>
+{
+    vector<Player*> players;
+    players.reserve(_entitiesCount[static_cast<int>(EntityType::Player)]);
+
+    for (auto [id, entity] : _allEntities) {
+        if (entity->Type == EntityType::Player) {
+            players.push_back(dynamic_cast<Player*>(entity));
+        }
+    }
+
+    return players;
+}
+
 auto EntityManager::GetItem(uint id) -> Item*
 {
     const auto it = _allEntities.find(id);
@@ -144,7 +173,7 @@ auto EntityManager::GetItem(uint id) -> Item*
 auto EntityManager::GetItems() -> vector<Item*>
 {
     vector<Item*> items;
-    items.reserve(items.size() + _entitiesCount[static_cast<int>(EntityType::Item)]);
+    items.reserve(_entitiesCount[static_cast<int>(EntityType::Item)]);
 
     for (auto [id, entity] : _allEntities) {
         if (entity->Type == EntityType::Item) {
@@ -172,7 +201,7 @@ auto EntityManager::FindCritterItems(uint crid) -> vector<Item*>
 auto EntityManager::GetCritter(uint id) -> Critter*
 {
     const auto it = _allEntities.find(id);
-    if (it != _allEntities.end() && (it->second->Type == EntityType::Npc || it->second->Type == EntityType::Client)) {
+    if (it != _allEntities.end() && it->second->Type == EntityType::Critter) {
         return dynamic_cast<Critter*>(it->second);
     }
     return nullptr;
@@ -183,10 +212,10 @@ auto EntityManager::GetCritters() -> vector<Critter*>
     NON_CONST_METHOD_HINT();
 
     vector<Critter*> critters;
-    critters.reserve(critters.size() + _entitiesCount[static_cast<int>(EntityType::Npc)] + _entitiesCount[static_cast<int>(EntityType::Client)]);
+    critters.reserve(_entitiesCount[static_cast<int>(EntityType::Critter)]);
 
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Npc || entity->Type == EntityType::Client) {
+        if (entity->Type == EntityType::Critter) {
             critters.push_back(dynamic_cast<Critter*>(entity));
         }
     }
@@ -223,7 +252,7 @@ auto EntityManager::GetMapByPid(hash pid, uint skip_count) -> Map*
 auto EntityManager::GetMaps() -> vector<Map*>
 {
     vector<Map*> maps;
-    maps.reserve(maps.size() + _entitiesCount[static_cast<int>(EntityType::Map)]);
+    maps.reserve(_entitiesCount[static_cast<int>(EntityType::Map)]);
 
     for (auto [id, entity] : _allEntities) {
         if (entity->Type == EntityType::Map) {
@@ -263,7 +292,7 @@ auto EntityManager::GetLocationByPid(hash pid, uint skip_count) -> Location*
 auto EntityManager::GetLocations() -> vector<Location*>
 {
     vector<Location*> locations;
-    locations.reserve(locations.size() + _entitiesCount[static_cast<int>(EntityType::Location)]);
+    locations.reserve(_entitiesCount[static_cast<int>(EntityType::Location)]);
 
     for (auto [id, entity] : _allEntities) {
         if (entity->Type == EntityType::Location) {
@@ -283,7 +312,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
     EntityType query[] = {
         EntityType::Location,
         EntityType::Map,
-        EntityType::Npc,
+        EntityType::Critter,
         EntityType::Item,
         EntityType::Custom,
     };
@@ -303,6 +332,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
             q--;
         }
 
+        // Todo: store player critters in separate collection
         string collection_name;
         if (type == EntityType::Location) {
             collection_name = "Locations";
@@ -310,7 +340,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
         else if (type == EntityType::Map) {
             collection_name = "Maps";
         }
-        else if (type == EntityType::Npc) {
+        else if (type == EntityType::Critter) {
             collection_name = "Critters";
         }
         else if (type == EntityType::Item) {
@@ -332,7 +362,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 throw EntitiesLoadException("'_Proto' section is not string type", collection_name, id, proto_it->second.index());
             }
 
-            const auto proto_id = !std::get<string>(proto_it->second).empty() ? _str(std::get<string>(proto_it->second)).toHash() : 0;
+            const auto proto_id = !std::get<string>(proto_it->second).empty() ? _str(std::get<string>(proto_it->second)).toHash() : hash();
 
             if (type == EntityType::Location) {
                 const auto* proto = _protoMngr.GetProtoLocation(proto_id);
@@ -362,7 +392,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
                 RegisterEntity(map);
             }
-            else if (type == EntityType::Npc) {
+            else if (type == EntityType::Critter) {
                 const auto* proto = _protoMngr.GetProtoCritter(proto_id);
                 if (proto == nullptr) {
                     throw EntitiesLoadException("Proto critter not found", _str().parseHash(proto_id));
@@ -431,8 +461,8 @@ void EntityManager::InitAfterLoad()
                 map->SetScript(nullptr, false);
             }
         }
-        else if (entity->Type == EntityType::Npc) {
-            auto* npc = dynamic_cast<Npc*>(entity);
+        else if (entity->Type == EntityType::Critter) {
+            auto* npc = dynamic_cast<Critter*>(entity);
             _scriptSys.CritterInitEvent(npc, false);
             if (!npc->IsDestroyed && npc->GetScriptId() != 0u) {
                 npc->SetScript(nullptr, false);

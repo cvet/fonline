@@ -38,7 +38,7 @@
 /************************************************************************/
 
 #define MAKE_NETMSG_HEADER(number) ((uint)((0x5EAD << 16) | ((number) << 8) | (0xAA)))
-#define PING_CLIENT_LIFE_TIME (15000) // Time to ping client life
+constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 
 // Special message
 // 0xFFFFFFFF - ping, answer
@@ -71,6 +71,7 @@
 // uint bin_seed
 // uint bout_seed
 // Properties global
+// Properties player
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_WRONG_NET_PROTO MAKE_NETMSG_HEADER(8)
@@ -79,7 +80,7 @@
 // Wrong network protocol
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CREATE_CLIENT MAKE_NETMSG_HEADER(3)
+#define NETMSG_REGISTER MAKE_NETMSG_HEADER(3)
 // ////////////////////////////////////////////////////////////////////////
 // Registration query
 // uint mag_len

@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "ClientConnection.h"
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
@@ -48,7 +49,7 @@
 #include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
-#include "Networking.h"
+#include "Player.h"
 #include "ProtoManager.h"
 #include "ServerScripting.h"
 #include "Settings.h"
@@ -62,17 +63,7 @@
 
 DECLARE_EXCEPTION(ServerInitException);
 
-// Check buffer for error
-#define CHECK_IN_BUFF_ERROR(client) CHECK_IN_BUFF_ERROR_EXT(client, (void)0, return )
-#define CHECK_IN_BUFF_ERROR_EXT(client, before_disconnect, after_disconnect) \
-    do { \
-        if ((client)->Connection->Bin.IsError()) { \
-            WriteLog("Wrong network data from client '{}', line {}.\n", (client)->GetName(), __LINE__); \
-            before_disconnect; \
-            (client)->Disconnect(); \
-            after_disconnect; \
-        } \
-    } while (0)
+class NetServerBase;
 
 class FOServer final // Todo: rename FOServer to just Server
 {
@@ -167,31 +158,33 @@ public:
 
     void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
     void OnSendGlobalValue(Entity* entity, Property* prop);
+    void OnSendPlayerValue(Entity* entity, Property* prop);
     void OnSendCritterValue(Entity* entity, Property* prop);
     void OnSendMapValue(Entity* entity, Property* prop);
     void OnSendLocationValue(Entity* entity, Property* prop);
 
-    void Send_MapData(Client* cl, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery);
+    void Send_MapData(Player* player, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery);
     auto Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
     void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
     auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
     auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
 
-    void Process_ParseToGame(Client* cl);
-    void Process_Move(Client* cl);
-    void Process_Update(Client* cl);
-    void Process_UpdateFile(Client* cl);
-    void Process_UpdateFileData(Client* cl);
-    void Process_CreateClient(Client* cl);
-    void Process_LogIn(Client*& cl);
-    void Process_Dir(Client* cl);
-    void Process_Text(Client* cl);
-    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Client* cl, const string& admin_panel);
-    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Client* cl, const string& admin_panel);
-    void Process_Dialog(Client* cl);
-    void Process_GiveMap(Client* cl);
-    void Process_Ping(Client* cl);
-    void Process_Property(Client* cl, uint data_size);
+    void Process_Ping(ClientConnection* connection);
+    void Process_Update(ClientConnection* connection);
+    void Process_UpdateFile(ClientConnection* connection);
+    void Process_UpdateFileData(ClientConnection* connection);
+    void Process_Register(ClientConnection* connection);
+    void Process_LogIn(ClientConnection* connection);
+
+    void Process_PlaceToGame(Player* player);
+    void Process_Move(Player* player);
+    void Process_Dir(Player* player);
+    void Process_Text(Player* player);
+    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, const string& admin_panel);
+    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, const string& admin_panel);
+    void Process_Dialog(Player* player);
+    void Process_GiveMap(Player* player);
+    void Process_Property(Player* player, uint data_size);
 
     auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks) -> Item*;
     void OnSendItemValue(Entity* entity, Property* prop);
@@ -204,15 +197,18 @@ public:
     void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
 
     void ProcessCritter(Critter* cr);
-    auto Dialog_Compile(Npc* npc, Client* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
-    auto Dialog_CheckDemand(Npc* npc, Client* cl, DialogAnswer& answer, bool recheck) -> bool;
-    auto Dialog_UseResult(Npc* npc, Client* cl, DialogAnswer& answer) -> uint;
-    void Dialog_Begin(Client* cl, Npc* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
 
-    void OnNewConnection(NetConnection* connection);
-    void DisconnectClient(Client* cl);
-    void RemoveClient(Client* cl);
-    void Process(Client* cl);
+    auto Dialog_Compile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
+    auto Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool;
+    auto Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint;
+    void Dialog_Begin(Critter* cl, Critter* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
+
+    void OnNewConnection(NetConnection* net_connection);
+
+    void ProcessFreeConnection(ClientConnection* connection);
+    void ProcessPlayerConnection(Player* player);
+    void ProcessConnection(ClientConnection* connection);
+
     void ProcessMove(Critter* cr);
 
     void LogToClients(const string& str);
@@ -249,7 +245,7 @@ public:
     ServerGui Gui {};
     GlobalVars* Globals {};
     DataBase DbStorage {};
-    DataBase DbHistory {};
+    DataBase DbHistory {}; // Todo: remove history DB system?
     std::atomic_bool Started {};
     map<uint, uint> RegIp {};
     std::mutex RegIpLocker {};
@@ -260,14 +256,16 @@ public:
     vector<uchar> UpdateFilesList {};
     vector<TextListener> TextListeners {};
     std::mutex TextListenersLocker {};
-    vector<Client*> LogClients {};
+    vector<Player*> LogClients {};
     vector<string> LogLines {};
     // Todo: run network listeners dynamically, without restriction, based on server settings
     NetServerBase* TcpServer {};
     NetServerBase* WebSocketsServer {};
-    vector<Client*> ConnectedClients {};
-    std::mutex ConnectedClientsLocker {};
+    vector<ClientConnection*> FreeConnections {};
+    std::mutex FreeConnectionsLocker {};
     vector<ClientBanned> Banned {};
     std::mutex BannedLocker {};
+
+private:
     bool _nonConstHelper {};
 };

@@ -1256,6 +1256,12 @@ void FOClient::NetDisconnect()
         Bin.SetError(false);
         Bout.SetError(false);
 
+        if (CurPlayer != nullptr) {
+            CurPlayer->IsDestroyed = true;
+            CurPlayer->Release();
+            CurPlayer = nullptr;
+        }
+
         ProcessAutoLogin();
     }
 }
@@ -1379,7 +1385,8 @@ auto FOClient::NetInput(bool unpack) -> int
         whole_len += len;
     }
 
-    Bin.Refresh();
+    Bin.ShrinkReadBuf();
+
     const auto old_pos = Bin.GetEndPos();
 
     if (unpack && !Settings.DisableZlibCompression) {
@@ -1675,7 +1682,7 @@ void FOClient::Net_SendCreatePlayer()
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(LoginName.length() + LoginPassword.length());
 
-    Bout << NETMSG_CREATE_CLIENT;
+    Bout << NETMSG_REGISTER;
     Bout << msg_len;
     Bout << FO_VERSION;
 
@@ -1881,17 +1888,30 @@ void FOClient::Net_OnLoginSuccess()
     uint msg_len;
     uint bin_seed;
     uint bout_seed; // Server bin/bout == client bout/bin
+    uint player_id;
     Bin >> msg_len;
     Bin >> bin_seed;
     Bin >> bout_seed;
+    Bin >> player_id;
 
     NET_READ_PROPERTIES(Bin, GlovalVarsPropertiesData);
+    NET_READ_PROPERTIES(Bin, PlayerPropertiesData);
 
     CHECK_IN_BUFF_ERROR();
 
     Bout.SetEncryptKey(bin_seed);
     Bin.SetEncryptKey(bout_seed);
+
     Globals->Props.RestoreData(GlovalVarsPropertiesData);
+
+    if (CurPlayer != nullptr) {
+        CurPlayer->IsDestroyed = true;
+        CurPlayer->Release();
+        CurPlayer = nullptr;
+    }
+
+    CurPlayer = new PlayerView(player_id, nullptr); // Todo: proto player?
+    CurPlayer->Props.RestoreData(PlayerPropertiesData);
 }
 
 void FOClient::Net_OnAddCritter(bool is_npc)
@@ -3157,6 +3177,12 @@ void FOClient::Net_OnProperty(uint data_size)
             entity = Globals;
         }
         break;
+    case NetProperty::Player:
+        prop = PlayerView::PropertiesRegistrator->Get(property_index);
+        if (prop != nullptr) {
+            entity = CurPlayer;
+        }
+        break;
     case NetProperty::Critter:
         prop = CritterView::PropertiesRegistrator->Get(property_index);
         if (prop != nullptr) {
@@ -4201,14 +4227,25 @@ void FOClient::AnimProcess()
     }
 }
 
-void FOClient::OnSendGlobalValue(Entity* /*entity*/, Property* prop)
+void FOClient::OnSendGlobalValue(Entity* entity, Property* prop)
 {
+    UNUSED_VARIABLE(entity);
+    RUNTIME_ASSERT(entity == Globals);
+
     if (prop->GetAccess() == Property::PublicFullModifiable) {
         Net_SendProperty(NetProperty::Global, prop, Globals);
     }
     else {
         throw GenericException("Unable to send global modifiable property", prop->GetName());
     }
+}
+
+void FOClient::OnSendPlayerValue(Entity* entity, Property* prop)
+{
+    UNUSED_VARIABLE(entity);
+    RUNTIME_ASSERT(entity == CurPlayer);
+
+    Net_SendProperty(NetProperty::Player, prop, CurPlayer);
 }
 
 void FOClient::OnSendCritterValue(Entity* entity, Property* prop)
@@ -4367,9 +4404,10 @@ void FOClient::OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, 
 void FOClient::OnSendMapValue(Entity* entity, Property* prop)
 {
     UNUSED_VARIABLE(entity);
+    RUNTIME_ASSERT(entity == CurMap);
 
     if (prop->GetAccess() == Property::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Map, prop, Globals);
+        Net_SendProperty(NetProperty::Map, prop, CurMap);
     }
     else {
         throw GenericException("Unable to send map modifiable property", prop->GetName());
@@ -4379,9 +4417,10 @@ void FOClient::OnSendMapValue(Entity* entity, Property* prop)
 void FOClient::OnSendLocationValue(Entity* entity, Property* prop)
 {
     UNUSED_VARIABLE(entity);
+    RUNTIME_ASSERT(entity == CurLocation);
 
     if (prop->GetAccess() == Property::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Location, prop, Globals);
+        Net_SendProperty(NetProperty::Location, prop, CurLocation);
     }
     else {
         throw GenericException("Unable to send location modifiable property", prop->GetName());
@@ -4455,7 +4494,7 @@ void FOClient::AddMess(int mess_type, const string& msg, bool script_call)
     ScriptSys.MessageBoxEvent(msg, mess_type, script_call);
 }
 
-void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, const string& lexems)
+void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, const string& lexems)
 {
     if (text == "error") {
         text = "Text not found!";
@@ -4503,7 +4542,7 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
 
             // Player name
             if (_str(tag).compareIgnoreCase("pname")) {
-                tag = (player != nullptr ? player->GetName() : "");
+                tag = (cr != nullptr ? cr->GetName() : "");
             }
             // Npc name
             else if (_str(tag).compareIgnoreCase("nname")) {
@@ -4511,7 +4550,7 @@ void FOClient::FormatTags(string& text, CritterView* player, CritterView* npc, c
             }
             // Sex
             else if (_str(tag).compareIgnoreCase("sex")) {
-                sex = (player != nullptr ? player->GetGender() + 1 : 1);
+                sex = (cr != nullptr ? cr->GetGender() + 1 : 1);
                 sex_tags = true;
                 continue;
             }

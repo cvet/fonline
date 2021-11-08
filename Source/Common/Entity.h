@@ -50,17 +50,20 @@
 
 #define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop, ...) Property* class_name::Property##prop = class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop)
 
+// Todo: remove EntityType enum, use dynamic cast
 enum class EntityType
 {
+    Player,
+    PlayerProto,
     ItemProto,
     CritterProto,
     MapProto,
     LocationProto,
     Item,
-    Client,
-    Npc,
+    Critter,
     Map,
     Location,
+    PlayerView,
     ItemView,
     ItemHexView,
     CritterView,
@@ -135,6 +138,16 @@ public:
 
     PROPERTIES_HEADER();
 #define FO_API_GLOBAL_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
+};
+
+class ProtoPlayer final : public ProtoEntity
+{
+public:
+    explicit ProtoPlayer(hash pid);
+
+    PROPERTIES_HEADER();
+#define FO_API_PLAYER_PROPERTY CLASS_PROPERTY
 #include "ScriptApi.h"
 };
 

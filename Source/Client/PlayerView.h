@@ -34,55 +34,25 @@
 #pragma once
 
 #include "Common.h"
+#include "Entity.h"
 
-#include "NetBuffer.h"
-#include "Settings.h"
+#define FO_API_PLAYER_VIEW_HEADER 1
+#include "ScriptApi.h"
 
-class NetConnection
+class PlayerView final : public Entity
 {
 public:
-    NetConnection() = default;
-    NetConnection(const NetConnection&) = delete;
-    NetConnection(NetConnection&&) noexcept = delete;
-    auto operator=(const NetConnection&) = delete;
-    auto operator=(NetConnection&&) noexcept = delete;
-    virtual ~NetConnection() = default;
+    PlayerView() = delete;
+    PlayerView(uint id, const ProtoPlayer* proto);
+    PlayerView(const PlayerView&) = delete;
+    PlayerView(PlayerView&&) noexcept = delete;
+    auto operator=(const PlayerView&) = delete;
+    auto operator=(PlayerView&&) noexcept = delete;
 
-    [[nodiscard]] virtual auto GetIp() const -> uint = 0;
-    [[nodiscard]] virtual auto GetHost() const -> const string& = 0;
-    [[nodiscard]] virtual auto GetPort() const -> ushort = 0;
-    [[nodiscard]] virtual auto IsDisconnected() const -> bool = 0;
+#define FO_API_PLAYER_VIEW_CLASS 1
+#include "ScriptApi.h"
 
-    virtual void DisableCompression() = 0;
-    virtual void Dispatch() = 0;
-    virtual void Disconnect() = 0;
-
-    void AddRef() const;
-    void Release() const;
-
-    NetBuffer Bin {};
-    std::mutex BinLocker {};
-    NetBuffer Bout {};
-    std::mutex BoutLocker {};
-
-private:
-    mutable std::atomic_int _refCount {1};
-};
-
-class NetServerBase
-{
-public:
-    using ConnectionCallback = std::function<void(NetConnection*)>;
-
-    NetServerBase() = default;
-    NetServerBase(const NetServerBase&) = delete;
-    NetServerBase(NetServerBase&&) noexcept = delete;
-    auto operator=(const NetServerBase&) = delete;
-    auto operator=(NetServerBase&&) noexcept = delete;
-    virtual ~NetServerBase() = default;
-
-    virtual void Shutdown() = 0;
-
-    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
+    PROPERTIES_HEADER();
+#define FO_API_PLAYER_PROPERTY CLASS_PROPERTY
+#include "ScriptApi.h"
 };

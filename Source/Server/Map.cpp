@@ -169,10 +169,10 @@ void Map::AddCritter(Critter* cr)
     RUNTIME_ASSERT(std::find(_mapCritters.begin(), _mapCritters.end(), cr) == _mapCritters.end());
 
     if (cr->IsPlayer()) {
-        _mapPlayers.push_back(dynamic_cast<Client*>(cr));
+        _mapPlayerCritters.push_back(cr);
     }
     if (cr->IsNpc()) {
-        _mapNpcs.push_back(dynamic_cast<Npc*>(cr));
+        _mapNonPlayerCritters.push_back(cr);
     }
     _mapCritters.push_back(cr);
 
@@ -185,14 +185,14 @@ void Map::EraseCritter(Critter* cr)
 {
     // Erase critter from collections
     if (cr->IsPlayer()) {
-        const auto it = std::find(_mapPlayers.begin(), _mapPlayers.end(), dynamic_cast<Client*>(cr));
-        RUNTIME_ASSERT(it != _mapPlayers.end());
-        _mapPlayers.erase(it);
+        const auto it = std::find(_mapPlayerCritters.begin(), _mapPlayerCritters.end(), cr);
+        RUNTIME_ASSERT(it != _mapPlayerCritters.end());
+        _mapPlayerCritters.erase(it);
     }
     else {
-        const auto it = std::find(_mapNpcs.begin(), _mapNpcs.end(), dynamic_cast<Npc*>(cr));
-        RUNTIME_ASSERT(it != _mapNpcs.end());
-        _mapNpcs.erase(it);
+        const auto it = std::find(_mapNonPlayerCritters.begin(), _mapNonPlayerCritters.end(), cr);
+        RUNTIME_ASSERT(it != _mapNonPlayerCritters.end());
+        _mapNonPlayerCritters.erase(it);
     }
 
     const auto it = std::find(_mapCritters.begin(), _mapCritters.end(), cr);
@@ -402,9 +402,9 @@ void Map::ChangeViewItem(Item* item)
 
 void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 {
-    for (auto* cl : _mapPlayers) {
-        if (cl->CountIdVisItem(item->GetId())) {
-            cl->Send_AnimateItem(item, from_frm, to_frm);
+    for (auto* cr : _mapPlayerCritters) {
+        if (cr->CountIdVisItem(item->GetId())) {
+            cr->Send_AnimateItem(item, from_frm, to_frm);
         }
     }
 }
@@ -813,7 +813,7 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 auto Map::GetNpcCount(hash npc_role, uchar find_type) const -> uint
 {
     uint result = 0;
-    for (auto* npc : _mapNpcs) {
+    for (auto* npc : _mapNonPlayerCritters) {
         if (npc->GetNpcRole() == npc_role && npc->CheckFind(find_type)) {
             result++;
         }
@@ -833,7 +833,7 @@ auto Map::GetCritter(uint crid) -> Critter*
 
 auto Map::GetNpc(hash npc_role, uchar find_type, uint skip_count) -> Critter*
 {
-    for (auto* npc : _mapNpcs) {
+    for (auto* npc : _mapNonPlayerCritters) {
         if (npc->GetNpcRole() == npc_role && npc->CheckFind(find_type)) {
             if (skip_count != 0u) {
                 skip_count--;
@@ -890,18 +890,18 @@ auto Map::GetCritters() -> vector<Critter*>
     return _mapCritters;
 }
 
-auto Map::GetPlayers() -> vector<Client*>
+auto Map::GetPlayers() -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT();
 
-    return _mapPlayers;
+    return _mapPlayerCritters;
 }
 
-auto Map::GetNpcs() -> vector<Npc*>
+auto Map::GetNpcs() -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT();
 
-    return _mapNpcs;
+    return _mapNonPlayerCritters;
 }
 
 auto Map::GetCrittersRaw() -> vector<Critter*>&
@@ -909,14 +909,14 @@ auto Map::GetCrittersRaw() -> vector<Critter*>&
     return _mapCritters;
 }
 
-auto Map::GetPlayersRaw() -> vector<Client*>&
+auto Map::GetPlayersRaw() -> vector<Critter*>&
 {
-    return _mapPlayers;
+    return _mapPlayerCritters;
 }
 
-auto Map::GetNpcsRaw() -> vector<Npc*>&
+auto Map::GetNpcsRaw() -> vector<Critter*>&
 {
-    return _mapNpcs;
+    return _mapNonPlayerCritters;
 }
 
 auto Map::GetCrittersCount() const -> uint
@@ -926,28 +926,28 @@ auto Map::GetCrittersCount() const -> uint
 
 auto Map::GetPlayersCount() const -> uint
 {
-    return static_cast<uint>(_mapPlayers.size());
+    return static_cast<uint>(_mapPlayerCritters.size());
 }
 
 auto Map::GetNpcsCount() const -> uint
 {
-    return static_cast<uint>(_mapNpcs.size());
+    return static_cast<uint>(_mapNonPlayerCritters.size());
 }
 
 void Map::SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius)
 {
-    for (auto* cl : _mapPlayers) {
-        if (_geomHelper.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, cl->LookCacheValue + radius)) {
-            cl->Send_Effect(eff_pid, hx, hy, radius);
+    for (auto* cr : _mapPlayerCritters) {
+        if (_geomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, cr->LookCacheValue + radius)) {
+            cr->Send_Effect(eff_pid, hx, hy, radius);
         }
     }
 }
 
 void Map::SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
-    for (auto* cl : _mapPlayers) {
-        if (GenericUtils::IntersectCircleLine(cl->GetHexX(), cl->GetHexY(), cl->LookCacheValue, from_hx, from_hy, to_hx, to_hy)) {
-            cl->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
+    for (auto* cr : _mapPlayerCritters) {
+        if (GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), cr->LookCacheValue, from_hx, from_hy, to_hx, to_hy)) {
+            cr->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
         }
     }
 }
@@ -981,9 +981,9 @@ void Map::SetText(ushort hx, ushort hy, uint color, const string& text, bool uns
         return;
     }
 
-    for (auto* cl : _mapPlayers) {
-        if (cl->LookCacheValue >= _geomHelper.DistGame(hx, hy, cl->GetHexX(), cl->GetHexY())) {
-            cl->Send_MapText(hx, hy, color, text, unsafe_text);
+    for (auto* cr : _mapPlayerCritters) {
+        if (cr->LookCacheValue >= _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+            cr->Send_MapText(hx, hy, color, text, unsafe_text);
         }
     }
 }
@@ -994,9 +994,9 @@ void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num
         return;
     }
 
-    for (auto* cl : _mapPlayers) {
-        if (cl->LookCacheValue >= _geomHelper.DistGame(hx, hy, cl->GetHexX(), cl->GetHexY())) {
-            cl->Send_MapTextMsg(hx, hy, color, text_msg, num_str);
+    for (auto* cr : _mapPlayerCritters) {
+        if (cr->LookCacheValue >= _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+            cr->Send_MapTextMsg(hx, hy, color, text_msg, num_str);
         }
     }
 }
@@ -1007,9 +1007,9 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
         return;
     }
 
-    for (auto* cl : _mapPlayers) {
-        if (cl->LookCacheValue >= _geomHelper.DistGame(hx, hy, cl->GetHexX(), cl->GetHexY())) {
-            cl->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems, lexems_len);
+    for (auto* cr : _mapPlayerCritters) {
+        if (cr->LookCacheValue >= _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+            cr->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems, lexems_len);
         }
     }
 }

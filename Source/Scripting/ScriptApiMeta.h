@@ -68,6 +68,10 @@
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) method globalmapper name ret __VA_ARGS__
 #define FO_API_GLOBAL_PROPERTY(access, type, name, ...) property global rw name access type __VA_ARGS__
 #define FO_API_GLOBAL_READONLY_PROPERTY(access, type, name, ...) property global ro name access type __VA_ARGS__
+#define FO_API_PLAYER_METHOD(name, ret, ...) method player name ret __VA_ARGS__
+#define FO_API_PLAYER_VIEW_METHOD(name, ret, ...) method playerview name ret __VA_ARGS__
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) property player rw name access type __VA_ARGS__
+#define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) property player ro name access type __VA_ARGS__
 #define FO_API_ITEM_METHOD(name, ret, ...) method item name ret __VA_ARGS__
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) method itemview name ret __VA_ARGS__
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) property item rw name access type __VA_ARGS__

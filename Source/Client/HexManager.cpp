@@ -4270,7 +4270,7 @@ void HexManager::OnResolutionChanged()
     RefreshMap();
 }
 
-auto HexManager::SetProtoMap(ProtoMap & /*pmap*/) -> bool
+auto HexManager::SetProtoMap(ProtoMap& /*pmap*/) -> bool
 {
     // Todo: need attention!
     /*WriteLog("Create map from prototype.\n");

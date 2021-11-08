@@ -123,6 +123,13 @@ public:
 
 #define DUMMY_PTR(type) reinterpret_cast<type*>(1000000)
 
+#define FO_API_PLAYER_METHOD(name, ret, ...) \
+    [[maybe_unused]] static ret Lint_Player_##name(__VA_ARGS__) \
+    { \
+        auto* _server = DUMMY_PTR(FOServer); \
+        auto* _common = DUMMY_PTR(FOServer); \
+        auto* _player = DUMMY_PTR(Player);
+#define FO_API_PLAYER_METHOD_IMPL 1
 #define FO_API_ITEM_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_Item_##name(__VA_ARGS__) \
     { \
@@ -151,6 +158,13 @@ public:
         auto* _common = DUMMY_PTR(FOServer); \
         auto* _location = DUMMY_PTR(Location);
 #define FO_API_LOCATION_METHOD_IMPL 1
+#define FO_API_PLAYER_VIEW_METHOD(name, ret, ...) \
+    [[maybe_unused]] static ret Lint_PlayerView_##name(__VA_ARGS__) \
+    { \
+        auto* _client = DUMMY_PTR(FOClient); \
+        auto* _common = DUMMY_PTR(FOClient); \
+        auto* _playerView = DUMMY_PTR(PlayerView);
+#define FO_API_PLAYER_VIEW_METHOD_IMPL 1
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) \
     [[maybe_unused]] static ret Lint_ItemView_##name(__VA_ARGS__) \
     { \
@@ -219,6 +233,8 @@ public:
 #define FO_API_SETTING(...)
 #define FO_API_GLOBAL_PROPERTY(...)
 #define FO_API_GLOBAL_READONLY_PROPERTY(...)
+#define FO_API_PLAYER_PROPERTY(...)
+#define FO_API_PLAYER_READONLY_PROPERTY(...)
 #define FO_API_ITEM_PROPERTY(...)
 #define FO_API_ITEM_READONLY_PROPERTY(...)
 #define FO_API_CRITTER_PROPERTY(...)

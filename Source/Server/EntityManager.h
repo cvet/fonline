@@ -41,6 +41,7 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
+#include "Player.h"
 #include "ServerScripting.h"
 
 DECLARE_EXCEPTION(EntitiesLoadException);
@@ -52,7 +53,7 @@ class EntityManager final
 public:
     using LocationFabric = std::function<Location*(uint, const ProtoLocation*)>;
     using MapFabric = std::function<Map*(uint, const ProtoMap*)>;
-    using NpcFabric = std::function<Npc*(uint, const ProtoCritter*)>;
+    using NpcFabric = std::function<Critter*(uint, const ProtoCritter*)>;
     using ItemFabric = std::function<Item*(uint, const ProtoItem*)>;
 
     static constexpr auto ENTITIES_FINALIZATION_FUSE_VALUE = 10000;
@@ -69,6 +70,8 @@ public:
     [[nodiscard]] auto GetEntity(uint id, EntityType type) -> Entity*;
     [[nodiscard]] auto GetEntities(EntityType type) -> vector<Entity*>;
     [[nodiscard]] auto GetEntitiesCount(EntityType type) const -> uint;
+    [[nodiscard]] auto GetPlayer(uint id) -> Player*;
+    [[nodiscard]] auto GetPlayers() -> vector<Player*>;
     [[nodiscard]] auto GetItem(uint id) -> Item*;
     [[nodiscard]] auto GetItems() -> vector<Item*>;
     [[nodiscard]] auto GetCritter(uint crid) -> Critter*;

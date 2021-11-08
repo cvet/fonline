@@ -401,7 +401,7 @@ public:
     RefCounter(const RefCounter&) = delete;
     RefCounter(RefCounter&&) = delete;
     auto operator=(const RefCounter&) -> RefCounter& = delete;
-    auto operator=(RefCounter &&) -> RefCounter& = delete;
+    auto operator=(RefCounter&&) -> RefCounter& = delete;
 
     virtual ~RefCounter()
     {
@@ -556,7 +556,7 @@ public:
     MemoryPool(const MemoryPool&) = delete;
     MemoryPool(MemoryPool&&) noexcept = default;
     auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool &&) -> MemoryPool& = delete;
+    auto operator=(MemoryPool&&) -> MemoryPool& = delete;
 
     ~MemoryPool()
     {
@@ -828,14 +828,15 @@ public:
     enum Type
     {
         None = 0,
-        Global, // 0
-        Critter, // 1 cr_id
-        Chosen, // 0
-        MapItem, // 1 item_id
-        CritterItem, // 2 cr_id item_id
-        ChosenItem, // 1 item_id
-        Map, // 0
-        Location, // 0
+        Global, // No extra args
+        Player, // No extra args
+        Critter, // One extra arg: cr_id
+        Chosen, // No extra args
+        MapItem, // One extra arg: item_id
+        CritterItem, // Two extra args: cr_id item_id
+        ChosenItem, // One extra arg: item_id
+        Map, // No extra args
+        Location, // No extra args
     };
 };
 
@@ -862,8 +863,7 @@ static constexpr float MAX_ZOOM = 20.0f;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes
-#define MAKE_CLIENT_ID(name) ((1 << 31) | _str(name).toHash())
-#define IS_CLIENT_ID(id) (((id) >> 31) != 0)
+#define MAKE_PLAYER_ID(name) static_cast<uint>((1 << 31) | _str(name).toHash())
 #define DLGID_MASK (0xFFFFC000)
 #define DLG_STR_ID(dlg_id, idx) (((dlg_id)&DLGID_MASK) | ((idx) & ~DLGID_MASK))
 #define LOCPID_MASK (0xFFFFF000)
@@ -980,6 +980,7 @@ static constexpr uint FCRIT_CHOSEN = 0x00100000;
 #define SHOW_SCREEN_MINIMAP (11) // Mini-map.
 
 // Special send params
+// Todo: remove special OTHER_* params
 #define OTHER_BREAK_TIME (0)
 #define OTHER_WAIT_TIME (1)
 #define OTHER_FLAGS (2)

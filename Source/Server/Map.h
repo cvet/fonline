@@ -47,8 +47,6 @@
 
 class Item;
 class Critter;
-class Npc;
-class Client;
 class Map;
 class Location;
 
@@ -110,11 +108,11 @@ public:
     [[nodiscard]] auto GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*;
     [[nodiscard]] auto GetCrittersHex(ushort hx, ushort hy, uint radius, uchar find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() -> vector<Critter*>;
-    [[nodiscard]] auto GetPlayers() -> vector<Client*>;
-    [[nodiscard]] auto GetNpcs() -> vector<Npc*>;
+    [[nodiscard]] auto GetPlayers() -> vector<Critter*>;
+    [[nodiscard]] auto GetNpcs() -> vector<Critter*>;
     [[nodiscard]] auto GetCrittersRaw() -> vector<Critter*>&;
-    [[nodiscard]] auto GetPlayersRaw() -> vector<Client*>&;
-    [[nodiscard]] auto GetNpcsRaw() -> vector<Npc*>&;
+    [[nodiscard]] auto GetPlayersRaw() -> vector<Critter*>&;
+    [[nodiscard]] auto GetNpcsRaw() -> vector<Critter*>&;
     [[nodiscard]] auto GetCrittersCount() const -> uint;
     [[nodiscard]] auto GetPlayersCount() const -> uint;
     [[nodiscard]] auto GetNpcsCount() const -> uint;
@@ -165,13 +163,12 @@ private:
     uchar* _hexFlags {};
     int _hexFlagsSize {};
     vector<Critter*> _mapCritters {};
-    vector<Client*> _mapPlayers {};
-    vector<Npc*> _mapNpcs {};
+    vector<Critter*> _mapPlayerCritters {};
+    vector<Critter*> _mapNonPlayerCritters {};
     vector<Item*> _mapItems {};
     map<uint, Item*> _mapItemsById {};
     map<uint, vector<Item*>> _mapItemsByHex {};
     map<uint, vector<Item*>> _mapBlockLinesByHex {};
     Location* _mapLocation {};
     uint _loopLastTick[5] {};
-    bool _nonConstHelper {};
 };

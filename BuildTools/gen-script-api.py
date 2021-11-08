@@ -67,9 +67,9 @@ class MetaInfo:
         self.enums = []
         self.events = { 'common': [], 'server': [], 'client': [], 'mapper': [] }
         self.methods = { 'globalcommon': [], 'globalserver': [], 'globalclient': [], 'globalmapper': [],
-                'item': [], 'itemview': [], 'critter': [], 'critterview': [],
+                'player': [], 'playerview': [], 'item': [], 'itemview': [], 'critter': [], 'critterview': [],
                 'map': [], 'mapview': [], 'location': [], 'locationview': [] }
-        self.properties = { 'global': [], 'item': [], 'critter': [], 'map': [], 'location': [] }
+        self.properties = { 'global': [], 'player': [], 'item': [], 'critter': [], 'map': [], 'location': [] }
         self.settings = []
 
         with open(metaName, 'r') as f:
@@ -211,6 +211,12 @@ def genApiMarkdown(target):
         writeFile('- [Global methods](#global-methods)')
     writeFile('- [Global properties](#global-properties)')
     writeFile('- [Entities](#entities)')
+    writeFile('  * [Player properties](#player-properties)')
+    if target == 'Multiplayer':
+        writeFile('  * [Player server methods](#player-server-methods)')
+        writeFile('  * [Player client methods](#player-client-methods)')
+    elif target == 'Singleplayer':
+        writeFile('  * [Player methods](#player-methods)')
     writeFile('  * [Item properties](#item-properties)')
     if target == 'Multiplayer':
         writeFile('  * [Item server methods](#item-server-methods)')
@@ -267,7 +273,7 @@ def genApiMarkdown(target):
     def parseType(t):
         def mapType(t):
             typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
-                    'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
+                    'PlayerView': 'Player', 'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
             return typeMap[t] if t in typeMap else t
         tt = t.split('.')
         if tt[0] == 'dict':
@@ -358,7 +364,7 @@ def genApiMarkdown(target):
     # Entities
     writeFile('## Entities')
     writeFile('')
-    for entity in ['Item', 'Critter', 'Map', 'Location']:
+    for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
         writeFile('### ' + entity + ' properties')
         writeFile('')
         for i in globalMeta.properties[entity.lower()]:
@@ -451,6 +457,7 @@ def genApiMarkdown(target):
         for i in lst:
             writeFile('* ' +  i)
         writeFile('')
+    writeEnums('Player', content['foacc'])
     writeEnums('Item', content['foitem'])
     writeEnums('Critter', content['focr'])
     writeEnums('Map', content['fomap'])
@@ -488,6 +495,7 @@ def genApi(target):
             def mapType(t):
                 typeMap = {'char': 'int8_t', 'uchar': 'uint8_t', 'short': 'int16_t', 'ushort': 'uint16_t',
                         'int64': 'int64_t', 'uint64': 'uint64_t', 'ItemView': 'ScriptItem*',
+                        'PlayerView': 'ScriptPlayer*', 'Player': 'ScriptPlayer*',
                         'CritterView': 'ScriptCritter*', 'MapView': 'ScriptMap*', 'LocationView': 'ScriptLocation*',
                         'Item': 'ScriptItem*', 'Critter': 'ScriptCritter*', 'Map': 'ScriptMap*', 'Location': 'ScriptLocation*'}
                 return typeMap[t] if t in typeMap else t
@@ -571,7 +579,7 @@ def genApi(target):
         writeFile('};')
         writeFile('')
 
-        for entity in ['Item', 'Critter', 'Map', 'Location']:
+        for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
             writeFile('class Script' + entity + ' : public ScriptEntity')
             writeFile('{')
             writeFile('public:')
@@ -632,6 +640,7 @@ def genApi(target):
             for i in lst:
                 writeFile('* ' +  i)
             writeFile('')
+        writeEnums('Player', content['foacc'])
         writeEnums('Item', content['foitem'])
         writeEnums('Critter', content['focr'])
         writeEnums('Map', content['fomap'])
@@ -651,6 +660,7 @@ def genApi(target):
             writeFile('')
         writeFile('// FOS Common')
         writeFile('')
+        writeEnums('Player', content['foacc'])
         writeEnums('Item', content['foitem'])
         writeEnums('Critter', content['focr'])
         writeEnums('Map', content['fomap'])
@@ -716,7 +726,7 @@ def genApi(target):
         def parseType(t):
             def mapType(t):
                 typeMap = {'char': 'sbyte', 'uchar': 'byte', 'int64': 'long', 'uint64': 'ulong',
-                        'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
+                        'PlayerView': 'Player', 'ItemView': 'Item', 'CritterView': 'Critter', 'MapView': 'Map', 'LocationView': 'Location'}
                 return typeMap[t] if t in typeMap else t
             tt = t.split('.')
             if tt[0] == 'dict':
@@ -854,7 +864,7 @@ def genApi(target):
         writeEndHeader()
 
         # Entities
-        for entity in ['Item', 'Critter', 'Map', 'Location']:
+        for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
             createFile(target + entity + '.cs')
             writeHeader('public partial class ' + entity + ' : Entity')
             extCalls = []
@@ -1004,6 +1014,7 @@ def genApi(target):
                 writeFile('            ' + i + ' = ' + getHash(i) + ',')
             writeFile('        }')
             writeFile('')
+        writeEnums('Player', content['foacc'])
         writeEnums('Item', content['foitem'])
         writeEnums('Critter', content['focr'])
         writeEnums('Map', content['fomap'])
@@ -1071,6 +1082,7 @@ def genApi(target):
                         writeFile('    <Compile Include="' + src.split(',')[1].replace('/', '\\') + '" />')
             writeFile('    <Compile Include="' + target + 'Game.cs" />')
             writeFile('    <Compile Include="' + target + 'Globals.cs" />')
+            writeFile('    <Compile Include="' + target + 'Player.cs" />')
             writeFile('    <Compile Include="' + target + 'Item.cs" />')
             writeFile('    <Compile Include="' + target + 'Critter.cs" />')
             writeFile('    <Compile Include="' + target + 'Map.cs" />')

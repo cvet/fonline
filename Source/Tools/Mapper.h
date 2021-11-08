@@ -50,6 +50,7 @@
 #include "MapperScripting.h"
 #include "MsgFiles.h"
 #include "NetBuffer.h"
+#include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "Settings.h"
