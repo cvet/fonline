@@ -1429,7 +1429,7 @@ void Application::AppRender::DisableScissor()
 #endif
 }
 
-auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader& /*file_loader*/) -> RenderEffect*
+auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
 {
     auto effect = unique_ptr<RenderEffect>(new RenderEffect());
 #if !FO_HEADLESS

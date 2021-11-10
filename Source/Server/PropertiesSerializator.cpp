@@ -88,7 +88,7 @@ auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Pro
     return doc;
 }
 
-auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const DataBase::Document& /*doc*/, const NameResolver& /*name_resolver*/) -> bool
+auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const DataBase::Document& /*doc*/, const NameResolver & /*name_resolver*/) -> bool
 {
     /*bool is_error = false;
     for (const auto& kv : doc)
@@ -747,7 +747,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
     return false;
 }
 
-auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, const Property* /*prop*/, const NameResolver& /*name_resolver*/) -> DataBase::Value
+auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, const Property* /*prop*/, const NameResolver & /*name_resolver*/) -> DataBase::Value
 {
     /*RUNTIME_ASSERT(prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1));
     RUNTIME_ASSERT(!prop->isTemporary);

@@ -89,71 +89,71 @@
 template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 inline T Marshal(T value)
 {
-	return value;
+    return value;
 }
 
 template<typename T, std::enable_if_t<!std::is_same_v<T, string>, int> = 0>
 inline T Marshal(MonoArray* arr)
 {
-	return {};
+    return {};
 }
 
 template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
 inline T Marshal(MonoString* str)
 {
-	return "";
+    return "";
 }
 
 template<typename T>
 inline T* MarshalObj(MonoObject* value)
 {
-	return 0;
+    return 0;
 }
 
 template<typename T>
 inline vector<T*> MarshalObjArr(MonoArray* arr)
 {
-	return {};
+    return {};
 }
 
 template<typename T>
 inline std::function<void(T*)> MarshalCallback(MonoObject* func)
 {
-	return {};
+    return {};
 }
 
 template<typename T>
 inline std::function<bool(T*)> MarshalPredicate(MonoObject* func)
 {
-	return {};
+    return {};
 }
 
 template<typename TKey, typename TValue>
 inline map<TKey, TValue> MarshalDict(MonoObject* dict)
 {
-	return {};
+    return {};
 }
 
 template<typename T>
 inline MonoArray* MarshalBack(vector<T> arr)
 {
-	return 0;
+    return 0;
 }
 
 inline MonoObject* MarshalBack(Entity* obj)
 {
-	return 0;
+    return 0;
 }
 
 inline MonoString* MarshalBack(string value)
 {
-	return mono_string_new(mono_domain_get(), value.c_str());
+    return mono_string_new(mono_domain_get(), value.c_str());
 }
 
 template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 inline T MarshalBack(T value)
 {
-	return value;
+    return value;
 }
 
 #define Mono_bool MonoBoolean
@@ -206,17 +206,17 @@ inline T MarshalBack(T value)
 
 static MonoException* ReportException(MonoDomain* domain, const std::exception& ex)
 {
-	return mono_get_exception_invalid_operation(ex.what());
+    return mono_get_exception_invalid_operation(ex.what());
 }
 
 static void SetDomainUserData(MonoDomain* domain, void* user_data)
 {
-	// Todo: set Mono domain user data
+    // Todo: set Mono domain user data
 }
 
 inline void* GetDomainUserData(MonoDomain* domain)
 {
-	return nullptr; // Todo: get Mono domain user data
+    return nullptr; // Todo: get Mono domain user data
 }
 
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
@@ -480,17 +480,17 @@ inline void* GetDomainUserData(MonoDomain* domain)
 
 struct ScriptSystem::MonoImpl
 {
-	map<string, MonoImage*> EngineAssemblyImages{};
+    map<string, MonoImage*> EngineAssemblyImages {};
 };
 
 void SCRIPTING_CLASS::InitMonoScripting()
 {
-	_pMonoImpl = std::make_unique<MonoImpl>();
+    _pMonoImpl = std::make_unique<MonoImpl>();
 
-	g_set_print_handler([](const gchar* str) { WriteLog("{}", str); });
-	g_set_printerr_handler([](const gchar* str) { WriteLog("{}", str); });
+    g_set_print_handler([](const gchar* str) { WriteLog("{}", str); });
+    g_set_printerr_handler([](const gchar* str) { WriteLog("{}", str); });
 
-	mono_config_parse_memory(R"(
+    mono_config_parse_memory(R"(
     <configuration>
         <dllmap dll="i:cygwin1.dll" target="libc.so.6" os="!windows" />
         <dllmap dll="libc" target="libc.so.6" os="!windows"/>
@@ -536,27 +536,27 @@ void SCRIPTING_CLASS::InitMonoScripting()
         <dllmap dll="gdi32.dll" target="libgdiplus.so" os="!windows"/>
     </configuration>)");
 
-	mono_set_dirs("./dummy/lib", "./dummy/etc");
-	mono_set_assemblies_path("./dummy/lib/gac");
+    mono_set_dirs("./dummy/lib", "./dummy/etc");
+    mono_set_assemblies_path("./dummy/lib/gac");
 
-	// mono_dllmap_insert
-	// mono_install_load_aot_data_hook()
-	/*RUNTIME_ASSERT(pMonoImpl->EngineAssemblyImages.empty());
-	mono_install_assembly_preload_hook(
-		[](MonoAssemblyName* aname, char** assemblies_path, void* user_data) -> MonoAssembly* {
-			auto assembly_images = (map<string, MonoImage*>*)user_data;
-			if (assembly_images->count(aname->name))
-				return LoadGameAssembly(aname->name, *assembly_images);
-			return LoadNetAssembly(aname->name);
-		},
-		(void*)&EngineAssemblyImages);*/
+    // mono_dllmap_insert
+    // mono_install_load_aot_data_hook()
+    /*RUNTIME_ASSERT(pMonoImpl->EngineAssemblyImages.empty());
+    mono_install_assembly_preload_hook(
+        [](MonoAssemblyName* aname, char** assemblies_path, void* user_data) -> MonoAssembly* {
+            auto assembly_images = (map<string, MonoImage*>*)user_data;
+            if (assembly_images->count(aname->name))
+                return LoadGameAssembly(aname->name, *assembly_images);
+            return LoadNetAssembly(aname->name);
+        },
+        (void*)&EngineAssemblyImages);*/
 
-	static std::atomic_int domain_counter;
-	int domain_num = domain_counter++;
-	MonoDomain* domain = mono_jit_init_version(fmt::format("FOnlineDomain_{}", domain_num).c_str(), "v4.0.30319");
-	RUNTIME_ASSERT(domain);
+    static std::atomic_int domain_counter;
+    int domain_num = domain_counter++;
+    MonoDomain* domain = mono_jit_init_version(fmt::format("FOnlineDomain_{}", domain_num).c_str(), "v4.0.30319");
+    RUNTIME_ASSERT(domain);
 
-	SetDomainUserData(domain, _mainObj);
+    SetDomainUserData(domain, _mainObj);
 
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define FO_API_PLAYER_METHOD(name, ret, ...) mono_add_internal_call("Player::_" #name, (void*)&MonoPlayer_##name);
@@ -613,134 +613,134 @@ void SCRIPTING_CLASS::InitMonoScripting()
         mono_add_internal_call("Location::_Set_" #name, (void*)&MonoLocation_Set_##name);
 #include "ScriptApi.h"
 
-	/*if (assemblies_data)
-	{
-		for (auto& kv : *assemblies_data)
-		{
-			MonoImageOpenStatus status = MONO_IMAGE_OK;
-			MonoImage* image = mono_image_open_from_data((char*)&kv.second[0], (uint)kv.second.size(), TRUE, &status);
-			RUNTIME_ASSERT(status == MONO_IMAGE_OK && image);
+    /*if (assemblies_data)
+    {
+        for (auto& kv : *assemblies_data)
+        {
+            MonoImageOpenStatus status = MONO_IMAGE_OK;
+            MonoImage* image = mono_image_open_from_data((char*)&kv.second[0], (uint)kv.second.size(), TRUE, &status);
+            RUNTIME_ASSERT(status == MONO_IMAGE_OK && image);
 
-			EngineAssemblyImages[kv.first] = image;
-		}
-	}
-	else
-	{
-		bool ok = CompileGameAssemblies(target, EngineAssemblyImages);
-		RUNTIME_ASSERT(ok);
-	}
+            EngineAssemblyImages[kv.first] = image;
+        }
+    }
+    else
+    {
+        bool ok = CompileGameAssemblies(target, EngineAssemblyImages);
+        RUNTIME_ASSERT(ok);
+    }
 
-	for (auto& kv : EngineAssemblyImages)
-	{
-		bool ok = LoadGameAssembly(kv.first, EngineAssemblyImages);
-		RUNTIME_ASSERT(ok);
-	}
+    for (auto& kv : EngineAssemblyImages)
+    {
+        bool ok = LoadGameAssembly(kv.first, EngineAssemblyImages);
+        RUNTIME_ASSERT(ok);
+    }
 
-	MonoClass* global_events_class =
-		mono_class_from_name(EngineAssemblyImages["FOnline.Core.dll"], "FOnlineEngine", "GlobalEvents");
-	RUNTIME_ASSERT(global_events_class);
-	MonoMethodDesc* init_method_desc = mono_method_desc_new(":Initialize()", FALSE);
-	RUNTIME_ASSERT(init_method_desc);
-	MonoMethod* init_method = mono_method_desc_search_in_class(init_method_desc, global_events_class);
-	RUNTIME_ASSERT(init_method);
-	mono_method_desc_free(init_method_desc);
+    MonoClass* global_events_class =
+        mono_class_from_name(EngineAssemblyImages["FOnline.Core.dll"], "FOnlineEngine", "GlobalEvents");
+    RUNTIME_ASSERT(global_events_class);
+    MonoMethodDesc* init_method_desc = mono_method_desc_new(":Initialize()", FALSE);
+    RUNTIME_ASSERT(init_method_desc);
+    MonoMethod* init_method = mono_method_desc_search_in_class(init_method_desc, global_events_class);
+    RUNTIME_ASSERT(init_method);
+    mono_method_desc_free(init_method_desc);
 
-	MonoObject* exc;
-	MonoObject* init_method_result = mono_runtime_invoke(init_method, NULL, NULL, &exc);
-	if (exc)
-		mono_print_unhandled_exception(exc);
+    MonoObject* exc;
+    MonoObject* init_method_result = mono_runtime_invoke(init_method, NULL, NULL, &exc);
+    if (exc)
+        mono_print_unhandled_exception(exc);
 
-	RUNTIME_ASSERT(exc || *(bool*)mono_object_unbox(init_method_result) == false)
-	return false;*/
+    RUNTIME_ASSERT(exc || *(bool*)mono_object_unbox(init_method_result) == false)
+    return false;*/
 }
 
 /*static MonoAssembly* LoadNetAssembly(const string& name)
 {
-	string assemblies_path = "Assemblies/" + name + (_str(name).endsWith(".dll") ? "" : ".dll");
+    string assemblies_path = "Assemblies/" + name + (_str(name).endsWith(".dll") ? "" : ".dll");
 #if FONLINE_SERVER
-	assemblies_path = "Resources/Mono/" + assemblies_path;
+    assemblies_path = "Resources/Mono/" + assemblies_path;
 #endif
 
-	File file;
-	file.LoadFile(assemblies_path);
-	RUNTIME_ASSERT(file.IsLoaded());
+    File file;
+    file.LoadFile(assemblies_path);
+    RUNTIME_ASSERT(file.IsLoaded());
 
-	MonoImageOpenStatus status = MONO_IMAGE_OK;
-	MonoImage* image = mono_image_open_from_data((char*)file.GetBuf(), file.GetFsize(), TRUE, &status);
-	RUNTIME_ASSERT(status == MONO_IMAGE_OK && image);
+    MonoImageOpenStatus status = MONO_IMAGE_OK;
+    MonoImage* image = mono_image_open_from_data((char*)file.GetBuf(), file.GetFsize(), TRUE, &status);
+    RUNTIME_ASSERT(status == MONO_IMAGE_OK && image);
 
-	MonoAssembly* assembly = mono_assembly_load_from(image, name.c_str(), &status);
-	RUNTIME_ASSERT(status == MONO_IMAGE_OK && assembly);
+    MonoAssembly* assembly = mono_assembly_load_from(image, name.c_str(), &status);
+    RUNTIME_ASSERT(status == MONO_IMAGE_OK && assembly);
 
-	return assembly;
+    return assembly;
 }
 
 static MonoAssembly* LoadGameAssembly(const string& name, map<string, MonoImage*>& assembly_images)
 {
-	RUNTIME_ASSERT(assembly_images.count(name));
-	MonoImage* image = assembly_images[name];
+    RUNTIME_ASSERT(assembly_images.count(name));
+    MonoImage* image = assembly_images[name];
 
-	MonoImageOpenStatus status = MONO_IMAGE_OK;
-	MonoAssembly* assembly = mono_assembly_load_from(image, name.c_str(), &status);
-	RUNTIME_ASSERT(status == MONO_IMAGE_OK && assembly);
+    MonoImageOpenStatus status = MONO_IMAGE_OK;
+    MonoAssembly* assembly = mono_assembly_load_from(image, name.c_str(), &status);
+    RUNTIME_ASSERT(status == MONO_IMAGE_OK && assembly);
 
-	return assembly;
+    return assembly;
 }
 
 static bool CompileGameAssemblies(const string& target, map<string, MonoImage*>& assembly_images)
 {
-	string mono_path = MainConfig->GetStr("", "MonoPath");
-	string xbuild_path = _str(mono_path + "/bin/xbuild.bat").resolvePath();
+    string mono_path = MainConfig->GetStr("", "MonoPath");
+    string xbuild_path = _str(mono_path + "/bin/xbuild.bat").resolvePath();
 
-	FileCollection proj_files("csproj");
-	while (proj_files.IsNextFile())
-	{
-		string name, path;
-		File& file = proj_files.GetNextFile(&name, &path);
-		RUNTIME_ASSERT(file.IsLoaded());
+    FileCollection proj_files("csproj");
+    while (proj_files.IsNextFile())
+    {
+        string name, path;
+        File& file = proj_files.GetNextFile(&name, &path);
+        RUNTIME_ASSERT(file.IsLoaded());
 
-		// Compile
-		string command =
-			_str("{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, path);
-		string output;
-		int call_result = SystemCall(command, output);
-		if (call_result)
-		{
-			StrVec errors = _str(output).split('\n');
-			WriteLog("Compilation failed! Error{}:", errors.size() > 1 ? "s" : "");
-			for (string& error : errors)
-				WriteLog("{}\n", error);
-			return false;
-		}
+        // Compile
+        string command =
+            _str("{} /property:Configuration={} /nologo /verbosity:quiet \"{}\"", xbuild_path, target, path);
+        string output;
+        int call_result = SystemCall(command, output);
+        if (call_result)
+        {
+            StrVec errors = _str(output).split('\n');
+            WriteLog("Compilation failed! Error{}:", errors.size() > 1 ? "s" : "");
+            for (string& error : errors)
+                WriteLog("{}\n", error);
+            return false;
+        }
 
-		// Get output path
-		string file_content = (char*)file.GetBuf();
-		size_t pos = file_content.find("'$(Configuration)|$(Platform)' == '" + target + "|");
-		RUNTIME_ASSERT(pos != string::npos);
-		pos = file_content.find("<OutputPath>", pos);
-		RUNTIME_ASSERT(pos != string::npos);
-		size_t epos = file_content.find("</OutputPath>", pos);
-		RUNTIME_ASSERT(epos != string::npos);
-		pos += _str("<OutputPath>").length();
+        // Get output path
+        string file_content = (char*)file.GetBuf();
+        size_t pos = file_content.find("'$(Configuration)|$(Platform)' == '" + target + "|");
+        RUNTIME_ASSERT(pos != string::npos);
+        pos = file_content.find("<OutputPath>", pos);
+        RUNTIME_ASSERT(pos != string::npos);
+        size_t epos = file_content.find("</OutputPath>", pos);
+        RUNTIME_ASSERT(epos != string::npos);
+        pos += _str("<OutputPath>").length();
 
-		string assembly_name = name + ".dll";
-		string assembly_path =
-			_str("{}/{}/{}", _str(path).extractDir(), file_content.substr(pos, epos - pos), assembly_name)
-				.resolvePath();
+        string assembly_name = name + ".dll";
+        string assembly_path =
+            _str("{}/{}/{}", _str(path).extractDir(), file_content.substr(pos, epos - pos), assembly_name)
+                .resolvePath();
 
-		File assembly_file;
-		assembly_file.LoadFile(assembly_path);
-		RUNTIME_ASSERT(assembly_file.IsLoaded());
+        File assembly_file;
+        assembly_file.LoadFile(assembly_path);
+        RUNTIME_ASSERT(assembly_file.IsLoaded());
 
-		MonoImageOpenStatus status = MONO_IMAGE_OK;
-		MonoImage* image =
-			mono_image_open_from_data((char*)assembly_file.GetBuf(), assembly_file.GetFsize(), TRUE, &status);
-		RUNTIME_ASSERT(status == MONO_IMAGE_OK && image);
+        MonoImageOpenStatus status = MONO_IMAGE_OK;
+        MonoImage* image =
+            mono_image_open_from_data((char*)assembly_file.GetBuf(), assembly_file.GetFsize(), TRUE, &status);
+        RUNTIME_ASSERT(status == MONO_IMAGE_OK && image);
 
-		assembly_images[assembly_name] = image;
-	}
+        assembly_images[assembly_name] = image;
+    }
 
-	return true;
+    return true;
 }*/
 
 #else

@@ -82,8 +82,8 @@
 class ScriptEntity
 {
 protected:
-	void* _mainObjPtr{};
-	Entity* _thisPtr{};
+    void* _mainObjPtr {};
+    Entity* _thisPtr {};
 };
 
 class ScriptPlayer;
@@ -96,140 +96,140 @@ class ScriptGame;
 template<typename T, typename T2>
 inline T* MarshalObj(T2* value)
 {
-	return 0;
+    return 0;
 }
 
 template<typename T, typename T2>
 inline vector<T*> MarshalObjArr(vector<T2*> arr)
 {
-	return {};
+    return {};
 }
 
 template<typename T, typename T2>
 inline std::function<void(T*)> MarshalCallback(std::function<void(T2*)> func)
 {
-	return {};
+    return {};
 }
 
 template<typename T, typename T2>
 inline std::function<bool(T*)> MarshalPredicate(std::function<void(T2*)> func)
 {
-	return {};
+    return {};
 }
 
 template<typename T>
 inline vector<T> MarshalBack(vector<T> arr)
 {
-	return {};
+    return {};
 }
 
 inline ScriptEntity* MarshalBack(Entity* obj)
 {
-	return 0;
+    return 0;
 }
 
 inline vector<ScriptEntity*> MarshalBack(vector<Entity*> obj)
 {
-	return {};
+    return {};
 }
 
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 inline ScriptPlayer* MarshalBack(Player* obj)
 {
-	return 0;
+    return 0;
 }
 inline ScriptItem* MarshalBack(Item* obj)
 {
-	return 0;
+    return 0;
 }
 inline ScriptCritter* MarshalBack(Critter* obj)
 {
-	return 0;
+    return 0;
 }
 inline ScriptMap* MarshalBack(Map* obj)
 {
-	return 0;
+    return 0;
 }
 inline ScriptLocation* MarshalBack(Location* obj)
 {
-	return 0;
+    return 0;
 }
 inline vector<ScriptPlayer*> MarshalBack(vector<Player*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptItem*> MarshalBack(vector<Item*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptCritter*> MarshalBack(vector<Critter*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptMap*> MarshalBack(vector<Map*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptLocation*> MarshalBack(vector<Location*> obj)
 {
-	return {};
+    return {};
 }
 #else
 inline ScriptPlayer* MarshalBack(PlayerView* obj)
 {
-	return 0;
+    return 0;
 }
 inline ScriptItem* MarshalBack(ItemView* obj)
 {
-	return 0;
+    return 0;
 }
 inline ScriptCritter* MarshalBack(CritterView* obj)
 {
-	return 0;
+    return 0;
 }
 inline ScriptMap* MarshalBack(MapView* obj)
 {
-	return 0;
+    return 0;
 }
 inline ScriptLocation* MarshalBack(LocationView* obj)
 {
-	return 0;
+    return 0;
 }
 inline vector<ScriptPlayer*> MarshalBack(vector<PlayerView*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptItem*> MarshalBack(vector<ItemView*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptItem*> MarshalBack(vector<ItemHexView*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptCritter*> MarshalBack(vector<CritterView*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptMap*> MarshalBack(vector<MapView*> obj)
 {
-	return {};
+    return {};
 }
 inline vector<ScriptLocation*> MarshalBack(vector<LocationView*> obj)
 {
-	return {};
+    return {};
 }
 #endif
 
 inline string MarshalBack(string value)
 {
-	return value;
+    return value;
 }
 
 template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 inline T MarshalBack(T value)
 {
-	return value;
+    return value;
 }
 
 #define FO_API_PARTLY_UNDEF 1
@@ -449,7 +449,7 @@ public:
 #include "ScriptApi.h"
 #undef THIS_ARG
 private:
-	void* _mainObjPtr{};
+    void* _mainObjPtr {};
 };
 
 #undef FO_API_PARTLY_UNDEF
@@ -461,7 +461,7 @@ struct ScriptSystem::NativeImpl
 
 void SCRIPTING_CLASS::InitNativeScripting()
 {
-	_pNativeImpl = std::make_unique<NativeImpl>();
+    _pNativeImpl = std::make_unique<NativeImpl>();
 }
 
 #else

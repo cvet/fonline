@@ -2506,8 +2506,10 @@ void FOServer::Process_Register(ClientConnection* connection)
 #endif
 
     // Register
-    const auto reg_ip = DataBase::Array({connection->GetIp()});
-    const auto reg_port = DataBase::Array({connection->GetPort()});
+    auto reg_ip = DataBase::Array();
+    reg_ip.push_back(static_cast<int>(connection->GetIp()));
+    auto reg_port = DataBase::Array();
+    reg_port.push_back(static_cast<int>(connection->GetPort()));
 
     DbStorage.Insert("Players", player_id, {{"_Proto", string("Player")}, {"Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
 
@@ -2769,9 +2771,9 @@ void FOServer::Process_PlaceToGame(Player* player)
         RUNTIME_ASSERT(cr->GlobalMapGroup);
 
         cr->Send_GlobalInfo(GM_INFO_ALL, MapMngr);
-        for (auto* cr : *cr->GlobalMapGroup) {
-            if (cr != cr) {
-                cr->Send_CustomCommand(cr, OTHER_FLAGS, cr->Flags);
+        for (auto* cr_ : *cr->GlobalMapGroup) {
+            if (cr_ != cr) {
+                cr_->Send_CustomCommand(cr, OTHER_FLAGS, cr->Flags);
             }
         }
 
@@ -4445,7 +4447,7 @@ void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_val
     }
 }
 
-auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter* /*slave*/) -> bool
+auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter * /*slave*/) -> bool
 {
     /*int bind_id = (int)demand.ParamId;
     ScriptSys.PrepareContext(bind_id, master->GetName());
@@ -4458,7 +4460,7 @@ auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/,
     return false;
 }
 
-auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter* /*slave*/) -> uint
+auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter * /*slave*/) -> uint
 {
     /*int bind_id = (int)result.ParamId;
     ScriptSys.PrepareContext(

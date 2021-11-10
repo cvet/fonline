@@ -90,54 +90,54 @@ DECLARE_EXCEPTION(ScriptCompilerException);
 // Copy-paste from Entity.h
 enum class EntityType
 {
-	Player,
-	PlayerProto,
-	ItemProto,
-	CritterProto,
-	MapProto,
-	LocationProto,
-	Item,
-	Critter,
-	Map,
-	Location,
-	PlayerView,
-	ItemView,
-	ItemHexView,
-	CritterView,
-	MapView,
-	LocationView,
-	Custom,
-	Global,
-	Max,
+    Player,
+    PlayerProto,
+    ItemProto,
+    CritterProto,
+    MapProto,
+    LocationProto,
+    Item,
+    Critter,
+    Map,
+    Location,
+    PlayerView,
+    ItemView,
+    ItemHexView,
+    CritterView,
+    MapView,
+    LocationView,
+    Custom,
+    Global,
+    Max,
 };
 
 struct Property
 {
-	// Copy-paste from Properties.h
-	enum AccessType
-	{
-		PrivateCommon = 0x0010,
-		PrivateClient = 0x0020,
-		PrivateServer = 0x0040,
-		Public = 0x0100,
-		PublicModifiable = 0x0200,
-		PublicFullModifiable = 0x0400,
-		Protected = 0x1000,
-		ProtectedModifiable = 0x2000,
-		VirtualPrivateCommon = 0x0011,
-		VirtualPrivateClient = 0x0021,
-		VirtualPrivateServer = 0x0041,
-		VirtualPublic = 0x0101,
-		VirtualProtected = 0x1001,
+    // Copy-paste from Properties.h
+    enum AccessType
+    {
+        PrivateCommon = 0x0010,
+        PrivateClient = 0x0020,
+        PrivateServer = 0x0040,
+        Public = 0x0100,
+        PublicModifiable = 0x0200,
+        PublicFullModifiable = 0x0400,
+        Protected = 0x1000,
+        ProtectedModifiable = 0x2000,
+        VirtualPrivateCommon = 0x0011,
+        VirtualPrivateClient = 0x0021,
+        VirtualPrivateServer = 0x0041,
+        VirtualPublic = 0x0101,
+        VirtualProtected = 0x1001,
 
-		VirtualMask = 0x000F,
-		PrivateMask = 0x00F0,
-		PublicMask = 0x0F00,
-		ProtectedMask = 0xF000,
-		ClientOnlyMask = 0x0020,
-		ServerOnlyMask = 0x0040,
-		ModifiableMask = 0x2600,
-	};
+        VirtualMask = 0x000F,
+        PrivateMask = 0x00F0,
+        PublicMask = 0x0F00,
+        ProtectedMask = 0xF000,
+        ClientOnlyMask = 0x0020,
+        ServerOnlyMask = 0x0040,
+        ModifiableMask = 0x2600,
+    };
 };
 #endif
 
@@ -169,7 +169,7 @@ struct Property
 #define INIT_ARGS const string& script_path
 struct SCRIPTING_CLASS
 {
-	void InitAngelScriptScripting(INIT_ARGS);
+    void InitAngelScriptScripting(INIT_ARGS);
 };
 #else
 #define INIT_ARGS
@@ -178,12 +178,12 @@ struct SCRIPTING_CLASS
 #if FO_ANGELSCRIPT_COMPILER
 struct Entity
 {
-	void AddRef() { }
-	void Release() { }
-	uint Id{};
-	EntityType Type{};
-	bool IsDestroyed{};
-	bool IsDestroying{};
+    void AddRef() { }
+    void Release() { }
+    uint Id {};
+    EntityType Type {};
+    bool IsDestroyed {};
+    bool IsDestroying {};
 };
 struct Player : Entity
 {
@@ -222,36 +222,36 @@ struct LocationView : Entity
 class MapSprite
 {
 public:
-	void AddRef() const { ++RefCount; }
-	void Release() const
-	{
-		if (--RefCount == 0)
-			delete this;
-	}
-	static MapSprite* Factory() { return new MapSprite(); }
+    void AddRef() const { ++RefCount; }
+    void Release() const
+    {
+        if (--RefCount == 0)
+            delete this;
+    }
+    static MapSprite* Factory() { return new MapSprite(); }
 
-	mutable int RefCount{ 1 };
-	bool Valid{};
-	uint SprId{};
-	ushort HexX{};
-	ushort HexY{};
-	hash ProtoId{};
-	int FrameIndex{};
-	int OffsX{};
-	int OffsY{};
-	bool IsFlat{};
-	bool NoLight{};
-	int DrawOrder{};
-	int DrawOrderHyOffset{};
-	int Corner{};
-	bool DisableEgg{};
-	uint Color{};
-	uint ContourColor{};
-	bool IsTweakOffs{};
-	short TweakOffsX{};
-	short TweakOffsY{};
-	bool IsTweakAlpha{};
-	uchar TweakAlpha{};
+    mutable int RefCount {1};
+    bool Valid {};
+    uint SprId {};
+    ushort HexX {};
+    ushort HexY {};
+    hash ProtoId {};
+    int FrameIndex {};
+    int OffsX {};
+    int OffsY {};
+    bool IsFlat {};
+    bool NoLight {};
+    int DrawOrder {};
+    int DrawOrderHyOffset {};
+    int Corner {};
+    bool DisableEgg {};
+    uint Color {};
+    uint ContourColor {};
+    bool IsTweakOffs {};
+    short TweakOffsX {};
+    short TweakOffsY {};
+    bool IsTweakAlpha {};
+    uchar TweakAlpha {};
 };
 #endif
 
@@ -298,169 +298,169 @@ static void DummyFunc(asIScriptGeneric* gen)
 #if !FO_ANGELSCRIPT_COMPILER
 struct ScriptSystem::AngelScriptImpl
 {
-	asIScriptEngine* Engine{};
+    asIScriptEngine* Engine {};
 };
 #endif
 
 struct ASEntity
 {
-	ASEntity(Entity* entity) : GameEntity{ entity } { GameEntity->AddRef(); }
-	~ASEntity() { GameEntity->Release(); }
-	void AddRef() { ++RefCounter; }
-	void Release()
-	{
-		if (--RefCounter == 0)
-			delete this;
-	}
-	hash GetProtoId() { return 0; }
-	int RefCounter{ 1 };
-	uint Id{};
-	bool IsDestroyed{};
-	bool IsDestroying{};
-	Entity* GameEntity{};
+    ASEntity(Entity* entity) : GameEntity {entity} { GameEntity->AddRef(); }
+    ~ASEntity() { GameEntity->Release(); }
+    void AddRef() { ++RefCounter; }
+    void Release()
+    {
+        if (--RefCounter == 0)
+            delete this;
+    }
+    hash GetProtoId() { return 0; }
+    int RefCounter {1};
+    uint Id {};
+    bool IsDestroyed {};
+    bool IsDestroying {};
+    Entity* GameEntity {};
 };
 
 template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T> || std::is_same_v<T, string>, int> = 0>
 inline T Marshal(T value)
 {
-	return value;
+    return value;
 }
 
 template<typename T>
 inline T Marshal(CScriptArray* arr)
 {
-	return {};
+    return {};
 }
 
 template<typename T>
 inline T* MarshalObj(ASEntity* value)
 {
-	return 0;
+    return 0;
 }
 
 template<typename T>
 inline vector<T*> MarshalObjArr(CScriptArray* arr)
 {
-	return {};
+    return {};
 }
 
 template<typename T>
 inline std::function<void(T*)> MarshalCallback(asIScriptFunction* func)
 {
-	return {};
+    return {};
 }
 
 template<typename T>
 inline std::function<bool(T*)> MarshalPredicate(asIScriptFunction* func)
 {
-	return {};
+    return {};
 }
 
 template<typename TKey, typename TValue>
 inline map<TKey, TValue> MarshalDict(CScriptDict* dict)
 {
-	return {};
+    return {};
 }
 
 template<typename T>
 inline CScriptArray* MarshalBack(vector<T> arr)
 {
-	return 0;
+    return 0;
 }
 
 inline ASEntity* MarshalBack(Entity* obj)
 {
-	return 0;
+    return 0;
 }
 
 inline string MarshalBack(string value)
 {
-	return value;
+    return value;
 }
 
 template<typename T, std::enable_if_t<std::is_integral_v<T> || std::is_floating_point_v<T>, int> = 0>
 inline T MarshalBack(T value)
 {
-	return value;
+    return value;
 }
 
 template<typename T>
 inline string GetASType(string name)
 {
-	static unordered_map<size_t, string> as_types = {
-		{typeid(void).hash_code(), "void"},
-		{typeid(bool).hash_code(), "bool"},
-		{typeid(char).hash_code(), "int8"},
-		{typeid(short).hash_code(), "int16"},
-		{typeid(int).hash_code(), "int"},
-		{typeid(int64).hash_code(), "int64"},
-		{typeid(uchar).hash_code(), "uint8"},
-		{typeid(ushort).hash_code(), "uint16"},
-		{typeid(uint).hash_code(), "uint"},
-		{typeid(uint64).hash_code(), "uint64"},
-		{typeid(string).hash_code(), "string"},
-		{typeid(float).hash_code(), "float"},
-		{typeid(double).hash_code(), "double"},
-		{typeid(Entity).hash_code(), "Entity@+"},
-		{typeid(vector<Entity>).hash_code(), "array<Entity>@+"},
+    static unordered_map<size_t, string> as_types = {
+        {typeid(void).hash_code(), "void"},
+        {typeid(bool).hash_code(), "bool"},
+        {typeid(char).hash_code(), "int8"},
+        {typeid(short).hash_code(), "int16"},
+        {typeid(int).hash_code(), "int"},
+        {typeid(int64).hash_code(), "int64"},
+        {typeid(uchar).hash_code(), "uint8"},
+        {typeid(ushort).hash_code(), "uint16"},
+        {typeid(uint).hash_code(), "uint"},
+        {typeid(uint64).hash_code(), "uint64"},
+        {typeid(string).hash_code(), "string"},
+        {typeid(float).hash_code(), "float"},
+        {typeid(double).hash_code(), "double"},
+        {typeid(Entity).hash_code(), "Entity@+"},
+        {typeid(vector<Entity>).hash_code(), "array<Entity>@+"},
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
-		{typeid(Player).hash_code(), "Player@+"},
-		{typeid(Item).hash_code(), "Item@+"},
-		{typeid(Critter).hash_code(), "Critter@+"},
-		{typeid(Map).hash_code(), "Map@+"},
-		{typeid(Location).hash_code(), "Location@+"},
-		{typeid(vector<Player>).hash_code(), "array<Player>@+"},
-		{typeid(vector<Item>).hash_code(), "array<Item>@+"},
-		{typeid(vector<Critter>).hash_code(), "array<Critter>@+"},
-		{typeid(vector<Map>).hash_code(), "array<Map>@+"},
-		{typeid(vector<Location>).hash_code(), "array<Location>@+"},
+        {typeid(Player).hash_code(), "Player@+"},
+        {typeid(Item).hash_code(), "Item@+"},
+        {typeid(Critter).hash_code(), "Critter@+"},
+        {typeid(Map).hash_code(), "Map@+"},
+        {typeid(Location).hash_code(), "Location@+"},
+        {typeid(vector<Player>).hash_code(), "array<Player>@+"},
+        {typeid(vector<Item>).hash_code(), "array<Item>@+"},
+        {typeid(vector<Critter>).hash_code(), "array<Critter>@+"},
+        {typeid(vector<Map>).hash_code(), "array<Map>@+"},
+        {typeid(vector<Location>).hash_code(), "array<Location>@+"},
 #else
-		{typeid(PlayerView).hash_code(), "Player@+"},
-		{typeid(ItemView).hash_code(), "Item@+"},
-		{typeid(CritterView).hash_code(), "Critter@+"},
-		{typeid(MapView).hash_code(), "Map@+"},
-		{typeid(LocationView).hash_code(), "Location@+"},
-		{typeid(vector<PlayerView>).hash_code(), "array<Player>@+"},
-		{typeid(vector<ItemView>).hash_code(), "array<Item>@+"},
-		{typeid(vector<CritterView>).hash_code(), "array<Critter>@+"},
-		{typeid(vector<MapView>).hash_code(), "array<Map>@+"},
-		{typeid(vector<LocationView>).hash_code(), "array<Location>@+"},
+        {typeid(PlayerView).hash_code(), "Player@+"},
+        {typeid(ItemView).hash_code(), "Item@+"},
+        {typeid(CritterView).hash_code(), "Critter@+"},
+        {typeid(MapView).hash_code(), "Map@+"},
+        {typeid(LocationView).hash_code(), "Location@+"},
+        {typeid(vector<PlayerView>).hash_code(), "array<Player>@+"},
+        {typeid(vector<ItemView>).hash_code(), "array<Item>@+"},
+        {typeid(vector<CritterView>).hash_code(), "array<Critter>@+"},
+        {typeid(vector<MapView>).hash_code(), "array<Map>@+"},
+        {typeid(vector<LocationView>).hash_code(), "array<Location>@+"},
 #endif
-		{typeid(vector<char>).hash_code(), "array<int8>@+"},
-		{typeid(vector<short>).hash_code(), "array<int16>@+"},
-		{typeid(vector<int>).hash_code(), "array<int>@+"},
-		{typeid(vector<int64>).hash_code(), "array<int64>@+"},
-		{typeid(vector<uchar>).hash_code(), "array<uint8>@+"},
-		{typeid(vector<ushort>).hash_code(), "array<uint16>@+"},
-		{typeid(vector<uint>).hash_code(), "array<uint>@+"},
-		{typeid(vector<uint64>).hash_code(), "array<uint64>@+"},
-		{typeid(vector<string>).hash_code(), "array<string>@+"},
-		{typeid(vector<bool>).hash_code(), "array<bool>@+"},
-		{typeid(vector<float>).hash_code(), "array<float>@+"},
-		{typeid(vector<double>).hash_code(), "array<double>@+"},
-		{typeid(map<int, int>).hash_code(), "dict<int, int>@+"},
-		{typeid(map<string, string>).hash_code(), "dict<string, string>@+"},
-		{typeid(map<string, int>).hash_code(), "dict<string, int>@+"},
-		{typeid(MapSprite).hash_code(), "MapSprite@+"},
-	};
-	RUNTIME_ASSERT_STR(as_types.count(typeid(T).hash_code()), typeid(T).name());
-	string type = as_types[typeid(T).hash_code()];
-	if (name.empty() && type[type.length() - 1] == '+')
-		type.pop_back();
-	return name.empty() ? type : type + " " + name;
+        {typeid(vector<char>).hash_code(), "array<int8>@+"},
+        {typeid(vector<short>).hash_code(), "array<int16>@+"},
+        {typeid(vector<int>).hash_code(), "array<int>@+"},
+        {typeid(vector<int64>).hash_code(), "array<int64>@+"},
+        {typeid(vector<uchar>).hash_code(), "array<uint8>@+"},
+        {typeid(vector<ushort>).hash_code(), "array<uint16>@+"},
+        {typeid(vector<uint>).hash_code(), "array<uint>@+"},
+        {typeid(vector<uint64>).hash_code(), "array<uint64>@+"},
+        {typeid(vector<string>).hash_code(), "array<string>@+"},
+        {typeid(vector<bool>).hash_code(), "array<bool>@+"},
+        {typeid(vector<float>).hash_code(), "array<float>@+"},
+        {typeid(vector<double>).hash_code(), "array<double>@+"},
+        {typeid(map<int, int>).hash_code(), "dict<int, int>@+"},
+        {typeid(map<string, string>).hash_code(), "dict<string, string>@+"},
+        {typeid(map<string, int>).hash_code(), "dict<string, int>@+"},
+        {typeid(MapSprite).hash_code(), "MapSprite@+"},
+    };
+    RUNTIME_ASSERT_STR(as_types.count(typeid(T).hash_code()), typeid(T).name());
+    string type = as_types[typeid(T).hash_code()];
+    if (name.empty() && type[type.length() - 1] == '+')
+        type.pop_back();
+    return name.empty() ? type : type + " " + name;
 }
 
 inline string MergeASTypes(vector<string> args)
 {
-	string result;
-	for (size_t i = 0; i < args.size(); i++)
-		result += (i > 0 ? ", " : "") + args[i];
-	return result;
+    string result;
+    for (size_t i = 0; i < args.size(); i++)
+        result += (i > 0 ? ", " : "") + args[i];
+    return result;
 }
 
 inline string MakeMethodDecl(string name, string ret, string decl)
 {
-	return fmt::format("{} {}({})", ret, name, decl);
+    return fmt::format("{} {}({})", ret, name, decl);
 }
 
 #define FO_API_PARTLY_UNDEF 1
@@ -755,19 +755,19 @@ struct ASLocation : ASEntity
 template<class T>
 static ASEntity* EntityDownCast(T* a)
 {
-	if (!a)
-		return nullptr;
+    if (!a)
+        return nullptr;
 
-	ASEntity* b = (ASEntity*)a;
-	b->AddRef();
-	return b;
+    ASEntity* b = (ASEntity*)a;
+    b->AddRef();
+    return b;
 }
 
 template<class T>
 static T* EntityUpCast(ASEntity* a)
 {
-	if (!a)
-		return nullptr;
+    if (!a)
+        return nullptr;
 
 #define CHECK_CAST(cast_class, entity_type) \
     if (std::is_same<T, cast_class>::value && a->GameEntity->Type == entity_type) { \
@@ -775,41 +775,41 @@ static T* EntityUpCast(ASEntity* a)
         b->AddRef(); \
         return b; \
     }
-	CHECK_CAST(ASPlayer, EntityType::Player);
-	CHECK_CAST(ASLocation, EntityType::Location);
-	CHECK_CAST(ASMap, EntityType::Map);
-	CHECK_CAST(ASCritter, EntityType::Critter);
-	CHECK_CAST(ASItem, EntityType::Item);
-	CHECK_CAST(ASLocation, EntityType::LocationView);
-	CHECK_CAST(ASMap, EntityType::MapView);
-	CHECK_CAST(ASCritter, EntityType::CritterView);
-	CHECK_CAST(ASItem, EntityType::ItemView);
-	CHECK_CAST(ASItem, EntityType::ItemHexView);
+    CHECK_CAST(ASPlayer, EntityType::Player);
+    CHECK_CAST(ASLocation, EntityType::Location);
+    CHECK_CAST(ASMap, EntityType::Map);
+    CHECK_CAST(ASCritter, EntityType::Critter);
+    CHECK_CAST(ASItem, EntityType::Item);
+    CHECK_CAST(ASLocation, EntityType::LocationView);
+    CHECK_CAST(ASMap, EntityType::MapView);
+    CHECK_CAST(ASCritter, EntityType::CritterView);
+    CHECK_CAST(ASItem, EntityType::ItemView);
+    CHECK_CAST(ASItem, EntityType::ItemHexView);
 #undef CHECK_CAST
 
-	return nullptr;
+    return nullptr;
 }
 
 static const string ContextStatesStr[] = {
-	"Finished",
-	"Suspended",
-	"Aborted",
-	"Exception",
-	"Prepared",
-	"Uninitialized",
-	"Active",
-	"Error",
+    "Finished",
+    "Suspended",
+    "Aborted",
+    "Exception",
+    "Prepared",
+    "Uninitialized",
+    "Active",
+    "Error",
 };
 
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
-	const char* type = "Error";
-	if (msg->type == asMSGTYPE_WARNING)
-		type = "Warning";
-	else if (msg->type == asMSGTYPE_INFORMATION)
-		type = "Info";
+    const char* type = "Error";
+    if (msg->type == asMSGTYPE_WARNING)
+        type = "Warning";
+    else if (msg->type == asMSGTYPE_INFORMATION)
+        type = "Info";
 
-	WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message, Preprocessor::ResolveOriginalLine(msg->row));
+    WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message, Preprocessor::ResolveOriginalLine(msg->row));
 }
 
 #if FO_ANGELSCRIPT_COMPILER
@@ -820,76 +820,76 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
 
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
-	asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
-	RUNTIME_ASSERT(engine);
+    asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
+    RUNTIME_ASSERT(engine);
 
 #if !FO_ANGELSCRIPT_COMPILER
-	_pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
-	_pAngelScriptImpl->Engine = engine;
-	// asEngine->ShutDownAndRelease();
+    _pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
+    _pAngelScriptImpl->Engine = engine;
+    // asEngine->ShutDownAndRelease();
 #endif
 
-	int as_result;
-	AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
+    int as_result;
+    AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
 
-	AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
-	AS_VERIFY(engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true));
-	AS_VERIFY(engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true));
-	AS_VERIFY(engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true));
-	AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true));
-	AS_VERIFY(engine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true));
-	AS_VERIFY(engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true));
-	AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
-	AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_UNSAFE_REFERENCES, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_USE_CHARACTER_LITERALS, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_ALWAYS_IMPL_DEFAULT_CONSTRUCT, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_BUILD_WITHOUT_LINE_CUES, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_EMPTY_LIST_ELEMENTS, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_PRIVATE_PROP_AS_PROTECTED, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
+    AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
 
-	RegisterScriptArray(engine, true);
-	ScriptExtensions::RegisterScriptArrayExtensions(engine);
-	RegisterStdString(engine);
-	ScriptExtensions::RegisterScriptStdStringExtensions(engine);
-	RegisterScriptAny(engine);
-	RegisterScriptDictionary(engine);
-	RegisterScriptDict(engine);
-	ScriptExtensions::RegisterScriptDictExtensions(engine);
-	RegisterScriptFile(engine);
-	RegisterScriptFileSystem(engine);
-	RegisterScriptDateTime(engine);
-	RegisterScriptMath(engine);
-	RegisterScriptWeakRef(engine);
-	RegisterScriptReflection(engine);
+    RegisterScriptArray(engine, true);
+    ScriptExtensions::RegisterScriptArrayExtensions(engine);
+    RegisterStdString(engine);
+    ScriptExtensions::RegisterScriptStdStringExtensions(engine);
+    RegisterScriptAny(engine);
+    RegisterScriptDictionary(engine);
+    RegisterScriptDict(engine);
+    ScriptExtensions::RegisterScriptDictExtensions(engine);
+    RegisterScriptFile(engine);
+    RegisterScriptFileSystem(engine);
+    RegisterScriptDateTime(engine);
+    RegisterScriptMath(engine);
+    RegisterScriptWeakRef(engine);
+    RegisterScriptReflection(engine);
 
 #if !FO_ANGELSCRIPT_COMPILER
-	engine->SetUserData(_mainObj);
+    engine->SetUserData(_mainObj);
 #endif
 
-	AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
-	AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
+    AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
+    AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
 
 #if FO_CLIENT_SCRIPTING || FO_MAPPER_SCRIPTING
-	AS_VERIFY(engine->RegisterObjectType("MapSprite", sizeof(MapSprite), asOBJ_REF));
-	AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(MapSprite, AddRef), SCRIPT_METHOD_CONV));
-	AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(MapSprite, Release), SCRIPT_METHOD_CONV));
-	AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_FACTORY, "MapSprite@ f()", SCRIPT_FUNC(MapSprite::Factory), SCRIPT_FUNC_CONV));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool Valid", offsetof(MapSprite, Valid)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint SprId", offsetof(MapSprite, SprId)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint16 HexX", offsetof(MapSprite, HexX)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint16 HexY", offsetof(MapSprite, HexY)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "hash ProtoId", offsetof(MapSprite, ProtoId)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int FrameIndex", offsetof(MapSprite, FrameIndex)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int OffsX", offsetof(MapSprite, OffsX)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int OffsY", offsetof(MapSprite, OffsY)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsFlat", offsetof(MapSprite, IsFlat)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool NoLight", offsetof(MapSprite, NoLight)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int DrawOrder", offsetof(MapSprite, DrawOrder)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int DrawOrderHyOffset", offsetof(MapSprite, DrawOrderHyOffset)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int Corner", offsetof(MapSprite, Corner)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool DisableEgg", offsetof(MapSprite, DisableEgg)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint Color", offsetof(MapSprite, Color)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint ContourColor", offsetof(MapSprite, ContourColor)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsTweakOffs", offsetof(MapSprite, IsTweakOffs)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int16 TweakOffsX", offsetof(MapSprite, TweakOffsX)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int16 TweakOffsY", offsetof(MapSprite, TweakOffsY)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsTweakAlpha", offsetof(MapSprite, IsTweakAlpha)));
-	AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint8 TweakAlpha", offsetof(MapSprite, TweakAlpha)));
+    AS_VERIFY(engine->RegisterObjectType("MapSprite", sizeof(MapSprite), asOBJ_REF));
+    AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(MapSprite, AddRef), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(MapSprite, Release), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("MapSprite", asBEHAVE_FACTORY, "MapSprite@ f()", SCRIPT_FUNC(MapSprite::Factory), SCRIPT_FUNC_CONV));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool Valid", offsetof(MapSprite, Valid)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint SprId", offsetof(MapSprite, SprId)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint16 HexX", offsetof(MapSprite, HexX)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint16 HexY", offsetof(MapSprite, HexY)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "hash ProtoId", offsetof(MapSprite, ProtoId)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int FrameIndex", offsetof(MapSprite, FrameIndex)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int OffsX", offsetof(MapSprite, OffsX)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int OffsY", offsetof(MapSprite, OffsY)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsFlat", offsetof(MapSprite, IsFlat)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool NoLight", offsetof(MapSprite, NoLight)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int DrawOrder", offsetof(MapSprite, DrawOrder)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int DrawOrderHyOffset", offsetof(MapSprite, DrawOrderHyOffset)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int Corner", offsetof(MapSprite, Corner)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool DisableEgg", offsetof(MapSprite, DisableEgg)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint Color", offsetof(MapSprite, Color)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint ContourColor", offsetof(MapSprite, ContourColor)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsTweakOffs", offsetof(MapSprite, IsTweakOffs)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int16 TweakOffsX", offsetof(MapSprite, TweakOffsX)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "int16 TweakOffsY", offsetof(MapSprite, TweakOffsY)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "bool IsTweakAlpha", offsetof(MapSprite, IsTweakAlpha)));
+    AS_VERIFY(engine->RegisterObjectProperty("MapSprite", "uint8 TweakAlpha", offsetof(MapSprite, TweakAlpha)));
 #endif
 
 #define FO_API_ENUM_GROUP(name) AS_VERIFY(engine->RegisterEnum(#name));
@@ -911,34 +911,34 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
-	REGISTER_ENTITY("Entity", ASEntity);
-	REGISTER_ENTITY("Player", ASPlayer);
-	REGISTER_ENTITY_CAST("Player", ASPlayer);
-	REGISTER_ENTITY("Item", ASItem);
-	REGISTER_ENTITY_CAST("Item", ASItem);
-	REGISTER_ENTITY("Critter", ASCritter);
-	REGISTER_ENTITY_CAST("Critter", ASCritter);
-	REGISTER_ENTITY("Map", ASMap);
-	REGISTER_ENTITY_CAST("Map", ASMap);
-	REGISTER_ENTITY("Location", ASLocation);
-	REGISTER_ENTITY_CAST("Location", ASLocation);
+    REGISTER_ENTITY("Entity", ASEntity);
+    REGISTER_ENTITY("Player", ASPlayer);
+    REGISTER_ENTITY_CAST("Player", ASPlayer);
+    REGISTER_ENTITY("Item", ASItem);
+    REGISTER_ENTITY_CAST("Item", ASItem);
+    REGISTER_ENTITY("Critter", ASCritter);
+    REGISTER_ENTITY_CAST("Critter", ASCritter);
+    REGISTER_ENTITY("Map", ASMap);
+    REGISTER_ENTITY_CAST("Map", ASMap);
+    REGISTER_ENTITY("Location", ASLocation);
+    REGISTER_ENTITY_CAST("Location", ASLocation);
 
-	AS_VERIFY(engine->RegisterFuncdef("bool EntityPredicate(Entity@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("void EntityCallback(Entity@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("bool PlayerPredicate(Player@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("void PlayerCallback(Player@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("bool ItemPredicate(Item@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("void ItemCallback(Item@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("bool CritterPredicate(Critter@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("void CritterCallback(Critter@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("void uintCallback(uint)"));
-	AS_VERIFY(engine->RegisterFuncdef("bool MapPredicate(Map@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("void MapCallback(Map@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("bool LocationPredicate(Location@+)"));
-	AS_VERIFY(engine->RegisterFuncdef("void LocationCallback(Location@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("bool EntityPredicate(Entity@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("void EntityCallback(Entity@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("bool PlayerPredicate(Player@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("void PlayerCallback(Player@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("bool ItemPredicate(Item@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("void ItemCallback(Item@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("bool CritterPredicate(Critter@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("void CritterCallback(Critter@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("void uintCallback(uint)"));
+    AS_VERIFY(engine->RegisterFuncdef("bool MapPredicate(Map@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("void MapCallback(Map@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("bool LocationPredicate(Location@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("void LocationCallback(Location@+)"));
 #if FO_CLIENT_SCRIPTING
-	// AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &BIND_CLASS ClientCurMap));
-	// AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &BIND_CLASS ClientCurLocation));
+    // AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &BIND_CLASS ClientCurMap));
+    // AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &BIND_CLASS ClientCurLocation));
 #endif
 
 #define FO_API_ARG(type, name) GetASType<type>(#name)
@@ -1026,200 +1026,200 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #include "ScriptApi.h"
 
 #if FO_ANGELSCRIPT_COMPILER
-	CompileRootModule(engine, script_path);
-	engine->ShutDownAndRelease();
+    CompileRootModule(engine, script_path);
+    engine->ShutDownAndRelease();
 #else
-	File script_file = _fileMngr.ReadFile("...");
-	RestoreRootModule(engine, script_file);
+    File script_file = _fileMngr.ReadFile("...");
+    RestoreRootModule(engine, script_file);
 #endif
 }
 
 class BinaryStream : public asIBinaryStream
 {
 public:
-	BinaryStream(std::vector<asBYTE>& buf) : _binBuf{ buf } { }
+    BinaryStream(std::vector<asBYTE>& buf) : _binBuf {buf} { }
 
-	void Write(const void* ptr, asUINT size) override
-	{
-		if (!ptr || !size)
-			return;
-		_binBuf.resize(_binBuf.size() + size);
-		std::memcpy(&_binBuf[_writePos], ptr, size);
-		_writePos += size;
-	}
+    void Write(const void* ptr, asUINT size) override
+    {
+        if (!ptr || !size)
+            return;
+        _binBuf.resize(_binBuf.size() + size);
+        std::memcpy(&_binBuf[_writePos], ptr, size);
+        _writePos += size;
+    }
 
-	void Read(void* ptr, asUINT size) override
-	{
-		if (!ptr || !size)
-			return;
-		std::memcpy(ptr, &_binBuf[_readPos], size);
-		_readPos += size;
-	}
+    void Read(void* ptr, asUINT size) override
+    {
+        if (!ptr || !size)
+            return;
+        std::memcpy(ptr, &_binBuf[_readPos], size);
+        _readPos += size;
+    }
 
-	auto GetBuf() -> std::vector<asBYTE>& { return _binBuf; }
+    auto GetBuf() -> std::vector<asBYTE>& { return _binBuf; }
 
 private:
-	std::vector<asBYTE>& _binBuf;
-	int _readPos{};
-	int _writePos{};
+    std::vector<asBYTE>& _binBuf;
+    int _readPos {};
+    int _writePos {};
 };
 
 #if FO_ANGELSCRIPT_COMPILER
 static void CompileRootModule(asIScriptEngine* engine, const string& script_path)
 {
-	RUNTIME_ASSERT(engine->GetModuleCount() == 0);
+    RUNTIME_ASSERT(engine->GetModuleCount() == 0);
 
-	// File loader
-	class ScriptLoader : public Preprocessor::FileLoader
-	{
-	public:
-		ScriptLoader(vector<uchar>& root) : _rootScript{ &root } { }
+    // File loader
+    class ScriptLoader : public Preprocessor::FileLoader
+    {
+    public:
+        ScriptLoader(vector<uchar>& root) : _rootScript {&root} { }
 
-		auto LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) -> bool override
-		{
-			if (_rootScript) {
-				data.resize(_rootScript->size());
-				std::memcpy(data.data(), _rootScript->data(), _rootScript->size());
-				_rootScript = nullptr;
-				file_path = "(Root)";
-				return true;
-			}
+        auto LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) -> bool override
+        {
+            if (_rootScript) {
+                data.resize(_rootScript->size());
+                std::memcpy(data.data(), _rootScript->data(), _rootScript->size());
+                _rootScript = nullptr;
+                file_path = "(Root)";
+                return true;
+            }
 
-			_includeDeep++;
+            _includeDeep++;
 
-			file_path = _str(file_name).extractFileName().eraseFileExtension();
-			data.resize(0);
+            file_path = _str(file_name).extractFileName().eraseFileExtension();
+            data.resize(0);
 
-			if (_includeDeep == 1) {
-				auto script_file = DiskFileSystem::OpenFile(file_name, false);
-				if (!script_file) {
-					return false;
-				}
-				if (script_file.GetSize() == 0) {
-					return true;
-				}
+            if (_includeDeep == 1) {
+                auto script_file = DiskFileSystem::OpenFile(file_name, false);
+                if (!script_file) {
+                    return false;
+                }
+                if (script_file.GetSize() == 0) {
+                    return true;
+                }
 
-				data.resize(script_file.GetSize());
-				if (!script_file.Read(data.data(), script_file.GetSize())) {
-					return false;
-				}
+                data.resize(script_file.GetSize());
+                if (!script_file.Read(data.data(), script_file.GetSize())) {
+                    return false;
+                }
 
-				return true;
-			}
+                return true;
+            }
 
-			return Preprocessor::FileLoader::LoadFile(dir, file_name, data, file_path);
-		}
+            return Preprocessor::FileLoader::LoadFile(dir, file_name, data, file_path);
+        }
 
-		void FileLoaded() override { _includeDeep--; }
+        void FileLoaded() override { _includeDeep--; }
 
-	private:
-		vector<uchar>* _rootScript{};
-		int _includeDeep{ 0 };
-	};
+    private:
+        vector<uchar>* _rootScript {};
+        int _includeDeep {0};
+    };
 
-	auto script_file = DiskFileSystem::OpenFile(script_path, false);
-	if (!script_file) {
-		throw ScriptCompilerException("Root script file not found", script_path);
-	}
-	if (script_file.GetSize() == 0) {
-		throw ScriptCompilerException("Root script file is empty", script_path);
-	}
+    auto script_file = DiskFileSystem::OpenFile(script_path, false);
+    if (!script_file) {
+        throw ScriptCompilerException("Root script file not found", script_path);
+    }
+    if (script_file.GetSize() == 0) {
+        throw ScriptCompilerException("Root script file is empty", script_path);
+    }
 
-	vector<uchar> script_data(script_file.GetSize());
-	if (!script_file.Read(script_data.data(), script_file.GetSize())) {
-		throw ScriptCompilerException("Can't read root script file", script_path);
-	}
+    vector<uchar> script_data(script_file.GetSize());
+    if (!script_file.Read(script_data.data(), script_file.GetSize())) {
+        throw ScriptCompilerException("Can't read root script file", script_path);
+    }
 
-	Preprocessor::UndefAll();
+    Preprocessor::UndefAll();
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
-	Preprocessor::Define("SERVER");
+    Preprocessor::Define("SERVER");
 #elif FO_CLIENT_SCRIPTING
-	Preprocessor::Define("CLIENT");
+    Preprocessor::Define("CLIENT");
 #elif FO_MAPPER_SCRIPTING
-	Preprocessor::Define("MAPPER");
+    Preprocessor::Define("MAPPER");
 #endif
 
-	ScriptLoader loader{ script_data };
-	Preprocessor::StringOutStream result, errors;
-	auto errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
+    ScriptLoader loader {script_data};
+    Preprocessor::StringOutStream result, errors;
+    auto errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
 
-	while (!errors.String.empty() && errors.String.back() == '\n') {
-		errors.String.pop_back();
-	}
+    while (!errors.String.empty() && errors.String.back() == '\n') {
+        errors.String.pop_back();
+    }
 
-	if (errors_count) {
-		throw ScriptCompilerException("Preprocessor failed", errors.String);
-	}
-	else if (!errors.String.empty()) {
-		WriteLog("Preprocessor message: {}.\n", errors.String);
-	}
+    if (errors_count) {
+        throw ScriptCompilerException("Preprocessor failed", errors.String);
+    }
+    else if (!errors.String.empty()) {
+        WriteLog("Preprocessor message: {}.\n", errors.String);
+    }
 
-	asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
-	if (!mod) {
-		throw ScriptCompilerException("Create root module failed");
-	}
+    asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
+    if (!mod) {
+        throw ScriptCompilerException("Create root module failed");
+    }
 
-	int as_result = mod->AddScriptSection("Root", result.String.c_str());
-	if (as_result < 0) {
-		throw ScriptCompilerException("Unable to add script section", as_result);
-	}
+    int as_result = mod->AddScriptSection("Root", result.String.c_str());
+    if (as_result < 0) {
+        throw ScriptCompilerException("Unable to add script section", as_result);
+    }
 
-	as_result = mod->Build();
-	if (as_result < 0) {
-		throw ScriptCompilerException("Unable to build module", as_result);
-	}
+    as_result = mod->Build();
+    if (as_result < 0) {
+        throw ScriptCompilerException("Unable to build module", as_result);
+    }
 
-	vector<asBYTE> buf;
-	BinaryStream binary{ buf };
-	as_result = mod->SaveByteCode(&binary);
-	if (as_result < 0) {
-		throw ScriptCompilerException("Unable to save byte code", as_result);
-	}
+    vector<asBYTE> buf;
+    BinaryStream binary {buf};
+    as_result = mod->SaveByteCode(&binary);
+    if (as_result < 0) {
+        throw ScriptCompilerException("Unable to save byte code", as_result);
+    }
 
-	Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
-	vector<uchar> lnt_data;
-	Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
+    Preprocessor::LineNumberTranslator* lnt = Preprocessor::GetLineNumberTranslator();
+    vector<uchar> lnt_data;
+    Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
 
-	vector<uchar> data;
-	DataWriter writer{ data };
-	writer.Write((uint)buf.size());
-	writer.WritePtr(buf.data(), buf.size());
-	writer.Write((uint)lnt_data.size());
-	writer.WritePtr(lnt_data.data(), lnt_data.size());
+    vector<uchar> data;
+    DataWriter writer {data};
+    writer.Write((uint)buf.size());
+    writer.WritePtr(buf.data(), buf.size());
+    writer.Write((uint)lnt_data.size());
+    writer.WritePtr(lnt_data.data(), lnt_data.size());
 
-	auto file = DiskFileSystem::OpenFile(script_path + "b", true);
-	if (!file) {
-		throw ScriptCompilerException("Can't write binary to file", script_path + "b");
-	}
-	if (!file.Write(data.data(), (uint)data.size())) {
-		throw ScriptCompilerException("Can't write binary to file", script_path + "b");
-	}
+    auto file = DiskFileSystem::OpenFile(script_path + "b", true);
+    if (!file) {
+        throw ScriptCompilerException("Can't write binary to file", script_path + "b");
+    }
+    if (!file.Write(data.data(), (uint)data.size())) {
+        throw ScriptCompilerException("Can't write binary to file", script_path + "b");
+    }
 }
 
 #else
 static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
 {
-	RUNTIME_ASSERT(engine->GetModuleCount() == 0);
-	RUNTIME_ASSERT(script_file);
+    RUNTIME_ASSERT(engine->GetModuleCount() == 0);
+    RUNTIME_ASSERT(script_file);
 
-	DataReader reader{ script_file.GetBuf() };
-	vector<asBYTE> buf(reader.Read<uint>());
-	std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
-	vector<uchar> lnt_data(reader.Read<uint>());
-	std::memcpy(lnt_data.data(), reader.ReadPtr<uchar>(lnt_data.size()), lnt_data.size());
-	RUNTIME_ASSERT(!buf.empty());
-	RUNTIME_ASSERT(!lnt_data.empty());
+    DataReader reader {script_file.GetBuf()};
+    vector<asBYTE> buf(reader.Read<uint>());
+    std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
+    vector<uchar> lnt_data(reader.Read<uint>());
+    std::memcpy(lnt_data.data(), reader.ReadPtr<uchar>(lnt_data.size()), lnt_data.size());
+    RUNTIME_ASSERT(!buf.empty());
+    RUNTIME_ASSERT(!lnt_data.empty());
 
-	asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
-	if (!mod)
-		throw ScriptException("Create root module fail");
+    asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
+    if (!mod)
+        throw ScriptException("Create root module fail");
 
-	Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
+    Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
 
-	BinaryStream binary{ buf };
-	int as_result = mod->LoadByteCode(&binary);
-	if (as_result < 0)
-		throw ScriptException("Can't load binary", as_result);
+    BinaryStream binary {buf};
+    int as_result = mod->LoadByteCode(&binary);
+    if (as_result < 0)
+        throw ScriptException("Can't load binary", as_result);
 }
 #endif
 
@@ -1232,7 +1232,7 @@ struct ScriptSystem::AngelScriptImpl
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
 #if FO_ANGELSCRIPT_COMPILER
-	throw ScriptCompilerException("AngelScript not supported");
+    throw ScriptCompilerException("AngelScript not supported");
 #endif
 }
 #endif

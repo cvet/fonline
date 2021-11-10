@@ -401,7 +401,7 @@ public:
     RefCounter(const RefCounter&) = delete;
     RefCounter(RefCounter&&) = delete;
     auto operator=(const RefCounter&) -> RefCounter& = delete;
-    auto operator=(RefCounter&&) -> RefCounter& = delete;
+    auto operator=(RefCounter &&) -> RefCounter& = delete;
 
     virtual ~RefCounter()
     {
@@ -556,7 +556,7 @@ public:
     MemoryPool(const MemoryPool&) = delete;
     MemoryPool(MemoryPool&&) noexcept = default;
     auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool&&) -> MemoryPool& = delete;
+    auto operator=(MemoryPool &&) -> MemoryPool& = delete;
 
     ~MemoryPool()
     {
