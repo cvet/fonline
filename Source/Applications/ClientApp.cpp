@@ -41,6 +41,7 @@
 #include "Timer.h"
 #include "Version-Include.h"
 #if FO_SINGLEPLAYER
+#include "Networking.h"
 #include "Server.h"
 #endif
 
@@ -64,6 +65,12 @@ NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, co
 NetServerBase* NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
 {
     throw UnreachablePlaceException(LINE_STR);
+}
+void NetConnection::AddRef() const
+{
+}
+void NetConnection::Release() const
+{
 }
 void ClientScriptSystem::InitNativeScripting()
 {
