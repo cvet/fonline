@@ -2605,7 +2605,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                 letter = str[i];
                 i_advance = 1;
                 if (fmt_type == FORMAT_TYPE_DRAW) {
-                    for (auto k = i, l = MAX_FOTEXT - (j - i); k < l; k++) {
+                    for (auto k = i, l = FONT_BUF_LEN - (j - i); k < l; k++) {
                         fi.ColorDots[k] = fi.ColorDots[k + (j - i)];
                     }
                 }
@@ -2631,7 +2631,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                     i_advance = 1;
                     StrInsert(&str[i], "\n", 0);
                     if (fmt_type == FORMAT_TYPE_DRAW) {
-                        for (auto k = MAX_FOTEXT - 1; k > i; k--) {
+                        for (auto k = FONT_BUF_LEN - 1; k > i; k--) {
                             fi.ColorDots[k] = fi.ColorDots[k - 1];
                         }
                     }
@@ -2649,7 +2649,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
                     if (j > ii) {
                         StrEraseInterval(&str[ii], j - ii);
                         if (fmt_type == FORMAT_TYPE_DRAW) {
-                            for (auto k = ii, l = MAX_FOTEXT - (j - ii); k < l; k++) {
+                            for (auto k = ii, l = FONT_BUF_LEN - (j - ii); k < l; k++) {
                                 fi.ColorDots[k] = fi.ColorDots[k + (j - ii)];
                             }
                         }

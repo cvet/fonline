@@ -755,36 +755,40 @@ struct ASLocation : ASEntity
 template<class T>
 static ASEntity* EntityDownCast(T* a)
 {
-    if (!a)
-        return nullptr;
+	if (!a) {
+		return nullptr;
+	}
 
-    ASEntity* b = (ASEntity*)a;
-    b->AddRef();
-    return b;
+	auto* b = static_cast<ASEntity*>(a);
+	b->AddRef();
+	return b;
 }
 
 template<class T>
 static T* EntityUpCast(ASEntity* a)
 {
-    if (!a)
-        return nullptr;
+	if (!a) {
+		return nullptr;
+	}
 
 #define CHECK_CAST(cast_class, entity_type) \
-    if (std::is_same<T, cast_class>::value && a->GameEntity->Type == entity_type) { \
-        T* b = (T*)a; \
-        b->AddRef(); \
-        return b; \
-    }
-    CHECK_CAST(ASPlayer, EntityType::Player);
-    CHECK_CAST(ASLocation, EntityType::Location);
-    CHECK_CAST(ASMap, EntityType::Map);
-    CHECK_CAST(ASCritter, EntityType::Critter);
-    CHECK_CAST(ASItem, EntityType::Item);
-    CHECK_CAST(ASLocation, EntityType::LocationView);
-    CHECK_CAST(ASMap, EntityType::MapView);
-    CHECK_CAST(ASCritter, EntityType::CritterView);
-    CHECK_CAST(ASItem, EntityType::ItemView);
-    CHECK_CAST(ASItem, EntityType::ItemHexView);
+	if constexpr (std::is_same<T, cast_class>::value) { \
+		if (a->GameEntity->Type == (entity_type)) { \
+			auto* b = static_cast<T*>(a); \
+			b->AddRef(); \
+			return b; \
+		} \
+	}
+	CHECK_CAST(ASPlayer, EntityType::Player);
+	CHECK_CAST(ASLocation, EntityType::Location);
+	CHECK_CAST(ASMap, EntityType::Map);
+	CHECK_CAST(ASCritter, EntityType::Critter);
+	CHECK_CAST(ASItem, EntityType::Item);
+	CHECK_CAST(ASLocation, EntityType::LocationView);
+	CHECK_CAST(ASMap, EntityType::MapView);
+	CHECK_CAST(ASCritter, EntityType::CritterView);
+	CHECK_CAST(ASItem, EntityType::ItemView);
+	CHECK_CAST(ASItem, EntityType::ItemHexView);
 #undef CHECK_CAST
 
     return nullptr;

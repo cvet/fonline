@@ -178,8 +178,8 @@ public:
     void Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text);
     void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg);
     void Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num_msg);
-    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
-    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
+    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const string& lexems);
+    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const string& lexems);
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
@@ -191,7 +191,7 @@ public:
     void Send_PlaySound(uint crid_synchronize, const string& sound_name);
     void Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text);
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
-    void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len);
+    void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const string& lexems);
     void Send_ViewMap();
     void Send_SomeItem(Item* item);
     void Send_CustomMessage(uint msg);

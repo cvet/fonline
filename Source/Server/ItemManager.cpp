@@ -620,11 +620,11 @@ void ItemManager::RadioSendText(Critter* cr, const string& text, bool unsafe_tex
     }
 
     for (uint i = 0, j = static_cast<uint>(radios.size()); i < j; i++) {
-        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(), text, unsafe_text, text_msg, num_str, nullptr);
+        RadioSendTextEx(channels[i], radios[i]->GetRadioBroadcastSend(), cr->GetMapId(), cr->GetWorldX(), cr->GetWorldY(), text, unsafe_text, text_msg, num_str, "");
     }
 }
 
-void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const string& text, bool unsafe_text, ushort text_msg, uint num_str, const char* lexems)
+void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const string& text, bool unsafe_text, ushort text_msg, uint num_str, const string& lexems)
 {
     // Broadcast
     if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && !(broadcast_type >= 101 && broadcast_type <= 200) /*RADIO_BROADCAST_ZONE*/) {
@@ -707,7 +707,7 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
                     if (!text.empty()) {
                         cr->Send_TextEx(radio->GetId(), text, SAY_RADIO, unsafe_text);
                     }
-                    else if (lexems != nullptr) {
+                    else if (!lexems.empty()) {
                         cr->Send_TextMsgLex(radio->GetId(), num_str, SAY_RADIO, text_msg, lexems);
                     }
                     else {
@@ -746,8 +746,8 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
                     if (!text.empty()) {
                         map->SetText(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text, unsafe_text);
                     }
-                    else if (lexems != nullptr) {
-                        map->SetTextMsgLex(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str, lexems, static_cast<ushort>(strlen(lexems)));
+                    else if (!lexems.empty()) {
+                        map->SetTextMsgLex(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str, lexems);
                     }
                     else {
                         map->SetTextMsg(radio->GetHexX(), radio->GetHexY(), 0xFFFFFFFE, text_msg, num_str);

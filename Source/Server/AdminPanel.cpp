@@ -223,12 +223,12 @@ static void AdminWork(FOServer* server, Session* session)
     // Commands loop
     while (server != nullptr) {
         // Get command
-        char cmd_raw[MAX_FOTEXT];
+        char cmd_raw[1024];
         std::memset(cmd_raw, 0, sizeof(cmd_raw));
 
         auto len = recv(session->Sock, cmd_raw, sizeof(cmd_raw), 0);
 
-        if (len <= 0 || len == MAX_FOTEXT) {
+        if (len <= 0 || len == 1024) {
             if (len == 0) {
                 WriteLog("Admin panel ({}): Socket closed, disconnect.\n", admin_name);
             }

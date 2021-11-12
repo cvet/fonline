@@ -987,7 +987,7 @@ void Critter::Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num
     }
 }
 
-void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
+void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const string& lexems)
 {
     NON_CONST_METHOD_HINT();
 
@@ -996,7 +996,7 @@ void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ush
     }
 }
 
-void Critter::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
+void Critter::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const string& lexems)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1104,12 +1104,12 @@ void Critter::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, 
     }
 }
 
-void Critter::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len)
+void Critter::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const string& lexems)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_MapTextMsgLex(hx, hy, color, num_msg, num_str, lexems, lexems_len);
+        _player->Send_MapTextMsgLex(hx, hy, color, num_msg, num_str, lexems);
     }
 }
 

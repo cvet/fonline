@@ -1873,7 +1873,7 @@ void FOMapper::ObjKeyDown(KeyCode dik, const char* dik_text)
     }
     else {
         if (!ObjCurLineIsConst) {
-            Keyb.FillChar(dik, dik_text, ObjCurLineValue, nullptr, MAX_FOTEXT, KIF_NO_SPEC_SYMBOLS);
+            Keyb.FillChar(dik, dik_text, ObjCurLineValue, nullptr, KIF_NO_SPEC_SYMBOLS);
         }
     }
 }
@@ -3739,7 +3739,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, const char* dik_text)
         ConsoleCur = static_cast<uint>(ConsoleStr.length());
         return;
     default:
-        Keyb.FillChar(dik, dik_text, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS);
+        Keyb.FillChar(dik, dik_text, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
         ConsoleLastKey = dik;
         ConsoleLastKeyText = dik_text;
         ConsoleKeyTick = GameTime.FrameTick();
@@ -3763,7 +3763,7 @@ void FOMapper::ConsoleProcess()
     if (static_cast<int>(GameTime.FrameTick() - ConsoleKeyTick) >= CONSOLE_KEY_TICK - ConsoleAccelerate) {
         ConsoleKeyTick = GameTime.FrameTick();
         ConsoleAccelerate = CONSOLE_MAX_ACCELERATE;
-        Keyb.FillChar(ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, MAX_CHAT_MESSAGE, KIF_NO_SPEC_SYMBOLS);
+        Keyb.FillChar(ConsoleLastKey, ConsoleLastKeyText, ConsoleStr, &ConsoleCur, KIF_NO_SPEC_SYMBOLS);
     }
 }
 

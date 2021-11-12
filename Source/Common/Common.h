@@ -942,8 +942,6 @@ static constexpr ushort MAXHEX_MIN = 10;
 static constexpr ushort MAXHEX_MAX = 4000;
 
 // Client parameters
-#define MAX_CHAT_MESSAGE (100)
-#define MAX_DLG_LEXEMS_TEXT (1000)
 #define FILE_UPDATE_PORTION (16384)
 
 // Answer

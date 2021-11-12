@@ -121,15 +121,9 @@ void ClientConnection::Send_TextMsg(uint num_str)
     CONNECTION_OUTPUT_END(this);
 }
 
-void ClientConnection::Send_TextMsgLex(uint num_str, const char* lexems)
+void ClientConnection::Send_TextMsgLex(uint num_str, const string& lexems)
 {
-    auto lex_len = static_cast<ushort>(::strlen(lexems));
-    if (lex_len == 0u || lex_len > MAX_DLG_LEXEMS_TEXT) {
-        Send_TextMsg(num_str);
-        return;
-    }
-
-    const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + sizeof(lex_len) + lex_len;
+    const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
 
     CONNECTION_OUTPUT_BEGIN(this);
     Bout << NETMSG_MSG_LEX;
@@ -138,7 +132,6 @@ void ClientConnection::Send_TextMsgLex(uint num_str, const char* lexems)
     Bout << static_cast<uchar>(SAY_NETMSG);
     Bout << static_cast<ushort>(TEXTMSG_GAME);
     Bout << num_str;
-    Bout << lex_len;
-    Bout.Push(lexems, lex_len);
+    Bout << lexems;
     CONNECTION_OUTPUT_END(this);
 }

@@ -894,23 +894,19 @@ void Player::Send_TextMsg(uint from_id, uint num_str, uchar how_say, ushort num_
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
+void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const string& lexems)
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled()) {
         return;
     }
     if (num_str == 0u) {
-        return;
-    }
-
-    auto lex_len = static_cast<ushort>(strlen(lexems));
-    if (lex_len == 0u || lex_len > MAX_DLG_LEXEMS_TEXT) {
-        Send_TextMsg(from_cr, num_str, how_say, num_msg);
         return;
     }
 
     const auto from_id = (from_cr != nullptr ? from_cr->GetId() : 0u);
-    const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + sizeof(lex_len) + lex_len;
+    const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_MSG_LEX;
@@ -919,13 +915,14 @@ void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
     Connection->Bout << how_say;
     Connection->Bout << num_msg;
     Connection->Bout << num_str;
-    Connection->Bout << lex_len;
-    Connection->Bout.Push(lexems, lex_len);
+    Connection->Bout << lexems;
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
+void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const string& lexems)
 {
+    NON_CONST_METHOD_HINT();
+
     if (IsSendDisabled()) {
         return;
     }
@@ -933,13 +930,7 @@ void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort n
         return;
     }
 
-    auto lex_len = static_cast<ushort>(strlen(lexems));
-    if (lex_len == 0u || lex_len > MAX_DLG_LEXEMS_TEXT) {
-        Send_TextMsg(from_id, num_str, how_say, num_msg);
-        return;
-    }
-
-    const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + sizeof(lex_len) + lex_len;
+    const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_MSG_LEX;
@@ -948,8 +939,7 @@ void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort n
     Connection->Bout << how_say;
     Connection->Bout << num_msg;
     Connection->Bout << num_str;
-    Connection->Bout << lex_len;
-    Connection->Bout.Push(lexems, lex_len);
+    Connection->Bout << lexems;
     CONNECTION_OUTPUT_END(Connection);
 }
 
@@ -992,7 +982,7 @@ void Player::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, u
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const char* lexems, ushort lexems_len)
+void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const string& lexems)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1000,7 +990,7 @@ void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg
         return;
     }
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) * 2 + sizeof(uint) + sizeof(ushort) + sizeof(uint) + sizeof(lexems_len) + lexems_len;
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) * 2 + sizeof(uint) + sizeof(ushort) + sizeof(uint) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
 
     CONNECTION_OUTPUT_BEGIN(Connection);
     Connection->Bout << NETMSG_MAP_TEXT_MSG_LEX;
@@ -1010,10 +1000,7 @@ void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg
     Connection->Bout << color;
     Connection->Bout << num_msg;
     Connection->Bout << num_str;
-    Connection->Bout << lexems_len;
-    if (lexems_len != 0u) {
-        Connection->Bout.Push(lexems, lexems_len);
-    }
+    Connection->Bout << lexems;
     CONNECTION_OUTPUT_END(Connection);
 }
 

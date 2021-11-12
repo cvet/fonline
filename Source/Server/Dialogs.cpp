@@ -499,7 +499,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         input >> value_str; \
         (val) = GenericUtils::ConvertParamValue(value_str, fail); \
     }
-        char value_str[MAX_FOTEXT];
+        char value_str[1024];
         if (values_count > 0)
             READ_SCRIPT_VALUE_(script_val[0])
         if (values_count > 1)

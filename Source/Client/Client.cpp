@@ -1710,14 +1710,12 @@ void FOClient::Net_SendText(const char* send_str, uchar how_say)
         return;
     }
 
-    auto len = static_cast<ushort>(str.length());
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(how_say) + sizeof(len) + len;
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(how_say) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(str.length());
 
     Bout << NETMSG_SEND_TEXT;
     Bout << msg_len;
     Bout << how_say;
-    Bout << len;
-    Bout.Push(str.c_str(), len);
+    Bout << str;
 }
 
 void FOClient::Net_SendDir()
@@ -2075,17 +2073,9 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     Bin >> msg_num;
     Bin >> num_str;
 
-    char lexems[MAX_DLG_LEXEMS_TEXT + 1] = {0};
+    string lexems;
     if (with_lexems) {
-        ushort lexems_len;
-        Bin >> lexems_len;
-        if (lexems_len != 0u && lexems_len <= MAX_DLG_LEXEMS_TEXT) {
-            Bin.Pop(lexems, lexems_len);
-            lexems[lexems_len] = '\0';
-        }
-        else {
-            Bin.SetError(true);
-        }
+        Bin >> lexems;
     }
 
     CHECK_IN_BUFF_ERROR();
@@ -2303,25 +2293,14 @@ void FOClient::Net_OnMapTextMsgLex()
     uint color;
     ushort msg_num;
     uint num_str;
-    ushort lexems_len;
+    string lexems;
     Bin >> msg_len;
     Bin >> hx;
     Bin >> hy;
     Bin >> color;
     Bin >> msg_num;
     Bin >> num_str;
-    Bin >> lexems_len;
-
-    char lexems[MAX_DLG_LEXEMS_TEXT + 1] = {0};
-    if (lexems_len > 0u) {
-        if (lexems_len <= MAX_DLG_LEXEMS_TEXT) {
-            Bin.Pop(lexems, lexems_len);
-            lexems[lexems_len] = '\0';
-        }
-        else {
-            Bin.SetError(true);
-        }
-    }
+    Bin >> lexems;
 
     CHECK_IN_BUFF_ERROR();
 
@@ -3274,18 +3253,8 @@ void FOClient::Net_OnChosenTalk()
     }
 
     // Text params
-    ushort lexems_len = 0;
-    char lexems[MAX_DLG_LEXEMS_TEXT + 1] = {0};
-    Bin >> lexems_len;
-    if (lexems_len != 0u) {
-        if (lexems_len <= MAX_DLG_LEXEMS_TEXT) {
-            Bin.Pop(lexems, lexems_len);
-            lexems[lexems_len] = '\0';
-        }
-        else {
-            Bin.SetError(true);
-        }
-    }
+    string lexems;
+    Bin >> lexems;
 
     CHECK_IN_BUFF_ERROR();
 

@@ -197,8 +197,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // Params:
 // uint msg_len
 // uchar how_say (see Say types in FOdefines.h)
-// ushort len
-// char[len] str
+// string str
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_TEXT MAKE_NETMSG_HEADER(32)
@@ -232,8 +231,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uchar how_say
 // ushort MSG_num
 // uint num_str
-// ushort lex_len
-// char lexems[lex_len]
+// string lexems
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_MAP_TEXT MAKE_NETMSG_HEADER(35)
@@ -270,8 +268,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint color
 // ushort MSG_num
 // uint num_str
-// ushort lexems_len
-// char lexems[lexems_len]
+// string lexems
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -562,8 +559,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint main_text
 // uint answ_text
 // uint talk_time
-// ushort lexems_length
-// char[lexems_length] lexems
+// string lexems
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

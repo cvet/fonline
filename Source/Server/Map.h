@@ -129,7 +129,7 @@ public:
     void RemoveItemBlocks(ushort hx, ushort hy, Item* item);
     void SetText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text);
     void SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str);
-    void SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len);
+    void SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const string& lexems);
     void AddCritter(Critter* cr);
     void EraseCritter(Critter* cr);
     auto AddItem(Item* item, ushort hx, ushort hy) -> bool;

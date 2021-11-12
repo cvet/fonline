@@ -833,23 +833,11 @@ void FOServer::Process_Text(Player* player)
 
     uint msg_len = 0;
     uchar how_say = 0;
-    ushort len = 0;
-    char str[UTF8_BUF_SIZE(MAX_CHAT_MESSAGE)];
+    string str;
 
     player->Connection->Bin >> msg_len;
     player->Connection->Bin >> how_say;
-    player->Connection->Bin >> len;
-
-    CHECK_IN_BUFF_ERROR(player->Connection);
-
-    if (len == 0u || len >= sizeof(str)) {
-        WriteLog("Buffer zero sized or too large, length {}. Disconnect.\n", len);
-        player->Connection->HardDisconnect();
-        return;
-    }
-
-    player->Connection->Bin.Pop(str, len);
-    str[len] = 0;
+    player->Connection->Bin >> str;
 
     CHECK_IN_BUFF_ERROR(player->Connection);
 

@@ -79,7 +79,7 @@ public:
 
     void Send_CustomMessage(uint msg);
     void Send_TextMsg(uint num_str);
-    void Send_TextMsgLex(uint num_str, const char* lexems);
+    void Send_TextMsgLex(uint num_str, const string& lexems);
 
     NetBuffer& Bin;
     std::mutex& BinLocker;

@@ -2855,7 +2855,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, hexX) FO_API_ARG_MARSHAL(ushort, hexY) 
         throw ScriptException("Invalid hexes args");
     }
 
-    _map->SetTextMsgLex(hexX, hexY, color, textMsg, strNum, lexems.c_str(), static_cast<ushort>(lexems.length()));
+    _map->SetTextMsgLex(hexX, hexY, color, textMsg, strNum, lexems);
 }
 FO_API_EPILOG()
 #endif
@@ -3593,7 +3593,7 @@ FO_API_GLOBAL_SERVER_FUNC(RadioMessage, FO_API_RET(void), FO_API_ARG(ushort, cha
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, channel) FO_API_ARG_MARSHAL(string, text))
 {
     if (!text.empty()) {
-        _server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text, false, 0, 0, nullptr);
+        _server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, text, false, 0, 0, "");
     }
 }
 FO_API_EPILOG()
@@ -3610,7 +3610,7 @@ FO_API_GLOBAL_SERVER_FUNC(RadioMessageMsg, FO_API_RET(void), FO_API_ARG(ushort, 
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, channel) FO_API_ARG_MARSHAL(ushort, textMsg) FO_API_ARG_MARSHAL(uint, numStr))
 {
-    _server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, textMsg, numStr, nullptr);
+    _server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, textMsg, numStr, "");
 }
 FO_API_EPILOG()
 #endif
@@ -3627,7 +3627,7 @@ FO_API_GLOBAL_SERVER_FUNC(RadioMessageMsgLex, FO_API_RET(void), FO_API_ARG(ushor
 #if FO_API_GLOBAL_SERVER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(ushort, channel) FO_API_ARG_MARSHAL(ushort, textMsg) FO_API_ARG_MARSHAL(uint, numStr) FO_API_ARG_MARSHAL(string, lexems))
 {
-    _server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, textMsg, numStr, !lexems.empty() ? lexems.c_str() : nullptr);
+    _server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, textMsg, numStr, lexems);
 }
 FO_API_EPILOG()
 #endif

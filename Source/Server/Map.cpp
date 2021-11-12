@@ -1001,7 +1001,7 @@ void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num
     }
 }
 
-void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const char* lexems, ushort lexems_len)
+void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const string& lexems)
 {
     if (hx >= GetWidth() || hy >= GetHeight() || num_str == 0u) {
         return;
@@ -1009,7 +1009,7 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
 
     for (auto* cr : _mapPlayerCritters) {
         if (cr->LookCacheValue >= _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
-            cr->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems, lexems_len);
+            cr->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems);
         }
     }
 }

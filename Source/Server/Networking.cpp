@@ -153,8 +153,6 @@ class NetConnectionImpl : public NetConnection
 public:
     explicit NetConnectionImpl(ServerNetworkSettings& settings) : _settings {settings}
     {
-        _isDisconnected = false;
-        _zStream = nullptr;
         std::memset(_outBuf, 0, sizeof(_outBuf));
 
         if (!settings.DisableZlibCompression) {
