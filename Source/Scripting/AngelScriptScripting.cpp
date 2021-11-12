@@ -87,17 +87,20 @@ DECLARE_EXCEPTION(ScriptCompilerException);
 #endif
 
 #if FO_ANGELSCRIPT_COMPILER
+// Copy-paste from Entity.h
 enum class EntityType
 {
+    Player,
+    PlayerProto,
     ItemProto,
     CritterProto,
     MapProto,
     LocationProto,
     Item,
-    Client,
-    Npc,
+    Critter,
     Map,
     Location,
+    PlayerView,
     ItemView,
     ItemHexView,
     CritterView,
@@ -110,7 +113,7 @@ enum class EntityType
 
 struct Property
 {
-    // Cope paste from Properties.h
+    // Copy-paste from Properties.h
     enum AccessType
     {
         PrivateCommon = 0x0010,
@@ -182,6 +185,9 @@ struct Entity
     bool IsDestroyed {};
     bool IsDestroying {};
 };
+struct Player : Entity
+{
+};
 struct Item : Entity
 {
 };
@@ -192,6 +198,9 @@ struct Map : Entity
 {
 };
 struct Location : Entity
+{
+};
+struct PlayerView : Entity
 {
 };
 struct ItemView : Entity
@@ -395,19 +404,23 @@ inline string GetASType(string name)
         {typeid(Entity).hash_code(), "Entity@+"},
         {typeid(vector<Entity>).hash_code(), "array<Entity>@+"},
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+        {typeid(Player).hash_code(), "Player@+"},
         {typeid(Item).hash_code(), "Item@+"},
         {typeid(Critter).hash_code(), "Critter@+"},
         {typeid(Map).hash_code(), "Map@+"},
         {typeid(Location).hash_code(), "Location@+"},
+        {typeid(vector<Player>).hash_code(), "array<Player>@+"},
         {typeid(vector<Item>).hash_code(), "array<Item>@+"},
         {typeid(vector<Critter>).hash_code(), "array<Critter>@+"},
         {typeid(vector<Map>).hash_code(), "array<Map>@+"},
         {typeid(vector<Location>).hash_code(), "array<Location>@+"},
 #else
+        {typeid(PlayerView).hash_code(), "Player@+"},
         {typeid(ItemView).hash_code(), "Item@+"},
         {typeid(CritterView).hash_code(), "Critter@+"},
         {typeid(MapView).hash_code(), "Map@+"},
         {typeid(LocationView).hash_code(), "Location@+"},
+        {typeid(vector<PlayerView>).hash_code(), "array<Player>@+"},
         {typeid(vector<ItemView>).hash_code(), "array<Item>@+"},
         {typeid(vector<CritterView>).hash_code(), "array<Critter>@+"},
         {typeid(vector<MapView>).hash_code(), "array<Map>@+"},
@@ -504,6 +517,46 @@ inline string MakeMethodDecl(string name, string ret, string decl)
         THIS_ARG; \
         __VA_ARGS__
 #define FO_API_EPILOG(...) }
+
+struct ASPlayer : ASEntity
+{
+#if !FO_ANGELSCRIPT_COMPILER
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#define THIS_ARG Player* _player = (Player*)GameEntity
+#define FO_API_PLAYER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
+#define FO_API_PLAYER_METHOD_IMPL 1
+#define PLAYER_CLASS Player
+#elif FO_CLIENT_SCRIPTING
+#define THIS_ARG PlayerView* _playerView = (PlayerView*)GameEntity
+#define FO_API_PLAYER_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
+#define FO_API_PLAYER_VIEW_METHOD_IMPL 1
+#define PLAYER_CLASS PlayerView
+#elif FO_MAPPER_SCRIPTING
+#define PLAYER_CLASS PlayerView
+#endif
+#define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((PLAYER_CLASS*)GameEntity)->Get##name()); }
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) \
+    type Get_##name() { return MarshalBack(((PLAYER_CLASS*)GameEntity)->Get##name()); } \
+    void Set_##name(type value) { ((PLAYER_CLASS*)GameEntity)->Set##name(Marshal<decltype(((PLAYER_CLASS*)GameEntity)->Get##name())>(value)); }
+#else
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#define FO_API_PLAYER_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#elif FO_CLIENT_SCRIPTING
+#define FO_API_PLAYER_VIEW_METHOD(name, ret, ...) \
+    ret name(__VA_ARGS__) { throw ScriptCompilerException("Stub"); }
+#endif
+#define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); }
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) \
+    type Get_##name() { throw ScriptCompilerException("Stub"); } \
+    void Set_##name(type value) { throw ScriptCompilerException("Stub"); }
+#endif
+#include "ScriptApi.h"
+#undef THIS_ARG
+#undef PLAYER_CLASS
+};
 
 struct ASItem : ASEntity
 {
@@ -702,10 +755,11 @@ struct ASLocation : ASEntity
 template<class T>
 static ASEntity* EntityDownCast(T* a)
 {
-    if (!a)
+    if (!a) {
         return nullptr;
+    }
 
-    ASEntity* b = (ASEntity*)a;
+    auto* b = static_cast<ASEntity*>(a);
     b->AddRef();
     return b;
 }
@@ -713,19 +767,22 @@ static ASEntity* EntityDownCast(T* a)
 template<class T>
 static T* EntityUpCast(ASEntity* a)
 {
-    if (!a)
+    if (!a) {
         return nullptr;
+    }
 
 #define CHECK_CAST(cast_class, entity_type) \
-    if (std::is_same<T, cast_class>::value && a->GameEntity->Type == entity_type) { \
-        T* b = (T*)a; \
-        b->AddRef(); \
-        return b; \
+    if constexpr (std::is_same<T, cast_class>::value) { \
+        if (a->GameEntity->Type == (entity_type)) { \
+            auto* b = static_cast<T*>(a); \
+            b->AddRef(); \
+            return b; \
+        } \
     }
+    CHECK_CAST(ASPlayer, EntityType::Player);
     CHECK_CAST(ASLocation, EntityType::Location);
     CHECK_CAST(ASMap, EntityType::Map);
-    CHECK_CAST(ASCritter, EntityType::Npc);
-    CHECK_CAST(ASCritter, EntityType::Client);
+    CHECK_CAST(ASCritter, EntityType::Critter);
     CHECK_CAST(ASItem, EntityType::Item);
     CHECK_CAST(ASLocation, EntityType::LocationView);
     CHECK_CAST(ASMap, EntityType::MapView);
@@ -773,7 +830,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #if !FO_ANGELSCRIPT_COMPILER
     _pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
     _pAngelScriptImpl->Engine = engine;
-// asEngine->ShutDownAndRelease();
+    // asEngine->ShutDownAndRelease();
 #endif
 
     int as_result;
@@ -859,6 +916,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
     REGISTER_ENTITY("Entity", ASEntity);
+    REGISTER_ENTITY("Player", ASPlayer);
+    REGISTER_ENTITY_CAST("Player", ASPlayer);
     REGISTER_ENTITY("Item", ASItem);
     REGISTER_ENTITY_CAST("Item", ASItem);
     REGISTER_ENTITY("Critter", ASCritter);
@@ -870,6 +929,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
     AS_VERIFY(engine->RegisterFuncdef("bool EntityPredicate(Entity@+)"));
     AS_VERIFY(engine->RegisterFuncdef("void EntityCallback(Entity@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("bool PlayerPredicate(Player@+)"));
+    AS_VERIFY(engine->RegisterFuncdef("void PlayerCallback(Player@+)"));
     AS_VERIFY(engine->RegisterFuncdef("bool ItemPredicate(Item@+)"));
     AS_VERIFY(engine->RegisterFuncdef("void ItemCallback(Item@+)"));
     AS_VERIFY(engine->RegisterFuncdef("bool CritterPredicate(Critter@+)"));
@@ -908,11 +969,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
 #endif
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#define FO_API_PLAYER_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Player", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASPlayer, name), SCRIPT_METHOD_CONV));
 #define FO_API_ITEM_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
 #define FO_API_CRITTER_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASCritter, name), SCRIPT_METHOD_CONV));
 #define FO_API_MAP_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASMap, name), SCRIPT_METHOD_CONV));
 #define FO_API_LOCATION_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASLocation, name), SCRIPT_METHOD_CONV));
 #elif FO_CLIENT_SCRIPTING
+#define FO_API_PLAYER_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Player", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASPlayer, name), SCRIPT_METHOD_CONV));
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASItem, name), SCRIPT_METHOD_CONV));
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASCritter, name), SCRIPT_METHOD_CONV));
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_METHOD(ASMap, name), SCRIPT_METHOD_CONV));
@@ -929,6 +992,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define CHECK_GETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
 #define CHECK_SETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || (Property::AccessType::access & Property::AccessType::ModifiableMask))) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
 
+#define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) \
+    if (CHECK_GETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Player", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASPlayer, Get_##name), SCRIPT_METHOD_CONV));
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) \
+    FO_API_PLAYER_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    if (CHECK_SETTER(access)) \
+        AS_VERIFY(engine->RegisterObjectMethod("Player", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASPlayer, Set_##name), SCRIPT_METHOD_CONV));
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
     if (CHECK_GETTER(access)) \
         AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASItem, Get_##name), SCRIPT_METHOD_CONV));

@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto NeedProcess() -> bool;
 
     void SetEncryptKey(uint seed);
-    void Refresh();
+    void ShrinkReadBuf();
     void Reset();
     void Push(const void* buf, uint len);
     void Push(const void* buf, uint len, bool no_crypt);

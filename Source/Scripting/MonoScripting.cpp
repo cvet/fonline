@@ -250,6 +250,47 @@ inline void* GetDomainUserData(MonoDomain* domain)
     }
 
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#define THIS_ARG Player* _player = (Player*)_thisPtr
+#define FO_API_PLAYER_METHOD(name, ret, ...) static ret MonoPlayer_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_PLAYER_METHOD_IMPL 1
+#define PLAYER_CLASS Player
+#elif FO_CLIENT_SCRIPTING
+#define THIS_ARG PlayerView* _playerView = (PlayerView*)_thisPtr
+#define FO_API_PLAYER_VIEW_METHOD(name, ret, ...) static ret MonoPlayer_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
+#define FO_API_PLAYER_VIEW_METHOD_IMPL 1
+#define PLAYER_CLASS PlayerView
+#elif FO_MAPPER_SCRIPTING
+#define PLAYER_CLASS PlayerView
+#endif
+#define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) \
+    static type MonoPlayer_Get_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr) \
+    { \
+        *_ex = nullptr; \
+        try { \
+            return MarshalBack(((PLAYER_CLASS*)_thisPtr)->Get##name()); \
+        } \
+        catch (std::exception & ex) { \
+            *_ex = ReportException(_domain, ex); \
+            return 0; \
+        } \
+    }
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) \
+    FO_API_PLAYER_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
+    static void MonoPlayer_Set_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, type value) \
+    { \
+        *_ex = nullptr; \
+        try { \
+            ((PLAYER_CLASS*)_thisPtr)->Set##name(Marshal<decltype(((PLAYER_CLASS*)_thisPtr)->Get##name())>(value)); \
+        } \
+        catch (std::exception & ex) { \
+            *_ex = ReportException(_domain, ex); \
+        } \
+    }
+#include "ScriptApi.h"
+#undef THIS_ARG
+#undef PLAYER_CLASS
+
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #define THIS_ARG Item* _item = (Item*)_thisPtr
 #define FO_API_ITEM_METHOD(name, ret, ...) static ret MonoItem_##name(MonoDomain* _domain, MonoException** _ex, void* _thisPtr, ##__VA_ARGS__)
 #define FO_API_ITEM_METHOD_IMPL 1
@@ -518,11 +559,13 @@ void SCRIPTING_CLASS::InitMonoScripting()
     SetDomainUserData(domain, _mainObj);
 
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#define FO_API_PLAYER_METHOD(name, ret, ...) mono_add_internal_call("Player::_" #name, (void*)&MonoPlayer_##name);
 #define FO_API_ITEM_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
 #define FO_API_CRITTER_METHOD(name, ret, ...) mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
 #define FO_API_MAP_METHOD(name, ret, ...) mono_add_internal_call("Map::_" #name, (void*)&MonoMap_##name);
 #define FO_API_LOCATION_METHOD(name, ret, ...) mono_add_internal_call("Location::_" #name, (void*)&MonoLocation_##name);
 #elif FO_CLIENT_SCRIPTING
+#define FO_API_PLAYER_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Player::_" #name, (void*)&MonoPlayer_##name);
 #define FO_API_ITEM_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Item::_" #name, (void*)&MonoItem_##name);
 #define FO_API_CRITTER_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Critter::_" #name, (void*)&MonoCritter_##name);
 #define FO_API_MAP_VIEW_METHOD(name, ret, ...) mono_add_internal_call("Map::_" #name, (void*)&MonoMap_##name);
@@ -533,6 +576,13 @@ void SCRIPTING_CLASS::InitMonoScripting()
 #define CHECK_GETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
 #define CHECK_SETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || (Property::AccessType::access & Property::AccessType::ModifiableMask))) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
 
+#define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) \
+    if (CHECK_GETTER(access)) \
+        mono_add_internal_call("Player::_Get_" #name, (void*)&MonoPlayer_Get_##name);
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) \
+    FO_API_PLAYER_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
+    if (CHECK_SETTER(access)) \
+        mono_add_internal_call("Player::_Set_" #name, (void*)&MonoPlayer_Set_##name);
 #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
     if (CHECK_GETTER(access)) \
         mono_add_internal_call("Item::_Get_" #name, (void*)&MonoItem_Get_##name);

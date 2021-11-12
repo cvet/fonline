@@ -86,6 +86,7 @@ protected:
     Entity* _thisPtr {};
 };
 
+class ScriptPlayer;
 class ScriptItem;
 class ScriptCritter;
 class ScriptMap;
@@ -133,6 +134,10 @@ inline vector<ScriptEntity*> MarshalBack(vector<Entity*> obj)
 }
 
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+inline ScriptPlayer* MarshalBack(Player* obj)
+{
+    return 0;
+}
 inline ScriptItem* MarshalBack(Item* obj)
 {
     return 0;
@@ -148,6 +153,10 @@ inline ScriptMap* MarshalBack(Map* obj)
 inline ScriptLocation* MarshalBack(Location* obj)
 {
     return 0;
+}
+inline vector<ScriptPlayer*> MarshalBack(vector<Player*> obj)
+{
+    return {};
 }
 inline vector<ScriptItem*> MarshalBack(vector<Item*> obj)
 {
@@ -166,6 +175,10 @@ inline vector<ScriptLocation*> MarshalBack(vector<Location*> obj)
     return {};
 }
 #else
+inline ScriptPlayer* MarshalBack(PlayerView* obj)
+{
+    return 0;
+}
 inline ScriptItem* MarshalBack(ItemView* obj)
 {
     return 0;
@@ -181,6 +194,10 @@ inline ScriptMap* MarshalBack(MapView* obj)
 inline ScriptLocation* MarshalBack(LocationView* obj)
 {
     return 0;
+}
+inline vector<ScriptPlayer*> MarshalBack(vector<PlayerView*> obj)
+{
+    return {};
 }
 inline vector<ScriptItem*> MarshalBack(vector<ItemView*> obj)
 {
@@ -217,10 +234,12 @@ inline T MarshalBack(T value)
 
 #define FO_API_PARTLY_UNDEF 1
 #define EntityType_Entity ScriptEntity
+#define EntityType_Player ScriptPlayer
 #define EntityType_Item ScriptItem
 #define EntityType_Critter ScriptCritter
 #define EntityType_Map ScriptMap
 #define EntityType_Location ScriptLocation
+#define EntityType_PlayerView ScriptPlayer
 #define EntityType_ItemView ScriptItem
 #define EntityType_ItemHexView ScriptItem
 #define EntityType_CritterView ScriptCritter
@@ -280,6 +299,32 @@ inline T MarshalBack(T value)
         THIS_ARG; \
         __VA_ARGS__
 #define FO_API_EPILOG(...) }
+
+class ScriptPlayer : public ScriptEntity
+{
+public:
+#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#define THIS_ARG Player* _player = (Player*)_thisPtr
+#define FO_API_PLAYER_METHOD(name, ret, ...) ret name(__VA_ARGS__)
+#define FO_API_PLAYER_METHOD_IMPL 1
+#define PLAYER_CLASS Player
+#elif FO_CLIENT_SCRIPTING
+#define THIS_ARG PlayerView* _playerView = (PlayerView*)_thisPtr
+#define FO_API_PLAYER_VIEW_METHOD(name, ret, ...) ret name(__VA_ARGS__)
+#define FO_API_PLAYER_VIEW_METHOD_IMPL 1
+#define PLAYER_CLASS PlayerView
+#elif FO_MAPPER_SCRIPTING
+#define PLAYER_CLASS PlayerView
+#endif
+#define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) \
+    type Get##name() { return MarshalBack(((PLAYER_CLASS*)_thisPtr)->Get##name()); }
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) \
+    FO_API_PLAYER_READONLY_PROPERTY(access, type, name, __VA_ARGS__); \
+    void Set##name(type value) { ((PLAYER_CLASS*)_thisPtr)->Set##name(value); }
+#include "ScriptApi.h"
+#undef THIS_ARG
+#undef PLAYER_CLASS
+};
 
 class ScriptItem : public ScriptEntity
 {

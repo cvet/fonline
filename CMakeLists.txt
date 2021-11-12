@@ -1182,6 +1182,8 @@ set( FO_SERVER_SOURCE
 	"Source/Server/AppGui.h"
 	"Source/Server/AppGuiDX.cpp"
 	"Source/Server/AppGuiStub.cpp"
+	"Source/Server/ClientConnection.cpp"
+	"Source/Server/ClientConnection.h"
 	"Source/Server/Critter.cpp"
 	"Source/Server/Critter.h"
 	"Source/Server/CritterManager.cpp"
@@ -1204,6 +1206,8 @@ set( FO_SERVER_SOURCE
 	"Source/Server/MapManager.h"
 	"Source/Server/Networking.cpp"
 	"Source/Server/Networking.h"
+	"Source/Server/Player.cpp"
+	"Source/Server/Player.h"
 	"Source/Server/PropertiesSerializator.cpp"
 	"Source/Server/PropertiesSerializator.h"
 	"Source/Server/Server.cpp"
@@ -1238,6 +1242,8 @@ set( FO_CLIENT_SOURCE
 	"Source/Client/LocationView.h"
 	"Source/Client/MapView.cpp"
 	"Source/Client/MapView.h"
+	"Source/Client/PlayerView.cpp"
+	"Source/Client/PlayerView.h"
 	"Source/Client/ResourceManager.cpp"
 	"Source/Client/ResourceManager.h"
 	"Source/Client/SoundManager.cpp"
@@ -1261,7 +1267,7 @@ set( FO_TOOLS_SOURCE
 
 set( FO_SCRIPTING_SOURCE
 	"Source/Scripting/AngelScriptScripting.cpp"
-	"Source/Scripting/MonoScripting.cpp" 
+	"Source/Scripting/MonoScripting.cpp"
 	"Source/Scripting/NativeScripting.cpp" )
 
 set( FO_TESTS_SOURCE
@@ -1549,7 +1555,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	else()
 		set( genApiDepends "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt" )
 	endif()
-	
+
 	set( genApiCommands -meta "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt" -output ${FO_SCRIPTS_OUTPUT} )
 
 	list( APPEND genApiCommands -markdown )

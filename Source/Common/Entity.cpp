@@ -119,6 +119,14 @@ GlobalVars::GlobalVars() : Entity(0, EntityType::Global, PropertiesRegistrator, 
 {
 }
 
+PROPERTIES_IMPL(ProtoPlayer, "Player", true);
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoPlayer, access, type, name, __VA_ARGS__);
+#include "ScriptApi.h"
+
+ProtoPlayer::ProtoPlayer(hash pid) : ProtoEntity(pid, EntityType::PlayerProto, PropertiesRegistrator)
+{
+}
+
 PROPERTIES_IMPL(ProtoItem, "Item", true);
 #define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoItem, access, type, name, __VA_ARGS__);
 #include "ScriptApi.h"

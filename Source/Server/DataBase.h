@@ -70,6 +70,7 @@ public:
 
     [[nodiscard]] auto GetAllIds(const string& collection_name) const -> vector<uint>;
     [[nodiscard]] auto Get(const string& collection_name, uint id) const -> Document;
+    [[nodiscard]] auto Valid(const string& collection_name, uint id) const -> bool;
 
     void StartChanges();
     void Insert(const string& collection_name, uint id, const Document& doc);

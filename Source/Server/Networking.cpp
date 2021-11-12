@@ -61,6 +61,18 @@ using ssl_context = asio::ssl::context;
 
 #include "WinApi-Include.h" // After all because ASIO using WinAPI
 
+void NetConnection::AddRef() const
+{
+    ++_refCount;
+}
+
+void NetConnection::Release() const
+{
+    if (--_refCount == 0) {
+        delete this;
+    }
+}
+
 #if FO_HAVE_ASIO
 class NetTcpServer : public NetServerBase
 {
@@ -141,9 +153,6 @@ class NetConnectionImpl : public NetConnection
 public:
     explicit NetConnectionImpl(ServerNetworkSettings& settings) : _settings {settings}
     {
-        IsDisconnected = false;
-        DisconnectTick = 0;
-        _zStream = nullptr;
         std::memset(_outBuf, 0, sizeof(_outBuf));
 
         if (!settings.DisableZlibCompression) {
@@ -171,6 +180,11 @@ public:
         }
     }
 
+    [[nodiscard]] auto GetIp() const -> uint override { return _ip; }
+    [[nodiscard]] auto GetHost() const -> const string& override { return _host; }
+    [[nodiscard]] auto GetPort() const -> ushort override { return _port; }
+    [[nodiscard]] auto IsDisconnected() const -> bool override { return _isDisconnected; }
+
     void DisableCompression() override
     {
         if (_zStream != nullptr) {
@@ -181,7 +195,7 @@ public:
 
     void Dispatch() override
     {
-        if (IsDisconnected) {
+        if (_isDisconnected) {
             return;
         }
 
@@ -198,16 +212,11 @@ public:
 
     void Disconnect() override
     {
-        if (IsDisconnected) {
-            return;
+        auto expected = false;
+        const auto desired = true;
+        if (_isDisconnected.compare_exchange_strong(expected, desired)) {
+            DisconnectImpl();
         }
-
-        IsDisconnected = true;
-        if (DisconnectTick == 0u) {
-            DisconnectTick = static_cast<uint>(Timer::RealtimeTick());
-        }
-
-        DisconnectImpl();
     }
 
 protected:
@@ -277,6 +286,10 @@ protected:
     }
 
     ServerNetworkSettings& _settings;
+    uint _ip {};
+    string _host {};
+    ushort _port {};
+    std::atomic_bool _isDisconnected {};
 
 private:
     z_stream* _zStream {};
@@ -289,9 +302,9 @@ public:
     NetConnectionAsio(ServerNetworkSettings& settings, asio::ip::tcp::socket* socket) : NetConnectionImpl(settings), _socket {socket}
     {
         const auto& address = socket->remote_endpoint().address();
-        Ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
-        Host = address.to_string();
-        Port = socket->remote_endpoint().port();
+        _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
+        _host = address.to_string();
+        _port = socket->remote_endpoint().port();
 
         if (settings.DisableTcpNagle) {
             socket->set_option(asio::ip::tcp::no_delay(true), _dummyError);
@@ -345,7 +358,7 @@ private:
                 async_write(*_socket, asio::buffer(buf, len), std::bind(&NetConnectionAsio::AsyncWrite, this, std::placeholders::_1, std::placeholders::_2));
             }
             else {
-                if (IsDisconnected) {
+                if (_isDisconnected) {
                     _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
                     _socket->close(_dummyError);
                 }
@@ -377,9 +390,9 @@ public:
     NetConnectionWebSocket(ServerNetworkSettings& settings, WebSockets* server, connection_ptr connection) : NetConnectionImpl(settings), _server {server}, _connection {connection}
     {
         const auto& address = connection->get_raw_socket().remote_endpoint().address();
-        Ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
-        Host = address.to_string();
-        Port = connection->get_raw_socket().remote_endpoint().port();
+        _ip = address.is_v4() ? address.to_v4().to_ulong() : static_cast<uint>(-1);
+        _host = address.to_string();
+        _port = connection->get_raw_socket().remote_endpoint().port();
 
         if (settings.DisableTcpNagle) {
             asio::error_code error;

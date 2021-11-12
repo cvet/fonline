@@ -46,7 +46,7 @@ void Keyboard::Lost()
     ShiftDwn = false;
 }
 
-void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, uint flags) const
+void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint flags) const
 {
     if (AltDwn) {
         return;
@@ -126,31 +126,12 @@ void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* 
         auto text = dik_text;
         EraseInvalidChars(text, flags);
         if (!text.empty()) {
-            const auto text_len_utf8 = _str(text).lengthUtf8();
-            uint erase_len_utf8 = 0;
-            if (str_len_utf8 + text_len_utf8 > max) {
-                erase_len_utf8 = str_len_utf8 + text_len_utf8 - max;
-            }
-
-            auto text_pos = static_cast<uint>(text.length());
-            while (erase_len_utf8 != 0u) {
-                text_pos--;
-                while (text_pos != 0u && (text[text_pos] & 0xC0) == 0x80) {
-                    text_pos--;
-                }
-                erase_len_utf8--;
-            }
-            text.erase(text_pos);
-
             str.insert(pos, text);
             pos += static_cast<uint>(text.length());
         }
     }
     else {
         if (dik_text_len_utf8 == 0) {
-            return;
-        }
-        if (str_len_utf8 + dik_text_len_utf8 > max) {
             return;
         }
         if (CtrlDwn) {

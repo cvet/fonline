@@ -83,7 +83,7 @@ public:
     void RegisterRadio(Item* radio);
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, const string& text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels);
-    void RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const string& text, bool unsafe_text, ushort text_msg, uint num_str, const char* lexems);
+    void RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const string& text, bool unsafe_text, ushort text_msg, uint num_str, const string& lexems);
     void ChangeItemStatistics(hash pid, int val) const;
 
 private:

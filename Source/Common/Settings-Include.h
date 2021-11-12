@@ -43,7 +43,6 @@ SETTING(string, CommandLine, "");
 SETTING(vector<string>, CommandLineArgs);
 SETTING(uint, MinNameLength, 4);
 SETTING(uint, MaxNameLength, 12);
-SETTING(uint, Breaktime, 1200);
 SETTING(string, Language, "engl");
 VAR_SETTING(bool, Quit, false); // Todo: rework global Quit setting
 SETTING(vector<int>, DummyIntVec);
@@ -126,13 +125,13 @@ SETTING_GROUP_END();
 
 SETTING_GROUP(GeometrySettings, virtual DummySettings);
 SETTING(bool, MapHexagonal, true);
-SETTING(uint, MapDirCount);
+SETTING(int, MapDirCount);
 SETTING(int, MapHexWidth, 32);
 SETTING(int, MapHexHeight, 16);
 SETTING(int, MapHexLineHeight, 12);
 SETTING(int, MapTileOffsX, -8);
 SETTING(int, MapTileOffsY, 32);
-SETTING(uint, MapTileStep, 2);
+SETTING(int, MapTileStep, 2);
 SETTING(int, MapRoofOffsX, -8);
 SETTING(int, MapRoofOffsY, -66);
 SETTING(int, MapRoofSkipSize, 2);

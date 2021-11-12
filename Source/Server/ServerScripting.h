@@ -40,6 +40,7 @@
 #include "ScriptSystem.h"
 
 class Entity;
+class Player;
 class Item;
 class Critter;
 class Map;

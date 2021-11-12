@@ -42,7 +42,7 @@
 enum class TalkType
 {
     None,
-    Npc,
+    Critter,
     Hex,
 };
 
@@ -115,7 +115,7 @@ struct DialogPack
 struct TalkData
 {
     TalkType Type {};
-    uint TalkNpc {};
+    uint CritterId {};
     uint TalkHexMap {};
     ushort TalkHexX {};
     ushort TalkHexY {};

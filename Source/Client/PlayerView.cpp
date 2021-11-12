@@ -31,58 +31,15 @@
 // SOFTWARE.
 //
 
-#pragma once
+#include "PlayerView.h"
 
-#include "Common.h"
+#define FO_API_PLAYER_VIEW_IMPL 1
+#include "ScriptApi.h"
 
-#include "NetBuffer.h"
-#include "Settings.h"
+PROPERTIES_IMPL(PlayerView, "Player", false);
+#define FO_API_PLAYER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(PlayerView, access, type, name, __VA_ARGS__);
+#include "ScriptApi.h"
 
-class NetConnection
+PlayerView::PlayerView(uint id, const ProtoPlayer* proto) : Entity(id, EntityType::PlayerView, PropertiesRegistrator, proto)
 {
-public:
-    NetConnection() = default;
-    NetConnection(const NetConnection&) = delete;
-    NetConnection(NetConnection&&) noexcept = delete;
-    auto operator=(const NetConnection&) = delete;
-    auto operator=(NetConnection&&) noexcept = delete;
-    virtual ~NetConnection() = default;
-
-    [[nodiscard]] virtual auto GetIp() const -> uint = 0;
-    [[nodiscard]] virtual auto GetHost() const -> const string& = 0;
-    [[nodiscard]] virtual auto GetPort() const -> ushort = 0;
-    [[nodiscard]] virtual auto IsDisconnected() const -> bool = 0;
-
-    virtual void DisableCompression() = 0;
-    virtual void Dispatch() = 0;
-    virtual void Disconnect() = 0;
-
-    void AddRef() const;
-    void Release() const;
-
-    NetBuffer Bin {};
-    std::mutex BinLocker {};
-    NetBuffer Bout {};
-    std::mutex BoutLocker {};
-
-private:
-    mutable std::atomic_int _refCount {1};
-};
-
-class NetServerBase
-{
-public:
-    using ConnectionCallback = std::function<void(NetConnection*)>;
-
-    NetServerBase() = default;
-    NetServerBase(const NetServerBase&) = delete;
-    NetServerBase(NetServerBase&&) noexcept = delete;
-    auto operator=(const NetServerBase&) = delete;
-    auto operator=(NetServerBase&&) noexcept = delete;
-    virtual ~NetServerBase() = default;
-
-    virtual void Shutdown() = 0;
-
-    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
-};
+}

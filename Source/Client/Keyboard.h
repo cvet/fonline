@@ -58,7 +58,7 @@ public:
     ~Keyboard() = default;
 
     void Lost();
-    void FillChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint max, uint flags) const;
+    void FillChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint flags) const;
     void EraseInvalidChars(string& str, int flags) const;
 
     bool ShiftDwn {};

@@ -35,8 +35,6 @@
 
 #include "Common.h"
 
-#define MAX_FOTEXT UTF8_BUF_SIZE(2048)
-
 class Str final
 {
 public:

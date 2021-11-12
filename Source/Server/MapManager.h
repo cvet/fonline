@@ -164,7 +164,7 @@ public:
 
     void LinkMaps();
     void LoadStaticMaps(FileManager& file_mngr);
-    void DeleteLocation(Location* loc, vector<Client*>* gmap_players);
+    void DeleteLocation(Location* loc, vector<Critter*>* gmap_player_critters);
     void LocationGarbager();
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);

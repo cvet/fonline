@@ -333,7 +333,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     }
 #endif
 
-    const_cast<uint&>(MapDirCount) = MapHexagonal ? 6 : 8;
+    const_cast<int&>(MapDirCount) = MapHexagonal ? 6 : 8;
 }
 
 void GlobalSettings::SetValue(const string& setting_name, string value)

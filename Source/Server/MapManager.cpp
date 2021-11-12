@@ -97,19 +97,19 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     MapLoader::Load(
         pmap->GetName(), file_mngr, _protoMngr,
         [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
-            auto* npc = new Npc(id, proto, _settings, _scriptSys, _gameTime);
-            if (!npc->Props.LoadFromText(kv)) {
-                delete npc;
+            auto* cr = new Critter(id, nullptr, proto, _settings, _scriptSys, _gameTime);
+            if (!cr->Props.LoadFromText(kv)) {
+                cr->Release();
                 return false;
             }
 
-            static_map.CrittersVec.push_back(npc);
+            static_map.CrittersVec.push_back(cr);
             return true;
         },
         [&static_map, this](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
             auto* item = new Item(id, proto, _scriptSys);
             if (!item->Props.LoadFromText(kv)) {
-                delete item;
+                item->Release();
                 return false;
             }
 
@@ -409,7 +409,7 @@ void MapManager::DeleteMapContent(Map* map)
         KickPlayersToGlobalMap(map);
 
         // Delete npc
-        auto del_npcs = map->_mapNpcs;
+        auto del_npcs = map->_mapNonPlayerCritters;
         for (auto* del_npc : del_npcs) {
             _crMngr.DeleteNpc(del_npc);
         }
@@ -660,12 +660,12 @@ void MapManager::LocationGarbager()
     if (_runGarbager) {
         _runGarbager = false;
 
-        vector<Client*>* gmap_players = nullptr;
-        vector<Client*> players;
+        vector<Critter*>* gmap_players = nullptr;
+        vector<Critter*> players;
         for (auto* loc : _entityMngr.GetLocations()) {
             if (loc->GetAutoGarbage() && loc->IsCanDelete()) {
                 if (gmap_players == nullptr) {
-                    players = _crMngr.GetClients(true);
+                    players = _crMngr.GetPlayerCritters(true);
                     gmap_players = &players;
                 }
                 DeleteLocation(loc, gmap_players);
@@ -674,7 +674,7 @@ void MapManager::LocationGarbager()
     }
 }
 
-void MapManager::DeleteLocation(Location* loc, vector<Client*>* gmap_players)
+void MapManager::DeleteLocation(Location* loc, vector<Critter*>* gmap_player_critters)
 {
     // Start deleting
     auto maps = loc->GetMaps();
@@ -696,13 +696,13 @@ void MapManager::DeleteLocation(Location* loc, vector<Client*>* gmap_players)
     }
 
     // Send players on global map about this
-    vector<Client*> players;
-    if (gmap_players == nullptr) {
-        players = _crMngr.GetClients(true);
-        gmap_players = &players;
+    vector<Critter*> players;
+    if (gmap_player_critters == nullptr) {
+        players = _crMngr.GetPlayerCritters(true);
+        gmap_player_critters = &players;
     }
 
-    for (auto* cl : *gmap_players) {
+    for (auto* cl : *gmap_player_critters) {
         if (CheckKnownLocById(cl, loc->GetId())) {
             cl->Send_GlobalLocation(loc, false);
         }
@@ -884,7 +884,7 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
     if (cut <= 1u && multihex == 0u) {
         auto [rsx, rsy] = _geomHelper.GetHexOffsets((to_hx % 2) != 0);
 
-        auto i = 0u;
+        auto i = 0;
         for (; i < dirs_count; i++, rsx++, rsy++) {
             const auto xx = static_cast<int>(to_hx + *rsx);
             const auto yy = static_cast<int>(to_hy + *rsy);
@@ -962,7 +962,7 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
 
             const auto [sx, sy] = _geomHelper.GetHexOffsets((cx & 1) != 0);
 
-            for (auto j = 0u; j < dirs_count; j++) {
+            for (auto j = 0; j < dirs_count; j++) {
                 const auto nxi = cx + sx[j];
                 const auto nyi = cy + sy[j];
                 if (nxi < 0 || nyi < 0 || nxi >= maxhx || nyi >= maxhy) {
@@ -1590,12 +1590,11 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
         cr->SetHexX(hx);
         cr->SetHexY(hy);
         map->SetFlagCritter(hx, hy, multihex, cr->IsDead());
-        cr->SetBreakTime(0);
         cr->Send_CustomCommand(cr, OTHER_TELEPORT, cr->GetHexX() << 16 | cr->GetHexY());
         cr->ClearVisible();
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);
-        cr->Send_XY(cr);
+        cr->Send_Position(cr);
 
         cr->LockMapTransfers--;
     }
@@ -1619,17 +1618,22 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 
         cr->SetLastMapHexX(cr->GetHexX());
         cr->SetLastMapHexY(cr->GetHexY());
-        cr->SetBreakTime(0);
 
         AddCrToMap(cr, map, hx, hy, dir, leader_id);
 
         cr->Send_LoadMap(nullptr, *this);
 
         // Visible critters / items
-        cr->DisableSend++;
+        if (auto* owner = cr->GetOwner(); owner != nullptr) {
+            owner->DisableSend++;
+        }
+
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);
-        cr->DisableSend--;
+
+        if (auto* owner = cr->GetOwner(); owner != nullptr) {
+            owner->DisableSend--;
+        }
 
         cr->LockMapTransfers--;
     }
@@ -1780,17 +1784,15 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         RUNTIME_ASSERT(view_cr->GlobalMapGroup);
 
         if (view_cr->IsPlayer()) {
-            auto* cl = dynamic_cast<Client*>(view_cr);
-            for (auto it = view_cr->GlobalMapGroup->begin(), end = view_cr->GlobalMapGroup->end(); it != end; ++it) {
-                auto* cr = *it;
+            for (auto* cr : *view_cr->GlobalMapGroup) {
                 if (view_cr == cr) {
                     SetBit(view_cr->Flags, FCRIT_CHOSEN);
-                    cl->Send_AddCritter(view_cr);
+                    view_cr->Send_AddCritter(view_cr);
                     UnsetBit(view_cr->Flags, FCRIT_CHOSEN);
-                    cl->Send_AddAllItems();
+                    view_cr->Send_AddAllItems();
                 }
                 else {
-                    cl->Send_AddCritter(cr);
+                    view_cr->Send_AddCritter(cr);
                 }
             }
         }

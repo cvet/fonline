@@ -105,6 +105,11 @@ auto DataBase::Get(const string& collection_name, uint id) const -> Document
     return _impl->Get(collection_name, id);
 }
 
+auto DataBase::Valid(const string& collection_name, uint id) const -> bool
+{
+    return !_impl->Get(collection_name, id).empty();
+}
+
 void DataBase::StartChanges()
 {
     NON_CONST_METHOD_HINT();
@@ -1294,8 +1299,7 @@ private:
 
 auto ConnectToDataBase(const string& connection_info) -> DataBase
 {
-    auto options = _str(connection_info).split(' ');
-    if (!options.empty()) {
+    if (auto options = _str(connection_info).split(' '); !options.empty()) {
 #if FO_HAVE_JSON
         if (options[0] == "JSON" && options.size() == 2) {
             return DataBase(new DbJson(options[1]));

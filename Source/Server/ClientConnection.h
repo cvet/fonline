@@ -36,53 +36,64 @@
 #include "Common.h"
 
 #include "NetBuffer.h"
-#include "Settings.h"
 
-class NetConnection
+#define CHECK_IN_BUFF_ERROR(conn) \
+    do { \
+        if ((conn)->Bin.IsError()) { \
+            WriteLog("Wrong network data from host '{}'.\n", (conn)->GetHost()); \
+            (conn)->HardDisconnect(); \
+            return; \
+        } \
+    } while (0)
+
+#define CONNECTION_OUTPUT_BEGIN(conn) \
+    { \
+        std::lock_guard locker((conn)->BoutLocker)
+#define CONNECTION_OUTPUT_END(conn) \
+    } \
+    (conn)->Dispatch()
+
+class NetConnection;
+
+class ClientConnection final
 {
 public:
-    NetConnection() = default;
-    NetConnection(const NetConnection&) = delete;
-    NetConnection(NetConnection&&) noexcept = delete;
-    auto operator=(const NetConnection&) = delete;
-    auto operator=(NetConnection&&) noexcept = delete;
-    virtual ~NetConnection() = default;
+    ClientConnection() = delete;
+    explicit ClientConnection(NetConnection* net_connection);
+    ClientConnection(const ClientConnection&) = delete;
+    ClientConnection(ClientConnection&&) noexcept = delete;
+    auto operator=(const ClientConnection&) = delete;
+    auto operator=(ClientConnection&&) noexcept = delete;
+    ~ClientConnection();
 
-    [[nodiscard]] virtual auto GetIp() const -> uint = 0;
-    [[nodiscard]] virtual auto GetHost() const -> const string& = 0;
-    [[nodiscard]] virtual auto GetPort() const -> ushort = 0;
-    [[nodiscard]] virtual auto IsDisconnected() const -> bool = 0;
+    [[nodiscard]] auto GetIp() const -> uint;
+    [[nodiscard]] auto GetHost() const -> const string&;
+    [[nodiscard]] auto GetPort() const -> ushort;
+    [[nodiscard]] auto IsHardDisconnected() const -> bool;
+    [[nodiscard]] auto IsGracefulDisconnected() const -> bool;
 
-    virtual void DisableCompression() = 0;
-    virtual void Dispatch() = 0;
-    virtual void Disconnect() = 0;
+    void DisableCompression();
+    void Dispatch();
+    void HardDisconnect();
+    void GracefulDisconnect();
 
-    void AddRef() const;
-    void Release() const;
+    void Send_CustomMessage(uint msg);
+    void Send_TextMsg(uint num_str);
+    void Send_TextMsgLex(uint num_str, const string& lexems);
 
-    NetBuffer Bin {};
-    std::mutex BinLocker {};
-    NetBuffer Bout {};
-    std::mutex BoutLocker {};
+    NetBuffer& Bin;
+    std::mutex& BinLocker;
+    NetBuffer& Bout;
+    std::mutex& BoutLocker;
+
+    uint PingNextTick {};
+    bool PingOk {true};
+    uint LastActivityTime {};
+    int UpdateFileIndex {-1};
+    uint UpdateFilePortion {};
 
 private:
-    mutable std::atomic_int _refCount {1};
-};
-
-class NetServerBase
-{
-public:
-    using ConnectionCallback = std::function<void(NetConnection*)>;
-
-    NetServerBase() = default;
-    NetServerBase(const NetServerBase&) = delete;
-    NetServerBase(NetServerBase&&) noexcept = delete;
-    auto operator=(const NetServerBase&) = delete;
-    auto operator=(NetServerBase&&) noexcept = delete;
-    virtual ~NetServerBase() = default;
-
-    virtual void Shutdown() = 0;
-
-    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
+    NetConnection* _netConnection;
+    bool _gracefulDisconnected {};
+    bool _nonConstHelper {};
 };

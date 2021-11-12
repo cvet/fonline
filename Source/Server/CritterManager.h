@@ -40,6 +40,7 @@
 #include "GeometryHelper.h"
 #include "Item.h"
 #include "Map.h"
+#include "Player.h"
 #include "ServerScripting.h"
 #include "Settings.h"
 #include "Timer.h"
@@ -60,21 +61,20 @@ public:
     auto operator=(CritterManager&&) noexcept = delete;
     ~CritterManager() = default;
 
-    [[nodiscard]] auto GetCritters() -> vector<Critter*>;
-    [[nodiscard]] auto GetNpcs() -> vector<Npc*>;
-    [[nodiscard]] auto GetClients(bool on_global_map_only) -> vector<Client*>;
+    [[nodiscard]] auto GetAllCritters() -> vector<Critter*>;
+    [[nodiscard]] auto GetAllNpc() -> vector<Critter*>;
+    [[nodiscard]] auto GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritters(ushort wx, ushort wy, uint radius, uchar find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritter(uint cr_id) -> Critter*;
     [[nodiscard]] auto GetCritter(uint cr_id) const -> const Critter*;
-    [[nodiscard]] auto GetPlayer(uint cr_id) -> Client*;
-    [[nodiscard]] auto GetPlayer(const char* name) -> Client*;
-    [[nodiscard]] auto GetNpc(uint cr_id) -> Npc*;
+    [[nodiscard]] auto GetPlayerById(uint id) -> Player*;
+    [[nodiscard]] auto GetPlayerByName(const char* name) -> Player*;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*;
     [[nodiscard]] auto PlayersInGame() const -> uint;
     [[nodiscard]] auto NpcInGame() const -> uint;
     [[nodiscard]] auto CrittersInGame() const -> uint;
 
-    [[nodiscard]] auto CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Npc*;
+    [[nodiscard]] auto CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
 
     void LinkCritters();
     void InitAfterLoad();
@@ -82,8 +82,8 @@ public:
     void DeleteInventory(Critter* cr);
     void AddItemToCritter(Critter* cr, Item*& item, bool send);
     void EraseItemFromCritter(Critter* cr, Item* item, bool send);
-    void ProcessTalk(Client* cl, bool force);
-    void CloseTalk(Client* cl);
+    void ProcessTalk(Critter* cr, bool force);
+    void CloseTalk(Critter* cr);
 
 private:
     ServerSettings& _settings;

@@ -74,7 +74,7 @@ auto NetBuffer::EncryptKey(int move) -> uchar
     return key;
 }
 
-void NetBuffer::Refresh()
+void NetBuffer::ShrinkReadBuf()
 {
     if (_isError) {
         return;
@@ -85,7 +85,12 @@ void NetBuffer::Refresh()
         return;
     }
 
-    if (_bufReadPos != 0u) {
+    if (_bufReadPos >= _bufEndPos) {
+        if (_bufReadPos != 0u) {
+            Reset();
+        }
+    }
+    else if (_bufReadPos != 0u) {
         for (auto i = _bufReadPos; i < _bufEndPos; i++) {
             _bufData[i - _bufReadPos] = _bufData[i];
         }
@@ -97,6 +102,10 @@ void NetBuffer::Refresh()
 
 void NetBuffer::Reset()
 {
+    if (_isError) {
+        return;
+    }
+
     _bufEndPos = 0;
     _bufReadPos = 0;
 
@@ -211,6 +220,12 @@ void NetBuffer::Cut(uint len)
 
 void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, uint len)
 {
+    NON_CONST_METHOD_HINT();
+
+    if (_isError) {
+        return;
+    }
+
     const auto* from_ = static_cast<const uchar*>(from);
     auto* to_ = static_cast<uchar*>(to);
 
@@ -221,6 +236,10 @@ void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, uint len)
 
 auto NetBuffer::NeedProcess() -> bool
 {
+    if (_isError) {
+        return false;
+    }
+
     uint msg = 0;
     if (_bufReadPos + sizeof(msg) > _bufEndPos) {
         return false;
@@ -369,7 +388,7 @@ auto NetBuffer::NeedProcess() -> bool
     case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
-    case NETMSG_CREATE_CLIENT:
+    case NETMSG_REGISTER:
     case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
@@ -405,6 +424,10 @@ auto NetBuffer::NeedProcess() -> bool
 
 void NetBuffer::SkipMsg(uint msg)
 {
+    if (_isError) {
+        return;
+    }
+
     _bufReadPos -= sizeof(msg);
     EncryptKey(-static_cast<int>(sizeof(msg)));
 
@@ -598,7 +621,7 @@ void NetBuffer::SkipMsg(uint msg)
     case NETMSG_LOGIN:
     case NETMSG_LOGIN_SUCCESS:
     case NETMSG_LOADMAP:
-    case NETMSG_CREATE_CLIENT:
+    case NETMSG_REGISTER:
     case NETMSG_UPDATE_FILES_LIST:
     case NETMSG_ADD_PLAYER:
     case NETMSG_ADD_NPC:
