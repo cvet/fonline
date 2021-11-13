@@ -237,7 +237,7 @@ void Application::AppRender::DisableScissor()
 {
 }
 
-auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader& /*file_loader*/) -> RenderEffect*
+auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
 {
     return nullptr;
 }
