@@ -45,32 +45,11 @@ Application* App;
 static _CrtMemState CrtMemState;
 #endif
 
-enum class RenderType
-{
-    None,
-    Null,
-#if FO_HAVE_OPENGL
-    OpenGL,
-#endif
-#if FO_HAVE_DIRECT_3D
-    Direct3D,
-#endif
-#if FO_HAVE_METAL
-    Metal,
-#endif
-#if FO_HAVE_VULKAN
-    Vulkan,
-#endif
-#if FO_HAVE_GNM
-    Gnm,
-#endif
-};
-
-const uint Application::AppRender::MAX_ATLAS_WIDTH {};
-const uint Application::AppRender::MAX_ATLAS_HEIGHT {};
-const uint Application::AppRender::MAX_BONES {};
-const int Application::AppAudio::AUDIO_FORMAT_U8 {};
-const int Application::AppAudio::AUDIO_FORMAT_S16 {};
+const uint Application::AppRender::MAX_ATLAS_WIDTH = 1024;
+const uint Application::AppRender::MAX_ATLAS_HEIGHT = 1024;
+const uint Application::AppRender::MAX_BONES = 32;
+const int Application::AppAudio::AUDIO_FORMAT_U8 = 0;
+const int Application::AppAudio::AUDIO_FORMAT_S16 = 1;
 
 struct RenderTexture::Impl
 {
@@ -258,11 +237,9 @@ void Application::AppRender::DisableScissor()
 {
 }
 
-auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
+auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader& /*file_loader*/) -> RenderEffect*
 {
-    auto effect = unique_ptr<RenderEffect>(new RenderEffect());
-
-    return effect.release();
+    return nullptr;
 }
 
 void Application::AppRender::DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, uint pos, RenderEffect* effect, RenderTexture* tex)
@@ -317,9 +294,6 @@ auto Application::AppAudio::GetSilence() -> uchar
 void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     RUNTIME_ASSERT(IsEnabled());
-
-    LockDevice();
-    UnlockDevice();
 }
 
 auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
