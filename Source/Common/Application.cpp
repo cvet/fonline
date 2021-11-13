@@ -39,7 +39,6 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-#if !FO_HEADLESS
 #include "SDL.h"
 #include "SDL_audio.h"
 #include "SDL_events.h"
@@ -56,7 +55,6 @@
 #if FO_HAVE_DIRECT_3D
 #include <d3d11_1.h>
 #endif
-#endif
 
 Application* App;
 
@@ -64,7 +62,6 @@ Application* App;
 static _CrtMemState CrtMemState;
 #endif
 
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
 static constexpr auto RING_BUFFER_LENGTH = 300;
 #if !FO_OPENGL_ES
@@ -123,7 +120,6 @@ static constexpr auto RING_BUFFER_LENGTH = 300;
 #endif
 #define GL_HAS(extension) (OGL_##extension)
 #endif
-#endif
 
 enum class RenderType
 {
@@ -146,7 +142,6 @@ enum class RenderType
 #endif
 };
 
-#if !FO_HEADLESS
 static SDL_Window* SdlWindow {};
 static RenderType CurRenderType {RenderType::None};
 static bool RenderDebug {};
@@ -179,13 +174,6 @@ const uint Application::AppRender::MAX_ATLAS_HEIGHT {};
 const uint Application::AppRender::MAX_BONES {};
 const int Application::AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int Application::AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
-#else
-const uint Application::AppRender::MAX_ATLAS_WIDTH {};
-const uint Application::AppRender::MAX_ATLAS_HEIGHT {};
-const uint Application::AppRender::MAX_BONES {};
-const int Application::AppAudio::AUDIO_FORMAT_U8 {};
-const int Application::AppAudio::AUDIO_FORMAT_S16 {};
-#endif // !FO_HEADLESS
 
 struct RenderTexture::Impl
 {
@@ -236,7 +224,6 @@ RenderMesh::~RenderMesh()
 {
 }
 
-#if !FO_HEADLESS
 static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
 static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
@@ -337,7 +324,6 @@ struct Direct3DMesh final : RenderMesh::Impl
     ~Direct3DMesh() override { }
 };
 #endif
-#endif // !FO_HEADLESS
 
 void InitApplication(GlobalSettings& settings)
 {
@@ -354,7 +340,6 @@ void InitApplication(GlobalSettings& settings)
 
 Application::Application(GlobalSettings& settings)
 {
-#if !FO_HEADLESS
     // Initialize input events
     if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0) {
         throw AppInitException("SDL_InitSubSystem SDL_INIT_EVENTS failed", SDL_GetError());
@@ -793,7 +778,6 @@ Application::Application(GlobalSettings& settings)
     if (settings.AlwaysOnTop) {
         Window.AlwaysOnTop(true);
     }
-#endif // !FO_HEADLESS
 
     // Skip SDL allocations from profiling
 #if FO_WINDOWS && FO_DEBUG
@@ -804,15 +788,12 @@ Application::Application(GlobalSettings& settings)
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
-#if !FO_HEADLESS
     SDL_iPhoneSetAnimationCallback(SdlWindow, 1, callback, nullptr);
-#endif
 }
 #endif
 
 void Application::BeginFrame()
 {
-#if !FO_HEADLESS
     if (!NextFrameEventsQueue->empty()) {
         EventsQueue->insert(EventsQueue->end(), NextFrameEventsQueue->begin(), NextFrameEventsQueue->end());
         NextFrameEventsQueue->clear();
@@ -944,14 +925,12 @@ void Application::BeginFrame()
             break;
         }
     }
-#endif // !FO_HEADLESS
 
     _onFrameBeginDispatcher();
 }
 
 void Application::EndFrame()
 {
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
 #if FO_HAVE_OPENGL
         if (CurRenderType == RenderType::OpenGL) {
@@ -977,7 +956,6 @@ void Application::EndFrame()
         }
 #endif
     }
-#endif // !FO_HEADLESS
 
     _onFrameEndDispatcher();
 }
@@ -986,92 +964,74 @@ auto Application::AppWindow::GetSize() const -> tuple<int, int>
 {
     auto w = 1000;
     auto h = 1000;
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_GetWindowSize(SdlWindow, &w, &h);
     }
-#endif
     return {w, h};
 }
 
 void Application::AppWindow::SetSize(int w, int h)
 {
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_SetWindowSize(SdlWindow, w, h);
     }
-#endif
 }
 
 auto Application::AppWindow::GetPosition() const -> tuple<int, int>
 {
     auto x = 0;
     auto y = 0;
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_GetWindowPosition(SdlWindow, &x, &y);
     }
-#endif
     return {x, y};
 }
 
 void Application::AppWindow::SetPosition(int x, int y)
 {
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_SetWindowPosition(SdlWindow, x, y);
     }
-#endif
 }
 
 auto Application::AppWindow::GetMousePosition() const -> tuple<int, int>
 {
     auto x = 100;
     auto y = 100;
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_GetMouseState(&x, &y);
     }
-#endif
     return {x, y};
 }
 
 void Application::AppWindow::SetMousePosition(int x, int y)
 {
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_WarpMouseInWindow(SdlWindow, x, y);
     }
-#endif
 }
 
 auto Application::AppWindow::IsFocused() const -> bool
 {
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         return (SDL_GetWindowFlags(SdlWindow) & SDL_WINDOW_INPUT_FOCUS) != 0u;
     }
-#endif
 
     return true;
 }
 
 void Application::AppWindow::Minimize()
 {
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         SDL_MinimizeWindow(SdlWindow);
     }
-#endif
 }
 
 auto Application::AppWindow::IsFullscreen() const -> bool
 {
-#if !FO_HEADLESS
     if (CurRenderType != RenderType::Null) {
         return (SDL_GetWindowFlags(SdlWindow) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0u;
     }
-#endif
 
     return false;
 }
@@ -1080,7 +1040,6 @@ auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
 {
     NON_CONST_METHOD_HINT();
 
-#if !FO_HEADLESS
     if (CurRenderType == RenderType::Null) {
         return false;
     }
@@ -1098,14 +1057,12 @@ auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
             return true;
         }
     }
-#endif
 
     return false;
 }
 
 void Application::AppWindow::Blink()
 {
-#if !FO_HEADLESS
     if (CurRenderType == RenderType::Null) {
         return;
     }
@@ -1117,12 +1074,10 @@ void Application::AppWindow::Blink()
         ::FlashWindow(info.info.win.window, 1);
     }
 #endif
-#endif
 }
 
 void Application::AppWindow::AlwaysOnTop(bool enable)
 {
-#if !FO_HEADLESS
     if (CurRenderType == RenderType::Null) {
         return;
     }
@@ -1134,14 +1089,12 @@ void Application::AppWindow::AlwaysOnTop(bool enable)
         ::SetWindowPos(info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
     }
 #endif
-#endif
 }
 
 auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     NON_CONST_METHOD_HINT();
 
-#if !FO_HEADLESS
     auto tex = unique_ptr<RenderTexture>(new RenderTexture());
     const_cast<uint&>(tex->Width) = width;
     const_cast<uint&>(tex->Height) = height;
@@ -1221,14 +1174,12 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
         return tex.release();
     }
 #endif
-#endif
 
     return nullptr;
 }
 
 auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) const -> uint
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
@@ -1244,7 +1195,6 @@ auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) c
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 
     return 0;
 }
@@ -1254,7 +1204,6 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
     RUNTIME_ASSERT(w && h);
     const auto size = w * h;
     vector<uint> result(size);
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
@@ -1269,13 +1218,11 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
     return result;
 }
 
 void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data)
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
@@ -1290,12 +1237,10 @@ void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect
         // D3DDeviceContext->UpdateSubresource()
     }
 #endif
-#endif
 }
 
 void Application::AppRender::SetRenderTarget(RenderTexture* tex)
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto* opengl_tex = dynamic_cast<OpenGLTexture*>(tex->_pImpl.get());
@@ -1345,12 +1290,10 @@ void Application::AppRender::SetRenderTarget(RenderTexture* tex)
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 }
 
 auto Application::AppRender::GetRenderTarget() -> RenderTexture*
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
     }
@@ -1359,13 +1302,11 @@ auto Application::AppRender::GetRenderTarget() -> RenderTexture*
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
     return nullptr;
 }
 
 void Application::AppRender::ClearRenderTarget(uint color)
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         const auto a = static_cast<float>((color >> 24) & 0xFF) / 255.0f;
@@ -1380,12 +1321,10 @@ void Application::AppRender::ClearRenderTarget(uint color)
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 }
 
 void Application::AppRender::ClearRenderTargetDepth()
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glClear(GL_DEPTH_BUFFER_BIT));
@@ -1395,12 +1334,10 @@ void Application::AppRender::ClearRenderTargetDepth()
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 }
 
 void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glEnable(GL_SCISSOR_TEST));
@@ -1411,12 +1348,10 @@ void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 }
 
 void Application::AppRender::DisableScissor()
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         GL(glDisable(GL_SCISSOR_TEST));
@@ -1426,13 +1361,11 @@ void Application::AppRender::DisableScissor()
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 }
 
 auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
 {
     auto effect = unique_ptr<RenderEffect>(new RenderEffect());
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         /*
@@ -1845,13 +1778,11 @@ i).c_str()));
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
     return effect.release();
 }
 
 void Application::AppRender::DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, uint pos, RenderEffect* effect, RenderTexture* tex)
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         // EnableVertexArray(quadsVertexArray, 4 * curDrawQuad);
@@ -1916,12 +1847,10 @@ void Application::AppRender::DrawQuads(const Vertex2DVec& vbuf, const vector<ush
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 }
 
 void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderPrimitiveType /*prim*/)
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         /*// Enable smooth
@@ -1968,12 +1897,10 @@ void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const ve
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 }
 
 void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/)
 {
-#if !FO_HEADLESS
 #if FO_HAVE_OPENGL
     if (CurRenderType == RenderType::OpenGL) {
         auto* opengl_mesh = dynamic_cast<OpenGLMesh*>(mesh->_pImpl.get());
@@ -2105,73 +2032,50 @@ void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/
     if (CurRenderType == RenderType::Direct3D) {
     }
 #endif
-#endif
 }
 
 auto Application::AppInput::PollEvent(InputEvent& event) -> bool
 {
-#if !FO_HEADLESS
     if (!EventsQueue->empty()) {
         event = EventsQueue->front();
         EventsQueue->erase(EventsQueue->begin());
         return true;
     }
-#endif
     return false;
 }
 
 void Application::AppInput::PushEvent(const InputEvent& event)
 {
-#if !FO_HEADLESS
     NextFrameEventsQueue->push_back(event);
-#endif
 }
 
 void Application::AppInput::SetClipboardText(const string& text)
 {
-#if !FO_HEADLESS
     SDL_SetClipboardText(text.c_str());
-#endif
 }
 
 auto Application::AppInput::GetClipboardText() -> string
 {
-#if !FO_HEADLESS
     return SDL_GetClipboardText();
-#else
-    return string();
-#endif
 }
 
 auto Application::AppAudio::IsEnabled() -> bool
 {
-#if !FO_HEADLESS
     return AudioDeviceId >= 2;
-#else
-    return false;
-#endif
 }
 
 auto Application::AppAudio::GetStreamSize() -> uint
 {
     RUNTIME_ASSERT(IsEnabled());
 
-#if !FO_HEADLESS
     return AudioSpec.size;
-#else
-    return 0u;
-#endif
 }
 
 auto Application::AppAudio::GetSilence() -> uchar
 {
     RUNTIME_ASSERT(IsEnabled());
 
-#if !FO_HEADLESS
     return AudioSpec.silence;
-#else
-    return 0u;
-#endif
 }
 
 void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
@@ -2179,13 +2083,10 @@ void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
     RUNTIME_ASSERT(IsEnabled());
 
     LockDevice();
-#if !FO_HEADLESS
     *AudioStreamWriter = std::move(stream_callback);
-#endif
     UnlockDevice();
 }
 
-#if !FO_HEADLESS
 struct Application::AppAudio::AudioConverter
 {
     int Format {};
@@ -2194,13 +2095,11 @@ struct Application::AppAudio::AudioConverter
     SDL_AudioCVT Cvt {};
     bool NeedConvert {};
 };
-#endif
 
 auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
     RUNTIME_ASSERT(IsEnabled());
 
-#if !FO_HEADLESS
     auto get_converter = [this, format, channels, rate]() -> AudioConverter* {
         const auto it = std::find_if(_converters.begin(), _converters.end(), [format, channels, rate](AudioConverter* c) { return c->Format == format && c->Channels == channels && c->Rate == rate; });
 
@@ -2234,7 +2133,6 @@ auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vec
 
         buf.resize(converter->Cvt.len_cvt);
     }
-#endif
 
     return true;
 }
@@ -2243,26 +2141,72 @@ void Application::AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
     RUNTIME_ASSERT(IsEnabled());
 
-#if !FO_HEADLESS
     volume = std::clamp(volume, 0, 100) * SDL_MIX_MAXVOLUME / 100;
     SDL_MixAudioFormat(output, buf, AudioSpec.format, AudioSpec.size, volume);
-#endif
 }
 
 void Application::AppAudio::LockDevice()
 {
     RUNTIME_ASSERT(IsEnabled());
 
-#if !FO_HEADLESS
     SDL_LockAudioDevice(AudioDeviceId);
-#endif
 }
 
 void Application::AppAudio::UnlockDevice()
 {
     RUNTIME_ASSERT(IsEnabled());
 
-#if !FO_HEADLESS
     SDL_UnlockAudioDevice(AudioDeviceId);
+}
+
+void MessageBox::ShowErrorMessage(const string& message, const string& traceback)
+{
+#if FO_WEB || FO_ANDROID || FO_IOS
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "FOnline Error", message.c_str(), nullptr);
+
+#else
+    auto verb_message = message;
+#if FO_WINDOWS
+    const string most_recent = "most recent call first";
+#else
+    const string most_recent = "most recent call last";
+#endif
+
+    if (!traceback.empty()) {
+        verb_message += _str("\n\nTraceback ({}):\n{}", most_recent, traceback);
+    }
+
+    SDL_MessageBoxButtonData copy_button;
+    SDL_zero(copy_button);
+    copy_button.buttonid = 0;
+    copy_button.text = "Copy";
+
+    SDL_MessageBoxButtonData close_button;
+    SDL_zero(close_button);
+    close_button.buttonid = 1;
+    close_button.text = "Close";
+
+    // Todo: fix workaround for strange behaviour of button focus
+#if FO_WINDOWS
+    copy_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+    copy_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+#else
+    close_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
+    close_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
+#endif
+
+    const SDL_MessageBoxButtonData buttons[] = {close_button, copy_button};
+    SDL_MessageBoxData data;
+    SDL_zero(data);
+    data.flags = SDL_MESSAGEBOX_ERROR;
+    data.title = "FOnline Error";
+    data.message = verb_message.c_str();
+    data.numbuttons = 2;
+    data.buttons = buttons;
+
+    auto buttonid = 0;
+    while (SDL_ShowMessageBox(&data, &buttonid) == 0 && buttonid == 0) {
+        SDL_SetClipboardText(verb_message.c_str());
+    }
 #endif
 }

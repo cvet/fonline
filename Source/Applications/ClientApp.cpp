@@ -41,7 +41,6 @@
 #include "Timer.h"
 #include "Version-Include.h"
 #if FO_SINGLEPLAYER
-#include "Networking.h"
 #include "Server.h"
 #endif
 
@@ -58,20 +57,6 @@ struct ClientAppData
 GLOBAL_DATA(ClientAppData, Data);
 
 #if FO_SINGLEPLAYER
-NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
-{
-    throw UnreachablePlaceException(LINE_STR);
-}
-NetServerBase* NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
-{
-    throw UnreachablePlaceException(LINE_STR);
-}
-void NetConnection::AddRef() const
-{
-}
-void NetConnection::Release() const
-{
-}
 void ClientScriptSystem::InitNativeScripting()
 {
 }
