@@ -34,6 +34,9 @@
 // Todo: catch exceptions in network servers
 
 #include "Networking.h"
+
+#if !FO_SINGLEPLAYER
+
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -624,3 +627,25 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const
     throw NotSupportedException("NetServerBase::StartWebSocketsServer");
 #endif
 }
+
+#else
+
+NetServerBase* NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
+{
+    throw UnreachablePlaceException(LINE_STR);
+}
+
+NetServerBase* NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback)
+{
+    throw UnreachablePlaceException(LINE_STR);
+}
+
+void NetConnection::AddRef() const
+{
+}
+
+void NetConnection::Release() const
+{
+}
+
+#endif

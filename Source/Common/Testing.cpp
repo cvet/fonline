@@ -33,10 +33,10 @@
 
 #include "Testing.h"
 
+#include "Application.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
-#include "MessageBox.h"
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 #include "Timer.h"

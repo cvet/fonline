@@ -475,5 +475,13 @@ private:
     EventDispatcher<> _onQuitDispatcher {OnQuit};
 };
 
+class MessageBox final
+{
+public:
+    MessageBox() = delete;
+
+    static void ShowErrorMessage(const string& message, const string& traceback);
+};
+
 extern void InitApplication(GlobalSettings& settings);
 extern Application* App;

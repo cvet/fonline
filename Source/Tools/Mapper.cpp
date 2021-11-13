@@ -36,7 +36,6 @@
 #include "DiskFileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
-#include "MessageBox.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
