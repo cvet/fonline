@@ -578,7 +578,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
     }
 }
 
-void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
+void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
     Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
 

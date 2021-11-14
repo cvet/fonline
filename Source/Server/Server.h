@@ -216,7 +216,7 @@ public:
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
     void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
-    auto GetBanByName(const char* name) -> ClientBanned*;
+    auto GetBanByName(string_view name) -> ClientBanned*;
     auto GetBanByIp(uint ip) -> ClientBanned*;
     auto GetBanTime(ClientBanned& ban) -> uint;
     auto GetBanLexems(ClientBanned& ban) -> string;

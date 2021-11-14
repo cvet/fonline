@@ -68,7 +68,7 @@ public:
     [[nodiscard]] auto GetCritter(uint cr_id) -> Critter*;
     [[nodiscard]] auto GetCritter(uint cr_id) const -> const Critter*;
     [[nodiscard]] auto GetPlayerById(uint id) -> Player*;
-    [[nodiscard]] auto GetPlayerByName(const char* name) -> Player*;
+    [[nodiscard]] auto GetPlayerByName(string_view name) -> Player*;
     [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*;
     [[nodiscard]] auto PlayersInGame() const -> uint;
     [[nodiscard]] auto NpcInGame() const -> uint;

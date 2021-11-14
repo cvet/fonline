@@ -41,11 +41,11 @@ public:
     Str() = delete;
 
     template<int Size>
-    static void Copy(char (&to)[Size], const char* from)
+    static void Copy(char (&to)[Size], string_view from)
     {
         return Copy(to, Size, from);
     }
-    static void Copy(char* to, size_t size, const char* from);
+    static void Copy(char* to, size_t size, string_view from);
 };
 
 // ReSharper disable once CppInconsistentNaming
@@ -144,7 +144,7 @@ private:
 namespace utf8
 {
     auto IsValid(uint ucs) -> bool;
-    auto Decode(const char* str, uint* length) -> uint;
+    auto Decode(string_view str, uint* length) -> uint;
     auto Encode(uint ucs, char (&buf)[4]) -> uint;
     auto Lower(uint ucs) -> uint;
     auto Upper(uint ucs) -> uint;

@@ -137,7 +137,7 @@ auto DialogManager::LoadDialogs() -> bool
             continue;
         }
 
-        string pack_data = reinterpret_cast<const char*>(file.GetBuf());
+        string pack_data = file.GetCStr();
         auto* pack = ParseDialog(file.GetName(), pack_data);
         if (pack == nullptr) {
             WriteLog("Unable to parse dialog '{}'.\n", file.GetName());

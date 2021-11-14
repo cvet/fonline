@@ -1596,7 +1596,7 @@ version, "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines, "\n", fil
     // Info parser
     struct ShaderInfo
     {
-        static void Log(const char* shader_name, GLint shader)
+        static void Log(string_view shader_name, GLint shader)
         {
             int len = 0;
             GL(glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len));

@@ -1694,14 +1694,10 @@ void FOClient::Net_SendCreatePlayer()
     Bout << LoginPassword;
 }
 
-void FOClient::Net_SendText(const char* send_str, uchar how_say)
+void FOClient::Net_SendText(string_view send_str, uchar how_say)
 {
-    if ((send_str == nullptr) || (send_str[0] == 0)) {
-        return;
-    }
-
     int say_type = how_say;
-    string str = send_str;
+    auto str = string(send_str);
     const auto result = ScriptSys.OutMessageEvent(str, say_type);
 
     how_say = static_cast<uchar>(say_type);
@@ -4062,7 +4058,7 @@ auto FOClient::AnimLoad(uint name_hash, AtlasType res_type) -> uint
     return static_cast<uint>(index);
 }
 
-auto FOClient::AnimLoad(const char* fname, AtlasType res_type) -> uint
+auto FOClient::AnimLoad(string_view fname, AtlasType res_type) -> uint
 {
     auto* anim = ResMngr.GetAnim(_str(fname).toHash(), res_type);
     if (anim == nullptr) {

@@ -1740,13 +1740,13 @@ void FOServer::DispatchLogToClients()
     LogLines.clear();
 }
 
-auto FOServer::GetBanByName(const char* name) -> FOServer::ClientBanned*
+auto FOServer::GetBanByName(string_view name) -> ClientBanned*
 {
     const auto it = std::find_if(Banned.begin(), Banned.end(), [name](const ClientBanned& ban) { return _str(name).compareIgnoreCaseUtf8(ban.ClientName); });
     return it != Banned.end() ? &(*it) : nullptr;
 }
 
-auto FOServer::GetBanByIp(uint ip) -> FOServer::ClientBanned*
+auto FOServer::GetBanByIp(uint ip) -> ClientBanned*
 {
     const auto it = std::find_if(Banned.begin(), Banned.end(), [ip](const ClientBanned& ban) { return ban.ClientIp == ip; });
     return it != Banned.end() ? &(*it) : nullptr;
@@ -2600,7 +2600,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     {
         std::lock_guard locker(BannedLocker);
 
-        if (auto* ban = GetBanByName(name.c_str()); ban != nullptr) {
+        if (auto* ban = GetBanByName(name); ban != nullptr) {
             connection->Send_TextMsg(STR_NET_BANNED);
             connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban).c_str());
             connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)).c_str());

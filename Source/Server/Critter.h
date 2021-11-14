@@ -153,7 +153,7 @@ public:
     void SendAndBroadcast_SetAnims(int cond, uint anim1, uint anim2);
     void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uchar how_say, bool unsafe_text);
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
-    void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems);
+    void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
 
     void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
     void Send_Move(Critter* from_cr, uint move_params);

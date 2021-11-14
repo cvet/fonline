@@ -785,7 +785,7 @@ void HexManager::ProcessRain()
     }
 }
 
-void HexManager::SetRainAnimation(const char* fall_anim_name, const char* drop_anim_name)
+void HexManager::SetRainAnimation(string_view fall_anim_name, string_view drop_anim_name)
 {
     if (fall_anim_name != nullptr) {
         _picRainFallName = fall_anim_name;
@@ -879,7 +879,7 @@ void HexManager::DrawCursor(uint spr_id)
     }
 }
 
-void HexManager::DrawCursor(const char* text)
+void HexManager::DrawCursor(string_view text)
 {
     NON_CONST_METHOD_HINT();
 

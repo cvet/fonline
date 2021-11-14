@@ -246,10 +246,10 @@ public:
     void GetSmthPixel(int x, int y, ItemHexView*& item, CritterView*& cr);
     auto RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
     void ProcessRain();
-    void SetRainAnimation(const char* fall_anim_name, const char* drop_anim_name);
+    void SetRainAnimation(string_view fall_anim_name, string_view drop_anim_name);
     void SetCursorPos(int x, int y, bool show_steps, bool refresh);
     void DrawCursor(uint spr_id);
-    void DrawCursor(const char* text);
+    void DrawCursor(string_view text);
 
     [[nodiscard]] auto GetTiles(ushort hx, ushort hy, bool is_roof) -> vector<MapTile>&;
     [[nodiscard]] auto IsFastPid(hash pid) const -> bool;

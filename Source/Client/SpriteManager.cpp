@@ -2195,7 +2195,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
     string image_name;
 
     // Parse data
-    istringstream str(reinterpret_cast<const char*>(file.GetBuf()));
+    istringstream str(file.GetCStr());
     string key;
     string letter_buf;
     FontData::Letter* cur_letter = nullptr;
@@ -2549,7 +2549,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         str_++;
     }
 
-    Str::Copy(str, FONT_BUF_LEN, buf.c_str());
+    Str::Copy(fi.PStr, FONT_BUF_LEN, buf);
 
     // Skip lines
     auto skip_line = IsBitSet(flags, FT_SKIPLINES(0)) ? flags >> 16 : 0;

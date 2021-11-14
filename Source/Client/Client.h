@@ -251,7 +251,7 @@ public:
     void Net_SendGetGameInfo();
     void Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash);
     void Net_SendLoadMapOk();
-    void Net_SendText(const char* send_str, uchar how_say);
+    void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir();
     void Net_SendMove(vector<uchar> steps);
     void Net_SendPing(uchar ping);
@@ -321,7 +321,7 @@ public:
     void OnSendLocationValue(Entity* entity, Property* prop);
 
     auto AnimLoad(uint name_hash, AtlasType res_type) -> uint;
-    auto AnimLoad(const char* fname, AtlasType res_type) -> uint;
+    auto AnimLoad(string_view fname, AtlasType res_type) -> uint;
     auto AnimGetCurSpr(uint anim_id) -> uint;
     auto AnimGetCurSprCnt(uint anim_id) -> uint;
     auto AnimGetSprCount(uint anim_id) -> uint;

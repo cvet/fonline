@@ -397,7 +397,7 @@ public:
     RefCounter(const RefCounter&) = delete;
     RefCounter(RefCounter&&) = delete;
     auto operator=(const RefCounter&) -> RefCounter& = delete;
-    auto operator=(RefCounter &&) -> RefCounter& = delete;
+    auto operator=(RefCounter&&) -> RefCounter& = delete;
 
     virtual ~RefCounter()
     {
@@ -495,8 +495,9 @@ private:
 
 // C-strings literal helpers
 // Todo: add _hash c-string literal helper
-auto constexpr operator"" _len(const char* /*str*/, size_t size) -> size_t
+auto constexpr operator"" _len(const char* str, size_t size) -> size_t
 {
+    (void)str;
     return size;
 }
 
@@ -552,7 +553,7 @@ public:
     MemoryPool(const MemoryPool&) = delete;
     MemoryPool(MemoryPool&&) noexcept = default;
     auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool &&) -> MemoryPool& = delete;
+    auto operator=(MemoryPool&&) -> MemoryPool& = delete;
 
     ~MemoryPool()
     {

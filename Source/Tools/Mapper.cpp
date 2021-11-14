@@ -306,7 +306,7 @@ auto FOMapper::InitIface() -> int
     return 0;
 }
 
-auto FOMapper::IfaceLoadRect(IRect& comp, const char* name) -> bool
+auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) -> bool
 {
     const auto res = IfaceIni.GetStr("", name);
     if (res.empty()) {
@@ -358,7 +358,7 @@ auto FOMapper::AnimLoad(uint name_hash, AtlasType res_type) -> uint
     return index;
 }
 
-auto FOMapper::AnimLoad(const char* fname, AtlasType res_type) -> uint
+auto FOMapper::AnimLoad(string_view fname, AtlasType res_type) -> uint
 {
     auto* anim = ResMngr.GetAnim(_str(fname).toHash(), res_type);
     if (anim == nullptr) {
@@ -1841,7 +1841,7 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
     r.Bottom += DRAW_NEXT_HEIGHT;
 }
 
-void FOMapper::ObjKeyDown(KeyCode dik, const char* dik_text)
+void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
 {
     if (dik == KeyCode::DIK_RETURN || dik == KeyCode::DIK_NUMPADENTER) {
         if (ObjCurLineInitValue != ObjCurLineValue) {
@@ -3669,7 +3669,7 @@ void FOMapper::ConsoleDraw()
     }
 }
 
-void FOMapper::ConsoleKeyDown(KeyCode dik, const char* dik_text)
+void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 {
     if (dik == KeyCode::DIK_RETURN || dik == KeyCode::DIK_NUMPADENTER) {
         if (ConsoleEdit) {
@@ -3981,7 +3981,7 @@ void FOMapper::ParseCommand(string_view command)
     }
 }
 
-void FOMapper::AddMess(const char* message_text)
+void FOMapper::AddMess(string_view message_text)
 {
     const string str = _str("|{} - {}\n", COLOR_TEXT, message_text);
 

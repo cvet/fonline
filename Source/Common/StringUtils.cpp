@@ -605,25 +605,23 @@ auto _str::toHash() -> hash
 
 // ReSharper restore CppInconsistentNaming
 
-void Str::Copy(char* to, size_t size, const char* from)
+void Str::Copy(char* to, size_t size, string_view from)
 {
     RUNTIME_ASSERT(to);
-    RUNTIME_ASSERT(from);
     RUNTIME_ASSERT(size > 0);
 
-    const auto from_len = strlen(from);
-    if (from_len == 0u) {
+    if (from.length() == 0u) {
         to[0] = 0;
         return;
     }
 
-    if (from_len >= size) {
-        std::memcpy(to, from, size - 1);
+    if (from.length() >= size) {
+        std::memcpy(to, from.data(), size - 1);
         to[size - 1] = 0;
     }
     else {
-        std::memcpy(to, from, from_len);
-        to[from_len] = 0;
+        std::memcpy(to, from.data(), from.length());
+        to[from.length()] = 0;
     }
 }
 
@@ -633,7 +631,7 @@ auto utf8::IsValid(uint ucs) -> bool
     return ucs != 0xFFFD && ucs <= 0x10FFFF;
 }
 
-auto utf8::Decode(const char* str, uint* length) -> uint
+auto utf8::Decode(string_view str, uint* length) -> uint
 {
 #define DECODE_FAIL() \
     do { \
@@ -643,7 +641,7 @@ auto utf8::Decode(const char* str, uint* length) -> uint
         return 0xFFFD; \
     } while (0)
 
-    const auto c = *reinterpret_cast<const uchar*>(str);
+    const auto c = *reinterpret_cast<const uchar*>(str.data());
     if (c < 0x80) {
         if (length != nullptr) {
             *length = 1;
@@ -666,7 +664,7 @@ auto utf8::Decode(const char* str, uint* length) -> uint
     }
 
     if (c == 0xe0) {
-        if (reinterpret_cast<const uchar*>(str)[1] < 0xa0) {
+        if (reinterpret_cast<const uchar*>(str.data())[1] < 0xa0) {
             DECODE_FAIL();
         }
 
@@ -690,7 +688,7 @@ auto utf8::Decode(const char* str, uint* length) -> uint
     }
 
     if (c == 0xf0) {
-        if (reinterpret_cast<const uchar*>(str)[1] < 0x90) {
+        if (reinterpret_cast<const uchar*>(str.data())[1] < 0x90) {
             DECODE_FAIL();
         }
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
@@ -713,7 +711,7 @@ auto utf8::Decode(const char* str, uint* length) -> uint
     }
 
     if (c == 0xf4) {
-        if (reinterpret_cast<const uchar*>(str)[1] > 0x8f) {
+        if (reinterpret_cast<const uchar*>(str.data())[1] > 0x8f) {
             DECODE_FAIL();
         }
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {

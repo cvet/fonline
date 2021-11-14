@@ -380,7 +380,7 @@ auto CritterManager::GetPlayerById(uint id) -> Player*
     return dynamic_cast<Player*>(_entityMngr.GetEntity(id, EntityType::Player));
 }
 
-auto CritterManager::GetPlayerByName(const char* name) -> Player*
+auto CritterManager::GetPlayerByName(string_view name) -> Player*
 {
     NON_CONST_METHOD_HINT();
 
