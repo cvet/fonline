@@ -2902,7 +2902,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
     color = COLOR_SWAP_RB(color);
 
     FontFormatInfo fi {font, flags, r};
-    Str::Copy(fi.Str, string(str).c_str());
+    Str::Copy(fi.Str, str);
     fi.DefColor = color;
     FormatText(fi, FORMAT_TYPE_DRAW);
     if (fi.IsError) {
@@ -3055,7 +3055,7 @@ auto SpriteManager::GetLinesCount(int width, int height, string_view str, int nu
 
     const auto r = IRect(0, 0, width != 0 ? width : _settings.ScreenWidth, height != 0 ? height : _settings.ScreenHeight);
     FontFormatInfo fi {font, 0, r};
-    Str::Copy(fi.Str, string(str).c_str());
+    Str::Copy(fi.Str, str);
     FormatText(fi, FORMAT_TYPE_LCOUNT);
     if (fi.IsError) {
         return 0;
@@ -3110,7 +3110,7 @@ auto SpriteManager::GetTextInfo(int width, int height, string_view str, int num_
     }
 
     FontFormatInfo fi {font, flags, IRect(0, 0, width, height)};
-    Str::Copy(fi.Str, string(str).c_str());
+    Str::Copy(fi.Str, str);
     FormatText(fi, FORMAT_TYPE_LCOUNT);
     if (fi.IsError) {
         return false;
@@ -3136,7 +3136,7 @@ auto SpriteManager::SplitLines(const IRect& r, string_view cstr, int num_font) -
     }
 
     FontFormatInfo fi {font, 0, r};
-    Str::Copy(fi.Str, string(cstr).c_str());
+    Str::Copy(fi.Str, cstr);
     fi.StrLines = &result;
     FormatText(fi, FORMAT_TYPE_SPLIT);
     if (fi.IsError) {

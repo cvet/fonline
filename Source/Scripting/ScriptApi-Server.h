@@ -657,10 +657,10 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(uchar, howSay) FO_API_ARG_MARSHAL(ushort, textM
     }
 
     if (howSay >= SAY_NETMSG) {
-        _critter->Send_TextMsgLex(_critter, numStr, howSay, textMsg, lexems.c_str());
+        _critter->Send_TextMsgLex(_critter, numStr, howSay, textMsg, lexems);
     }
     else if (_critter->GetMapId()) {
-        _critter->SendAndBroadcast_MsgLex(_critter->VisCr, numStr, howSay, textMsg, lexems.c_str());
+        _critter->SendAndBroadcast_MsgLex(_critter->VisCr, numStr, howSay, textMsg, lexems);
     }
 }
 FO_API_EPILOG()

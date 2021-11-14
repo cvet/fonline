@@ -321,7 +321,7 @@ bool DiskFile::Write(string_view str)
     RUNTIME_ASSERT(_openedForWriting);
 
     if (!str.empty()) {
-        return Write(str.c_str(), static_cast<uint>(str.length()));
+        return Write(str.data(), static_cast<uint>(str.length()));
     }
     return true;
 }

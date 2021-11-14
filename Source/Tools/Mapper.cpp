@@ -1192,7 +1192,7 @@ void FOMapper::MainLoop()
             for (auto [id, cr] : HexMngr.GetCritters()) {
                 if (cr->SprDrawValid) {
                     if (DrawCrExtInfo == 1) {
-                        cr->SetText(_str("|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId()).c_str(), COLOR_TEXT_WHITE, 60000000);
+                        cr->SetText(_str("|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId()), COLOR_TEXT_WHITE, 60000000);
                     }
                     else {
                         cr->SetText("", COLOR_TEXT_WHITE, 60000000);
@@ -1739,8 +1739,7 @@ void FOMapper::IntDraw()
                  "Fps {}\n"
                  "Tile layer {}\n"
                  "{}",
-                ActiveMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : "")
-                .c_str(),
+                ActiveMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
             FT_NOBREAK_LINE, 0, FONT_DEFAULT);
     }
 }
@@ -3699,7 +3698,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 
                 // Process command
                 const auto process_command = ScriptSys.ConsoleMessageEvent(ConsoleStr);
-                AddMess(ConsoleStr.c_str());
+                AddMess(ConsoleStr);
                 if (process_command) {
                     ParseCommand(ConsoleStr);
                 }
@@ -3849,7 +3848,7 @@ void FOMapper::ParseCommand(string_view command)
             if (ScriptSys.RunPrepared())
             {
                 string result = *(string*)ScriptSys.GetReturnedRawAddress();
-                AddMess(_str("Result: {}", result).c_str());
+                AddMess(_str("Result: {}", result));
             }
             else
             {

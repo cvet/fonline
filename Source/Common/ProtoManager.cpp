@@ -173,7 +173,7 @@ static void ParseProtos(FileManager& file_mngr, string_view ext, string_view app
                     else {
                         auto inject_name_hash = _str(inject_name).toHash();
                         if (!files_protos.count(inject_name_hash)) {
-                            throw ProtoManagerException("Proto not found for injection from another proto", inject_name.c_str(), _str().parseHash(pid));
+                            throw ProtoManagerException("Proto not found for injection from another proto", inject_name, _str().parseHash(pid));
                         }
                         InsertMapValues(kv, files_protos[inject_name_hash], overwrite);
                     }
@@ -192,7 +192,7 @@ static void ParseProtos(FileManager& file_mngr, string_view ext, string_view app
         // Fill content from parents
         map<string, string> final_kv;
         std::function<void(string_view, map<string, string>&)> fill_parent = [&fill_parent, &base_name, &files_protos, &final_kv](string_view name, map<string, string>& cur_kv) {
-            const auto* parent_name_line = cur_kv.count("$Parent") ? cur_kv["$Parent"].c_str() : "";
+            const auto parent_name_line = cur_kv.count("$Parent") ? cur_kv["$Parent"] : string();
             for (auto& parent_name : _str(parent_name_line).split(' ')) {
                 auto parent_pid = _str(parent_name).toHash();
                 auto parent = files_protos.find(parent_pid);

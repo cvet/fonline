@@ -787,10 +787,10 @@ void HexManager::ProcessRain()
 
 void HexManager::SetRainAnimation(string_view fall_anim_name, string_view drop_anim_name)
 {
-    if (fall_anim_name != nullptr) {
+    if (!fall_anim_name.empty()) {
         _picRainFallName = fall_anim_name;
     }
-    if (drop_anim_name != nullptr) {
+    if (!drop_anim_name.empty()) {
         _picRainDropName = drop_anim_name;
     }
 
@@ -2416,7 +2416,7 @@ void HexManager::DrawMap()
         DrawCursor(_cursorXPic->GetCurSprId(_gameTime.GameTick()));
     }
     else if (_drawCursorX > 0) {
-        DrawCursor(_str("{}", _drawCursorX).c_str());
+        DrawCursor(_str("{}", _drawCursorX));
     }
 
     // Draw map from render target

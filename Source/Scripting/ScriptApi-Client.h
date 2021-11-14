@@ -891,7 +891,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
         FO_API_RETURN(buf);
     }
     else if (cmd == "ConsoleMessage" && args.size() >= 2) {
-        _client->Net_SendText(args[1].c_str(), SAY_NORM);
+        _client->Net_SendText(args[1], SAY_NORM);
     }
     else if (cmd == "SaveLog" && args.size() == 3) {
         //              if( file_name == "" )
@@ -911,7 +911,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
         //                      m.Type) != MessBoxFilters.end())
         //                              continue;
         //                      // Concat
-        //                      Str::Copy(cur_mess, m.Mess.c_str());
+        //                      Str::Copy(cur_mess, m.Mess);
         //                      Str::EraseWords(cur_mess, '|', ' ');
         //                      fmt_log += MessBox[i].Time + string(cur_mess);
         //              }
@@ -1614,7 +1614,7 @@ FO_API_GLOBAL_CLIENT_FUNC(PlayVideo, FO_API_RET(void), FO_API_ARG(string, videoN
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, videoName) FO_API_ARG_MARSHAL(bool, canStop))
 {
     // _client->SndMngr.StopMusic();
-    // _client->AddVideo(videoName.c_str(), canStop, true);
+    // _client->AddVideo(videoName, canStop, true);
 }
 FO_API_EPILOG()
 #endif
@@ -2322,10 +2322,10 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, fontIndex) FO_API_ARG_MARSHAL(string, font
 
     bool result;
     if (fontFname.length() > 0 && fontFname[0] == '*') {
-        result = _client->SprMngr.LoadFontFO(fontIndex, fontFname.c_str() + 1, false, false);
+        result = _client->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), false, false);
     }
     else {
-        result = _client->SprMngr.LoadFontBmf(fontIndex, fontFname.c_str());
+        result = _client->SprMngr.LoadFontBmf(fontIndex, fontFname);
     }
 
     if (result && !_client->SprMngr.IsAccumulateAtlasActive()) {
@@ -2567,7 +2567,7 @@ FO_API_GLOBAL_CLIENT_FUNC(SetRainAnim, FO_API_RET(void), FO_API_ARG(string, fall
 #if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fallAnimName) FO_API_ARG_MARSHAL(string, dropAnimName))
 {
-    _client->HexMngr.SetRainAnimation(!fallAnimName.empty() ? fallAnimName.c_str() : nullptr, !dropAnimName.empty() ? dropAnimName.c_str() : nullptr);
+    _client->HexMngr.SetRainAnimation(fallAnimName, dropAnimName);
 }
 FO_API_EPILOG()
 #endif
@@ -2672,7 +2672,7 @@ FO_API_GLOBAL_CLIENT_FUNC(LoadSprite, FO_API_RET(uint), FO_API_ARG(string, sprNa
 #if FO_API_GLOBAL_CLIENT_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, sprName))
 {
-    FO_API_RETURN(_client->AnimLoad(sprName.c_str(), AtlasType::Static));
+    FO_API_RETURN(_client->AnimLoad(sprName, AtlasType::Static));
 }
 FO_API_EPILOG(0)
 #endif
@@ -2994,7 +2994,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(int, x) FO_API
     }
 
     const auto r = IRect(xx, yy, xx + ww, yy + hh);
-    _client->SprMngr.DrawStr(r, text.c_str(), flags, COLOR_SCRIPT_TEXT(color), font);
+    _client->SprMngr.DrawStr(r, text, flags, COLOR_SCRIPT_TEXT(color), font);
 }
 FO_API_EPILOG()
 #endif

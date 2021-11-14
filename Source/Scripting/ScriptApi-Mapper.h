@@ -1195,7 +1195,7 @@ FO_API_GLOBAL_MAPPER_FUNC(Message, FO_API_RET(void), FO_API_ARG(string, msg))
 #if FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, msg))
 {
-    _mapper->AddMess(msg.c_str());
+    _mapper->AddMess(msg);
 }
 FO_API_EPILOG()
 #endif
@@ -1214,7 +1214,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(int, textMsg) FO_API_ARG_MARSHAL(uint, strNum))
         throw ScriptException("Invalid text msg arg");
     }
 
-    _mapper->AddMess(_mapper->CurLang.Msg[textMsg].GetStr(strNum).c_str());
+    _mapper->AddMess(_mapper->CurLang.Msg[textMsg].GetStr(strNum));
 }
 FO_API_EPILOG()
 #endif
@@ -1748,7 +1748,7 @@ FO_API_GLOBAL_MAPPER_FUNC(SetRainAnimation, FO_API_RET(void), FO_API_ARG(string,
 #if FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, fallAnimName) FO_API_ARG_MARSHAL(string, dropAnimName))
 {
-    _mapper->HexMngr.SetRainAnimation(!fallAnimName.empty() ? fallAnimName.c_str() : nullptr, !dropAnimName.empty() ? dropAnimName.c_str() : nullptr);
+    _mapper->HexMngr.SetRainAnimation(fallAnimName, dropAnimName);
 }
 FO_API_EPILOG()
 #endif
@@ -1805,7 +1805,7 @@ FO_API_GLOBAL_MAPPER_FUNC(LoadSprite, FO_API_RET(uint), FO_API_ARG(string, sprNa
 #if FO_API_GLOBAL_MAPPER_FUNC_IMPL
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, sprName))
 {
-    FO_API_RETURN(_mapper->AnimLoad(sprName.c_str(), AtlasType::Static));
+    FO_API_RETURN(_mapper->AnimLoad(sprName, AtlasType::Static));
 }
 FO_API_EPILOG(0)
 #endif

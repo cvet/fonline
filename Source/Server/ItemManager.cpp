@@ -785,7 +785,7 @@ auto ItemManager::GetItemsStatistics() const -> string
 
     string result = "Name                                     Count\n";
     for (const auto* proto : protos) {
-        result += _str("{:<40} {:<20}\n", proto->GetName(), _str("{}", proto->InstanceCount).c_str());
+        result += _str("{:<40} {:<20}\n", proto->GetName(), _str("{}", proto->InstanceCount)).strv();
     }
     return result;
 }
