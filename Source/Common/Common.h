@@ -47,7 +47,6 @@
 // Todo: fix build warnings for all platforms
 // Todo: enable threating warnings as errors
 // Todo: id and hash to 8 byte integer
-// Todo: research about std::string_view
 // Todo: research about std::filesystem
 // Todo: compile with -fpedantic
 // Todo: c-style arrays to std::array
