@@ -156,7 +156,7 @@ auto Property::CreateRefValue(uchar* /*data*/, uint /*data_size*/) -> unique_ptr
     return nullptr;
 }
 
-auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool& /*need_delete*/) -> uchar*
+auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool & /*need_delete*/) -> uchar*
 {
     /*need_delete = false;
     if (dataType == Property::String)
@@ -976,7 +976,7 @@ void* ReadValue(
     return nullptr;
 }*/
 
-auto Properties::LoadFromText(const map<string, string>& /*key_values*/) -> bool
+auto Properties::LoadFromText(const map<string, string> & /*key_values*/) -> bool
 {
     /*bool is_error = false;
     for (const auto& kv : key_values)
