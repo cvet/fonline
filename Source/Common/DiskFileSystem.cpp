@@ -245,13 +245,13 @@ struct DiskFile::Impl
 
 DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 {
-    SDL_RWops* ops = SDL_RWFromFile(fname.c_str(), write ? "wb" : "rb");
+    SDL_RWops* ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
     if (!ops) {
         if (write) {
             DiskFileSystem::MakeDirTree(fname);
         }
 
-        ops = SDL_RWFromFile(fname.c_str(), write ? "wb" : "rb");
+        ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
     }
     if (!ops) {
         return;
