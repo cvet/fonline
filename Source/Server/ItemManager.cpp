@@ -608,7 +608,7 @@ void ItemManager::UnregisterRadio(Item* radio)
     }
 }
 
-void ItemManager::RadioSendText(Critter* cr, const string& text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels)
+void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels)
 {
     vector<Item*> radios;
     auto items = cr->GetItemsNoLock();
@@ -624,7 +624,7 @@ void ItemManager::RadioSendText(Critter* cr, const string& text, bool unsafe_tex
     }
 }
 
-void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const string& text, bool unsafe_text, ushort text_msg, uint num_str, const string& lexems)
+void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems)
 {
     // Broadcast
     if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && !(broadcast_type >= 101 && broadcast_type <= 200) /*RADIO_BROADCAST_ZONE*/) {

@@ -46,7 +46,7 @@ void Keyboard::Lost()
     ShiftDwn = false;
 }
 
-void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint flags) const
+void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const
 {
     if (AltDwn) {
         return;
@@ -123,7 +123,7 @@ void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* 
         App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::DIK_CLIPBOARD_PASTE})});
     }
     else if (dik == KeyCode::DIK_CLIPBOARD_PASTE) {
-        auto text = dik_text;
+        auto text = string(dik_text);
         EraseInvalidChars(text, flags);
         if (!text.empty()) {
             str.insert(pos, text);
@@ -140,7 +140,7 @@ void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* 
 
         for (size_t i = 0; i < dik_text.length();) {
             uint length = 0;
-            if (IsInvalidChar(dik_text.c_str() + i, flags, length)) {
+            if (IsInvalidChar(dik_text.data() + i, flags, length)) {
                 return;
             }
             i += length;

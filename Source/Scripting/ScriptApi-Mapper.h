@@ -673,7 +673,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, dir))
     auto map_files = _mapper->ServerFileMngr.FilterFiles("fomap", dir, false);
     while (map_files.MoveNext()) {
         auto file_header = map_files.GetCurFileHeader();
-        names.push_back(file_header.GetName());
+        names.emplace_back(file_header.GetName());
     }
 
     FO_API_RETURN(names);

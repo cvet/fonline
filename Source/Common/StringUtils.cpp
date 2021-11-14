@@ -48,7 +48,7 @@ auto _str::empty() const -> bool
     return _s.empty();
 }
 
-auto _str::compareIgnoreCase(const string& r) const -> bool
+auto _str::compareIgnoreCase(string_view r) const -> bool
 {
     if (_s.length() != r.length()) {
         return false;
@@ -62,7 +62,7 @@ auto _str::compareIgnoreCase(const string& r) const -> bool
     return true;
 }
 
-auto _str::compareIgnoreCaseUtf8(const string& r) const -> bool
+auto _str::compareIgnoreCaseUtf8(string_view r) const -> bool
 {
     if (_s.length() != r.length()) {
         return false;
@@ -76,7 +76,7 @@ auto _str::startsWith(char r) const -> bool
     return _s.length() >= 1 && _s.front() == r;
 }
 
-auto _str::startsWith(const string& r) const -> bool
+auto _str::startsWith(string_view r) const -> bool
 {
     return _s.length() >= r.length() && _s.compare(0, r.length(), r) == 0;
 }
@@ -86,7 +86,7 @@ auto _str::endsWith(char r) const -> bool
     return _s.length() >= 1 && _s.back() == r;
 }
 
-auto _str::endsWith(const string& r) const -> bool
+auto _str::endsWith(string_view r) const -> bool
 {
     return _s.length() >= r.length() && _s.compare(_s.length() - r.length(), r.length(), r) == 0;
 }
@@ -125,7 +125,7 @@ auto _str::substringUntil(char separator) -> _str&
     return *this;
 }
 
-auto _str::substringUntil(const string& separator) -> _str&
+auto _str::substringUntil(string_view separator) -> _str&
 {
     const auto pos = _s.find(separator);
 
@@ -148,7 +148,7 @@ auto _str::substringAfter(char separator) -> _str&
     return *this;
 }
 
-auto _str::substringAfter(const string& separator) -> _str&
+auto _str::substringAfter(string_view separator) -> _str&
 {
     const auto pos = _s.find(separator);
 
@@ -222,7 +222,7 @@ auto _str::replace(char from1, char from2, char to) -> _str&
     return *this;
 }
 
-auto _str::replace(const string& from, const string& to) -> _str&
+auto _str::replace(string_view from, string_view to) -> _str&
 {
     size_t pos = 0;
 
@@ -516,7 +516,7 @@ auto _str::eraseFileExtension() -> _str&
     return *this;
 }
 
-auto _str::combinePath(const string& path) -> _str&
+auto _str::combinePath(string_view path) -> _str&
 {
     extractDir();
 
@@ -530,12 +530,12 @@ auto _str::combinePath(const string& path) -> _str&
     return *this;
 }
 
-auto _str::forwardPath(const string& relative_dir) -> _str&
+auto _str::forwardPath(string_view relative_dir) -> _str&
 {
     const string dir = _str(*this).extractDir();
     const string name = _str(*this).extractFileName();
 
-    _s = dir + relative_dir + name;
+    _s = dir + string(relative_dir) + name;
     formatPath();
 
     return *this;

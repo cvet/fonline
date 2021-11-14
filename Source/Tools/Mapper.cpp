@@ -1296,10 +1296,10 @@ void FOMapper::RefreshTiles(int tab)
         vector<string> tiles;
         auto tile_files = FileMngr.FilterFiles("", path, include_subdirs);
         while (tile_files.MoveNext()) {
-            tiles.push_back(tile_files.GetCurFileHeader().GetPath());
+            tiles.emplace_back(tile_files.GetCurFileHeader().GetPath());
         }
 
-        std::sort(tiles.begin(), tiles.end(), [](const string& left, const string& right) {
+        std::sort(tiles.begin(), tiles.end(), [](string_view left, string_view right) {
             for (auto lit = left.begin(), rit = right.begin(); lit != left.end() && rit != right.end(); ++lit, ++rit) {
                 const auto lc = tolower(*lit);
                 const auto rc = tolower(*rit);
@@ -1811,7 +1811,7 @@ void FOMapper::ObjDraw()
     }
 }
 
-void FOMapper::DrawLine(const string& name, const string& type_name, const string& text, bool is_const, IRect& r)
+void FOMapper::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r)
 {
     const auto x = r.Left;
     const auto y = r.Top;
@@ -3766,7 +3766,7 @@ void FOMapper::ConsoleProcess()
     }
 }
 
-void FOMapper::ParseCommand(const string& command)
+void FOMapper::ParseCommand(string_view command)
 {
     if (command.empty()) {
         return;
@@ -3831,7 +3831,8 @@ void FOMapper::ParseCommand(const string& command)
     }
     // Run script
     else if (command[0] == '#') {
-        istringstream icmd(command.substr(1));
+        const auto command_str = string(command.substr(1));
+        istringstream icmd(command_str);
         string func_name;
         if (!(icmd >> func_name)) {
             AddMess("Function name not typed.");
@@ -3897,7 +3898,8 @@ void FOMapper::ParseCommand(const string& command)
     }
     // Other
     else if (command[0] == '*') {
-        istringstream icommand(command.substr(1));
+        const auto icommand_str = string(command.substr(1));
+        istringstream icommand(icommand_str);
         string command_ext;
         if (!(icommand >> command_ext)) {
             return;

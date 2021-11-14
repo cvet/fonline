@@ -116,7 +116,7 @@ auto ModelBone::Find(hash name_hash) -> ModelBone*
     return nullptr;
 }
 
-auto ModelBone::GetHash(const string& name) -> hash
+auto ModelBone::GetHash(string_view name) -> hash
 {
     return _str(name).toHash();
 }
@@ -140,7 +140,7 @@ ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, Eff
     }
 }
 
-auto ModelManager::LoadModel(const string& fname) -> ModelBone*
+auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 {
     // Find already loaded
     auto name_hash = _str(fname).toHash();
@@ -186,7 +186,7 @@ auto ModelManager::LoadModel(const string& fname) -> ModelBone*
     return _loadedModels.back().get();
 }
 
-auto ModelManager::LoadAnimation(const string& anim_fname, const string& anim_name) -> ModelAnimation*
+auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*
 {
     // Find in already loaded
     const auto take_first = (anim_name == "Base");
@@ -211,7 +211,7 @@ auto ModelManager::LoadAnimation(const string& anim_fname, const string& anim_na
     return nullptr;
 }
 
-auto ModelManager::LoadTexture(const string& texture_name, const string& model_path) -> MeshTexture*
+auto ModelManager::LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*
 {
     // Skip empty
     if (texture_name.empty()) {
@@ -264,7 +264,7 @@ void ModelManager::SetScreenSize(int width, int height)
     // GL(glViewport(0, 0, modeWidth, modeHeight));
 }
 
-auto ModelManager::GetModel(const string& name, bool /*is_child*/) -> ModelInstance*
+auto ModelManager::GetModel(string_view name, bool /*is_child*/) -> ModelInstance*
 {
     auto* model_info = GetInformation(name);
     if (model_info == nullptr) {
@@ -294,13 +294,13 @@ auto ModelManager::GetModel(const string& name, bool /*is_child*/) -> ModelInsta
     return model;
 }
 
-void ModelManager::PreloadModel(const string& name)
+void ModelManager::PreloadModel(string_view name)
 {
     const auto* model_info = GetInformation(name);
     UNUSED_VARIABLE(model_info);
 }
 
-auto ModelManager::GetInformation(const string& name) -> ModelInformation*
+auto ModelManager::GetInformation(string_view name) -> ModelInformation*
 {
     // Try find instance
     for (auto& model_info : _allModelInfos) {
@@ -319,7 +319,7 @@ auto ModelManager::GetInformation(const string& name) -> ModelInformation*
     return _allModelInfos.back().get();
 }
 
-auto ModelManager::GetHierarchy(const string& xname) -> ModelHierarchy*
+auto ModelManager::GetHierarchy(string_view xname) -> ModelHierarchy*
 {
     for (auto& x : _xFiles) {
         if (x->_fileName == xname) {
@@ -1606,7 +1606,7 @@ ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model
 {
 }
 
-auto ModelInformation::Load(const string& name) -> bool
+auto ModelInformation::Load(string_view name) -> bool
 {
     string ext = _str(name).getFileExtension();
     if (ext.empty()) {
@@ -2391,7 +2391,7 @@ void ModelHierarchy::SetupAnimationOutput(ModelAnimationController* anim_control
     SetupAnimationOutputExt(anim_controller, _rootBone.get());
 }
 
-auto ModelHierarchy::GetTexture(const string& tex_name) -> MeshTexture*
+auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
 {
     NON_CONST_METHOD_HINT();
 
@@ -2402,7 +2402,7 @@ auto ModelHierarchy::GetTexture(const string& tex_name) -> MeshTexture*
     return texture;
 }
 
-auto ModelHierarchy::GetEffect(const string& name) -> RenderEffect*
+auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 {
     NON_CONST_METHOD_HINT();
 

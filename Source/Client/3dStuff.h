@@ -98,7 +98,7 @@ struct ModelBone
     void Load(DataReader& reader);
     void FixAfterLoad(ModelBone* root_bone);
     auto Find(hash name_hash) -> ModelBone*;
-    static auto GetHash(const string& name) -> hash;
+    static auto GetHash(string_view name) -> hash;
 
     hash NameHash {};
     mat44 TransformationMatrix {};
@@ -175,21 +175,21 @@ public:
     [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
     [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
 
-    [[nodiscard]] auto GetModel(const string& name, bool is_child) -> ModelInstance*;
-    [[nodiscard]] auto LoadAnimation(const string& anim_fname, const string& anim_name) -> ModelAnimation*;
-    [[nodiscard]] auto LoadTexture(const string& texture_name, const string& model_path) -> MeshTexture*;
+    [[nodiscard]] auto GetModel(string_view name, bool is_child) -> ModelInstance*;
+    [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*;
+    [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*;
 
     void DestroyTextures();
     void SetScreenSize(int width, int height);
-    void PreloadModel(const string& name);
+    void PreloadModel(string_view name);
 
 private:
     [[nodiscard]] auto VecProject(const vec3& v) const -> vec3;
     [[nodiscard]] auto VecUnproject(const vec3& v) const -> vec3;
 
-    [[nodiscard]] auto LoadModel(const string& fname) -> ModelBone*;
-    [[nodiscard]] auto GetInformation(const string& name) -> ModelInformation*;
-    [[nodiscard]] auto GetHierarchy(const string& xname) -> ModelHierarchy*;
+    [[nodiscard]] auto LoadModel(string_view fname) -> ModelBone*;
+    [[nodiscard]] auto GetInformation(string_view name) -> ModelInformation*;
+    [[nodiscard]] auto GetHierarchy(string_view xname) -> ModelHierarchy*;
 
     RenderSettings& _settings;
     FileManager& _fileMngr;
@@ -354,7 +354,7 @@ private:
     [[nodiscard]] auto GetAnimationIndexEx(uint anim1, uint anim2, float* speed) const -> int;
     [[nodiscard]] auto CreateCutShape(MeshData* mesh) const -> ModelCutData::Shape;
 
-    [[nodiscard]] auto Load(const string& name) -> bool;
+    [[nodiscard]] auto Load(string_view name) -> bool;
     [[nodiscard]] auto CreateInstance() -> ModelInstance*;
 
     ModelManager& _modelMngr;
@@ -398,8 +398,8 @@ public:
 private:
     void SetupBones();
     void SetupAnimationOutput(ModelAnimationController* anim_controller);
-    auto GetTexture(const string& tex_name) -> MeshTexture*;
-    auto GetEffect(const string& name) -> RenderEffect*;
+    auto GetTexture(string_view tex_name) -> MeshTexture*;
+    auto GetEffect(string_view name) -> RenderEffect*;
 
     ModelManager& _modelMngr;
     string _fileName {};

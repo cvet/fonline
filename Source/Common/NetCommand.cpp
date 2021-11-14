@@ -64,7 +64,7 @@ static const CmdDef CMD_LIST[] = {
     {"log", CMD_LOG},
 };
 
-auto PackNetCommand(const string& str, NetBuffer* pbuf, const LogCallback& logcb, const string& name) -> bool
+auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, string_view name) -> bool
 {
     string args = _str(str).trim();
     auto cmd_str = args;

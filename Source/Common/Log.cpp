@@ -70,12 +70,12 @@ void LogToFile()
     Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
 }
 
-void LogToFunc(const string& key, const LogFunc& func, bool enable)
+void LogToFunc(string_view key, const LogFunc& func, bool enable)
 {
     std::lock_guard locker(Data->LogLocker);
 
     if (func) {
-        Data->LogFunctions.erase(key);
+        Data->LogFunctions.erase(string(key));
 
         if (enable) {
             Data->LogFunctions.insert(std::make_pair(key, func));
@@ -110,7 +110,7 @@ auto LogGetBuffer() -> string
     return string();
 }
 
-void WriteLogMessage(const string& message)
+void WriteLogMessage(string_view message)
 {
     std::lock_guard locker(Data->LogLocker);
 

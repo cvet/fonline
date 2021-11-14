@@ -68,7 +68,7 @@ auto Player::GetIp() const -> uint
     return Connection->GetIp();
 }
 
-auto Player::GetHost() const -> const string&
+auto Player::GetHost() const -> string_view
 {
     return Connection->GetHost();
 }
@@ -819,7 +819,7 @@ void Player::Send_GameInfo(Map* map)
     CONNECTION_OUTPUT_END(Connection);*/
 }
 
-void Player::Send_Text(Critter* from_cr, const string& text, uchar how_say)
+void Player::Send_Text(Critter* from_cr, string_view text, uchar how_say)
 {
     if (IsSendDisabled()) {
         return;
@@ -832,7 +832,7 @@ void Player::Send_Text(Critter* from_cr, const string& text, uchar how_say)
     Send_TextEx(from_id, text, how_say, false);
 }
 
-void Player::Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text)
+void Player::Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text)
 {
     NON_CONST_METHOD_HINT();
 
@@ -894,7 +894,7 @@ void Player::Send_TextMsg(uint from_id, uint num_str, uchar how_say, ushort num_
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const string& lexems)
+void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
     NON_CONST_METHOD_HINT();
 
@@ -919,7 +919,7 @@ void Player::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, usho
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const string& lexems)
+void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
     NON_CONST_METHOD_HINT();
 
@@ -943,7 +943,7 @@ void Player::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort n
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text)
+void Player::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
 {
     NON_CONST_METHOD_HINT();
 
@@ -982,7 +982,7 @@ void Player::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, u
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const string& lexems)
+void Player::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1149,7 +1149,7 @@ void Player::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort f
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_PlaySound(uint crid_synchronize, const string& sound_name)
+void Player::Send_PlaySound(uint crid_synchronize, string_view sound_name)
 {
     NON_CONST_METHOD_HINT();
 

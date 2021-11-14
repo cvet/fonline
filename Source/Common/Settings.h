@@ -64,5 +64,5 @@ public:
     void Draw(bool editable);
 
 private:
-    void SetValue(const string& setting_name, string value);
+    void SetValue(string_view setting_name, string value);
 };

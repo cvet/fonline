@@ -93,7 +93,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
     /*bool is_error = false;
     for (const auto& kv : doc)
     {
-        const string& key = kv.first;
+        string_view key = kv.first;
         const DataBase::Value& value = kv.second;
 
         // Skip technical fields
@@ -348,7 +348,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 {
                     RUNTIME_ASSERT(arr[i].index() == DataBase::StringValue);
 
-                    const string& str = std::get<string>(arr[i]);
+                    string_view str = std::get<string>(arr[i]);
                     data_size += sizeof(uint) + (uint)str.length();
                 }
 
@@ -357,7 +357,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 size_t data_pos = sizeof(uint);
                 for (size_t i = 0; i < arr.size(); i++)
                 {
-                    const string& str = std::get<string>(arr[i]);
+                    string_view str = std::get<string>(arr[i]);
                     *(uint*)(data + data_pos) = (uint)str.length();
                     if (!str.empty())
                         std::memcpy(data + data_pos + sizeof(uint), str.c_str(), str.length());
@@ -603,7 +603,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                     {
                         for (auto& e : arr)
                         {
-                            const string& str = std::get<string>(e);
+                            string_view str = std::get<string>(e);
                             *(uint*)(data + data_pos) = (uint)str.length();
                             data_pos += sizeof(uint);
                             if (!str.empty())
@@ -666,7 +666,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 }
                 else if (prop->isDictOfString)
                 {
-                    const string& str = std::get<string>(kv.second);
+                    string_view str = std::get<string>(kv.second);
 
                     *(uint*)(data + data_pos) = (uint)str.length();
                     data_pos += sizeof(uint);

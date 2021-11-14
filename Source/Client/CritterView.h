@@ -122,7 +122,7 @@ public:
     void SetOffs(short set_ox, short set_oy, bool move_text);
     void ChangeOffs(short change_ox, short change_oy, bool move_text);
     void AddOffsExt(short ox, short oy);
-    void SetText(const string& str, uint color, uint text_delay);
+    void SetText(string_view str, uint color, uint text_delay);
     void DrawTextOnHead();
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
     void NextAnim(bool erase_front);

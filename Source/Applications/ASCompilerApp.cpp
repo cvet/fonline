@@ -43,17 +43,17 @@
 
 struct ServerScriptSystem
 {
-    void InitAngelScriptScripting(const string& script_path);
+    void InitAngelScriptScripting(string_view script_path);
 };
 
 struct ClientScriptSystem
 {
-    void InitAngelScriptScripting(const string& script_path);
+    void InitAngelScriptScripting(string_view script_path);
 };
 
 struct MapperScriptSystem
 {
-    void InitAngelScriptScripting(const string& script_path);
+    void InitAngelScriptScripting(string_view script_path);
 };
 
 #if !FO_TESTING

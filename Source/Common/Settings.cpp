@@ -38,56 +38,56 @@
 
 #include "imgui.h"
 
-static void SetEntry(string& entry, const string& value)
+static void SetEntry(string& entry, string_view value)
 {
     entry = value;
 }
-static void SetEntry(uchar& entry, const string& value)
+static void SetEntry(uchar& entry, string_view value)
 {
     entry = static_cast<uchar>(_str(value).toInt());
 }
-static void SetEntry(short& entry, const string& value)
+static void SetEntry(short& entry, string_view value)
 {
     entry = static_cast<short>(_str(value).toInt());
 }
-static void SetEntry(int& entry, const string& value)
+static void SetEntry(int& entry, string_view value)
 {
     entry = _str(value).toInt();
 }
-static void SetEntry(uint& entry, const string& value)
+static void SetEntry(uint& entry, string_view value)
 {
     entry = _str(value).toInt();
 }
-static void SetEntry(bool& entry, const string& value)
+static void SetEntry(bool& entry, string_view value)
 {
     entry = _str(value).toBool();
 }
-static void SetEntry(float& entry, const string& value)
+static void SetEntry(float& entry, string_view value)
 {
     entry = _str(value).toFloat();
 }
-static void SetEntry(vector<string>& entry, const string& value)
+static void SetEntry(vector<string>& entry, string_view value)
 {
-    entry.push_back(value);
+    entry.push_back(string(value));
 }
-static void SetEntry(vector<int>& entry, const string& value)
+static void SetEntry(vector<int>& entry, string_view value)
 {
     entry.push_back(_str(value).toInt());
 }
-static void SetEntry(vector<uint>& entry, const string& value)
+static void SetEntry(vector<uint>& entry, string_view value)
 {
     entry.push_back(_str(value).toUInt());
 }
-static void SetEntry(vector<float>& entry, const string& value)
+static void SetEntry(vector<float>& entry, string_view value)
 {
     entry.push_back(_str(value).toFloat());
 }
-static void SetEntry(vector<bool>& entry, const string& value)
+static void SetEntry(vector<bool>& entry, string_view value)
 {
     entry.push_back(_str(value).toBool());
 }
 
-static void DrawEntry(const char* name, const string& entry)
+static void DrawEntry(const char* name, string_view entry)
 {
     ImGui::TextUnformatted(_str("{}: {}", name, entry).c_str());
 }
@@ -336,7 +336,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     const_cast<int&>(MapDirCount) = MapHexagonal ? 6 : 8;
 }
 
-void GlobalSettings::SetValue(const string& setting_name, string value)
+void GlobalSettings::SetValue(string_view setting_name, string value)
 {
     if (setting_name == "ServerDir") {
         DiskFileSystem::ResolvePath(value);

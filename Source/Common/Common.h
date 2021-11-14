@@ -188,6 +188,7 @@ using std::pair;
 using std::set;
 using std::shared_ptr;
 using std::string;
+using std::string_view;
 using std::tuple;
 using std::type_index;
 using std::type_info;
@@ -219,7 +220,7 @@ public:
     ~GenericException() override = default;
 
     template<typename... Args>
-    explicit GenericException(const char* message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
+    explicit GenericException(string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
     {
         _exceptionMessage = "Exception: ";
         _exceptionMessage.append(message);
@@ -230,11 +231,6 @@ public:
         }
         _exceptionMessage.append("\n");
         _exceptionMessage.append(GetStackTrace());
-    }
-
-    template<typename... Args>
-    explicit GenericException(const string& message, Args... args) : GenericException(message.c_str(), std::forward<Args>(args)...)
-    {
     }
 
     [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); }
@@ -660,12 +656,12 @@ void WriteData(vector<uchar>& vec, T data)
     std::memcpy(&vec[cur], &data, sizeof(data));
 }
 
-template<class T>
-void WriteDataArr(vector<uchar>& vec, T* data, uint size)
+template<class T, class U>
+void WriteDataArr(vector<uchar>& vec, T* data, U size)
 {
-    if (size) {
+    if (size > 0) {
         const auto cur = static_cast<uint>(vec.size());
-        vec.resize(cur + size);
+        vec.resize(cur + static_cast<uint>(size));
         std::memcpy(&vec[cur], data, size);
     }
 }

@@ -46,8 +46,8 @@
 #include "minizip/zip.h"
 #include "png.h"
 
-static auto LoadPNG(const uchar* data, uint& result_width, uint& result_height) -> uchar*;
-static auto LoadTGA(const uchar* data, uint data_size, uint& result_width, uint& result_height) -> uchar*;
+static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*;
+static auto TgaLoad(const uchar* data, uint data_size, uint& result_width, uint& result_height) -> uchar*;
 
 ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files) : _settings {settings}, _allFiles {all_files}
 {
@@ -77,9 +77,9 @@ void ImageBaker::AutoBakeImages()
     ProcessImages("tga", std::bind(&ImageBaker::LoadTga, this, _1, _2, _3));
 }
 
-void ImageBaker::BakeImage(const string& fname_with_opt)
+void ImageBaker::BakeImage(string_view fname_with_opt)
 {
-    if (_bakedFiles.count(fname_with_opt) != 0u) {
+    if (_bakedFiles.count(string(fname_with_opt)) != 0u) {
         return;
     }
 
@@ -94,13 +94,13 @@ void ImageBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
     }
 }
 
-void ImageBaker::ProcessImages(const string& target_ext, const LoadFunc& loader)
+void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
 {
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
         auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
-        if (_bakedFiles.count(relative_path) != 0u) {
+        if (_bakedFiles.count(string(relative_path)) != 0u) {
             continue;
         }
 
@@ -115,9 +115,9 @@ void ImageBaker::ProcessImages(const string& target_ext, const LoadFunc& loader)
     }
 }
 
-void ImageBaker::BakeCollection(const string& fname, const FrameCollection& collection)
+void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection)
 {
-    RUNTIME_ASSERT(!_bakedFiles.count(fname));
+    RUNTIME_ASSERT(!_bakedFiles.count(string(fname)));
 
     vector<uchar> data;
     DataWriter writer {data};
@@ -154,14 +154,14 @@ void ImageBaker::BakeCollection(const string& fname, const FrameCollection& coll
     writer.Write(check_number);
 
     if (!collection.NewExtension.empty()) {
-        _bakedFiles.emplace(_str(fname).eraseFileExtension() + "." + collection.NewExtension, std::move(data));
+        _bakedFiles.emplace(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), std::move(data));
     }
     else {
         _bakedFiles.emplace(fname, std::move(data));
     }
 }
 
-auto ImageBaker::LoadAny(const string& fname_with_opt) -> FrameCollection
+auto ImageBaker::LoadAny(string_view fname_with_opt) -> FrameCollection
 {
     string ext = _str(fname_with_opt).getFileExtension();
     string fname = _str("{}/{}.{}", _str(fname_with_opt).extractDir(), _str(fname_with_opt).extractFileName().eraseFileExtension().substringUntil('$'), ext);
@@ -231,7 +231,7 @@ auto ImageBaker::LoadAny(const string& fname_with_opt) -> FrameCollection
     throw ImageBakerException("Invalid image file extension", fname);
 }
 
-auto ImageBaker::LoadFofrm(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     FrameCollection collection;
 
@@ -334,7 +334,7 @@ auto ImageBaker::LoadFofrm(const string& fname, const string& opt, File& file) -
     return collection;
 }
 
-auto ImageBaker::LoadFrm(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadFrm(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
@@ -569,7 +569,7 @@ auto ImageBaker::LoadFrm(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadFrX(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadFrX(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
@@ -814,7 +814,7 @@ auto ImageBaker::LoadFrX(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadRix(const string& /*fname*/, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadRix(string_view /*fname*/, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
@@ -848,7 +848,7 @@ auto ImageBaker::LoadRix(const string& /*fname*/, const string& opt, File& file)
     return collection;
 }
 
-auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
@@ -888,7 +888,7 @@ auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> 
         case 'F':
         case 'f': {
             // name$1vf5-7.art
-            auto f = opt.substr(i);
+            auto f = string(opt.substr(i));
             istringstream idelim(f);
             char ch = 0;
             if (f.find('-') != string::npos) {
@@ -1113,7 +1113,7 @@ auto ImageBaker::LoadArt(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
@@ -1164,7 +1164,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
 
         while (first != string::npos && last != string::npos) {
             last = opt.find_first_of(']', first);
-            auto entry = opt.substr(first, last - first - 1);
+            auto entry = string(opt.substr(first, last - first - 1));
             istringstream ientry(entry);
 
             // Parse numbers
@@ -1524,7 +1524,7 @@ auto ImageBaker::LoadSpr(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadZar(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadZar(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
@@ -1615,7 +1615,7 @@ auto ImageBaker::LoadZar(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadTil(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadTil(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
@@ -1736,7 +1736,7 @@ auto ImageBaker::LoadTil(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadMos(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
@@ -1840,12 +1840,13 @@ auto ImageBaker::LoadMos(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadBam(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
     // Format: fileName$5-6.spr
-    istringstream idelim(opt);
+    auto opt_str = string(opt);
+    istringstream idelim(opt_str);
     uint need_cycle = 0;
     auto specific_frame = -1;
     idelim >> need_cycle;
@@ -1983,13 +1984,13 @@ auto ImageBaker::LoadBam(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadPng(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
     uint w = 0;
     uint h = 0;
-    auto* png_data = LoadPNG(file.GetBuf(), w, h);
+    auto* png_data = PngLoad(file.GetBuf(), w, h);
     if (png_data == nullptr) {
         throw ImageBakerException("Can't read PNG", fname);
     }
@@ -2006,13 +2007,13 @@ auto ImageBaker::LoadPng(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-auto ImageBaker::LoadTga(const string& fname, const string& opt, File& file) -> FrameCollection
+auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> FrameCollection
 {
     NON_CONST_METHOD_HINT();
 
     uint w = 0;
     uint h = 0;
-    auto* tga_data = LoadTGA(file.GetBuf(), file.GetFsize(), w, h);
+    auto* tga_data = TgaLoad(file.GetBuf(), file.GetFsize(), w, h);
     if (tga_data == nullptr) {
         throw ImageBakerException("Can't read TGA", fname);
     }
@@ -2029,9 +2030,9 @@ auto ImageBaker::LoadTga(const string& fname, const string& opt, File& file) -> 
     return collection;
 }
 
-static auto LoadPNG(const uchar* data, uint& result_width, uint& result_height) -> uchar*
+static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*
 {
-    struct PNGMessage
+    struct PngMessage
     {
         static void Error(png_structp png_ptr, png_const_charp error_msg)
         {
@@ -2051,7 +2052,7 @@ static auto LoadPNG(const uchar* data, uint& result_width, uint& result_height) 
         return nullptr;
     }
 
-    png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PNGMessage::Error, &PNGMessage::Warning);
+    png_set_error_fn(png_ptr, png_get_error_ptr(png_ptr), &PngMessage::Error, &PngMessage::Warning);
 
     auto* info_ptr = png_create_info_struct(png_ptr);
     if (info_ptr == nullptr) {
@@ -2064,7 +2065,7 @@ static auto LoadPNG(const uchar* data, uint& result_width, uint& result_height) 
         return nullptr;
     }
 
-    struct PNGReader
+    struct PngReader
     {
         static void Read(png_structp png_ptr, png_bytep png_data, png_size_t length)
         {
@@ -2073,7 +2074,7 @@ static auto LoadPNG(const uchar* data, uint& result_width, uint& result_height) 
             *io_ptr += length;
         }
     };
-    png_set_read_fn(png_ptr, static_cast<png_voidp>(&data), &PNGReader::Read);
+    png_set_read_fn(png_ptr, static_cast<png_voidp>(&data), &PngReader::Read);
     png_read_info(png_ptr, info_ptr);
 
     if (setjmp(png_jmpbuf(png_ptr))) {
@@ -2130,7 +2131,7 @@ static auto LoadPNG(const uchar* data, uint& result_width, uint& result_height) 
     return result;
 }
 
-static auto LoadTGA(const uchar* data, uint data_size, uint& result_width, uint& result_height) -> uchar*
+static auto TgaLoad(const uchar* data, uint data_size, uint& result_width, uint& result_height) -> uchar*
 {
     // Reading macros
     auto read_error = false;

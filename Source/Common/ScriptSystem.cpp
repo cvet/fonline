@@ -57,7 +57,7 @@ ScriptSystem::ScriptSystem(void* obj, GlobalSettings& settings, FileManager& fil
         asEngine->GetModuleByIndex(0)->Discard();
 }
 
-bool ScriptSystem::ReloadScripts(const string& target)
+bool ScriptSystem::ReloadScripts(string_view target)
 {
     WriteLog("Reload scripts...\n");
 
@@ -204,7 +204,7 @@ void ScriptSystem::SetExceptionCallback(ExceptionCallback callback)
     onException = callback;
 }
 
-void ScriptSystem::RaiseException(const string& message)
+void ScriptSystem::RaiseException(string_view message)
 {
     asIScriptContext* ctx = asGetActiveContext();
     if (ctx && ctx->GetState() == asEXECUTION_EXCEPTION)
@@ -221,7 +221,7 @@ void ScriptSystem::PassException()
     RaiseException("Pass");
 }
 
-void ScriptSystem::HandleException(asIScriptContext* ctx, const string& message)
+void ScriptSystem::HandleException(asIScriptContext* ctx, string_view message)
 {
     string buf = message;
 
@@ -343,14 +343,14 @@ StrVec ScriptSystem::GetCustomEntityTypes()
 }
 
 / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-bool ScriptSystem::RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc)
+bool ScriptSystem::RestoreCustomEntity(string_view type_name, uint id, const DataBase::Document& doc)
 {
     EngineData* edata = (EngineData*)Engine->GetUserData();
     return edata->PragmaCB->RestoreCustomEntity(type_name, id, doc);
 }
 #endif* /
 
-EventData* ScriptSystem::FindInternalEvent(const string& event_name)
+EventData* ScriptSystem::FindInternalEvent(string_view event_name)
 {
     EventData* ev_data = new EventData;
     memzero(ev_data, sizeof(EventData));
@@ -391,12 +391,12 @@ string ScriptSystem::GetActiveFuncName()
     return func->GetName();
 }
 
-void ScriptSystem::Define(const string& define)
+void ScriptSystem::Define(string_view define)
 {
     Preprocessor::Define(define);
 }
 
-void ScriptSystem::Undef(const string& define)
+void ScriptSystem::Undef(string_view define)
 {
     if (!define.empty())
         Preprocessor::Undef(define);
@@ -431,7 +431,7 @@ bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_
         }
         virtual ~MemoryFileLoader() = default;
 
-        virtual bool LoadFile(const std::string& dir, const std::string& file_name, std::vector<char>& data,
+        virtual bool LoadFile(string_view dir, string_view file_name, std::vector<char>& data,
             std::string& file_path) override
         {
             if (rootScript)
@@ -612,7 +612,7 @@ bool ScriptSystem::RestoreRootModule(const UCharVec& bytecode, const UCharVec& l
 }
 
 uint ScriptSystem::BindByFuncName(
-    const string& func_name, const string& decl, bool is_temp, bool disable_log)
+    string_view func_name, string_view decl, bool is_temp, bool disable_log)
 {
     // Collect functions in all modules
     RUNTIME_ASSERT(asEngine->GetModuleCount() == 1);
@@ -733,7 +733,7 @@ asIScriptFunction* ScriptSystem::FindFunc(hash func_num)
     return nullptr;
 }
 
-hash ScriptSystem::BindScriptFuncNumByFuncName(const string& func_name, const string& decl)
+hash ScriptSystem::BindScriptFuncNumByFuncName(string_view func_name, string_view decl)
 {
     // Bind function
     int bind_id = ScriptSystem::BindByFuncName(func_name, decl, false);
@@ -805,7 +805,7 @@ uint ScriptSystem::GetScriptFuncBindId(hash func_num)
     return 0;
 }
 
-void ScriptSystem::PrepareScriptFuncContext(hash func_num, const string& ctx_info)
+void ScriptSystem::PrepareScriptFuncContext(hash func_num, string_view ctx_info)
 {
     uint bind_id = GetScriptFuncBindId(func_num);
     PrepareContext(bind_id, ctx_info);
@@ -871,7 +871,7 @@ void ScriptSystem::CacheEnumValues()
     }
 }
 
-int ScriptSystem::GetEnumValue(const string& enum_value_name, bool& fail)
+int ScriptSystem::GetEnumValue(string_view enum_value_name, bool& fail)
 {
     auto it = cachedEnums.find(enum_value_name);
     if (it == cachedEnums.end())
@@ -883,14 +883,14 @@ int ScriptSystem::GetEnumValue(const string& enum_value_name, bool& fail)
     return it->second;
 }
 
-int ScriptSystem::GetEnumValue(const string& enum_name, const string& value_name, bool& fail)
+int ScriptSystem::GetEnumValue(string_view enum_name, string_view value_name, bool& fail)
 {
     if (_str(value_name).isNumber())
         return _str(value_name).toInt();
     return GetEnumValue(_str("{}::{}", enum_name, value_name), fail);
 }
 
-string ScriptSystem::GetEnumValueName(const string& enum_name, int value)
+string ScriptSystem::GetEnumValueName(string_view enum_name, int value)
 {
     auto it = cachedEnumNames.find(enum_name);
     RUNTIME_ASSERT(it != cachedEnumNames.end());
@@ -898,7 +898,7 @@ string ScriptSystem::GetEnumValueName(const string& enum_name, int value)
     return it_value != it->second.end() ? it_value->second : _str("{}", value).str();
 }
 
-void ScriptSystem::PrepareContext(uint bind_id, const string& ctx_info)
+void ScriptSystem::PrepareContext(uint bind_id, string_view ctx_info)
 {
     RUNTIME_ASSERT(bind_id > 0);
     RUNTIME_ASSERT(bind_id < (uint)bindedFunctions.size());
@@ -1194,7 +1194,7 @@ void* ScriptSystem::GetReturnedRawAddress()
     return retValue;
 }
 
-void ScriptSystem::Log(const string& str)
+void ScriptSystem::Log(string_view str)
 {
     asIScriptContext* ctx = asGetActiveContext();
     if (!ctx)
@@ -1233,7 +1233,7 @@ void ScriptSystem::CallbackException(asIScriptContext* ctx, void* param)
         HandleException(ctx, _str("Script exception: {}{}", str, !_str(str).endsWith('.') ? "." : ""));
 }
 
-CScriptArray* ScriptSystem::CreateArray(const string& type)
+CScriptArray* ScriptSystem::CreateArray(string_view type)
 {
     return CScriptArray::Create(asEngine->GetTypeInfoById(asEngine->GetTypeIdByDecl(type.c_str())));
 }

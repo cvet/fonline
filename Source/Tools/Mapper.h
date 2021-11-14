@@ -252,7 +252,7 @@ public:
     void BufferPaste(int hx, int hy);
 
     void ObjDraw();
-    void DrawLine(const string& name, const string& type_name, const string& text, bool is_const, IRect& r);
+    void DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r);
     void ObjKeyDown(KeyCode dik, const char* dik_text);
     void ObjKeyDownApply(Entity* entity);
     void SelectEntityProp(int line);
@@ -262,7 +262,7 @@ public:
     void ConsoleKeyDown(KeyCode dik, const char* dik_text);
     void ConsoleKeyUp(KeyCode dik);
     void ConsoleProcess();
-    void ParseCommand(const string& command);
+    void ParseCommand(string_view command);
 
     void MessBoxGenerate();
     void AddMess(const char* message_text);

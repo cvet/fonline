@@ -52,7 +52,7 @@ public:
     ~ImageBaker() = default;
 
     void AutoBakeImages();
-    void BakeImage(const string& fname_with_opt);
+    void BakeImage(string_view fname_with_opt);
     void FillBakedFiles(map<string, vector<uchar>>& baked_files);
 
 private:
@@ -88,24 +88,24 @@ private:
         string NewExtension {};
     };
 
-    using LoadFunc = std::function<FrameCollection(const string&, const string&, File&)>;
+    using LoadFunc = std::function<FrameCollection(string_view, string_view, File&)>;
 
-    void ProcessImages(const string& target_ext, const LoadFunc& loader);
-    void BakeCollection(const string& fname, const FrameCollection& collection);
+    void ProcessImages(string_view target_ext, const LoadFunc& loader);
+    void BakeCollection(string_view fname, const FrameCollection& collection);
 
-    [[nodiscard]] auto LoadAny(const string& fname_with_opt) -> FrameCollection;
-    [[nodiscard]] auto LoadFofrm(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadFrm(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadFrX(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadRix(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadArt(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadSpr(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadZar(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadTil(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadMos(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadBam(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadPng(const string& fname, const string& opt, File& file) -> FrameCollection;
-    [[nodiscard]] auto LoadTga(const string& fname, const string& opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadAny(string_view fname_with_opt) -> FrameCollection;
+    [[nodiscard]] auto LoadFofrm(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadFrm(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadFrX(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadRix(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadArt(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadSpr(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadZar(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadTil(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadMos(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadBam(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadPng(string_view fname, string_view opt, File& file) -> FrameCollection;
+    [[nodiscard]] auto LoadTga(string_view fname, string_view opt, File& file) -> FrameCollection;
 
     GeometrySettings& _settings;
     FileCollection& _allFiles;

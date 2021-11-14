@@ -37,7 +37,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-FileHeader::FileHeader(string name, string path, uint size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {std::move(name)}, _filePath {std::move(path)}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
+FileHeader::FileHeader(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {name}, _filePath {path}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
 {
 }
 
@@ -46,7 +46,7 @@ FileHeader::operator bool() const
     return _isLoaded;
 }
 
-auto FileHeader::GetName() const -> const string&
+auto FileHeader::GetName() const -> string_view
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(!_fileName.empty());
@@ -54,7 +54,7 @@ auto FileHeader::GetName() const -> const string&
     return _fileName;
 }
 
-auto FileHeader::GetPath() const -> const string&
+auto FileHeader::GetPath() const -> string_view
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(!_filePath.empty());
@@ -76,7 +76,7 @@ auto FileHeader::GetWriteTime() const -> uint64
     return _writeTime;
 }
 
-File::File(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds, uchar* buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {buf}
+File::File(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds, uchar* buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {buf}
 {
     RUNTIME_ASSERT(_fileBuf[_fileSize] == 0);
 }
@@ -417,15 +417,15 @@ void OutputFile::SetData(const void* data, uint len)
     _dataWriter.WritePtr(data, len);
 }
 
-void OutputFile::SetStr(const string& str)
+void OutputFile::SetStr(string_view str)
 {
-    SetData(str.c_str(), static_cast<uint>(str.length()));
+    SetData(str.data(), static_cast<uint>(str.length()));
 }
 
 // ReSharper disable once CppInconsistentNaming
-void OutputFile::SetStrNT(const string& str)
+void OutputFile::SetStrNT(string_view str)
 {
-    SetData(str.c_str(), static_cast<uint>(str.length()) + 1);
+    SetData(str.data(), static_cast<uint>(str.length()) + 1);
 }
 
 void OutputFile::SetUChar(uchar data)
@@ -469,7 +469,7 @@ void OutputFile::SetLEUInt(uint data)
     _dataWriter.Write(pdata[3]);
 }
 
-FileCollection::FileCollection(string path, vector<FileHeader> files) : _filterPath {std::move(path)}, _allFiles {std::move(files)}
+FileCollection::FileCollection(string_view path, vector<FileHeader> files) : _filterPath {path}, _allFiles {std::move(files)}
 {
 }
 
@@ -485,7 +485,7 @@ void FileCollection::ResetCounter()
     _curFileIndex = -1;
 }
 
-auto FileCollection::GetPath() const -> const string&
+auto FileCollection::GetPath() const -> string_view
 {
     return _filterPath;
 }
@@ -512,7 +512,7 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
     return FileHeader(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource);
 }
 
-auto FileCollection::FindFile(const string& name) const -> File
+auto FileCollection::FindFile(string_view name) const -> File
 {
     for (const auto& fh : _allFiles) {
         if (fh._fileName == name) {
@@ -526,7 +526,7 @@ auto FileCollection::FindFile(const string& name) const -> File
     return File();
 }
 
-auto FileCollection::FindFileHeader(const string& name) const -> FileHeader
+auto FileCollection::FindFileHeader(string_view name) const -> FileHeader
 {
     for (const auto& fh : _allFiles) {
         if (fh._fileName == name) {
@@ -541,18 +541,18 @@ auto FileCollection::GetFilesCount() const -> uint
     return static_cast<uint>(_allFiles.size());
 }
 
-void FileManager::AddDataSource(const string& path, bool cache_dirs)
+void FileManager::AddDataSource(string_view path, bool cache_dirs)
 {
     _dataSources.emplace_back(path, cache_dirs);
     _dataSourceAddedDispatcher(&_dataSources.back());
 }
 
-auto FileManager::FilterFiles(const string& ext) -> FileCollection
+auto FileManager::FilterFiles(string_view ext) -> FileCollection
 {
     return FilterFiles(ext, "", true);
 }
 
-auto FileManager::FilterFiles(const string& ext, const string& dir, bool include_subdirs) -> FileCollection
+auto FileManager::FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection
 {
     vector<FileHeader> files;
 
@@ -571,7 +571,7 @@ auto FileManager::FilterFiles(const string& ext, const string& dir, bool include
     return FileCollection(dir, std::move(files));
 }
 
-auto FileManager::ReadFile(const string& path) -> File
+auto FileManager::ReadFile(string_view path) -> File
 {
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
@@ -590,7 +590,7 @@ auto FileManager::ReadFile(const string& path) -> File
     return File(name, path, 0, 0, nullptr, nullptr);
 }
 
-auto FileManager::ReadFileHeader(const string& path) -> FileHeader
+auto FileManager::ReadFileHeader(string_view path) -> FileHeader
 {
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
@@ -608,7 +608,7 @@ auto FileManager::ReadFileHeader(const string& path) -> FileHeader
     return FileHeader(name, path, 0, 0, nullptr);
 }
 
-auto FileManager::ReadConfigFile(const string& path) -> ConfigFile
+auto FileManager::ReadConfigFile(string_view path) -> ConfigFile
 {
     const auto file = ReadFile(path);
     if (file) {
@@ -617,7 +617,7 @@ auto FileManager::ReadConfigFile(const string& path) -> ConfigFile
     return ConfigFile("");
 }
 
-auto FileManager::WriteFile(const string& path, bool apply) -> OutputFile
+auto FileManager::WriteFile(string_view path, bool apply) -> OutputFile
 {
     NON_CONST_METHOD_HINT();
 
@@ -629,7 +629,7 @@ auto FileManager::WriteFile(const string& path, bool apply) -> OutputFile
     return OutputFile(std::move(file));
 }
 
-void FileManager::DeleteFile(const string& path)
+void FileManager::DeleteFile(string_view path)
 {
     NON_CONST_METHOD_HINT();
 
@@ -637,7 +637,7 @@ void FileManager::DeleteFile(const string& path)
     DiskFileSystem::DeleteFile(path);
 }
 
-void FileManager::DeleteDir(const string& path)
+void FileManager::DeleteDir(string_view path)
 {
     NON_CONST_METHOD_HINT();
 
@@ -645,7 +645,7 @@ void FileManager::DeleteDir(const string& path)
     DiskFileSystem::DeleteDir(path);
 }
 
-void FileManager::RenameFile(const string& from_path, const string& to_path)
+void FileManager::RenameFile(string_view from_path, string_view to_path)
 {
     NON_CONST_METHOD_HINT();
 

@@ -963,14 +963,14 @@ void FOServer::Process_Text(Player* player)
     }
 }
 
-void FOServer::Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, const string& admin_panel)
+void FOServer::Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
     LogToFunc("Process_Command", logcb, true);
     Process_CommandReal(buf, logcb, player, admin_panel);
     LogToFunc("Process_Command", logcb, false);
 }
 
-void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, const string& admin_panel)
+void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
     auto* cl_ = player->GetOwnedCritter();
 
@@ -980,7 +980,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     buf >> msg_len;
     buf >> cmd;
 
-    auto sstr = (cl_ != nullptr ? "" : admin_panel);
+    auto sstr = string(cl_ != nullptr ? "" : admin_panel);
     auto allow_command = ScriptSys.PlayerAllowCommandEvent(player, sstr, cmd);
 
     if (!allow_command && (cl_ == nullptr)) {
@@ -1704,7 +1704,7 @@ auto FOServer::InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool
     return true;
 }
 
-void FOServer::LogToClients(const string& str)
+void FOServer::LogToClients(string_view str)
 {
     if (!str.empty() && str.back() == '\n') {
         LogLines.emplace_back(str, 0, str.length() - 1);
@@ -1929,7 +1929,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
             UpdateFiles.push_back(update_file);
 
             WriteData(UpdateFilesList, static_cast<short>(msg_cache_name.length()));
-            WriteDataArr(UpdateFilesList, msg_cache_name.c_str(), static_cast<uint>(msg_cache_name.length()));
+            WriteDataArr(UpdateFilesList, msg_cache_name.c_str(), msg_cache_name.length());
             WriteData(UpdateFilesList, update_file.Size);
             WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
         }
@@ -1946,7 +1946,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
 
     const string protos_cache_name = "$protos.cache";
     WriteData(UpdateFilesList, static_cast<short>(protos_cache_name.length()));
-    WriteDataArr(UpdateFilesList, protos_cache_name.c_str(), static_cast<uint>(protos_cache_name.length()));
+    WriteDataArr(UpdateFilesList, protos_cache_name.c_str(), protos_cache_name.length());
     WriteData(UpdateFilesList, update_file.Size);
     WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
 
@@ -1962,7 +1962,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
 
         auto file_path = file.GetName().substr("Update/"_len);
         WriteData(UpdateFilesList, static_cast<short>(file_path.length()));
-        WriteDataArr(UpdateFilesList, file_path.c_str(), static_cast<uint>(file_path.length()));
+        WriteDataArr(UpdateFilesList, file_path.data(), file_path.length());
         WriteData(UpdateFilesList, update_file.Size);
         WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
@@ -1981,7 +1981,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
 
         auto file_path = file.GetName().substr("Binaries/"_len);
         WriteData(UpdateFilesList, static_cast<short>(file_path.length()));
-        WriteDataArr(UpdateFilesList, file_path.c_str(), static_cast<uint>(file_path.length()));
+        WriteDataArr(UpdateFilesList, file_path.data(), file_path.length());
         WriteData(UpdateFilesList, update_file.Size);
         WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }

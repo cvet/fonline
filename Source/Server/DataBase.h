@@ -41,7 +41,7 @@ class DataBaseImpl;
 
 class DataBase
 {
-    friend auto ConnectToDataBase(const string& connection_info) -> DataBase;
+    friend auto ConnectToDataBase(string_view connection_info) -> DataBase;
 
 public:
     static constexpr auto INT_VALUE = 0;
@@ -68,14 +68,14 @@ public:
     explicit operator bool() const;
     ~DataBase();
 
-    [[nodiscard]] auto GetAllIds(const string& collection_name) const -> vector<uint>;
-    [[nodiscard]] auto Get(const string& collection_name, uint id) const -> Document;
-    [[nodiscard]] auto Valid(const string& collection_name, uint id) const -> bool;
+    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint>;
+    [[nodiscard]] auto Get(string_view collection_name, uint id) const -> Document;
+    [[nodiscard]] auto Valid(string_view collection_name, uint id) const -> bool;
 
     void StartChanges();
-    void Insert(const string& collection_name, uint id, const Document& doc);
-    void Update(const string& collection_name, uint id, const string& key, const Value& value);
-    void Delete(const string& collection_name, uint id);
+    void Insert(string_view collection_name, uint id, const Document& doc);
+    void Update(string_view collection_name, uint id, string_view key, const Value& value);
+    void Delete(string_view collection_name, uint id);
     void CommitChanges();
 
 private:
@@ -84,4 +84,4 @@ private:
     bool _nonConstHelper {};
 };
 
-extern auto ConnectToDataBase(const string& connection_info) -> DataBase;
+extern auto ConnectToDataBase(string_view connection_info) -> DataBase;

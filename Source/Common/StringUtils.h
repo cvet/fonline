@@ -55,46 +55,50 @@ class _str
 
 public:
     _str() = default;
-    _str(const _str& r) : _s(r._s) { }
+    _str(const _str& r) = default;
     explicit _str(string s) : _s(std::move(s)) { }
     explicit _str(const char* s) : _s(s) { }
+    explicit _str(string_view s) : _s(s) { }
     template<typename... Args>
-    explicit _str(const string& format, Args... args) : _s(fmt::format(format, args...))
+    explicit _str(string_view format, Args... args) : _s(fmt::format(format, args...))
     {
     }
 
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string&() { return _s; }
+    // ReSharper disable once CppNonExplicitConversionOperator
+    operator string_view() const { return _s; }
     auto operator+(const char* r) const -> _str { return _str(_s + string(r)); }
-    friend auto operator+(const _str& l, const string& r) -> _str { return _str(l._s + r); }
-    friend auto operator==(const _str& l, const string& r) -> bool { return l._s == r; }
-    auto operator==(const _str& r) const -> bool { return _s == r._s; }
-    auto operator!=(const _str& r) const -> bool { return _s != r._s; }
-    friend auto operator!=(const _str& l, const string& r) -> bool { return l._s != r; }
+    auto operator+(string_view r) const -> _str { return _str(_s + string(r)); }
+    friend auto operator+(const _str& l, string_view r) -> _str { return _str(l._s + string(r)); }
+    auto operator==(string_view r) const -> bool { return _s == r; }
+    auto operator!=(string_view r) const -> bool { return _s != r; }
+    friend auto operator!=(const _str& l, string_view r) -> bool { return l._s != r; }
     [[nodiscard]] auto c_str() const -> const char* { return _s.c_str(); }
-    [[nodiscard]] auto str() const -> const string& { return _s; }
+    [[nodiscard]] auto str() const -> string { return _s; }
+    [[nodiscard]] auto strv() const -> string_view { return _s; }
 
     [[nodiscard]] auto length() const -> uint;
     [[nodiscard]] auto empty() const -> bool;
-    [[nodiscard]] auto compareIgnoreCase(const string& r) const -> bool;
-    [[nodiscard]] auto compareIgnoreCaseUtf8(const string& r) const -> bool;
+    [[nodiscard]] auto compareIgnoreCase(string_view r) const -> bool;
+    [[nodiscard]] auto compareIgnoreCaseUtf8(string_view r) const -> bool;
     [[nodiscard]] auto startsWith(char r) const -> bool;
-    [[nodiscard]] auto startsWith(const string& r) const -> bool;
+    [[nodiscard]] auto startsWith(string_view r) const -> bool;
     [[nodiscard]] auto endsWith(char r) const -> bool;
-    [[nodiscard]] auto endsWith(const string& r) const -> bool;
+    [[nodiscard]] auto endsWith(string_view r) const -> bool;
     [[nodiscard]] auto isValidUtf8() const -> bool;
     [[nodiscard]] auto lengthUtf8() const -> uint;
 
     auto substringUntil(char separator) -> _str&;
-    auto substringUntil(const string& separator) -> _str&;
+    auto substringUntil(string_view separator) -> _str&;
     auto substringAfter(char separator) -> _str&;
-    auto substringAfter(const string& separator) -> _str&;
+    auto substringAfter(string_view separator) -> _str&;
     auto trim() -> _str&;
     auto erase(char what) -> _str&;
     auto erase(char begin, char end) -> _str&;
     auto replace(char from, char to) -> _str&;
     auto replace(char from1, char from2, char to) -> _str&;
-    auto replace(const string& from, const string& to) -> _str&;
+    auto replace(string_view from, string_view to) -> _str&;
     auto lower() -> _str&;
     auto lowerUtf8() -> _str&;
     auto upper() -> _str&;
@@ -118,8 +122,8 @@ public:
     auto extractFileName() -> _str&;
     auto getFileExtension() -> _str&; // Extension without dot
     auto eraseFileExtension() -> _str&; // Erase extension with dot
-    auto combinePath(const string& path) -> _str&;
-    auto forwardPath(const string& relative_dir) -> _str&;
+    auto combinePath(string_view path) -> _str&;
+    auto forwardPath(string_view relative_dir) -> _str&;
     auto normalizePathSlashes() -> _str&;
     auto normalizeLineEndings() -> _str&;
 
@@ -162,7 +166,7 @@ namespace fmt
         template<typename FormatContext>
         auto format(const _str& s, FormatContext& ctx)
         {
-            return format_to(ctx.out(), "{}", s.str());
+            return format_to(ctx.out(), "{}", s.strv());
         }
     };
 

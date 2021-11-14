@@ -49,7 +49,7 @@ public:
     virtual ~NetConnection() = default;
 
     [[nodiscard]] virtual auto GetIp() const -> uint = 0;
-    [[nodiscard]] virtual auto GetHost() const -> const string& = 0;
+    [[nodiscard]] virtual auto GetHost() const -> string_view = 0;
     [[nodiscard]] virtual auto GetPort() const -> ushort = 0;
     [[nodiscard]] virtual auto IsDisconnected() const -> bool = 0;
 

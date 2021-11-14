@@ -293,7 +293,7 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     return a + b + c < 0;
 }
 
-auto GenericUtils::ConvertParamValue(const string& str, bool& fail) -> int
+auto GenericUtils::ConvertParamValue(string_view str, bool& fail) -> int
 {
     if (str.empty()) {
         WriteLog("Empty parameter value.\n");

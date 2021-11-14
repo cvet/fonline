@@ -879,7 +879,12 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_MARSHAL(string, sep
 
         string buf;
         if (!PackNetCommand(
-                str, &_client->Bout, [&buf, &separator](auto s) { buf += s + separator; }, _client->Chosen->AlternateName)) {
+                str, &_client->Bout,
+                [&buf, &separator](auto s) {
+                    buf += s;
+                    buf += separator;
+                },
+                _client->Chosen->AlternateName)) {
             FO_API_RETURN("UNKNOWN");
         }
 

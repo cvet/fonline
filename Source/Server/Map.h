@@ -127,9 +127,9 @@ public:
     void ProcessLoop(int index, uint time, uint tick);
     void PlaceItemBlocks(ushort hx, ushort hy, Item* item);
     void RemoveItemBlocks(ushort hx, ushort hy, Item* item);
-    void SetText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text);
+    void SetText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
     void SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str);
-    void SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const string& lexems);
+    void SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, string_view lexems);
     void AddCritter(Critter* cr);
     void EraseCritter(Critter* cr);
     auto AddItem(Item* item, ushort hx, ushort hy) -> bool;
@@ -140,7 +140,7 @@ public:
     void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
     void SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius);
     void SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-    auto SetScript(const string& func, bool first_time) -> bool;
+    auto SetScript(string_view func, bool first_time) -> bool;
     void SetHexFlag(ushort hx, ushort hy, uchar flag);
     void UnsetHexFlag(ushort hx, ushort hy, uchar flag);
     void SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);

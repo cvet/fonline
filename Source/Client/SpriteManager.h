@@ -258,9 +258,9 @@ public:
     [[nodiscard]] auto CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> bool;
     [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
 
-    [[nodiscard]] auto LoadAnimation(const string& fname, bool use_dummy, bool frm_anim_pix) -> AnyFrames*;
-    [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, const string& fname) -> AnyFrames*;
-    [[nodiscard]] auto LoadModel(const string& fname, bool auto_redraw) -> ModelInstance*;
+    [[nodiscard]] auto LoadAnimation(string_view fname, bool use_dummy, bool frm_anim_pix) -> AnyFrames*;
+    [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*;
+    [[nodiscard]] auto LoadModel(string_view fname, bool auto_redraw) -> ModelInstance*;
     [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
 
     void SetWindowSize(int w, int h);
@@ -271,7 +271,7 @@ public:
     auto DisableFullscreen() -> bool;
     void BlinkWindow();
     void SetAlwaysOnTop(bool enable);
-    void Preload3dModel(const string& model_name) const;
+    void Preload3dModel(string_view model_name) const;
     void BeginScene(uint clear_color);
     void EndScene();
     void OnResolutionChanged();
@@ -307,7 +307,7 @@ public:
     void DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim, const float* zoom, FPoint* offset, RenderEffect* custom_effect);
     void Draw3d(int x, int y, ModelInstance* model, uint color);
     void DrawContours();
-    void InitializeEgg(const string& egg_name);
+    void InitializeEgg(string_view egg_name);
     void SetEgg(ushort hx, ushort hy, Sprite* spr);
     void EggNotValid() { _eggValid = false; }
 
@@ -317,8 +317,8 @@ private:
     [[nodiscard]] auto CreateAtlas(uint w, uint h) -> TextureAtlas*;
     [[nodiscard]] auto FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
     [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data) -> uint;
-    [[nodiscard]] auto Load2dAnimation(const string& fname) -> AnyFrames*;
-    [[nodiscard]] auto Load3dAnimation(const string& fname) -> AnyFrames*;
+    [[nodiscard]] auto Load2dAnimation(string_view fname) -> AnyFrames*;
+    [[nodiscard]] auto Load3dAnimation(string_view fname) -> AnyFrames*;
 
     void FillAtlas(SpriteInfo* si);
     void RenderModel(ModelInstance* model);
@@ -371,20 +371,20 @@ private:
 
     // Todo: move fonts stuff to separate module
 public:
-    [[nodiscard]] auto GetLinesCount(int width, int height, const string& str, int num_font) -> int;
-    [[nodiscard]] auto GetLinesHeight(int width, int height, const string& str, int num_font) -> int;
+    [[nodiscard]] auto GetLinesCount(int width, int height, string_view str, int num_font) -> int;
+    [[nodiscard]] auto GetLinesHeight(int width, int height, string_view str, int num_font) -> int;
     [[nodiscard]] auto GetLineHeight(int num_font) -> int;
-    [[nodiscard]] auto GetTextInfo(int width, int height, const string& str, int num_font, uint flags, int& tw, int& th, int& lines) -> bool;
+    [[nodiscard]] auto GetTextInfo(int width, int height, string_view str, int num_font, uint flags, int& tw, int& th, int& lines) -> bool;
     [[nodiscard]] auto HaveLetter(int num_font, uint letter) -> bool;
 
-    [[nodiscard]] auto SplitLines(const IRect& r, const string& cstr, int num_font) -> vector<string>;
+    [[nodiscard]] auto SplitLines(const IRect& r, string_view cstr, int num_font) -> vector<string>;
 
-    auto LoadFontFO(int index, const string& font_name, bool not_bordered, bool skip_if_loaded) -> bool;
-    auto LoadFontBmf(int index, const string& font_name) -> bool;
+    auto LoadFontFO(int index, string_view font_name, bool not_bordered, bool skip_if_loaded) -> bool;
+    auto LoadFontBmf(int index, string_view font_name) -> bool;
     void SetDefaultFont(int index, uint color);
     void SetFontEffect(int index, RenderEffect* effect);
     void BuildFonts();
-    void DrawStr(const IRect& r, const string& str, uint flags, uint color, int num_font);
+    void DrawStr(const IRect& r, string_view str, uint flags, uint color, int num_font);
     void ClearFonts();
 
 private:

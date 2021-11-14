@@ -45,7 +45,7 @@ EffectManager::EffectManager(EffectSettings& settings, FileManager& file_mngr, G
     };
 }
 
-auto EffectManager::LoadEffect(const string& name, const string& defines, const string& base_path) -> RenderEffect*
+auto EffectManager::LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*
 {
     // Try find already loaded effect
     for (auto& effect : _loadedEffects) {
@@ -55,8 +55,8 @@ auto EffectManager::LoadEffect(const string& name, const string& defines, const 
     }
 
     // Load new
-    auto* effect = App->Render.CreateEffect(name, defines, [this, &base_path](const string& path) -> vector<uchar> {
-        auto file = _fileMngr.ReadFile(_str(base_path).extractDir() + path);
+    auto* effect = App->Render.CreateEffect(name, defines, [this, &base_path](string_view path) -> vector<uchar> {
+        auto file = _fileMngr.ReadFile(_str("{}{}", _str(base_path).extractDir(), path));
         if (!file) {
             file = _fileMngr.ReadFile(path);
             if (!file) {

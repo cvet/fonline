@@ -67,7 +67,7 @@ public:
     ~ClientConnection();
 
     [[nodiscard]] auto GetIp() const -> uint;
-    [[nodiscard]] auto GetHost() const -> const string&;
+    [[nodiscard]] auto GetHost() const -> string_view;
     [[nodiscard]] auto GetPort() const -> ushort;
     [[nodiscard]] auto IsHardDisconnected() const -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const -> bool;
@@ -79,7 +79,7 @@ public:
 
     void Send_CustomMessage(uint msg);
     void Send_TextMsg(uint num_str);
-    void Send_TextMsgLex(uint num_str, const string& lexems);
+    void Send_TextMsgLex(uint num_str, string_view lexems);
 
     NetBuffer& Bin;
     std::mutex& BinLocker;

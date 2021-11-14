@@ -35,12 +35,12 @@
 
 #include "Common.h"
 
-using LogFunc = std::function<void(const string&)>;
+using LogFunc = std::function<void(string_view)>;
 
 // Write formatted text
-extern void WriteLogMessage(const string& message);
+extern void WriteLogMessage(string_view message);
 template<typename... Args>
-void WriteLog(const string& message, Args... args)
+void WriteLog(string_view message, Args... args)
 {
     WriteLogMessage(fmt::format(message, std::forward<Args>(args)...));
 }
@@ -48,6 +48,6 @@ void WriteLog(const string& message, Args... args)
 // Control
 extern void LogWithoutTimestamp();
 extern void LogToFile();
-extern void LogToFunc(const string& key, const LogFunc& func, bool enable);
+extern void LogToFunc(string_view key, const LogFunc& func, bool enable);
 extern void LogToBuffer(bool enable);
 extern auto LogGetBuffer() -> string;

@@ -344,15 +344,15 @@ void FOClient::UpdateFilesLoop()
     }
 }
 
-void FOClient::UpdateFilesAddText(uint num_str, const string& num_str_str)
+void FOClient::UpdateFilesAddText(uint num_str, string_view num_str_str)
 {
     if (Update->FontLoaded) {
         const auto text = (CurLang.Msg[TEXTMSG_GAME].Count(num_str) != 0u ? CurLang.Msg[TEXTMSG_GAME].GetStr(num_str) : num_str_str);
-        Update->Messages += text + "\n";
+        Update->Messages += _str("{}\n", text);
     }
 }
 
-void FOClient::UpdateFilesAbort(uint num_str, const string& num_str_str)
+void FOClient::UpdateFilesAbort(uint num_str, string_view num_str_str)
 {
     Update->Aborted = true;
 
@@ -927,7 +927,7 @@ auto FOClient::CheckSocketStatus(bool for_write) -> bool
     return false;
 }
 
-auto FOClient::NetConnect(const string& host, ushort port) -> bool
+auto FOClient::NetConnect(string_view host, ushort port) -> bool
 {
 #if FO_WEB
     port++;
@@ -1212,12 +1212,12 @@ auto FOClient::NetConnect(const string& host, ushort port) -> bool
     return true;
 }
 
-auto FOClient::FillSockAddr(sockaddr_in& saddr, const string& host, ushort port) -> bool
+auto FOClient::FillSockAddr(sockaddr_in& saddr, string_view host, ushort port) -> bool
 {
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(port);
-    if ((saddr.sin_addr.s_addr = ::inet_addr(host.c_str())) == static_cast<uint>(-1)) {
-        const auto* h = ::gethostbyname(host.c_str());
+    if ((saddr.sin_addr.s_addr = ::inet_addr(string(host).c_str())) == static_cast<uint>(-1)) {
+        const auto* h = ::gethostbyname(string(host).c_str());
         if (h == nullptr) {
             WriteLog("Can't resolve remote host '{}', error '{}'.", host, GetLastSocketError());
             return false;
@@ -2098,17 +2098,16 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     }
 }
 
-void FOClient::OnText(const string& str, uint crid, int how_say)
+void FOClient::OnText(string_view str, uint crid, int how_say)
 {
-    auto fstr = str;
+    auto fstr = string(str);
     if (fstr.empty()) {
         return;
     }
 
-    auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100;
+    auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100u;
     const auto sstr = fstr;
-    const auto result = ScriptSys.InMessageEvent(sstr, how_say, crid, text_delay);
-    if (!result) {
+    if (!ScriptSys.InMessageEvent(sstr, how_say, crid, text_delay)) {
         return;
     }
 
@@ -2170,7 +2169,7 @@ void FOClient::OnText(const string& str, uint crid, int how_say)
         break;
     }
 
-    const auto get_format = [this](uint str_num) { return _str(CurLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').str(); };
+    const auto get_format = [this](uint str_num) -> string { return _str(CurLang.Msg[TEXTMSG_GAME].GetStr(str_num)).replace('\\', 'n', '\n').str(); };
 
     auto* cr = (how_say != SAY_RADIO ? GetCritter(crid) : nullptr);
 
@@ -2203,7 +2202,7 @@ void FOClient::OnText(const string& str, uint crid, int how_say)
     FlashGameWindow();
 }
 
-void FOClient::OnMapText(const string& str, ushort hx, ushort hy, uint color)
+void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
 {
     auto text_delay = Settings.TextDelay + static_cast<uint>(str.length()) * 100;
 
@@ -4453,17 +4452,17 @@ void FOClient::GameDraw()
     }
 }
 
-void FOClient::AddMess(int mess_type, const string& msg)
+void FOClient::AddMess(int mess_type, string_view msg)
 {
-    ScriptSys.MessageBoxEvent(msg, mess_type, false);
+    ScriptSys.MessageBoxEvent(string(msg), mess_type, false);
 }
 
-void FOClient::AddMess(int mess_type, const string& msg, bool script_call)
+void FOClient::AddMess(int mess_type, string_view msg, bool script_call)
 {
-    ScriptSys.MessageBoxEvent(msg, mess_type, script_call);
+    ScriptSys.MessageBoxEvent(string(msg), mess_type, script_call);
 }
 
-void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, const string& lexems)
+void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems)
 {
     if (text == "error") {
         text = "Text not found!";
@@ -4571,7 +4570,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, const
             // Script
             else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' && tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ') {
                 string func_name = _str(tag.substr(7)).substringUntil('$');
-                if (!ScriptSys.CallFunc<string, string>(func_name, lexems, tag)) {
+                if (!ScriptSys.CallFunc<string, string>(func_name, string(lexems), tag)) {
                     tag = "<script function not found>";
                 }
             }

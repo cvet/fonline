@@ -132,7 +132,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileManager& file_mngr, E
     if (_settings.Enable3dRendering) {
         _modelMngr = std::make_unique<ModelManager>(_settings, _fileMngr, _effectMngr, script_sys, _gameTime, [this](MeshTexture* mesh_tex) {
             PushAtlasType(AtlasType::MeshTextures);
-            auto* anim = LoadAnimation(_str(mesh_tex->ModelPath).extractDir() + mesh_tex->Name, false, false);
+            auto* anim = LoadAnimation(_str("{}{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
             PopAtlasType();
 
             if (anim != nullptr) {
@@ -217,7 +217,7 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
     App->Window.AlwaysOnTop(enable);
 }
 
-void SpriteManager::Preload3dModel(const string& model_name) const
+void SpriteManager::Preload3dModel(string_view model_name) const
 {
     RUNTIME_ASSERT(_modelMngr);
     _modelMngr->PreloadModel(model_name);
@@ -763,7 +763,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si)
     delete[] data;
 }
 
-auto SpriteManager::LoadAnimation(const string& fname, bool use_dummy, bool /*frm_anim_pix*/) -> AnyFrames*
+auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy, bool /*frm_anim_pix*/) -> AnyFrames*
 {
     auto* dummy = use_dummy ? DummyAnimation : nullptr;
 
@@ -788,7 +788,7 @@ auto SpriteManager::LoadAnimation(const string& fname, bool use_dummy, bool /*fr
     return result != nullptr ? result : dummy;
 }
 
-auto SpriteManager::Load2dAnimation(const string& fname) -> AnyFrames*
+auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
 {
     auto file = _fileMngr.ReadFile(fname);
     if (!file) {
@@ -833,7 +833,7 @@ auto SpriteManager::Load2dAnimation(const string& fname) -> AnyFrames*
     return anim;
 }
 
-auto SpriteManager::ReloadAnimation(AnyFrames* anim, const string& fname) -> AnyFrames*
+auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*
 {
     if (fname.empty()) {
         return anim;
@@ -854,7 +854,7 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, const string& fname) -> Any
     return LoadAnimation(fname, true, false);
 }
 
-auto SpriteManager::Load3dAnimation(const string& fname) -> AnyFrames*
+auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
 {
     if (!_settings.Enable3dRendering) {
         return nullptr;
@@ -978,7 +978,7 @@ void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
     DrawSprite(model->SprId, x - si->Width / 2 + si->OffsX, y - si->Height + si->OffsY, color);
 }
 
-auto SpriteManager::LoadModel(const string& fname, bool auto_redraw) -> ModelInstance*
+auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> ModelInstance*
 {
     if (!_settings.Enable3dRendering) {
         return nullptr;
@@ -1396,7 +1396,7 @@ auto SpriteManager::GetDrawRect(Sprite* prep) const -> IRect
     return {x, y, x + si->Width, y + si->Height};
 }
 
-void SpriteManager::InitializeEgg(const string& egg_name)
+void SpriteManager::InitializeEgg(string_view egg_name)
 {
     _eggValid = false;
     _eggHx = _eggHy = _eggX = _eggY = 0;
@@ -2176,7 +2176,7 @@ void SpriteManager::BuildFont(int index)
 #undef PIXEL_AT
 }
 
-auto SpriteManager::LoadFontFO(int index, const string& font_name, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
+auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_bordered, bool skip_if_loaded /* = true */) -> bool
 {
     // Skip if loaded
     if (skip_if_loaded && index < static_cast<int>(_allFonts.size()) && _allFonts[index]) {
@@ -2327,7 +2327,7 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-auto SpriteManager::LoadFontBmf(int index, const string& font_name) -> bool
+auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
 {
     if (index < 0) {
         WriteLog("Invalid index.\n");
@@ -2882,7 +2882,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
 }
 
-void SpriteManager::DrawStr(const IRect& r, const string& str, uint flags, uint color /* = 0 */, int num_font /* = -1 */)
+void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint color /* = 0 */, int num_font /* = -1 */)
 {
     // Check
     if (str.empty()) {
@@ -2902,7 +2902,7 @@ void SpriteManager::DrawStr(const IRect& r, const string& str, uint flags, uint 
     color = COLOR_SWAP_RB(color);
 
     FontFormatInfo fi {font, flags, r};
-    Str::Copy(fi.Str, str.c_str());
+    Str::Copy(fi.Str, string(str).c_str());
     fi.DefColor = color;
     FormatText(fi, FORMAT_TYPE_DRAW);
     if (fi.IsError) {
@@ -3038,7 +3038,7 @@ void SpriteManager::DrawStr(const IRect& r, const string& str, uint flags, uint 
     }
 }
 
-auto SpriteManager::GetLinesCount(int width, int height, const string& str, int num_font /* = -1 */) -> int
+auto SpriteManager::GetLinesCount(int width, int height, string_view str, int num_font /* = -1 */) -> int
 {
     if (width <= 0 || height <= 0) {
         return 0;
@@ -3055,7 +3055,7 @@ auto SpriteManager::GetLinesCount(int width, int height, const string& str, int 
 
     const auto r = IRect(0, 0, width != 0 ? width : _settings.ScreenWidth, height != 0 ? height : _settings.ScreenHeight);
     FontFormatInfo fi {font, 0, r};
-    Str::Copy(fi.Str, str.c_str());
+    Str::Copy(fi.Str, string(str).c_str());
     FormatText(fi, FORMAT_TYPE_LCOUNT);
     if (fi.IsError) {
         return 0;
@@ -3064,7 +3064,7 @@ auto SpriteManager::GetLinesCount(int width, int height, const string& str, int 
     return fi.LinesInRect;
 }
 
-auto SpriteManager::GetLinesHeight(int width, int height, const string& str, int num_font /* = -1 */) -> int
+auto SpriteManager::GetLinesHeight(int width, int height, string_view str, int num_font /* = -1 */) -> int
 {
     if (width <= 0 || height <= 0) {
         return 0;
@@ -3093,7 +3093,7 @@ auto SpriteManager::GetLineHeight(int num_font) -> int
     return font->LineHeight;
 }
 
-auto SpriteManager::GetTextInfo(int width, int height, const string& str, int num_font, uint flags, int& tw, int& th, int& lines) -> bool
+auto SpriteManager::GetTextInfo(int width, int height, string_view str, int num_font, uint flags, int& tw, int& th, int& lines) -> bool
 {
     tw = th = lines = 0;
 
@@ -3110,7 +3110,7 @@ auto SpriteManager::GetTextInfo(int width, int height, const string& str, int nu
     }
 
     FontFormatInfo fi {font, flags, IRect(0, 0, width, height)};
-    Str::Copy(fi.Str, str.c_str());
+    Str::Copy(fi.Str, string(str).c_str());
     FormatText(fi, FORMAT_TYPE_LCOUNT);
     if (fi.IsError) {
         return false;
@@ -3122,7 +3122,7 @@ auto SpriteManager::GetTextInfo(int width, int height, const string& str, int nu
     return true;
 }
 
-auto SpriteManager::SplitLines(const IRect& r, const string& cstr, int num_font) -> vector<string>
+auto SpriteManager::SplitLines(const IRect& r, string_view cstr, int num_font) -> vector<string>
 {
     vector<string> result;
 
@@ -3136,7 +3136,7 @@ auto SpriteManager::SplitLines(const IRect& r, const string& cstr, int num_font)
     }
 
     FontFormatInfo fi {font, 0, r};
-    Str::Copy(fi.Str, cstr.c_str());
+    Str::Copy(fi.Str, string(cstr).c_str());
     fi.StrLines = &result;
     FormatText(fi, FORMAT_TYPE_SPLIT);
     if (fi.IsError) {

@@ -64,7 +64,7 @@ public:
     auto operator+=(const FOMsg& other) -> FOMsg&;
     ~FOMsg() = default;
 
-    static auto GetMsgType(const string& type_name) -> int;
+    static auto GetMsgType(string_view type_name) -> int;
 
     [[nodiscard]] auto GetStr(uint num) const -> string;
     [[nodiscard]] auto GetStr(uint num, uint skip) const -> string;
@@ -78,9 +78,9 @@ public:
     [[nodiscard]] auto GetBinaryData() const -> vector<uchar>;
 
     auto LoadFromBinaryData(const vector<uchar>& data) -> bool;
-    auto LoadFromString(const string& str) -> bool;
+    auto LoadFromString(string_view str) -> bool;
     void LoadFromMap(const map<string, string>& kv);
-    void AddStr(uint num, const string& str);
+    void AddStr(uint num, string_view str);
     void AddBinary(uint num, const uchar* binary, uint len);
     void EraseStr(uint num);
     void Clear();
@@ -103,8 +103,8 @@ public:
 
     [[nodiscard]] auto GetMsgCacheName(int msg_num) const -> string;
 
-    void LoadFromFiles(FileManager& file_mngr, const string& lang_name);
-    void LoadFromCache(CacheStorage& cache, const string& lang_name);
+    void LoadFromFiles(FileManager& file_mngr, string_view lang_name);
+    void LoadFromCache(CacheStorage& cache, string_view lang_name);
 
     string Name {};
     uint NameCode {};

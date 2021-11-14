@@ -156,7 +156,7 @@ auto Property::CreateRefValue(uchar* /*data*/, uint /*data_size*/) -> unique_ptr
     return nullptr;
 }
 
-auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool & /*need_delete*/) -> uchar*
+auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool& /*need_delete*/) -> uchar*
 {
     /*need_delete = false;
     if (dataType == Property::String)
@@ -516,7 +516,7 @@ auto Properties::FindByEnum(int enum_value) -> Property*
     return _registrator->FindByEnum(enum_value);
 }
 
-auto Properties::FindData(const string& property_name) -> void*
+auto Properties::FindData(string_view property_name) -> void*
 {
     NON_CONST_METHOD_HINT();
 
@@ -679,7 +679,7 @@ static auto ReadToken(const char* str, string& result) -> const char*
     return *s != 0 ? s + 1 : s;
 }
 
-static auto CodeString(const string& str, int deep) -> string
+static auto CodeString(string_view str, int deep) -> string
 {
     auto need_braces = false;
     if (deep > 0 && (str.empty() || str.find_first_of(" \t") != string::npos)) {
@@ -699,7 +699,7 @@ static auto CodeString(const string& str, int deep) -> string
         result.append("{");
     }
 
-    const auto* s = str.c_str();
+    const auto* s = str.data();
     uint length = 0;
     while (*s != 0) {
         utf8::Decode(s, &length);
@@ -738,16 +738,16 @@ static auto CodeString(const string& str, int deep) -> string
     return result;
 }
 
-static auto DecodeString(const string& str) -> string
+static auto DecodeString(string_view str) -> string
 {
     if (str.empty()) {
-        return str;
+        return string();
     }
 
     string result;
     result.reserve(str.length());
 
-    const auto* s = str.c_str();
+    const auto* s = str.data();
     uint length = 0;
 
     utf8::Decode(s, &length);
@@ -976,13 +976,13 @@ void* ReadValue(
     return nullptr;
 }*/
 
-auto Properties::LoadFromText(const map<string, string> & /*key_values*/) -> bool
+auto Properties::LoadFromText(const map<string, string>& /*key_values*/) -> bool
 {
     /*bool is_error = false;
     for (const auto& kv : key_values)
     {
-        const string& key = kv.first;
-        const string& value = kv.second;
+        string_view key = kv.first;
+        string_view value = kv.second;
 
         // Skip technical fields
         if (key.empty() || key[0] == '$' || key[0] == '_')
@@ -1063,7 +1063,7 @@ auto Properties::SaveToText(Properties* base) const -> map<string, string>
     return key_values;
 }
 
-auto Properties::LoadPropertyFromText(Property* /*prop*/, const string & /*text*/) -> bool
+auto Properties::LoadPropertyFromText(Property* /*prop*/, string_view /*text*/) -> bool
 {
     /*RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(registrator == prop->registrator);
@@ -1345,7 +1345,7 @@ void Properties::SetValueAsInt(int enum_value, int value)
     SetPODValueAsInt(prop, value);
 }
 
-void Properties::SetValueAsIntByName(const string& enum_name, int value)
+void Properties::SetValueAsIntByName(string_view enum_name, int value)
 {
     auto* prop = _registrator->Find(enum_name);
     if (prop == nullptr) {
@@ -1433,7 +1433,7 @@ PropertyRegistrator::~PropertyRegistrator()
     }
 }
 
-auto PropertyRegistrator::Register(Property::AccessType access, const type_info& type, const string& name) -> Property*
+auto PropertyRegistrator::Register(Property::AccessType access, const type_info& type, string_view name) -> Property*
 {
 #define ISTYPE(t) (type.hash_code() == typeid(t).hash_code())
 
@@ -1675,7 +1675,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     return prop;
 }
 
-void PropertyRegistrator::RegisterComponent(const string& name)
+void PropertyRegistrator::RegisterComponent(string_view name)
 {
     const auto name_hash = _str(name).toHash();
     RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
@@ -1700,11 +1700,10 @@ auto PropertyRegistrator::Get(uint property_index) -> Property*
     return nullptr;
 }
 
-auto PropertyRegistrator::Find(const string& property_name) -> Property*
+auto PropertyRegistrator::Find(string_view property_name) -> Property*
 {
-    auto key = property_name;
-    const auto separator = key.find('.');
-    if (separator != string::npos) {
+    auto key = string(property_name);
+    if (const auto separator = key.find('.'); separator != string::npos) {
         key[separator] = '_';
     }
 
@@ -1731,7 +1730,7 @@ auto PropertyRegistrator::IsComponentRegistered(hash component_name) const -> bo
     return _registeredComponents.count(component_name) > 0;
 }
 
-void PropertyRegistrator::SetNativeSetCallback(const string& property_name, const NativeCallback& /*callback*/)
+void PropertyRegistrator::SetNativeSetCallback(string_view property_name, const NativeCallback& /*callback*/)
 {
     RUNTIME_ASSERT(!property_name.empty());
     // Find(property_name)->nativeSetCallback = callback;

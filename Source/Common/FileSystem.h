@@ -55,14 +55,14 @@ public:
     explicit operator bool() const;
     ~FileHeader() = default;
 
-    [[nodiscard]] auto GetName() const -> const string&;
-    [[nodiscard]] auto GetPath() const -> const string&;
+    [[nodiscard]] auto GetName() const -> string_view;
+    [[nodiscard]] auto GetPath() const -> string_view;
     [[nodiscard]] auto GetFsize() const -> uint;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
 
 protected:
     FileHeader() = default;
-    FileHeader(string name, string path, uint size, uint64 write_time, DataSource* ds);
+    FileHeader(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds);
 
     bool _isLoaded {};
     string _fileName {};
@@ -114,7 +114,7 @@ public:
     void GoBack(uint offs);
 
 private:
-    File(const string& name, const string& path, uint size, uint64 write_time, DataSource* ds, uchar* buf);
+    File(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds, uchar* buf);
 
     unique_ptr<uchar[]> _fileBuf {};
     uint _curPos {};
@@ -135,9 +135,9 @@ public:
     [[nodiscard]] auto GetOutBufLen() const -> uint;
 
     void SetData(const void* data, uint len);
-    void SetStr(const string& str);
+    void SetStr(string_view str);
     // ReSharper disable CppInconsistentNaming
-    void SetStrNT(const string& str);
+    void SetStrNT(string_view str);
     void SetUChar(uchar data);
     void SetBEUShort(ushort data);
     void SetBEShort(short data) { SetBEUShort(static_cast<ushort>(data)); }
@@ -166,11 +166,11 @@ public:
     auto operator=(FileCollection&&) noexcept = delete;
     ~FileCollection() = default;
 
-    [[nodiscard]] auto GetPath() const -> const string&;
+    [[nodiscard]] auto GetPath() const -> string_view;
     [[nodiscard]] auto GetCurFile() const -> File;
     [[nodiscard]] auto GetCurFileHeader() const -> FileHeader;
-    [[nodiscard]] auto FindFile(const string& name) const -> File;
-    [[nodiscard]] auto FindFileHeader(const string& name) const -> FileHeader;
+    [[nodiscard]] auto FindFile(string_view name) const -> File;
+    [[nodiscard]] auto FindFileHeader(string_view name) const -> FileHeader;
     [[nodiscard]] auto GetFilesCount() const -> uint;
 
     [[nodiscard]] auto MoveNext() -> bool;
@@ -178,7 +178,7 @@ public:
     void ResetCounter();
 
 private:
-    FileCollection(string path, vector<FileHeader> files);
+    FileCollection(string_view path, vector<FileHeader> files);
 
     string _filterPath {};
     vector<FileHeader> _allFiles {};
@@ -195,17 +195,17 @@ public:
     auto operator=(FileManager&&) noexcept = delete;
     ~FileManager() = default;
 
-    [[nodiscard]] auto FilterFiles(const string& ext) -> FileCollection;
-    [[nodiscard]] auto FilterFiles(const string& ext, const string& dir, bool include_subdirs) -> FileCollection;
-    [[nodiscard]] auto ReadFile(const string& path) -> File;
-    [[nodiscard]] auto ReadFileHeader(const string& path) -> FileHeader;
-    [[nodiscard]] auto ReadConfigFile(const string& path) -> ConfigFile;
-    [[nodiscard]] auto WriteFile(const string& path, bool apply) -> OutputFile;
+    [[nodiscard]] auto FilterFiles(string_view ext) -> FileCollection;
+    [[nodiscard]] auto FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection;
+    [[nodiscard]] auto ReadFile(string_view path) -> File;
+    [[nodiscard]] auto ReadFileHeader(string_view path) -> FileHeader;
+    [[nodiscard]] auto ReadConfigFile(string_view path) -> ConfigFile;
+    [[nodiscard]] auto WriteFile(string_view path, bool apply) -> OutputFile;
 
-    void AddDataSource(const string& path, bool cache_dirs);
-    void DeleteFile(const string& path);
-    void DeleteDir(const string& path);
-    void RenameFile(const string& from_path, const string& to_path);
+    void AddDataSource(string_view path, bool cache_dirs);
+    void DeleteFile(string_view path);
+    void DeleteDir(string_view path);
+    void RenameFile(string_view from_path, string_view to_path);
 
     EventObserver<DataSource*> OnDataSourceAdded {};
 

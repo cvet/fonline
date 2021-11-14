@@ -71,7 +71,7 @@ public:
     [[nodiscard]] auto ContGetItems(uint stack_id) -> vector<Item*>;
     [[nodiscard]] auto ContIsItems() const -> bool;
 
-    auto SetScript(const string& func, bool first_time) -> bool;
+    auto SetScript(string_view func, bool first_time) -> bool;
     void EvaluateSortValue(const vector<Item*>& items);
     void ChangeCount(int val);
 

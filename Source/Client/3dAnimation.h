@@ -47,14 +47,14 @@ public:
     auto operator=(ModelAnimation&&) noexcept = delete;
     ~ModelAnimation() = default;
 
-    [[nodiscard]] auto GetFileName() const -> const string&;
-    [[nodiscard]] auto GetName() const -> const string&;
+    [[nodiscard]] auto GetFileName() const -> string_view;
+    [[nodiscard]] auto GetName() const -> string_view;
     [[nodiscard]] auto GetBoneOutputCount() const -> uint;
     [[nodiscard]] auto GetDuration() const -> float;
     [[nodiscard]] auto GetBonesHierarchy() const -> const vector<vector<hash>>&;
 
     void Load(DataReader& reader);
-    void SetData(const string& fname, const string& name, float ticks, float tps);
+    void SetData(string_view fname, string_view name, float ticks, float tps);
     void AddBoneOutput(vector<hash> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv);
 
 private:
@@ -89,7 +89,7 @@ public:
 
     [[nodiscard]] auto Clone() const -> ModelAnimationController*;
     [[nodiscard]] auto GetAnimationSet(uint index) const -> ModelAnimation*;
-    [[nodiscard]] auto GetAnimationSetByName(const string& name) const -> ModelAnimation*;
+    [[nodiscard]] auto GetAnimationSetByName(string_view name) const -> ModelAnimation*;
     [[nodiscard]] auto GetTrackPosition(uint track) const -> float;
     [[nodiscard]] auto GetNumAnimationSets() const -> uint;
     [[nodiscard]] auto GetTime() const -> float;

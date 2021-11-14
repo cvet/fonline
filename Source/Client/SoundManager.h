@@ -49,8 +49,8 @@ public:
     auto operator=(SoundManager&&) noexcept = delete;
     ~SoundManager();
 
-    auto PlaySound(const map<string, string>& sound_names, const string& name) -> bool;
-    auto PlayMusic(const string& fname, uint repeat_time) -> bool;
+    auto PlaySound(const map<string, string>& sound_names, string_view name) -> bool;
+    auto PlayMusic(string_view fname, uint repeat_time) -> bool;
     void StopSounds();
     void StopMusic();
 
@@ -60,14 +60,14 @@ private:
     using SoundVec = vector<Sound*>;
 
     [[nodiscard]] auto ProcessSound(Sound* sound, uchar* output) -> bool;
-    [[nodiscard]] auto Load(const string& fname, bool is_music) -> Sound*;
-    [[nodiscard]] auto LoadWAV(Sound* sound, const string& fname) -> bool;
-    [[nodiscard]] auto LoadACM(Sound* sound, const string& fname, bool is_music) -> bool;
-    [[nodiscard]] auto LoadOGG(Sound* sound, const string& fname) -> bool;
+    [[nodiscard]] auto Load(string_view fname, bool is_music) -> Sound*;
+    [[nodiscard]] auto LoadWav(Sound* sound, string_view fname) -> bool;
+    [[nodiscard]] auto LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool;
+    [[nodiscard]] auto LoadOgg(Sound* sound, string_view fname) -> bool;
     [[nodiscard]] auto ConvertData(Sound* sound) -> bool;
 
     void ProcessSounds(uchar* output);
-    auto StreamOGG(Sound* sound) -> bool;
+    auto StreamOgg(Sound* sound) -> bool;
 
     AudioSettings& _settings;
     FileManager& _fileMngr;

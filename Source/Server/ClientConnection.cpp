@@ -53,7 +53,7 @@ auto ClientConnection::GetIp() const -> uint
     return _netConnection->GetIp();
 }
 
-auto ClientConnection::GetHost() const -> const string&
+auto ClientConnection::GetHost() const -> string_view
 {
     return _netConnection->GetHost();
 }
@@ -121,7 +121,7 @@ void ClientConnection::Send_TextMsg(uint num_str)
     CONNECTION_OUTPUT_END(this);
 }
 
-void ClientConnection::Send_TextMsgLex(uint num_str, const string& lexems)
+void ClientConnection::Send_TextMsgLex(uint num_str, string_view lexems)
 {
     const uint msg_len = NETMSG_MSG_SIZE + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(lexems.length());
 

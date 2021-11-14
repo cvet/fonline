@@ -193,7 +193,7 @@ RenderEffect::~RenderEffect()
 {
 }
 
-auto RenderEffect::IsSame(const string& name, const string& defines) const -> bool
+auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 {
     return _str(name).compareIgnoreCase(_effectName) && defines == _effectDefines;
 }
@@ -1363,7 +1363,7 @@ void Application::AppRender::DisableScissor()
 #endif
 }
 
-auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
+auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
 {
     auto effect = unique_ptr<RenderEffect>(new RenderEffect());
 #if FO_HAVE_OPENGL
@@ -1468,7 +1468,7 @@ auto Application::AppRender::CreateEffect(const string& /*name*/, const string& 
         // Process commands
         for (size_t i = 0; i < commands.size(); i++)
         {
-            static auto get_gl_blend_func = [](const string& s) {
+            static auto get_gl_blend_func = [](string_view s) {
                 if (s == "GL_ZERO")
                     return GL_ZERO;
                 if (s == "GL_ONE")
@@ -1501,7 +1501,7 @@ auto Application::AppRender::CreateEffect(const string& /*name*/, const string& 
                     return GL_SRC_ALPHA_SATURATE;
                 return -1;
             };
-            static auto get_gl_blend_equation = [](const string& s) {
+            static auto get_gl_blend_equation = [](string_view s) {
                 if (s == "GL_FUNC_ADD")
                     return GL_FUNC_ADD;
                 if (s == "GL_FUNC_SUBTRACT")
@@ -1557,8 +1557,8 @@ auto Application::AppRender::CreateEffect(const string& /*name*/, const string& 
             WriteLog("Invalid commands in effect '{}'.\n", fname);
             return nullptr;
         }*/
-        /*bool EffectManager::LoadEffectPass(Effect* effect, const string& fname, File& file, uint pass, bool use_in_2d,
-    const string& defines, EffectDefault* defaults, uint defaults_count)
+        /*bool EffectManager::LoadEffectPass(Effect* effect, string_view fname, File& file, uint pass, bool use_in_2d,
+    string_view defines, EffectDefault* defaults, uint defaults_count)
 {
     EffectPass effect_pass;
     memzero(&effect_pass, sizeof(effect_pass));
@@ -2049,9 +2049,9 @@ void Application::AppInput::PushEvent(const InputEvent& event)
     NextFrameEventsQueue->push_back(event);
 }
 
-void Application::AppInput::SetClipboardText(const string& text)
+void Application::AppInput::SetClipboardText(string_view text)
 {
-    SDL_SetClipboardText(text.c_str());
+    SDL_SetClipboardText(string(text).c_str());
 }
 
 auto Application::AppInput::GetClipboardText() -> string
@@ -2159,13 +2159,13 @@ void Application::AppAudio::UnlockDevice()
     SDL_UnlockAudioDevice(AudioDeviceId);
 }
 
-void MessageBox::ShowErrorMessage(const string& message, const string& traceback)
+void MessageBox::ShowErrorMessage(string_view message, string_view traceback)
 {
 #if FO_WEB || FO_ANDROID || FO_IOS
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "FOnline Error", message.c_str(), nullptr);
 
 #else
-    auto verb_message = message;
+    auto verb_message = string(message);
 #if FO_WINDOWS
     const string most_recent = "most recent call first";
 #else

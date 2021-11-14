@@ -90,7 +90,7 @@ public:
     auto operator=(EffectManager &&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
-    [[nodiscard]] auto LoadEffect(const string& name, const string& defines, const string& base_path) -> RenderEffect*;
+    [[nodiscard]] auto LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*;
 
     void LoadMinimalEffects();
     void LoadDefaultEffects();

@@ -57,8 +57,8 @@ public:
     void FillBakedFiles(map<string, vector<uchar>>& baked_files);
 
 private:
-    void BakeShaderProgram(const string& fname, const string& content);
-    void BakeShaderStage(const string& fname_wo_ext, glslang::TIntermediate* intermediate);
+    void BakeShaderProgram(string_view fname, string_view content);
+    void BakeShaderStage(string_view fname_wo_ext, glslang::TIntermediate* intermediate);
 
     FileCollection& _allFiles;
     map<string, vector<uchar>> _bakedFiles;
