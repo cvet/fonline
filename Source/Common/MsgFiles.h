@@ -66,7 +66,7 @@ public:
 
     static auto GetMsgType(string_view type_name) -> int;
 
-    [[nodiscard]] auto GetStr(uint num) const -> string;
+    [[nodiscard]] auto GetStr(uint num) const -> string; // Todo: pass default to fomsg gets
     [[nodiscard]] auto GetStr(uint num, uint skip) const -> string;
     [[nodiscard]] auto GetStrNumUpper(uint num) const -> uint;
     [[nodiscard]] auto GetStrNumLower(uint num) const -> uint;

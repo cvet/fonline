@@ -2162,7 +2162,7 @@ void Application::AppAudio::UnlockDevice()
 void MessageBox::ShowErrorMessage(string_view message, string_view traceback)
 {
 #if FO_WEB || FO_ANDROID || FO_IOS
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "FOnline Error", message.c_str(), nullptr);
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "FOnline Error", string(message).c_str(), nullptr);
 
 #else
     auto verb_message = string(message);

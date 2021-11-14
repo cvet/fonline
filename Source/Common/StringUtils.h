@@ -49,13 +49,13 @@ public:
 };
 
 // ReSharper disable once CppInconsistentNaming
-class _str
+class _str final
 {
     // ReSharper disable CppInconsistentNaming
 
 public:
     _str() = default;
-    _str(const _str& r) = default;
+    _str(const _str&) = default;
     explicit _str(string s) : _s(std::move(s)) { }
     explicit _str(const char* s) : _s(s) { }
     explicit _str(string_view s) : _s(s) { }
@@ -63,9 +63,13 @@ public:
     explicit _str(string_view format, Args... args) : _s(fmt::format(format, args...))
     {
     }
+    _str(_str&&) noexcept = default;
+    auto operator=(const _str&) -> _str& = default;
+    auto operator=(_str&&) noexcept -> _str& = default;
+    ~_str() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string&() { return _s; }
+    operator string&&() { return std::move(_s); }
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string_view() const { return _s; }
     auto operator+(const char* r) const -> _str { return _str(_s + string(r)); }
@@ -74,6 +78,7 @@ public:
     auto operator==(string_view r) const -> bool { return _s == r; }
     auto operator!=(string_view r) const -> bool { return _s != r; }
     friend auto operator!=(const _str& l, string_view r) -> bool { return l._s != r; }
+
     [[nodiscard]] auto c_str() const -> const char* { return _s.c_str(); }
     [[nodiscard]] auto str() const -> string { return _s; }
     [[nodiscard]] auto strv() const -> string_view { return _s; }

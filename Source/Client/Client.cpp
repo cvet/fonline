@@ -347,7 +347,7 @@ void FOClient::UpdateFilesLoop()
 void FOClient::UpdateFilesAddText(uint num_str, string_view num_str_str)
 {
     if (Update->FontLoaded) {
-        const auto text = (CurLang.Msg[TEXTMSG_GAME].Count(num_str) != 0u ? CurLang.Msg[TEXTMSG_GAME].GetStr(num_str) : num_str_str);
+        const auto text = (CurLang.Msg[TEXTMSG_GAME].Count(num_str) != 0u ? CurLang.Msg[TEXTMSG_GAME].GetStr(num_str) : string(num_str_str));
         Update->Messages += _str("{}\n", text);
     }
 }
