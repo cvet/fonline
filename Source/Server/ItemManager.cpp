@@ -245,7 +245,7 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
     // Scripts
     _scriptSys.ItemInitEvent(item, true);
     if (!item->IsDestroyed) {
-        item->SetScript(nullptr, true);
+        item->SetScript("", true);
     }
 
     // Verify destroying

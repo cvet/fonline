@@ -400,12 +400,12 @@ struct DiskFile::Impl
 
 DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 {
-    FILE* f = ::fopen(fname.c_str(), write ? "wb" : "rb");
+    FILE* f = ::fopen(string(fname).c_str(), write ? "wb" : "rb");
     if (!f) {
         if (write) {
             DiskFileSystem::MakeDirTree(fname);
         }
-        f = ::fopen(fname.c_str(), write ? "wb" : "rb");
+        f = ::fopen(string(fname).c_str(), write ? "wb" : "rb");
     }
     if (!f) {
         return;
@@ -471,7 +471,7 @@ bool DiskFile::Write(string_view str)
     RUNTIME_ASSERT(_openedForWriting);
 
     if (!str.empty()) {
-        return Write(str.c_str(), (uint)str.length());
+        return Write(str.data(), (uint)str.length());
     }
     return true;
 }
@@ -631,20 +631,20 @@ auto DiskFind::GetWriteTime() const -> uint64
 
 bool DiskFileSystem::DeleteFile(string_view fname)
 {
-    return remove(fname.c_str()) != 0;
+    return remove(string(fname).c_str()) != 0;
 }
 
 bool DiskFileSystem::IsFileExists(string_view fname)
 {
-    return access(fname.c_str(), 0) == 0;
+    return access(string(fname).c_str(), 0) == 0;
 }
 
 bool DiskFileSystem::CopyFile(string_view fname, string_view copy_fname)
 {
     bool ok = false;
-    FILE* from = fopen(fname.c_str(), "rb");
+    FILE* from = fopen(string(fname).c_str(), "rb");
     if (from) {
-        FILE* to = fopen(copy_fname.c_str(), "wb");
+        FILE* to = fopen(string(copy_fname).c_str(), "wb");
         if (to) {
             ok = true;
             char buf[BUFSIZ];
@@ -668,7 +668,7 @@ bool DiskFileSystem::CopyFile(string_view fname, string_view copy_fname)
 
 bool DiskFileSystem::RenameFile(string_view fname, string_view new_fname)
 {
-    return rename(fname.c_str(), new_fname.c_str()) == 0;
+    return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
 }
 
 struct DiskFind::Impl
@@ -684,7 +684,7 @@ struct DiskFind::Impl
 
 DiskFind::DiskFind(string_view path, string_view ext)
 {
-    DIR* d = opendir(path.c_str());
+    DIR* d = opendir(string(path).c_str());
     if (!d) {
         return;
     }
@@ -853,7 +853,7 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 #if FO_WINDOWS
     return ::RemoveDirectoryW(_str(dir).toWideChar().c_str()) != FALSE;
 #else
-    return rmdir(dir.c_str()) == 0;
+    return rmdir(string(dir).c_str()) == 0;
 #endif
 }
 
