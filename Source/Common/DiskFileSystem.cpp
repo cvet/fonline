@@ -176,18 +176,6 @@ auto DiskFile::Write(const void* buf, uint len) -> bool
     return ::WriteFile(_pImpl->FileHandle, buf, len, &bw, nullptr) != 0 && bw == len;
 }
 
-auto DiskFile::Write(const void* buf, size_t len) -> bool
-{
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
-
-    DWORD bw = 0;
-    return ::WriteFile(_pImpl->FileHandle, buf, static_cast<DWORD>(len), &bw, nullptr) != 0 && bw == len;
-}
-
 auto DiskFile::Write(string_view str) -> bool
 {
     NON_CONST_METHOD_HINT();

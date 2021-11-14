@@ -1195,7 +1195,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     if (!file) {
         throw ScriptCompilerException("Can't write binary to file", _str("{}b", script_path));
     }
-    if (!file.Write(data.data(), data.size())) {
+    if (!file.Write(data.data(), static_cast<uint>(data.size()))) {
         throw ScriptCompilerException("Can't write binary to file", _str("{}b", script_path));
     }
 }
