@@ -432,17 +432,17 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     const auto maps = _entityMngr.GetEntities(EntityType::Map);
 
     string result = _str("Locations count: {}\n", static_cast<uint>(locations.size()));
-    result += _str("Maps count: {}\n", static_cast<uint>(maps.size()));
+    result += _str("Maps count: {}\n", static_cast<uint>(maps.size())).strv();
     result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain Script\n";
     for (auto* loc_entity : locations) {
         auto* loc = dynamic_cast<Location*>(loc_entity);
 
-        result += _str("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
+        result += _str("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false").strv();
 
         uint map_index = 0;
         for (auto* map : loc->GetMaps()) {
-            result += _str("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity());
+            result += _str("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity()).strv();
             result += map->GetScriptId() != 0u ? _str().parseHash(map->GetScriptId()).str() : "";
             result += "\n";
             map_index++;
