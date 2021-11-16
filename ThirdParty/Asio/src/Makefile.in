@@ -281,11 +281,14 @@ top_srcdir = @top_srcdir@
 @STANDALONE_FALSE@EXAMPLES_CPP03 = examples/cpp03
 @HAVE_CXX11_TRUE@EXAMPLES_CPP11 = examples/cpp11
 @HAVE_CXX14_TRUE@EXAMPLES_CPP14 = examples/cpp14
-SUBDIRS = $(EXAMPLES_CPP03) $(EXAMPLES_CPP11) $(EXAMPLES_CPP14) tests
+@HAVE_CXX17_TRUE@EXAMPLES_CPP17 = examples/cpp17
+SUBDIRS = $(EXAMPLES_CPP03) $(EXAMPLES_CPP11) $(EXAMPLES_CPP14) $(EXAMPLES_CPP17) tests
 DIST_SUBDIRS = examples/cpp03 examples/cpp11 examples/cpp14 examples/cpp17 tests
 EXTRA_DIST = \
 	Makefile.mgw \
 	Makefile.msc \
+	tools/handlerlive.pl \
+	tools/handlertree.pl \
 	tools/handlerviz.pl
 
 MAINTAINERCLEANFILES = \

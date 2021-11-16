@@ -2,7 +2,7 @@
 // composed_3.cpp
 // ~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,13 +22,76 @@
 
 using asio::ip::tcp;
 
+// NOTE: This example requires the new asio::async_initiate function. For
+// an example that works with the Networking TS style of completion tokens,
+// please see an older version of asio.
+
 //------------------------------------------------------------------------------
 
 // In this composed operation we repackage an existing operation, but with a
-// different completion handler signature. We will also intercept an empty
-// message as an invalid argument, and propagate the corresponding error to the
-// user. The asynchronous operation requirements are met by delegating
-// responsibility to the underlying operation.
+// different completion handler signature. The asynchronous operation
+// requirements are met by delegating responsibility to the underlying
+// operation.
+
+// In addition to determining the mechanism by which an asynchronous operation
+// delivers its result, a completion token also determines the time when the
+// operation commences. For example, when the completion token is a simple
+// callback the operation commences before the initiating function returns.
+// However, if the completion token's delivery mechanism uses a future, we
+// might instead want to defer initiation of the operation until the returned
+// future object is waited upon.
+//
+// To enable this, when implementing an asynchronous operation we must package
+// the initiation step as a function object.
+struct async_write_message_initiation
+{
+  // The initiation function object's call operator is passed the concrete
+  // completion handler produced by the completion token. This completion
+  // handler matches the asynchronous operation's completion handler signature,
+  // which in this example is:
+  //
+  //   void(std::error_code error)
+  //
+  // The initiation function object also receives any additional arguments
+  // required to start the operation. (Note: We could have instead passed these
+  // arguments as members in the initiaton function object. However, we should
+  // prefer to propagate them as function call arguments as this allows the
+  // completion token to optimise how they are passed. For example, a lazy
+  // future which defers initiation would need to make a decay-copy of the
+  // arguments, but when using a simple callback the arguments can be trivially
+  // forwarded straight through.)
+  template <typename CompletionHandler>
+  void operator()(CompletionHandler&& completion_handler,
+      tcp::socket& socket, const char* message) const
+  {
+    // The async_write operation has a completion handler signature of:
+    //
+    //   void(std::error_code error, std::size n)
+    //
+    // This differs from our operation's signature in that it is also passed
+    // the number of bytes transferred as an argument of type std::size_t. We
+    // will adapt our completion handler to async_write's completion handler
+    // signature by using std::bind, which drops the additional argument.
+    //
+    // However, it is essential to the correctness of our composed operation
+    // that we preserve the executor of the user-supplied completion handler.
+    // The std::bind function will not do this for us, so we must do this by
+    // first obtaining the completion handler's associated executor (defaulting
+    // to the I/O executor - in this case the executor of the socket - if the
+    // completion handler does not have its own) ...
+    auto executor = asio::get_associated_executor(
+        completion_handler, socket.get_executor());
+
+    // ... and then binding this executor to our adapted completion handler
+    // using the asio::bind_executor function.
+    asio::async_write(socket,
+        asio::buffer(message, std::strlen(message)),
+        asio::bind_executor(executor,
+          std::bind(std::forward<CompletionHandler>(
+            completion_handler), std::placeholders::_1)));
+  }
+};
+
 template <typename CompletionToken>
 auto async_write_message(tcp::socket& socket,
     const char* message, CompletionToken&& token)
@@ -43,65 +106,25 @@ auto async_write_message(tcp::socket& socket,
     typename std::decay<CompletionToken>::type,
     void(std::error_code)>::return_type
 {
-  // The asio::async_completion object takes the completion token and
-  // from it creates:
+  // The asio::async_initiate function takes:
   //
-  // - completion.completion_handler:
-  //     A completion handler (i.e. a callback) with the specified signature.
+  // - our initiation function object,
+  // - the completion token,
+  // - the completion handler signature, and
+  // - any additional arguments we need to initiate the operation.
   //
-  // - completion.result:
-  //     An object from which we obtain the result of the initiating function.
-  asio::async_completion<CompletionToken,
-    void(std::error_code)> completion(token);
-
-  // If the user passes an empty message, this operation results in an
-  // invalid_argument error. This error is propagated to the user using the
-  // asio::post operation. The async_write operation is used only for
-  // valid input.
+  // It then asks the completion token to create a completion handler (i.e. a
+  // callback) with the specified signature, and invoke the initiation function
+  // object with this completion handler as well as the additional arguments.
+  // The return value of async_initiate is the result of our operation's
+  // initiating function.
   //
-  // The post operation has a completion handler signature of:
-  //
-  //   void()
-  //
-  // and the async_write operation has a completion handler signature of:
-  //
-  //   void(std::error_code error, std::size n)
-  //
-  // Both of these operations' completion handler signatures differ from our
-  // operation's completion handler signature. We will adapt our completion
-  // handler to these signatures by using std::bind, which drops the additional
-  // arguments.
-  //
-  // However, it is essential to the correctness of our composed operation that
-  // we preserve the executor of the user-supplied completion handler. The
-  // std::bind function will not do this for us, so we must do this by first
-  // obtaining the completion handler's associated executor (defaulting to the
-  // I/O executor - in this case the executor of the socket - if the completion
-  // handler does not have its own) ...
-  auto executor = asio::get_associated_executor(
-      completion.completion_handler, socket.get_executor());
-
-  // ... and then binding it to our adapted completion handlers using the
-  // asio::bind_executor function.
-  std::size_t length = std::strlen(message);
-  if (length == 0)
-  {
-    asio::post(
-        asio::bind_executor(executor,
-          std::bind(std::move(completion.completion_handler),
-            asio::error::invalid_argument)));
-  }
-  else
-  {
-    asio::async_write(socket,
-        asio::buffer(message, length),
-        asio::bind_executor(executor,
-          std::bind(std::move(completion.completion_handler),
-            std::placeholders::_1)));
-  }
-
-  // Finally, we return the result of the initiating function.
-  return completion.result.get();
+  // Note that we wrap non-const reference arguments in std::reference_wrapper
+  // to prevent incorrect decay-copies of these objects.
+  return asio::async_initiate<
+    CompletionToken, void(std::error_code)>(
+      async_write_message_initiation(),
+      token, std::ref(socket), message);
 }
 
 //------------------------------------------------------------------------------
@@ -114,7 +137,7 @@ void test_callback()
   tcp::socket socket = acceptor.accept();
 
   // Test our asynchronous operation using a lambda as a callback.
-  async_write_message(socket, "",
+  async_write_message(socket, "Testing callback\r\n",
       [](const std::error_code& error)
       {
         if (!error)
@@ -143,10 +166,11 @@ void test_future()
   // This token causes the operation's initiating function to return a future,
   // which may be used to synchronously wait for the result of the operation.
   std::future<void> f = async_write_message(
-      socket, "", asio::use_future);
+      socket, "Testing future\r\n", asio::use_future);
 
   io_context.run();
 
+  // Get the result of the operation.
   try
   {
     // Get the result of the operation.
@@ -155,7 +179,7 @@ void test_future()
   }
   catch (const std::exception& e)
   {
-    std::cout << "Exception: " << e.what() << "\n";
+    std::cout << "Error: " << e.what() << "\n";
   }
 }
 

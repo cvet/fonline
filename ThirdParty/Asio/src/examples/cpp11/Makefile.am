@@ -27,6 +27,7 @@ noinst_PROGRAMS = \
 	executors/pipeline \
 	executors/priority_scheduler \
 	futures/daytime_client \
+	handler_tracking/async_tcp_echo_server \
 	http/server/http_server \
 	invocation/prioritised_handlers \
 	iostreams/http_client \
@@ -38,6 +39,9 @@ noinst_PROGRAMS = \
 	operations/composed_3 \
 	operations/composed_4 \
 	operations/composed_5 \
+	operations/composed_6 \
+	operations/composed_7 \
+	operations/composed_8 \
 	socks4/sync_client \
 	timeouts/async_tcp_client \
 	timeouts/blocking_tcp_client \
@@ -91,6 +95,7 @@ executors_fork_join_SOURCES = executors/fork_join.cpp
 executors_pipeline_SOURCES = executors/pipeline.cpp
 executors_priority_scheduler_SOURCES = executors/priority_scheduler.cpp
 futures_daytime_client_SOURCES = futures/daytime_client.cpp
+handler_tracking_async_tcp_echo_server_SOURCES = handler_tracking/async_tcp_echo_server.cpp
 http_server_http_server_SOURCES = \
 	http/server/connection.cpp \
 	http/server/connection_manager.cpp \
@@ -110,6 +115,9 @@ operations_composed_2_SOURCES = operations/composed_2.cpp
 operations_composed_3_SOURCES = operations/composed_3.cpp
 operations_composed_4_SOURCES = operations/composed_4.cpp
 operations_composed_5_SOURCES = operations/composed_5.cpp
+operations_composed_6_SOURCES = operations/composed_6.cpp
+operations_composed_7_SOURCES = operations/composed_7.cpp
+operations_composed_8_SOURCES = operations/composed_8.cpp
 socks4_sync_client_SOURCES = socks4/sync_client.cpp
 timeouts_async_tcp_client_SOURCES = timeouts/async_tcp_client.cpp
 timeouts_blocking_tcp_client_SOURCES = timeouts/blocking_tcp_client.cpp
