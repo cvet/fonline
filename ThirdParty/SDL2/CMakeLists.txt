@@ -2734,6 +2734,8 @@ endif()
 
 ##### Uninstall target #####
 
+return() #!
+
 if(NOT TARGET uninstall)
   configure_file(
       "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
