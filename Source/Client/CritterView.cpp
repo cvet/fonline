@@ -1028,7 +1028,7 @@ void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, in
 
         str = _nameOnHead.empty() ? AlternateName : _nameOnHead;
         if (_settings.ShowCritId) {
-            str += _str("  {}", GetId()).strv();
+            str += _str("  {}", GetId());
         }
         if (IsBitSet(Flags, FCRIT_DISCONNECT)) {
             str += _settings.PlayerOffAppendix;
@@ -1073,7 +1073,7 @@ void CritterView::DrawTextOnHead()
             str = _nameOnHead.empty() ? AlternateName : _nameOnHead;
 
             if (_settings.ShowCritId) {
-                str += _str(" ({})", GetId()).strv();
+                str += _str(" ({})", GetId());
             }
             if (IsBitSet(Flags, FCRIT_DISCONNECT)) {
                 str += _settings.PlayerOffAppendix;

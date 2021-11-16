@@ -266,7 +266,7 @@ void FOClient::UpdateFilesLoop()
                 const auto cur = static_cast<float>(update_file.Size - update_file.RemaningSize) / (1024.0f * 1024.0f);
                 const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
                 const string name = _str(update_file.Name).formatPath();
-                Update->Progress += _str("{} {:.2f} / {:.2f} MB\n", name, cur, max).strv();
+                Update->Progress += _str("{} {:.2f} / {:.2f} MB\n", name, cur, max);
             }
             Update->Progress += "\n";
         }
@@ -348,7 +348,7 @@ void FOClient::UpdateFilesAddText(uint num_str, string_view num_str_str)
 {
     if (Update->FontLoaded) {
         const auto text = (CurLang.Msg[TEXTMSG_GAME].Count(num_str) != 0u ? CurLang.Msg[TEXTMSG_GAME].GetStr(num_str) : string(num_str_str));
-        Update->Messages += _str("{}\n", text).strv();
+        Update->Messages += _str("{}\n", text);
     }
 }
 

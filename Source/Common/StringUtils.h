@@ -69,9 +69,7 @@ public:
     ~_str() = default;
 
     // ReSharper disable once CppNonExplicitConversionOperator
-    operator string&() & { return _s; }
-    // ReSharper disable once CppNonExplicitConversionOperator
-    operator string&&() && { return std::move(_s); }
+    operator string&&() { return std::move(_s); }
     // ReSharper disable once CppNonExplicitConversionOperator
     operator string_view() const { return _s; }
     auto operator+(const char* r) const -> _str { return _str(_s + string(r)); }
@@ -83,7 +81,7 @@ public:
 
     [[nodiscard]] auto c_str() const -> const char* { return _s.c_str(); }
     [[nodiscard]] auto str() const -> string { return _s; }
-    [[nodiscard]] auto strv() const -> string_view { return _s; } // Todo: cleanup explicit _str::strv() after upgarde Android NDK
+    [[nodiscard]] auto strv() const -> string_view { return _s; }
 
     [[nodiscard]] auto length() const -> uint;
     [[nodiscard]] auto empty() const -> bool;

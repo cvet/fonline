@@ -208,12 +208,12 @@ auto ConfigFile::SerializeData() -> string
     for (auto& app_it : _appKeyValuesOrder) {
         const auto& [app_name, app_kv] = *app_it;
         if (!app_name.empty()) {
-            str += _str("[{}]\n", app_name).strv();
+            str += _str("[{}]\n", app_name);
         }
 
         for (const auto& [key, value] : app_kv) {
             if (!key.empty()) {
-                str += _str("{} = {}\n", key, value).strv();
+                str += _str("{} = {}\n", key, value);
             }
         }
 

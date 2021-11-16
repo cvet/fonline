@@ -80,10 +80,10 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
         auto proto_id = _str(kv["$Proto"]).toHash();
         const auto* proto = proto_mngr.GetProtoCritter(proto_id);
         if (proto == nullptr) {
-            errors.emplace_back(_str("Proto critter '{}' not found", _str().parseHash(proto_id)).strv());
+            errors.emplace_back(_str("Proto critter '{}' not found", _str().parseHash(proto_id)));
         }
         else if (!cr_load(id, proto, kv)) {
-            errors.emplace_back(_str("Unable to load critter '{}' properties", _str().parseHash(proto_id)).strv());
+            errors.emplace_back(_str("Unable to load critter '{}' properties", _str().parseHash(proto_id)));
         }
     }
 
@@ -99,10 +99,10 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
         auto proto_id = _str(kv["$Proto"]).toHash();
         const auto* proto = proto_mngr.GetProtoItem(proto_id);
         if (proto == nullptr) {
-            errors.emplace_back(_str("Proto item '{}' not found", _str().parseHash(proto_id)).strv());
+            errors.emplace_back(_str("Proto item '{}' not found", _str().parseHash(proto_id)));
         }
         else if (!item_load(id, proto, kv)) {
-            errors.emplace_back(_str("Unable to load item '{}' properties", _str().parseHash(proto_id)).strv());
+            errors.emplace_back(_str("Unable to load item '{}' properties", _str().parseHash(proto_id)));
         }
     }
 
@@ -123,11 +123,11 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
         const auto is_roof = kv.count("IsRoof") != 0u ? _str(kv["IsRoof"]).toBool() : false;
 
         if (hx < 0 || hx >= width || hy < 0 || hy >= height) {
-            errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", _str().parseHash(tname), hx, hy).strv());
+            errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", _str().parseHash(tname), hx, hy));
             continue;
         }
         if (layer < 0 || layer > 255) {
-            errors.emplace_back(_str("Tile '{}' have wrong layer value {}", _str().parseHash(tname), layer).strv());
+            errors.emplace_back(_str("Tile '{}' have wrong layer value {}", _str().parseHash(tname), layer));
             continue;
         }
 
