@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,6 +20,7 @@
 */
 #include "../../SDL_internal.h"
 #include "SDL_dbus.h"
+#include "SDL_atomic.h"
 
 #if SDL_USE_LIBDBUS
 /* we never link directly to libdbus. */
@@ -57,6 +58,10 @@ LoadDBUSSyms(void)
     SDL_DBUS_SYM(message_new_method_call);
     SDL_DBUS_SYM(message_append_args);
     SDL_DBUS_SYM(message_append_args_valist);
+    SDL_DBUS_SYM(message_iter_init_append);
+    SDL_DBUS_SYM(message_iter_open_container);
+    SDL_DBUS_SYM(message_iter_append_basic);
+    SDL_DBUS_SYM(message_iter_close_container);
     SDL_DBUS_SYM(message_get_args);
     SDL_DBUS_SYM(message_get_args_valist);
     SDL_DBUS_SYM(message_iter_init);
@@ -65,6 +70,7 @@ LoadDBUSSyms(void)
     SDL_DBUS_SYM(message_iter_get_arg_type);
     SDL_DBUS_SYM(message_iter_recurse);
     SDL_DBUS_SYM(message_unref);
+    SDL_DBUS_SYM(threads_init_default);
     SDL_DBUS_SYM(error_init);
     SDL_DBUS_SYM(error_is_set);
     SDL_DBUS_SYM(error_free);
@@ -108,8 +114,12 @@ LoadDBUSLibrary(void)
     return retval;
 }
 
-void
-SDL_DBus_Init(void)
+
+static SDL_SpinLock spinlock_dbus_init = 0;
+
+/* you must hold spinlock_dbus_init before calling this! */
+static void
+SDL_DBus_Init_Spinlocked(void)
 {
     static SDL_bool is_dbus_available = SDL_TRUE;
     if (!is_dbus_available) {
@@ -124,20 +134,39 @@ SDL_DBus_Init(void)
             return;  /* oh well */
         }
 
-        dbus.error_init(&err);
-        dbus.session_conn = dbus.bus_get_private(DBUS_BUS_SESSION, &err);
-        if (!dbus.error_is_set(&err)) {
-            dbus.system_conn = dbus.bus_get_private(DBUS_BUS_SYSTEM, &err);
+        if (!dbus.threads_init_default()) {
+            is_dbus_available = SDL_FALSE;
+            return;
         }
+
+        dbus.error_init(&err);
+        /* session bus is required */
+
+        dbus.session_conn = dbus.bus_get_private(DBUS_BUS_SESSION, &err);
         if (dbus.error_is_set(&err)) {
             dbus.error_free(&err);
             SDL_DBus_Quit();
             is_dbus_available = SDL_FALSE;
             return;  /* oh well */
         }
-        dbus.connection_set_exit_on_disconnect(dbus.system_conn, 0);
         dbus.connection_set_exit_on_disconnect(dbus.session_conn, 0);
+
+        /* system bus is optional */
+        dbus.system_conn = dbus.bus_get_private(DBUS_BUS_SYSTEM, &err);
+        if (!dbus.error_is_set(&err)) {
+            dbus.connection_set_exit_on_disconnect(dbus.system_conn, 0);
+        }
+
+        dbus.error_free(&err);
     }
+}
+
+void
+SDL_DBus_Init(void)
+{
+    SDL_AtomicLock(&spinlock_dbus_init);  /* make sure two threads can't init at same time, since this can happen before SDL_Init. */
+    SDL_DBus_Init_Spinlocked();
+    SDL_AtomicUnlock(&spinlock_dbus_init);
 }
 
 void

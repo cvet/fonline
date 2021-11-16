@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,7 +32,6 @@
 #include <signal.h>             /* For kill() */
 #include <string.h>
 
-#include "SDL_assert.h"
 #include "SDL_timer.h"
 #include "SDL_audio.h"
 #include "../SDL_audio_c.h"
@@ -766,7 +765,11 @@ add_device(const int iscapture, const char *name, void *hint, ALSA_Device **pSee
         return;
     }
 
-    SDL_AddAudioDevice(iscapture, desc, handle);
+    /* Note that spec is NULL, because we are required to open the device before
+     * acquiring the mix format, making this information inaccessible at
+     * enumeration time
+     */
+    SDL_AddAudioDevice(iscapture, desc, NULL, handle);
     if (hint)
         free(desc);
     dev->name = handle;

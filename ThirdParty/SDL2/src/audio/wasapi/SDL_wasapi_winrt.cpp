@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,7 +18,6 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
-
 #include "../../SDL_internal.h"
 
 // This is C++/CX code that the WinRT port uses to talk to WASAPI-related
@@ -33,6 +32,7 @@
 #include <windows.devices.enumeration.h>
 #include <windows.media.devices.h>
 #include <wrl/implements.h>
+#include <collection.h>
 
 extern "C" {
 #include "../../core/windows/SDL_windows.h"
@@ -40,8 +40,6 @@ extern "C" {
 #include "SDL_timer.h"
 #include "../SDL_audio_c.h"
 #include "../SDL_sysaudio.h"
-#include "SDL_assert.h"
-#include "SDL_log.h"
 }
 
 #define COBJMACROS
@@ -54,6 +52,8 @@ using namespace Windows::Devices::Enumeration;
 using namespace Windows::Media::Devices;
 using namespace Windows::Foundation;
 using namespace Microsoft::WRL;
+
+static Platform::String^ SDL_PKEY_AudioEngine_DeviceFormat = L"{f19f064d-082c-4e27-bc73-6882a1bb8e4c} 0";
 
 class SDL_WasapiDeviceEventHandler
 {
@@ -81,9 +81,16 @@ private:
 SDL_WasapiDeviceEventHandler::SDL_WasapiDeviceEventHandler(const SDL_bool _iscapture)
     : iscapture(_iscapture)
     , completed(SDL_CreateSemaphore(0))
-    , watcher(DeviceInformation::CreateWatcher(_iscapture ? DeviceClass::AudioCapture : DeviceClass::AudioRender))
 {
-    if (!watcher || !completed)
+    if (!completed)
+        return;  // uhoh.
+
+    Platform::String^ selector = _iscapture ? MediaDevice::GetAudioCaptureSelector() :
+                                              MediaDevice::GetAudioRenderSelector();
+    Platform::Collections::Vector<Platform::String^> properties;
+    properties.Append(SDL_PKEY_AudioEngine_DeviceFormat);
+    watcher = DeviceInformation::CreateWatcher(selector, properties.GetView());
+    if (!watcher)
         return;  // uhoh.
 
     // !!! FIXME: this doesn't need a lambda here, I think, if I make SDL_WasapiDeviceEventHandler a proper C++/CX class. --ryan.
@@ -127,7 +134,18 @@ SDL_WasapiDeviceEventHandler::OnDeviceAdded(DeviceWatcher^ sender, DeviceInforma
     SDL_assert(sender == this->watcher);
     char *utf8dev = WIN_StringToUTF8(info->Name->Data());
     if (utf8dev) {
-        WASAPI_AddDevice(this->iscapture, utf8dev, info->Id->Data());
+        WAVEFORMATEXTENSIBLE fmt;
+        Platform::Object^ obj = info->Properties->Lookup(SDL_PKEY_AudioEngine_DeviceFormat);
+        if (obj) {
+            IPropertyValue^ property = (IPropertyValue^) obj;
+            Platform::Array<unsigned char>^ data;
+            property->GetUInt8Array(&data);
+            SDL_memcpy(&fmt, data->Data, SDL_min(data->Length, sizeof(WAVEFORMATEXTENSIBLE)));
+        } else {
+            SDL_zero(fmt);
+        }
+
+        WASAPI_AddDevice(this->iscapture, utf8dev, &fmt, info->Id->Data());
         SDL_free(utf8dev);
     }
 }

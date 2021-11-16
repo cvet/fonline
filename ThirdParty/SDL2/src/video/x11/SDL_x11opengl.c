@@ -1,6 +1,7 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 2021 NVIDIA Corporation
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,7 +24,6 @@
 #if SDL_VIDEO_DRIVER_X11
 
 #include "SDL_x11video.h"
-#include "SDL_assert.h"
 #include "SDL_hints.h"
 
 /* GLX implementation of SDL OpenGL support */
@@ -32,8 +32,12 @@
 #include "SDL_loadso.h"
 #include "SDL_x11opengles.h"
 
-#if defined(__IRIX__)
-/* IRIX doesn't have a GL library versioning system */
+#if defined(__IRIX__) || defined(__NetBSD__) || defined(__OpenBSD__)
+/*
+ * IRIX doesn't have a GL library versioning system.
+ * NetBSD and OpenBSD have different GL library versions depending on how
+ * the library was installed.
+ */
 #define DEFAULT_OPENGL  "libGL.so"
 #elif defined(__MACOSX__)
 #define DEFAULT_OPENGL  "/opt/X11/lib/libGL.1.dylib"
@@ -417,6 +421,9 @@ X11_GL_InitExtensions(_THIS)
         _this->gl_data->glXChooseFBConfig =
             (GLXFBConfig *(*)(Display *, int, const int *, int *))
                 X11_GL_GetProcAddress(_this, "glXChooseFBConfig");
+        _this->gl_data->glXGetVisualFromFBConfig =
+            (XVisualInfo *(*)(Display *, GLXFBConfig))
+                X11_GL_GetProcAddress(_this, "glXGetVisualFromFBConfig");
     }
 
     /* Check for GLX_EXT_visual_rating */
@@ -595,7 +602,7 @@ X11_GL_GetVisual(_THIS, Display * display, int screen)
 {
     /* 64 seems nice. */
     int attribs[64];
-    XVisualInfo *vinfo;
+    XVisualInfo *vinfo = NULL;
     int *pvistypeattr = NULL;
 
     if (!_this->gl_data) {
@@ -603,12 +610,33 @@ X11_GL_GetVisual(_THIS, Display * display, int screen)
         return NULL;
     }
 
-    X11_GL_GetAttributes(_this, display, screen, attribs, 64, SDL_FALSE, &pvistypeattr);
-    vinfo = _this->gl_data->glXChooseVisual(display, screen, attribs);
+    if (_this->gl_data->glXChooseFBConfig &&
+        _this->gl_data->glXGetVisualFromFBConfig) {
+        GLXFBConfig *framebuffer_config = NULL;
+        int fbcount = 0;
 
-    if (!vinfo && (pvistypeattr != NULL)) {
-        *pvistypeattr = None;
+        X11_GL_GetAttributes(_this, display, screen, attribs, 64, SDL_TRUE, &pvistypeattr);
+        framebuffer_config = _this->gl_data->glXChooseFBConfig(display, screen, attribs, &fbcount);
+        if (!framebuffer_config && (pvistypeattr != NULL)) {
+            *pvistypeattr = None;
+            framebuffer_config = _this->gl_data->glXChooseFBConfig(display, screen, attribs, &fbcount);
+        }
+
+        if (framebuffer_config) {
+            vinfo = _this->gl_data->glXGetVisualFromFBConfig(display, framebuffer_config[0]);
+        }
+
+        X11_XFree(framebuffer_config);
+    }
+
+    if (!vinfo) {
+        X11_GL_GetAttributes(_this, display, screen, attribs, 64, SDL_FALSE, &pvistypeattr);
         vinfo = _this->gl_data->glXChooseVisual(display, screen, attribs);
+
+        if (!vinfo && (pvistypeattr != NULL)) {
+            *pvistypeattr = None;
+            vinfo = _this->gl_data->glXChooseVisual(display, screen, attribs);
+        }
     }
 
     if (!vinfo) {

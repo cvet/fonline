@@ -419,6 +419,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Critter: rename to IsOwnedByPlayer
 * Critter: replace to !IsOwnedByPlayer
 * Critter: incapsulate Critter::Talk
+* Critter: !!!
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * Dialogs: check item name on DR_ITEM
 * EntityManager: store player critters in separate collection
