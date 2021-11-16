@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,10 +26,6 @@
 #define DEBUG_DYNAMIC_KMSDRM 0
 
 #include "SDL_kmsdrmdyn.h"
-
-#if DEBUG_DYNAMIC_KMSDRM
-#include "SDL_log.h"
-#endif
 
 #ifdef SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC
 

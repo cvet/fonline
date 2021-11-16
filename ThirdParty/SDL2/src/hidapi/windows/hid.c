@@ -25,6 +25,10 @@
 
 #include <windows.h>
 
+#ifndef _WIN32_WINNT_WIN8
+#define _WIN32_WINNT_WIN8   0x0602
+#endif
+
 #if 0 /* can cause redefinition errors on some toolchains */
 #ifdef __MINGW32__
 #include <ntdef.h>
@@ -68,6 +72,13 @@ typedef LONG NTSTATUS;
    report that we've seen is ~200-250ms so let's double that */
 #define HID_WRITE_TIMEOUT_MILLISECONDS 500
 
+/* We will only enumerate devices that match these usages */
+#define USAGE_PAGE_GENERIC_DESKTOP 0x0001
+#define USAGE_JOYSTICK 0x0004
+#define USAGE_GAMEPAD 0x0005
+#define USAGE_MULTIAXISCONTROLLER 0x0008
+#define USB_VENDOR_VALVE 0x28de
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -86,8 +97,8 @@ extern "C" {
 } /* extern "C" */
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
+/*#include <stdio.h>*/
+/*#include <stdlib.h>*/
 
 
 #include "../hidapi/hidapi.h"
@@ -98,6 +109,9 @@ extern "C" {
 #ifdef _MSC_VER
 	/* Thanks Microsoft, but I know how to use strncpy(). */
 	#pragma warning(disable:4996)
+
+	/* Yes, we have some unreferenced formal parameters */
+	#pragma warning(disable:4100)
 #endif
 
 #ifdef __cplusplus
@@ -169,7 +183,28 @@ struct hid_device_ {
 		char *read_buf;
 		OVERLAPPED ol;
 		OVERLAPPED write_ol;
+		BOOL use_hid_write_output_report;
 };
+
+static BOOL
+IsWindowsVersionOrGreater(WORD wMajorVersion, WORD wMinorVersion, WORD wServicePackMajor)
+{
+	OSVERSIONINFOEXW osvi;
+	DWORDLONG const dwlConditionMask = VerSetConditionMask(
+		VerSetConditionMask(
+			VerSetConditionMask(
+				0, VER_MAJORVERSION, VER_GREATER_EQUAL ),
+			VER_MINORVERSION, VER_GREATER_EQUAL ),
+		VER_SERVICEPACKMAJOR, VER_GREATER_EQUAL );
+
+	memset(&osvi, 0, sizeof(osvi));
+	osvi.dwOSVersionInfoSize = sizeof( osvi );
+	osvi.dwMajorVersion = wMajorVersion;
+	osvi.dwMinorVersion = wMinorVersion;
+	osvi.wServicePackMajor = wServicePackMajor;
+
+	return VerifyVersionInfoW(&osvi, VER_MAJORVERSION | VER_MINORVERSION | VER_SERVICEPACKMAJOR, dwlConditionMask) != FALSE;
+}
 
 static hid_device *new_hid_device()
 {
@@ -235,7 +270,7 @@ static void register_error(hid_device *device, const char *op)
 #ifndef HIDAPI_USE_DDK
 static int lookup_functions()
 {
-	lib_handle = LoadLibraryA("hid.dll");
+	lib_handle = LoadLibrary(TEXT("hid.dll"));
 	if (lib_handle) {
 #define RESOLVE(x) x = (x##_)GetProcAddress(lib_handle, #x); if (!x) return -1;
 		RESOLVE(HidD_GetAttributes);
@@ -307,25 +342,26 @@ int HID_API_EXPORT hid_exit(void)
 
 int hid_blacklist(unsigned short vendor_id, unsigned short product_id)
 {
-	// Corsair Gaming keyboard - Causes deadlock when asking for device details
-	if ( vendor_id == 0x1B1C && product_id == 0x1B3D )
-	{
-		return 1;
-	}
+    size_t i;
+    static const struct { unsigned short vid; unsigned short pid; } known_bad[] = {
+        /* Causes deadlock when asking for device details... */
+        { 0x1B1C, 0x1B3D },  /* Corsair Gaming keyboard */
+        { 0x1532, 0x0109 },  /* Razer Lycosa Gaming keyboard */
+        { 0x1532, 0x010B },  /* Razer Arctosa Gaming keyboard */
+        { 0x045E, 0x0822 },  /* Microsoft Precision Mouse */
+        { 0x0D8C, 0x0014 },  /* Sharkoon Skiller SGH2 headset */
 
-	// SPEEDLINK COMPETITION PRO - turns into an Android controller when enumerated
-	if ( vendor_id == 0x0738 && product_id == 0x2217 )
-	{
-		return 1;
-	}
+        /* Turns into an Android controller when enumerated... */
+        { 0x0738, 0x2217 }   /* SPEEDLINK COMPETITION PRO */
+    };
 
-	// Sound BlasterX G1 - Causes 10 second stalls when asking for manufacturer's string
-	if ( vendor_id == 0x041E && product_id == 0x3249 )
-	{
-		return 1;
-	}
+    for (i = 0; i < (sizeof(known_bad)/sizeof(known_bad[0])); i++) {
+        if ((vendor_id == known_bad[i].vid) && (product_id == known_bad[i].pid)) {
+            return 1;
+        }
+    }
 
-	return 0;
+    return 0;
 }
 
 struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned short vendor_id, unsigned short product_id)
@@ -402,6 +438,11 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 			goto cont;
 		}
 
+		/* XInput devices don't get real HID reports and are better handled by the raw input driver */
+		if (strstr(device_interface_detail_data->DevicePath, "&ig_") != NULL) {
+			goto cont;
+		}
+
 		/* Make sure this device is of Setup Class "HIDClass" and has a
 		   driver bound to it. */
 		/* In the main HIDAPI tree this is a loop which will erroneously open 
@@ -444,7 +485,7 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 		if (write_handle == INVALID_HANDLE_VALUE) {
 			/* Unable to open the device. */
 			//register_error(dev, "CreateFile");
-			goto cont_close;
+			goto cont;
 		}		
 
 
@@ -469,6 +510,30 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 			wchar_t wstr[WSTR_LEN]; /* TODO: Determine Size */
 			size_t len;
 
+			/* Get the Usage Page and Usage for this device. */
+			hidp_res = HidD_GetPreparsedData(write_handle, &pp_data);
+			if (hidp_res) {
+				nt_res = HidP_GetCaps(pp_data, &caps);
+				HidD_FreePreparsedData(pp_data);
+				if (nt_res != HIDP_STATUS_SUCCESS) {
+					goto cont_close;
+				}
+			}
+			else {
+				goto cont_close;
+			}
+
+			/* SDL Modification: Ignore the device if it's not a gamepad. This limits compatibility
+			   risk from devices that may respond poorly to our string queries below. */
+			if (attrib.VendorID != USB_VENDOR_VALVE) {
+				if (caps.UsagePage != USAGE_PAGE_GENERIC_DESKTOP) {
+					goto cont_close;
+				}
+				if (caps.Usage != USAGE_JOYSTICK && caps.Usage != USAGE_GAMEPAD && caps.Usage != USAGE_MULTIAXISCONTROLLER) {
+					goto cont_close;
+				}
+			}
+
 			/* VID/PID match. Create the record. */
 			tmp = (struct hid_device_info*) calloc(1, sizeof(struct hid_device_info));
 			if (cur_dev) {
@@ -478,20 +543,10 @@ struct hid_device_info HID_API_EXPORT * HID_API_CALL hid_enumerate(unsigned shor
 				root = tmp;
 			}
 			cur_dev = tmp;
-
-			/* Get the Usage Page and Usage for this device. */
-			hidp_res = HidD_GetPreparsedData(write_handle, &pp_data);
-			if (hidp_res) {
-				nt_res = HidP_GetCaps(pp_data, &caps);
-				if (nt_res == HIDP_STATUS_SUCCESS) {
-					cur_dev->usage_page = caps.UsagePage;
-					cur_dev->usage = caps.Usage;
-				}
-
-				HidD_FreePreparsedData(pp_data);
-			}
 			
 			/* Fill out the record */
+			cur_dev->usage_page = caps.UsagePage;
+			cur_dev->usage = caps.Usage;
 			cur_dev->next = NULL;
 			str = device_interface_detail_data->DevicePath;
 			if (str) {
@@ -666,6 +721,11 @@ HID_API_EXPORT hid_device * HID_API_CALL hid_open_path(const char *path, int bEx
 	dev->input_report_length = caps.InputReportByteLength;
 	HidD_FreePreparsedData(pp_data);
 
+	/* On Windows 7, we need to use hid_write_output_report() over Bluetooth */
+	if (dev->output_report_length > 512) {
+		dev->use_hid_write_output_report = !IsWindowsVersionOrGreater( HIBYTE( _WIN32_WINNT_WIN8 ), LOBYTE( _WIN32_WINNT_WIN8 ), 0 );
+	}
+
 	dev->read_buf = (char*) malloc(dev->input_report_length);
 
 	return dev;
@@ -691,8 +751,11 @@ static int hid_write_timeout(hid_device *dev, const unsigned char *data, size_t 
 {
 	DWORD bytes_written;
 	BOOL res;
-	size_t stashed_length = length;
 	unsigned char *buf;
+
+	if (dev->use_hid_write_output_report) {
+		return hid_write_output_report(dev, data, length);
+	}
 
 	/* Make sure the right number of bytes are passed to WriteFile. Windows
 	   expects the number of bytes which are in the _longest_ report (plus
@@ -711,41 +774,35 @@ static int hid_write_timeout(hid_device *dev, const unsigned char *data, size_t 
 		memset(buf + length, 0, dev->output_report_length - length);
 		length = dev->output_report_length;
 	}
-	if (length > 512)
-	{
-		return hid_write_output_report( dev, data, stashed_length );
-	}
-	else
-	{
-		res = WriteFile( dev->device_handle, buf, ( DWORD ) length, NULL, &dev->write_ol );
-		if (!res) {
-			if (GetLastError() != ERROR_IO_PENDING) {
-				/* WriteFile() failed. Return error. */
-				register_error(dev, "WriteFile");
-				bytes_written = (DWORD) -1;
-				goto end_of_function;
-			}
-		}
 
-		/* Wait here until the write is done. This makes
-		hid_write() synchronous. */
-		res = WaitForSingleObject(dev->write_ol.hEvent, milliseconds);
-		if (res != WAIT_OBJECT_0)
-		{
-			// There was a Timeout.
-			bytes_written = (DWORD) -1;
-			register_error(dev, "WriteFile/WaitForSingleObject Timeout");
-			goto end_of_function;
-		}
-
-		res = GetOverlappedResult(dev->device_handle, &dev->write_ol, &bytes_written, FALSE/*F=don't_wait*/);
-		if (!res) {
-			/* The Write operation failed. */
+	res = WriteFile( dev->device_handle, buf, ( DWORD ) length, NULL, &dev->write_ol );
+	if (!res) {
+		if (GetLastError() != ERROR_IO_PENDING) {
+			/* WriteFile() failed. Return error. */
 			register_error(dev, "WriteFile");
 			bytes_written = (DWORD) -1;
 			goto end_of_function;
 		}
 	}
+
+	/* Wait here until the write is done. This makes hid_write() synchronous. */
+	res = WaitForSingleObject(dev->write_ol.hEvent, milliseconds);
+	if (res != WAIT_OBJECT_0)
+	{
+		// There was a Timeout.
+		bytes_written = (DWORD) -1;
+		register_error(dev, "WriteFile/WaitForSingleObject Timeout");
+		goto end_of_function;
+	}
+
+	res = GetOverlappedResult(dev->device_handle, &dev->write_ol, &bytes_written, FALSE/*F=don't_wait*/);
+	if (!res) {
+		/* The Write operation failed. */
+		register_error(dev, "WriteFile");
+		bytes_written = (DWORD) -1;
+		goto end_of_function;
+	}
+
 end_of_function:
 	if (buf != data)
 		free(buf);
@@ -785,20 +842,19 @@ int HID_API_EXPORT HID_API_CALL hid_read_timeout(hid_device *dev, unsigned char 
 		}
 	}
 
-	if (milliseconds >= 0) {
-		/* See if there is any data yet. */
-		res = WaitForSingleObject(ev, milliseconds);
-		if (res != WAIT_OBJECT_0) {
-			/* There was no data this time. Return zero bytes available,
-			   but leave the Overlapped I/O running. */
-			return 0;
-		}
+	/* See if there is any data yet. */
+	res = WaitForSingleObject(ev, milliseconds >= 0 ? milliseconds : INFINITE);
+	if (res != WAIT_OBJECT_0) {
+		/* There was no data this time. Return zero bytes available,
+			but leave the Overlapped I/O running. */
+		return 0;
 	}
 
-	/* Either WaitForSingleObject() told us that ReadFile has completed, or
-	   we are in non-blocking mode. Get the number of bytes read. The actual
-	   data has been copied to the data[] array which was passed to ReadFile(). */
-	res = GetOverlappedResult(dev->device_handle, &dev->ol, &bytes_read, TRUE/*wait*/);
+	/* Get the number of bytes read. The actual data has been copied to the data[]
+	   array which was passed to ReadFile(). We must not wait here because we've
+	   already waited on our event above, and since it's auto-reset, it will have
+	   been reset back to unsignalled by now. */
+	res = GetOverlappedResult(dev->device_handle, &dev->ol, &bytes_read, FALSE/*don't wait*/);
 	
 	/* Set pending back to false, even if GetOverlappedResult() returned error. */
 	dev->read_pending = FALSE;
@@ -891,21 +947,29 @@ int HID_API_EXPORT HID_API_CALL hid_get_feature_report(hid_device *dev, unsigned
 		return -1;
 	}
 
-	/* bytes_returned does not include the first byte which contains the
-	   report ID. The data buffer actually contains one more byte than
-	   bytes_returned. */
-	bytes_returned++;
-
-
 	return bytes_returned;
 #endif
 }
 
 void HID_API_EXPORT HID_API_CALL hid_close(hid_device *dev)
 {
+	typedef BOOL (WINAPI *CancelIoEx_t)(HANDLE hFile, LPOVERLAPPED lpOverlapped);
+	CancelIoEx_t CancelIoExFunc = (CancelIoEx_t)GetProcAddress(GetModuleHandle(TEXT("kernel32.dll")), "CancelIoEx");
+
 	if (!dev)
 		return;
-	CancelIo(dev->device_handle);
+
+	if (CancelIoExFunc) {
+		CancelIoExFunc(dev->device_handle, NULL);
+	} else {
+		/* Windows XP, this will only cancel I/O on the current thread */
+		CancelIo(dev->device_handle);
+	}
+	if (dev->read_pending) {
+		DWORD bytes_read = 0;
+
+		GetOverlappedResult(dev->device_handle, &dev->ol, &bytes_read, TRUE/*wait*/);
+	}
 	free_hid_device(dev);
 }
 
@@ -973,23 +1037,23 @@ HID_API_EXPORT const wchar_t * HID_API_CALL  hid_error(hid_device *dev)
 /*#define S11*/
 #define P32
 #ifdef S11
-  unsigned short VendorID = 0xa0a0;
+	unsigned short VendorID = 0xa0a0;
 	unsigned short ProductID = 0x0001;
 #endif
 
 #ifdef P32
-  unsigned short VendorID = 0x04d8;
+	unsigned short VendorID = 0x04d8;
 	unsigned short ProductID = 0x3f;
 #endif
 
 #ifdef PICPGM
-  unsigned short VendorID = 0x04d8;
-  unsigned short ProductID = 0x0033;
+	unsigned short VendorID = 0x04d8;
+	unsigned short ProductID = 0x0033;
 #endif
 
 int __cdecl main(int argc, char* argv[])
 {
-	int res;
+	int i, res;
 	unsigned char buf[65];
 
 	UNREFERENCED_PARAMETER(argc);
@@ -1025,7 +1089,7 @@ int __cdecl main(int argc, char* argv[])
 		printf("Unable to read()\n");
 
 	/* Print out the returned buffer. */
-	for (int i = 0; i < 4; i++)
+	for (i = 0; i < 4; i++)
 		printf("buf[%d]: %d\n", i, buf[i]);
 
 	return 0;
