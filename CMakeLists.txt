@@ -328,6 +328,7 @@ elseif( APPLE AND PLATFORM )
 		list( APPEND FO_BUILD_OPTIONS "-g" )
 	endif()
 	list( APPEND FO_BUILD_OPTIONS "-stdlib=libc++" )
+	list( APPEND FO_COMMON_SYSTEM_LIBS "iconv" ) # Todo: ios iconv workaround for SDL, remove in future updates
 elseif( ANDROID )
 	StatusMessage( "Operating system: Android" )
 	set( FO_OS "Android" )
