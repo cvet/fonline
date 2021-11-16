@@ -120,14 +120,13 @@ elif [ "$TARGET" = "web" ]; then
     cmake --build . --config Debug
 
 elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET" = "android-x86" ]; then
+    export NDK=$FO_WORKSPACE/android-ndk
+
     if [ "$TARGET" = "android" ]; then
-        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-arm-toolchain
         export ANDROID_ABI=armeabi-v7a
     elif [ "$TARGET" = "android-arm64" ]; then
-        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-arm64-toolchain
         export ANDROID_ABI=arm64-v8a
     elif [ "$TARGET" = "android-x86" ]; then
-        export ANDROID_STANDALONE_TOOLCHAIN=$FO_WORKSPACE/android-x86-toolchain
         export ANDROID_ABI=x86
     fi
 
