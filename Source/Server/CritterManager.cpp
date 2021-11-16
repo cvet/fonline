@@ -233,7 +233,7 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
     _mapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
 
     _scriptSys.CritterInitEvent(npc, true);
-    npc->SetScript(nullptr, true);
+    npc->SetScript("", true);
 
     _mapMngr.ProcessVisibleItems(npc);
     return npc;

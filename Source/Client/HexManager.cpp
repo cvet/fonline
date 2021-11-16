@@ -383,7 +383,7 @@ void HexManager::ReloadSprites()
     _picTrack2 = _sprMngr.LoadAnimation(_curDataPrefix + "track2.png", true, false);
     _picHexMask = _sprMngr.LoadAnimation(_curDataPrefix + "hex_mask.png", true, false);
 
-    SetRainAnimation(nullptr, nullptr);
+    SetRainAnimation("", "");
 }
 
 void HexManager::AddFieldItem(ushort hx, ushort hy, ItemHexView* item)

@@ -399,7 +399,7 @@ void MapManager::GenerateMapContent(Map* map)
     }
 
     // Map script
-    map->SetScript(nullptr, true);
+    map->SetScript("", true);
 }
 
 void MapManager::DeleteMapContent(Map* map)
