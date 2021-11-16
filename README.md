@@ -381,6 +381,7 @@ Please follow these instructions to understand how to use this engine by design:
 * MapLoader: restore supporting of the map old text format
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
+* MsgFiles: pass default to fomsg gets
 * MsgFiles: move loading to constructors
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
@@ -419,7 +420,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Critter: rename to IsOwnedByPlayer
 * Critter: replace to !IsOwnedByPlayer
 * Critter: incapsulate Critter::Talk
-* Critter: !!!
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * Dialogs: check item name on DR_ITEM
 * EntityManager: store player critters in separate collection
