@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -749,3 +749,69 @@
 #define SDL_GetAndroidSDKVersion SDL_GetAndroidSDKVersion_REAL
 #define SDL_isupper SDL_isupper_REAL
 #define SDL_islower SDL_islower_REAL
+#define SDL_JoystickAttachVirtual SDL_JoystickAttachVirtual_REAL
+#define SDL_JoystickDetachVirtual SDL_JoystickDetachVirtual_REAL
+#define SDL_JoystickIsVirtual SDL_JoystickIsVirtual_REAL
+#define SDL_JoystickSetVirtualAxis SDL_JoystickSetVirtualAxis_REAL
+#define SDL_JoystickSetVirtualBall SDL_JoystickSetVirtualBall_REAL
+#define SDL_JoystickSetVirtualButton SDL_JoystickSetVirtualButton_REAL
+#define SDL_JoystickSetVirtualHat SDL_JoystickSetVirtualHat_REAL
+#define SDL_GetErrorMsg SDL_GetErrorMsg_REAL
+#define SDL_LockSensors SDL_LockSensors_REAL
+#define SDL_UnlockSensors SDL_UnlockSensors_REAL
+#define SDL_Metal_GetLayer SDL_Metal_GetLayer_REAL
+#define SDL_Metal_GetDrawableSize SDL_Metal_GetDrawableSize_REAL
+#define SDL_trunc SDL_trunc_REAL
+#define SDL_truncf SDL_truncf_REAL
+#define SDL_GetPreferredLocales SDL_GetPreferredLocales_REAL
+#define SDL_SIMDRealloc SDL_SIMDRealloc_REAL
+#define SDL_AndroidRequestPermission SDL_AndroidRequestPermission_REAL
+#define SDL_OpenURL SDL_OpenURL_REAL
+#define SDL_HasSurfaceRLE SDL_HasSurfaceRLE_REAL
+#define SDL_GameControllerHasLED SDL_GameControllerHasLED_REAL
+#define SDL_GameControllerSetLED SDL_GameControllerSetLED_REAL
+#define SDL_JoystickHasLED SDL_JoystickHasLED_REAL
+#define SDL_JoystickSetLED SDL_JoystickSetLED_REAL
+#define SDL_GameControllerRumbleTriggers SDL_GameControllerRumbleTriggers_REAL
+#define SDL_JoystickRumbleTriggers SDL_JoystickRumbleTriggers_REAL
+#define SDL_GameControllerHasAxis SDL_GameControllerHasAxis_REAL
+#define SDL_GameControllerHasButton SDL_GameControllerHasButton_REAL
+#define SDL_GameControllerGetNumTouchpads SDL_GameControllerGetNumTouchpads_REAL
+#define SDL_GameControllerGetNumTouchpadFingers SDL_GameControllerGetNumTouchpadFingers_REAL
+#define SDL_GameControllerGetTouchpadFinger SDL_GameControllerGetTouchpadFinger_REAL
+#define SDL_crc32 SDL_crc32_REAL
+#define SDL_GameControllerGetSerial SDL_GameControllerGetSerial_REAL
+#define SDL_JoystickGetSerial SDL_JoystickGetSerial_REAL
+#define SDL_GameControllerHasSensor SDL_GameControllerHasSensor_REAL
+#define SDL_GameControllerSetSensorEnabled SDL_GameControllerSetSensorEnabled_REAL
+#define SDL_GameControllerIsSensorEnabled SDL_GameControllerIsSensorEnabled_REAL
+#define SDL_GameControllerGetSensorData SDL_GameControllerGetSensorData_REAL
+#define SDL_wcscasecmp SDL_wcscasecmp_REAL
+#define SDL_wcsncasecmp SDL_wcsncasecmp_REAL
+#define SDL_round SDL_round_REAL
+#define SDL_roundf SDL_roundf_REAL
+#define SDL_lround SDL_lround_REAL
+#define SDL_lroundf SDL_lroundf_REAL
+#define SDL_SoftStretchLinear SDL_SoftStretchLinear_REAL
+#define SDL_RenderGetD3D11Device SDL_RenderGetD3D11Device_REAL
+#define SDL_UpdateNVTexture SDL_UpdateNVTexture_REAL
+#define SDL_SetWindowKeyboardGrab SDL_SetWindowKeyboardGrab_REAL
+#define SDL_SetWindowMouseGrab SDL_SetWindowMouseGrab_REAL
+#define SDL_GetWindowKeyboardGrab SDL_GetWindowKeyboardGrab_REAL
+#define SDL_GetWindowMouseGrab SDL_GetWindowMouseGrab_REAL
+#define SDL_isalpha SDL_isalpha_REAL
+#define SDL_isalnum SDL_isalnum_REAL
+#define SDL_isblank SDL_isblank_REAL
+#define SDL_iscntrl SDL_iscntrl_REAL
+#define SDL_isxdigit SDL_isxdigit_REAL
+#define SDL_ispunct SDL_ispunct_REAL
+#define SDL_isprint SDL_isprint_REAL
+#define SDL_isgraph SDL_isgraph_REAL
+#define SDL_AndroidShowToast SDL_AndroidShowToast_REAL
+#define SDL_GetAudioDeviceSpec SDL_GetAudioDeviceSpec_REAL
+#define SDL_TLSCleanup SDL_TLSCleanup_REAL
+#define SDL_SetWindowAlwaysOnTop SDL_SetWindowAlwaysOnTop_REAL
+#define SDL_FlashWindow SDL_FlashWindow_REAL
+#define SDL_GameControllerSendEffect SDL_GameControllerSendEffect_REAL
+#define SDL_JoystickSendEffect SDL_JoystickSendEffect_REAL
+#define SDL_GameControllerGetSensorDataRate SDL_GameControllerGetSensorDataRate_REAL

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -47,7 +47,6 @@ extern void Android_JNI_ShowTextInput(SDL_Rect *inputRect);
 extern void Android_JNI_HideTextInput(void);
 extern SDL_bool Android_JNI_IsScreenKeyboardShown(void);
 extern ANativeWindow* Android_JNI_GetNativeWindow(void);
-extern void Android_JNI_SetSurfaceViewFormat(int format);
 
 extern SDL_DisplayOrientation Android_JNI_GetDisplayOrientation(void);
 extern int Android_JNI_GetDisplayDPI(float *ddpi, float *xdpi, float *ydpi);
@@ -104,6 +103,9 @@ void Android_JNI_InitTouch(void);
 JNIEnv *Android_JNI_GetEnv(void);
 int Android_JNI_SetupThread(void);
 
+/* Locale */
+int Android_JNI_GetLocale(char *buf, size_t buflen);
+
 /* Generic messages */
 int Android_JNI_SendMessage(int command, int param);
 
@@ -125,6 +127,11 @@ SDL_bool Android_JNI_SetRelativeMouseEnabled(SDL_bool enabled);
 
 /* Request permission */
 SDL_bool Android_JNI_RequestPermission(const char *permission);
+
+/* Show toast notification */
+int Android_JNI_ShowToast(const char* message, int duration, int gravity, int xOffset, int yOffset);
+
+int Android_JNI_OpenURL(const char *url);
 
 int SDL_GetAndroidSDKVersion(void);
 
