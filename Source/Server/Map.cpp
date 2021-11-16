@@ -952,7 +952,7 @@ void Map::SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_
     }
 }
 
-auto Map::SetScript(const string& /*func*/, bool /*first_time*/) -> bool
+auto Map::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
 {
     /*if (func)
     {
@@ -975,7 +975,7 @@ auto Map::SetScript(const string& /*func*/, bool /*first_time*/) -> bool
     return true;
 }
 
-void Map::SetText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text)
+void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
 {
     if (hx >= GetWidth() || hy >= GetHeight()) {
         return;
@@ -1001,7 +1001,7 @@ void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num
     }
 }
 
-void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, const string& lexems)
+void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, string_view lexems)
 {
     if (hx >= GetWidth() || hy >= GetHeight() || num_str == 0u) {
         return;

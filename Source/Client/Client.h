@@ -221,8 +221,8 @@ public:
     void GmapNullParams();
 
     void UpdateFilesLoop();
-    void UpdateFilesAddText(uint num_str, const string& num_str_str);
-    void UpdateFilesAbort(uint num_str, const string& num_str_str);
+    void UpdateFilesAddText(uint num_str, string_view num_str_str);
+    void UpdateFilesAbort(uint num_str, string_view num_str_str);
 
     void ShowMainScreen(int new_screen, map<string, int> params);
     auto GetMainScreen() const -> int { return ScreenModeMain; }
@@ -234,8 +234,8 @@ public:
     void RunScreenScript(bool show, int screen, map<string, int> params);
 
     auto CheckSocketStatus(bool for_write) -> bool;
-    auto NetConnect(const string& host, ushort port) -> bool;
-    auto FillSockAddr(sockaddr_in& saddr, const string& host, ushort port) -> bool;
+    auto NetConnect(string_view host, ushort port) -> bool;
+    auto FillSockAddr(sockaddr_in& saddr, string_view host, ushort port) -> bool;
     void ProcessSocket();
     auto NetInput(bool unpack) -> int;
     auto NetOutput() -> bool;
@@ -251,7 +251,7 @@ public:
     void Net_SendGetGameInfo();
     void Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash);
     void Net_SendLoadMapOk();
-    void Net_SendText(const char* send_str, uchar how_say);
+    void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir();
     void Net_SendMove(vector<uchar> steps);
     void Net_SendPing(uchar ping);
@@ -301,11 +301,11 @@ public:
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
 
-    void FormatTags(string& text, CritterView* cr, CritterView* npc, const string& lexems);
-    void AddMess(int mess_type, const string& msg);
-    void AddMess(int mess_type, const string& msg, bool script_call);
-    void OnText(const string& str, uint crid, int how_say);
-    void OnMapText(const string& str, ushort hx, ushort hy, uint color);
+    void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
+    void AddMess(int mess_type, string_view msg);
+    void AddMess(int mess_type, string_view msg, bool script_call);
+    void OnText(string_view str, uint crid, int how_say);
+    void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
     void OnSendGlobalValue(Entity* entity, Property* prop);
     void OnSendPlayerValue(Entity* entity, Property* prop);
@@ -321,7 +321,7 @@ public:
     void OnSendLocationValue(Entity* entity, Property* prop);
 
     auto AnimLoad(uint name_hash, AtlasType res_type) -> uint;
-    auto AnimLoad(const char* fname, AtlasType res_type) -> uint;
+    auto AnimLoad(string_view fname, AtlasType res_type) -> uint;
     auto AnimGetCurSpr(uint anim_id) -> uint;
     auto AnimGetCurSprCnt(uint anim_id) -> uint;
     auto AnimGetSprCount(uint anim_id) -> uint;

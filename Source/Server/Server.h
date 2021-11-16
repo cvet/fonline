@@ -180,8 +180,8 @@ public:
     void Process_Move(Player* player);
     void Process_Dir(Player* player);
     void Process_Text(Player* player);
-    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, const string& admin_panel);
-    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, const string& admin_panel);
+    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
+    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_Dialog(Player* player);
     void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
@@ -211,12 +211,12 @@ public:
 
     void ProcessMove(Critter* cr);
 
-    void LogToClients(const string& str);
+    void LogToClients(string_view str);
     void DispatchLogToClients();
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
     void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
-    auto GetBanByName(const char* name) -> ClientBanned*;
+    auto GetBanByName(string_view name) -> ClientBanned*;
     auto GetBanByIp(uint ip) -> ClientBanned*;
     auto GetBanTime(ClientBanned& ban) -> uint;
     auto GetBanLexems(ClientBanned& ban) -> string;

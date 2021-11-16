@@ -61,11 +61,11 @@ public:
 
     auto Read(void* buf, uint len) -> bool;
     auto Write(const void* buf, uint len) -> bool;
-    auto Write(const string& str) -> bool;
+    auto Write(string_view str) -> bool;
     auto SetPos(int offset, DiskFileSeek origin) -> bool;
 
 private:
-    DiskFile(const string& fname, bool write, bool write_through);
+    DiskFile(string_view fname, bool write, bool write_through);
 
     struct Impl;
     unique_ptr<Impl> _pImpl {};
@@ -93,7 +93,7 @@ public:
     [[nodiscard]] auto GetWriteTime() const -> uint64;
 
 private:
-    DiskFind(const string& path, const string& ext);
+    DiskFind(string_view path, string_view ext);
 
     struct Impl;
     unique_ptr<Impl> _pImpl {};
@@ -103,24 +103,24 @@ private:
 class DiskFileSystem final
 {
 public:
-    using FileVisitor = std::function<void(const string&, uint, uint64)>;
+    using FileVisitor = std::function<void(string_view, uint, uint64)>;
 
     DiskFileSystem() = delete;
 
-    [[nodiscard]] static auto IsFileExists(const string& fname) -> bool;
+    [[nodiscard]] static auto IsFileExists(string_view fname) -> bool;
     [[nodiscard]] static auto GetExePath() -> string;
 
-    [[nodiscard]] static auto OpenFile(const string& fname, bool write) -> DiskFile;
-    [[nodiscard]] static auto OpenFile(const string& fname, bool write, bool write_through) -> DiskFile;
-    [[nodiscard]] static auto FindFiles(const string& path, const string& ext) -> DiskFind;
+    [[nodiscard]] static auto OpenFile(string_view fname, bool write) -> DiskFile;
+    [[nodiscard]] static auto OpenFile(string_view fname, bool write, bool write_through) -> DiskFile;
+    [[nodiscard]] static auto FindFiles(string_view path, string_view ext) -> DiskFind;
 
-    static auto DeleteFile(const string& fname) -> bool;
-    static auto CopyFile(const string& fname, const string& copy_fname) -> bool;
-    static auto RenameFile(const string& fname, const string& new_fname) -> bool;
+    static auto DeleteFile(string_view fname) -> bool;
+    static auto CopyFile(string_view fname, string_view copy_fname) -> bool;
+    static auto RenameFile(string_view fname, string_view new_fname) -> bool;
     static void ResolvePath(string& path);
-    static void MakeDirTree(const string& path);
-    static auto DeleteDir(const string& dir) -> bool;
-    static auto SetCurrentDir(const string& dir) -> bool;
+    static void MakeDirTree(string_view path);
+    static auto DeleteDir(string_view dir) -> bool;
+    static auto SetCurrentDir(string_view dir) -> bool;
     static void ResetCurDir();
-    static void IterateDir(const string& path, const string& ext, bool include_subdirs, FileVisitor visitor);
+    static void IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor);
 };

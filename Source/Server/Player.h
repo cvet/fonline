@@ -62,7 +62,7 @@ public:
 
     [[nodiscard]] auto IsSendDisabled() const -> bool { return DisableSend > 0; }
     [[nodiscard]] auto GetIp() const -> uint;
-    [[nodiscard]] auto GetHost() const -> const string&;
+    [[nodiscard]] auto GetHost() const -> string_view;
     [[nodiscard]] auto GetPort() const -> ushort;
 
     [[nodiscard]] auto GetOwnedCritter() const -> const Critter* { return _ownedCr; }
@@ -88,12 +88,12 @@ public:
     void Send_AllProperties();
     void Send_Talk();
     void Send_GameInfo(Map* map);
-    void Send_Text(Critter* from_cr, const string& text, uchar how_say);
-    void Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text);
+    void Send_Text(Critter* from_cr, string_view text, uchar how_say);
+    void Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text);
     void Send_TextMsg(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg);
     void Send_TextMsg(uint from_id, uint num_str, uchar how_say, ushort num_msg);
-    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const string& lexems);
-    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const string& lexems);
+    void Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
+    void Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
@@ -102,10 +102,10 @@ public:
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
     void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-    void Send_PlaySound(uint crid_synchronize, const string& sound_name);
-    void Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text);
+    void Send_PlaySound(uint crid_synchronize, string_view sound_name);
+    void Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
-    void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const string& lexems);
+    void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems);
     void Send_ViewMap();
     void Send_SomeItem(Item* item); // Without checks
     void Send_CustomMessage(uint msg);

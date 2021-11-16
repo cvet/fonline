@@ -366,7 +366,7 @@ auto Critter::IsHaveGeckItem() -> bool
     return false;
 }
 
-auto Critter::SetScript(const string& /*func*/, bool /*first_time*/) -> bool
+auto Critter::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
 {
     /*hash func_num = 0;
     if (func)
@@ -512,7 +512,7 @@ void Critter::SendAndBroadcast_SetAnims(int cond, uint anim1, uint anim2)
     }
 }
 
-void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, const string& text, uchar how_say, bool unsafe_text)
+void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uchar how_say, bool unsafe_text)
 {
     if (text.empty()) {
         return;
@@ -578,7 +578,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
     }
 }
 
-void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, const char* lexems)
+void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
     Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
 
@@ -951,7 +951,7 @@ void Critter::Send_GameInfo(Map* map)
     }
 }
 
-void Critter::Send_Text(Critter* from_cr, const string& text, uchar how_say)
+void Critter::Send_Text(Critter* from_cr, string_view text, uchar how_say)
 {
     NON_CONST_METHOD_HINT();
 
@@ -960,7 +960,7 @@ void Critter::Send_Text(Critter* from_cr, const string& text, uchar how_say)
     }
 }
 
-void Critter::Send_TextEx(uint from_id, const string& text, uchar how_say, bool unsafe_text)
+void Critter::Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text)
 {
     NON_CONST_METHOD_HINT();
 
@@ -987,7 +987,7 @@ void Critter::Send_TextMsg(uint from_id, uint str_num, uchar how_say, ushort num
     }
 }
 
-void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, const string& lexems)
+void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
     NON_CONST_METHOD_HINT();
 
@@ -996,7 +996,7 @@ void Critter::Send_TextMsgLex(Critter* from_cr, uint num_str, uchar how_say, ush
     }
 }
 
-void Critter::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, const string& lexems)
+void Critter::Send_TextMsgLex(uint from_id, uint num_str, uchar how_say, ushort num_msg, string_view lexems)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1077,7 +1077,7 @@ void Critter::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort 
     }
 }
 
-void Critter::Send_PlaySound(uint crid_synchronize, const string& sound_name)
+void Critter::Send_PlaySound(uint crid_synchronize, string_view sound_name)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1086,7 +1086,7 @@ void Critter::Send_PlaySound(uint crid_synchronize, const string& sound_name)
     }
 }
 
-void Critter::Send_MapText(ushort hx, ushort hy, uint color, const string& text, bool unsafe_text)
+void Critter::Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1104,7 +1104,7 @@ void Critter::Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, 
     }
 }
 
-void Critter::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, const string& lexems)
+void Critter::Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems)
 {
     NON_CONST_METHOD_HINT();
 

@@ -59,7 +59,7 @@ public:
     void FillBakedFiles(map<string, vector<uchar>>& baked_files);
 
 private:
-    [[nodiscard]] auto BakeFile(const string& fname, File& file) -> vector<uchar>;
+    [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uchar>;
 
     FileCollection& _allFiles;
     map<string, vector<uchar>> _bakedFiles {};

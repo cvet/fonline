@@ -963,14 +963,14 @@ void FOServer::Process_Text(Player* player)
     }
 }
 
-void FOServer::Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, const string& admin_panel)
+void FOServer::Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
     LogToFunc("Process_Command", logcb, true);
     Process_CommandReal(buf, logcb, player, admin_panel);
     LogToFunc("Process_Command", logcb, false);
 }
 
-void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, const string& admin_panel)
+void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
     auto* cl_ = player->GetOwnedCritter();
 
@@ -980,7 +980,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     buf >> msg_len;
     buf >> cmd;
 
-    auto sstr = (cl_ != nullptr ? "" : admin_panel);
+    auto sstr = string(cl_ != nullptr ? "" : admin_panel);
     auto allow_command = ScriptSys.PlayerAllowCommandEvent(player, sstr, cmd);
 
     if (!allow_command && (cl_ == nullptr)) {
@@ -1456,7 +1456,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
             if (ban_player != nullptr) {
                 ban_player->Send_TextMsg(nullptr, STR_NET_BAN, SAY_NETMSG, TEXTMSG_GAME);
-                ban_player->Send_TextMsgLex(nullptr, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, GetBanLexems(ban).c_str());
+                ban_player->Send_TextMsgLex(nullptr, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, GetBanLexems(ban));
                 ban_player->Connection->GracefulDisconnect();
             }
         }
@@ -1704,7 +1704,7 @@ auto FOServer::InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool
     return true;
 }
 
-void FOServer::LogToClients(const string& str)
+void FOServer::LogToClients(string_view str)
 {
     if (!str.empty() && str.back() == '\n') {
         LogLines.emplace_back(str, 0, str.length() - 1);
@@ -1740,13 +1740,13 @@ void FOServer::DispatchLogToClients()
     LogLines.clear();
 }
 
-auto FOServer::GetBanByName(const char* name) -> FOServer::ClientBanned*
+auto FOServer::GetBanByName(string_view name) -> ClientBanned*
 {
     const auto it = std::find_if(Banned.begin(), Banned.end(), [name](const ClientBanned& ban) { return _str(name).compareIgnoreCaseUtf8(ban.ClientName); });
     return it != Banned.end() ? &(*it) : nullptr;
 }
 
-auto FOServer::GetBanByIp(uint ip) -> FOServer::ClientBanned*
+auto FOServer::GetBanByIp(uint ip) -> ClientBanned*
 {
     const auto it = std::find_if(Banned.begin(), Banned.end(), [ip](const ClientBanned& ban) { return ban.ClientIp == ip; });
     return it != Banned.end() ? &(*it) : nullptr;
@@ -1929,7 +1929,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
             UpdateFiles.push_back(update_file);
 
             WriteData(UpdateFilesList, static_cast<short>(msg_cache_name.length()));
-            WriteDataArr(UpdateFilesList, msg_cache_name.c_str(), static_cast<uint>(msg_cache_name.length()));
+            WriteDataArr(UpdateFilesList, msg_cache_name.c_str(), msg_cache_name.length());
             WriteData(UpdateFilesList, update_file.Size);
             WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
         }
@@ -1946,7 +1946,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
 
     const string protos_cache_name = "$protos.cache";
     WriteData(UpdateFilesList, static_cast<short>(protos_cache_name.length()));
-    WriteDataArr(UpdateFilesList, protos_cache_name.c_str(), static_cast<uint>(protos_cache_name.length()));
+    WriteDataArr(UpdateFilesList, protos_cache_name.c_str(), protos_cache_name.length());
     WriteData(UpdateFilesList, update_file.Size);
     WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
 
@@ -1962,7 +1962,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
 
         auto file_path = file.GetName().substr("Update/"_len);
         WriteData(UpdateFilesList, static_cast<short>(file_path.length()));
-        WriteDataArr(UpdateFilesList, file_path.c_str(), static_cast<uint>(file_path.length()));
+        WriteDataArr(UpdateFilesList, file_path.data(), file_path.length());
         WriteData(UpdateFilesList, update_file.Size);
         WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
@@ -1981,7 +1981,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
 
         auto file_path = file.GetName().substr("Binaries/"_len);
         WriteData(UpdateFilesList, static_cast<short>(file_path.length()));
-        WriteDataArr(UpdateFilesList, file_path.c_str(), static_cast<uint>(file_path.length()));
+        WriteDataArr(UpdateFilesList, file_path.data(), file_path.length());
         WriteData(UpdateFilesList, update_file.Size);
         WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
@@ -2415,7 +2415,7 @@ void FOServer::Process_Register(ClientConnection* connection)
         if (auto* ban = GetBanByIp(ip); ban != nullptr) {
             connection->Send_TextMsg(STR_NET_BANNED_IP);
             // connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
-            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)).c_str());
+            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
             connection->GracefulDisconnect();
             return;
         }
@@ -2465,7 +2465,7 @@ void FOServer::Process_Register(ClientConnection* connection)
             const auto tick = GameTime.FrameTick();
             if (tick - last_reg < reg_tick) {
                 connection->Send_TextMsg(STR_NET_REGISTRATION_IP_WAIT);
-                connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", (reg_tick - (tick - last_reg)) / 60000 + 1).c_str());
+                connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", (reg_tick - (tick - last_reg)) / 60000 + 1));
                 connection->GracefulDisconnect();
                 return;
             }
@@ -2483,7 +2483,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     const auto allow = ScriptSys.PlayerRegistrationEvent(connection->GetIp(), name, disallow_msg_num, disallow_str_num, lexems);
     if (!allow) {
         if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
-            connection->Send_TextMsgLex(disallow_str_num, lexems.c_str());
+            connection->Send_TextMsgLex(disallow_str_num, lexems);
         }
         else {
             connection->Send_TextMsg(STR_NET_LOGIN_SCRIPT_FAIL);
@@ -2558,8 +2558,8 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
         if (auto* ban = GetBanByIp(connection->GetIp())) {
             connection->Send_TextMsg(STR_NET_BANNED_IP);
-            connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban).c_str());
-            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)).c_str());
+            connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
+            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
             connection->GracefulDisconnect();
             return;
         }
@@ -2600,10 +2600,10 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     {
         std::lock_guard locker(BannedLocker);
 
-        if (auto* ban = GetBanByName(name.c_str()); ban != nullptr) {
+        if (auto* ban = GetBanByName(name); ban != nullptr) {
             connection->Send_TextMsg(STR_NET_BANNED);
-            connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban).c_str());
-            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)).c_str());
+            connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
+            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
             connection->GracefulDisconnect();
             return;
         }
@@ -2617,7 +2617,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
         string lexems;
         if (const auto allow = !ScriptSys.PlayerLoginEvent(connection->GetIp(), name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
             if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
-                connection->Send_TextMsgLex(disallow_str_num, lexems.c_str());
+                connection->Send_TextMsgLex(disallow_str_num, lexems);
             }
             else {
                 connection->Send_TextMsg(STR_NET_LOGIN_SCRIPT_FAIL);
@@ -4026,7 +4026,7 @@ void FOServer::Dialog_Begin(Critter* cl, Critter* npc, hash dlg_pack_id, ushort 
     // On head text
     if (cl->Talk.CurDialog.Answers.empty()) {
         if (npc != nullptr) {
-            npc->SendAndBroadcast_MsgLex(npc->VisCr, cl->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cl->Talk.Lexems.c_str());
+            npc->SendAndBroadcast_MsgLex(npc->VisCr, cl->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cl->Talk.Lexems);
         }
         else {
             auto* map = MapMngr.GetMap(cl->GetMapId());
@@ -4217,7 +4217,7 @@ void FOServer::Process_Dialog(Player* player)
     // On head text
     if (cr->Talk.CurDialog.Answers.empty()) {
         if (npc != nullptr) {
-            npc->SendAndBroadcast_MsgLex(npc->VisCr, cr->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cr->Talk.Lexems.c_str());
+            npc->SendAndBroadcast_MsgLex(npc->VisCr, cr->Talk.CurDialog.TextId, SAY_NORM_ON_HEAD, TEXTMSG_DLG, cr->Talk.Lexems);
         }
         else {
             auto* map = MapMngr.GetMap(cr->GetMapId());

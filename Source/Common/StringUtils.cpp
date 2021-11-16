@@ -48,7 +48,7 @@ auto _str::empty() const -> bool
     return _s.empty();
 }
 
-auto _str::compareIgnoreCase(const string& r) const -> bool
+auto _str::compareIgnoreCase(string_view r) const -> bool
 {
     if (_s.length() != r.length()) {
         return false;
@@ -62,7 +62,7 @@ auto _str::compareIgnoreCase(const string& r) const -> bool
     return true;
 }
 
-auto _str::compareIgnoreCaseUtf8(const string& r) const -> bool
+auto _str::compareIgnoreCaseUtf8(string_view r) const -> bool
 {
     if (_s.length() != r.length()) {
         return false;
@@ -76,7 +76,7 @@ auto _str::startsWith(char r) const -> bool
     return _s.length() >= 1 && _s.front() == r;
 }
 
-auto _str::startsWith(const string& r) const -> bool
+auto _str::startsWith(string_view r) const -> bool
 {
     return _s.length() >= r.length() && _s.compare(0, r.length(), r) == 0;
 }
@@ -86,7 +86,7 @@ auto _str::endsWith(char r) const -> bool
     return _s.length() >= 1 && _s.back() == r;
 }
 
-auto _str::endsWith(const string& r) const -> bool
+auto _str::endsWith(string_view r) const -> bool
 {
     return _s.length() >= r.length() && _s.compare(_s.length() - r.length(), r.length(), r) == 0;
 }
@@ -125,7 +125,7 @@ auto _str::substringUntil(char separator) -> _str&
     return *this;
 }
 
-auto _str::substringUntil(const string& separator) -> _str&
+auto _str::substringUntil(string_view separator) -> _str&
 {
     const auto pos = _s.find(separator);
 
@@ -148,7 +148,7 @@ auto _str::substringAfter(char separator) -> _str&
     return *this;
 }
 
-auto _str::substringAfter(const string& separator) -> _str&
+auto _str::substringAfter(string_view separator) -> _str&
 {
     const auto pos = _s.find(separator);
 
@@ -222,7 +222,7 @@ auto _str::replace(char from1, char from2, char to) -> _str&
     return *this;
 }
 
-auto _str::replace(const string& from, const string& to) -> _str&
+auto _str::replace(string_view from, string_view to) -> _str&
 {
     size_t pos = 0;
 
@@ -516,7 +516,7 @@ auto _str::eraseFileExtension() -> _str&
     return *this;
 }
 
-auto _str::combinePath(const string& path) -> _str&
+auto _str::combinePath(string_view path) -> _str&
 {
     extractDir();
 
@@ -530,12 +530,12 @@ auto _str::combinePath(const string& path) -> _str&
     return *this;
 }
 
-auto _str::forwardPath(const string& relative_dir) -> _str&
+auto _str::forwardPath(string_view relative_dir) -> _str&
 {
     const string dir = _str(*this).extractDir();
     const string name = _str(*this).extractFileName();
 
-    _s = dir + relative_dir + name;
+    _s = dir + string(relative_dir) + name;
     formatPath();
 
     return *this;
@@ -605,25 +605,23 @@ auto _str::toHash() -> hash
 
 // ReSharper restore CppInconsistentNaming
 
-void Str::Copy(char* to, size_t size, const char* from)
+void Str::Copy(char* to, size_t size, string_view from)
 {
     RUNTIME_ASSERT(to);
-    RUNTIME_ASSERT(from);
     RUNTIME_ASSERT(size > 0);
 
-    const auto from_len = strlen(from);
-    if (from_len == 0u) {
+    if (from.length() == 0u) {
         to[0] = 0;
         return;
     }
 
-    if (from_len >= size) {
-        std::memcpy(to, from, size - 1);
+    if (from.length() >= size) {
+        std::memcpy(to, from.data(), size - 1);
         to[size - 1] = 0;
     }
     else {
-        std::memcpy(to, from, from_len);
-        to[from_len] = 0;
+        std::memcpy(to, from.data(), from.length());
+        to[from.length()] = 0;
     }
 }
 
@@ -633,7 +631,7 @@ auto utf8::IsValid(uint ucs) -> bool
     return ucs != 0xFFFD && ucs <= 0x10FFFF;
 }
 
-auto utf8::Decode(const char* str, uint* length) -> uint
+auto utf8::Decode(string_view str, uint* length) -> uint
 {
 #define DECODE_FAIL() \
     do { \
@@ -643,7 +641,7 @@ auto utf8::Decode(const char* str, uint* length) -> uint
         return 0xFFFD; \
     } while (0)
 
-    const auto c = *reinterpret_cast<const uchar*>(str);
+    const auto c = *reinterpret_cast<const uchar*>(str.data());
     if (c < 0x80) {
         if (length != nullptr) {
             *length = 1;
@@ -666,7 +664,7 @@ auto utf8::Decode(const char* str, uint* length) -> uint
     }
 
     if (c == 0xe0) {
-        if (reinterpret_cast<const uchar*>(str)[1] < 0xa0) {
+        if (reinterpret_cast<const uchar*>(str.data())[1] < 0xa0) {
             DECODE_FAIL();
         }
 
@@ -690,7 +688,7 @@ auto utf8::Decode(const char* str, uint* length) -> uint
     }
 
     if (c == 0xf0) {
-        if (reinterpret_cast<const uchar*>(str)[1] < 0x90) {
+        if (reinterpret_cast<const uchar*>(str.data())[1] < 0x90) {
             DECODE_FAIL();
         }
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {
@@ -713,7 +711,7 @@ auto utf8::Decode(const char* str, uint* length) -> uint
     }
 
     if (c == 0xf4) {
-        if (reinterpret_cast<const uchar*>(str)[1] > 0x8f) {
+        if (reinterpret_cast<const uchar*>(str.data())[1] > 0x8f) {
             DECODE_FAIL();
         }
         if ((str[2] & 0xc0) != 0x80 || (str[3] & 0xc0) != 0x80) {

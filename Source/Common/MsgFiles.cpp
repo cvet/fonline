@@ -91,7 +91,7 @@ auto FOMsg::operator+=(const FOMsg& other) -> FOMsg&
     return *this;
 }
 
-void FOMsg::AddStr(uint num, const string& str)
+void FOMsg::AddStr(uint num, string_view str)
 {
     _strData.insert(std::make_pair(num, str));
 }
@@ -297,11 +297,12 @@ auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
     return true;
 }
 
-auto FOMsg::LoadFromString(const string& str) -> bool
+auto FOMsg::LoadFromString(string_view str) -> bool
 {
     auto fail = false;
 
-    istringstream istr(str);
+    const auto sstr = string(str);
+    istringstream istr(sstr);
     string line;
     while (std::getline(istr, line, '\n')) {
         uint num = 0;
@@ -361,7 +362,7 @@ void FOMsg::Clear()
     _strData.clear();
 }
 
-auto FOMsg::GetMsgType(const string& type_name) -> int
+auto FOMsg::GetMsgType(string_view type_name) -> int
 {
     if (_str(type_name).compareIgnoreCase("text")) {
         return TEXTMSG_TEXT;
@@ -396,11 +397,11 @@ auto FOMsg::GetMsgType(const string& type_name) -> int
     return -1;
 }
 
-void LanguagePack::LoadFromFiles(FileManager& file_mngr, const string& lang_name)
+void LanguagePack::LoadFromFiles(FileManager& file_mngr, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
-    NameCode = *reinterpret_cast<const uint*>(lang_name.c_str());
+    NameCode = *reinterpret_cast<const uint*>(lang_name.data());
 
     auto fail = false;
 
@@ -430,11 +431,11 @@ void LanguagePack::LoadFromFiles(FileManager& file_mngr, const string& lang_name
     IsAllMsgLoaded = Msg[TEXTMSG_GAME].GetSize() > 0 && !fail;
 }
 
-void LanguagePack::LoadFromCache(CacheStorage& cache, const string& lang_name)
+void LanguagePack::LoadFromCache(CacheStorage& cache, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
-    NameCode = *reinterpret_cast<const uint*>(lang_name.c_str());
+    NameCode = *reinterpret_cast<const uint*>(lang_name.data());
 
     auto errors = 0;
     for (auto i = 0; i < TEXTMSG_COUNT; i++) {

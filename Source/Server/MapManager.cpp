@@ -269,7 +269,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     static_map.SceneryData.clear();
     WriteData(static_map.SceneryData, scenery_count);
     if (!scenery_data.empty()) {
-        WriteDataArr(static_map.SceneryData, &scenery_data[0], static_cast<uint>(scenery_data.size()));
+        WriteDataArr(static_map.SceneryData, &scenery_data[0], scenery_data.size());
     }
 
     // Generate hashes
@@ -399,7 +399,7 @@ void MapManager::GenerateMapContent(Map* map)
     }
 
     // Map script
-    map->SetScript(nullptr, true);
+    map->SetScript("", true);
 }
 
 void MapManager::DeleteMapContent(Map* map)

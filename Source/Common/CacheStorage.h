@@ -43,22 +43,22 @@ DECLARE_EXCEPTION(CacheStorageException);
 class CacheStorage final
 {
 public:
-    explicit CacheStorage(const string& real_path);
+    explicit CacheStorage(string_view real_path);
     CacheStorage(const CacheStorage&) = delete;
     CacheStorage(CacheStorage&&) noexcept;
     auto operator=(const CacheStorage&) = delete;
     auto operator=(CacheStorage&&) noexcept = delete;
     ~CacheStorage();
 
-    [[nodiscard]] auto HasEntry(const string& entry_name) const -> bool;
-    [[nodiscard]] auto GetRawData(const string& entry_name, uint& data_len) const -> uchar*;
-    [[nodiscard]] auto GetString(const string& entry_name) const -> string;
-    [[nodiscard]] auto GetData(const string& entry_name) const -> vector<uchar>;
+    [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool;
+    [[nodiscard]] auto GetRawData(string_view entry_name, uint& data_len) const -> uchar*;
+    [[nodiscard]] auto GetString(string_view entry_name) const -> string;
+    [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uchar>;
 
-    void SetRawData(const string& entry_name, const uchar* data, uint data_len);
-    void SetString(const string& entry_name, const string& str);
-    void SetData(const string& entry_name, const vector<uchar>& data);
-    void EraseEntry(const string& entry_name);
+    void SetRawData(string_view entry_name, const uchar* data, uint data_len);
+    void SetString(string_view entry_name, string_view str);
+    void SetData(string_view entry_name, const vector<uchar>& data);
+    void EraseEntry(string_view entry_name);
 
 private:
     struct Impl;

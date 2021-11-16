@@ -119,7 +119,7 @@ static void Renderer_SetWindowSize(ImGuiViewport* viewport, ImVec2 size);
 static void Renderer_RenderWindow(ImGuiViewport* viewport, void*);
 static void Renderer_SwapBuffers(ImGuiViewport* viewport, void*);
 
-bool AppGui::InitDX(const string& app_name, bool docking, bool maximized)
+bool AppGui::InitDX(string_view app_name, bool docking, bool maximized)
 {
     EnableDpiAwareness();
 

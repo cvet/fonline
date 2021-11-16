@@ -78,7 +78,7 @@ void ModelAnimation::Load(DataReader& reader)
     }
 }
 
-void ModelAnimation::SetData(const string& fname, const string& name, float ticks, float tps)
+void ModelAnimation::SetData(string_view fname, string_view name, float ticks, float tps)
 {
     _animFileName = fname;
     _animName = name;
@@ -99,12 +99,12 @@ void ModelAnimation::AddBoneOutput(vector<hash> hierarchy, const vector<float>& 
     _bonesHierarchy.push_back(hierarchy);
 }
 
-auto ModelAnimation::GetFileName() const -> const string&
+auto ModelAnimation::GetFileName() const -> string_view
 {
     return _animFileName;
 }
 
-auto ModelAnimation::GetName() const -> const string&
+auto ModelAnimation::GetName() const -> string_view
 {
     return _animName;
 }
@@ -182,7 +182,7 @@ auto ModelAnimationController::GetAnimationSet(uint index) const -> ModelAnimati
     return (*_sets)[index];
 }
 
-auto ModelAnimationController::GetAnimationSetByName(const string& name) const -> ModelAnimation*
+auto ModelAnimationController::GetAnimationSetByName(string_view name) const -> ModelAnimation*
 {
     for (auto& s : *_sets) {
         if (s->_animName == name) {

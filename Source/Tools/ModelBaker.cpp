@@ -79,7 +79,7 @@ struct MeshData
 
 struct Bone
 {
-    static auto GetHash(const string& name) -> hash { return _str(name).toHash(); }
+    static auto GetHash(string_view name) -> hash { return _str(name).toHash(); }
 
     auto Find(hash name_hash) -> Bone*
     {
@@ -206,7 +206,7 @@ void ModelBaker::AutoBakeModels()
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
+        auto relative_path = string(file_header.GetPath().substr(_allFiles.GetPath().length()));
         if (_bakedFiles.count(relative_path) != 0u) {
             continue;
         }
@@ -311,7 +311,7 @@ static auto ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes) 
 static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node);
 static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44;
 
-auto ModelBaker::BakeFile(const string& fname, File& file) -> vector<uchar>
+auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 {
     // Result bone
     Bone* root_bone = nullptr;
@@ -727,7 +727,7 @@ static auto ConvertFbxMatrix(const FbxAMatrix& m) -> mat44
 }
 
 #else
-auto ModelBaker::BakeFile(const string& fname, File& file) -> vector<uchar>
+auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 {
     throw NotSupportedException("ModelBaker::BakeFile");
 }

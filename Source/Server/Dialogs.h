@@ -145,14 +145,14 @@ public:
     [[nodiscard]] auto GetDialogByIndex(uint index) -> DialogPack*;
 
     [[nodiscard]] auto LoadDialogs() -> bool;
-    [[nodiscard]] auto ParseDialog(const string& pack_name, const string& data) -> DialogPack*;
+    [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
     [[nodiscard]] auto AddDialog(DialogPack* pack) -> bool;
 
     void EraseDialog(hash pack_id);
 
 private:
-    [[nodiscard]] auto GetNotAnswerAction(const string& str) -> ScriptFunc<string, Critter*, Critter*>;
-    [[nodiscard]] auto GetDrType(const string& str) -> uchar;
+    [[nodiscard]] auto GetNotAnswerAction(string_view str) -> ScriptFunc<string, Critter*, Critter*>;
+    [[nodiscard]] auto GetDrType(string_view str) -> uchar;
     [[nodiscard]] auto GetWho(char who) -> uchar;
     [[nodiscard]] auto CheckOper(char oper) -> bool;
 

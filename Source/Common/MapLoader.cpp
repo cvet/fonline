@@ -37,7 +37,7 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(const string& name, FileManager& file_mngr, ProtoManager& proto_mngr, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
+void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
 {
     // Find file
     auto maps = file_mngr.FilterFiles("fomap");

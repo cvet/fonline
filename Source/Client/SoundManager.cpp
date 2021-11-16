@@ -125,7 +125,7 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
             sound->ConvertedBufCur += offset;
 
             // Stream new parts
-            while (offset < whole && sound->OggStream && StreamOGG(sound)) {
+            while (offset < whole && sound->OggStream && StreamOgg(sound)) {
                 auto write = sound->ConvertedBuf.size() - sound->ConvertedBufCur;
                 if (offset + write > whole) {
                     write = whole - offset;
@@ -148,7 +148,7 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
         }
 
         if (sound->OggStream && sound->ConvertedBufCur == sound->ConvertedBuf.size()) {
-            StreamOGG(sound);
+            StreamOgg(sound);
         }
 
         // Continue processing
@@ -186,9 +186,9 @@ auto SoundManager::ProcessSound(Sound* sound, uchar* output) -> bool
     return false;
 }
 
-auto SoundManager::Load(const string& fname, bool is_music) -> Sound*
+auto SoundManager::Load(string_view fname, bool is_music) -> Sound*
 {
-    auto fixed_fname = fname;
+    auto fixed_fname = string(fname);
     string ext = _str(fname).getFileExtension();
 
     // Default ext
@@ -198,13 +198,13 @@ auto SoundManager::Load(const string& fname, bool is_music) -> Sound*
     }
 
     auto* sound = new Sound();
-    if (ext == "wav" && !LoadWAV(sound, fixed_fname)) {
+    if (ext == "wav" && !LoadWav(sound, fixed_fname)) {
         return nullptr;
     }
-    if (ext == "acm" && !LoadACM(sound, fixed_fname, is_music)) {
+    if (ext == "acm" && !LoadAcm(sound, fixed_fname, is_music)) {
         return nullptr;
     }
-    if (ext == "ogg" && !LoadOGG(sound, fixed_fname)) {
+    if (ext == "ogg" && !LoadOgg(sound, fixed_fname)) {
         return nullptr;
     }
 
@@ -214,7 +214,7 @@ auto SoundManager::Load(const string& fname, bool is_music) -> Sound*
     return sound;
 }
 
-auto SoundManager::LoadWAV(Sound* sound, const string& fname) -> bool
+auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
     NON_CONST_METHOD_HINT();
 
@@ -306,7 +306,7 @@ auto SoundManager::LoadWAV(Sound* sound, const string& fname) -> bool
     return ConvertData(sound);
 }
 
-auto SoundManager::LoadACM(Sound* sound, const string& fname, bool is_music) -> bool
+auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bool
 {
     NON_CONST_METHOD_HINT();
 
@@ -337,7 +337,7 @@ auto SoundManager::LoadACM(Sound* sound, const string& fname, bool is_music) -> 
     return ConvertData(sound);
 }
 
-auto SoundManager::LoadOGG(Sound* sound, const string& fname) -> bool
+auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 {
     auto file = _fileMngr.ReadFile(fname);
     if (!file) {
@@ -450,7 +450,7 @@ auto SoundManager::LoadOGG(Sound* sound, const string& fname) -> bool
     return ConvertData(sound);
 }
 
-auto SoundManager::StreamOGG(Sound* sound) -> bool
+auto SoundManager::StreamOgg(Sound* sound) -> bool
 {
     NON_CONST_METHOD_HINT();
 
@@ -491,7 +491,7 @@ auto SoundManager::ConvertData(Sound* sound) -> bool
     return true;
 }
 
-auto SoundManager::PlaySound(const map<string, string>& sound_names, const string& name) -> bool
+auto SoundManager::PlaySound(const map<string, string>& sound_names, string_view name) -> bool
 {
     if (!_isActive || _settings.SoundVolume == 0) {
         return true;
@@ -518,7 +518,7 @@ auto SoundManager::PlaySound(const map<string, string>& sound_names, const strin
     return false;
 }
 
-auto SoundManager::PlayMusic(const string& fname, uint repeat_time) -> bool
+auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
 {
     if (!_isActive) {
         return true;

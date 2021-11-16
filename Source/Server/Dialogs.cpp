@@ -41,7 +41,7 @@
 #include "Map.h"
 #include "StringUtils.h"
 
-static auto GetPropEnumIndex(const string& str, bool is_demand, uchar& type, bool& is_hash) -> int
+static auto GetPropEnumIndex(string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
 {
     auto* prop_global = GlobalVars::PropertiesRegistrator->Find(str);
     auto* prop_critter = Critter::PropertiesRegistrator->Find(str);
@@ -137,7 +137,7 @@ auto DialogManager::LoadDialogs() -> bool
             continue;
         }
 
-        string pack_data = reinterpret_cast<const char*>(file.GetBuf());
+        string pack_data = file.GetCStr();
         auto* pack = ParseDialog(file.GetName(), pack_data);
         if (pack == nullptr) {
             WriteLog("Unable to parse dialog '{}'.\n", file.GetName());
@@ -199,7 +199,7 @@ void DialogManager::EraseDialog(hash pack_id)
     }
 }
 
-auto DialogManager::ParseDialog(const string& pack_name, const string& data) -> DialogPack*
+auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> DialogPack*
 {
     ConfigFile fodlg {""};
     fodlg.CollectContent();
@@ -609,7 +609,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     return result;
 }
 
-auto DialogManager::GetNotAnswerAction(const string& str) -> ScriptFunc<string, Critter*, Critter*>
+auto DialogManager::GetNotAnswerAction(string_view str) -> ScriptFunc<string, Critter*, Critter*>
 {
     NON_CONST_METHOD_HINT();
 
@@ -620,7 +620,7 @@ auto DialogManager::GetNotAnswerAction(const string& str) -> ScriptFunc<string, 
     return _scriptSys.FindFunc<string, Critter*, Critter*>(str);
 }
 
-auto DialogManager::GetDrType(const string& str) -> uchar
+auto DialogManager::GetDrType(string_view str) -> uchar
 {
     if (str == "Property" || str == "_param") {
         return DR_PROP_CRITTER;

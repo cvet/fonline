@@ -33,7 +33,7 @@
 
 #include "AppGui.h"
 
-auto AppGui::Init(const string&, bool, bool, bool) -> bool
+auto AppGui::Init(string_view, bool, bool, bool) -> bool
 {
     return true;
 }
@@ -48,7 +48,7 @@ void AppGui::EndFrame()
 }
 
 #if FO_HAVE_DIRECT_3D
-auto AppGui::InitDX(const string&, bool, bool) -> bool
+auto AppGui::InitDX(string_view, bool, bool) -> bool
 {
     return true;
 }

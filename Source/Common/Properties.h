@@ -177,13 +177,13 @@ public:
     [[nodiscard]] auto GetPODValueAsInt(Property* prop) const -> int;
     [[nodiscard]] auto GetValueAsInt(int enum_value) const -> int;
     [[nodiscard]] auto FindByEnum(int enum_value) -> Property*;
-    [[nodiscard]] auto FindData(const string& property_name) -> void*;
+    [[nodiscard]] auto FindData(string_view property_name) -> void*;
 
     [[nodiscard]] auto SavePropertyToText(Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(Properties* base) const -> map<string, string>;
 
     auto LoadFromText(const map<string, string>& key_values) -> bool;
-    auto LoadPropertyFromText(Property* prop, const string& text) -> bool;
+    auto LoadPropertyFromText(Property* prop, string_view text) -> bool;
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
     void RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes);
     void RestoreData(vector<vector<uchar>>& all_data);
@@ -192,7 +192,7 @@ public:
     void SetValueFromData(Property* prop, uchar* data, uint data_size);
     void SetPODValueAsInt(Property* prop, int value);
     void SetValueAsInt(int enum_value, int value);
-    void SetValueAsIntByName(const string& enum_name, int value);
+    void SetValueAsIntByName(string_view enum_name, int value);
     void SetValueAsIntProps(int enum_value, int value);
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
@@ -291,15 +291,15 @@ public:
 
     [[nodiscard]] auto GetClassName() const -> string;
     [[nodiscard]] auto GetCount() const -> uint;
-    [[nodiscard]] auto Find(const string& property_name) -> Property*;
+    [[nodiscard]] auto Find(string_view property_name) -> Property*;
     [[nodiscard]] auto FindByEnum(int enum_value) -> Property*;
     [[nodiscard]] auto Get(uint property_index) -> Property*;
     [[nodiscard]] auto IsComponentRegistered(hash component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
 
-    auto Register(Property::AccessType access, const type_info& type, const string& name) -> Property*;
-    void RegisterComponent(const string& name);
-    void SetNativeSetCallback(const string& property_name, const NativeCallback& callback);
+    auto Register(Property::AccessType access, const type_info& type, string_view name) -> Property*;
+    void RegisterComponent(string_view name);
+    void SetNativeSetCallback(string_view property_name, const NativeCallback& callback);
 
 private:
     bool _isServer {};

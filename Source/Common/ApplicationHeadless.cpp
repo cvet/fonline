@@ -69,7 +69,7 @@ RenderEffect::~RenderEffect()
 {
 }
 
-auto RenderEffect::IsSame(const string& name, const string& defines) const -> bool
+auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 {
     return _str(name).compareIgnoreCase(_effectName) && defines == _effectDefines;
 }
@@ -237,7 +237,7 @@ void Application::AppRender::DisableScissor()
 {
 }
 
-auto Application::AppRender::CreateEffect(const string& /*name*/, const string& /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
+auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
 {
     return nullptr;
 }
@@ -263,7 +263,7 @@ void Application::AppInput::PushEvent(const InputEvent& event)
 {
 }
 
-void Application::AppInput::SetClipboardText(const string& text)
+void Application::AppInput::SetClipboardText(string_view text)
 {
 }
 
@@ -318,6 +318,6 @@ void Application::AppAudio::UnlockDevice()
     RUNTIME_ASSERT(IsEnabled());
 }
 
-void MessageBox::ShowErrorMessage(const string& message, const string& traceback)
+void MessageBox::ShowErrorMessage(string_view message, string_view traceback)
 {
 }

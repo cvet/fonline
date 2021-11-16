@@ -115,7 +115,7 @@ static void Platform_SwapBuffers(ImGuiViewport* viewport, void*);
 static int Platform_CreateVkSurface(ImGuiViewport* viewport, ImU64 vk_instance, const void* vk_allocator, ImU64* out_vk_surface);
 static void Renderer_RenderWindow(ImGuiViewport* viewport, void*);
 
-bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximized)
+bool AppGui::Init(string_view app_name, bool use_dx, bool docking, bool maximized)
 {
     RUNTIME_ASSERT(!InitCalled);
     InitCalled = true;
@@ -152,7 +152,7 @@ bool AppGui::Init(const string& app_name, bool use_dx, bool docking, bool maximi
 #endif
 
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (maximized ? SDL_WINDOW_MAXIMIZED : 0));
-    SDL_Window* window = SDL_CreateWindow(app_name.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1024, 768, window_flags);
+    SDL_Window* window = SDL_CreateWindow(string(app_name).c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1024, 768, window_flags);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(0);

@@ -46,7 +46,7 @@ void Keyboard::Lost()
     ShiftDwn = false;
 }
 
-void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* position, uint flags) const
+void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* position, uint flags) const
 {
     if (AltDwn) {
         return;
@@ -123,7 +123,7 @@ void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* 
         App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::DIK_CLIPBOARD_PASTE})});
     }
     else if (dik == KeyCode::DIK_CLIPBOARD_PASTE) {
-        auto text = dik_text;
+        auto text = string(dik_text);
         EraseInvalidChars(text, flags);
         if (!text.empty()) {
             str.insert(pos, text);
@@ -140,7 +140,7 @@ void Keyboard::FillChar(KeyCode dik, const string& dik_text, string& str, uint* 
 
         for (size_t i = 0; i < dik_text.length();) {
             uint length = 0;
-            if (IsInvalidChar(dik_text.c_str() + i, flags, length)) {
+            if (IsInvalidChar(dik_text.data() + i, flags, length)) {
                 return;
             }
             i += length;
@@ -164,7 +164,7 @@ void Keyboard::EraseInvalidChars(string& str, int flags) const
     }
 }
 
-auto Keyboard::IsInvalidChar(const char* str, uint flags, uint& length) const -> bool
+auto Keyboard::IsInvalidChar(string_view str, uint flags, uint& length) const -> bool
 {
     const auto ucs = utf8::Decode(str, &length);
     if (!utf8::IsValid(ucs)) {
@@ -172,15 +172,15 @@ auto Keyboard::IsInvalidChar(const char* str, uint flags, uint& length) const ->
     }
 
     if (length == 1) {
-        if ((flags & KIF_NO_SPEC_SYMBOLS) != 0u && (*str == '\n' || *str == '\r' || *str == '\t')) {
+        if ((flags & KIF_NO_SPEC_SYMBOLS) != 0u && (*str.data() == '\n' || *str.data() == '\r' || *str.data() == '\t')) {
             return true;
         }
-        if ((flags & KIF_ONLY_NUMBERS) != 0u && !(*str >= '0' && *str <= '9')) {
+        if ((flags & KIF_ONLY_NUMBERS) != 0u && !(*str.data() >= '0' && *str.data() <= '9')) {
             return true;
         }
 
         if ((flags & KIF_FILE_NAME) != 0u) {
-            switch (*str) {
+            switch (*str.data()) {
             case '\\':
             case '/':
             case ':':

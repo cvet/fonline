@@ -233,7 +233,7 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
     _mapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
 
     _scriptSys.CritterInitEvent(npc, true);
-    npc->SetScript(nullptr, true);
+    npc->SetScript("", true);
 
     _mapMngr.ProcessVisibleItems(npc);
     return npc;
@@ -380,7 +380,7 @@ auto CritterManager::GetPlayerById(uint id) -> Player*
     return dynamic_cast<Player*>(_entityMngr.GetEntity(id, EntityType::Player));
 }
 
-auto CritterManager::GetPlayerByName(const char* name) -> Player*
+auto CritterManager::GetPlayerByName(string_view name) -> Player*
 {
     NON_CONST_METHOD_HINT();
 

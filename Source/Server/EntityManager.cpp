@@ -458,14 +458,14 @@ void EntityManager::InitAfterLoad()
             auto* map = dynamic_cast<Map*>(entity);
             _scriptSys.MapInitEvent(map, false);
             if (!map->IsDestroyed && map->GetScriptId() != 0u) {
-                map->SetScript(nullptr, false);
+                map->SetScript("", false);
             }
         }
         else if (entity->Type == EntityType::Critter) {
             auto* npc = dynamic_cast<Critter*>(entity);
             _scriptSys.CritterInitEvent(npc, false);
             if (!npc->IsDestroyed && npc->GetScriptId() != 0u) {
-                npc->SetScript(nullptr, false);
+                npc->SetScript("", false);
             }
         }
         else if (entity->Type == EntityType::Item) {
@@ -474,7 +474,7 @@ void EntityManager::InitAfterLoad()
                 _scriptSys.ItemInitEvent(item, false);
             }
             if (!item->IsDestroyed && item->GetScriptId() != 0u) {
-                item->SetScript(nullptr, false);
+                item->SetScript("", false);
             }
         }
 

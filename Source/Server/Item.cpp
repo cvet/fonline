@@ -52,7 +52,7 @@ Item::Item(uint id, const ProtoItem* proto, ServerScriptSystem& script_sys) : En
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
-auto Item::SetScript(const string& /*func*/, bool /*first_time*/) -> bool
+auto Item::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
 {
     /*if (func)
     {

@@ -135,7 +135,7 @@ SETTING(int, MapTileStep, 2);
 SETTING(int, MapRoofOffsX, -8);
 SETTING(int, MapRoofOffsY, -66);
 SETTING(int, MapRoofSkipSize, 2);
-SETTING(float, MapCameraAngle, 25.7f);
+SETTING(float, MapCameraAngle, 21.671f);
 SETTING(bool, MapSmoothPath, true);
 SETTING(string, MapDataPrefix, "art/geometry/fallout_");
 SETTING_GROUP_END();

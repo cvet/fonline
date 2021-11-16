@@ -474,9 +474,9 @@ inline void* GetDomainUserData(MonoDomain* domain)
 #include "ScriptApi.h"
 
 // static void SetMonoInternalCalls();
-// static MonoAssembly* LoadNetAssembly(const string& name);
-// static MonoAssembly* LoadGameAssembly(const string& name, map<string, MonoImage*>& assembly_images);
-// static bool CompileGameAssemblies(const string& target, map<string, MonoImage*>& assembly_images);
+// static MonoAssembly* LoadNetAssembly(string_view name);
+// static MonoAssembly* LoadGameAssembly(string_view name, map<string, MonoImage*>& assembly_images);
+// static bool CompileGameAssemblies(string_view target, map<string, MonoImage*>& assembly_images);
 
 struct ScriptSystem::MonoImpl
 {
@@ -654,7 +654,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
     return false;*/
 }
 
-/*static MonoAssembly* LoadNetAssembly(const string& name)
+/*static MonoAssembly* LoadNetAssembly(string_view name)
 {
     string assemblies_path = "Assemblies/" + name + (_str(name).endsWith(".dll") ? "" : ".dll");
 #if FONLINE_SERVER
@@ -675,7 +675,7 @@ void SCRIPTING_CLASS::InitMonoScripting()
     return assembly;
 }
 
-static MonoAssembly* LoadGameAssembly(const string& name, map<string, MonoImage*>& assembly_images)
+static MonoAssembly* LoadGameAssembly(string_view name, map<string, MonoImage*>& assembly_images)
 {
     RUNTIME_ASSERT(assembly_images.count(name));
     MonoImage* image = assembly_images[name];
@@ -687,7 +687,7 @@ static MonoAssembly* LoadGameAssembly(const string& name, map<string, MonoImage*
     return assembly;
 }
 
-static bool CompileGameAssemblies(const string& target, map<string, MonoImage*>& assembly_images)
+static bool CompileGameAssemblies(string_view target, map<string, MonoImage*>& assembly_images)
 {
     string mono_path = MainConfig->GetStr("", "MonoPath");
     string xbuild_path = _str(mono_path + "/bin/xbuild.bat").resolvePath();

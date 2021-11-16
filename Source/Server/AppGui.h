@@ -43,13 +43,13 @@ class AppGui final
 public:
     AppGui() = delete;
 
-    static auto Init(const string& app_name, bool use_dx, bool docking, bool maximized) -> bool;
+    static auto Init(string_view app_name, bool use_dx, bool docking, bool maximized) -> bool;
     static auto BeginFrame() -> bool;
     static void EndFrame();
 
 private:
 #if FO_HAVE_DIRECT_3D
-    static auto InitDX(const string& app_name, bool docking, bool maximized) -> bool;
+    static auto InitDX(string_view app_name, bool docking, bool maximized) -> bool;
     static auto BeginFrameDX() -> bool;
     static void EndFrameDX();
 #endif

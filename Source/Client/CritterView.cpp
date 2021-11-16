@@ -1003,7 +1003,7 @@ auto CritterView::GetWalkHexOffsets(uchar dir) const -> tuple<short, short>
     return _geomHelper.GetHexInterval(hx, hy, 1, 1);
 }
 
-void CritterView::SetText(const string& str, uint color, uint text_delay)
+void CritterView::SetText(string_view str, uint color, uint text_delay)
 {
     _tickStartText = _gameTime.GameTick();
     _strTextOnHead = str;

@@ -45,7 +45,7 @@ struct CacheStorage::Impl
     unqlite* Db {};
 };
 
-CacheStorage::CacheStorage(const string& real_path)
+CacheStorage::CacheStorage(string_view real_path)
 {
     _workPath = real_path;
 
@@ -79,7 +79,7 @@ CacheStorage::~CacheStorage()
 
 CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
 
-auto CacheStorage::HasEntry(const string& data_name) const -> bool
+auto CacheStorage::HasEntry(string_view data_name) const -> bool
 {
     const auto r = unqlite_kv_fetch_callback(
         _pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()), [](const void* , unsigned int , void* ) { return UNQLITE_OK; }, nullptr);
@@ -90,7 +90,7 @@ auto CacheStorage::HasEntry(const string& data_name) const -> bool
     return r == UNQLITE_OK;
 }
 
-void CacheStorage::EraseEntry(const string& data_name)
+void CacheStorage::EraseEntry(string_view data_name)
 {
     NON_CONST_METHOD_HINT();
 
@@ -107,7 +107,7 @@ void CacheStorage::EraseEntry(const string& data_name)
     }
 }
 
-void CacheStorage::SetRawData(const string& data_name, const uchar* data, uint data_len)
+void CacheStorage::SetRawData(string_view data_name, const uchar* data, uint data_len)
 {
     NON_CONST_METHOD_HINT();
 
@@ -122,17 +122,17 @@ void CacheStorage::SetRawData(const string& data_name, const uchar* data, uint d
     }
 }
 
-void CacheStorage::SetRawData(const string& data_name, const string& str)
+void CacheStorage::SetRawData(string_view data_name, string_view str)
 {
     SetRawData(data_name, !str.empty() ? reinterpret_cast<const uchar*>(str.c_str()) : reinterpret_cast<const uchar*>(""), static_cast<uint>(str.length()));
 }
 
-void CacheStorage::SetRawData(const string& data_name, const UCharVec& data)
+void CacheStorage::SetRawData(string_view data_name, const UCharVec& data)
 {
     SetRawData(data_name, !data.empty() ? &data[0] : reinterpret_cast<const uchar*>(""), static_cast<uint>(data.size()));
 }
 
-auto CacheStorage::GetData(const string& data_name, uint& data_len) const -> uchar*
+auto CacheStorage::GetData(string_view data_name, uint& data_len) const -> uchar*
 {
     unqlite_int64 size = 0;
     auto r = unqlite_kv_fetch(_pImpl->Db, data_name.c_str(), static_cast<int>(data_name.length()), nullptr, &size);
@@ -153,7 +153,7 @@ auto CacheStorage::GetData(const string& data_name, uint& data_len) const -> uch
     return data;
 }
 
-auto CacheStorage::GetData(const string& data_name) const -> string
+auto CacheStorage::GetData(string_view data_name) const -> string
 {
     uint result_len = 0;
     auto* result = GetData(data_name, result_len);
@@ -171,7 +171,7 @@ auto CacheStorage::GetData(const string& data_name) const -> string
     return str;
 }
 
-auto CacheStorage::GetData(const string& data_name, UCharVec& data) const -> bool
+auto CacheStorage::GetData(string_view data_name, UCharVec& data) const -> bool
 {
     data.clear();
 
@@ -195,12 +195,12 @@ struct CacheStorage::Impl
 {
 };
 
-static auto MakeCacheEntryPath(const string& work_path, const string& data_name) -> string
+static auto MakeCacheEntryPath(string_view work_path, string_view data_name) -> string
 {
     return _str("{}{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
 }
 
-CacheStorage::CacheStorage(const string& real_path)
+CacheStorage::CacheStorage(string_view real_path)
 {
     _workPath = _str(real_path).eraseFileExtension() + "/";
 
@@ -212,7 +212,7 @@ CacheStorage::CacheStorage(const string& real_path)
         throw CacheStorageException("Can't init ping file", _workPath);
     }
 
-    if (!file.Write("Ping", 4)) {
+    if (!file.Write("Ping", 4u)) {
         throw CacheStorageException("Can't write ping file", _workPath);
     }
 }
@@ -220,13 +220,13 @@ CacheStorage::CacheStorage(const string& real_path)
 CacheStorage::~CacheStorage() = default;
 CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
 
-auto CacheStorage::HasEntry(const string& entry_name) const -> bool
+auto CacheStorage::HasEntry(string_view entry_name) const -> bool
 {
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     return !!DiskFileSystem::OpenFile(path, false);
 }
 
-auto CacheStorage::GetRawData(const string& entry_name, uint& data_len) const -> uchar*
+auto CacheStorage::GetRawData(string_view entry_name, uint& data_len) const -> uchar*
 {
     const auto path = MakeCacheEntryPath(_workPath, entry_name);
     auto file = DiskFileSystem::OpenFile(path, false);
@@ -245,7 +245,7 @@ auto CacheStorage::GetRawData(const string& entry_name, uint& data_len) const ->
     return data;
 }
 
-auto CacheStorage::GetString(const string& entry_name) const -> string
+auto CacheStorage::GetString(string_view entry_name) const -> string
 {
     auto result_len = 0u;
     auto* result = GetRawData(entry_name, result_len);
@@ -263,7 +263,7 @@ auto CacheStorage::GetString(const string& entry_name) const -> string
     return str;
 }
 
-auto CacheStorage::GetData(const string& entry_name) const -> vector<uchar>
+auto CacheStorage::GetData(string_view entry_name) const -> vector<uchar>
 {
     vector<uchar> data;
 
@@ -282,7 +282,7 @@ auto CacheStorage::GetData(const string& entry_name) const -> vector<uchar>
     return data;
 }
 
-void CacheStorage::SetRawData(const string& entry_name, const uchar* data, uint data_len)
+void CacheStorage::SetRawData(string_view entry_name, const uchar* data, uint data_len)
 {
     NON_CONST_METHOD_HINT();
 
@@ -298,17 +298,17 @@ void CacheStorage::SetRawData(const string& entry_name, const uchar* data, uint 
     }
 }
 
-void CacheStorage::SetString(const string& entry_name, const string& str)
+void CacheStorage::SetString(string_view entry_name, string_view str)
 {
-    SetRawData(entry_name, !str.empty() ? reinterpret_cast<const uchar*>(str.c_str()) : reinterpret_cast<const uchar*>(""), static_cast<uint>(str.length()));
+    SetRawData(entry_name, !str.empty() ? reinterpret_cast<const uchar*>(str.data()) : reinterpret_cast<const uchar*>(""), static_cast<uint>(str.length()));
 }
 
-void CacheStorage::SetData(const string& entry_name, const vector<uchar>& data)
+void CacheStorage::SetData(string_view entry_name, const vector<uchar>& data)
 {
     SetRawData(entry_name, !data.empty() ? &data[0] : reinterpret_cast<const uchar*>(""), static_cast<uint>(data.size()));
 }
 
-void CacheStorage::EraseEntry(const string& entry_name)
+void CacheStorage::EraseEntry(string_view entry_name)
 {
     NON_CONST_METHOD_HINT();
 

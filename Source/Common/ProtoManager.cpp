@@ -117,7 +117,7 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
 }
 
 template<class T>
-static void ParseProtos(FileManager& file_mngr, const string& ext, const string& app_name, map<hash, T*>& protos)
+static void ParseProtos(FileManager& file_mngr, string_view ext, string_view app_name, map<hash, T*>& protos)
 {
     // Collect data
     auto files = file_mngr.FilterFiles(ext);
@@ -173,7 +173,7 @@ static void ParseProtos(FileManager& file_mngr, const string& ext, const string&
                     else {
                         auto inject_name_hash = _str(inject_name).toHash();
                         if (!files_protos.count(inject_name_hash)) {
-                            throw ProtoManagerException("Proto not found for injection from another proto", inject_name.c_str(), _str().parseHash(pid));
+                            throw ProtoManagerException("Proto not found for injection from another proto", inject_name, _str().parseHash(pid));
                         }
                         InsertMapValues(kv, files_protos[inject_name_hash], overwrite);
                     }
@@ -191,8 +191,8 @@ static void ParseProtos(FileManager& file_mngr, const string& ext, const string&
 
         // Fill content from parents
         map<string, string> final_kv;
-        std::function<void(const string&, map<string, string>&)> fill_parent = [&fill_parent, &base_name, &files_protos, &final_kv](const string& name, map<string, string>& cur_kv) {
-            const auto* parent_name_line = cur_kv.count("$Parent") ? cur_kv["$Parent"].c_str() : "";
+        std::function<void(string_view, map<string, string>&)> fill_parent = [&fill_parent, &base_name, &files_protos, &final_kv](string_view name, map<string, string>& cur_kv) {
+            const auto parent_name_line = cur_kv.count("$Parent") ? cur_kv["$Parent"] : string();
             for (auto& parent_name : _str(parent_name_line).split(' ')) {
                 auto parent_pid = _str(parent_name).toHash();
                 auto parent = files_protos.find(parent_pid);

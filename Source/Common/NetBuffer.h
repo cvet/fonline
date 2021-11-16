@@ -90,12 +90,12 @@ public:
     }
 
     // String specification
-    auto operator<<(const string& i) -> NetBuffer&
+    auto operator<<(string_view i) -> NetBuffer&
     {
         RUNTIME_ASSERT(i.length() <= 65535);
         auto len = static_cast<ushort>(i.length());
         Push(&len, sizeof(len), false);
-        Push(i.c_str(), len, false);
+        Push(i.data(), len, false);
         return *this;
     }
 

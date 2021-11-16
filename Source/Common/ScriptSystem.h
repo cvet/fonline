@@ -45,9 +45,9 @@ DECLARE_EXCEPTION(ScriptException);
 class NameResolver
 {
 public:
-    [[nodiscard]] virtual auto GetEnumValue(const string& enum_value_name, bool& fail) const -> int = 0;
-    [[nodiscard]] virtual auto GetEnumValue(const string& enum_name, const string& value_name, bool& fail) const -> int = 0;
-    [[nodiscard]] virtual auto GetEnumValueName(const string& enum_name, int value) const -> string = 0;
+    [[nodiscard]] virtual auto GetEnumValue(string_view enum_value_name, bool& fail) const -> int = 0;
+    [[nodiscard]] virtual auto GetEnumValue(string_view enum_name, string_view value_name, bool& fail) const -> int = 0;
+    [[nodiscard]] virtual auto GetEnumValueName(string_view enum_name, int value) const -> string = 0;
 };
 
 template<typename... Args>
@@ -119,26 +119,26 @@ public:
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    [[nodiscard]] auto GetEnumValue(const string& /*enum_value_name*/, bool& /*fail*/) const -> int override { return 0; }
-    [[nodiscard]] auto GetEnumValue(const string& /*enum_name*/, const string& /*value_name*/, bool& /*fail*/) const -> int override { return 0; }
-    [[nodiscard]] auto GetEnumValueName(const string& /*enum_name*/, int /*value*/) const -> string override { return ""; }
+    [[nodiscard]] auto GetEnumValue(string_view /*enum_value_name*/, bool& /*fail*/) const -> int override { return 0; }
+    [[nodiscard]] auto GetEnumValue(string_view /*enum_name*/, string_view /*value_name*/, bool& /*fail*/) const -> int override { return 0; }
+    [[nodiscard]] auto GetEnumValueName(string_view /*enum_name*/, int /*value*/) const -> string override { return ""; }
 
     void RemoveEntity(Entity* entity) { }
 
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    auto FindFunc(const string& func_name) -> ScriptFunc<TRet, Args...>
+    auto FindFunc(string_view func_name) -> ScriptFunc<TRet, Args...>
     {
         return ScriptFunc<TRet, Args...>();
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    auto FindFunc(const string& func_name) -> ScriptFunc<void, Args...>
+    auto FindFunc(string_view func_name) -> ScriptFunc<void, Args...>
     {
         return ScriptFunc<void, Args...>();
     }
 
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    auto CallFunc(const string& func_name, Args... args, TRet& ret) -> bool
+    auto CallFunc(string_view func_name, Args... args, TRet& ret) -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
         if (func && func(args...)) {
@@ -149,7 +149,7 @@ public:
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    auto CallFunc(const string& func_name, Args... args) -> bool
+    auto CallFunc(string_view func_name, Args... args) -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
         return func && func(args...);
@@ -180,7 +180,7 @@ public:
 
     StrVec GetCustomEntityTypes();
     / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        bool RestoreCustomEntity(const string& type_name, uint id, const DataBase::Document& doc);
+        bool RestoreCustomEntity(string_view type_name, uint id, const DataBase::Document& doc);
     #endif* /
 
     void RemoveEventsEntity(Entity* entity);
@@ -189,7 +189,7 @@ public:
 
     string GetActiveFuncName();
 
-    uint BindByFuncName(const string& func_name, const string& decl, bool is_temp, bool disable_log = false);
+    uint BindByFuncName(string_view func_name, string_view decl, bool is_temp, bool disable_log = false);
     // uint BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log = false);
     uint BindByFuncNum(hash func_num, bool is_temp, bool disable_log = false);
     // asIScriptFunction* GetBindFunc(uint bind_id);
@@ -197,15 +197,15 @@ public:
 
     // hash GetFuncNum(asIScriptFunction* func);
     // asIScriptFunction* FindFunc(hash func_num);
-    hash BindScriptFuncNumByFuncName(const string& func_name, const string& decl);
+    hash BindScriptFuncNumByFuncName(string_view func_name, string_view decl);
     // hash BindScriptFuncNumByFunc(asIScriptFunction* func);
     uint GetScriptFuncBindId(hash func_num);
-    void PrepareScriptFuncContext(hash func_num, const string& ctx_info);
+    void PrepareScriptFuncContext(hash func_num, string_view ctx_info);
 
     void CacheEnumValues();
 
 
-    void PrepareContext(uint bind_id, const string& ctx_info);
+    void PrepareContext(uint bind_id, string_view ctx_info);
     void SetArgUChar(uchar value);
     void SetArgUShort(ushort value);
     void SetArgUInt(uint value);

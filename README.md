@@ -280,7 +280,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: fix build warnings for all platforms
 * Common: enable threating warnings as errors
 * Common: id and hash to 8 byte integer
-* Common: research about std::string_view
 * Common: research about std::filesystem
 * Common: compile with -fpedantic
 * Common: c-style arrays to std::array
@@ -382,6 +381,7 @@ Please follow these instructions to understand how to use this engine by design:
 * MapLoader: restore supporting of the map old text format
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
+* MsgFiles: pass default to fomsg gets
 * MsgFiles: move loading to constructors
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
@@ -419,7 +419,7 @@ Please follow these instructions to understand how to use this engine by design:
 * AdminPanel: admin panel network to Asio
 * Critter: rename to IsOwnedByPlayer
 * Critter: replace to !IsOwnedByPlayer
-* Critter: !!!
+* Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * Dialogs: check item name on DR_ITEM
 * EntityManager: store player critters in separate collection

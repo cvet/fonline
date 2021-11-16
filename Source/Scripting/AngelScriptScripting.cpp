@@ -166,7 +166,7 @@ struct Property
 #include "ScriptApi.h"
 
 #if FO_ANGELSCRIPT_COMPILER
-#define INIT_ARGS const string& script_path
+#define INIT_ARGS string_view script_path
 struct SCRIPTING_CLASS
 {
     void InitAngelScriptScripting(INIT_ARGS);
@@ -817,7 +817,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 }
 
 #if FO_ANGELSCRIPT_COMPILER
-static void CompileRootModule(asIScriptEngine* engine, const string& script_path);
+static void CompileRootModule(asIScriptEngine* engine, string_view script_path);
 #else
 static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
 #endif
@@ -1069,7 +1069,7 @@ private:
 };
 
 #if FO_ANGELSCRIPT_COMPILER
-static void CompileRootModule(asIScriptEngine* engine, const string& script_path)
+static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
 {
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
 
@@ -1186,17 +1186,17 @@ static void CompileRootModule(asIScriptEngine* engine, const string& script_path
 
     vector<uchar> data;
     DataWriter writer {data};
-    writer.Write((uint)buf.size());
+    writer.Write(static_cast<uint>(buf.size()));
     writer.WritePtr(buf.data(), buf.size());
-    writer.Write((uint)lnt_data.size());
+    writer.Write(static_cast<uint>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
-    auto file = DiskFileSystem::OpenFile(script_path + "b", true);
+    auto file = DiskFileSystem::OpenFile(string(script_path) + "b", true);
     if (!file) {
-        throw ScriptCompilerException("Can't write binary to file", script_path + "b");
+        throw ScriptCompilerException("Can't write binary to file", _str("{}b", script_path));
     }
-    if (!file.Write(data.data(), (uint)data.size())) {
-        throw ScriptCompilerException("Can't write binary to file", script_path + "b");
+    if (!file.Write(data.data(), static_cast<uint>(data.size()))) {
+        throw ScriptCompilerException("Can't write binary to file", _str("{}b", script_path));
     }
 }
 

@@ -396,7 +396,7 @@ FO_API_EPILOG(0)
 
 #if FO_API_ANGELSCRIPT_ONLY
 #if FO_API_GLOBAL_COMMON_FUNC_IMPL
-static void PrintLog(string& log, bool last_call, const std::function<void(const string&)>& log_callback)
+static void PrintLog(string& log, bool last_call, const std::function<void(string_view)>& log_callback)
 {
     // Normalize new lines to \n
     while (true) {
@@ -428,7 +428,7 @@ static void PrintLog(string& log, bool last_call, const std::function<void(const
     }
 }
 
-static auto SystemCall(string command, const std::function<void(const string&)>& log_callback) -> int
+static auto SystemCall(string command, const std::function<void(string_view)>& log_callback) -> int
 {
 #if FO_WINDOWS && !FO_UWP
     HANDLE out_read = nullptr;
@@ -532,7 +532,7 @@ FO_API_GLOBAL_COMMON_FUNC(SystemCall, FO_API_RET(int), FO_API_ARG(string, comman
 FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command))
 {
     auto prefix = command.substr(0, command.find(' '));
-    const auto ret_code = SystemCall(command, [&prefix](const string& line) { WriteLog("{} : {}\n", prefix, line); });
+    const auto ret_code = SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
     FO_API_RETURN(ret_code);
 }
 FO_API_EPILOG(0)
@@ -553,7 +553,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, command) FO_API_ARG_REF_MARSHAL(string,
 {
     output = "";
 
-    FO_API_RETURN(SystemCall(command, [&output](const string& line) {
+    FO_API_RETURN(SystemCall(command, [&output](string_view line) {
         if (!output.empty()) {
             output += "\n";
         }

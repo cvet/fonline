@@ -306,7 +306,7 @@ auto FOMapper::InitIface() -> int
     return 0;
 }
 
-auto FOMapper::IfaceLoadRect(IRect& comp, const char* name) -> bool
+auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) -> bool
 {
     const auto res = IfaceIni.GetStr("", name);
     if (res.empty()) {
@@ -358,7 +358,7 @@ auto FOMapper::AnimLoad(uint name_hash, AtlasType res_type) -> uint
     return index;
 }
 
-auto FOMapper::AnimLoad(const char* fname, AtlasType res_type) -> uint
+auto FOMapper::AnimLoad(string_view fname, AtlasType res_type) -> uint
 {
     auto* anim = ResMngr.GetAnim(_str(fname).toHash(), res_type);
     if (anim == nullptr) {
@@ -1192,7 +1192,7 @@ void FOMapper::MainLoop()
             for (auto [id, cr] : HexMngr.GetCritters()) {
                 if (cr->SprDrawValid) {
                     if (DrawCrExtInfo == 1) {
-                        cr->SetText(_str("|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId()).c_str(), COLOR_TEXT_WHITE, 60000000);
+                        cr->SetText(_str("|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId()), COLOR_TEXT_WHITE, 60000000);
                     }
                     else {
                         cr->SetText("", COLOR_TEXT_WHITE, 60000000);
@@ -1296,10 +1296,10 @@ void FOMapper::RefreshTiles(int tab)
         vector<string> tiles;
         auto tile_files = FileMngr.FilterFiles("", path, include_subdirs);
         while (tile_files.MoveNext()) {
-            tiles.push_back(tile_files.GetCurFileHeader().GetPath());
+            tiles.emplace_back(tile_files.GetCurFileHeader().GetPath());
         }
 
-        std::sort(tiles.begin(), tiles.end(), [](const string& left, const string& right) {
+        std::sort(tiles.begin(), tiles.end(), [](string_view left, string_view right) {
             for (auto lit = left.begin(), rit = right.begin(); lit != left.end() && rit != right.end(); ++lit, ++rit) {
                 const auto lc = tolower(*lit);
                 const auto rc = tolower(*rit);
@@ -1739,8 +1739,7 @@ void FOMapper::IntDraw()
                  "Fps {}\n"
                  "Tile layer {}\n"
                  "{}",
-                ActiveMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : "")
-                .c_str(),
+                ActiveMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
             FT_NOBREAK_LINE, 0, FONT_DEFAULT);
     }
 }
@@ -1811,7 +1810,7 @@ void FOMapper::ObjDraw()
     }
 }
 
-void FOMapper::DrawLine(const string& name, const string& type_name, const string& text, bool is_const, IRect& r)
+void FOMapper::DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r)
 {
     const auto x = r.Left;
     const auto y = r.Top;
@@ -1841,7 +1840,7 @@ void FOMapper::DrawLine(const string& name, const string& type_name, const strin
     r.Bottom += DRAW_NEXT_HEIGHT;
 }
 
-void FOMapper::ObjKeyDown(KeyCode dik, const char* dik_text)
+void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
 {
     if (dik == KeyCode::DIK_RETURN || dik == KeyCode::DIK_NUMPADENTER) {
         if (ObjCurLineInitValue != ObjCurLineValue) {
@@ -3669,7 +3668,7 @@ void FOMapper::ConsoleDraw()
     }
 }
 
-void FOMapper::ConsoleKeyDown(KeyCode dik, const char* dik_text)
+void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 {
     if (dik == KeyCode::DIK_RETURN || dik == KeyCode::DIK_NUMPADENTER) {
         if (ConsoleEdit) {
@@ -3699,7 +3698,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, const char* dik_text)
 
                 // Process command
                 const auto process_command = ScriptSys.ConsoleMessageEvent(ConsoleStr);
-                AddMess(ConsoleStr.c_str());
+                AddMess(ConsoleStr);
                 if (process_command) {
                     ParseCommand(ConsoleStr);
                 }
@@ -3766,7 +3765,7 @@ void FOMapper::ConsoleProcess()
     }
 }
 
-void FOMapper::ParseCommand(const string& command)
+void FOMapper::ParseCommand(string_view command)
 {
     if (command.empty()) {
         return;
@@ -3831,7 +3830,8 @@ void FOMapper::ParseCommand(const string& command)
     }
     // Run script
     else if (command[0] == '#') {
-        istringstream icmd(command.substr(1));
+        const auto command_str = string(command.substr(1));
+        istringstream icmd(command_str);
         string func_name;
         if (!(icmd >> func_name)) {
             AddMess("Function name not typed.");
@@ -3848,7 +3848,7 @@ void FOMapper::ParseCommand(const string& command)
             if (ScriptSys.RunPrepared())
             {
                 string result = *(string*)ScriptSys.GetReturnedRawAddress();
-                AddMess(_str("Result: {}", result).c_str());
+                AddMess(_str("Result: {}", result));
             }
             else
             {
@@ -3897,7 +3897,8 @@ void FOMapper::ParseCommand(const string& command)
     }
     // Other
     else if (command[0] == '*') {
-        istringstream icommand(command.substr(1));
+        const auto icommand_str = string(command.substr(1));
+        istringstream icommand(icommand_str);
         string command_ext;
         if (!(icommand >> command_ext)) {
             return;
@@ -3979,7 +3980,7 @@ void FOMapper::ParseCommand(const string& command)
     }
 }
 
-void FOMapper::AddMess(const char* message_text)
+void FOMapper::AddMess(string_view message_text)
 {
     const string str = _str("|{} - {}\n", COLOR_TEXT, message_text);
 

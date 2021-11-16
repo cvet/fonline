@@ -311,8 +311,8 @@ static void AdminWork(FOServer* server, Session* session)
         else if (!cmd.empty() && cmd[0] == '~') {
             if (server->Started) {
                 auto send_fail = false;
-                LogFunc func = [&admin_name, &session, &send_fail](const string& str) {
-                    auto buf = str;
+                LogFunc func = [&admin_name, &session, &send_fail](string_view str) {
+                    auto buf = string(str);
                     if (buf.empty() || buf.back() != '\n') {
                         buf += "\n";
                     }

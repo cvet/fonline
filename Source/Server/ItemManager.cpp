@@ -245,7 +245,7 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
     // Scripts
     _scriptSys.ItemInitEvent(item, true);
     if (!item->IsDestroyed) {
-        item->SetScript(nullptr, true);
+        item->SetScript("", true);
     }
 
     // Verify destroying
@@ -608,7 +608,7 @@ void ItemManager::UnregisterRadio(Item* radio)
     }
 }
 
-void ItemManager::RadioSendText(Critter* cr, const string& text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels)
+void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels)
 {
     vector<Item*> radios;
     auto items = cr->GetItemsNoLock();
@@ -624,7 +624,7 @@ void ItemManager::RadioSendText(Critter* cr, const string& text, bool unsafe_tex
     }
 }
 
-void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, const string& text, bool unsafe_text, ushort text_msg, uint num_str, const string& lexems)
+void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems)
 {
     // Broadcast
     if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && broadcast_type != RADIO_BROADCAST_WORLD && broadcast_type != RADIO_BROADCAST_MAP && broadcast_type != RADIO_BROADCAST_LOCATION && !(broadcast_type >= 101 && broadcast_type <= 200) /*RADIO_BROADCAST_ZONE*/) {
@@ -785,7 +785,7 @@ auto ItemManager::GetItemsStatistics() const -> string
 
     string result = "Name                                     Count\n";
     for (const auto* proto : protos) {
-        result += _str("{:<40} {:<20}\n", proto->GetName(), _str("{}", proto->InstanceCount).c_str());
+        result += _str("{:<40} {:<20}\n", proto->GetName(), _str("{}", proto->InstanceCount));
     }
     return result;
 }

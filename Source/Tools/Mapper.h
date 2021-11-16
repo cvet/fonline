@@ -189,7 +189,7 @@ public:
     ~FOMapper() = default;
 
     auto InitIface() -> int;
-    auto IfaceLoadRect(IRect& comp, const char* name) -> bool;
+    auto IfaceLoadRect(IRect& comp, string_view name) -> bool;
     void MainLoop();
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
@@ -198,7 +198,7 @@ public:
     void ProcessInputEvent(const InputEvent& event);
 
     auto AnimLoad(uint name_hash, AtlasType res_type) -> uint;
-    auto AnimLoad(const char* fname, AtlasType res_type) -> uint;
+    auto AnimLoad(string_view fname, AtlasType res_type) -> uint;
     auto AnimGetCurSpr(uint anim_id) -> uint;
     auto AnimGetCurSprCnt(uint anim_id) -> uint;
     auto AnimGetSprCount(uint anim_id) -> uint;
@@ -252,20 +252,20 @@ public:
     void BufferPaste(int hx, int hy);
 
     void ObjDraw();
-    void DrawLine(const string& name, const string& type_name, const string& text, bool is_const, IRect& r);
-    void ObjKeyDown(KeyCode dik, const char* dik_text);
+    void DrawLine(string_view name, string_view type_name, string_view text, bool is_const, IRect& r);
+    void ObjKeyDown(KeyCode dik, string_view dik_text);
     void ObjKeyDownApply(Entity* entity);
     void SelectEntityProp(int line);
     auto GetInspectorEntity() -> Entity*;
 
     void ConsoleDraw();
-    void ConsoleKeyDown(KeyCode dik, const char* dik_text);
+    void ConsoleKeyDown(KeyCode dik, string_view dik_text);
     void ConsoleKeyUp(KeyCode dik);
     void ConsoleProcess();
-    void ParseCommand(const string& command);
+    void ParseCommand(string_view command);
 
     void MessBoxGenerate();
-    void AddMess(const char* message_text);
+    void AddMess(string_view message_text);
     void MessBoxDraw();
     auto SaveLogFile() -> bool;
 

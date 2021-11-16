@@ -218,7 +218,7 @@ public:
     auto operator=(RenderEffect&&) noexcept = delete;
     ~RenderEffect() override;
 
-    [[nodiscard]] auto IsSame(const string& name, const string& defines) const -> bool;
+    [[nodiscard]] auto IsSame(string_view name, string_view defines) const -> bool;
     [[nodiscard]] auto CanBatch(const RenderEffect* other) const -> bool;
 
     ProjBuffer ProjBuf {};
@@ -384,14 +384,14 @@ public:
         static const uint MAX_ATLAS_HEIGHT;
         static const uint MAX_BONES;
 
-        using RenderEffectLoader = std::function<vector<uchar>(const string&)>;
+        using RenderEffectLoader = std::function<vector<uchar>(string_view)>;
 
         [[nodiscard]] auto GetTexturePixel(RenderTexture* tex, int x, int y) const -> uint;
         [[nodiscard]] auto GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) const -> vector<uint>;
         [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
 
         [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*;
-        [[nodiscard]] auto CreateEffect(const string& name, const string& defines, const RenderEffectLoader& loader) -> RenderEffect*;
+        [[nodiscard]] auto CreateEffect(string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*;
 
         void UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data);
         void SetRenderTarget(RenderTexture* tex);
@@ -416,7 +416,7 @@ public:
         [[nodiscard]] auto PollEvent(InputEvent& event) -> bool;
 
         void PushEvent(const InputEvent& event);
-        void SetClipboardText(const string& text);
+        void SetClipboardText(string_view text);
     };
 
     struct AppAudio
@@ -480,7 +480,7 @@ class MessageBox final
 public:
     MessageBox() = delete;
 
-    static void ShowErrorMessage(const string& message, const string& traceback);
+    static void ShowErrorMessage(string_view message, string_view traceback);
 };
 
 extern void InitApplication(GlobalSettings& settings);

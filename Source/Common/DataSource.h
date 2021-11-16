@@ -43,7 +43,7 @@ public:
     class Impl;
 
     DataSource() = delete;
-    DataSource(const string& path, bool cache_dirs);
+    DataSource(string_view path, bool cache_dirs);
     DataSource(const DataSource&) = delete;
     DataSource(DataSource&&) noexcept;
     auto operator=(const DataSource&) = delete;
@@ -51,10 +51,10 @@ public:
     ~DataSource();
 
     [[nodiscard]] auto IsDiskDir() const -> bool;
-    [[nodiscard]] auto GetPackName() const -> const string&;
-    [[nodiscard]] auto IsFilePresent(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> bool;
-    [[nodiscard]] auto OpenFile(const string& path, const string& path_lower, uint& size, uint64& write_time) const -> uchar*;
-    [[nodiscard]] auto GetFileNames(const string& path, bool include_subdirs, const string& ext) const -> vector<string>;
+    [[nodiscard]] auto GetPackName() const -> string_view;
+    [[nodiscard]] auto IsFilePresent(string_view path, string_view path_lower, uint& size, uint64& write_time) const -> bool;
+    [[nodiscard]] auto OpenFile(string_view path, string_view path_lower, uint& size, uint64& write_time) const -> uchar*;
+    [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>;
 
 private:
     unique_ptr<Impl> _pImpl {};
