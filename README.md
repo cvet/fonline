@@ -1,6 +1,6 @@
 # FOnline Engine
 
-> Engine currently in completely unusable state due to heavy refactoring.
+> Engine currently in completely unusable state due to heavy refactoring.  
 > Estimated finishing date is middle of 2021.
 
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/cvet/fonline)
@@ -69,15 +69,15 @@ Important note: *Not all from described above features are already implemented, 
 
 ## Usage
 
-Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.
-You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.
-Shell scripts targeted for work under Windows 10 within WSL2 and Ubuntu-20.04 as distro.
-Almost all will be work under native Linuxes but some of scripts (like build.sh win32) must be run only from WSL2 shell because runs Windows binaries.
+Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
+You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
+Shell scripts targeted for work under Windows 10 within WSL2 and Ubuntu-20.04 as distro.  
+Almost all will be work under native Linuxes but some of scripts (like build.sh win32) must be run only from WSL2 shell because runs Windows binaries.  
 So main point of all of this that you build your game fully from source, there is no prebuilt binaries, full control over the process.
 
 ### Workflow
 
-As described above all what you need to build and package your game in one place for different platforms is WSL2.
+As described above all what you need to build and package your game in one place for different platforms is WSL2.  
 You may do it in separate environments (like build Windows binaries in your IDE, build macOS/iOS binaries on macOS and rest on native Linux distro) but better do it in one place.
 
 Process of creating your game in two words looks like this:
@@ -88,7 +88,7 @@ Process of creating your game in two words looks like this:
 * Package built executables and baked resources from steps above to final platform specific bundle (zip, msi, app, apk and etc)
 * Enjoy your shipped game and iterate development
 
-There are couple of shell scripts that help us to do it:
+There are couple of shell scripts that help us to do it:  
 * `BuildTools/prepare-workspace.sh` - prepare our workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
 * `BuildTools/build.sh` - build executable for specific platform
 * `BuildTools/compile-scripts.sh` - compile scripts from scripting layers
@@ -100,7 +100,7 @@ Scripts can accept additional arguments (`build.sh` for example accept platform 
 
 ### Public API
 
-*Todo: write about versioning SemVer https://semver.org and what public API included to itself*
+*Todo: write about versioning SemVer https://semver.org and what public API included to itself*  
 Documents related to public API:
 * [Public API](https://fonline.ru/PUBLIC_API)
 * [Multiplayer Script API](https://fonline.ru/MULTIPLAYER_SCRIPT_API)
@@ -109,39 +109,39 @@ Documents related to public API:
 
 ### Setup
 
-Clone with git this repository.
-Run `./fonline-setup` in the repository root in your PowerShell.
-This script interactively check your system for all requirements and helps to generate new project.
+Clone with git this repository.  
+Run `./fonline-setup` in the repository root in your PowerShell.  
+This script interactively check your system for all requirements and helps to generate new project.  
 *Todo: Provide additional info for non Windows 10 users*
 
 #### Windows Subsystem for Linux
 
-Main point of WSL2 for us that we can run Windows programs from Linux.
-That feature allows unify almost all our build scripts into one environment.
-Minimum version of Windows 10 is 2004 build 19041 from May 2020.
-Recommended Linux distro is [Ununtu-20.04](https://ubuntu.com) on which all build scripts tested.
+Main point of WSL2 for us that we can run Windows programs from Linux.  
+That feature allows unify almost all our build scripts into one environment.  
+Minimum version of Windows 10 is 2004 build 19041 from May 2020.  
+Recommended Linux distro is [Ununtu-20.04](https://ubuntu.com) on which all build scripts tested.  
 You may use other distro but there is no guarantee that it will work out of the box.
 
 #### Visual Studio Code
 
-Engine hosts own Visual Studio Code extension for simplify work with engine stuff.
-In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).
-Extension activates automatically when editor finds any file that contains `fonline` in name of any file at workspace root.
+Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
+In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
+Extension activates automatically when editor finds any file that contains `fonline` in name of any file at workspace root.  
 More about extension usage you can find in [Tutorial](https://fonline.ru/TUTORIAL) document.
 
 #### Package dependencies
 
-Following Linux packages will help us build our game for target platforms.
+Following Linux packages will help us build our game for target platforms.  
 These packages will automatically installed during workspace preparing (i.e. `prepare-workspace.sh`).
-* Common:
+* Common:  
 `clang` `clang-format` `build-essential` `git` `cmake` `python` `wget` `unzip`
-* Building for Linux:
+* Building for Linux:  
 `libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
-* Building for Web:
+* Building for Web:  
 `nodejs` `default-jre`
-* Building for Android:
+* Building for Android:  
 `android-sdk` `openjdk-8-jdk` `ant`
-* macOS/iOS cross-compilation within OSXCross:
+* macOS/iOS cross-compilation within OSXCross:  
 `patch` `lzma-dev` `libxml2-dev` `llvm-dev` `uuid-dev`
 
 Also our build scripts download and install following packages:
@@ -158,12 +158,13 @@ And `fonline-setup.ps1` might install following Windows packages for you *(some 
 * [WiX Toolset](https://wixtoolset.org) - building installation packages (like .msi)
 
 Other stuff used in build pipeline:
+* [Android CMake Toolchain](https://github.com/taka-no-me/android-cmake)
 * [iOS CMake Toolchain](https://github.com/cristeab/ios-cmake)
 * [msicreator](https://github.com/jpakkane/msicreator)
 
 #### Statically linked packages
 
-These packages included to this repository, will compile and link statically to our binaries.
+These packages included to this repository, will compile and link statically to our binaries.  
 They are located in ThirdParty directory.
 
 * ACM by Abel - sound file format reader
@@ -196,11 +197,11 @@ They are located in ThirdParty directory.
 
 ### Footprint
 
-Despite on many third-party libraries that consumed by the whole engine one of the main goal is small final footprint of client/singleplayer output.
-Aim to shift most of things of loading specific image/model/sound/ect file formats at pre publishing steps and later use intermediate binary representation for loading resources in runtime as fast as possible and without additional library dependencies.
-This process in terms of fonline engine called `Bakering`.
-Also as you can see all third-party dependencies linked statically to final executable (except one - proprietary libfbxsdk.dll/so for Baker but the last one is not target for small footprint) and this frees up end user from installing additional runtime to play in your game.
-*Todo: write about memory footprint*
+Despite on many third-party libraries that consumed by the whole engine one of the main goal is small final footprint of client/singleplayer output.  
+Aim to shift most of things of loading specific image/model/sound/ect file formats at pre publishing steps and later use intermediate binary representation for loading resources in runtime as fast as possible and without additional library dependencies.  
+This process in terms of fonline engine called `Bakering`.  
+Also as you can see all third-party dependencies linked statically to final executable (except one - proprietary libfbxsdk.dll/so for Baker but the last one is not target for small footprint) and this frees up end user from installing additional runtime to play in your game.  
+*Todo: write about memory footprint*  
 *Todo: write about network footprint*
 
 ### Tutorial
@@ -328,6 +329,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: remove critter flags
+* Common: remove special OTHER_* params
 * BakerApp: sound and video preprocessing move to baker
 * BakerApp: add dialogs verification during baking
 * ServerApp: fix data racing
@@ -338,6 +340,7 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: GetAnim1/GetAnim2 int to uint return type
 * 3dStuff: fix AtlasType referencing in 3dStuff
 * Client: handle mouse wheel
+* Client: proto player?
 * Client: synchronize effects showing (for example shot and kill)
 * Client: need attention!
 * Client: fix soft scroll if critter teleports
@@ -362,10 +365,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Application: remove GLEW and bind OpenGL functions manually
 * Application: map all framebuffer ext functions
 * Application: recognize tablet mode for Windows 10
+* Application: fix workaround for strange behaviour of button focus
 * Application: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
+* ApplicationHeadless: move different renderers to separate modules
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * Entity: fix proto name recognition
+* Entity: remove EntityType enum, use dynamic cast
 * Entity: use passkey for SetId
 * FileSystem: handle apply file writing
 * GenericUtils: script handling in ConvertParamValue
@@ -376,7 +382,6 @@ Please follow these instructions to understand how to use this engine by design:
 * MapLoader: restore supporting of the map old text format
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
-* MessageBox: fix workaround for strange behaviour of button focus
 * MsgFiles: move loading to constructors
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
@@ -412,23 +417,29 @@ Please follow these instructions to understand how to use this engine by design:
 * ScriptApi: hex coords to single structure (hx, hy -> coord)
 * ScriptApi: remove for better portability (2)
 * AdminPanel: admin panel network to Asio
-* Critter: rework Client class to ClientConnection
+* Critter: rename to IsOwnedByPlayer
+* Critter: replace to !IsOwnedByPlayer
+* Critter: !!!
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * Dialogs: check item name on DR_ITEM
+* EntityManager: store player critters in separate collection
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
+* Player: allow attach many critters to sigle player
 * Server: restore hashes loading
+* Server: move server loop to async processing
 * Server: restore settings (2)
 * Server: disable look distance caching
-* Server: remove from game (2)
+* Server: attach critter to player
 * Server: control max size explicitly, add option to property registration
 * Server: disable send changing field by client to this client
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: rename FOServer to just Server
+* Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
 * ImageBaker: add supporting of APNG file format
@@ -436,7 +447,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Mapper: need attention! (24)
 * Mapper: mapper render iface layer
 * Mapper: rename FOMapper to just Mapper
-
+  
 ## Repository structure
 
 * [BuildTools](https://github.com/cvet/fonline/tree/master/BuildTools) - scripts for automatical build in command line or any ci/cd system
