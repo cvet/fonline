@@ -1,0 +1,211 @@
+.\" $OpenBSD: EVP_PKEY_new.3,v 1.13 2021/03/31 16:48:43 tb Exp $
+.\" full merge up to: OpenSSL 99d63d46 Oct 26 13:56:48 2016 -0400
+.\" selective merge up to: OpenSSL df75c2bf Dec 9 01:02:36 2018 +0100
+.\"
+.\" This file was written by Dr. Stephen Henson <steve@openssl.org>
+.\" and Matt Caswell <matt@openssl.org>.
+.\" Copyright (c) 2002, 2018 The OpenSSL Project.  All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\"
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in
+.\"    the documentation and/or other materials provided with the
+.\"    distribution.
+.\"
+.\" 3. All advertising materials mentioning features or use of this
+.\"    software must display the following acknowledgment:
+.\"    "This product includes software developed by the OpenSSL Project
+.\"    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
+.\"
+.\" 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
+.\"    endorse or promote products derived from this software without
+.\"    prior written permission. For written permission, please contact
+.\"    openssl-core@openssl.org.
+.\"
+.\" 5. Products derived from this software may not be called "OpenSSL"
+.\"    nor may "OpenSSL" appear in their names without prior written
+.\"    permission of the OpenSSL Project.
+.\"
+.\" 6. Redistributions of any form whatsoever must retain the following
+.\"    acknowledgment:
+.\"    "This product includes software developed by the OpenSSL Project
+.\"    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
+.\" EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+.\" PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
+.\" ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+.\" SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+.\" NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+.\" LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+.\" STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+.\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+.\" OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd $Mdocdate: March 31 2021 $
+.Dt EVP_PKEY_NEW 3
+.Os
+.Sh NAME
+.Nm EVP_PKEY_new ,
+.Nm EVP_PKEY_up_ref ,
+.Nm EVP_PKEY_free ,
+.Nm EVP_PKEY_new_CMAC_key ,
+.Nm EVP_PKEY_new_mac_key
+.Nd private key allocation functions
+.Sh SYNOPSIS
+.In openssl/evp.h
+.Ft EVP_PKEY *
+.Fn EVP_PKEY_new void
+.Ft int
+.Fo EVP_PKEY_up_ref
+.Fa "EVP_PKEY *key"
+.Fc
+.Ft void
+.Fo EVP_PKEY_free
+.Fa "EVP_PKEY *key"
+.Fc
+.Ft EVP_PKEY *
+.Fo EVP_PKEY_new_CMAC_key
+.Fa "ENGINE *e"
+.Fa "const unsigned char *priv"
+.Fa "size_t len"
+.Fa "const EVP_CIPHER *cipher"
+.Fc
+.Ft EVP_PKEY *
+.Fo EVP_PKEY_new_mac_key
+.Fa "int type"
+.Fa "ENGINE *e"
+.Fa "const unsigned char *key"
+.Fa "int keylen"
+.Fc
+.Sh DESCRIPTION
+The
+.Vt EVP_PKEY
+structure is used by various OpenSSL functions which require a general
+private key without reference to any particular algorithm.
+.Pp
+The
+.Fn EVP_PKEY_new
+function allocates an empty
+.Vt EVP_PKEY
+structure.
+The reference count is set to 1.
+To add a private or public key to it, use the functions described in
+.Xr EVP_PKEY_set1_RSA 3 .
+.Pp
+.Fn EVP_PKEY_up_ref
+increments the reference count of
+.Fa key
+by 1.
+.Pp
+.Fn EVP_PKEY_free
+decrements the reference count of
+.Fa key
+by 1, and if the reference count reaches zero, frees it up.
+If
+.Fa key
+is a
+.Dv NULL
+pointer, no action occurs.
+.Pp
+.Fn EVP_PKEY_new_CMAC_key
+allocates a new
+.Vt EVP_PKEY
+for the
+.Dv EVP_PKEY_CMAC
+algorithm type.
+If
+.Fa e
+is
+.Pf non- Dv NULL ,
+then the new
+.Vt EVP_PKEY
+is associated with the engine
+.Fa e .
+.Fa priv
+points to the raw private key data
+of length
+.Fa len
+for this
+.Vt EVP_PKEY .
+.Fa cipher
+specifies a cipher algorithm to be used during creation of the CMAC.
+.Fa cipher
+should be a standard encryption only cipher.
+For example, AEAD and XTS ciphers should not be used.
+.Pp
+.Fn EVP_PKEY_new_mac_key
+allocates a new
+.Vt EVP_PKEY .
+If
+.Fa e
+is
+.Pf non- Dv NULL ,
+then the new
+.Vt EVP_PKEY
+structure is associated with the engine
+.Fa e .
+The
+.Fa type
+argument indicates what kind of key this is.
+The value should be a NID for a public key algorithm that supports
+raw private keys, for example
+.Dv EVP_PKEY_HMAC .
+.Fa key
+points to the raw private key data for this
+.Vt EVP_PKEY
+which should be of length
+.Fa keylen .
+The length should be appropriate for the type of the key.
+The public key data will be automatically derived from the given
+private key data (if appropriate for the algorithm type).
+.Sh RETURN VALUES
+.Fn EVP_PKEY_new ,
+.Fn EVP_PKEY_new_CMAC_key ,
+and
+.Fn EVP_PKEY_new_mac_key
+return either the newly allocated
+.Vt EVP_PKEY
+structure or
+.Dv NULL
+if an error occurred.
+.Pp
+.Fn EVP_PKEY_up_ref
+returns 1 for success or 0 for failure.
+.Sh SEE ALSO
+.Xr CMAC_Init 3 ,
+.Xr d2i_PrivateKey 3 ,
+.Xr evp 3 ,
+.Xr EVP_PKEY_asn1_new 3 ,
+.Xr EVP_PKEY_cmp 3 ,
+.Xr EVP_PKEY_CTX_new 3 ,
+.Xr EVP_PKEY_get_default_digest_nid 3 ,
+.Xr EVP_PKEY_meth_new 3 ,
+.Xr EVP_PKEY_print_private 3 ,
+.Xr EVP_PKEY_set1_RSA 3
+.Sh HISTORY
+.Fn EVP_PKEY_new
+and
+.Fn EVP_PKEY_free
+first appeared in SSLeay 0.6.0 and have been available since
+.Ox 2.4 .
+.Pp
+.Fn EVP_PKEY_new_CMAC_key
+first appeared in OpenSSL 1.1.1 and has been available since
+.Ox 6.9 .
+.Pp
+.Fn EVP_PKEY_new_mac_key
+first appeared in OpenSSL 1.0.0 and has been available since
+.Ox 4.9 .
+.Pp
+.Fn EVP_PKEY_up_ref
+first appeared in OpenSSL 1.1.0 and has been available since
+.Ox 6.3 .
