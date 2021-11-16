@@ -115,7 +115,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
-        while (!Data->Settings.Quit) {
+        while (!Data->Settings->Quit) {
             MapperEntry(nullptr);
         }
 

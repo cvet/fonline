@@ -1416,7 +1416,7 @@ FO_API_PROLOG(FO_API_ARG_MARSHAL(string, text) FO_API_ARG_MARSHAL(string, replac
         FO_API_RETURN(text);
     }
 
-    FO_API_RETURN(string(text).replace(pos, replace.length(), _str("{}", i)));
+    FO_API_RETURN(string(text).replace(pos, replace.length(), _str("{}", i).strv()));
 }
 FO_API_EPILOG(0)
 #endif

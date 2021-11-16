@@ -443,7 +443,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
         uint map_index = 0;
         for (auto* map : loc->GetMaps()) {
             result += _str("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity()).strv();
-            result += map->GetScriptId() != 0u ? _str().parseHash(map->GetScriptId()).str() : "";
+            result += map->GetScriptId() != 0u ? _str().parseHash(map->GetScriptId()).strv() : "";
             result += "\n";
             map_index++;
         }

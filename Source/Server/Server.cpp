@@ -452,19 +452,19 @@ void FOServer::DrawGui()
     if (ImGui::Begin("Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         Gui.Stats = "";
         const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
-        Gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*Globals->GetTimeMultiplier()*/);
-        Gui.Stats += _str("Connections: {}\n", Stats.CurOnline);
-        Gui.Stats += _str("Players in game: {}\n", CrMngr.PlayersInGame());
-        Gui.Stats += _str("NPC in game: {}\n", CrMngr.NpcInGame());
-        Gui.Stats += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
-        Gui.Stats += _str("Items: {}\n", ItemMngr.GetItemsCount());
-        Gui.Stats += _str("Cycles per second: {}\n", Stats.Fps);
-        Gui.Stats += _str("Cycle time: {}\n", Stats.CycleTime);
+        Gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*Globals->GetTimeMultiplier()*/).strv();
+        Gui.Stats += _str("Connections: {}\n", Stats.CurOnline).strv();
+        Gui.Stats += _str("Players in game: {}\n", CrMngr.PlayersInGame()).strv();
+        Gui.Stats += _str("NPC in game: {}\n", CrMngr.NpcInGame()).strv();
+        Gui.Stats += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount()).strv();
+        Gui.Stats += _str("Items: {}\n", ItemMngr.GetItemsCount()).strv();
+        Gui.Stats += _str("Cycles per second: {}\n", Stats.Fps).strv();
+        Gui.Stats += _str("Cycle time: {}\n", Stats.CycleTime).strv();
         const auto seconds = Stats.Uptime;
-        Gui.Stats += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
-        Gui.Stats += _str("KBytes Send: {}\n", Stats.BytesSend / 1024);
-        Gui.Stats += _str("KBytes Recv: {}\n", Stats.BytesRecv / 1024);
-        Gui.Stats += _str("Compress ratio: {}", static_cast<double>(Stats.DataReal) / (Stats.DataCompressed != 0 ? Stats.DataCompressed : 1));
+        Gui.Stats += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60).strv();
+        Gui.Stats += _str("KBytes Send: {}\n", Stats.BytesSend / 1024).strv();
+        Gui.Stats += _str("KBytes Recv: {}\n", Stats.BytesRecv / 1024).strv();
+        Gui.Stats += _str("Compress ratio: {}", static_cast<double>(Stats.DataReal) / (Stats.DataCompressed != 0 ? Stats.DataCompressed : 1)).strv();
         ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
     }
     ImGui::End();
@@ -531,7 +531,7 @@ auto FOServer::GetIngamePlayersStatistics() -> string
         auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
         const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : 0, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : 0);
-        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->Name, player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
+        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->Name, player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map").strv();
     }
     return result;
 }

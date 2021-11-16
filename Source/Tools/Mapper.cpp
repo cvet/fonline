@@ -1713,7 +1713,7 @@ void FOMapper::IntDraw()
             if (count == 0u) {
                 count = static_cast<uint>(stab.ItemProtos.size());
             }
-            name += _str(" ({})", count);
+            name += _str(" ({})", count).strv();
             SprMngr.DrawStr(r, name, 0, color, FONT_DEFAULT);
 
             posy -= line_height;
