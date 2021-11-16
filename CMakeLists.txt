@@ -328,6 +328,7 @@ elseif( APPLE AND PLATFORM )
 		list( APPEND FO_BUILD_OPTIONS "-g" )
 	endif()
 	list( APPEND FO_BUILD_OPTIONS "-stdlib=libc++" )
+	list( APPEND FO_COMMON_SYSTEM_LIBS "iconv" ) # Todo: ios iconv workaround for SDL, remove in future updates
 elseif( ANDROID )
 	StatusMessage( "Operating system: Android" )
 	set( FO_OS "Android" )
@@ -879,7 +880,7 @@ if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 endif()
 
 # Asio & Websockets
-if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
+if( ( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND NOT ANDROID )
 	StatusMessage( "+ Asio" )
 	set( FO_ASIO_DIR "ThirdParty/Asio" )
 	include_directories( "${FO_ASIO_DIR}/include" )

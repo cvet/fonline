@@ -142,21 +142,15 @@ function setup_android_ndk()
     rm -rf android-arm-toolchain
     rm -rf android-arm64-toolchain
     rm -rf android-x86-toolchain
-    rm -rf "$ANDROID_NDK_VERSION-linux-x86_64.zip"
+    rm -rf "$ANDROID_NDK_VERSION-linux.zip"
     rm -rf "$ANDROID_NDK_VERSION"
 
     echo "Download Android NDK"
-    wget -qq "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux-x86_64.zip"
+    wget -qq "https://dl.google.com/android/repository/$ANDROID_NDK_VERSION-linux.zip"
     echo "Unzip Android NDK"
-    unzip -qq -o "$ANDROID_NDK_VERSION-linux-x86_64.zip" -d "./"
+    unzip -qq -o "$ANDROID_NDK_VERSION-linux.zip" -d "./"
     mv "$ANDROID_NDK_VERSION" "android-ndk"
-    rm -f "$ANDROID_NDK_VERSION-linux-x86_64.zip"
-
-    echo "Generate Android toolchains"
-    cd android-ndk/build/tools
-    python make_standalone_toolchain.py --arch arm --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-arm-toolchain
-    python make_standalone_toolchain.py --arch arm64 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-arm64-toolchain
-    python make_standalone_toolchain.py --arch x86 --api $ANDROID_NATIVE_API_LEVEL_NUMBER --install-dir ../../../android-x86-toolchain
+    rm -f "$ANDROID_NDK_VERSION-linux.zip"
 }
 
 function generate_maintenance_env()

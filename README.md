@@ -329,6 +329,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: remove critter flags
+* Common: remove special OTHER_* params
 * BakerApp: sound and video preprocessing move to baker
 * BakerApp: add dialogs verification during baking
 * ServerApp: fix data racing
@@ -339,6 +340,7 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: GetAnim1/GetAnim2 int to uint return type
 * 3dStuff: fix AtlasType referencing in 3dStuff
 * Client: handle mouse wheel
+* Client: proto player?
 * Client: synchronize effects showing (for example shot and kill)
 * Client: need attention!
 * Client: fix soft scroll if critter teleports
@@ -363,10 +365,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Application: remove GLEW and bind OpenGL functions manually
 * Application: map all framebuffer ext functions
 * Application: recognize tablet mode for Windows 10
+* Application: fix workaround for strange behaviour of button focus
 * Application: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
+* ApplicationHeadless: move different renderers to separate modules
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * Entity: fix proto name recognition
+* Entity: remove EntityType enum, use dynamic cast
 * Entity: use passkey for SetId
 * FileSystem: handle apply file writing
 * GenericUtils: script handling in ConvertParamValue
@@ -377,7 +382,6 @@ Please follow these instructions to understand how to use this engine by design:
 * MapLoader: restore supporting of the map old text format
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
-* MessageBox: fix workaround for strange behaviour of button focus
 * MsgFiles: move loading to constructors
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
@@ -413,23 +417,29 @@ Please follow these instructions to understand how to use this engine by design:
 * ScriptApi: hex coords to single structure (hx, hy -> coord)
 * ScriptApi: remove for better portability (2)
 * AdminPanel: admin panel network to Asio
-* Critter: rework Client class to ClientConnection
+* Critter: rename to IsOwnedByPlayer
+* Critter: replace to !IsOwnedByPlayer
+* Critter: !!!
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * Dialogs: check item name on DR_ITEM
+* EntityManager: store player critters in separate collection
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
+* Player: allow attach many critters to sigle player
 * Server: restore hashes loading
+* Server: move server loop to async processing
 * Server: restore settings (2)
 * Server: disable look distance caching
-* Server: remove from game (2)
+* Server: attach critter to player
 * Server: control max size explicitly, add option to property registration
 * Server: disable send changing field by client to this client
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
 * Server: rename FOServer to just Server
+* Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
 * ImageBaker: add supporting of APNG file format
