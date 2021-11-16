@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -89,10 +89,8 @@
 @end
 
 
-/* Display a Cocoa message box */
-int
-Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
-{ @autoreleasepool
+static void
+Cocoa_ShowMessageBoxImpl(const SDL_MessageBoxData *messageboxdata, int *buttonid, int *returnValue)
 {
     Cocoa_RegisterApp();
 
@@ -113,7 +111,7 @@ Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
     int i;
     for (i = 0; i < messageboxdata->numbuttons; ++i) {
         const SDL_MessageBoxButtonData *sdlButton;
-		NSButton *button;
+        NSButton *button;
 
         if (messageboxdata->flags & SDL_MESSAGEBOX_BUTTONS_RIGHT_TO_LEFT) {
             sdlButton = &messageboxdata->buttons[messageboxdata->numbuttons - 1 - i];
@@ -133,22 +131,33 @@ Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
 
     SDLMessageBoxPresenter* presenter = [[[SDLMessageBoxPresenter alloc] initWithParentWindow:messageboxdata->window] autorelease];
 
-    [presenter performSelectorOnMainThread:@selector(showAlert:)
-                                withObject:alert
-                             waitUntilDone:YES];
+    [presenter showAlert:alert];
 
-    int returnValue = 0;
     NSInteger clicked = presenter->clicked;
     if (clicked >= NSAlertFirstButtonReturn) {
         clicked -= NSAlertFirstButtonReturn;
         if (messageboxdata->flags & SDL_MESSAGEBOX_BUTTONS_RIGHT_TO_LEFT) {
-			clicked = messageboxdata->numbuttons - 1 - clicked;
-		}
+            clicked = messageboxdata->numbuttons - 1 - clicked;
+        }
         *buttonid = buttons[clicked].buttonid;
+        *returnValue = 0;
     } else {
-        returnValue = SDL_SetError("Did not get a valid `clicked button' id: %ld", (long)clicked);
+        *returnValue = SDL_SetError("Did not get a valid `clicked button' id: %ld", (long)clicked);
     }
+}
 
+/* Display a Cocoa message box */
+int
+Cocoa_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+{ @autoreleasepool
+{
+    __block int returnValue = 0;
+
+    if ([NSThread isMainThread]) {
+        Cocoa_ShowMessageBoxImpl(messageboxdata, buttonid, &returnValue);
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), ^{ Cocoa_ShowMessageBoxImpl(messageboxdata, buttonid, &returnValue); });
+    }
     return returnValue;
 }}
 
