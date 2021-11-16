@@ -76,7 +76,7 @@ elif [ "$1" = "web" ]; then
     cmake --build . --config $CONFIG --parallel
 
 elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86" ]; then
-    export NDK=$FO_WORKSPACE/android-ndk
+    export ANDROID_NDK=$FO_WORKSPACE/android-ndk
 
     if [ "$1" = "android" ]; then
         export ANDROID_ABI=armeabi-v7a

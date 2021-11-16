@@ -120,7 +120,7 @@ elif [ "$TARGET" = "web" ]; then
     cmake --build . --config Debug
 
 elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET" = "android-x86" ]; then
-    export NDK=$FO_WORKSPACE/android-ndk
+    export ANDROID_NDK=$FO_WORKSPACE/android-ndk
 
     if [ "$TARGET" = "android" ]; then
         export ANDROID_ABI=armeabi-v7a
