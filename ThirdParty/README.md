@@ -2,8 +2,8 @@
 
 * Acm - ACM sound format reader
 * AngelScript - [Rev. 2356](https://www.angelcode.com/angelscript/) ([2](http://svn.code.sf.net/p/angelscript/code))
-* Asio - [asio-1.12.2](https://think-async.com/Asio/)
-* Assimp Math Only - [assimp-5.0.1](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
+* Asio - [asio-1.20.0](https://think-async.com/Asio/)
+* Assimp (math only) - [assimp-5.0.1](http://www.assimp.org/) ([2](https://github.com/assimp/assimp))
 * Catch2 - [Catch2-2.12.1](https://github.com/catchorg/Catch2)
 * backward-cpp - [backward-cpp-1.5](https://github.com/bombela/backward-cpp)
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
@@ -20,10 +20,10 @@
 * fmt - [fmt-6.1.2](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
 * imgui - [imgui-docking-04.03.20](https://github.com/ocornut/imgui)
 * libbson - [libbson-1.8.2](http://mongoc.org/libbson/current/index.html)
+* LibreSSL - [3.4.1](https://www.libressl.org/)
 * mongo-c-driver - [mongo-c-driver-1.8.2](https://github.com/mongodb/mongo-c-driver)
 * mono - [mono-5.16.0.209](https://www.mono-project.com/)
 * ogg - [libogg-1.3.1](https://xiph.org/ogg/)
-* openssl - [OpenSSL_1_0_1e-cmake](https://github.com/pol51/OpenSSL-CMake)
 * unqlite - [unqlite-1.1.9](https://unqlite.org/)
-* websocketpp - [websocketpp_0.8.1](https://github.com/zaphoyd/websocketpp)
+* websocketpp - [websocketpp_0.8.2](https://github.com/zaphoyd/websocketpp)
 * zlib - [zlib128](https://www.zlib.net/)

@@ -190,7 +190,7 @@ They are located in ThirdParty directory.
 * [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver
 * [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
-* [openssl](https://www.openssl.org/) - library for network transport security
+* [LibreSSL](https://www.libressl.org/) - library for network transport security
 * [unqlite](https://unqlite.org/) - nosql database engine
 * [websocketpp](https://github.com/zaphoyd/websocketpp) - websocket asio extension
 * [zlib](https://www.zlib.net/) - compression library
