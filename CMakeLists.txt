@@ -355,7 +355,7 @@ elseif( EMSCRIPTEN )
 	if( NOT FO_DEBUG_BUILD )
 		list( APPEND FO_BUILD_OPTIONS "-O3" )
 	else()
-		list( APPEND FO_BUILD_OPTIONS "-g1" ) # Todo: fix compilation with -g4
+		list( APPEND FO_BUILD_OPTIONS "-g1" ) # Todo: fix compilation with -g3
 	endif()
 	list( APPEND FO_BUILD_OPTIONS "-s INITIAL_MEMORY=268435456" ) # 256 Mb
 	list( APPEND FO_BUILD_OPTIONS "-s ABORT_ON_WASM_EXCEPTIONS=1" )
@@ -368,8 +368,7 @@ elseif( EMSCRIPTEN )
 	list( APPEND FO_BUILD_OPTIONS "-s USE_SDL_TTF=0" )
 	list( APPEND FO_BUILD_OPTIONS "-s USE_SDL_NET=0" )
 	list( APPEND FO_BUILD_OPTIONS "-s NO_EXIT_RUNTIME=1" )
-	list( APPEND FO_BUILD_OPTIONS "-s EXPORTED_RUNTIME_METHODS=\"['FS_createPath', 'FS_createDataFile']\"" )
-	list( APPEND FO_BUILD_OPTIONS "-s EXTRA_EXPORTED_RUNTIME_METHODS=\"['intArrayFromString', 'UTF8ToString', 'addRunDependency', 'removeRunDependency', 'stackTrace']\"" )
+	list( APPEND FO_BUILD_OPTIONS "-s EXPORTED_RUNTIME_METHODS=\"['FS_createPath', 'FS_createDataFile', 'intArrayFromString', 'UTF8ToString', 'addRunDependency', 'removeRunDependency', 'stackTrace']\"" )
 	list( APPEND FO_BUILD_OPTIONS "--js-library \"${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/mono/repo/sdks/wasm/library_mono.js\"" )
 	# list( APPEND FO_BUILD_OPTIONS "-s LLD_REPORT_UNDEFINED=1" )
 	list( APPEND FO_BUILD_OPTIONS "--no-heap-copy" )
