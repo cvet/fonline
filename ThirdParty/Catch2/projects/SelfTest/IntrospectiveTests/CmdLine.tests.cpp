@@ -292,6 +292,35 @@ TEST_CASE( "Parse test names and tags", "[command-line][test-spec]" ) {
     }
 }
 
+TEST_CASE("#1905 -- test spec parser properly clears internal state between compound tests", "[command-line][test-spec]") {
+    using Catch::parseTestSpec;
+    using Catch::TestSpec;
+    // We ask for one of 2 different tests and the latter one of them has a , in name that needs escaping
+    TestSpec spec = parseTestSpec(R"("spec . char","spec \, char")");
+
+    REQUIRE(spec.matches(fakeTestCase("spec . char")));
+    REQUIRE(spec.matches(fakeTestCase("spec , char")));
+    REQUIRE_FALSE(spec.matches(fakeTestCase(R"(spec \, char)")));
+}
+
+TEST_CASE("#1912 -- test spec parser handles escaping", "[command-line][test-spec]") {
+    using Catch::parseTestSpec;
+    using Catch::TestSpec;
+
+    SECTION("Various parentheses") {
+        TestSpec spec = parseTestSpec(R"(spec {a} char,spec \[a] char)");
+
+        REQUIRE(spec.matches(fakeTestCase(R"(spec {a} char)")));
+        REQUIRE(spec.matches(fakeTestCase(R"(spec [a] char)")));
+        REQUIRE_FALSE(spec.matches(fakeTestCase("differs but has similar tag", "[a]")));
+    }
+    SECTION("backslash in test name") {
+        TestSpec spec = parseTestSpec(R"(spec \\ char)");
+
+        REQUIRE(spec.matches(fakeTestCase(R"(spec \ char)")));
+    }
+}
+
 TEST_CASE( "Process can be configured on command line", "[config][command-line]" ) {
 
 #ifndef CATCH_CONFIG_DISABLE_MATCHERS
@@ -414,7 +443,31 @@ TEST_CASE( "Process can be configured on command line", "[config][command-line]"
             REQUIRE_THAT(result.errorMessage(), Contains("convert") && Contains("oops"));
 #endif
         }
+
+     SECTION("wait-for-keypress") {
+        SECTION("Accepted options") {
+            using tuple_type = std::tuple<char const*, Catch::WaitForKeypress::When>;
+            auto input = GENERATE(table<char const*, Catch::WaitForKeypress::When>({
+                tuple_type{"never", Catch::WaitForKeypress::Never},
+                tuple_type{"start", Catch::WaitForKeypress::BeforeStart},
+                tuple_type{"exit",  Catch::WaitForKeypress::BeforeExit},
+                tuple_type{"both",  Catch::WaitForKeypress::BeforeStartAndExit},
+            }));
+            CHECK(cli.parse({"test", "--wait-for-keypress", std::get<0>(input)}));
+
+            REQUIRE(config.waitForKeypress == std::get<1>(input));
+        }
+
+        SECTION("invalid options are reported") {
+            auto result = cli.parse({"test", "--wait-for-keypress", "sometimes"});
+            CHECK(!result);
+
+#ifndef CATCH_CONFIG_DISABLE_MATCHERS
+            REQUIRE_THAT(result.errorMessage(), Contains("never") && Contains("both"));
+#endif
+        }
     }
+   }
 
     SECTION("nothrow") {
         SECTION("-e") {
@@ -503,16 +556,22 @@ TEST_CASE( "Process can be configured on command line", "[config][command-line]"
             REQUIRE(config.benchmarkResamples == 20000);
         }
 
-        SECTION("resamples") {
+        SECTION("confidence-interval") {
             CHECK(cli.parse({ "test", "--benchmark-confidence-interval=0.99" }));
 
             REQUIRE(config.benchmarkConfidenceInterval == Catch::Detail::Approx(0.99));
         }
 
-        SECTION("resamples") {
+        SECTION("no-analysis") {
             CHECK(cli.parse({ "test", "--benchmark-no-analysis" }));
 
             REQUIRE(config.benchmarkNoAnalysis);
+        }
+
+        SECTION("warmup-time") {
+            CHECK(cli.parse({ "test", "--benchmark-warmup-time=10" }));
+
+            REQUIRE(config.benchmarkWarmupTime == 10);
         }
     }
 }
