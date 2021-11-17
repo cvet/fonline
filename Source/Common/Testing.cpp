@@ -41,17 +41,24 @@
 #include "Timer.h"
 #include "Version-Include.h"
 
-#if !FO_ANDROID && !FO_WEB && !FO_IOS
-#if __has_include(<bfd.h>)
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+#if !FO_WINDOWS
+#if __has_include(<libunwind.h>)
+#define BACKWARD_HAS_LIBUNWIND 1
+#elif __has_include(<bfd.h>)
 #define BACKWARD_HAS_BFD 1
 #endif
+#endif
 #include "backward.hpp"
+#if FO_WINDOWS
 #undef MessageBox
-#if !FO_WINDOWS
+#endif
+#endif
+
+#if FO_LINUX || FO_MAC
 #include <execinfo.h>
 #include <signal.h>
 #include <sys/utsname.h>
-#endif
 #endif
 
 static const char* ManualDumpAppendix;
@@ -95,14 +102,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         file.Write(_str("Application\n"));
         file.Write(_str("\tName        {}\n", GetAppName()));
         file.Write(_str("\tVersion     {}\n", FO_VERSION_STR));
-
-#if FO_UWP
-        file.Write(_str("\tOS          UWP\n"));
-
-#else
         file.Write(_str("\tOS          Windows\n"));
-#endif
-
         file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
         file.Write(_str("\n"));
 
@@ -190,7 +190,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
-#elif !FO_WINDOWS && !FO_ANDROID && !FO_WEB && !FO_IOS
+#elif FO_LINUX || FO_MAC
 static void TerminationHandler(int signum, siginfo_t* siginfo, void* context);
 
 static struct sigaction OldSIGSEGV;
@@ -333,7 +333,7 @@ void CreateDump(const char* appendix, const char* message)
 
 auto GetStackTrace() -> string
 {
-#if !FO_ANDROID && !FO_WEB && !FO_IOS
+#if FO_WINDOWS || FO_LINUX || FO_MAC
     backward::StackTrace st;
     st.load_here(42);
     backward::Printer st_printer;
