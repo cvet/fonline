@@ -18,7 +18,7 @@
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)
 * fbxsdk - [FBX SDK 2018.1.1](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1)
 * fmt - [fmt-8.0.1](https://fmt.dev/latest/index.html) ([2](https://github.com/fmtlib/fmt))
-* imgui - [imgui-docking-04.03.20](https://github.com/ocornut/imgui)
+* imgui - [imgui-docking-07.20.21](https://github.com/ocornut/imgui)
 * LibreSSL - [3.4.1](https://www.libressl.org/)
 * mongo-c-driver - [mongo-c-driver-1.9.2](https://github.com/mongodb/mongo-c-driver)
 * mono - [mono-5.16.0.209](https://www.mono-project.com/)
