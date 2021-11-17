@@ -210,15 +210,11 @@ class Duration {
     static const uint64_t s_nanosecondsInASecond = 1000 * s_nanosecondsInAMillisecond;
     static const uint64_t s_nanosecondsInAMinute = 60 * s_nanosecondsInASecond;
 
-    uint64_t m_inNanoseconds;
+    double m_inNanoseconds;
     Unit m_units;
 
 public:
-	explicit Duration(double inNanoseconds, Unit units = Unit::Auto)
-        : Duration(static_cast<uint64_t>(inNanoseconds), units) {
-    }
-
-    explicit Duration(uint64_t inNanoseconds, Unit units = Unit::Auto)
+    explicit Duration(double inNanoseconds, Unit units = Unit::Auto)
         : m_inNanoseconds(inNanoseconds),
         m_units(units) {
         if (m_units == Unit::Auto) {
@@ -247,7 +243,7 @@ public:
         case Unit::Minutes:
             return m_inNanoseconds / static_cast<double>(s_nanosecondsInAMinute);
         default:
-            return static_cast<double>(m_inNanoseconds);
+            return m_inNanoseconds;
         }
     }
     auto unitsAsString() const -> std::string {
@@ -366,7 +362,7 @@ ConsoleReporter::ConsoleReporter(ReporterConfig const& config)
         else
         {
             return{
-                { "benchmark name", CATCH_CONFIG_CONSOLE_WIDTH - 32, ColumnInfo::Left },
+                { "benchmark name", CATCH_CONFIG_CONSOLE_WIDTH - 43, ColumnInfo::Left },
                 { "samples      mean       std dev", 14, ColumnInfo::Right },
                 { "iterations   low mean   low std dev", 14, ColumnInfo::Right },
                 { "estimated    high mean  high std dev", 14, ColumnInfo::Right }
@@ -422,8 +418,9 @@ void ConsoleReporter::sectionEnded(SectionStats const& _sectionStats) {
             stream << "\nNo assertions in test case";
         stream << " '" << _sectionStats.sectionInfo.name << "'\n" << std::endl;
     }
-    if (m_config->showDurations() == ShowDurations::Always) {
-        stream << getFormattedDuration(_sectionStats.durationInSeconds) << " s: " << _sectionStats.sectionInfo.name << std::endl;
+    double dur = _sectionStats.durationInSeconds;
+    if (shouldShowDuration(*m_config, dur)) {
+        stream << getFormattedDuration(dur) << " s: " << _sectionStats.sectionInfo.name << std::endl;
     }
     if (m_headerPrinted) {
         m_headerPrinted = false;
@@ -684,8 +681,10 @@ void ConsoleReporter::printSummaryDivider() {
 }
 
 void ConsoleReporter::printTestFilters() {
-    if (m_config->testSpec().hasFilters())
-        stream << Colour(Colour::BrightYellow) << "Filters: " << serializeFilters( m_config->getTestsOrTags() ) << '\n';
+    if (m_config->testSpec().hasFilters()) {
+        Colour guard(Colour::BrightYellow);
+        stream << "Filters: " << serializeFilters(m_config->getTestsOrTags()) << '\n';
+    }
 }
 
 CATCH_REGISTER_REPORTER("console", ConsoleReporter)

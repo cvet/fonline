@@ -3,7 +3,7 @@
 #  cd build
 #  cmake -g "Visual Studio 14 2015" ..
 
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 2.8)
 project(imgui_example_glfw_vulkan C CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -25,17 +25,19 @@ include_directories(${GLFW_DIR}/include)
 
 # Dear ImGui
 set(IMGUI_DIR ../../)
-include_directories(${IMGUI_DIR} ..)
+include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends ..)
 
 # Libraries
-find_library(VULKAN_LIBRARY
-  NAMES vulkan vulkan-1)
-set(LIBRARIES "glfw;${VULKAN_LIBRARY}")
+find_package(Vulkan REQUIRED)
+#find_library(VULKAN_LIBRARY
+  #NAMES vulkan vulkan-1)
+#set(LIBRARIES "glfw;${VULKAN_LIBRARY}")
+set(LIBRARIES "glfw;Vulkan::Vulkan")
 
 # Use vulkan headers from glfw:
 include_directories(${GLFW_DIR}/deps)
 
 file(GLOB sources *.cpp)
 
-add_executable(example_glfw_vulkan ${sources} ${IMGUI_DIR}/examples/imgui_impl_glfw.cpp ${IMGUI_DIR}/examples/imgui_impl_vulkan.cpp ${IMGUI_DIR}/imgui.cpp ${IMGUI_DIR}/imgui_draw.cpp ${IMGUI_DIR}/imgui_demo.cpp ${IMGUI_DIR}/imgui_widgets.cpp)
+add_executable(example_glfw_vulkan ${sources} ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp ${IMGUI_DIR}/imgui.cpp ${IMGUI_DIR}/imgui_draw.cpp ${IMGUI_DIR}/imgui_demo.cpp ${IMGUI_DIR}/imgui_tables.cpp ${IMGUI_DIR}/imgui_widgets.cpp)
 target_link_libraries(example_glfw_vulkan ${LIBRARIES})

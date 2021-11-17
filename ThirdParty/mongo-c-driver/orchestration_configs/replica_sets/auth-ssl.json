@@ -7,12 +7,10 @@
     {
       "procParams": {
         "ipv6": true,
-        "bind_ip": "",
+        "bind_ip": "127.0.0.1,::1",
         "journal": true,
-        "noprealloc": true,
-        "nssize": 1,
         "port": 27017,
-        "smallfiles": true
+        "setParameter" : { "enableTestCommands": 1 }
       },
       "rsParams": {
         "tags": {
@@ -24,12 +22,10 @@
     {
       "procParams": {
         "ipv6": true,
-        "bind_ip": "",
+        "bind_ip": "127.0.0.1,::1",
         "journal": true,
-        "noprealloc": true,
-        "nssize": 1,
         "port": 27018,
-        "smallfiles": true
+        "setParameter" : { "enableTestCommands": 1 }
       },
       "rsParams": {
         "tags": {
@@ -41,12 +37,10 @@
     {
       "procParams": {
         "ipv6": true,
-        "bind_ip": "",
+        "bind_ip": "127.0.0.1,::1",
         "journal": true,
-        "noprealloc": true,
-        "nssize": 1,
         "port": 27019,
-        "smallfiles": true
+        "setParameter" : { "enableTestCommands": 1 }
       },
       "rsParams": {
         "arbiterOnly": true

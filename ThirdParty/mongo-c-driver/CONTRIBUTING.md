@@ -46,6 +46,28 @@ The basics are, in vim:
 
 For all the gory details, see [.clang-format](.clang-format)
 
+### Commit Style
+Commit messages follow this pattern:
+
+```
+CDRIVER-#### lowercase commit message
+```
+
+There's no colon after the ticket number, and no period at the end of the
+subject line. If there's no related Jira ticket, then the message is simply all
+lowercase:
+
+```
+typos in NEWS
+```
+
+We follow [the widely adopted "50/72"
+rule](https://medium.com/@preslavrachev/what-s-with-the-50-72-rule-8a906f61f09c):
+the subject line is ideally only 50 characters, but definitely only 72
+characters. This requires some thoughtful writing but it's worthwhile when
+you're scrolling through commits. The message body can be as large as you want,
+wrapped at 72 columns.
+
 ### Adding a new error code or domain                                              
                                                                                    
 When adding a new error code or domain, you must do the following. This is most
@@ -66,17 +88,44 @@ when adding a new symbol.
 ### Documentation
 
 We strive to document all symbols. See doc/ for documentation examples. If you
-add a new function, add a new .txt file describing the function so that we can
-generate man pages and HTML for it.
+add a new public function, add a new .rst file describing the function so that
+we can generate man pages and HTML for it.
+
+For complex internal functions, comment above the function definition with
+a block comment like the following:
+
+```
+/*--------------------------------------------------------------------------
+ *
+ * mongoc_cmd_parts_append_read_write --
+ *
+ *       Append user-supplied options to @parts->command_extra, taking the
+ *       selected server's max wire version into account.
+ *
+ * Return:
+ *       True if the options were successfully applied. If any options are
+ *       invalid, returns false and fills out @error. In that case @parts is
+ *       invalid and must not be used.
+ *
+ * Side effects:
+ *       May partly apply options before returning an error.
+ *
+ *--------------------------------------------------------------------------
+ */
+```
+
+Public functions do not need these comment blocks, since they are documented in
+the .rst files.
 
 
 ### Testing
 
-To run the entire test suite, including authentication tests,
-start `mongod` with auth enabled:
+To run the entire test suite, including authentication and support for the
+`configureFailPoint` command, start `mongod` with security and test commands
+enabled:
 
 ```
-$ mongod --auth
+$ mongod --auth --setParameter enableTestCommands=1
 ```
 
 In another terminal, use the `mongo` shell to create a user:
@@ -86,18 +135,14 @@ $ mongo --eval "db.createUser({user: 'admin', pwd: 'pass', roles: ['root']})" ad
 ```
 
 Authentication in MongoDB 3.0 and later uses SCRAM-SHA-1, which in turn
-requires a driver built with SSL:
-
-```
-$ ./configure --enable-ssl`
-```
+requires a driver built with SSL.
 
 Set the user and password environment variables, then build and run the tests:
 
 ```
 $ export MONGOC_TEST_USER=admin
 $ export MONGOC_TEST_PASSWORD=pass
-$ make test
+$ ./test-libmongoc
 ```
 
 Additional environment variables:
@@ -113,9 +158,11 @@ Additional environment variables:
 * `MONGOC_TEST_MONITORING_VERBOSE`: set to `on` for verbose output from
   Application Performance Monitoring tests.
 * `MONGOC_TEST_COMPRESSORS=snappy,zlib`: wire protocol compressors to use
+* `MONGOC_TEST_IS_SERVERLESS` (bool): defaults to `false`. Used to indicate
+  that tests are run against a serverless cluster.
 
 If you start `mongod` with SSL, set these variables to configure how
-`make test` connects to it:
+`test-libmongoc` connects to it:
 
 * `MONGOC_TEST_SSL`: set to `on` to connect to the server with SSL.
 * `MONGOC_TEST_SSL_PEM_FILE`: path to a client PEM file.
@@ -167,40 +214,113 @@ If you have started with MongoDB with `--ipv6`, you can test IPv6 with:
 
 * `MONGOC_CHECK_IPV6=on`
 
+The tests for mongodb+srv:// connection strings require some setup, see the
+Initial DNS Seedlist Discovery Spec. By default these connection strings are
+NOT tested, enable them with:
+
+* `MONGOC_TEST_DNS=on` assumes a replica set is running with TLS enabled on ports 27017, 27018, and 27019.
+
+* `MONGOC_TEST_DNS_LOADBALANCED=on` assumes a load balanced sharded cluster is running with mongoses on ports 27017 and 27018 and TLS enabled. The load balancer can be listening on any port.
+
+The mock server timeout threshold for future functions can be set with:
+
+* `MONGOC_TEST_FUTURE_TIMEOUT_MS=<int>`
+
+This is useful for debugging, so future calls don't timeout when stepping through code.
+
+Tests of Client-Side Field Level Encryption require credentials to external KMS providers.
+
+For AWS:
+
+* `MONGOC_TEST_AWS_SECRET_ACCESS_KEY=<string>`
+* `MONGOC_TEST_AWS_ACCESS_KEY_ID=<string>`
+
+An Azure:
+
+* `MONGOC_TEST_AZURE_TENANT_ID=<string>`
+* `MONGOC_TEST_AZURE_CLIENT_ID=<string>`
+* `MONGOC_TEST_AZURE_CLIENT_SECRET=<string>`
+
+For GCP:
+
+* `MONGOC_TEST_GCP_EMAIL=<string>`
+* `MONGOC_TEST_GCP_PRIVATEKEY=<string>`
+
+Tests of Client-Side Field Level Encryption spawn an extra process, "mongocryptd", by default. To bypass this spawning,
+start mongocryptd on port 27020 and set the following:
+
+* `MONGOC_TEST_MONGOCRYPTD_BYPASS_SPAWN=on`
+
+Specification tests may be filtered by their description:
+
+* `MONGOC_JSON_SUBTEST=<string>`
+
+This can be useful in debugging a specific test case in a spec test file with multiple tests.
+
+To test with a declared API version, you can pass the API version using an environment variable:
+
+* `MONGODB_API_VERSION=<string>`
+
+This will ensure that all tests declare the indicated API version when connecting to a server.
+
+To test a load balanced deployment, set the following environment variables:
+
+* `MONGOC_TEST_LOADBALANCED=on`
+* `SINGLE_MONGOS_LB_URI=<string>` to a MongoDB URI with a host of a load balancer fronting one mongos.
+* `MULTI_MONGOS_LB_URI=<string>` to a MongoDB URI with a host of a load balancer fronting multiple mongos processes.
+
 All tests should pass before submitting a patch.
 
 ## Configuring the test runner
 
-The test runner can be configured by declaring the `TEST_ARGS` environment
-variable. The following options can be provided:
-
-```
-    -h, --help    Show this help menu.
-    -f, --no-fork Do not spawn a process per test (abort on first error).
-    -l NAME       Run test by name, e.g. "/Client/command" or "/Client/*".
-    -s, --silent  Suppress all output.
-    -F FILENAME   Write test results (JSON) to FILENAME.
-    -d            Print debug output (useful if a test hangs).
-    -t, --trace   Enable mongoc tracing (useful to debug tests).
-```
-
-`TEST_ARGS` is set to "--no-fork" by default, meaning that the suite aborts on
-the first test failure. Use "--fork" to continue after failures.
+The test runner can be configured with command-line options. Run `test-libmongoc
+--help` for details.
 
 To run just a specific portion of the test suite use the -l option like so:
 
 ```
-$ make test TEST_ARGS="-l /server_selection/*"
+$ ./test-libmongoc -l "/server_selection/*"
 ```
 
 The full list of tests is shown in the help.
 
-## Debugging failed tests
+## Creating and checking a distribution tarball
 
-The easiest way to debug a failed tests is to use the `debug` make target:
+The `make distcheck` command can be used to confirm that any modifications are
+able to be packaged into the distribution tarball and that the resulting
+distribution tarball can be used to successfully build the project.
 
-```
-$ make debug TEST_ARGS="-l /WriteConcern/bson_omits_defaults"
-```
+A failure of the `make distcheck` target is an indicator of an oversight in the
+modification to the project. For example, if a new source file is added to the
+project but it is not added to the proper distribution list, it is possible that
+the distribution tarball will be created without that file. An attempt to build
+the project without the file is likely to fail.
 
-This will build all dependencies and leave you in a debugger ready to run the test.
+When `make distcheck` is invoked, several things happen. The `dist` target is
+executed to create a distribution tarball. Then the tarball is unpacked,
+configured (with an invocation of `cmake`), built (by calling `make`), installed
+(by calling `make install`), and tested (by calling `make check`). Three
+environment variables can be used to modify these steps.
+
+To adjust the options passed to `make` during the build step, set:
+
+* `DISTCHECK_BUILD_OPTS`
+
+If this variable is not set, then `make` is called with a default of "-j 8".
+
+To adjust the options passed to `make install` during the installation step,
+set:
+
+* `DISTCHECK_INSTALL_OPTS`
+
+To adjust the options passed to `make check` during the test step, set:
+
+* `DISTCHECK_CHECK_OPTS`
+
+Remember, if you want to modify the top-level `make` invocation, you will need
+to pass options on the command line as normal.
+
+For example, the command `make -j 6 distcheck DISTCHECK_BUILD_OPTS="-j 4"` will
+call the standard sequence of targets depended upon by `distcheck` with a
+parallelism level of 6, while the build step that is later called by the
+`distcheck` target will be executed with a parallelism level of 4.

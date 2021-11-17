@@ -2,7 +2,7 @@
 // blocking_token_tcp_client.cpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2018 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,13 +22,17 @@
 
 using asio::ip::tcp;
 
+// We will use our sockets only with an io_context.
+using tcp_socket = asio::basic_stream_socket<
+    tcp, asio::io_context::executor_type>;
+
 //----------------------------------------------------------------------
 
 // A custom completion token that makes asynchronous operations behave as
 // though they are blocking calls with a timeout.
 struct close_after
 {
-  close_after(std::chrono::steady_clock::duration t, tcp::socket& s)
+  close_after(std::chrono::steady_clock::duration t, tcp_socket& s)
     : timeout_(t), socket_(s)
   {
   }
@@ -37,7 +41,7 @@ struct close_after
   std::chrono::steady_clock::duration timeout_;
 
   // The socket to be closed if the operation does not complete in time.
-  tcp::socket& socket_;
+  tcp_socket& socket_;
 };
 
 namespace asio {
@@ -93,7 +97,8 @@ public:
   // use this function to run the io_context until the operation is complete.
   return_type get()
   {
-    asio::io_context& io_context = socket_.get_executor().context();
+    asio::io_context& io_context = asio::query(
+        socket_.get_executor(), asio::execution::context);
 
     // Restart the io_context, as it may have been left in the "stopped" state
     // by a previous operation.
@@ -124,7 +129,7 @@ public:
 
 private:
   std::chrono::steady_clock::duration timeout_;
-  tcp::socket& socket_;
+  tcp_socket& socket_;
   std::error_code error_;
   T t_;
 };
@@ -148,7 +153,7 @@ int main(int argc, char* argv[])
     // Resolve the host name and service to a list of endpoints.
     auto endpoints = tcp::resolver(io_context).resolve(argv[1], argv[2]);
 
-    tcp::socket socket(io_context);
+    tcp_socket socket(io_context);
 
     // Run an asynchronous connect operation with a timeout.
     asio::async_connect(socket, endpoints,

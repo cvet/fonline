@@ -1,5 +1,6 @@
 /*
- * Copyright 2019-2020 Hans-Kristian Arntzen
+ * Copyright 2019-2021 Hans-Kristian Arntzen
+ * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,6 +13,12 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ */
+
+/*
+ * At your option, you may choose to accept this material under either:
+ *  1. The Apache License, Version 2.0, found at <http://www.apache.org/licenses/LICENSE-2.0>, or
+ *  2. The MIT License, found at <http://opensource.org/licenses/MIT>.
  */
 
 #ifndef SPIRV_CROSS_CONTAINERS_HPP
@@ -63,7 +70,8 @@ public:
 private:
 #if defined(_MSC_VER) && _MSC_VER < 1900
 	// MSVC 2013 workarounds, sigh ...
-	union {
+	union
+	{
 		char aligned_char[sizeof(T) * N];
 		double dummy_aligner;
 	} u;
@@ -202,14 +210,17 @@ public:
 		buffer_capacity = N;
 	}
 
-	SmallVector(const T *arg_list_begin, const T *arg_list_end) SPIRV_CROSS_NOEXCEPT
-	    : SmallVector()
+	SmallVector(const T *arg_list_begin, const T *arg_list_end) SPIRV_CROSS_NOEXCEPT : SmallVector()
 	{
 		auto count = size_t(arg_list_end - arg_list_begin);
 		reserve(count);
 		for (size_t i = 0; i < count; i++, arg_list_begin++)
 			new (&this->ptr[i]) T(*arg_list_begin);
 		this->buffer_size = count;
+	}
+
+	SmallVector(std::initializer_list<T> init) SPIRV_CROSS_NOEXCEPT : SmallVector(init.begin(), init.end())
+	{
 	}
 
 	SmallVector(SmallVector &&other) SPIRV_CROSS_NOEXCEPT : SmallVector()
@@ -247,8 +258,7 @@ public:
 		return *this;
 	}
 
-	SmallVector(const SmallVector &other) SPIRV_CROSS_NOEXCEPT
-	    : SmallVector()
+	SmallVector(const SmallVector &other) SPIRV_CROSS_NOEXCEPT : SmallVector()
 	{
 		*this = other;
 	}
@@ -266,8 +276,7 @@ public:
 		return *this;
 	}
 
-	explicit SmallVector(size_t count) SPIRV_CROSS_NOEXCEPT
-	    : SmallVector()
+	explicit SmallVector(size_t count) SPIRV_CROSS_NOEXCEPT : SmallVector()
 	{
 		resize(count);
 	}
@@ -330,8 +339,9 @@ public:
 			size_t target_capacity = buffer_capacity;
 			if (target_capacity == 0)
 				target_capacity = 1;
-			if (target_capacity < N)
-				target_capacity = N;
+
+			// Weird parens works around macro issues on Windows if NOMINMAX is not used.
+			target_capacity = (std::max)(target_capacity, N);
 
 			// Need to ensure there is a POT value of target capacity which is larger than count,
 			// otherwise this will overflow.

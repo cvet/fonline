@@ -7,8 +7,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
-    
-    <title>Contents &mdash; fmt 6.1.2 documentation</title>
+    <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Contents &mdash; fmt 8.0.1 documentation</title>
     
     <link rel="stylesheet" href="_static/basic.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -17,30 +18,31 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '6.1.2',
+        VERSION:     '8.0.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX:  ''
+        SOURCELINK_SUFFIX:  '.txt'
       };
     </script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="next" title="Usage" href="usage.html" />
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
 <meta name="description" content="Small, safe and fast formatting library">
 <meta name="keywords" content="C++, formatting, printf, string, library">
 <meta name="author" content="Victor Zverovich">
 <link rel="stylesheet" href="_static/fmt.css">
 
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-20116650-4"></script>
 <script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();
-    a=s.createElement(o),m=s.getElementsByTagName(o)[0];a.async=1;
-    a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-  ga('create', 'UA-20116650-4', 'fmtlib.net');
-  ga('send', 'pageview');
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-20116650-4');
 </script>
 
   </head>
@@ -66,15 +68,15 @@
           <ul class="nav navbar-nav">
             <li class="dropdown">
               <a href="#" class="dropdown-toggle" data-toggle="dropdown"
-                 role="button" aria-expanded="false">6.1.2
+                 role="button" aria-expanded="false">8.0.1
                 <span class="caret"></span></a>
               <ul class="dropdown-menu" role="menu">
                 
-                <li><a href="https://fmt.dev/6.1.2">6.1.2</a></li>
+                <li><a href="https://fmt.dev/8.0.1">8.0.1</a></li>
                 
-                <li><a href="https://fmt.dev/6.1.1">6.1.1</a></li>
+                <li><a href="https://fmt.dev/8.0.0">8.0.0</a></li>
                 
-                <li><a href="https://fmt.dev/6.1.0">6.1.0</a></li>
+                <li><a href="https://fmt.dev/7.1.3">7.1.3</a></li>
                 
               </ul>
             </li>
@@ -124,7 +126,7 @@
 
     <div class="content">
       
-  <div class="section" id="contents">
+  <section id="contents">
 <h1>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
@@ -132,8 +134,11 @@
 <li class="toctree-l2"><a class="reference internal" href="usage.html#building-the-library">Building the Library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#installing-the-library">Installing the Library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#usage-with-cmake">Usage with CMake</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#usage-with-build2">Usage with build2</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#building-the-documentation">Building the Documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#conda">Conda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#vcpkg">Vcpkg</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#lhelper">LHelper</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#android-ndk">Android NDK</a></li>
 <li class="toctree-l2"><a class="reference internal" href="usage.html#homebrew">Homebrew</a></li>
 </ul>
@@ -143,18 +148,24 @@
 <li class="toctree-l2"><a class="reference internal" href="api.html#format-api">Format API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#ranges-and-tuple-formatting">Ranges and Tuple Formatting</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api.html#date-and-time-formatting">Date and Time Formatting</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#std-ostream-support"><code class="docutils literal"><span class="pre">std::ostream</span></code> Support</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api.html#printf-formatting"><code class="docutils literal"><span class="pre">printf</span></code> Formatting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#format-string-compilation">Format string compilation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#terminal-color-and-text-style">Terminal color and text style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#system-apis">System APIs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#std-ostream-support"><code class="docutils literal notranslate"><span class="pre">std::ostream</span></code> Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#printf-formatting"><code class="docutils literal notranslate"><span class="pre">printf</span></code> Formatting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#wchar-t-support"><code class="docutils literal notranslate"><span class="pre">wchar_t</span></code> Support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#compatibility-with-c-20-std-format">Compatibility with C++20 <code class="docutils literal notranslate"><span class="pre">std::format</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="syntax.html">Format String Syntax</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="syntax.html#format-specification-mini-language">Format Specification Mini-Language</a></li>
+<li class="toctree-l2"><a class="reference internal" href="syntax.html#chrono-format-specifications">Chrono Format Specifications</a></li>
 <li class="toctree-l2"><a class="reference internal" href="syntax.html#format-examples">Format Examples</a></li>
 </ul>
 </li>
 </ul>
 </div>
-</div>
+</section>
 
 
     </div>
@@ -165,7 +176,7 @@
 
     <div class="footer" role="contentinfo">
         &copy; Copyright 2012-present, Victor Zverovich.
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.1+.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.3.0.
     </div>
 
 <script src="_static/bootstrap.min.js"></script>

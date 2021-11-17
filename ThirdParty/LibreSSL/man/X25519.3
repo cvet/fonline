@@ -1,0 +1,101 @@
+.\" $OpenBSD: X25519.3,v 1.5 2019/08/19 13:08:26 schwarze Exp $
+.\" contains some text from: BoringSSL curve25519.h, curve25519.c
+.\" content also checked up to: OpenSSL f929439f Mar 15 12:19:16 2018 +0000
+.\"
+.\" Copyright (c) 2015 Google Inc.
+.\" Copyright (c) 2018 Ingo Schwarze <schwarze@openbsd.org>
+.\"
+.\" Permission to use, copy, modify, and/or distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+.\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+.\" OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd $Mdocdate: August 19 2019 $
+.Dt X25519 3
+.Os
+.Sh NAME
+.Nm X25519 ,
+.Nm X25519_keypair
+.Nd Elliptic Curve Diffie-Hellman primitive based on Curve25519
+.Sh SYNOPSIS
+.In openssl/curve25519.h
+.Ft int
+.Fo X25519
+.Fa "uint8_t out_shared_key[X25519_KEY_LENGTH]"
+.Fa "const uint8_t private_key[X25519_KEY_LENGTH]"
+.Fa "const uint8_t peer_public_value[X25519_KEY_LENGTH]"
+.Fc
+.Ft void
+.Fo X25519_keypair
+.Fa "uint8_t out_public_value[X25519_KEY_LENGTH]"
+.Fa "uint8_t out_private_key[X25519_KEY_LENGTH]"
+.Fc
+.Sh DESCRIPTION
+Curve25519 is an elliptic curve over a prime field specified in RFC 7748.
+The prime field is defined by the prime number 2^255 - 19.
+.Pp
+.Fn X25519
+is the Diffie-Hellman primitive built from Curve25519 as described
+in RFC 7748 section 5.
+Section 6.1 describes the intended use in an Elliptic Curve Diffie-Hellman
+(ECDH) protocol.
+.Pp
+.Fn X25519
+writes a shared key to
+.Fa out_shared_key
+that is calculated from the given
+.Fa private_key
+and the
+.Fa peer_public_value
+by scalar multiplication.
+Do not use the shared key directly, rather use a key derivation
+function and also include the two public values as inputs.
+.Pp
+.Fn X25519_keypair
+sets
+.Fa out_public_value
+and
+.Fa out_private_key
+to a freshly generated public/private key pair.
+First, the
+.Fa out_private_key
+is generated with
+.Xr arc4random_buf 3 .
+Then, the opposite of the masking described in RFC 7748 section 5
+is applied to it to make sure that the generated private key is never
+correctly masked.
+The purpose is to cause incorrect implementations on the peer side
+to consistently fail.
+Correct implementations will decode the key correctly even when it is
+not correctly masked.
+Finally, the
+.Fa out_public_value
+is calculated from the
+.Fa out_private_key
+by multiplying it with the Montgomery base point
+.Vt uint8_t u[32] No = Brq 9 .
+.Pp
+The size of a public and private key is
+.Dv X25519_KEY_LENGTH No = 32
+bytes each.
+.Sh RETURN VALUES
+.Fn X25519
+returns 1 on success or 0 on error.
+Failure can occur when the input is a point of small order.
+.Sh SEE ALSO
+.Xr ECDH_compute_key 3
+.Rs
+.%A D. J. Bernstein
+.%R A state-of-the-art Diffie-Hellman function:\
+    How do I use Curve25519 in my own software?
+.%U http://cr.yp.to/ecdh.html
+.Re
+.Sh STANDARDS
+RFC 7748: Elliptic Curves for Security

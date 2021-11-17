@@ -27,6 +27,7 @@ set(TEST_SOURCES
         ${SELF_TEST_DIR}/IntrospectiveTests/StringManip.tests.cpp
         ${SELF_TEST_DIR}/IntrospectiveTests/Xml.tests.cpp
         ${SELF_TEST_DIR}/IntrospectiveTests/ToString.tests.cpp
+        ${SELF_TEST_DIR}/TimingTests/Sleep.tests.cpp
         ${SELF_TEST_DIR}/UsageTests/Approx.tests.cpp
         ${SELF_TEST_DIR}/UsageTests/BDD.tests.cpp
         ${SELF_TEST_DIR}/UsageTests/Benchmark.tests.cpp
@@ -123,6 +124,7 @@ set(INTERNAL_HEADERS
         ${HEADER_DIR}/internal/catch_common.h
         ${HEADER_DIR}/internal/catch_compiler_capabilities.h
         ${HEADER_DIR}/internal/catch_config.hpp
+        ${HEADER_DIR}/internal/catch_config_uncaught_exceptions.hpp
         ${HEADER_DIR}/internal/catch_console_colour.h
         ${HEADER_DIR}/internal/catch_context.h
         ${HEADER_DIR}/internal/catch_debug_console.h
@@ -417,6 +419,33 @@ set_tests_properties(FilteredSection-1 PROPERTIES FAIL_REGULAR_EXPRESSION "No te
 add_test(NAME FilteredSection-2 COMMAND $<TARGET_FILE:SelfTest> \#1394\ nested -c NestedRunSection -c s1)
 set_tests_properties(FilteredSection-2 PROPERTIES FAIL_REGULAR_EXPRESSION "No tests ran")
 
+add_test(
+  NAME
+    FilteredSection::GeneratorsDontCauseInfiniteLoop-1
+  COMMAND
+    $<TARGET_FILE:SelfTest> "#2025: original repro" -c "fov_0"
+)
+set_tests_properties(FilteredSection::GeneratorsDontCauseInfiniteLoop-1
+  PROPERTIES
+    PASS_REGULAR_EXPRESSION "inside with fov: 0" # This should happen
+    FAIL_REGULAR_EXPRESSION "inside with fov: 1" # This would mean there was no filtering
+)
+
+# GENERATE between filtered sections (both are selected)
+add_test(
+  NAME
+    FilteredSection::GeneratorsDontCauseInfiniteLoop-2
+  COMMAND
+    $<TARGET_FILE:SelfTest> "#2025: same-level sections"
+    -c "A"
+    -c "B"
+)
+set_tests_properties(FilteredSection::GeneratorsDontCauseInfiniteLoop-2
+  PROPERTIES
+    PASS_REGULAR_EXPRESSION "All tests passed \\(4 assertions in 1 test case\\)"
+)
+
+
 # AppVeyor has a Python 2.7 in path, but doesn't have .py files as autorunnable
 add_test(NAME ApprovalTests COMMAND ${PYTHON_EXECUTABLE} ${CATCH_DIR}/scripts/approvalTests.py $<TARGET_FILE:SelfTest>)
 set_tests_properties(ApprovalTests PROPERTIES FAIL_REGULAR_EXPRESSION "Results differed")
@@ -451,6 +480,8 @@ set_tests_properties(TestsInFile::InvalidTestNames-1 PROPERTIES PASS_REGULAR_EXP
 add_test(NAME TestsInFile::InvalidTestNames-2 COMMAND $<TARGET_FILE:SelfTest> "-f ${CATCH_DIR}/projects/SelfTest/Misc/invalid-test-names.input")
 set_tests_properties(TestsInFile::InvalidTestNames-2 PROPERTIES PASS_REGULAR_EXPRESSION "No tests ran")
 
+add_test(NAME RandomTestOrdering COMMAND ${PYTHON_EXECUTABLE}
+  ${CATCH_DIR}/projects/TestScripts/testRandomOrder.py $<TARGET_FILE:SelfTest>)
 
 if (CATCH_USE_VALGRIND)
     add_test(NAME ValgrindRunTests COMMAND valgrind --leak-check=full --error-exitcode=1 $<TARGET_FILE:SelfTest>)

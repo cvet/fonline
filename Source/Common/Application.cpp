@@ -2159,10 +2159,10 @@ void Application::AppAudio::UnlockDevice()
     SDL_UnlockAudioDevice(AudioDeviceId);
 }
 
-void MessageBox::ShowErrorMessage(string_view message, string_view traceback)
+void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
 {
 #if FO_WEB || FO_ANDROID || FO_IOS
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "FOnline Error", string(message).c_str(), nullptr);
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, string(title).c_str(), string(message).c_str(), nullptr);
 
 #else
     auto verb_message = string(message);
@@ -2195,11 +2195,13 @@ void MessageBox::ShowErrorMessage(string_view message, string_view traceback)
     close_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
 #endif
 
+    const auto title_str = string(title);
+
     const SDL_MessageBoxButtonData buttons[] = {close_button, copy_button};
     SDL_MessageBoxData data;
     SDL_zero(data);
     data.flags = SDL_MESSAGEBOX_ERROR;
-    data.title = "FOnline Error";
+    data.title = title_str.c_str();
     data.message = verb_message.c_str();
     data.numbuttons = 2;
     data.buttons = buttons;

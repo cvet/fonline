@@ -104,14 +104,16 @@ noinst_PROGRAMS = allocation/server$(EXEEXT) \
 	executors/pipeline$(EXEEXT) \
 	executors/priority_scheduler$(EXEEXT) \
 	futures/daytime_client$(EXEEXT) \
+	handler_tracking/async_tcp_echo_server$(EXEEXT) \
 	http/server/http_server$(EXEEXT) \
 	invocation/prioritised_handlers$(EXEEXT) \
 	iostreams/http_client$(EXEEXT) multicast/receiver$(EXEEXT) \
 	multicast/sender$(EXEEXT) nonblocking/third_party_lib$(EXEEXT) \
 	operations/composed_1$(EXEEXT) operations/composed_2$(EXEEXT) \
 	operations/composed_3$(EXEEXT) operations/composed_4$(EXEEXT) \
-	operations/composed_5$(EXEEXT) socks4/sync_client$(EXEEXT) \
-	timeouts/async_tcp_client$(EXEEXT) \
+	operations/composed_5$(EXEEXT) operations/composed_6$(EXEEXT) \
+	operations/composed_7$(EXEEXT) operations/composed_8$(EXEEXT) \
+	socks4/sync_client$(EXEEXT) timeouts/async_tcp_client$(EXEEXT) \
 	timeouts/blocking_tcp_client$(EXEEXT) \
 	timeouts/blocking_token_tcp_client$(EXEEXT) \
 	timeouts/blocking_udp_client$(EXEEXT) timeouts/server$(EXEEXT) \
@@ -285,6 +287,13 @@ futures_daytime_client_OBJECTS = $(am_futures_daytime_client_OBJECTS)
 futures_daytime_client_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@futures_daytime_client_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
+am_handler_tracking_async_tcp_echo_server_OBJECTS =  \
+	handler_tracking/async_tcp_echo_server.$(OBJEXT)
+handler_tracking_async_tcp_echo_server_OBJECTS =  \
+	$(am_handler_tracking_async_tcp_echo_server_OBJECTS)
+handler_tracking_async_tcp_echo_server_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@handler_tracking_async_tcp_echo_server_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
 am_http_server_http_server_OBJECTS = http/server/connection.$(OBJEXT) \
 	http/server/connection_manager.$(OBJEXT) \
 	http/server/main.$(OBJEXT) http/server/mime_types.$(OBJEXT) \
@@ -377,6 +386,21 @@ am_operations_composed_5_OBJECTS = operations/composed_5.$(OBJEXT)
 operations_composed_5_OBJECTS = $(am_operations_composed_5_OBJECTS)
 operations_composed_5_LDADD = $(LDADD)
 @SEPARATE_COMPILATION_TRUE@operations_composed_5_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_operations_composed_6_OBJECTS = operations/composed_6.$(OBJEXT)
+operations_composed_6_OBJECTS = $(am_operations_composed_6_OBJECTS)
+operations_composed_6_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@operations_composed_6_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_operations_composed_7_OBJECTS = operations/composed_7.$(OBJEXT)
+operations_composed_7_OBJECTS = $(am_operations_composed_7_OBJECTS)
+operations_composed_7_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@operations_composed_7_DEPENDENCIES =  \
+@SEPARATE_COMPILATION_TRUE@	libasio.a
+am_operations_composed_8_OBJECTS = operations/composed_8.$(OBJEXT)
+operations_composed_8_OBJECTS = $(am_operations_composed_8_OBJECTS)
+operations_composed_8_LDADD = $(LDADD)
+@SEPARATE_COMPILATION_TRUE@operations_composed_8_DEPENDENCIES =  \
 @SEPARATE_COMPILATION_TRUE@	libasio.a
 am_socks4_sync_client_OBJECTS = socks4/sync_client.$(OBJEXT)
 socks4_sync_client_OBJECTS = $(am_socks4_sync_client_OBJECTS)
@@ -475,6 +499,7 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	fork/$(DEPDIR)/daemon.Po \
 	fork/$(DEPDIR)/process_per_connection.Po \
 	futures/$(DEPDIR)/daytime_client.Po \
+	handler_tracking/$(DEPDIR)/async_tcp_echo_server.Po \
 	http/server/$(DEPDIR)/connection.Po \
 	http/server/$(DEPDIR)/connection_manager.Po \
 	http/server/$(DEPDIR)/main.Po \
@@ -496,6 +521,9 @@ am__depfiles_remade = ../../$(DEPDIR)/asio.Po \
 	operations/$(DEPDIR)/composed_3.Po \
 	operations/$(DEPDIR)/composed_4.Po \
 	operations/$(DEPDIR)/composed_5.Po \
+	operations/$(DEPDIR)/composed_6.Po \
+	operations/$(DEPDIR)/composed_7.Po \
+	operations/$(DEPDIR)/composed_8.Po \
 	socks4/$(DEPDIR)/sync_client.Po spawn/$(DEPDIR)/echo_server.Po \
 	spawn/$(DEPDIR)/parallel_grep.Po ssl/$(DEPDIR)/client.Po \
 	ssl/$(DEPDIR)/server.Po timeouts/$(DEPDIR)/async_tcp_client.Po \
@@ -532,6 +560,7 @@ SOURCES = $(libasio_a_SOURCES) $(allocation_server_SOURCES) \
 	$(executors_priority_scheduler_SOURCES) $(fork_daemon_SOURCES) \
 	$(fork_process_per_connection_SOURCES) \
 	$(futures_daytime_client_SOURCES) \
+	$(handler_tracking_async_tcp_echo_server_SOURCES) \
 	$(http_server_http_server_SOURCES) \
 	$(invocation_prioritised_handlers_SOURCES) \
 	$(iostreams_http_client_SOURCES) $(local_connect_pair_SOURCES) \
@@ -543,7 +572,10 @@ SOURCES = $(libasio_a_SOURCES) $(allocation_server_SOURCES) \
 	$(operations_composed_2_SOURCES) \
 	$(operations_composed_3_SOURCES) \
 	$(operations_composed_4_SOURCES) \
-	$(operations_composed_5_SOURCES) $(socks4_sync_client_SOURCES) \
+	$(operations_composed_5_SOURCES) \
+	$(operations_composed_6_SOURCES) \
+	$(operations_composed_7_SOURCES) \
+	$(operations_composed_8_SOURCES) $(socks4_sync_client_SOURCES) \
 	$(spawn_echo_server_SOURCES) $(spawn_parallel_grep_SOURCES) \
 	$(ssl_client_SOURCES) $(ssl_server_SOURCES) \
 	$(timeouts_async_tcp_client_SOURCES) \
@@ -568,6 +600,7 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(am__fork_daemon_SOURCES_DIST) \
 	$(am__fork_process_per_connection_SOURCES_DIST) \
 	$(futures_daytime_client_SOURCES) \
+	$(handler_tracking_async_tcp_echo_server_SOURCES) \
 	$(http_server_http_server_SOURCES) \
 	$(invocation_prioritised_handlers_SOURCES) \
 	$(iostreams_http_client_SOURCES) \
@@ -581,7 +614,10 @@ DIST_SOURCES = $(am__libasio_a_SOURCES_DIST) \
 	$(operations_composed_2_SOURCES) \
 	$(operations_composed_3_SOURCES) \
 	$(operations_composed_4_SOURCES) \
-	$(operations_composed_5_SOURCES) $(socks4_sync_client_SOURCES) \
+	$(operations_composed_5_SOURCES) \
+	$(operations_composed_6_SOURCES) \
+	$(operations_composed_7_SOURCES) \
+	$(operations_composed_8_SOURCES) $(socks4_sync_client_SOURCES) \
 	$(am__spawn_echo_server_SOURCES_DIST) \
 	$(am__spawn_parallel_grep_SOURCES_DIST) \
 	$(am__ssl_client_SOURCES_DIST) $(am__ssl_server_SOURCES_DIST) \
@@ -745,6 +781,7 @@ executors_fork_join_SOURCES = executors/fork_join.cpp
 executors_pipeline_SOURCES = executors/pipeline.cpp
 executors_priority_scheduler_SOURCES = executors/priority_scheduler.cpp
 futures_daytime_client_SOURCES = futures/daytime_client.cpp
+handler_tracking_async_tcp_echo_server_SOURCES = handler_tracking/async_tcp_echo_server.cpp
 http_server_http_server_SOURCES = \
 	http/server/connection.cpp \
 	http/server/connection_manager.cpp \
@@ -765,6 +802,9 @@ operations_composed_2_SOURCES = operations/composed_2.cpp
 operations_composed_3_SOURCES = operations/composed_3.cpp
 operations_composed_4_SOURCES = operations/composed_4.cpp
 operations_composed_5_SOURCES = operations/composed_5.cpp
+operations_composed_6_SOURCES = operations/composed_6.cpp
+operations_composed_7_SOURCES = operations/composed_7.cpp
+operations_composed_8_SOURCES = operations/composed_8.cpp
 socks4_sync_client_SOURCES = socks4/sync_client.cpp
 timeouts_async_tcp_client_SOURCES = timeouts/async_tcp_client.cpp
 timeouts_blocking_tcp_client_SOURCES = timeouts/blocking_tcp_client.cpp
@@ -1009,6 +1049,19 @@ futures/daytime_client.$(OBJEXT): futures/$(am__dirstamp) \
 futures/daytime_client$(EXEEXT): $(futures_daytime_client_OBJECTS) $(futures_daytime_client_DEPENDENCIES) $(EXTRA_futures_daytime_client_DEPENDENCIES) futures/$(am__dirstamp)
 	@rm -f futures/daytime_client$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(futures_daytime_client_OBJECTS) $(futures_daytime_client_LDADD) $(LIBS)
+handler_tracking/$(am__dirstamp):
+	@$(MKDIR_P) handler_tracking
+	@: > handler_tracking/$(am__dirstamp)
+handler_tracking/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) handler_tracking/$(DEPDIR)
+	@: > handler_tracking/$(DEPDIR)/$(am__dirstamp)
+handler_tracking/async_tcp_echo_server.$(OBJEXT):  \
+	handler_tracking/$(am__dirstamp) \
+	handler_tracking/$(DEPDIR)/$(am__dirstamp)
+
+handler_tracking/async_tcp_echo_server$(EXEEXT): $(handler_tracking_async_tcp_echo_server_OBJECTS) $(handler_tracking_async_tcp_echo_server_DEPENDENCIES) $(EXTRA_handler_tracking_async_tcp_echo_server_DEPENDENCIES) handler_tracking/$(am__dirstamp)
+	@rm -f handler_tracking/async_tcp_echo_server$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(handler_tracking_async_tcp_echo_server_OBJECTS) $(handler_tracking_async_tcp_echo_server_LDADD) $(LIBS)
 http/server/$(am__dirstamp):
 	@$(MKDIR_P) http/server
 	@: > http/server/$(am__dirstamp)
@@ -1155,6 +1208,24 @@ operations/composed_5.$(OBJEXT): operations/$(am__dirstamp) \
 operations/composed_5$(EXEEXT): $(operations_composed_5_OBJECTS) $(operations_composed_5_DEPENDENCIES) $(EXTRA_operations_composed_5_DEPENDENCIES) operations/$(am__dirstamp)
 	@rm -f operations/composed_5$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(operations_composed_5_OBJECTS) $(operations_composed_5_LDADD) $(LIBS)
+operations/composed_6.$(OBJEXT): operations/$(am__dirstamp) \
+	operations/$(DEPDIR)/$(am__dirstamp)
+
+operations/composed_6$(EXEEXT): $(operations_composed_6_OBJECTS) $(operations_composed_6_DEPENDENCIES) $(EXTRA_operations_composed_6_DEPENDENCIES) operations/$(am__dirstamp)
+	@rm -f operations/composed_6$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(operations_composed_6_OBJECTS) $(operations_composed_6_LDADD) $(LIBS)
+operations/composed_7.$(OBJEXT): operations/$(am__dirstamp) \
+	operations/$(DEPDIR)/$(am__dirstamp)
+
+operations/composed_7$(EXEEXT): $(operations_composed_7_OBJECTS) $(operations_composed_7_DEPENDENCIES) $(EXTRA_operations_composed_7_DEPENDENCIES) operations/$(am__dirstamp)
+	@rm -f operations/composed_7$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(operations_composed_7_OBJECTS) $(operations_composed_7_LDADD) $(LIBS)
+operations/composed_8.$(OBJEXT): operations/$(am__dirstamp) \
+	operations/$(DEPDIR)/$(am__dirstamp)
+
+operations/composed_8$(EXEEXT): $(operations_composed_8_OBJECTS) $(operations_composed_8_DEPENDENCIES) $(EXTRA_operations_composed_8_DEPENDENCIES) operations/$(am__dirstamp)
+	@rm -f operations/composed_8$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(operations_composed_8_OBJECTS) $(operations_composed_8_LDADD) $(LIBS)
 socks4/$(am__dirstamp):
 	@$(MKDIR_P) socks4
 	@: > socks4/$(am__dirstamp)
@@ -1262,6 +1333,7 @@ mostlyclean-compile:
 	-rm -f executors/*.$(OBJEXT)
 	-rm -f fork/*.$(OBJEXT)
 	-rm -f futures/*.$(OBJEXT)
+	-rm -f handler_tracking/*.$(OBJEXT)
 	-rm -f http/server/*.$(OBJEXT)
 	-rm -f invocation/*.$(OBJEXT)
 	-rm -f iostreams/*.$(OBJEXT)
@@ -1299,6 +1371,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@fork/$(DEPDIR)/daemon.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@fork/$(DEPDIR)/process_per_connection.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@futures/$(DEPDIR)/daytime_client.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@handler_tracking/$(DEPDIR)/async_tcp_echo_server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/connection.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/connection_manager.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@http/server/$(DEPDIR)/main.Po@am__quote@ # am--include-marker
@@ -1321,6 +1394,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_3.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_4.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_5.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_6.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_7.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@operations/$(DEPDIR)/composed_8.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@socks4/$(DEPDIR)/sync_client.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@spawn/$(DEPDIR)/echo_server.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@spawn/$(DEPDIR)/parallel_grep.Po@am__quote@ # am--include-marker
@@ -1486,6 +1562,8 @@ distclean-generic:
 	-rm -f fork/$(am__dirstamp)
 	-rm -f futures/$(DEPDIR)/$(am__dirstamp)
 	-rm -f futures/$(am__dirstamp)
+	-rm -f handler_tracking/$(DEPDIR)/$(am__dirstamp)
+	-rm -f handler_tracking/$(am__dirstamp)
 	-rm -f http/server/$(DEPDIR)/$(am__dirstamp)
 	-rm -f http/server/$(am__dirstamp)
 	-rm -f invocation/$(DEPDIR)/$(am__dirstamp)
@@ -1542,6 +1620,7 @@ distclean: distclean-am
 	-rm -f fork/$(DEPDIR)/daemon.Po
 	-rm -f fork/$(DEPDIR)/process_per_connection.Po
 	-rm -f futures/$(DEPDIR)/daytime_client.Po
+	-rm -f handler_tracking/$(DEPDIR)/async_tcp_echo_server.Po
 	-rm -f http/server/$(DEPDIR)/connection.Po
 	-rm -f http/server/$(DEPDIR)/connection_manager.Po
 	-rm -f http/server/$(DEPDIR)/main.Po
@@ -1564,6 +1643,9 @@ distclean: distclean-am
 	-rm -f operations/$(DEPDIR)/composed_3.Po
 	-rm -f operations/$(DEPDIR)/composed_4.Po
 	-rm -f operations/$(DEPDIR)/composed_5.Po
+	-rm -f operations/$(DEPDIR)/composed_6.Po
+	-rm -f operations/$(DEPDIR)/composed_7.Po
+	-rm -f operations/$(DEPDIR)/composed_8.Po
 	-rm -f socks4/$(DEPDIR)/sync_client.Po
 	-rm -f spawn/$(DEPDIR)/echo_server.Po
 	-rm -f spawn/$(DEPDIR)/parallel_grep.Po
@@ -1641,6 +1723,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f fork/$(DEPDIR)/daemon.Po
 	-rm -f fork/$(DEPDIR)/process_per_connection.Po
 	-rm -f futures/$(DEPDIR)/daytime_client.Po
+	-rm -f handler_tracking/$(DEPDIR)/async_tcp_echo_server.Po
 	-rm -f http/server/$(DEPDIR)/connection.Po
 	-rm -f http/server/$(DEPDIR)/connection_manager.Po
 	-rm -f http/server/$(DEPDIR)/main.Po
@@ -1663,6 +1746,9 @@ maintainer-clean: maintainer-clean-am
 	-rm -f operations/$(DEPDIR)/composed_3.Po
 	-rm -f operations/$(DEPDIR)/composed_4.Po
 	-rm -f operations/$(DEPDIR)/composed_5.Po
+	-rm -f operations/$(DEPDIR)/composed_6.Po
+	-rm -f operations/$(DEPDIR)/composed_7.Po
+	-rm -f operations/$(DEPDIR)/composed_8.Po
 	-rm -f socks4/$(DEPDIR)/sync_client.Po
 	-rm -f spawn/$(DEPDIR)/echo_server.Po
 	-rm -f spawn/$(DEPDIR)/parallel_grep.Po

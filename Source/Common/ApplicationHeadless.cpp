@@ -318,6 +318,6 @@ void Application::AppAudio::UnlockDevice()
     RUNTIME_ASSERT(IsEnabled());
 }
 
-void MessageBox::ShowErrorMessage(string_view message, string_view traceback)
+void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
 {
 }

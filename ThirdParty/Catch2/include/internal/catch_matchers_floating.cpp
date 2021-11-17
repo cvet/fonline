@@ -55,19 +55,12 @@ namespace {
             return lhs == rhs;
         }
 
-        auto ulpDiff = std::abs(lc - rc);
+        // static cast as a workaround for IBM XLC
+        auto ulpDiff = std::abs(static_cast<FP>(lc - rc));
         return static_cast<uint64_t>(ulpDiff) <= maxUlpDiff;
     }
 
-} //end anonymous namespace
-
 #if defined(CATCH_CONFIG_GLOBAL_NEXTAFTER)
-
-#if defined(__clang__)
-#pragma clang diagnostic push
-// The long double overload is currently unused
-#pragma clang diagnostic ignored "-Wunused-function"
-#endif
 
     float nextafter(float x, float y) {
         return ::nextafterf(x, y);
@@ -77,17 +70,7 @@ namespace {
         return ::nextafter(x, y);
     }
 
-    long double nextafter(long double x, long double y) {
-        return ::nextafterl(x, y);
-    }
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
-
 #endif // ^^^ CATCH_CONFIG_GLOBAL_NEXTAFTER ^^^
-
-namespace {
 
 template <typename FP>
 FP step(FP start, FP direction, uint64_t steps) {
@@ -252,4 +235,3 @@ Floating::WithinRelMatcher WithinRel(float target) {
 
 } // namespace Matchers
 } // namespace Catch
-
