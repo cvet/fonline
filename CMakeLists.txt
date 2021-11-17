@@ -878,8 +878,8 @@ if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	include_directories( "${FO_LIBRESSL_DIR}" )
 	include_directories( "${CMAKE_BINARY_DIR}/${FO_LIBRESSL_DIR}/crypto" )
 	include_directories( "${CMAKE_BINARY_DIR}/${FO_LIBRESSL_DIR}/ssl" )
-	list( APPEND FO_SERVER_LIBS "ssl" "crypto" "tls" "ssl_obj" "crypto_obj" "tls_obj" )
-	DisableLibWarnings( ssl crypto tls ssl_obj crypto_obj tls_obj )
+	list( APPEND FO_SERVER_LIBS "ssl" "crypto" "tls" )
+	DisableLibWarnings( ssl crypto tls )
 endif()
 
 # Asio & Websockets

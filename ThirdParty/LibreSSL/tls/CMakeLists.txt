@@ -38,16 +38,18 @@ if(LIBTLS_EXTRA_EXPORT)
 	endforeach()
 endif()
 
-add_library(tls_obj OBJECT ${TLS_SRC})
-target_include_directories(tls_obj
-	PRIVATE
-		.
-		../include/compat
-	PUBLIC
-		../include)
-
-add_library(tls $<TARGET_OBJECTS:tls_obj> $<TARGET_OBJECTS:ssl_obj>
-	$<TARGET_OBJECTS:crypto_obj>)
+#!add_library(tls_obj OBJECT ${TLS_SRC})
+#!target_include_directories(tls_obj
+#!	PRIVATE
+#!		.
+#!		../include/compat
+#!	PUBLIC
+#!		../include)
+#!
+#!add_library(tls $<TARGET_OBJECTS:tls_obj> $<TARGET_OBJECTS:ssl_obj>
+#!	$<TARGET_OBJECTS:crypto_obj>)
+add_library(tls ${TLS_SRC}) #!
+target_link_libraries(tls ssl crypto) #!
 target_include_directories(tls
 	PRIVATE
 		.
