@@ -186,8 +186,7 @@ They are located in ThirdParty directory.
 * [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2018-1-1) - fbx file format loader
 * [{fmt}](https://fmt.dev/latest/index.html) - strings formatting library
 * [Dear ImGui](https://github.com/ocornut/imgui) - gui library
-* [libbson](http://mongoc.org/libbson/current/index.html) - bson stuff
-* [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver
+* [MongoC Driver](https://github.com/mongodb/mongo-c-driver) - mongo db driver + bson lib
 * [Mono](https://www.mono-project.com/) - c# scripting library
 * [libogg](https://xiph.org/ogg/) - audio library
 * [LibreSSL](https://www.libressl.org/) - library for network transport security
