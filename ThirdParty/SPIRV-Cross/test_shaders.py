@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# Copyright 2015-2020 Arm Limited
+# Copyright 2015-2021 Arm Limited
+# SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -100,24 +101,25 @@ def get_shader_stats(shader):
 def print_msl_compiler_version():
     try:
         subprocess.check_call(['xcrun', '--sdk', 'iphoneos', 'metal', '--version'])
-        print('...are the Metal compiler characteristics.\n')   # display after so xcrun FNF is silent
+        print('... are the Metal compiler characteristics.\n')   # display after so xcrun FNF is silent
     except OSError as e:
         if (e.errno != errno.ENOENT):    # Ignore xcrun not found error
             raise
+        print('Metal SDK is not present.\n')
     except subprocess.CalledProcessError:
         pass
 
-def msl_compiler_supports_22():
+def msl_compiler_supports_version(version):
     try:
-        subprocess.check_call(['xcrun', '--sdk', 'macosx', 'metal', '-x', 'metal', '-std=macos-metal2.2', '-'],
+        subprocess.check_call(['xcrun', '--sdk', 'macosx', 'metal', '-x', 'metal', '-std=macos-metal' + version, '-'],
                 stdin = subprocess.DEVNULL, stdout = subprocess.DEVNULL, stderr = subprocess.DEVNULL)
-        print('Current SDK supports MSL 2.2. Enabling validation for MSL 2.2 shaders.')
+        print('Current SDK supports MSL {0}. Enabling validation for MSL {0} shaders.'.format(version))
         return True
     except OSError as e:
-        print('Failed to check if MSL 2.2 is not supported. It probably is not.')
+        print('Failed to check if MSL {} is not supported. It probably is not.'.format(version))
         return False
     except subprocess.CalledProcessError:
-        print('Current SDK does NOT support MSL 2.2. Disabling validation for MSL 2.2 shaders.')
+        print('Current SDK does NOT support MSL {0}. Disabling validation for MSL {0} shaders.'.format(version))
         return False
 
 def path_to_msl_standard(shader):
@@ -128,6 +130,8 @@ def path_to_msl_standard(shader):
             return '-std=ios-metal2.1'
         elif '.msl22.' in shader:
             return '-std=ios-metal2.2'
+        elif '.msl23.' in shader:
+            return '-std=ios-metal2.3'
         elif '.msl11.' in shader:
             return '-std=ios-metal1.1'
         elif '.msl10.' in shader:
@@ -141,6 +145,8 @@ def path_to_msl_standard(shader):
             return '-std=macos-metal2.1'
         elif '.msl22.' in shader:
             return '-std=macos-metal2.2'
+        elif '.msl23.' in shader:
+            return '-std=macos-metal2.3'
         elif '.msl11.' in shader:
             return '-std=macos-metal1.1'
         else:
@@ -153,6 +159,8 @@ def path_to_msl_standard_cli(shader):
         return '20100'
     elif '.msl22.' in shader:
         return '20200'
+    elif '.msl23.' in shader:
+        return '20300'
     elif '.msl11.' in shader:
         return '10100'
     else:
@@ -197,9 +205,12 @@ def cross_compile_msl(shader, spirv, opt, iterations, paths):
 
     spirv_cross_path = paths.spirv_cross
 
-    msl_args = [spirv_cross_path, '--entry', 'main', '--output', msl_path, spirv_path, '--msl', '--iterations', str(iterations)]
+    msl_args = [spirv_cross_path, '--output', msl_path, spirv_path, '--msl', '--iterations', str(iterations)]
     msl_args.append('--msl-version')
     msl_args.append(path_to_msl_standard_cli(shader))
+    if not '.nomain.' in shader:
+        msl_args.append('--entry')
+        msl_args.append('main')
     if '.swizzle.' in shader:
         msl_args.append('--msl-swizzle-texture-samples')
     if '.ios.' in shader:
@@ -232,6 +243,8 @@ def cross_compile_msl(shader, spirv, opt, iterations, paths):
         msl_args.append('--emit-line-directives')
     if '.multiview.' in shader:
         msl_args.append('--msl-multiview')
+    if '.no-layered.' in shader:
+        msl_args.append('--msl-multiview-no-layered-rendering')
     if '.viewfromdev.' in shader:
         msl_args.append('--msl-view-index-from-device-index')
     if '.dispatchbase.' in shader:
@@ -256,6 +269,79 @@ def cross_compile_msl(shader, spirv, opt, iterations, paths):
         msl_args.append('1')
     if '.force-native-array.' in shader:
         msl_args.append('--msl-force-native-arrays')
+    if '.zero-initialize.' in shader:
+        msl_args.append('--force-zero-initialized-variables')
+    if '.frag-output.' in shader:
+        # Arbitrary for testing purposes.
+        msl_args.append('--msl-disable-frag-depth-builtin')
+        msl_args.append('--msl-disable-frag-stencil-ref-builtin')
+        msl_args.append('--msl-enable-frag-output-mask')
+        msl_args.append('0x000000ca')
+    if '.no-user-varying.' in shader:
+        msl_args.append('--msl-no-clip-distance-user-varying')
+    if '.shader-inputs.' in shader:
+        # Arbitrary for testing purposes.
+        msl_args.append('--msl-shader-input')
+        msl_args.append('0')
+        msl_args.append('u8')
+        msl_args.append('2')
+        msl_args.append('--msl-shader-input')
+        msl_args.append('1')
+        msl_args.append('u16')
+        msl_args.append('3')
+        msl_args.append('--msl-shader-input')
+        msl_args.append('6')
+        msl_args.append('other')
+        msl_args.append('4')
+    if '.multi-patch.' in shader:
+        msl_args.append('--msl-multi-patch-workgroup')
+        # Arbitrary for testing purposes.
+        msl_args.append('--msl-shader-input')
+        msl_args.append('0')
+        msl_args.append('any32')
+        msl_args.append('3')
+        msl_args.append('--msl-shader-input')
+        msl_args.append('1')
+        msl_args.append('any16')
+        msl_args.append('2')
+    if '.for-tess.' in shader:
+        msl_args.append('--msl-vertex-for-tessellation')
+    if '.fixed-sample-mask.' in shader:
+        msl_args.append('--msl-additional-fixed-sample-mask')
+        msl_args.append('0x00000022')
+    if '.arrayed-subpass.' in shader:
+        msl_args.append('--msl-arrayed-subpass-input')
+    if '.1d-as-2d.' in shader:
+        msl_args.append('--msl-texture-1d-as-2d')
+    if '.simd.' in shader:
+        msl_args.append('--msl-ios-use-simdgroup-functions')
+    if '.emulate-subgroup.' in shader:
+        msl_args.append('--msl-emulate-subgroups')
+    if '.fixed-subgroup.' in shader:
+        # Arbitrary for testing purposes.
+        msl_args.append('--msl-fixed-subgroup-size')
+        msl_args.append('32')
+    if '.force-sample.' in shader:
+        msl_args.append('--msl-force-sample-rate-shading')
+    if '.decoration-binding.' in shader:
+        msl_args.append('--msl-decoration-binding')
+    if '.mask-location-0.' in shader:
+        msl_args.append('--mask-stage-output-location')
+        msl_args.append('0')
+        msl_args.append('0')
+    if '.mask-location-1.' in shader:
+        msl_args.append('--mask-stage-output-location')
+        msl_args.append('1')
+        msl_args.append('0')
+    if '.mask-position.' in shader:
+        msl_args.append('--mask-stage-output-builtin')
+        msl_args.append('Position')
+    if '.mask-point-size.' in shader:
+        msl_args.append('--mask-stage-output-builtin')
+        msl_args.append('PointSize')
+    if '.mask-clip-distance.' in shader:
+        msl_args.append('--mask-stage-output-builtin')
+        msl_args.append('ClipDistance')
 
     subprocess.check_call(msl_args)
 
@@ -302,8 +388,13 @@ def validate_shader_hlsl(shader, force_no_external_validation, paths):
     if '.fxconly.' in shader:
         test_glslang = False
 
+    hlsl_args = [paths.glslang, '--amb', '-e', 'main', '-D', '--target-env', 'vulkan1.1', '-V', shader]
+    if '.sm30.' in shader:
+        hlsl_args.append('--hlsl-dx9-compatible')
+
     if test_glslang:
-        subprocess.check_call([paths.glslang, '--amb', '-e', 'main', '-D', '--target-env', 'vulkan1.1', '-V', shader])
+        subprocess.check_call(hlsl_args)
+
     is_no_fxc = '.nofxc.' in shader
     global ignore_fxc
     if (not ignore_fxc) and (not force_no_external_validation) and (not is_no_fxc):
@@ -326,7 +417,9 @@ def validate_shader_hlsl(shader, force_no_external_validation, paths):
             raise RuntimeError('Failed compiling HLSL shader')
 
 def shader_to_sm(shader):
-    if '.sm60.' in shader:
+    if '.sm62.' in shader:
+        return '62'
+    elif '.sm60.' in shader:
         return '60'
     elif '.sm51.' in shader:
         return '51'
@@ -339,7 +432,8 @@ def cross_compile_hlsl(shader, spirv, opt, force_no_external_validation, iterati
     spirv_path = create_temporary()
     hlsl_path = create_temporary(os.path.basename(shader))
 
-    spirv_cmd = [paths.spirv_as, '--target-env', 'vulkan1.1', '-o', spirv_path, shader]
+    spirv_env = 'vulkan1.1spv1.4' if '.spv14.' in shader else 'vulkan1.1'
+    spirv_cmd = [paths.spirv_as, '--target-env', spirv_env, '-o', spirv_path, shader]
     if '.preserve.' in shader:
         spirv_cmd.append('--preserve-numeric-ids')
 
@@ -358,10 +452,21 @@ def cross_compile_hlsl(shader, spirv, opt, force_no_external_validation, iterati
     hlsl_args = [spirv_cross_path, '--entry', 'main', '--output', hlsl_path, spirv_path, '--hlsl-enable-compat', '--hlsl', '--shader-model', sm, '--iterations', str(iterations)]
     if '.line.' in shader:
         hlsl_args.append('--emit-line-directives')
+    if '.force-uav.' in shader:
+        hlsl_args.append('--hlsl-force-storage-buffer-as-uav')
+    if '.zero-initialize.' in shader:
+        hlsl_args.append('--force-zero-initialized-variables')
+    if '.nonwritable-uav-texture.' in shader:
+        hlsl_args.append('--hlsl-nonwritable-uav-texture-as-srv')
+    if '.native-16bit.' in shader:
+        hlsl_args.append('--hlsl-enable-16bit-types')
+    if '.flatten-matrix-vertex-input.' in shader:
+        hlsl_args.append('--hlsl-flatten-matrix-vertex-input-semantics')
+
     subprocess.check_call(hlsl_args)
 
     if not shader_is_invalid_spirv(hlsl_path):
-        subprocess.check_call([paths.spirv_val, '--scalar-block-layout', '--target-env', 'vulkan1.1', spirv_path])
+        subprocess.check_call([paths.spirv_val, '--scalar-block-layout', '--target-env', spirv_env, spirv_path])
 
     validate_shader_hlsl(hlsl_path, force_no_external_validation, paths)
 
@@ -391,7 +496,9 @@ def cross_compile_reflect(shader, spirv, opt, iterations, paths):
 
 def validate_shader(shader, vulkan, paths):
     if vulkan:
-        subprocess.check_call([paths.glslang, '--amb', '--target-env', 'vulkan1.1', '-V', shader])
+        spirv_14 = '.spv14.' in shader
+        glslang_env = 'spirv1.4' if spirv_14 else 'vulkan1.1'
+        subprocess.check_call([paths.glslang, '--amb', '--target-env', glslang_env, '-V', shader])
     else:
         subprocess.check_call([paths.glslang, shader])
 
@@ -399,7 +506,8 @@ def cross_compile(shader, vulkan, spirv, invalid_spirv, eliminate, is_legacy, fl
     spirv_path = create_temporary()
     glsl_path = create_temporary(os.path.basename(shader))
 
-    spirv_env = 'vulkan1.1spv1.4' if ('.spv14.' in shader) else 'vulkan1.1'
+    spirv_14 = '.spv14.' in shader
+    spirv_env = 'vulkan1.1spv1.4' if spirv_14 else 'vulkan1.1'
 
     if vulkan or spirv:
         vulkan_glsl_path = create_temporary('vk' + os.path.basename(shader))
@@ -411,7 +519,8 @@ def cross_compile(shader, vulkan, spirv, invalid_spirv, eliminate, is_legacy, fl
     if spirv:
         subprocess.check_call(spirv_cmd)
     else:
-        subprocess.check_call([paths.glslang, '--amb', '--target-env', 'vulkan1.1', '-V', '-o', spirv_path, shader])
+        glslang_env = 'spirv1.4' if spirv_14 else 'vulkan1.1'
+        subprocess.check_call([paths.glslang, '--amb', '--target-env', glslang_env, '-V', '-o', spirv_path, shader])
 
     if opt and (not invalid_spirv):
         subprocess.check_call([paths.spirv_opt, '--skip-validation', '-O', '-o', spirv_path, spirv_path])
@@ -436,19 +545,33 @@ def cross_compile(shader, vulkan, spirv, invalid_spirv, eliminate, is_legacy, fl
         extra_args += ['--emit-line-directives']
     if '.no-samplerless.' in shader:
         extra_args += ['--vulkan-glsl-disable-ext-samplerless-texture-functions']
+    if '.no-qualifier-deduction.' in shader:
+        extra_args += ['--disable-storage-image-qualifier-deduction']
+    if '.framebuffer-fetch.' in shader:
+        extra_args += ['--glsl-remap-ext-framebuffer-fetch', '0', '0']
+        extra_args += ['--glsl-remap-ext-framebuffer-fetch', '1', '1']
+        extra_args += ['--glsl-remap-ext-framebuffer-fetch', '2', '2']
+        extra_args += ['--glsl-remap-ext-framebuffer-fetch', '3', '3']
+    if '.framebuffer-fetch-noncoherent.' in shader:
+        extra_args += ['--glsl-ext-framebuffer-fetch-noncoherent']
+    if '.zero-initialize.' in shader:
+        extra_args += ['--force-zero-initialized-variables']
+    if '.force-flattened-io.' in shader:
+        extra_args += ['--glsl-force-flattened-io-blocks']
 
     spirv_cross_path = paths.spirv_cross
 
     # A shader might not be possible to make valid GLSL from, skip validation for this case.
-    if not ('nocompat' in glsl_path):
+    if (not ('nocompat' in glsl_path)) or (not vulkan):
         subprocess.check_call([spirv_cross_path, '--entry', 'main', '--output', glsl_path, spirv_path] + extra_args)
-        validate_shader(glsl_path, False, paths)
+        if not 'nocompat' in glsl_path:
+            validate_shader(glsl_path, False, paths)
     else:
         remove_file(glsl_path)
         glsl_path = None
 
-    if vulkan or spirv:
-        subprocess.check_call([spirv_cross_path, '--entry', 'main', '--vulkan-semantics', '--output', vulkan_glsl_path, spirv_path] + extra_args)
+    if (vulkan or spirv) and (not is_legacy):
+        subprocess.check_call([spirv_cross_path, '--entry', 'main', '-V', '--output', vulkan_glsl_path, spirv_path] + extra_args)
         validate_shader(vulkan_glsl_path, True, paths)
         # SPIR-V shaders might just want to validate Vulkan GLSL output, we don't always care about the output.
         if not vulkan:
@@ -640,7 +763,8 @@ def test_shader_msl(stats, shader, args, paths):
 #    print('SPRIV shader: ' + spirv)
 
     shader_is_msl22 = 'msl22' in joined_path
-    skip_validation = shader_is_msl22 and (not args.msl22)
+    shader_is_msl23 = 'msl23' in joined_path
+    skip_validation = (shader_is_msl22 and (not args.msl22)) or (shader_is_msl23 and (not args.msl23))
     if '.invalid.' in joined_path:
         skip_validation = True
 
@@ -694,20 +818,21 @@ def test_shaders_helper(stats, backend, args):
     # The child processes in parallel execution mode don't have the proper state for the global args variable, so
     # at this point we need to switch to explicit arguments
     if args.parallel:
-        pool = multiprocessing.Pool(multiprocessing.cpu_count())
+        with multiprocessing.Pool(multiprocessing.cpu_count()) as pool:
+            results = []
+            for f in all_files:
+                results.append(pool.apply_async(test_shader_file,
+                    args = (f, stats, args, backend)))
 
-        results = []
-        for f in all_files:
-            results.append(pool.apply_async(test_shader_file,
-                args = (f, stats, args, backend)))
+            pool.close()
+            pool.join()
+            results_completed = [res.get() for res in results]
 
-        for res in results:
-            error = res.get()
-            if error is not None:
-                pool.close()
-                pool.join()
-                print('Error:', error)
-                sys.exit(1)
+            for error in results_completed:
+                if error is not None:
+                    print('Error:', error)
+                    sys.exit(1)
+
     else:
         for i in all_files:
             e = test_shader_file(i, stats, args, backend)
@@ -787,9 +912,11 @@ def main():
         args.parallel = False
 
     args.msl22 = False
+    args.msl23 = False
     if args.msl:
         print_msl_compiler_version()
-        args.msl22 = msl_compiler_supports_22()
+        args.msl22 = msl_compiler_supports_version('2.2')
+        args.msl23 = msl_compiler_supports_version('2.3')
 
     backend = 'glsl'
     if (args.msl or args.metal):
