@@ -420,6 +420,7 @@ if (ENABLE_MONGOC)
             -P ${PROJECT_SOURCE_DIR}/build/cmake/make_dist/MakeDistCheck.cmake
       )
    else ()
+if(FALSE) #!
       string (CONCAT DISTERRMSG
          "The dist and distcheck targets are disabled. Set ENABLE_BSON=ON, "
          "ENABLE_MAN_PAGES=ON, ENABLE_HTML_DOCS=ON, and generate VERSION_CURRENT "
@@ -433,6 +434,7 @@ if (ENABLE_MONGOC)
       add_custom_target (distcheck
          COMMAND ${CMAKE_COMMAND} -E echo "${DISTERRMSG}"
       )
+endif() #!
    endif ()
 
 endif ()

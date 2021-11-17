@@ -739,6 +739,7 @@ if (MONGOC_ENABLE_MONGODB_AWS_AUTH)
    endif()
 endif ()
 
+if(FALSE) #!
 add_library (mongoc_shared SHARED ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
 set_target_properties (mongoc_shared PROPERTIES CMAKE_CXX_VISIBILITY_PRESET hidden)
 target_link_libraries (mongoc_shared PRIVATE ${LIBRARIES} PUBLIC ${BSON_LIBRARIES})
@@ -776,6 +777,7 @@ target_include_directories (
 
 set_target_properties (mongoc_shared PROPERTIES VERSION 0.0.0 SOVERSION 0)
 set_target_properties (mongoc_shared PROPERTIES OUTPUT_NAME "${MONGOC_OUTPUT_BASENAME}-${MONGOC_API_VERSION}")
+endif() #!
 
 if (MONGOC_ENABLE_STATIC_BUILD)
    add_library (mongoc_static STATIC ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
@@ -816,6 +818,7 @@ if (MONGOC_ENABLE_STATIC_BUILD)
    set_target_properties (mongoc_static PROPERTIES OUTPUT_NAME "${MONGOC_OUTPUT_BASENAME}-static-${MONGOC_API_VERSION}")
 endif ()
 
+if(FALSE) #!
 if (ENABLE_APPLE_FRAMEWORK)
    set_target_properties (mongoc_shared PROPERTIES
       FRAMEWORK TRUE
@@ -829,6 +832,7 @@ endif ()
 
 add_executable (mongoc-stat ${PROJECT_SOURCE_DIR}/../../src/tools/mongoc-stat.c)
 target_link_libraries (mongoc-stat mongoc_shared ${LIBRARIES})
+endif() #!
 
 # mongoc-stat works if shared memory performance counters are enabled.
 if (ENABLE_SHM_COUNTERS STREQUAL "ON")
@@ -1119,6 +1123,7 @@ set (MONGOC_HEADER_INSTALL_DIR
    "${CMAKE_INSTALL_INCLUDEDIR}/libmongoc-${MONGOC_API_VERSION}"
 )
 
+if(FALSE) #!
 install (
    TARGETS ${TARGETS_TO_INSTALL} ${EXAMPLES}
    EXPORT mongoc-targets
@@ -1145,6 +1150,7 @@ if (ENABLE_APPLE_FRAMEWORK)
       DESTINATION "${CMAKE_INSTALL_BINDIR}/mongoc.framework/Modules/"
    )
 endif ()
+endif() #!
 
 # Define pkg-config files
 set (VERSION "${MONGOC_VERSION}")
@@ -1211,21 +1217,25 @@ write_basic_package_version_file (
    COMPATIBILITY AnyNewerVersion
 )
 
+if(FALSE) #!
 export (EXPORT mongoc-targets
    NAMESPACE mongo::
    FILE "${CMAKE_CURRENT_BINARY_DIR}/mongoc/mongoc-targets.cmake"
 )
+endif() #!
 
 configure_file (src/mongoc-config.cmake
    "${CMAKE_CURRENT_BINARY_DIR}/mongoc/mongoc-${MONGOC_API_VERSION}-config.cmake"
    @ONLY
 )
 
+if(FALSE) #!
 install (EXPORT mongoc-targets
    NAMESPACE mongo::
    FILE mongoc-targets.cmake
    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mongoc-${MONGOC_API_VERSION}
 )
+endif() #!
 
 install (
    FILES

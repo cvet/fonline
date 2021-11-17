@@ -222,6 +222,7 @@ set (HEADERS_FORWARDING
    ${PROJECT_SOURCE_DIR}/src/bson/forwarding/bson.h
 )
 
+if(FALSE) #!
 add_library (bson_shared SHARED ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
 set (CMAKE_CXX_VISIBILITY_PRESET hidden)
 target_compile_definitions (bson_shared
@@ -288,6 +289,7 @@ if (WIN32)
    # must be handled specially since we can't resolve them
    set (BSON_SYSTEM_LIBRARIES ${BSON_SYSTEM_LIBRARIES} ws2_32)
 endif ()
+endif() #!
 
 if (MONGOC_ENABLE_STATIC_BUILD)
    add_library (bson_static STATIC ${SOURCES} ${HEADERS} ${HEADERS_FORWARDING})
@@ -361,6 +363,7 @@ set (BSON_HEADER_INSTALL_DIR
    "${CMAKE_INSTALL_INCLUDEDIR}/libbson-${BSON_API_VERSION}"
 )
 
+if(FALSE) #!
 if (MONGOC_ENABLE_STATIC_INSTALL)
    set (TARGETS_TO_INSTALL bson_shared bson_static)
 else ()
@@ -391,6 +394,7 @@ if (ENABLE_APPLE_FRAMEWORK)
       DESTINATION "${CMAKE_INSTALL_BINDIR}/bson.framework/Modules/"
    )
 endif ()
+endif() #!
 
 set (LIBBSON_LIBRARIES "")
 foreach (_lib ${BSON_LIBRARIES})
@@ -444,21 +448,25 @@ write_basic_package_version_file (
    COMPATIBILITY AnyNewerVersion
 )
 
+if(FALSE) #!
 export (EXPORT bson-targets
    NAMESPACE mongo::
    FILE "${CMAKE_CURRENT_BINARY_DIR}/bson/bson-targets.cmake"
 )
+endif() #!
 
 configure_file (src/bson-config.cmake
    "${CMAKE_CURRENT_BINARY_DIR}/bson/bson-${BSON_API_VERSION}-config.cmake"
    COPYONLY
 )
 
+if(FALSE) #!
 install (EXPORT bson-targets
    NAMESPACE mongo::
    FILE bson-targets.cmake
    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bson-${BSON_API_VERSION}
 )
+endif() #!
 
 install (
    FILES

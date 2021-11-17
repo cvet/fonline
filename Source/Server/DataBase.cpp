@@ -42,9 +42,9 @@
 #include "unqlite.h"
 #endif
 #if FO_HAVE_MONGO && !FO_SINGLEPLAYER
-#include "mongoc.h"
+#include "mongoc/mongoc.h"
 #endif
-#include "bson.h"
+#include "bson/bson.h"
 
 #include "WinApi-Include.h"
 
