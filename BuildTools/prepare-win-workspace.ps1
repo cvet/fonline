@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'stop'
+$ErrorActionPreference = "stop"
 
 Function Test-Command {
     Param ($Name)
@@ -24,7 +24,6 @@ Function Test-BuildTools {
 
     $vspath = Get-VSSetupInstance `
         | Select-VSSetupInstance -Version "[16.0,17.0)" `
-            -Require Microsoft.VisualStudio.Workload.MSBuildTools `
             -Product Microsoft.VisualStudio.Product.Community, `
                 Microsoft.VisualStudio.Product.Professional, `
                 Microsoft.VisualStudio.Product.Enterprise, `
@@ -38,28 +37,39 @@ Function Test-BuildTools {
     }
 }
 
-Function Ask-Path-For-Project {
-    [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null
+Write-Host "Prepare workspace"
 
-    $folder = New-Object System.Windows.Forms.FolderBrowserDialog
-    $folder.Description = "Select a folder where project folder with files will be generated"
-
-    if ($folder.ShowDialog() -eq "OK") {
-        return $folder.SelectedPath
-    }
+$FO_ROOT = $Env:FO_ROOT
+if ($FO_ROOT -eq "") {
+    $FO_ROOT = Resolve-Path "$PSScriptRoot/../"
 }
 
-Write-Host "Hello, Developer! Let's see what's going on..."
+$FO_WORKSPACE = $Env:FO_WORKSPACE
+if ($FO_WORKSPACE -eq "") {
+    $FO_WORKSPACE = "$pwd\Workspace"
+}
+
+$FO_CMAKE_CONTRIBUTION = $Env:FO_CMAKE_CONTRIBUTION
+
+Write-Host "- FO_ROOT=$FO_ROOT"
+Write-Host "- FO_WORKSPACE=$FO_WORKSPACE"
+Write-Host "- FO_CMAKE_CONTRIBUTION=$FO_CMAKE_CONTRIBUTION"
+
+if (!(Test-Path $FO_WORKSPACE)) {
+    New-Item -Path "$FO_WORKSPACE" -ItemType Directory | Out-Null
+}
+
+Set-Location -Path $FO_WORKSPACE
 
 while ($True) {
     $chocoNeeded = $False
-    $canGenProject = $True
+    $ready = $True
 
     if (!(Test-Command wsl)) {
         Write-Host "WSL not found"
         Write-Host "Follow this link to get inforamtion about how to install WSL2"
         Write-Host "https://docs.microsoft.com/en-us/windows/wsl/install-win10"
-        $canGenProject = $False
+        $ready = $False
     }
 
     # Todo: check WSL vetsion
@@ -73,7 +83,7 @@ while ($True) {
         Write-Host "(chocovs) Or install Visual Studio 2019 Community Edition automatically within Chocolatey"
         Write-Host "(chocobt) Or install Visual Studio Build Tools 2019 automatically within Chocolatey"
         $chocoNeeded = $True
-        $canGenProject = $False
+        $ready = $False
     }
 
     if (!(Test-Command cmake)) {
@@ -81,7 +91,7 @@ while ($True) {
         Write-Host "You can get it here: https://cmake.org"
         Write-Host "(chococmake) Or install CMake automatically within Chocolatey"
         $chocoNeeded = $True
-        $canGenProject = $False
+        $ready = $False
     }
 
     # Todo: check VSCode
@@ -94,12 +104,17 @@ while ($True) {
         Write-Host "(choco) Or you can install Chocolatey automatically here and now"
     }
 
-    if ($canGenProject) {
-        Write-Host "(gen) Seems to all is fine, we can generate new project now"
+    if ($ready) {
+        Write-Host "Workspace is not ready!"
+        exit 0
+    }
+    
+    if ($args[0] -Eq "check") {
+        exit 1
     }
 
     while ($True) {
-        $answer = Read-Host -Prompt "Type command or leave empty to exit setup"
+        $answer = Read-Host -Prompt "Type command"
         if ($answer -Eq "choco") {
             if (!(Test-Admin)) {
                 Write-Host "To install Chocolatey here you must run this setup under administrative privileges"
@@ -127,30 +142,8 @@ while ($True) {
                 }
                 break
             }
-        } elseif ($answer -Eq "gen") {
-            $projectName = Read-Host -Prompt "Type project name"
-            if ($projectName) {
-                $projectPath = Ask-Path-For-Project
-                if ($projectPath) {
-                    if (!(Test-Path "$projectPath\$projectName")) {
-                        New-Item -Path $projectPath -Name $projectName -ItemType "directory" | Out-Null
-                    }
-                    $rootPath = Split-Path $MyInvocation.MyCommand.Path
-                    $rootPathEx = $rootPath.Replace("\", "\\")
-                    $projectPathEx = $projectPath.Replace("\", "\\")
-                    $rootPathWsl = wsl wslpath -a "$rootPathEx"
-                    $projectPathWsl = wsl wslpath -a "$projectPathEx"
-                    $rootPathWsl = $rootPathWsl.Trim().TrimEnd("/")
-                    $projectPathWsl = $projectPathWsl.Trim().TrimEnd("/")
-                    cmd /C "wsl cd '$projectPathWsl/$projectName'; '$rootPathWsl/BuildTools/generate-project.sh' '$projectName'"
-
-                    Write-Host "Done!"
-                    Invoke-Item "$projectPath\$projectName"
-                }
-            }
         } elseif ($answer -Eq "") {
-            Write-Host "Good luck!"
-            return
+            Write-Host "Write command and press Enter"
         } else {
             Write-Host "Invalid command"
         }
