@@ -395,7 +395,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Settings: remove VAR_SETTING; must stay only constant values
 * StringUtils: restore hash parsing
 * StringUtils: make isNumber const
-* Testing: restore stack trace dumping in file
 * Testing: improve global exceptions handlers for mobile os
 * Testing: fix script system
 * Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
