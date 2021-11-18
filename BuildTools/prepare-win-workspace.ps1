@@ -105,11 +105,12 @@ while ($True) {
     }
 
     if ($ready) {
-        Write-Host "Workspace is not ready!"
+        Write-Host "Workspace is ready!"
         exit 0
     }
     
     if ($args[0] -Eq "check") {
+        Write-Host "Workspace is not ready!"
         exit 1
     }
 
