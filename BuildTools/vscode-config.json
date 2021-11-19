@@ -3,18 +3,6 @@
         {
             "label": "Check Workspace",
             "group": "Service",
-            "command": "BuildTools/prepare-workspace.sh all check",
-            "env": "linux mac"
-        },
-        {
-            "label": "Prepare Workspace",
-            "group": "Service",
-            "command": "BuildTools/prepare-workspace.sh all",
-            "env": "linux mac"
-        },
-        {
-            "label": "Check Workspace",
-            "group": "Service",
             "command": "BuildTools/prepare-win-workspace.ps1 check",
             "env": "win"
         },
@@ -23,6 +11,30 @@
             "group": "Service",
             "command": "BuildTools/prepare-win-workspace.ps1",
             "env": "win"
+        },
+        {
+            "label": "Check Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-workspace.sh all check",
+            "env": "linux"
+        },
+        {
+            "label": "Prepare Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-workspace.sh all",
+            "env": "linux"
+        },
+        {
+            "label": "Check Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-mac-workspace.sh check",
+            "env": "mac"
+        },
+        {
+            "label": "Prepare Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-mac-workspace.sh",
+            "env": "mac"
         },
         {
             "label": "Open in IDE",

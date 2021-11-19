@@ -111,7 +111,7 @@ while ($True) {
     
     if ($args[0] -Eq "check") {
         Write-Host "Workspace is not ready!"
-        exit 1
+        exit 10
     }
 
     while ($True) {
