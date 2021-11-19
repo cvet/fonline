@@ -140,12 +140,9 @@ These packages will automatically installed during workspace preparing (i.e. `pr
 `nodejs` `default-jre`
 * Building for Android:  
 `android-sdk` `openjdk-8-jdk` `ant`
-* macOS/iOS cross-compilation within OSXCross:  
-`patch` `lzma-dev` `libxml2-dev` `llvm-dev` `uuid-dev`
 
 Also our build scripts download and install following packages:
 * [Emscripten](https://emscripten.org) - for building Web apps
-* [OSXCross](https://github.com/tpoechtrager/osxcross) - cross-compilation for macOS/iOS
 * [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
 List of tools for Windows operating system *(some optional)*:
@@ -161,7 +158,6 @@ List of tools for Mac operating system:
 * [Xcode](https://developer.apple.com/xcode)
 
 Other stuff used in build pipeline:
-* [Android CMake Toolchain](https://github.com/taka-no-me/android-cmake)
 * [iOS CMake Toolchain](https://github.com/cristeab/ios-cmake)
 * [msicreator](https://github.com/jpakkane/msicreator)
 
