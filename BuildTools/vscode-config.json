@@ -28,31 +28,31 @@
             "label": "Open in IDE",
             "group": "Service",
             "command": "cd $FO_WORKSPACE/maintenance-env && cmake --open .",
-            "env": "win linux mac"
+            "env": "win linux mac noremote"
         },
         {
             "label": "Generate Engine Todo",
             "group": "Service",
             "command": "cd BuildTools && python todo-generator.py",
-            "env": "wsl linux mac"
+            "env": "wsl linux mac engine"
         },
         {
             "label": "Format Engine code",
             "group": "Service",
             "command": "cd Source && clang-format-10 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.* Tests/*.*",
-            "env": "linux wsl"
+            "env": "linux wsl engine"
         },
         {
             "label": "Run unit tests",
             "group": "Service",
             "command": "BuildTools/validate.sh unit-tests",
-            "env": "linux"
+            "env": "linux engine"
         },
         {
             "label": "Run code coverage",
             "group": "Service",
             "command": "BuildTools/validate.sh code-coverage",
-            "env": "linux"
+            "env": "linux engine"
         },
         {
             "label": "Client for Windows (x64)",
