@@ -1,7 +1,6 @@
 # FOnline Engine
 
-> Engine currently in completely unusable state due to heavy refactoring.  
-> Estimated finishing date is middle of 2021.
+> Engine currently in completely unusable state due to heavy refactoring.
 
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
