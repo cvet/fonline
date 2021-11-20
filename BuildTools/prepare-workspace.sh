@@ -112,18 +112,6 @@ function setup_android_ndk()
     rm -f "$ANDROID_NDK_VERSION-linux.zip"
 }
 
-function generate_maintenance_env()
-{
-    echo "Generate maintenance environment"
-    FO_ROOT_WIN=`wsl_path_to_windows "$FO_ROOT"`
-    FO_CMAKE_CONTRIBUTION_WIN=`wsl_path_to_windows "$FO_CMAKE_CONTRIBUTION"`
-    rm -rf maintenance-env
-    mkdir maintenance-env
-    cd maintenance-env
-    cmake.exe -G "Visual Studio 16 2019" -A x64 -DCMAKE_BUILD_TYPE=Release -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
-    cmake.exe --build . --config Release
-}
-
 function verify_workspace_part()
 {
     if [ ! -f "$1-version.txt" ] || [ `cat $1-version.txt` != "$2" ]; then
@@ -163,11 +151,6 @@ if [ ! -z `check_arg web all` ]; then
 fi
 if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
     verify_workspace_part android-ndk $ANDROID_NDK_VERSION setup_android_ndk
-fi
-wait_jobs
-
-if [ ! -z `check_arg maintenance all` ]; then
-    verify_workspace_part maintenance 2 generate_maintenance_env
 fi
 wait_jobs
 

@@ -12,7 +12,7 @@ do
         echo "Please install Xcode from AppStore"
         ready=0
     fi
-    
+
     if [ -x "$(command -v cmake)" ]; then
         CMAKE=cmake
     else
@@ -24,7 +24,7 @@ do
     fi
 
     if [ "$ready" = "1" ]; then
-        echo "Workspace is ready!"        
+        echo "Workspace is ready!"
         exit 0
     elif [ ! -z `check_arg check` ]; then
         echo "Workspace is not ready"
