@@ -90,30 +90,18 @@ elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86
     cmake --build . --config $CONFIG --parallel
 
 elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
-    if [ "$1" = "mac" ] && [ -d "$FO_WORKSPACE/osxcross" ]; then
-        echo "OSXCross cross compilation"
-        "$FO_WORKSPACE/osxcross/target/bin/x86_64-apple-darwin19-cmake" -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
-        cmake --build . --config $CONFIG --parallel
-
-    elif [ "$1" = "ios" ] && [ -d "$FO_WORKSPACE/ios-toolchain" ]; then
-        echo "iOS cross compilation"
-        "$FO_WORKSPACE/ios-toolchain/target/bin/x86_64-apple-darwin19-cmake" -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
-        cmake --build . --config $CONFIG --parallel
-
+    if [ -x "$(command -v cmake)" ]; then
+        CMAKE=cmake
     else
-        if [ -x "$(command -v cmake)" ]; then
-            CMAKE=cmake
-        else
-            CMAKE=/Applications/CMake.app/Contents/bin/cmake
-        fi
+        CMAKE=/Applications/CMake.app/Contents/bin/cmake
+    fi
 
-        if [ "$1" = "mac" ]; then
-            $CMAKE -G "Xcode" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
-            $CMAKE --build . --config $CONFIG
-        else
-            $CMAKE -G "Xcode" -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
-            $CMAKE --build . --config $CONFIG
-        fi
+    if [ "$1" = "mac" ]; then
+        $CMAKE -G "Xcode" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+        $CMAKE --build . --config $CONFIG
+    else
+        $CMAKE -G "Xcode" -C "$FO_ROOT/BuildTools/ios.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+        $CMAKE --build . --config $CONFIG
     fi
 
 elif [ "$1" = "ps4" ]; then

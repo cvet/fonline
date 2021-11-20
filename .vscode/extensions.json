@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "cvet.fonline-vscode",
+        "ms-vscode.cpptools",
+        "renesackers.angelscript",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+        "github.vscode-pull-request-github"
+    ]
+}

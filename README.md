@@ -3,7 +3,6 @@
 > Engine currently in completely unusable state due to heavy refactoring.  
 > Estimated finishing date is middle of 2021.
 
-[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/cvet/fonline)
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
 [![Codecov](https://codecov.io/gh/cvet/fonline/branch/master/graph/badge.svg)](https://codecov.io/gh/cvet/fonline)
@@ -89,12 +88,15 @@ Process of creating your game in two words looks like this:
 * Enjoy your shipped game and iterate development
 
 There are couple of shell scripts that help us to do it:  
-* `BuildTools/prepare-workspace.sh` - prepare our workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
+* `BuildTools/prepare-workspace.sh` - prepare our linux workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
+* `BuildTools/prepare-win-workspace.ps1` - windows version of prepare workspace, that helps prepare to work
+* `BuildTools/prepare-mac-workspace.sh` - mac version of prepare workspace, that helps prepare to work
 * `BuildTools/build.sh` - build executable for specific platform
 * `BuildTools/compile-scripts.sh` - compile scripts from scripting layers
 * `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats
 * `BuildTools/make-packages.sh` - finally package server(s) and client(s) for end user
 * `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
+* `BuildTools/gen-project.ps1` - project generation script (windows only)
 
 Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in [BuildTools/README.md](https://github.com/cvet/fonline/blob/master/BuildTools/README.md).
 
@@ -110,15 +112,13 @@ Documents related to public API:
 ### Setup
 
 Clone with git this repository.  
-Run `./fonline-setup` in the repository root in your PowerShell.  
-This script interactively check your system for all requirements and helps to generate new project.  
-*Todo: Provide additional info for non Windows 10 users*
+Open repository root in Visual Studio Code, install recommended extensions.  
+*Todo: write about project generation*
 
 #### Windows Subsystem for Linux
 
 Main point of WSL2 for us that we can run Windows programs from Linux.  
 That feature allows unify almost all our build scripts into one environment.  
-Minimum version of Windows 10 is 2004 build 19041 from May 2020.  
 Recommended Linux distro is [Ununtu-20.04](https://ubuntu.com) on which all build scripts tested.  
 You may use other distro but there is no guarantee that it will work out of the box.
 
@@ -141,15 +141,12 @@ These packages will automatically installed during workspace preparing (i.e. `pr
 `nodejs` `default-jre`
 * Building for Android:  
 `android-sdk` `openjdk-8-jdk` `ant`
-* macOS/iOS cross-compilation within OSXCross:  
-`patch` `lzma-dev` `libxml2-dev` `llvm-dev` `uuid-dev`
 
 Also our build scripts download and install following packages:
 * [Emscripten](https://emscripten.org) - for building Web apps
-* [OSXCross](https://github.com/tpoechtrager/osxcross) - cross-compilation for macOS/iOS
 * [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
-And `fonline-setup.ps1` might install following Windows packages for you *(some optional)*:
+List of tools for Windows operating system *(some optional)*:
 * [Chocolatey](https://chocolatey.org) - package manager for Windows system (helps to install other packages automatically)
 * [CMake](https://cmake.org) - utility that helps build program from source on any platform for any platform without much pain
 * [Visual Studio 2019](https://visualstudio.microsoft.com) - IDE for Windows
@@ -157,8 +154,11 @@ And `fonline-setup.ps1` might install following Windows packages for you *(some 
 * [Visual Studio Code](https://code.visualstudio.com) - IDE for Windows with supporting of our engine management
 * [WiX Toolset](https://wixtoolset.org) - building installation packages (like .msi)
 
+List of tools for Mac operating system:
+* [CMake](https://cmake.org)
+* [Xcode](https://developer.apple.com/xcode)
+
 Other stuff used in build pipeline:
-* [Android CMake Toolchain](https://github.com/taka-no-me/android-cmake)
 * [iOS CMake Toolchain](https://github.com/cristeab/ios-cmake)
 * [msicreator](https://github.com/jpakkane/msicreator)
 
@@ -392,7 +392,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Settings: remove VAR_SETTING; must stay only constant values
 * StringUtils: restore hash parsing
 * StringUtils: make isNumber const
-* Testing: restore stack trace dumping in file
 * Testing: improve global exceptions handlers for mobile os
 * Testing: fix script system
 * Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing

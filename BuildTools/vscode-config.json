@@ -1,4 +1,390 @@
 {
+    "actions": [
+        {
+            "label": "Check Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-win-workspace.ps1 check",
+            "env": "win"
+        },
+        {
+            "label": "Prepare Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-win-workspace.ps1",
+            "env": "win"
+        },
+        {
+            "label": "Check Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-workspace.sh all check",
+            "env": "linux"
+        },
+        {
+            "label": "Prepare Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-workspace.sh all",
+            "env": "linux"
+        },
+        {
+            "label": "Check Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-mac-workspace.sh check",
+            "env": "mac"
+        },
+        {
+            "label": "Prepare Workspace",
+            "group": "Service",
+            "command": "BuildTools/prepare-mac-workspace.sh",
+            "env": "mac"
+        },
+        {
+            "label": "Open in IDE",
+            "group": "Service",
+            "command": "cd $FO_WORKSPACE/maintenance-env && cmake --open .",
+            "env": "win linux mac noremote"
+        },
+        {
+            "label": "Generate Engine Todo",
+            "group": "Service",
+            "command": "cd BuildTools && python todo-generator.py",
+            "env": "wsl linux mac engine"
+        },
+        {
+            "label": "Format Engine code",
+            "group": "Service",
+            "command": "cd Source && clang-format-10 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.* Tests/*.*",
+            "env": "linux wsl engine"
+        },
+        {
+            "label": "Run unit tests",
+            "group": "Service",
+            "command": "BuildTools/validate.sh unit-tests",
+            "env": "linux engine"
+        },
+        {
+            "label": "Run code coverage",
+            "group": "Service",
+            "command": "BuildTools/validate.sh code-coverage",
+            "env": "linux engine"
+        },
+        {
+            "label": "Client for Windows (x64)",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh win64 client",
+            "env": "wsl"
+        },
+        {
+            "label": "Client for Windows (x86)",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh win32 client",
+            "env": "wsl"
+        },
+        {
+            "label": "Client for UWP",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh uwp client",
+            "env": "wsl"
+        },
+        {
+            "label": "Client for Linux",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh linux client",
+            "env": "wsl"
+        },
+        {
+            "label": "Client for Web",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh web client",
+            "env": "linux"
+        },
+        {
+            "label": "Client for Android (arm)",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh android client",
+            "env": "linux"
+        },
+        {
+            "label": "Client for Android (arm64)",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh android-arm64 client",
+            "env": "linux"
+        },
+        {
+            "label": "Client for Android (x86)",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh android-x86 client",
+            "env": "linux"
+        },
+        {
+            "label": "Client for macOS",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh mac client",
+            "env": "mac"
+        },
+        {
+            "label": "Client for iOS",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh ios client",
+            "env": "mac"
+        },
+        {
+            "label": "Server for Windows",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh win64 server",
+            "env": "wsl"
+        },
+        {
+            "label": "Server for Linux",
+            "group": "Multiplayer",
+            "command": "BuildTools/build.sh linux server",
+            "env": "linux"
+        },
+        {
+            "label": "Debug client for Windows (x64)",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh win64 client debug",
+            "env": "wsl"
+        },
+        {
+            "label": "Debug client for Windows (x86)",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh win32 client debug",
+            "env": "wsl"
+        },
+        {
+            "label": "Debug client for UWP",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh uwp client debug",
+            "env": "wsl"
+        },
+        {
+            "label": "Debug client for Linux",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh linux client debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug client for Web",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh web client debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug client for Android (arm)",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh android client debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug client for Android (arm64)",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh android-arm64 client debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug client for Android (x86)",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh android-x86 client debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug client for macOS",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh mac client debug",
+            "env": "mac"
+        },
+        {
+            "label": "Debug client for iOS",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh ios client debug",
+            "env": "mac"
+        },
+        {
+            "label": "Debug server for Windows",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh win64 server debug",
+            "env": "wsl"
+        },
+        {
+            "label": "Debug server for Linux",
+            "group": "Multiplayer (Debug)",
+            "command": "BuildTools/build.sh linux server debug",
+            "env": "linux"
+        },
+        {
+            "label": "Single for Windows (x64)",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh win64 single",
+            "env": "wsl"
+        },
+        {
+            "label": "Single for Windows (x86)",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh win32 single",
+            "env": "wsl"
+        },
+        {
+            "label": "Single for UWP",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh uwp single",
+            "env": "wsl"
+        },
+        {
+            "label": "Single for Linux",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh linux single",
+            "env": "linux"
+        },
+        {
+            "label": "Single for Web",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh web single",
+            "env": "linux"
+        },
+        {
+            "label": "Single for Android (arm)",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh android single",
+            "env": "linux"
+        },
+        {
+            "label": "Single for Android (arm64)",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh android-arm64 single",
+            "env": "linux"
+        },
+        {
+            "label": "Single for Android (x86)",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh android-x86 single",
+            "env": "linux"
+        },
+        {
+            "label": "Single for macOS",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh mac single",
+            "env": "mac"
+        },
+        {
+            "label": "Single for iOS",
+            "group": "Singleplayer",
+            "command": "BuildTools/build.sh ios single",
+            "env": "mac"
+        },
+        {
+            "label": "Debug single for Windows (x64)",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh win64 single debug",
+            "env": "wsl"
+        },
+        {
+            "label": "Debug single for Windows (x86)",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh win32 single debug",
+            "env": "wsl"
+        },
+        {
+            "label": "Debug single for UWP",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh uwp single debug",
+            "env": "wsl"
+        },
+        {
+            "label": "Debug single for Linux",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh linux single debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug single for Web",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh web single debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug single for Android (arm)",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh android single debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug single for Android (arm64)",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh android-arm64 single debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug single for Android (x86)",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh android-x86 single debug",
+            "env": "linux"
+        },
+        {
+            "label": "Debug single for macOS",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh mac single debug",
+            "env": "mac"
+        },
+        {
+            "label": "Debug single for iOS",
+            "group": "Singleplayer (Debug)",
+            "command": "BuildTools/build.sh ios single debug",
+            "env": "mac"
+        },
+        {
+            "label": "Generate script API",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh gen-api",
+            "env": "linux wsl"
+        },
+        {
+            "label": "Compile all scripts",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh",
+            "env": "linux wsl"
+        },
+        {
+            "label": "Compile Native scripts",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh native",
+            "env": "linux wsl"
+        },
+        {
+            "label": "Compile AngelScript scripts",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh angelscript",
+            "env": "linux wsl"
+        },
+        {
+            "label": "Compile Mono scripts",
+            "group": "Scripts",
+            "command": "BuildTools/compile-scripts.sh mono",
+            "env": "linux wsl"
+        },
+        {
+            "label": "Bake all",
+            "group": "Resources",
+            "command": "BuildTools/bake-resources.sh content",
+            "env": "linux wsl"
+        },
+        {
+            "label": "Bake content",
+            "group": "Resources",
+            "command": "BuildTools/bake-resources.sh resources",
+            "env": "linux wsl"
+        },
+        {
+            "label": "Bake resources",
+            "group": "Resources",
+            "command": "BuildTools/bake-resources.sh",
+            "env": "linux wsl"
+        },
+        {
+            "label": "Make packages",
+            "group": "Packaging",
+            "command": "BuildTools/make-packages.sh",
+            "env": "linux wsl"
+        }
+    ],
     "content": [
         {
             "label": "Engine Common Source",
@@ -31,322 +417,6 @@
             "label": "Core",
             "path": "Resources/Core",
             "type": "zip"
-        }
-    ],
-    "actions": [
-        {
-            "label": "WSL Shell",
-            "group": "Service"
-        },
-        {
-            "label": "Check Workspace",
-            "group": "Service",
-            "command": "BuildTools/prepare-workspace.sh all check"
-        },
-        {
-            "label": "Prepare Workspace",
-            "group": "Service",
-            "command": "BuildTools/prepare-workspace.sh all"
-        },
-        {
-            "label": "Open in IDE",
-            "group": "Service",
-            "command": "cd $FO_WORKSPACE/maintenance-env && cmake.exe --open ."
-        },
-        {
-            "label": "Prepare VSCode Toolset",
-            "group": "Service",
-            "command": "BuildTools/prepare-vscode-toolset.sh"
-        },
-        {
-            "label": "Update VSCode Toolset",
-            "group": "Service",
-            "command": "BuildTools/update-vscode-toolset.sh"
-        },
-        {
-            "label": "Generate Engine Todo",
-            "group": "Service",
-            "command": "cd BuildTools && python todo-generator.py"
-        },
-        {
-            "label": "Format Engine code",
-            "group": "Service",
-            "command": "cd Source && clang-format-10 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.* Tests/*.*"
-        },
-        {
-            "label": "Run unit tests",
-            "group": "Service",
-            "command": "BuildTools/validate.sh unit-tests"
-        },
-        {
-            "label": "Run code coverage",
-            "group": "Service",
-            "command": "BuildTools/validate.sh code-coverage"
-        },
-        {
-            "label": "Client for Windows (x64)",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh win64 client"
-        },
-        {
-            "label": "Client for Windows (x86)",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh win32 client"
-        },
-        {
-            "label": "Client for UWP",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh uwp client"
-        },
-        {
-            "label": "Client for Linux",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh linux client"
-        },
-        {
-            "label": "Client for Web",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh web client"
-        },
-        {
-            "label": "Client for Android (arm)",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh android client"
-        },
-        {
-            "label": "Client for Android (arm64)",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh android-arm64 client"
-        },
-        {
-            "label": "Client for Android (x86)",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh android-x86 client"
-        },
-        {
-            "label": "Client for macOS",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh mac client"
-        },
-        {
-            "label": "Client for iOS",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh ios client"
-        },
-        {
-            "label": "Server for Windows",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh win64 server"
-        },
-        {
-            "label": "Server for Linux",
-            "group": "Multiplayer",
-            "command": "BuildTools/build.sh linux server"
-        },
-        {
-            "label": "Debug client for Windows (x64)",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh win64 client debug"
-        },
-        {
-            "label": "Debug client for Windows (x86)",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh win32 client debug"
-        },
-        {
-            "label": "Debug client for UWP",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh uwp client debug"
-        },
-        {
-            "label": "Debug client for Linux",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh linux client debug"
-        },
-        {
-            "label": "Debug client for Web",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh web client debug"
-        },
-        {
-            "label": "Debug client for Android (arm)",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh android client debug"
-        },
-        {
-            "label": "Debug client for Android (arm64)",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh android-arm64 client debug"
-        },
-        {
-            "label": "Debug client for Android (x86)",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh android-x86 client debug"
-        },
-        {
-            "label": "Debug client for macOS",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh mac client debug"
-        },
-        {
-            "label": "Debug client for iOS",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh ios client debug"
-        },
-        {
-            "label": "Debug server for Windows",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh win64 server debug"
-        },
-        {
-            "label": "Debug server for Linux",
-            "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh linux server debug"
-        },
-        {
-            "label": "Single for Windows (x64)",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh win64 single"
-        },
-        {
-            "label": "Single for Windows (x86)",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh win32 single"
-        },
-        {
-            "label": "Single for UWP",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh uwp single"
-        },
-        {
-            "label": "Single for Linux",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh linux single"
-        },
-        {
-            "label": "Single for Web",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh web single"
-        },
-        {
-            "label": "Single for Android (arm)",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh android single"
-        },
-        {
-            "label": "Single for Android (arm64)",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh android-arm64 single"
-        },
-        {
-            "label": "Single for Android (x86)",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh android-x86 single"
-        },
-        {
-            "label": "Single for macOS",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh mac single"
-        },
-        {
-            "label": "Single for iOS",
-            "group": "Singleplayer",
-            "command": "BuildTools/build.sh ios single"
-        },
-        {
-            "label": "Debug single for Windows (x64)",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh win64 single debug"
-        },
-        {
-            "label": "Debug single for Windows (x86)",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh win32 single debug"
-        },
-        {
-            "label": "Debug single for UWP",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh uwp single debug"
-        },
-        {
-            "label": "Debug single for Linux",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh linux single debug"
-        },
-        {
-            "label": "Debug single for Web",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh web single debug"
-        },
-        {
-            "label": "Debug single for Android (arm)",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh android single debug"
-        },
-        {
-            "label": "Debug single for Android (arm64)",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh android-arm64 single debug"
-        },
-        {
-            "label": "Debug single for Android (x86)",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh android-x86 single debug"
-        },
-        {
-            "label": "Debug single for macOS",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh mac single debug"
-        },
-        {
-            "label": "Debug single for iOS",
-            "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh ios single debug"
-        },
-        {
-            "label": "Generate script API",
-            "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh gen-api"
-        },
-        {
-            "label": "Compile all scripts",
-            "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh"
-        },
-        {
-            "label": "Compile Native scripts",
-            "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh native"
-        },
-        {
-            "label": "Compile AngelScript scripts",
-            "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh angelscript"
-        },
-        {
-            "label": "Compile Mono scripts",
-            "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh mono"
-        },
-        {
-            "label": "Bake all",
-            "group": "Resources",
-            "command": "BuildTools/bake-resources.sh content"
-        },
-        {
-            "label": "Bake content",
-            "group": "Resources",
-            "command": "BuildTools/bake-resources.sh resources"
-        },
-        {
-            "label": "Bake resources",
-            "group": "Resources",
-            "command": "BuildTools/bake-resources.sh"
-        },
-        {
-            "label": "Make packages",
-            "group": "Packaging",
-            "command": "BuildTools/make-packages.sh"
         }
     ]
 }
