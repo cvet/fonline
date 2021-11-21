@@ -2412,6 +2412,36 @@ void ProtoMap::GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, ushort p
     }
 }
 
+void ProtoMap::GetMObjectsHexEx( ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs )
+{
+    for( auto it = MObjects.begin(), end = MObjects.end(); it != end; ++it )
+    {
+        MapObject* mobj = *it;
+        if( ( !pid || mobj->ProtoId == pid ) && DistGame( mobj->MapX, mobj->MapY, hx, hy ) <= radius )
+            mobjs.push_back( mobj );
+    }
+}
+
+void ProtoMap::GetWalls( ushort hexX, ushort hexY, SceneryClRefVec& sceneries )
+{
+	for( auto it = WallsToSend.begin( ), end = WallsToSend.end( ); it != end; ++it )
+	{
+		SceneryCl* mobj = it;
+		if( mobj->MapX == hexX && mobj->MapY == hexY )
+			sceneries.push_back( mobj );
+	}
+}
+
+void ProtoMap::GetSceneryClients( ushort hexX, ushort hexY, SceneryClRefVec& sceneries )
+{
+	for( auto it = SceneriesToSend.begin( ), end = SceneriesToSend.end( ); it != end; ++it )
+	{
+		SceneryCl* mobj = it;
+		if( mobj->MapX == hexX && mobj->MapY == hexY )
+			sceneries.push_back( mobj );
+	}
+}
+
 void ProtoMap::GetMapSceneriesByPid( ushort pid, MapObjectPtrVec& mobjs )
 {
     for( auto it = SceneryVec.begin(), end = SceneryVec.end(); it != end; ++it )

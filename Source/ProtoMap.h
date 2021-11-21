@@ -164,8 +164,12 @@ struct SceneryCl
     uint   PicMapHash;
     short  Dir;
     ushort Reserved1;
+
+	void AddRef( ) { }
+	void Release( ) { }
 };
 typedef vector< SceneryCl > SceneryClVec;
+typedef vector< SceneryCl* > SceneryClRefVec;
 
 class ProtoMap
 {
@@ -302,7 +306,12 @@ public:
     MapObject* GetMapScenery( ushort hx, ushort hy, ushort pid );
     void       GetMapSceneriesHex( ushort hx, ushort hy, MapObjectPtrVec& mobjs );
     void       GetMapSceneriesHexEx( ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs );
+    void       GetMObjectsHexEx( ushort hx, ushort hy, uint radius, ushort pid, MapObjectPtrVec& mobjs );
     void       GetMapSceneriesByPid( ushort pid, MapObjectPtrVec& mobjs );
+
+	void GetWalls( ushort hexX, ushort hexY, SceneryClRefVec& sceneries );
+	void GetSceneryClients( ushort hexX, ushort hexY, SceneryClRefVec& sceneries );
+
     MapObject* GetMapGrid( ushort hx, ushort hy );
     ProtoMap(): isInit( false ), pathType( 0 ), HexFlags( NULL ) { MEMORY_PROCESS( MEMORY_PROTO_MAP, sizeof( ProtoMap ) ); }
     ProtoMap( const ProtoMap& r )

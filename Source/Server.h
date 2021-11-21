@@ -494,6 +494,9 @@ public:
         static void Synchronizer_Constructor( void* memory );
         static void Synchronizer_Destructor( void* memory );
 
+		static void SceneryCl_AddRef( SceneryCl* memory ) {}
+		static void SceneryCl_Release( SceneryCl* memory ) {}
+
         static AIDataPlane* NpcPlane_GetCopy( AIDataPlane* plane );
         static AIDataPlane* NpcPlane_SetChild( AIDataPlane* plane, AIDataPlane* child_plane );
         static AIDataPlane* NpcPlane_GetChild( AIDataPlane* plane, uint index );
@@ -758,6 +761,9 @@ public:
         static MapObject* Map_GetSceneryHex( Map* map, ushort hx, ushort hy, ushort pid );
         static uint       Map_GetSceneriesHex( Map* map, ushort hx, ushort hy, ScriptArray* sceneries );
         static uint       Map_GetSceneriesHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, ScriptArray* sceneries );
+        static uint       Map_GetMObjectsHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, ScriptArray* sceneries );
+		static uint       Map_GetWalls( Map* map, ushort hexX, ushort hexY, ScriptArray* sceneries );
+		static uint       Map_GetSceneryClients( Map* map, ushort hexX, ushort hexY, ScriptArray* sceneries );
         static uint       Map_GetSceneriesByPid( Map* map, ushort pid, ScriptArray* sceneries );
         static Critter*   Map_GetCritterHex( Map* map, ushort hx, ushort hy );
         static Critter*   Map_GetCritterById( Map* map, uint crid );

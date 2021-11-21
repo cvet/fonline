@@ -159,6 +159,10 @@ BIND_ASSERT( engine->RegisterObjectType( "Scenery", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "Scenery", asBEHAVE_ADDREF, "void f()", asMETHOD( MapObject, AddRef ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "Scenery", asBEHAVE_RELEASE, "void f()", asMETHOD( MapObject, Release ), asCALL_THISCALL ) );
 
+BIND_ASSERT( engine->RegisterObjectType( "SceneryClient", 0, asOBJ_REF ) );
+BIND_ASSERT( engine->RegisterObjectBehaviour( "SceneryClient", asBEHAVE_ADDREF, "void f()", asMETHOD( SceneryCl, AddRef ), asCALL_THISCALL ) );
+BIND_ASSERT( engine->RegisterObjectBehaviour( "SceneryClient", asBEHAVE_RELEASE, "void f()", asMETHOD( SceneryCl, Release ), asCALL_THISCALL ) );
+
 BIND_ASSERT( engine->RegisterObjectType( "Critter", 0, asOBJ_REF ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "Critter", asBEHAVE_ADDREF, "void f()", asMETHOD( Critter, AddRef ), asCALL_THISCALL ) );
 BIND_ASSERT( engine->RegisterObjectBehaviour( "Critter", asBEHAVE_RELEASE, "void f()", asMETHOD( Critter, Release ), asCALL_THISCALL ) );
@@ -376,6 +380,8 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 ProtoId", 
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 HexX", OFFSETOF( MapObject, MapX ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 HexY", OFFSETOF( MapObject, MapY ) ) );
 
+BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint8 MapObjectType", OFFSETOF( MapObject, MapObjType ) ) );
+
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const bool CanUse", OFFSETOF( MapObject, MScenery.CanUse ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const bool CanTalk", OFFSETOF( MapObject, MScenery.CanTalk ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint TriggerNum", OFFSETOF( MapObject, MScenery.TriggerNum ) ) );
@@ -389,6 +395,31 @@ BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint16 ToMapPid",
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint ToEntire", OFFSETOF( MapObject, MScenery.ToEntire ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint8 ToDir", OFFSETOF( MapObject, MScenery.ToDir ) ) );
 BIND_ASSERT( engine->RegisterObjectProperty( "Scenery", "const uint8 SpriteCut", OFFSETOF( MapObject, MScenery.SpriteCut ) ) );
+
+/************************************************************************/
+/* SceneryClient                                                        */
+/************************************************************************/
+
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint16 ProtoId", OFFSETOF( SceneryCl, ProtoId ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint8 Flags", OFFSETOF( SceneryCl, Flags ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint8 SpriteCut", OFFSETOF( SceneryCl, SpriteCut ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint16 MapX", OFFSETOF( SceneryCl, MapX ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint16 MapY", OFFSETOF( SceneryCl, MapY ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const int16 OffsetX", OFFSETOF( SceneryCl, OffsetX ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const int16 OffsetY", OFFSETOF( SceneryCl, OffsetY ) ) );
+
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint LightColor", OFFSETOF( SceneryCl, LightColor ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint16 LightDistance", OFFSETOF( SceneryCl, LightDistance ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint16 LightFlags", OFFSETOF( SceneryCl, LightFlags ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const int8 LightIntensity", OFFSETOF( SceneryCl, LightIntensity ) ) );
+
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint8 InfoOffset", OFFSETOF( SceneryCl, InfoOffset ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint8 AnimStayBegin", OFFSETOF( SceneryCl, AnimStayBegin ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint8 AnimStayEnd", OFFSETOF( SceneryCl, AnimStayEnd ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint16 AnimWait", OFFSETOF( SceneryCl, AnimWait ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint PicMapHash", OFFSETOF( SceneryCl, PicMapHash ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint8 Dir", OFFSETOF( SceneryCl, Dir ) ) );
+BIND_ASSERT( engine->RegisterObjectProperty( "SceneryClient", "const uint16 Reserved1", OFFSETOF( SceneryCl, Reserved1 ) ) );
 
 /************************************************************************/
 /* Critter                                                              */
@@ -645,6 +676,11 @@ BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Item@+ GetCar(uint16 hexX, ui
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Scenery@+ GetScenery(uint16 hexX, uint16 hexY, uint16 protoId) const", asFUNCTION( BIND_CLASS Map_GetSceneryHex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(uint16 hexX, uint16 hexY, Scenery@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesHex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(uint16 hexX, uint16 hexY, uint radius, uint16 protoId, Scenery@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesHexEx ), asCALL_CDECL_OBJFIRST ) );
+
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetWalls(uint16 hexX, uint16 hexY, SceneryClient@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetWalls ), asCALL_CDECL_OBJFIRST ) );
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneryClients(uint16 hexX, uint16 hexY, SceneryClient@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneryClients ), asCALL_CDECL_OBJFIRST ) );
+
+BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetAllObjects(uint16 hexX, uint16 hexY, uint radius, uint16 protoId, Scenery@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetMObjectsHexEx ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "uint GetSceneries(uint16 protoId, Scenery@[]@+ sceneries) const", asFUNCTION( BIND_CLASS Map_GetSceneriesByPid ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ GetCritter(uint16 hexX, uint16 hexY) const", asFUNCTION( BIND_CLASS Map_GetCritterHex ), asCALL_CDECL_OBJFIRST ) );
 BIND_ASSERT( engine->RegisterObjectMethod( "Map", "Critter@+ GetCritter(uint critterId) const", asFUNCTION( BIND_CLASS Map_GetCritterById ), asCALL_CDECL_OBJFIRST ) );

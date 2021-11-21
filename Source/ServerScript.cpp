@@ -4009,6 +4009,53 @@ uint FOServer::SScriptFunc::Map_GetSceneriesHexEx( Map* map, ushort hx, ushort h
     return (uint) mobjs.size();
 }
 
+uint FOServer::SScriptFunc::Map_GetMObjectsHexEx( Map* map, ushort hx, ushort hy, uint radius, ushort pid, ScriptArray* sceneries )
+{
+	if( map->IsNotValid )
+		SCRIPT_ERROR_R0( "This nullptr." );
+	if( hx >= map->GetMaxHexX( ) || hy >= map->GetMaxHexY( ) )
+		SCRIPT_ERROR_R0( "Invalid hexes args." );
+	MapObjectPtrVec mobjs;
+	map->Proto->GetMObjectsHexEx( hx, hy, radius, pid, mobjs );
+	if( !mobjs.size( ) )
+		return 0;
+	if( sceneries )
+		Script::AppendVectorToArrayRef( mobjs, sceneries );
+	return ( uint )mobjs.size( );
+}
+
+uint FOServer::SScriptFunc::Map_GetWalls( Map* map, ushort hexX, ushort hexY, ScriptArray* sceneries )
+{
+	if( map->IsNotValid )
+		SCRIPT_ERROR_R0( "This nullptr." );
+	if( hexX >= map->GetMaxHexX( ) || hexY >= map->GetMaxHexY( ) )
+		SCRIPT_ERROR_R0( "Invalid hexes args." );
+
+	SceneryClRefVec sccls;
+	map->Proto->GetWalls( hexX, hexY, sccls );
+	if( !sccls.size( ) )
+		return 0;
+	if( sceneries )
+		Script::AppendVectorToArrayRef( sccls, sceneries );
+	return ( uint )sccls.size( );
+}
+
+uint FOServer::SScriptFunc::Map_GetSceneryClients( Map* map, ushort hexX, ushort hexY, ScriptArray* sceneries )
+{
+	if( map->IsNotValid )
+		SCRIPT_ERROR_R0( "This nullptr." );
+	if( hexX >= map->GetMaxHexX( ) || hexY >= map->GetMaxHexY( ) )
+		SCRIPT_ERROR_R0( "Invalid hexes args." );
+
+	SceneryClRefVec sccls;
+	map->Proto->GetSceneryClients( hexX, hexY, sccls );
+	if( !sccls.size( ) )
+		return 0;
+	if( sceneries )
+		Script::AppendVectorToArrayRef( sccls, sceneries );
+	return ( uint )sccls.size( );
+}
+
 uint FOServer::SScriptFunc::Map_GetSceneriesByPid( Map* map, ushort pid, ScriptArray* sceneries )
 {
     if( map->IsNotValid )
