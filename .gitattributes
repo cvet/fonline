@@ -71,6 +71,8 @@
 *.mp3      binary
 *.avi      binary
 *.mp4      binary
+*.acm      binary
+*.ogv      binary
 
 # Scripts
 *.bash     text eol=lf
@@ -95,6 +97,8 @@
 *.zip      binary
 *.zipped   binary
 *.bz2      binary
+*.dat      binary
+*.bos      binary
 
 # Text files where line endings should be preserved
 *.patch    -text
