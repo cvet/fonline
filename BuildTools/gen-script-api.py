@@ -49,7 +49,7 @@ def collectFiles(pathPattern, generator):
     else:
         if not os.path.isfile(pathPattern):
             lines = generator()
-            with open(pathPattern, 'w') as f:
+            with open(pathPattern, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(lines))
         result.append(pathPattern)
     return result
@@ -72,7 +72,7 @@ class MetaInfo:
         self.properties = { 'global': [], 'player': [], 'item': [], 'critter': [], 'map': [], 'location': [] }
         self.settings = []
 
-        with open(metaName, 'r') as f:
+        with open(metaName, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
         for line in lines:
@@ -132,7 +132,7 @@ spAngelScriptMeta = MetaInfo(args.meta[:-4] + '-SP-AngelScript.txt')
 spMonoMeta = MetaInfo(args.meta[:-4] + '-SP-Mono.txt')
 
 # Parse content
-content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fomsg': [] }
+content = { 'foacc': [], 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fomsg': [] }
 
 for contentDir in args.content:
     def collectFiles(dir):
@@ -147,7 +147,7 @@ for contentDir in args.content:
     for file in collectFiles(contentDir):
         def getPidNames(file):
             result = [os.path.splitext(os.path.basename(file))[0]]
-            with open(file) as f:
+            with open(file, encoding='utf-8') as f:
                 fileLines = f.readlines()
             for fileLine in fileLines:
                 if fileLine.startswith('$Name'):
@@ -176,10 +176,10 @@ def flushFiles():
     for name, lines in files.items():
         def writeToDisk(fpath):
             if os.path.isfile(fpath):
-                with open(fpath, 'r') as f:
+                with open(fpath, 'r', encoding='utf-8') as f:
                     if ''.join([l.rstrip('\r\n') for l in f.readlines()]).rstrip() == ''.join(lines).rstrip():
                         return
-            with open(fpath, 'w') as f:
+            with open(fpath, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(lines) + '\n')
 
         writeToDisk(os.path.join(outputPath, name))
@@ -677,7 +677,7 @@ def genApi(target):
             files.append((sort, file))
 
         for file in args.assource:
-            with open(file, 'r') as f:
+            with open(file, 'r', encoding='utf-8') as f:
                 line = f.readline()
 
             if len(line) >= 3 and ord(line[0]) == 0xEF and ord(line[1]) == 0xBB and ord(line[2]) == 0xBF:

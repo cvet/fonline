@@ -14,5 +14,10 @@ elif [ "$1" = "mono" ]; then
     TARGET="CompileMonoScripts"
 fi
 
-cd maintenance-env
-cmake.exe --build . --config Release --target $TARGET
+if grep -q icrosoft /proc/version; then
+	cd build-win64-toolset
+	cmake.exe --build . --config Release --target $TARGET
+else
+	cd build-linux-toolset
+	cmake --build . --config Release --target $TARGET
+fi

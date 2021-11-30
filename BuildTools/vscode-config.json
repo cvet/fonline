@@ -37,10 +37,16 @@
             "env": "mac"
         },
         {
-            "label": "Open in IDE",
+            "label": "Build Toolset",
             "group": "Service",
-            "command": "cd $FO_WORKSPACE/maintenance-env && cmake --open .",
-            "env": "win linux mac noremote"
+            "command": "BuildTools/build.sh win64 toolset",
+            "env": "wsl"
+        },
+        {
+            "label": "Build Toolset",
+            "group": "Service",
+            "command": "BuildTools/build.sh linux toolset",
+            "env": "linux"
         },
         {
             "label": "Generate Engine Todo",
@@ -334,88 +340,88 @@
             "label": "Generate script API",
             "group": "Scripts",
             "command": "BuildTools/compile-scripts.sh gen-api",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         },
         {
             "label": "Compile all scripts",
             "group": "Scripts",
             "command": "BuildTools/compile-scripts.sh",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         },
         {
             "label": "Compile Native scripts",
             "group": "Scripts",
             "command": "BuildTools/compile-scripts.sh native",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         },
         {
             "label": "Compile AngelScript scripts",
             "group": "Scripts",
             "command": "BuildTools/compile-scripts.sh angelscript",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         },
         {
             "label": "Compile Mono scripts",
             "group": "Scripts",
             "command": "BuildTools/compile-scripts.sh mono",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         },
         {
             "label": "Bake all",
             "group": "Resources",
             "command": "BuildTools/bake-resources.sh content",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         },
         {
             "label": "Bake content",
             "group": "Resources",
             "command": "BuildTools/bake-resources.sh resources",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         },
         {
             "label": "Bake resources",
             "group": "Resources",
             "command": "BuildTools/bake-resources.sh",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         },
         {
             "label": "Make packages",
             "group": "Packaging",
             "command": "BuildTools/make-packages.sh",
-            "env": "linux wsl"
+            "env": "linux wsl toolset"
         }
     ],
     "content": [
         {
             "label": "Engine Common Source",
-            "path": "Source/Common",
+            "path": "../Source/Common",
             "type": "engine"
         },
         {
             "label": "Engine Client Source",
-            "path": "Source/Client",
+            "path": "../Source/Client",
             "type": "engine"
         },
         {
             "label": "Engine Server Source",
-            "path": "Source/Client",
+            "path": "../Source/Server",
             "type": "engine"
         },
         {
             "label": "Engine Tools Source",
-            "path": "Source/Tools",
+            "path": "../Source/Tools",
             "type": "engine"
         }
     ],
     "resources": [
         {
             "label": "Embedded",
-            "path": "Resources/Embedded",
+            "path": "../Resources/Embedded",
             "type": "embedded"
         },
         {
             "label": "Core",
-            "path": "Resources/Core",
+            "path": "../Resources/Core",
             "type": "zip"
         }
     ]

@@ -94,6 +94,14 @@ while ($True) {
         $ready = $False
     }
 
+    if (!(Test-Command python)) {
+        Write-Host "Python not found"
+        Write-Host "You can get it here: https://www.python.org"
+        Write-Host "(chocopy) Or install Python automatically within Chocolatey"
+        $chocoNeeded = $True
+        $ready = $False
+    }
+
     # Todo: check VSCode
     # Todo: check WiX Toolset
 
@@ -140,6 +148,9 @@ while ($True) {
                     choco install -y visualstudio2019buildtools
                 } elseif ($answer -Eq "chococmake") {
                     choco install -y cmake
+                } elseif ($answer -Eq "chocopy") {
+                    choco install python
+                    choco install pip
                 }
                 break
             }

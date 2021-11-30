@@ -25,6 +25,8 @@ elif [ "$2" = "unit-tests" ]; then
     BUILD_TARGET="-DFONLINE_UNIT_TESTS=1"
 elif [ "$2" = "code-coverage" ]; then
     BUILD_TARGET="--DFONLINE_CODE_COVERAGE=1 -DFONLINE_UNIT_TESTS=0"
+elif [ "$2" = "toolset" ]; then
+    BUILD_TARGET="-DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0"
 elif [ "$2" = "full" ]; then
     BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_SINGLE=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0"
 else
@@ -42,6 +44,8 @@ BUILD_TARGET=" -DCMAKE_BUILD_TYPE=$CONFIG $BUILD_TARGET"
 
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
+
+rm -rf ready
 
 OUTPUT_PATH=$FO_WORKSPACE/output
 mkdir -p $OUTPUT_PATH
@@ -112,3 +116,5 @@ else
     echo "Invalid first command arg"
     exit 1
 fi
+
+touch ready
