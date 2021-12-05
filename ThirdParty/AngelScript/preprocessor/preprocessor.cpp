@@ -456,18 +456,16 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( LLITR itr, LLITR end, LexemList&
     DefineTable::iterator define_entry = define_table.find( itr->Value );
     if( define_entry == define_table.end() )
         return ++itr;
-    itr = lexems.erase( itr );
 
-    LLITR itr_begin = itr;
-    itr_begin--;
+    const auto itr_value = itr->Value;
+
+    itr = lexems.erase( itr );
 
     if( define_entry->second.Arguments.size() == 0 )
     {
-        lexems.insert( itr,
+        return lexems.insert( itr,
                        define_entry->second.Lexems.begin(),
                        define_entry->second.Lexems.end() );
-
-        return itr_begin;
     }
 
     // define has arguments.
@@ -476,7 +474,7 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( LLITR itr, LLITR end, LexemList&
 
     if( define_entry->second.Arguments.size() != arguments.size() )
     {
-        PrintErrorMessage( "Didn't supply right number of arguments to define '" + itr_begin->Value + "'." );
+        PrintErrorMessage( "Didn't supply right number of arguments to define '" + itr_value + "'." );
         return end;
     }
 
@@ -496,9 +494,7 @@ Preprocessor::LLITR Preprocessor::ExpandDefine( LLITR itr, LLITR end, LexemList&
         temp_list.insert( tli, arguments[ arg->second ].begin(), arguments[ arg->second ].end() );
     }
 
-    lexems.insert( itr, temp_list.begin(), temp_list.end() );
-
-    return itr_begin;
+    return lexems.insert( itr, temp_list.begin(), temp_list.end() );
     // expand arguments in templist.
 }
 
