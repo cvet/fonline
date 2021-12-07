@@ -4435,7 +4435,49 @@ void FOClient::LMenuStayOff()
     {
         ItemHex* item = GetItem( TargetSmth.GetId() );
         if( item && item->IsDrawContour() && item->SprDrawValid )
-            item->SprDraw->SetContour( 0 );
+		{
+            
+						#define COLOR_HARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
+						#define COLOR_HXRGB( r, g, b )            COLOR_HARGB( 0xff, r, g, b )
+						#define COLOR_ORANGE            ( COLOR_HXRGB( 255, 165, 0 ) )
+						#define COLOR_CONTOUR_YELLOW    ( COLOR_HXRGB( 150, 150, 0 ) )
+			if (GameOpt.ShowContourItems)
+			{
+				ProtoItem*     proto = item->Proto;
+				if (proto->ColorContour!=0 && item->ColorContour==0)
+				{
+					int n1, n2, n3, n4, n5, n6, n7, n8, n9;
+					n1 = proto->ColorContour / 100000000;
+					n2 = (proto->ColorContour - n1 * 100000000) / 10000000;
+					n3 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000) / 1000000;
+					n4 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000) / 100000;
+					n5 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000) / 10000;
+					n6 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000) / 1000;
+					n7 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000) / 100;
+					n8 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000 - n7 * 100) / 10;
+					n9 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000 - n7 * 100 - n8 * 10);
+
+					int RedColor = (((n1*10)+n2)*10)+n3;
+					int GreenColor = (((n4*10)+n5)*10)+n6;
+					int BlueColor = (((n7*10)+n8)*10)+n9;
+					item->SprDraw->SetContour(CONTOUR_CUSTOM, COLOR_XRGB(RedColor,GreenColor,BlueColor ) );		
+				
+					item->SprDraw->SetColor( 0);
+				}				
+				else if (item->ColorContour==0)
+				{
+					item->SprDraw->SetContour(CONTOUR_CUSTOM, COLOR_CONTOUR_YELLOW );
+					item->SprDraw->SetColor( 0 );
+				}
+				else
+				{
+					item->SprDraw->SetContour(CONTOUR_CUSTOM, item->ColorContour );
+					item->SprDraw->SetColor( 0 );
+				}
+			}
+			else
+			item->SprDraw->SetContour(0);
+		}
     }
     if( TargetSmth.IsCritter() )
     {
@@ -4522,7 +4564,48 @@ void FOClient::LMenuTryCreate()
         {
             ItemHex* item = GetItem( TargetSmth.GetId() );
             if( item && item->IsDrawContour() && item->SprDrawValid )
-                item->SprDraw->SetContour( CONTOUR_YELLOW );
+			{
+				#define COLOR_HARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
+				#define COLOR_HXRGB( r, g, b )            COLOR_HARGB( 0xff, r, g, b )
+				#define COLOR_ORANGE            ( COLOR_HXRGB( 255, 165, 0 ) )
+				#define COLOR_CONTOUR_YELLOW    ( COLOR_HXRGB( 150, 150, 0 ) )
+				if (GameOpt.ShowContourItems)
+				{
+					ProtoItem*     proto = item->Proto;
+					if (proto->ColorContour!=0 && item->ColorContour==0)
+					{
+						int n1, n2, n3, n4, n5, n6, n7, n8, n9;
+						n1 = proto->ColorContour / 100000000;
+						n2 = (proto->ColorContour - n1 * 100000000) / 10000000;
+						n3 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000) / 1000000;
+						n4 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000) / 100000;
+						n5 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000) / 10000;
+						n6 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000) / 1000;
+						n7 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000) / 100;
+						n8 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000 - n7 * 100) / 10;
+						n9 = (proto->ColorContour - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000 - n7 * 100 - n8 * 10);
+
+						int RedColor = (((n1*10)+n2)*10)+n3;
+						int GreenColor = (((n4*10)+n5)*10)+n6;
+						int BlueColor = (((n7*10)+n8)*10)+n9;
+						item->SprDraw->SetContour(CONTOUR_CUSTOM, COLOR_XRGB(RedColor,GreenColor,BlueColor ));
+
+						item->SprDraw->SetColor( COLOR_XRGB(RedColor,GreenColor,BlueColor ) );
+					}				
+					else if (item->ColorContour==0)
+					{
+						item->SprDraw->SetContour(CONTOUR_CUSTOM, COLOR_CONTOUR_YELLOW );
+						item->SprDraw->SetColor( COLOR_CONTOUR_YELLOW );
+					}
+					else
+					{
+						item->SprDraw->SetContour(CONTOUR_CUSTOM, item->ColorContour );
+						item->SprDraw->SetColor( item->ColorContour );
+					}
+				}
+				else
+				item->SprDraw->SetContour(CONTOUR_YELLOW);
+			}
         }
         if( TargetSmth.IsCritter() )
         {

@@ -45,7 +45,7 @@ public:
     uchar  MapObjType;
     bool   InContainer;
     ushort ProtoId;
-
+	
     ushort MapX;
     ushort MapY;
 

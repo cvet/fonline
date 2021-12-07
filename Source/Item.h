@@ -232,7 +232,7 @@ public:
     uchar  BlockLines[ ITEM_MAX_BLOCK_LINES ];
     ushort ChildPid[ ITEM_MAX_CHILDS ];
     uchar  ChildLines[ ITEM_MAX_CHILDS ][ ITEM_MAX_CHILD_LINES ];
-
+    int    ColorContour;
     // User data, binded with 'bindfield' pragma
 	union
 	{
@@ -290,7 +290,10 @@ public:
     void Clear()   { memzero( this, sizeof( ProtoItem ) ); }
     uint GetHash() { return Crypt.Crc32( (uchar*) this, sizeof( ProtoItem ) ); }
 
-    bool IsItem() { return !IsScen() && !IsWall() && !IsGrid(); }
+    bool IsItem() 
+	{
+		return !IsScen() && !IsWall() && !IsGrid(); 
+	}
     bool IsScen() { return Type == ITEM_TYPE_GENERIC; }
     bool IsWall() { return Type == ITEM_TYPE_WALL; }
     bool IsGrid() { return Type == ITEM_TYPE_GRID; }
@@ -357,7 +360,8 @@ public:
     uchar      Accessory;
     bool       ViewPlaceOnMap;
     short      Reserved0;
-
+	//uint       contourColor;
+	int ColorContour;
     union     // 8
     {
         struct

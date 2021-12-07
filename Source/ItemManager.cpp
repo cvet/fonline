@@ -580,6 +580,7 @@ void ItemManager::SaveAllItemsFile( void ( * save_func )( void*, size_t ) )
         Item* item = ( *it ).second;
         save_func( &item->Id, sizeof( item->Id ) );
         save_func( &item->Proto->ProtoId, sizeof( item->Proto->ProtoId ) );
+		save_func( &item->ColorContour, sizeof( item->ColorContour ) );
         save_func( &item->Accessory, sizeof( item->Accessory ) );
         save_func( &item->AccBuffer[ 0 ], sizeof( item->AccBuffer ) );
         save_func( &item->Data, sizeof( item->Data ) );
@@ -618,12 +619,21 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
         FileRead( f, &id, sizeof( id ) );
         ushort pid;
         FileRead( f, &pid, sizeof( pid ) );
+		
+		int ColorContour;
+		if( version >= WORLD_SAVE_V14 )
+        {
+			FileRead( f, &ColorContour, sizeof( ColorContour ) );
+		}
+		
         uchar  acc;
         FileRead( f, &acc, sizeof( acc ) );
         char   acc_buf[ 8 ];
         FileRead( f, &acc_buf[ 0 ], sizeof( acc_buf ) );
 
         Item::ItemData data;
+		
+
         if( version >= WORLD_SAVE_V13 )
         {
             FileRead( f, &data, sizeof( data ) );
@@ -732,6 +742,12 @@ bool ItemManager::LoadAllItemsFile( void* f, int version )
             lastItemId = id;
 
         item->Accessory = acc;
+		
+		if( version >= WORLD_SAVE_V14 )
+		{
+			item->ColorContour = ColorContour;
+		}
+		
         memcpy( item->AccBuffer, acc_buf, sizeof( acc_buf ) );
         item->Data = data;
         if( lexems[ 0 ] )
@@ -920,6 +936,7 @@ Item* ItemManager::SplitItem( Item* item, uint count )
 
     item->Count_Sub( count );
     new_item->Data = item->Data;
+	new_item->ColorContour = item->ColorContour;
     new_item->Data.Count = 0;
     new_item->Count_Add( count );
     if( item->PLexems )
@@ -1201,6 +1218,10 @@ Item* ItemManager::AddItemContainer( Item* cont, ushort pid, uint count, uint st
                 result = item;
             }
         }
+		if (item)
+		{
+			item->ColorContour = proto_item->ColorContour;
+		}
     }
 
     return result;
@@ -1263,6 +1284,10 @@ Item* ItemManager::AddItemCritter( Critter* cr, ushort pid, uint count )
                 result = item;
             }
         }
+		if (item)
+		{
+			item->ColorContour = proto_item->ColorContour;
+		}
     }
 
     return result;

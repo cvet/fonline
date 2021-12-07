@@ -1365,6 +1365,13 @@ GameOptions::GameOptions()
     IndicatorType = INDICATOR_LINES;
     DoubleClickTime = 0;
     RoofAlpha = 200;
+	WallAlpha = 255;
+	ShowContourContainer = false;
+	ShowContourItems = false;
+	ShowContourDoors = false;
+	ShowContourDeadCritters = false;
+	ShowContourScenery = false;
+	ShowContourWalls = false;
     HideCursor = false;
     DisableLMenu = false;
     DisableMouseEvents = false;

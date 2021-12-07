@@ -642,6 +642,13 @@ struct GameOptions
     int          IndicatorType;
     uint         DoubleClickTime;
     uchar        RoofAlpha;
+	uchar        WallAlpha;
+	bool         ShowContourContainer;
+	bool         ShowContourItems;
+	bool         ShowContourDoors;
+	bool         ShowContourDeadCritters;
+	bool         ShowContourScenery;
+	bool         ShowContourWalls;
     bool         HideCursor;
     bool         DisableLMenu;
     bool         DisableMouseEvents;

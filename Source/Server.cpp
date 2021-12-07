@@ -3403,7 +3403,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( IntMap ) == 24 );
     STATIC_ASSERT( sizeof( IntSet ) == 24 );
     STATIC_ASSERT( sizeof( IntPair ) == 8 );
-    STATIC_ASSERT( sizeof( ProtoItem ) == 908 );
+    STATIC_ASSERT( sizeof( ProtoItem ) == 912 );
     STATIC_ASSERT( sizeof( Item::ItemData ) == 120 );
     STATIC_ASSERT( sizeof( SceneryCl ) == 32 );
     STATIC_ASSERT( sizeof( NpcBagItem ) == 16 );
@@ -3412,11 +3412,11 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( GameVar ) == 28 );
     STATIC_ASSERT( sizeof( Mutex ) == 24 );
     STATIC_ASSERT( sizeof( MutexSpinlock ) == 4 );
-    STATIC_ASSERT( sizeof( GameOptions ) == 1312 );
+	STATIC_ASSERT( sizeof( GameOptions ) == 1320 );//hotrinED
     STATIC_ASSERT( sizeof( ScriptArray ) == 36 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
     STATIC_ASSERT( PROTO_ITEM_USER_DATA_SIZE == 500 );
-    STATIC_ASSERT( OFFSETOF( Item, IsNotValid ) == 146 );
+	STATIC_ASSERT( OFFSETOF( Item, IsNotValid ) == 150 );//hotrinED
     STATIC_ASSERT( OFFSETOF( Critter::CrTimeEvent, Identifier ) == 12 );
     STATIC_ASSERT( OFFSETOF( Critter, RefCounter ) == 9340 );
     STATIC_ASSERT( OFFSETOF( Client, LanguageMsg ) == 9408 );
@@ -4606,7 +4606,7 @@ bool FOServer::LoadWorld( const char* fname )
     if( version != WORLD_SAVE_V1 && version != WORLD_SAVE_V2 && version != WORLD_SAVE_V3 && version != WORLD_SAVE_V4 &&
         version != WORLD_SAVE_V5 && version != WORLD_SAVE_V6 && version != WORLD_SAVE_V7 && version != WORLD_SAVE_V8 &&
         version != WORLD_SAVE_V9 && version != WORLD_SAVE_V10 && version != WORLD_SAVE_V11 && version != WORLD_SAVE_V12 &&
-        version != WORLD_SAVE_V13 )
+        version != WORLD_SAVE_V13 && version != WORLD_SAVE_V14)
     {
         WriteLog( "Unknown version<%u> of world dump file.\n", version );
         FileClose( f );

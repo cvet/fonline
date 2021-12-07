@@ -40,7 +40,8 @@
 #define WORLD_SAVE_V11               ( 0x01AB0F11 )
 #define WORLD_SAVE_V12               ( 0x01AB0F12 )
 #define WORLD_SAVE_V13               ( 0x01AB0F13 )
-#define WORLD_SAVE_LAST              WORLD_SAVE_V13
+#define WORLD_SAVE_V14               ( 0x01AB0F14 )
+#define WORLD_SAVE_LAST              WORLD_SAVE_V14
 
 // Client save
 #define CLIENT_SAVE_V1               ( 1 ) // Corrupted

@@ -347,6 +347,11 @@ bool HexManager::AddItem( uint id, ushort pid, ushort hx, ushort hy, bool is_add
             if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
                 spr.SetLight( hexLight, maxHexX, maxHexY );
             item->SetSprite( &spr );
+			
+			
+			#ifdef FONLINE_CLIENT
+			ContourEnable( item,spr );
+			#endif
         }
 
         if( item->IsLight() || !item->IsLightThru() )
@@ -475,6 +480,12 @@ void HexManager::ProcessItems()
                                                             f_.ScrX + HEX_OX, f_.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->SprDrawValid );
                     if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
                         item->SprDraw->SetLight( hexLight, maxHexX, maxHexY );
+
+					#ifdef FONLINE_CLIENT
+					
+					ContourEnable( item );
+			
+					#endif
                 }
                 item->SetAnimOffs();
             }
@@ -760,15 +771,22 @@ void HexManager::DrawCursor( uint spr_id )
                             (float) si->Height / GameOpt.SpritesZoom, true, false );
 }
 
+
+
 void HexManager::DrawCursor( const char* text )
 {
     if( GameOpt.HideCursor || !isShowCursor )
         return;
+		   
     int x = (int) ( (float) ( cursorX + GameOpt.ScrOx ) / GameOpt.SpritesZoom );
     int y = (int) ( (float) ( cursorY + GameOpt.ScrOy ) / GameOpt.SpritesZoom );
-    SprMngr.DrawStr( Rect( x, y, (int) ( (float) ( x + HEX_W ) / GameOpt.SpritesZoom ),
-                           (int) ( (float) ( y + HEX_REAL_H ) / GameOpt.SpritesZoom ) ), text, FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE );
+	Rect r = Rect( x, y, (int) ( (float) ( x + HEX_W/ GameOpt.SpritesZoom )  ),
+                         (int) ( (float) ( y + HEX_REAL_H/ GameOpt.SpritesZoom )  ) );
+
+	SprMngr.DrawStr(r , text, FT_CENTERX | FT_CENTERY |FT_BORDERED, COLOR_TEXT_WHITE,5 );
+	   
 }
+
 
 void HexManager::RebuildMap( int rx, int ry )
 {
@@ -902,17 +920,51 @@ void HexManager::RebuildMap( int rx, int ry )
             {
                 for( auto it = f.Items.begin(), end = f.Items.end(); it != end; ++it )
                 {
-                    ItemHex* item = *it;
+					         ItemHex* item = *it;
 
                     #ifdef FONLINE_CLIENT
-                    if( item->IsHidden() || item->IsFullyTransparent() )
+					
+					if((( item->IsHidden() || item->IsFullyTransparent() )&& !GameOpt.ShowWall) ||	( item->IsScenOrGrid() && !GameOpt.ShowScen ) || ( item->IsWall() && !GameOpt.ShowWall ))	
+					{
+						ushort   hx = item->GetHexX();
+						ushort   hy = item->GetHexY();
+
+						Field& f = GetField( hx, hy );
+						char&  track = GetHexTrack( hx, hy );
+						track = 0;
+
+						if( f.IsNotPassed )
+						track = 2;
+						if( f.IsNotRaked )
+						track = 1;
+							
+						if (track!=0)
+						{					
+							uint        spr_id = ( GetHexTrack( nx, ny ) == 1 ? picTrack1->GetCurSprId() : picTrack2->GetCurSprId() );
+							
+							if (track==2) spr_id=picTrack2->GetCurSprId();
+							if (track==1) spr_id=picTrack1->GetCurSprId();
+							
+							
+							SpriteInfo* si = SprMngr.GetSpriteInfo( spr_id );
+							mainTree.AddSprite( DRAW_ORDER_TRACK, nx, ny, 0, f.ScrX + HEX_OX, f.ScrY + HEX_OY + ( si ? si->Height / 2 : 0 ), spr_id,
+												NULL, NULL, NULL, NULL, NULL );
+						}
+					}
+					
+					
+					if (GameOpt.ShowFast)
+					{
+						if( item->IsHidden() || item->IsFullyTransparent() )
                         continue;
-                    if( item->IsScenOrGrid() && !GameOpt.ShowScen )
-                        continue;
-                    if( item->IsItem() && !GameOpt.ShowItem )
+					}
+					if( item->IsItem() && !item->IsWall() && !item->IsScen() && !GameOpt.ShowItem )
                         continue;
                     if( item->IsWall() && !GameOpt.ShowWall )
-                        continue;
+					{
+						continue;
+					}	
+					
                     #else
                     bool is_fast = fastPids.count( item->GetProtoId() ) != 0;
                     if( item->IsScenOrGrid() && !GameOpt.ShowScen && !is_fast )
@@ -927,11 +979,55 @@ void HexManager::RebuildMap( int rx, int ry )
                         continue;
                     #endif
 
+					#ifdef FONLINE_CLIENT
+					
+					if( item->IsWall() ) //HOTRINGWALLS
+					{
+						Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
+                        f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &GameOpt.WallAlpha, &item->SprDrawValid );
+						if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
+						spr.SetLight( hexLight, maxHexX, maxHexY );	
+
+						item->SetSprite( &spr );
+						ContourEnable( item,spr );
+					}
+					else if (!item->IsItem())
+					{
+						Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
+                                                      f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->SprDrawValid );
+						if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
+                        spr.SetLight( hexLight, maxHexX, maxHexY );
+						item->SetSprite( &spr );
+						ContourEnable( item,spr );
+					}
+					
+					#else
                     Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->SprDrawValid );
                     if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
                         spr.SetLight( hexLight, maxHexX, maxHexY );
                     item->SetSprite( &spr );
+					#endif
+					
+					
+					#ifdef FONLINE_CLIENT
+					
+					
+					
+					
+					if ( item->IsItem() && !item->IsWall() && !item->IsScenOrGrid() && !item->IsGrid())
+					{
+						Sprite& spr = mainTree.AddSprite( DRAW_ORDER_ITEM_AUTO( item ), nx, ny + item->Proto->DrawOrderOffsetHexY, item->SpriteCut,
+                                                      f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->SprDrawValid );
+								  
+						if( !item->IsNoLightInfluence() && !( item->IsFlat() && item->IsScenOrGrid() ) )
+                        spr.SetLight( hexLight, maxHexX, maxHexY );
+						item->SetSprite( &spr );
+						
+						ContourEnable( item,spr );	
+					}
+					#endif
+
                 }
             }
 
@@ -968,6 +1064,17 @@ void HexManager::RebuildMap( int rx, int ry )
                                                       f.ScrX + HEX_OX, f.ScrY + HEX_OY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy,
                                                       &cr->Alpha, &cr->SprDrawValid );
                     spr.SetLight( hexLight, maxHexX, maxHexY );
+					
+					//dead critters containers					
+					//# define COLOR_ARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
+					//	# define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
+					//	#define COLOR_ORANGE            ( COLOR_XRGB( 255, 165, 0 ) )	
+					//cr->ContourColor = COLOR_ORANGE;
+					//if ( GameOpt.ShowContourContainer && !cr->IsRawParam( MODE_NO_LOOT ) )
+					//{
+					//	spr.SetContour( CONTOUR_CUSTOM, COLOR_ORANGE );					
+					//}
+					
                     cr->SprDraw = &spr;
 
                     cr->SetSprRect();
@@ -1432,6 +1539,7 @@ void HexManager::CollectLightSources()
     for( auto it = hexItems.begin(), end = hexItems.end(); it != end; ++it )
     {
         ItemHex* item = ( *it );
+	
         if( item->IsItem() && item->IsLight() )
             lightSources.push_back( LightSource( item->GetHexX(), item->GetHexY(), item->LightGetColor(), item->LightGetDistance(), item->LightGetIntensity(), item->LightGetFlags() ) );
     }
@@ -3643,6 +3751,7 @@ bool HexManager::LoadMap( ushort map_pid )
         for( int hy = 0; hy < maxHexY; hy++ )
         {
             Field& f = GetField( hx, hy );
+
             if( f.ScrollBlock )
             {
                 for( int i = 0; i < 6; i++ )
@@ -3651,7 +3760,7 @@ bool HexManager::LoadMap( ushort map_pid )
                     MoveHexByDir( hx_, hy_, i, maxHexX, maxHexY );
                     GetField( hx_, hy_ ).IsNotPassed = true;
                 }
-            }
+            }		
         }
     }
 
@@ -4545,3 +4654,173 @@ void HexManager::AffectCritter( MapObject* mobj, CritterCl* cr )
 }
 
 #endif // FONLINE_MAPPER
+
+
+
+#ifdef FONLINE_CLIENT
+
+void HexManager::SplitColorRGB( int Color,int& Red, int& Green, int& Blue )//color ->  255000000  red,-> red255 green000 blue000
+{
+	int n1, n2, n3, n4, n5, n6, n7, n8, n9;
+	n1 = Color / 100000000;
+	n2 = (Color - n1 * 100000000) / 10000000;
+	n3 = (Color - n1 * 100000000 - n2 * 10000000) / 1000000;
+	n4 = (Color - n1 * 100000000 - n2 * 10000000 - n3 * 1000000) / 100000;
+	n5 = (Color - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000) / 10000;
+	n6 = (Color - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000) / 1000;
+	n7 = (Color - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000) / 100;
+	n8 = (Color - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000 - n7 * 100) / 10;
+	n9 = (Color - n1 * 100000000 - n2 * 10000000 - n3 * 1000000 - n4 * 100000 - n5 * 10000 - n6 * 1000 - n7 * 100 - n8 * 10);
+
+	Red = (((n1*10)+n2)*10)+n3;
+	Green = (((n4*10)+n5)*10)+n6;
+	Blue = (((n7*10)+n8)*10)+n9;
+}
+
+
+void HexManager::SetColorEnable(ItemHex* item,Sprite& spr,bool needSetColor)
+{
+	#define COLOR_ARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
+	#define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
+	#define COLOR_ORANGE            ( COLOR_XRGB( 255, 165, 0 ) )
+	#define COLOR_CONTOUR_YELLOW    ( COLOR_XRGB( 150, 150, 0 ) )
+	#define COLOR_BLUE              ( COLOR_XRGB( 0, 0, 0xC8 ) )
+	ProtoItem*     proto = item->Proto;
+	if (proto->ColorContour!=0 && item->ColorContour==0)
+	{
+		int RedColor = 0;
+		int GreenColor = 0;
+		int BlueColor = 0;
+		SplitColorRGB( proto->ColorContour, RedColor,  GreenColor,  BlueColor );
+		spr.SetContour( CONTOUR_CUSTOM, COLOR_XRGB(RedColor,GreenColor,BlueColor ));
+		if (needSetColor)spr.SetColor(COLOR_XRGB(RedColor,GreenColor,BlueColor ));
+	}
+	else if (item->ColorContour==0 && item->IsUsable() && !proto->IsWall() && !proto->IsScen())
+	{
+		//if( item->IsDrawContour()&& item->SprDrawValid )
+			spr.SetContour( CONTOUR_CUSTOM, COLOR_CONTOUR_YELLOW );
+			if (needSetColor)spr.SetColor(COLOR_CONTOUR_YELLOW);
+			
+	}
+	else
+	{
+		//if( item->IsDrawContour() && item->SprDrawValid )
+			spr.SetContour( CONTOUR_CUSTOM, item->ColorContour );
+			if (needSetColor)spr.SetColor(item->ColorContour);
+	}
+}
+
+
+void HexManager::SetColorEnable(ItemHex* item,bool needSetColor)
+{
+	#define COLOR_ARGB( a, r, g, b )         ( (uint) ( ( ( ( a ) & 0xff ) << 24 ) | ( ( ( r ) & 0xff ) << 16 ) | ( ( ( g ) & 0xff ) << 8 ) | ( ( b ) & 0xff ) ) )
+	#define COLOR_XRGB( r, g, b )            COLOR_ARGB( 0xff, r, g, b )
+	#define COLOR_ORANGE            ( COLOR_XRGB( 255, 165, 0 ) )
+	#define COLOR_CONTOUR_YELLOW    ( COLOR_XRGB( 150, 150, 0 ) )
+	#define COLOR_BLUE              ( COLOR_XRGB( 0, 0, 0xC8 ) )
+	ProtoItem*     proto = item->Proto;
+	if (proto->ColorContour!=0 && item->ColorContour==0)
+	{
+		int RedColor = 0;
+		int GreenColor = 0;
+		int BlueColor = 0;
+		SplitColorRGB( proto->ColorContour, RedColor,  GreenColor,BlueColor );
+		item->SprDraw->SetContour( COLOR_XRGB(RedColor,GreenColor,BlueColor));
+	}
+	else if (item->ColorContour==0 && item->IsUsable() && !proto->IsWall() && !proto->IsScen())
+	{
+		//if( item->IsDrawContour() && item->SprDrawValid )
+			item->SprDraw->SetContour( COLOR_CONTOUR_YELLOW );
+	}
+	else
+	{
+		//if( item->IsDrawContour() && item->SprDrawValid )
+			item->SprDraw->SetContour( item->ColorContour );
+	}
+}
+							
+void HexManager::ContourEnable( ItemHex* item,Sprite& spr )
+{
+	ProtoItem*     proto = item->Proto;
+	
+	if (GameOpt.ShowContourWalls) //Walls
+	{
+		if(proto->IsWall())
+		{
+			SetColorEnable(item,spr,true);				
+		}
+	}
+	if (GameOpt.ShowContourScenery) //Scenery
+	{//&& !proto->IsCanPickUp()))  //
+		if(proto->IsScen() || (proto->IsMisc() && !item->IsUsable()))//& (!item->IsCanUse() && !item->IsCanPickUp() && !item->IsCanUseOnSmth())))// !proto->IsCanPickUp()))
+		//if(proto->IsScen() || (proto->IsMisc()  && (!item->IsCanUse() && !item->IsCanPickUp() && !item->IsCanUseOnSmth())))// !proto->IsCanPickUp()))
+		{
+			SetColorEnable(item,spr,true);				
+		}
+	}
+	if (GameOpt.ShowContourDoors) //Doors
+	{
+		if(proto->IsDoor())
+		{
+			SetColorEnable(item,spr,true);				
+		}
+	}//&& !proto->IsWall() && !proto->IsScen()
+	if (GameOpt.ShowContourItems) //items
+	{	
+		if(!proto->IsContainer() && !proto->IsDoor()&& !proto->IsWall() && !proto->IsScen() && item->IsUsable()) //proto->IsCanPickUp())
+		{	
+			SetColorEnable(item,spr,false);
+		}
+	}
+	if (GameOpt.ShowContourContainer) //containers
+	{
+		if( proto->IsContainer() && item->SprDrawValid )
+		{
+			SetColorEnable(item,spr,false);							
+		}							
+	}
+}
+
+
+void HexManager::ContourEnable( ItemHex* item )
+{
+	ProtoItem*     proto = item->Proto;
+	if (GameOpt.ShowContourWalls) //Walls
+	{
+		if(proto->IsWall())
+		{
+			SetColorEnable(item,true);				
+		}
+	}
+	if (GameOpt.ShowContourScenery) //Scenery
+	{// !proto->IsCanPickUp()))  //&&
+		if(proto->IsScen() || (proto->IsMisc()&& !item->IsUsable())) //&& (!item->IsCanUse() && !item->IsCanPickUp() && !item->IsCanUseOnSmth())))// !proto->IsCanPickUp()))
+		{
+			SetColorEnable(item,true);				
+		}
+	}
+	if (GameOpt.ShowContourDoors) //Doors
+	{
+		if(proto->IsDoor())
+		{
+			SetColorEnable(item,true);				
+		}
+	}
+	if (GameOpt.ShowContourItems) //items
+	{//&& !item->IsWall() && !item->IsScen()
+		//if(!proto->IsContainer() && !proto->IsDoor() )
+		if(!proto->IsContainer() && !proto->IsDoor()&& !proto->IsWall() && !proto->IsScen() && item->IsUsable())//( proto->IsCanPickUp()))
+		
+		{	
+			SetColorEnable(item,false);
+		}
+	}
+	if (GameOpt.ShowContourContainer) //containers
+	{
+		if( proto->IsContainer() && item->SprDrawValid )
+		{
+			SetColorEnable(item,false);							
+		}							
+	}			
+}
+#endif // FONLINE_CLIENT

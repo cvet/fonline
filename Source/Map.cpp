@@ -223,6 +223,7 @@ bool Map::Generate()
     {
         MapObject& mobj = *( *it );
         ushort     pid = mobj.ProtoId;
+		//int ColorContourM = mobj.ColorContourM;
         ProtoItem* proto = ItemMngr.GetProtoItem( pid );
         if( !proto )
         {
@@ -259,6 +260,9 @@ bool Map::Generate()
             if( mobj.MItem.Val[ i ] )
                 item->Data.ScriptValues[ i ] = mobj.MItem.Val[ i ];
 
+		//ColorContourM
+		item->ColorContour = mobj.MItem.ColorContour;
+		//int ColorContourM = mobj.ColorContourM;
         // Deterioration
         if( item->IsDeteriorable() )
         {
@@ -367,6 +371,7 @@ bool Map::Generate()
                 ItemMngr.ItemToGarbage( item );
                 continue;
             }
+	
         }
 
         // Script
@@ -639,7 +644,7 @@ bool Map::AddItem( Item* item, ushort hx, ushort hy )
     if( hx >= GetMaxHexX() || hy >= GetMaxHexY() )
         return false;
 
-    SetItem( item, hx, hy );
+    SetItem( item, hx, hy);
 
     // Process critters view
     CrVec critters;
@@ -698,7 +703,6 @@ void Map::SetItem( Item* item, ushort hx, ushort hy )
     item->AccHex.MapId = GetId();
     item->AccHex.HexX = hx;
     item->AccHex.HexY = hy;
-
     hexItems.push_back( item );
     SetHexFlag( hx, hy, FH_ITEM );
 

@@ -621,6 +621,9 @@ public:
         static void Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
         static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
 
+		static void          Global_OpenWebLink(ScriptString& text);
+		static void          Global_ChosenRefreshMap();
+		
         static void          Global_ShowScreen( int screen, int p0, int p1, int p2 );
         static void          Global_HideScreen( int screen, int p0, int p1, int p2 );
         static void          Global_GetHardcodedScreenPos( int screen, int& x, int& y );

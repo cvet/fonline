@@ -176,7 +176,7 @@ struct ProtoItem
     int  Car_FuelConsumption;
     int  Car_Entrance;
     int  Car_MovementType;
-
+	int  ColorContour;
     void AddRef()  {}
     void Release() {}
 };
@@ -193,7 +193,8 @@ struct Item
     int Reserved11;
     int Lexems;
     int IsNotValid;
-
+	int ColorContour;
+	
     struct
     {
         int MapId;
@@ -252,7 +253,7 @@ struct Item
         int OffsetX;
         int OffsetY;
         int Dir;
-        int Reserved[ 10 ];
+        int Reserved[ 10 ];	
     } Data;
 
     int  RefCounter;
@@ -1144,6 +1145,8 @@ struct BindClass
     static void Global_SetDefaultFont()     {}
     static void Global_MouseClick()         {}
     static void Global_KeyboardPress()      {}
+	static void Global_OpenWebLink()        {}
+	static void Global_ChosenRefreshMap()   {}
     #endif
 
     static void Global_GetLastError()           {}
@@ -1390,6 +1393,13 @@ struct GameOptions
     int IndicatorType;
     int DoubleClickTime;
     int RoofAlpha;
+	int WallAlpha;
+	int ShowContourContainer;
+	int ShowContourItems;
+	int ShowContourDoors;
+	int ShowContourDeadCritters;
+	int ShowContourScenery;
+	int ShowContourWalls;
     int HideCursor;
     int DisableLMenu;
     int DisableMouseEvents;

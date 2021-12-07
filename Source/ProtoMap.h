@@ -22,7 +22,7 @@ public:
     ushort MapX;
     ushort MapY;
     short  Dir;
-
+	
     uint   UID;
     uint   ContainerUID;
     uint   ParentUID;
@@ -79,6 +79,7 @@ public:
             short  TrapValue;
 
             int    Val[ 10 ];
+			int    ColorContour;
         } MItem;
 
         struct
