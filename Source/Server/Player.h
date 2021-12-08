@@ -43,9 +43,6 @@
 #include "Settings.h"
 #include "Timer.h"
 
-#define FO_API_PLAYER_HEADER 1
-#include "ScriptApi.h"
-
 class Critter;
 class MapManager;
 
@@ -122,12 +119,9 @@ public:
     string LastSay {};
     uint LastSayEqualCount {};
 
-#define FO_API_PLAYER_CLASS 1
-#include "ScriptApi.h"
-
     PROPERTIES_HEADER();
-#define FO_API_PLAYER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define PLAYER_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 
 private:
     CritterSettings& _settings;

@@ -36,6 +36,8 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
 
+///@ CodeGen AngelScript
+
 #if !FO_ANGELSCRIPT_COMPILER
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
 #include "ServerScripting.h"
@@ -165,6 +167,9 @@ struct Property
 #define FO_API_ENUM_ENTRY(group, name, value) static int group##_##name = value;
 #include "ScriptApi.h"
 
+#define FO_ENTRY_POINT(func_name) extern void func_name(SCRIPTING_CLASS*, asIScriptEngine*);
+#include "AngelScriptExtensionEntries.h"
+
 #if FO_ANGELSCRIPT_COMPILER
 #define INIT_ARGS string_view script_path
 struct SCRIPTING_CLASS
@@ -218,48 +223,13 @@ struct MapView : Entity
 struct LocationView : Entity
 {
 };
-
-class MapSprite
-{
-public:
-    void AddRef() const { ++RefCount; }
-    void Release() const
-    {
-        if (--RefCount == 0)
-            delete this;
-    }
-    static MapSprite* Factory() { return new MapSprite(); }
-
-    mutable int RefCount {1};
-    bool Valid {};
-    uint SprId {};
-    ushort HexX {};
-    ushort HexY {};
-    hash ProtoId {};
-    int FrameIndex {};
-    int OffsX {};
-    int OffsY {};
-    bool IsFlat {};
-    bool NoLight {};
-    int DrawOrder {};
-    int DrawOrderHyOffset {};
-    int Corner {};
-    bool DisableEgg {};
-    uint Color {};
-    uint ContourColor {};
-    bool IsTweakOffs {};
-    short TweakOffsX {};
-    short TweakOffsY {};
-    bool IsTweakAlpha {};
-    uchar TweakAlpha {};
-};
 #endif
 
 #define AS_VERIFY(expr) \
-    { \
+    do { \
         as_result = expr; \
         RUNTIME_ASSERT_STR(as_result >= 0, #expr); \
-    }
+    } while(0)
 
 #if !FO_ANGELSCRIPT_COMPILER
 #ifdef AS_MAX_PORTABILITY
@@ -309,8 +279,9 @@ struct ASEntity
     void AddRef() { ++RefCounter; }
     void Release()
     {
-        if (--RefCounter == 0)
+        if (--RefCounter == 0) {
             delete this;
+        }
     }
     hash GetProtoId() { return 0; }
     int RefCounter {1};
@@ -335,7 +306,7 @@ inline T Marshal(CScriptArray* arr)
 template<typename T>
 inline T* MarshalObj(ASEntity* value)
 {
-    return 0;
+    return {};
 }
 
 template<typename T>
@@ -365,12 +336,12 @@ inline map<TKey, TValue> MarshalDict(CScriptDict* dict)
 template<typename T>
 inline CScriptArray* MarshalBack(vector<T> arr)
 {
-    return 0;
+    return {};
 }
 
 inline ASEntity* MarshalBack(Entity* obj)
 {
-    return 0;
+    return {};
 }
 
 inline string MarshalBack(string value)
@@ -518,7 +489,7 @@ inline string MakeMethodDecl(string name, string ret, string decl)
         __VA_ARGS__
 #define FO_API_EPILOG(...) }
 
-struct ASPlayer : ASEntity
+struct ASPlayer final : ASEntity
 {
 #if !FO_ANGELSCRIPT_COMPILER
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
@@ -558,7 +529,7 @@ struct ASPlayer : ASEntity
 #undef PLAYER_CLASS
 };
 
-struct ASItem : ASEntity
+struct ASItem final : ASEntity
 {
 #if !FO_ANGELSCRIPT_COMPILER
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
@@ -598,7 +569,7 @@ struct ASItem : ASEntity
 #undef ITEM_CLASS
 };
 
-struct ASCritter : ASEntity
+struct ASCritter final : ASEntity
 {
 #if !FO_ANGELSCRIPT_COMPILER
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
@@ -638,7 +609,7 @@ struct ASCritter : ASEntity
 #undef CRITTER_CLASS
 };
 
-struct ASMap : ASEntity
+struct ASMap final : ASEntity
 {
 #if !FO_ANGELSCRIPT_COMPILER
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
@@ -678,7 +649,7 @@ struct ASMap : ASEntity
 #undef MAP_CLASS
 };
 
-struct ASLocation : ASEntity
+struct ASLocation final : ASEntity
 {
 #if !FO_ANGELSCRIPT_COMPILER
 #if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
@@ -1134,8 +1105,13 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
         throw ScriptCompilerException("Can't read root script file", script_path);
     }
 
+#define FO_ENTRY_POINT(func_name) func_name(this, engine);
+#include "AngelScriptExtensionEntries.h"
+
     Preprocessor::UndefAll();
-#if FO_SERVER_SCRIPTING || FO_SINGLEPLAYER_SCRIPTING
+#if FO_SINGLEPLAYER_SCRIPTING
+    Preprocessor::Define("SINGLE");
+#elif FO_SERVER_SCRIPTING
     Preprocessor::Define("SERVER");
 #elif FO_CLIENT_SCRIPTING
     Preprocessor::Define("CLIENT");
@@ -1145,7 +1121,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
 
     ScriptLoader loader {script_data};
     Preprocessor::StringOutStream result, errors;
-    auto errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
+    const auto errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
 
     while (!errors.String.empty() && errors.String.back() == '\n') {
         errors.String.pop_back();
@@ -1159,7 +1135,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     }
 
     asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
-    if (!mod) {
+    if (mod == nullptr) {
         throw ScriptCompilerException("Create root module failed");
     }
 
@@ -1214,16 +1190,21 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
     RUNTIME_ASSERT(!buf.empty());
     RUNTIME_ASSERT(!lnt_data.empty());
 
+#define FO_ENTRY_POINT(func_name) func_name(this, engine);
+#include "AngelScriptExtensionEntries.h"
+
     asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
-    if (!mod)
+    if (!mod) {
         throw ScriptException("Create root module fail");
+    }
 
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
 
     BinaryStream binary {buf};
     int as_result = mod->LoadByteCode(&binary);
-    if (as_result < 0)
+    if (as_result < 0) {
         throw ScriptException("Can't load binary", as_result);
+    }
 }
 #endif
 

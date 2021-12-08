@@ -42,13 +42,13 @@
 
 #define PROPERTIES_IMPL(class_name, script_name, is_server) PropertyRegistrator* class_name::PropertiesRegistrator = new PropertyRegistrator(is_server)
 
-#define CLASS_PROPERTY(access_type, prop_type, prop, ...) \
+#define CLASS_PROPERTY(access_type, prop_type, prop) \
     static Property* Property##prop; \
     inline prop_type Get##prop() const { return Props.GetValue<prop_type>(Property##prop); } \
     inline void Set##prop(prop_type value) { Props.SetValue<prop_type>(Property##prop, value); } \
     inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(Property##prop) > 0; }
 
-#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop, ...) Property* class_name::Property##prop = class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop)
+#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop) Property* class_name::Property##prop = class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop);
 
 // Todo: remove EntityType enum, use dynamic cast
 enum class EntityType
@@ -137,8 +137,8 @@ public:
     GlobalVars();
 
     PROPERTIES_HEADER();
-#define FO_API_GLOBAL_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define GLOBAL_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 };
 
 class ProtoPlayer final : public ProtoEntity
@@ -147,8 +147,8 @@ public:
     explicit ProtoPlayer(hash pid);
 
     PROPERTIES_HEADER();
-#define FO_API_PLAYER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define PLAYER_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 };
 
 class ProtoItem final : public ProtoEntity
@@ -164,8 +164,8 @@ public:
     mutable int64 InstanceCount {};
 
     PROPERTIES_HEADER();
-#define FO_API_ITEM_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define ITEM_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 };
 
 class ProtoCritter final : public ProtoEntity
@@ -174,8 +174,8 @@ public:
     explicit ProtoCritter(hash pid);
 
     PROPERTIES_HEADER();
-#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define CRITTER_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 };
 
 class ProtoMap final : public ProtoEntity
@@ -184,8 +184,8 @@ public:
     explicit ProtoMap(hash pid);
 
     PROPERTIES_HEADER();
-#define FO_API_MAP_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define MAP_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 };
 
 class ProtoLocation final : public ProtoEntity
@@ -194,6 +194,6 @@ public:
     explicit ProtoLocation(hash pid);
 
     PROPERTIES_HEADER();
-#define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define LOCATION_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 };

@@ -38,9 +38,6 @@
 #include "Entity.h"
 #include "ServerScripting.h"
 
-#define FO_API_LOCATION_HEADER 1
-#include "ScriptApi.h"
-
 class Map;
 class Location;
 
@@ -74,12 +71,9 @@ public:
     uint EntranceScriptBindId {};
     int GeckCount {};
 
-#define FO_API_LOCATION_CLASS 1
-#include "ScriptApi.h"
-
     PROPERTIES_HEADER();
-#define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define LOCATION_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 
 private:
     ServerScriptSystem& _scriptSys;

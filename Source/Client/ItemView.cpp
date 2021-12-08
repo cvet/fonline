@@ -34,12 +34,9 @@
 #include "ItemView.h"
 #include "Timer.h"
 
-#define FO_API_ITEM_VIEW_IMPL 1
-#include "ScriptApi.h"
-
 PROPERTIES_IMPL(ItemView, "Item", false);
-#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ItemView, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
+#define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(ItemView, access, type, name)
+#include "Properties-Include.h"
 
 ItemView::ItemView(uint id, const ProtoItem* proto) : Entity(id, EntityType::ItemView, PropertiesRegistrator, proto)
 {

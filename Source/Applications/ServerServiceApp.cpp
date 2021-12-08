@@ -155,8 +155,8 @@ int main(int argc, char** argv)
 
             // Evaluate service path
             const auto path_mb = string("\"").append(DiskFileSystem::GetExePath()).append("\" ");
-            wchar_t path_buf[TEMP_BUF_SIZE];
-            ::MultiByteToWideChar(CP_UTF8, 0, path_mb.c_str(), static_cast<int>(path_mb.length()), path_buf, TEMP_BUF_SIZE);
+            wchar_t path_buf[4096];
+            ::MultiByteToWideChar(CP_UTF8, 0, path_mb.c_str(), static_cast<int>(path_mb.length()), path_buf, 4096);
             const auto path = std::wstring(path_buf).append(::GetCommandLineW()).append(L" --server-service");
 
             // Change executable path, if changed

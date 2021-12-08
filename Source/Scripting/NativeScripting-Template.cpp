@@ -79,6 +79,9 @@
 #define FO_API_ENUM_ENTRY(group, name, value) static int group##_##name = value;
 #include "ScriptApi.h"
 
+#define FO_ENTRY_POINT(func_name) extern void func_name(void*);
+#include "NativeScriptingEntries.h"
+
 class ScriptEntity
 {
 protected:
@@ -462,6 +465,9 @@ struct ScriptSystem::NativeImpl
 void SCRIPTING_CLASS::InitNativeScripting()
 {
     _pNativeImpl = std::make_unique<NativeImpl>();
+
+#define FO_ENTRY_POINT(func_name) func_name(nullptr);
+#include "NativeScriptingEntries.h"
 }
 
 #else

@@ -842,11 +842,6 @@ public:
 // ReSharper disable CppInconsistentNaming
 static constexpr auto CONFIG_NAME = "FOnline.cfg";
 static constexpr auto CLIENT_MAP_FORMAT_VER = 10;
-static constexpr auto TEMP_BUF_SIZE = 8192;
-static constexpr auto UTF8_BUF_SIZE(int count)
-{
-    return count * 4;
-}
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr uint FADING_PERIOD = 1000;

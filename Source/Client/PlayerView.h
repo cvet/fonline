@@ -36,9 +36,6 @@
 #include "Common.h"
 #include "Entity.h"
 
-#define FO_API_PLAYER_VIEW_HEADER 1
-#include "ScriptApi.h"
-
 class PlayerView final : public Entity
 {
 public:
@@ -49,10 +46,7 @@ public:
     auto operator=(const PlayerView&) = delete;
     auto operator=(PlayerView&&) noexcept = delete;
 
-#define FO_API_PLAYER_VIEW_CLASS 1
-#include "ScriptApi.h"
-
     PROPERTIES_HEADER();
-#define FO_API_PLAYER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define PLAYER_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 };

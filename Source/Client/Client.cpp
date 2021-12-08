@@ -583,7 +583,7 @@ void FOClient::MainLoop()
         if (!IsConnected) {
             if (!NetConnect(Settings.Host, static_cast<ushort>(Settings.Port))) {
                 ShowMainScreen(SCREEN_LOGIN, {});
-                AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
+                AddMess(SAY_NETMSG, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
             }
         }
         else {
@@ -809,35 +809,35 @@ void FOClient::ProcessInputEvents()
 void FOClient::ProcessInputEvent(const InputEvent& event)
 {
     if (event.Type == InputEvent::EventType::KeyDownEvent) {
-        auto key_code = event.KeyDown.Code;
+        const auto key_code = event.KeyDown.Code;
         const auto key_text = event.KeyDown.Text;
 
-        if (key_code == KeyCode::DIK_RCONTROL || key_code == KeyCode::DIK_LCONTROL) {
+        if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
             Keyb.CtrlDwn = true;
         }
-        else if (key_code == KeyCode::DIK_LMENU || key_code == KeyCode::DIK_RMENU) {
+        else if (key_code == KeyCode::Lmenu || key_code == KeyCode::Rmenu) {
             Keyb.AltDwn = true;
         }
-        else if (key_code == KeyCode::DIK_LSHIFT || key_code == KeyCode::DIK_RSHIFT) {
+        else if (key_code == KeyCode::Lshift || key_code == KeyCode::Rshift) {
             Keyb.ShiftDwn = true;
         }
 
-        ScriptSys.KeyDownEvent(static_cast<int>(key_code), key_text);
+        ScriptSys.KeyDownEvent(key_code, key_text);
     }
     else if (event.Type == InputEvent::EventType::KeyUpEvent) {
-        auto key_code = event.KeyUp.Code;
+        const auto key_code = event.KeyUp.Code;
 
-        if (key_code == KeyCode::DIK_RCONTROL || key_code == KeyCode::DIK_LCONTROL) {
+        if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
             Keyb.CtrlDwn = false;
         }
-        else if (key_code == KeyCode::DIK_LMENU || key_code == KeyCode::DIK_RMENU) {
+        else if (key_code == KeyCode::Lmenu || key_code == KeyCode::Rmenu) {
             Keyb.AltDwn = false;
         }
-        else if (key_code == KeyCode::DIK_LSHIFT || key_code == KeyCode::DIK_RSHIFT) {
+        else if (key_code == KeyCode::Lshift || key_code == KeyCode::Rshift) {
             Keyb.ShiftDwn = false;
         }
 
-        ScriptSys.KeyUpEvent(static_cast<int>(key_code));
+        ScriptSys.KeyUpEvent(key_code);
     }
     else if (event.Type == InputEvent::EventType::MouseMoveEvent) {
         const auto mouse_x = event.MouseMove.MouseX;
@@ -851,17 +851,17 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
         ScriptSys.MouseMoveEvent(delta_x, delta_y);
     }
     else if (event.Type == InputEvent::EventType::MouseDownEvent) {
-        auto mouse_button = event.MouseDown.Button;
+        const auto mouse_button = event.MouseDown.Button;
 
-        ScriptSys.MouseDownEvent(static_cast<int>(mouse_button));
+        ScriptSys.MouseDownEvent(mouse_button);
     }
     else if (event.Type == InputEvent::EventType::MouseUpEvent) {
-        auto mouse_button = event.MouseUp.Button;
+        const auto mouse_button = event.MouseUp.Button;
 
-        ScriptSys.MouseUpEvent(static_cast<int>(mouse_button));
+        ScriptSys.MouseUpEvent(mouse_button);
     }
     else if (event.Type == InputEvent::EventType::MouseWheelEvent) {
-        auto wheel_delta = event.MouseWheel.Delta;
+        const auto wheel_delta = event.MouseWheel.Delta;
 
         // Todo: handle mouse wheel
         UNUSED_VARIABLE(wheel_delta);
@@ -1433,7 +1433,7 @@ void FOClient::NetProcess()
 
         if (Settings.DebugNet) {
             static uint count = 0;
-            AddMess(FOMB_GAME, _str("{:04}) Input net message {}.", count, (msg >> 8) & 0xFF));
+            AddMess(SAY_NETMSG, _str("{:04}) Input net message {}.", count, (msg >> 8) & 0xFF));
             WriteLog("{}) Input net message {}.\n", count, (msg >> 8) & 0xFF);
             count++;
         }
@@ -1632,7 +1632,7 @@ void FOClient::NetProcess()
 
     if (Bin.IsError()) {
         if (Settings.DebugNet) {
-            AddMess(FOMB_GAME, "Invalid network message. Disconnect.");
+            AddMess(SAY_NETMSG, "Invalid network message. Disconnect.");
         }
 
         WriteLog("Invalid network message. Disconnect.\n");
@@ -1673,7 +1673,7 @@ void FOClient::Net_SendLogIn()
     Bout << LoginPassword;
     Bout << CurLang.NameCode;
 
-    AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
+    AddMess(SAY_NETMSG, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -1868,7 +1868,7 @@ void FOClient::Net_OnWrongNetProto()
         UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
     }
     else {
-        AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+        AddMess(SAY_NETMSG, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
     }
 }
 
@@ -1876,7 +1876,7 @@ void FOClient::Net_OnLoginSuccess()
 {
     WriteLog("Authentication success.\n");
 
-    AddMess(FOMB_GAME, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
+    AddMess(SAY_NETMSG, CurLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
 
     // Set encrypt keys
     uint msg_len;
@@ -2115,7 +2115,6 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
     // Type stream
     uint fstr_cr = 0;
     uint fstr_mb = 0;
-    auto mess_type = FOMB_TALK;
 
     switch (how_say) {
     case SAY_NORM:
@@ -2158,7 +2157,6 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
         fstr_mb = STR_MBRADIO;
         break;
     case SAY_NETMSG:
-        mess_type = FOMB_GAME;
         fstr_mb = STR_MBNET;
         break;
     default:
@@ -2177,7 +2175,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
     // Message box text
     if (fstr_mb != 0u) {
         if (how_say == SAY_NETMSG) {
-            AddMess(mess_type, _str(get_format(fstr_mb), fstr));
+            AddMess(how_say, _str(get_format(fstr_mb), fstr));
         }
         else if (how_say == SAY_RADIO) {
             ushort channel = 0u;
@@ -2187,11 +2185,11 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
                     channel = radio->GetRadioChannel();
                 }
             }
-            AddMess(mess_type, _str(get_format(fstr_mb), channel, fstr));
+            AddMess(how_say, _str(get_format(fstr_mb), channel, fstr));
         }
         else {
             const auto cr_name = (cr != nullptr ? cr->GetName() : "?");
-            AddMess(mess_type, _str(get_format(fstr_mb), cr_name, fstr));
+            AddMess(how_say, _str(get_format(fstr_mb), cr_name, fstr));
         }
     }
 
@@ -2586,7 +2584,7 @@ void FOClient::Net_OnCustomCommand()
     CHECK_IN_BUFF_ERROR();
 
     if (Settings.DebugNet) {
-        AddMess(FOMB_GAME, _str(" - crid {} index {} value {}.", crid, index, value));
+        AddMess(SAY_NETMSG, _str(" - crid {} index {} value {}.", crid, index, value));
     }
 
     auto* cr = GetCritter(crid);
@@ -2596,7 +2594,7 @@ void FOClient::Net_OnCustomCommand()
 
     if (cr->IsChosen()) {
         if (Settings.DebugNet) {
-            AddMess(FOMB_GAME, _str(" - index {} value {}.", index, value));
+            AddMess(SAY_NETMSG, _str(" - index {} value {}.", index, value));
         }
 
         switch (index) {
@@ -2671,7 +2669,7 @@ void FOClient::Net_OnCritterXY()
     CHECK_IN_BUFF_ERROR();
 
     if (Settings.DebugNet) {
-        AddMess(FOMB_GAME, _str(" - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir));
+        AddMess(SAY_NETMSG, _str(" - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir));
     }
 
     if (!HexMngr.IsMapLoaded()) {
@@ -4448,12 +4446,12 @@ void FOClient::GameDraw()
     }
 }
 
-void FOClient::AddMess(int mess_type, string_view msg)
+void FOClient::AddMess(uchar mess_type, string_view msg)
 {
     ScriptSys.MessageBoxEvent(string(msg), mess_type, false);
 }
 
-void FOClient::AddMess(int mess_type, string_view msg, bool script_call)
+void FOClient::AddMess(uchar mess_type, string_view msg, bool script_call)
 {
     ScriptSys.MessageBoxEvent(string(msg), mess_type, script_call);
 }

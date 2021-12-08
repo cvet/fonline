@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
-
 #pragma once
 
 #include "Common.h"
@@ -56,15 +54,100 @@ public:
         InitMonoScripting();
     }
 
-#define FO_API_SERVER_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
-#define FO_API_ARG(type, name) type
-#define FO_API_ARG_ARR(type, name) vector<type>
-#define FO_API_ARG_OBJ(type, name) type*
-#define FO_API_ARG_OBJ_ARR(type, name) vector<type*>
-#define FO_API_ARG_REF(type, name) type&
-#define FO_API_ARG_ARR_REF(type, name) vector<type>&
-#define FO_API_ARG_ENUM(type, name) int
-#include "ScriptApi.h"
+      ///@ ExportEvent Server
+    ScriptEvent<> InitEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<> GenerateWorldEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<> StartEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<> FinishEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<> LoopEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/> PlayerRegistrationEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/> PlayerLoginEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Player* /*player*/, int /*arg1*/, string& /*arg2*/> PlayerGetAccessEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Player* /*player*/, string /*arg1*/, uchar /*arg2*/> PlayerAllowCommandEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Player* /*player*/> PlayerLogoutEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/> GlobalMapCritterInEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/> GlobalMapCritterOutEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Location* /*location*/, bool /*firstTime*/> LocationInitEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Location* /*location*/> LocationFinishEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Map* /*map*/, bool /*firstTime*/> MapInitEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Map* /*map*/> MapFinishEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Map* /*map*/, uint /*loopIndex*/> MapLoopEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Map* /*map*/, Critter* /*critter*/> MapCritterInEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Map* /*map*/, Critter* /*critter*/> MapCritterOutEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Map* /*map*/, Critter* /*critter*/, Critter* /*target*/> MapCheckLookEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Map* /*map*/, Critter* /*critter*/, Item* /*item*/> MapCheckTrapLookEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, bool /*firstTime*/> CritterInitEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/> CritterFinishEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/> CritterIdleEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/> CritterGlobalMapIdleEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/> CritterCheckMoveItemEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/> CritterMoveItemEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist1Event {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist2Event {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist3Event {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist1Event {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist2Event {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist3Event {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/> CritterShowItemOnMapEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/> CritterHideItemOnMapEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/> CritterChangeItemOnMapEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*receiver*/, int /*num*/, int /*value*/> CritterMessageEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Critter* /*who*/, bool /*begin*/, uint /*talkers*/> CritterTalkEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/> CritterBarterEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*itemMode*/, uint& /*dist*/> CritterGetAttackDistantionEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Item* /*item*/, bool /*firstTime*/> ItemInitEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Item* /*item*/> ItemFinishEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/> ItemWalkEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/> ItemCheckMoveEvent {};
+    ///@ ExportEvent Server
+    ScriptEvent<Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/> StaticItemWalkEvent {};
 
 private:
     void InitNativeScripting();

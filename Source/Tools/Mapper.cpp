@@ -563,23 +563,23 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         // Disable keyboard events
         if (!script_result || Settings.DisableKeyboardEvents)
         {
-            if (dikdw == KeyCode::DIK_ESCAPE && Keyb.ShiftDwn)
+            if (dikdw == KeyCode::Escape && Keyb.ShiftDwn)
                 Settings.Quit = true;
             continue;
         }
 
         // Control keys
-        if (dikdw == KeyCode::DIK_RCONTROL || dikdw == KeyCode::DIK_LCONTROL)
+        if (dikdw == KeyCode::Rcontrol || dikdw == KeyCode::Lcontrol)
             Keyb.CtrlDwn = true;
-        else if (dikdw == KeyCode::DIK_LMENU || dikdw == KeyCode::DIK_RMENU)
+        else if (dikdw == KeyCode::Lmenu || dikdw == KeyCode::Rmenu)
             Keyb.AltDwn = true;
-        else if (dikdw == KeyCode::DIK_LSHIFT || dikdw == KeyCode::DIK_RSHIFT)
+        else if (dikdw == KeyCode::Lshift || dikdw == KeyCode::Rshift)
             Keyb.ShiftDwn = true;
-        if (dikup == KeyCode::DIK_RCONTROL || dikup == KeyCode::DIK_LCONTROL)
+        if (dikup == KeyCode::Rcontrol || dikup == KeyCode::Lcontrol)
             Keyb.CtrlDwn = false;
-        else if (dikup == KeyCode::DIK_LMENU || dikup == KeyCode::DIK_RMENU)
+        else if (dikup == KeyCode::Lmenu || dikup == KeyCode::Rmenu)
             Keyb.AltDwn = false;
-        else if (dikup == KeyCode::DIK_LSHIFT || dikup == KeyCode::DIK_RSHIFT)
+        else if (dikup == KeyCode::Lshift || dikup == KeyCode::Rshift)
             Keyb.ShiftDwn = false;
 
         // Hotkeys
@@ -587,45 +587,45 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         {
             switch (dikdw)
             {
-            case KeyCode::DIK_F1:
+            case KeyCode::F1:
                 Settings.ShowItem = !Settings.ShowItem;
                 HexMngr.RefreshMap();
                 break;
-            case KeyCode::DIK_F2:
+            case KeyCode::F2:
                 Settings.ShowScen = !Settings.ShowScen;
                 HexMngr.RefreshMap();
                 break;
-            case KeyCode::DIK_F3:
+            case KeyCode::F3:
                 Settings.ShowWall = !Settings.ShowWall;
                 HexMngr.RefreshMap();
                 break;
-            case KeyCode::DIK_F4:
+            case KeyCode::F4:
                 Settings.ShowCrit = !Settings.ShowCrit;
                 HexMngr.RefreshMap();
                 break;
-            case KeyCode::DIK_F5:
+            case KeyCode::F5:
                 Settings.ShowTile = !Settings.ShowTile;
                 HexMngr.RefreshMap();
                 break;
-            case KeyCode::DIK_F6:
+            case KeyCode::F6:
                 Settings.ShowFast = !Settings.ShowFast;
                 HexMngr.RefreshMap();
                 break;
-            case KeyCode::DIK_F7:
+            case KeyCode::F7:
                 IntVisible = !IntVisible;
                 break;
-            case KeyCode::DIK_F8:
+            case KeyCode::F8:
                 Settings.MouseScroll = !Settings.MouseScroll;
                 break;
-            case KeyCode::DIK_F9:
+            case KeyCode::F9:
                 ObjVisible = !ObjVisible;
                 break;
-            case KeyCode::DIK_F10:
+            case KeyCode::F10:
                 HexMngr.SwitchShowHex();
                 break;
 
             // Fullscreen
-            case KeyCode::DIK_F11:
+            case KeyCode::F11:
                 if (!Settings.FullScreen)
                 {
                     if (SprMngr.EnableFullscreen())
@@ -639,14 +639,14 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                 SprMngr.RefreshViewport();
                 continue;
             // Minimize
-            case KeyCode::DIK_F12:
+            case KeyCode::F12:
                 SprMngr.MinimizeWindow();
                 continue;
 
-            case KeyCode::DIK_DELETE:
+            case KeyCode::Delete:
                 SelectDelete();
                 break;
-            case KeyCode::DIK_ADD:
+            case KeyCode::Add:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
                     int day_time = HexMngr.GetDayTime();
@@ -656,7 +656,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                     ChangeGameTime();
                 }
                 break;
-            case KeyCode::DIK_SUBTRACT:
+            case KeyCode::Subtract:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
                     int day_time = HexMngr.GetDayTime();
@@ -666,7 +666,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                     ChangeGameTime();
                 }
                 break;
-            case KeyCode::DIK_TAB:
+            case KeyCode::Tab:
                 SelectType = (SelectType == SELECT_TYPE_OLD ? SELECT_TYPE_NEW : SELECT_TYPE_OLD);
                 break;
             default:
@@ -678,22 +678,22 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         {
             switch (dikdw)
             {
-            case KeyCode::DIK_F7:
+            case KeyCode::F7:
                 IntFix = !IntFix;
                 break;
-            case KeyCode::DIK_F9:
+            case KeyCode::F9:
                 ObjFix = !ObjFix;
                 break;
-            case KeyCode::DIK_F10:
+            case KeyCode::F10:
                 HexMngr.SwitchShowRain();
                 break;
-            case KeyCode::DIK_F11:
+            case KeyCode::F11:
                 SprMngr.DumpAtlases();
                 break;
-            case KeyCode::DIK_ESCAPE:
+            case KeyCode::Escape:
                 exit(0);
                 break;
-            case KeyCode::DIK_ADD:
+            case KeyCode::Add:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
                     int day_time = HexMngr.GetDayTime();
@@ -703,7 +703,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                     ChangeGameTime();
                 }
                 break;
-            case KeyCode::DIK_SUBTRACT:
+            case KeyCode::Subtract:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
                     int day_time = HexMngr.GetDayTime();
@@ -713,24 +713,24 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                     ChangeGameTime();
                 }
                 break;
-            case KeyCode::DIK_0:
-            case KeyCode::DIK_NUMPAD0:
+            case KeyCode::C0:
+            case KeyCode::Numpad0:
                 TileLayer = 0;
                 break;
-            case KeyCode::DIK_1:
-            case KeyCode::DIK_NUMPAD1:
+            case KeyCode::C1:
+            case KeyCode::Numpad1:
                 TileLayer = 1;
                 break;
-            case KeyCode::DIK_2:
-            case KeyCode::DIK_NUMPAD2:
+            case KeyCode::C2:
+            case KeyCode::Numpad2:
                 TileLayer = 2;
                 break;
-            case KeyCode::DIK_3:
-            case KeyCode::DIK_NUMPAD3:
+            case KeyCode::C3:
+            case KeyCode::Numpad3:
                 TileLayer = 3;
                 break;
-            case KeyCode::DIK_4:
-            case KeyCode::DIK_NUMPAD4:
+            case KeyCode::C4:
+            case KeyCode::Numpad4:
                 TileLayer = 4;
                 break;
             default:
@@ -742,19 +742,19 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         {
             switch (dikdw)
             {
-            case KeyCode::DIK_X:
+            case KeyCode::X:
                 BufferCut();
                 break;
-            case KeyCode::DIK_C:
+            case KeyCode::C:
                 BufferCopy();
                 break;
-            case KeyCode::DIK_V:
+            case KeyCode::V:
                 BufferPaste(50, 50);
                 break;
-            case KeyCode::DIK_A:
+            case KeyCode::A:
                 SelectAll();
                 break;
-            case KeyCode::DIK_S:
+            case KeyCode::S:
                 if (ActiveMap)
                 {
                     HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
@@ -764,24 +764,24 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                     RunMapSaveScript(ActiveMap);
                 }
                 break;
-            case KeyCode::DIK_D:
+            case KeyCode::D:
                 Settings.ScrollCheck = !Settings.ScrollCheck;
                 break;
-            case KeyCode::DIK_B:
+            case KeyCode::B:
                 HexMngr.MarkPassedHexes();
                 break;
-            case KeyCode::DIK_Q:
+            case KeyCode::Q:
                 Settings.ShowCorners = !Settings.ShowCorners;
                 break;
-            case KeyCode::DIK_E:
+            case KeyCode::E:
                 Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
                 break;
-            case KeyCode::DIK_M:
+            case KeyCode::M:
                 DrawCrExtInfo++;
                 if (DrawCrExtInfo > DRAW_CR_INFO_MAX)
                     DrawCrExtInfo = 0;
                 break;
-            case KeyCode::DIK_L:
+            case KeyCode::L:
                 SaveLogFile();
                 break;
             default:
@@ -803,16 +803,16 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                 {
                     switch (dikdw)
                     {
-                    case KeyCode::DIK_LEFT:
+                    case KeyCode::Left:
                         Settings.ScrollKeybLeft = true;
                         break;
-                    case KeyCode::DIK_RIGHT:
+                    case KeyCode::Right:
                         Settings.ScrollKeybRight = true;
                         break;
-                    case KeyCode::DIK_UP:
+                    case KeyCode::Up:
                         Settings.ScrollKeybUp = true;
                         break;
-                    case KeyCode::DIK_DOWN:
+                    case KeyCode::Down:
                         Settings.ScrollKeybDown = true;
                         break;
                     default:
@@ -829,16 +829,16 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
 
             switch (dikup)
             {
-            case KeyCode::DIK_LEFT:
+            case KeyCode::Left:
                 Settings.ScrollKeybLeft = false;
                 break;
-            case KeyCode::DIK_RIGHT:
+            case KeyCode::Right:
                 Settings.ScrollKeybRight = false;
                 break;
-            case KeyCode::DIK_UP:
+            case KeyCode::Up:
                 Settings.ScrollKeybUp = false;
                 break;
-            case KeyCode::DIK_DOWN:
+            case KeyCode::Down:
                 Settings.ScrollKeybDown = false;
                 break;
             default:
@@ -1842,7 +1842,7 @@ void FOMapper::DrawLine(string_view name, string_view type_name, string_view tex
 
 void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
 {
-    if (dik == KeyCode::DIK_RETURN || dik == KeyCode::DIK_NUMPADENTER) {
+    if (dik == KeyCode::Return || dik == KeyCode::Numpadenter) {
         if (ObjCurLineInitValue != ObjCurLineValue) {
             auto* entity = GetInspectorEntity();
             RUNTIME_ASSERT(entity);
@@ -1860,13 +1860,13 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
             HexMngr.RebuildLight();
         }
     }
-    else if (dik == KeyCode::DIK_UP) {
+    else if (dik == KeyCode::Up) {
         SelectEntityProp(ObjCurLine - 1);
     }
-    else if (dik == KeyCode::DIK_DOWN) {
+    else if (dik == KeyCode::Down) {
         SelectEntityProp(ObjCurLine + 1);
     }
-    else if (dik == KeyCode::DIK_ESCAPE) {
+    else if (dik == KeyCode::Escape) {
         ObjCurLineValue = ObjCurLineInitValue;
     }
     else {
@@ -3670,7 +3670,7 @@ void FOMapper::ConsoleDraw()
 
 void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 {
-    if (dik == KeyCode::DIK_RETURN || dik == KeyCode::DIK_NUMPADENTER) {
+    if (dik == KeyCode::Return || dik == KeyCode::Numpadenter) {
         if (ConsoleEdit) {
             if (ConsoleStr.empty()) {
                 ConsoleEdit = false;
@@ -3717,7 +3717,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
     }
 
     switch (dik) {
-    case KeyCode::DIK_UP:
+    case KeyCode::Up:
         if (ConsoleHistoryCur - 1 < 0) {
             return;
         }
@@ -3725,7 +3725,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
         ConsoleStr = ConsoleHistory[ConsoleHistoryCur];
         ConsoleCur = static_cast<uint>(ConsoleStr.length());
         return;
-    case KeyCode::DIK_DOWN:
+    case KeyCode::Down:
         if (ConsoleHistoryCur + 1 >= static_cast<int>(ConsoleHistory.size())) {
             ConsoleHistoryCur = static_cast<int>(ConsoleHistory.size());
             ConsoleStr = "";
@@ -3748,13 +3748,13 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
 
 void FOMapper::ConsoleKeyUp(KeyCode /*key*/)
 {
-    ConsoleLastKey = KeyCode::DIK_NONE;
+    ConsoleLastKey = KeyCode::None;
     ConsoleLastKeyText = "";
 }
 
 void FOMapper::ConsoleProcess()
 {
-    if (ConsoleLastKey == KeyCode::DIK_NONE) {
+    if (ConsoleLastKey == KeyCode::None) {
         return;
     }
 
@@ -4069,13 +4069,13 @@ void FOMapper::RunStartScript()
 void FOMapper::RunMapLoadScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    ScriptSys.MapLoadEvent(map);
+    ScriptSys.EditMapLoadEvent(map);
 }
 
 void FOMapper::RunMapSaveScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    ScriptSys.MapSaveEvent(map);
+    ScriptSys.EditMapSaveEvent(map);
 }
 
 void FOMapper::DrawIfaceLayer(uint /*layer*/)

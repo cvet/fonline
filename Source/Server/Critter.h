@@ -42,8 +42,31 @@
 #include "Settings.h"
 #include "Timer.h"
 
-#define FO_API_CRITTER_HEADER 1
-#include "ScriptApi.h"
+///@ ExportEnum
+enum class CritterCondition : uchar
+{
+    Unknown = 0,
+    Alive = 1,
+    Knockout = 2,
+    Dead = 3,
+};
+
+///@ ExportEnum
+enum class MovingState : uchar
+{
+    InProgress = 0,
+    Success = 1,
+    TargetNotFound = 2,
+    CantMove = 3,
+    GagCritter = 4,
+    GagItem = 5,
+    InternalError = 6,
+    HexTooFar = 7,
+    HexBusy = 8,
+    HexBusyRing = 9,
+    Deadlock = 10,
+    TraceFail = 11,
+};
 
 struct PathStep
 {
@@ -226,12 +249,9 @@ public:
     vector<Critter*>* GlobalMapGroup {};
     uint RadioMessageSended {};
 
-#define FO_API_CRITTER_CLASS 1
-#include "ScriptApi.h"
-
     PROPERTIES_HEADER();
-#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define CRITTER_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 
     TalkData Talk {}; // Todo: incapsulate Critter::Talk
 

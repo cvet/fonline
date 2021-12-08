@@ -337,9 +337,9 @@
             "env": "mac"
         },
         {
-            "label": "Generate script API",
+            "label": "Generate scripting code",
             "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh gen-api",
+            "command": "BuildTools/compile-scripts.sh gen-code",
             "env": "linux wsl toolset"
         },
         {

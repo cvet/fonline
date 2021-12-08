@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
-
 #pragma once
 
 #include "Common.h"
@@ -50,15 +48,14 @@ public:
         InitMonoScripting();
     }
 
-#define FO_API_MAPPER_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
-#define FO_API_ARG(type, name) type
-#define FO_API_ARG_ARR(type, name) vector<type>
-#define FO_API_ARG_OBJ(type, name) type*
-#define FO_API_ARG_OBJ_ARR(type, name) vector<type*>
-#define FO_API_ARG_REF(type, name) type&
-#define FO_API_ARG_ARR_REF(type, name) vector<type>&
-#define FO_API_ARG_ENUM(type, name) int
-#include "ScriptApi.h"
+    ///@ ExportEvent Mapper
+    ScriptEvent<string& /*text*/> ConsoleMessageEvent {};
+    ///@ ExportEvent Mapper
+    ScriptEvent<MapView* /*map*/> EditMapLoadEvent {};
+    ///@ ExportEvent Mapper
+    ScriptEvent<MapView* /*map*/> EditMapSaveEvent {};
+    ///@ ExportEvent Mapper
+    ScriptEvent<Entity* /*entity*/, vector<int>& /*properties*/> InspectorPropertiesEvent {};
 
 private:
     void InitNativeScripting();

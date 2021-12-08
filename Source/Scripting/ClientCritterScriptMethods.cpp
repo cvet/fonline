@@ -1,0 +1,383 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
+#include "Common.h"
+
+#include "Client.h"
+#include "ClientScripting.h"
+
+// ReSharper disable CppInconsistentNaming
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_IsChosen([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsChosen();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] bool Client_Critter_IsPlayer([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsPlayer();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_IsNpc([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsNpc();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] bool Client_Critter_IsOffline([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsOffline();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] bool Client_Critter_IsAlive([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsAlive();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] bool Client_Critter_IsKnockout([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsKnockout();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] bool Client_Critter_IsDead([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsDead();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] bool Client_Critter_IsFree([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsFree();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] bool Client_Critter_IsBusy([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return !self->IsFree();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_IsModel([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsModel();
+}
+
+///# ...
+///# param anim1 ...
+///# param anim2 ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_IsAnimAvailable([[maybe_unused]] FOClient* client, CritterView* self, uint anim1, uint anim2)
+{
+    return self->IsAnimAvailable(anim1, anim2);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_IsAnimPlaying([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->IsAnim();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Client_Critter_GetAnim1([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->GetAnim1();
+}
+
+///# ...
+///# param anim1 ...
+///# param anim2 ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_Animate([[maybe_unused]] FOClient* client, CritterView* self, uint anim1, uint anim2)
+{
+    self->Animate(anim1, anim2, nullptr);
+}
+
+///# ...
+///# param anim1 ...
+///# param anim2 ...
+///# param actionItem ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_AnimateExt([[maybe_unused]] FOClient* client, CritterView* self, uint anim1, uint anim2, ItemView* actionItem)
+{
+    self->Animate(anim1, anim2, actionItem);
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_StopAnim([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    self->ClearAnim();
+}
+
+///# ...
+///# param ms ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] void Client_Critter_Wait([[maybe_unused]] FOClient* client, CritterView* self, uint ms)
+{
+    self->TickStart(ms);
+}
+
+///# ...
+///# param protoId ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] uint Client_Critter_CountItem([[maybe_unused]] FOClient* client, CritterView* self, hash protoId)
+{
+    return self->CountItemPid(protoId);
+}
+
+///# ...
+///# param itemId ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] ItemView* Client_Critter_GetItem([[maybe_unused]] FOClient* client, CritterView* self, uint itemId)
+{
+    return self->GetItem(itemId);
+}
+
+///# ...
+///# param predicate ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] ItemView* Client_Critter_GetItemByPredicate([[maybe_unused]] FOClient* client, CritterView* self, const std::function<bool(ItemView*)>& predicate)
+{
+    auto inv_items = self->InvItems;
+    for (auto* item : inv_items) {
+        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+            return item;
+        }
+    }
+    return static_cast<ItemView*>(nullptr);
+}
+
+///# ...
+///# param slot ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] ItemView* Client_Critter_GetItemBySlot([[maybe_unused]] FOClient* client, CritterView* self, int slot)
+{
+    return self->GetItemSlot(slot);
+}
+
+///# ...
+///# param protoId ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] ItemView* Client_Critter_GetItemByPid([[maybe_unused]] FOClient* client, CritterView* self, hash protoId)
+{
+    const auto* proto_item = client->ProtoMngr.GetProtoItem(protoId);
+    if (!proto_item) {
+        return static_cast<ItemView*>(nullptr);
+    }
+
+    if (proto_item->GetStackable()) {
+        for (auto* item : self->InvItems) {
+            if (item->GetProtoId() == protoId) {
+                return item;
+            }
+        }
+    }
+    else {
+        ItemView* another_slot = nullptr;
+        for (auto* item : self->InvItems) {
+            if (item->GetProtoId() == protoId) {
+                if (!item->GetCritSlot()) {
+                    return item;
+                }
+                another_slot = item;
+            }
+        }
+        return another_slot;
+    }
+
+    return static_cast<ItemView*>(nullptr);
+}
+
+///# ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItems([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->InvItems;
+}
+
+///# ...
+///# param slot ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItemsBySlot([[maybe_unused]] FOClient* client, CritterView* self, int slot)
+{
+    return self->GetItemsSlot(slot);
+}
+
+///# ...
+///# param predicate ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItemsByPredicate([[maybe_unused]] FOClient* client, CritterView* self, const std::function<bool(ItemView*)>& predicate)
+{
+    auto inv_items = self->InvItems;
+    vector<ItemView*> items;
+    items.reserve(inv_items.size());
+    for (auto* item : inv_items) {
+        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+            items.push_back(item);
+        }
+    }
+    return items;
+}
+
+///# ...
+///# param visible ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_SetVisibility([[maybe_unused]] FOClient* client, CritterView* self, bool visible)
+{
+    self->Visible = visible;
+    client->HexMngr.RefreshMap();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_GetVisibility([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->Visible;
+}
+
+///# ...
+///# param value ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_SetContourColor([[maybe_unused]] FOClient* client, CritterView* self, uint value)
+{
+    if (self->SprDrawValid) {
+        self->SprDraw->SetContour(self->SprDraw->ContourType, value);
+    }
+
+    self->ContourColor = value;
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] uint Client_Critter_GetContourColor([[maybe_unused]] FOClient* client, CritterView* self)
+{
+    return self->ContourColor;
+}
+
+///# ...
+///# param nameVisible ...
+///# param x ...
+///# param y ...
+///# param w ...
+///# param h ...
+///# param lines ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_GetNameTextInfo([[maybe_unused]] FOClient* client, CritterView* self, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines)
+{
+    self->GetNameTextInfo(nameVisible, x, y, w, h, lines);
+}
+
+///# ...
+///# param anim1 ...
+///# param anim2 ...
+///# param normalizedTime ...
+///# param animCallback ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_AddAnimCallback([[maybe_unused]] FOClient* client, CritterView* self, uint anim1, uint anim2, float normalizedTime, const std::function<void(CritterView*)>& animCallback)
+{
+    if (!self->IsModel()) {
+        throw ScriptException("Critter is not 3D model");
+    }
+    if (normalizedTime < 0.0f || normalizedTime > 1.0f) {
+        throw ScriptException("Normalized time is not in range 0..1", normalizedTime);
+    }
+
+    self->GetModel()->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [self, animCallback] {
+                                                        if (!self->IsDestroyed) {
+                                                            animCallback(self);
+                                                        }
+                                                    }});
+}
+
+///# ...
+///# param boneName ...
+///# param boneX ...
+///# param boneY ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Critter_GetBonePos([[maybe_unused]] FOClient* client, CritterView* self, hash boneName, int& boneX, int& boneY)
+{
+    if (!self->IsModel()) {
+        throw ScriptException("Critter is not 3d");
+    }
+
+    const auto bone_pos = self->GetModel()->GetBonePos(boneName);
+    if (!bone_pos) {
+        return false;
+    }
+
+    boneX = std::get<0>(*bone_pos) + self->SprOx;
+    boneY = std::get<1>(*bone_pos) + self->SprOy;
+    return true;
+}

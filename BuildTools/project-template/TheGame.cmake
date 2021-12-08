@@ -5,16 +5,15 @@
 # - GAME_VERSION (default: "0.0.1")
 # - ENGINE_VERSION (default: "")
 # - MULTIPLAYER_SCRIPTING (default: YES)
-# - SINGLEPLAYER_SCRIPTING (default: YES)
-# - NATIVE_SCRIPTING (default: YES)
-# - ANGELSCRIPT_SCRIPTING (default: YES)
-# - MONO_SCRIPTING (default: YES)
+# - SINGLEPLAYER_SCRIPTING (default: NO)
+# - NATIVE_SCRIPTING (default: NO)
+# - ANGELSCRIPT_SCRIPTING (default: NO)
+# - MONO_SCRIPTING (default: NO)
 # AddContent dir(s)
 # AddResources packName dir(s)
 # AddRawResources dir(s)
-# AddScriptApi headerPath(s)
-# AddNativeIncludeDir target dir(s)
-# AddNativeSource target pathPattern(s)
+# AddNativeIncludeDir dir(s)
+# AddNativeSource pathPattern(s)
 # AddAngelScriptSource pathPattern(s)
 # AddMonoAssembly assembly
 # AddMonoReference assembly target ref(s)
@@ -29,7 +28,7 @@ SetupGame( DEV_NAME "TheGame"
     COMPANY_NAME "MyCorpLtd"
     GAME_VERSION "0.1.0"
     MULTIPLAYER_SCRIPTING YES
-    SINGLEPLAYER_SCRIPTING YES
+    SINGLEPLAYER_SCRIPTING NO
     NATIVE_SCRIPTING NO )
 
 # Content
@@ -40,7 +39,6 @@ AddContent( "Dialogs" )
 AddResources( "TheGame" "Resources" )
 
 # Scripts
-AddScriptApi( "Scripts/MyScriptApi.h" )
 AddAngelScriptSource( "Scripts/Test.fos" )
 AddMonoAssembly( "TheGame" )
 AddMonoReference( "TheGame" "Common" "FOnline" "System" "System.Core" )

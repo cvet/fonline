@@ -426,4 +426,8 @@ public:
     string MessBoxCurText {};
     int MessBoxScroll {};
     bool SpritesCanDraw {};
+    vector<ModelInstance*> DrawCritterModel {};
+    vector<uint> DrawCritterModelCrType {};
+    vector<bool> DrawCritterModelFailedToLoad {};
+    int DrawCritterModelLayers[LAYERS3D_COUNT] {};
 };

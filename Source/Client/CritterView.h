@@ -48,9 +48,6 @@
 #include "SpriteManager.h"
 #include "Timer.h"
 
-#define FO_API_CRITTER_VIEW_HEADER 1
-#include "ScriptApi.h"
-
 class ItemView;
 
 class CritterView final : public Entity
@@ -146,12 +143,9 @@ public:
     short SprOy {};
     uint FadingTick {};
 
-#define FO_API_CRITTER_VIEW_CLASS 1
-#include "ScriptApi.h"
-
     PROPERTIES_HEADER();
-#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define CRITTER_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 
 private:
     struct CritterAnim

@@ -31,13 +31,40 @@
 // SOFTWARE.
 //
 
-#include "MapView.h"
+#include "Common.h"
 
-PROPERTIES_IMPL(MapView, "Map", false);
-#define MAP_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(MapView, access, type, name)
-#include "Properties-Include.h"
+#include "Server.h"
+#include "ServerScripting.h"
 
-MapView::MapView(uint id, const ProtoMap* proto) : Entity(id, EntityType::MapView, PropertiesRegistrator, proto)
+// ReSharper disable CppInconsistentNaming
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] int Server_Player_GetAccess([[maybe_unused]] FOServer* server, Player* self)
 {
-    RUNTIME_ASSERT(proto);
+    return self->Access;
+}
+
+///# ...
+///# param access ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Server_Player_SetAccess([[maybe_unused]] FOServer* server, Player* self, int access)
+{
+    if (access < ACCESS_CLIENT || access > ACCESS_ADMIN) {
+        throw ScriptException("Wrong access type");
+    }
+
+    if (access == self->Access) {
+        return true;
+    }
+
+    string pass;
+    const auto allow = server->ScriptSys.PlayerGetAccessEvent(self, access, pass);
+    if (allow) {
+        self->Access = static_cast<uchar>(access);
+    }
+
+    return allow;
 }

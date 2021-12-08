@@ -31,13 +31,15 @@
 // SOFTWARE.
 //
 
-#include "MapView.h"
+#include "Common.h"
 
-PROPERTIES_IMPL(MapView, "Map", false);
-#define MAP_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(MapView, access, type, name)
-#include "Properties-Include.h"
+#include "Client.h"
+#include "ClientScripting.h"
+#include "NetCommand.h"
+#include "GenericUtils.h"
+#include "GeometryHelper.h"
+#include "FileSystem.h"
+#include "StringUtils.h"
+#include "Log.h"
 
-MapView::MapView(uint id, const ProtoMap* proto) : Entity(id, EntityType::MapView, PropertiesRegistrator, proto)
-{
-    RUNTIME_ASSERT(proto);
-}
+// ReSharper disable CppInconsistentNaming

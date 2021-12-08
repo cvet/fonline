@@ -85,6 +85,29 @@
 
 DECLARE_EXCEPTION(ClientRestartException);
 
+///@ ExportEnum
+enum class EffectType : uint
+{
+    GenericSprite = 0x00000001,
+    CritterSprite = 0x00000002,
+    TileSprite = 0x00000004,
+    RoofSprite = 0x00000008,
+    RainSprite = 0x00000010,
+    SkinnedMesh = 0x00000400,
+    Interface = 0x00001000,
+    Contour = 0x00002000,
+    Font = 0x00010000,
+    Primitive = 0x00100000,
+    Light = 0x00200000,
+    Fog = 0x00400000,
+    FlushRenderTarget = 0x01000000,
+    FlushPrimitive = 0x04000000,
+    FlushMap = 0x08000000,
+    FlushLight = 0x10000000,
+    FlushFog = 0x20000000,
+    Offscreen = 0x40000000,
+};
+
 // Screens
 constexpr auto SCREEN_NONE = 0;
 // Primary screens
@@ -192,8 +215,6 @@ public:
 
     static constexpr auto FONT_DEFAULT = 5;
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
-    static constexpr auto FOMB_GAME = 0;
-    static constexpr auto FOMB_TALK = 1;
 
     FOClient() = delete;
     explicit FOClient(GlobalSettings& settings);
@@ -302,8 +323,8 @@ public:
     void Net_OnViewMap();
 
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
-    void AddMess(int mess_type, string_view msg);
-    void AddMess(int mess_type, string_view msg, bool script_call);
+    void AddMess(uchar mess_type, string_view msg);
+    void AddMess(uchar mess_type, string_view msg, bool script_call);
     void OnText(string_view str, uint crid, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
@@ -441,4 +462,8 @@ public:
     uchar DlgIsNpc {};
     uint DlgNpcId {};
     optional<uint> PrevDayTimeColor {};
+    vector<ModelInstance*> DrawCritterModel {};
+    vector<uint> DrawCritterModelCrType {};
+    vector<bool> DrawCritterModelFailedToLoad {};
+    int DrawCritterModelLayers[LAYERS3D_COUNT] {};
 };

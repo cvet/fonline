@@ -789,7 +789,7 @@ auto ZipFile::ReadTree() -> bool
             return false;
         }
 
-        char buf[TEMP_BUF_SIZE];
+        char buf[4096];
         if (unzGetCurrentFileInfo(_zipHandle, &info, buf, sizeof(buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             return false;
         }

@@ -124,7 +124,7 @@ void WriteLogMessage(string_view message)
     if (!Data->LogDisableTimestamp) {
         auto now = time(nullptr);
         const auto* t = localtime(&now);
-        result += _str("[{:0=2}:{:0=2}:{:0=2}] ", t->tm_hour, t->tm_min, t->tm_sec);
+        result += _str("[{}:{}:{}] ", t->tm_hour, t->tm_min, t->tm_sec);
     }
     result += message;
 

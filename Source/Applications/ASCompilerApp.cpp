@@ -38,22 +38,23 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
+#include "WinApi-Include.h" // !!!
 
 #include "minizip/zip.h"
 
 struct ServerScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(const char* script_path);
 };
 
 struct ClientScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(const char* script_path);
 };
 
 struct MapperScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(const char* script_path);
 };
 
 #if !FO_TESTING
@@ -63,6 +64,9 @@ int main(int argc, char** argv)
 #endif
 {
     try {
+        // !!!
+        ::SetCurrentDirectoryW(L"C:\\Users\\tsvetinskiy-a\\Documents\\Repos\\fonline-tla\\build\\Scripts");
+
         SetAppName("FOnlineASCompiler");
         CatchSystemExceptions();
         CreateGlobalData();
@@ -71,9 +75,12 @@ int main(int argc, char** argv)
         auto settings = GlobalSettings(argc, argv);
         int errors = 0;
 
+        // !!!
+        const_cast<string&>(settings.ASServer) = "C:/Users/tsvetinskiy-a/Documents/Repos/fonline-tla/build/Scripts/ServerRootModule.fos";
+
         if (!settings.ASServer.empty()) {
             try {
-                ServerScriptSystem().InitAngelScriptScripting(settings.ASServer);
+                ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
             }
             catch (std::exception& ex) {
                 WriteLog("Server scripts compilation failed!\n");
@@ -84,7 +91,7 @@ int main(int argc, char** argv)
 
         if (!settings.ASClient.empty()) {
             try {
-                ClientScriptSystem().InitAngelScriptScripting(settings.ASClient);
+                ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
             }
             catch (std::exception& ex) {
                 WriteLog("Client scripts compilation failed!\n");
@@ -95,7 +102,7 @@ int main(int argc, char** argv)
 
         if (!settings.ASMapper.empty()) {
             try {
-                MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper);
+                MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
             }
             catch (std::exception& ex) {
                 WriteLog("Mapper scripts compilation failed!\n");

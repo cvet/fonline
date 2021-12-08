@@ -43,12 +43,9 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-#define FO_API_MAP_IMPL 1
-#include "ScriptApi.h"
-
 PROPERTIES_IMPL(Map, "Map", true);
-#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Map, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
+#define MAP_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Map, access, type, name)
+#include "Properties-Include.h"
 
 Map::Map(uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map, MapSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Entity(id, EntityType::Map, PropertiesRegistrator, proto), _settings {settings}, _geomHelper(_settings), _scriptSys {script_sys}, _gameTime {game_time}, _staticMap {static_map}, _mapLocation {location}
 {

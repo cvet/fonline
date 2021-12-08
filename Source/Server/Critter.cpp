@@ -39,12 +39,9 @@
 #include "Player.h"
 #include "Settings.h"
 
-#define FO_API_CRITTER_IMPL 1
-#include "ScriptApi.h"
-
 PROPERTIES_IMPL(Critter, "Critter", true);
-#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Critter, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
+#define CRITTER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Critter, access, type, name)
+#include "Properties-Include.h"
 
 Critter::Critter(uint id, Player* owner, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Entity(id, EntityType::Critter, PropertiesRegistrator, proto), _player {owner}, _settings {settings}, _geomHelper(_settings), _scriptSys {script_sys}, _gameTime {game_time}
 {

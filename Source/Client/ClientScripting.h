@@ -31,12 +31,11 @@
 // SOFTWARE.
 //
 
-// ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
-
 #pragma once
 
 #include "Common.h"
 
+#include "Application.h"
 #include "ScriptSystem.h"
 
 class Entity;
@@ -56,16 +55,88 @@ public:
         InitMonoScripting();
     }
 
-#define FO_API_CLIENT_EVENT(name, ...) ScriptEvent<__VA_ARGS__> name##Event {};
-#define FO_API_ARG(type, name) type
-#define FO_API_ARG_ARR(type, name) vector<type>
-#define FO_API_ARG_OBJ(type, name) type*
-#define FO_API_ARG_OBJ_ARR(type, name) vector<type*>
-#define FO_API_ARG_REF(type, name) type&
-#define FO_API_ARG_ARR_REF(type, name) vector<type>&
-#define FO_API_ARG_ENUM(type, name) int
-#define FO_API_ARG_DICT(key, val, name) map<key, val>
-#include "ScriptApi.h"
+    ///@ ExportEvent Client
+    ScriptEvent<> StartEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<> FinishEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<string /*login*/, string /*password*/> AutoLoginEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<> LoopEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<vector<int>& /*screens*/> GetActiveScreensEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<bool /*show*/, int /*screen*/, map<string, int> /*data*/> ScreenChangeEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<int /*offsetX*/, int /*offsetY*/> ScreenScrollEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<> RenderIfaceEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<> RenderMapEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<MouseButton /*button*/> MouseDownEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<MouseButton /*button*/> MouseUpEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<int /*offsetX*/, int /*offsetY*/> MouseMoveEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<KeyCode /*key*/, string /*text*/> KeyDownEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<KeyCode /*key*/> KeyUpEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<> InputLostEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<CritterView* /*critter*/> CritterInEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<CritterView* /*critter*/> CritterOutEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<ItemView* /*item*/> ItemMapInEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<ItemView* /*item*/, ItemView* /*oldItem*/> ItemMapChangedEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<ItemView* /*item*/> ItemMapOutEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<> ItemInvAllInEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<ItemView* /*item*/> ItemInvInEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<ItemView* /*item*/, ItemView* /*oldItem*/> ItemInvChangedEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<ItemView* /*item*/> ItemInvOutEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<> MapLoadEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<> MapUnloadEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<vector<ItemView*> /*items*/, int /*param*/> ReceiveItemsEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/> MapMessageEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<string /*text*/, int& /*sayType*/, uint& /*critterId*/, uint& /*delay*/> InMessageEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<string& /*text*/, int& /*sayType*/> OutMessageEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<string /*text*/, uchar /*type*/, bool /*scriptCall*/> MessageBoxEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<vector<uint> /*result*/> CombatResultEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/> ItemCheckMoveEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, ItemView* /*actionItem*/> CritterActionEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/> Animation2dProcessEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/> Animation3dProcessEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<hash /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/> CritterAnimationEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<hash /*arg1*/, uint /*arg2*/, uint /*arg3*/, hash& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationSubstituteEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<hash /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationFalloutEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<CritterView* /*critter*/, ItemView* /*item*/, char /*toSlot*/> CritterCheckMoveItemEvent {};
+    ///@ ExportEvent Client
+    ScriptEvent<CritterView* /*critter*/, ItemView* /*item*/, char /*itemMode*/, uint& /*dist*/> CritterGetAttackDistantionEvent {};
 
 private:
     void InitNativeScripting();

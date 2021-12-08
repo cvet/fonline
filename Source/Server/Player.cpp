@@ -44,12 +44,9 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-#define FO_API_PLAYER_IMPL 1
-#include "ScriptApi.h"
-
 PROPERTIES_IMPL(Player, "Player", true);
-#define FO_API_PLAYER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Player, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
+#define PLAYER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Player, access, type, name)
+#include "Properties-Include.h"
 
 Player::Player(uint id, ClientConnection* connection, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Entity(id, EntityType::Player, PropertiesRegistrator, proto), _settings {settings}, _scriptSys {script_sys}, _gameTime {game_time}
 {

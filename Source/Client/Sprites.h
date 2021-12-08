@@ -40,11 +40,45 @@
 constexpr auto SPRITES_POOL_GROW_SIZE = 10000;
 
 class RenderEffect;
-class MapSprite;
 class SpriteManager;
 class Sprites;
 class Sprite;
 using SpriteVec = vector<Sprite*>;
+
+class MapSprite
+{
+public:
+    void AddRef() const { ++RefCount; }
+    void Release() const
+    {
+        if (--RefCount == 0)
+            delete this;
+    }
+    static MapSprite* Factory() { return new MapSprite(); }
+
+    mutable int RefCount {1};
+    bool Valid {};
+    uint SprId {};
+    ushort HexX {};
+    ushort HexY {};
+    hash ProtoId {};
+    int FrameIndex {};
+    int OffsX {};
+    int OffsY {};
+    bool IsFlat {};
+    bool NoLight {};
+    int DrawOrder {};
+    int DrawOrderHyOffset {};
+    int Corner {};
+    bool DisableEgg {};
+    uint Color {};
+    uint ContourColor {};
+    bool IsTweakOffs {};
+    short TweakOffsX {};
+    short TweakOffsY {};
+    bool IsTweakAlpha {};
+    uchar TweakAlpha {};
+};
 
 class Sprite
 {

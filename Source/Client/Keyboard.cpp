@@ -64,7 +64,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
         pos = str_len;
     }
 
-    if (dik == KeyCode::DIK_RIGHT && !ctrl_shift) {
+    if (dik == KeyCode::Right && !ctrl_shift) {
         if (pos < str_len) {
             pos++;
             while (pos < str_len && (str[pos] & 0xC0) == 0x80) {
@@ -72,7 +72,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
             }
         }
     }
-    else if (dik == KeyCode::DIK_LEFT && !ctrl_shift) {
+    else if (dik == KeyCode::Left && !ctrl_shift) {
         if (pos > 0) {
             pos--;
             while (pos != 0u && (str[pos] & 0xC0) == 0x80) {
@@ -80,7 +80,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
             }
         }
     }
-    else if (dik == KeyCode::DIK_BACK && !ctrl_shift) {
+    else if (dik == KeyCode::Back && !ctrl_shift) {
         if (pos > 0) {
             uint letter_len = 1;
             pos--;
@@ -92,7 +92,7 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
             str.erase(pos, letter_len);
         }
     }
-    else if (dik == KeyCode::DIK_DELETE && !ctrl_shift) {
+    else if (dik == KeyCode::Delete && !ctrl_shift) {
         if (pos < str_len) {
             uint letter_len = 1;
             auto pos_ = pos + 1;
@@ -104,25 +104,25 @@ void Keyboard::FillChar(KeyCode dik, string_view dik_text, string& str, uint* po
             str.erase(pos, letter_len);
         }
     }
-    else if (dik == KeyCode::DIK_HOME && !ctrl_shift) {
+    else if (dik == KeyCode::Home && !ctrl_shift) {
         pos = 0;
     }
-    else if (dik == KeyCode::DIK_END && !ctrl_shift) {
+    else if (dik == KeyCode::End && !ctrl_shift) {
         pos = str_len;
     }
-    else if (CtrlDwn && !ShiftDwn && str_len > 0 && (dik == KeyCode::DIK_C || dik == KeyCode::DIK_X)) {
+    else if (CtrlDwn && !ShiftDwn && str_len > 0 && (dik == KeyCode::C || dik == KeyCode::X)) {
         App->Input.SetClipboardText(str);
-        if (dik == KeyCode::DIK_X) {
+        if (dik == KeyCode::X) {
             str.clear();
             pos = 0;
         }
     }
-    else if (CtrlDwn && !ShiftDwn && dik == KeyCode::DIK_V) {
+    else if (CtrlDwn && !ShiftDwn && dik == KeyCode::V) {
         const auto cb_text = App->Input.GetClipboardText();
-        App->Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::DIK_CLIPBOARD_PASTE, cb_text})});
-        App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::DIK_CLIPBOARD_PASTE})});
+        App->Input.PushEvent(InputEvent {InputEvent::KeyDownEvent({KeyCode::ClipboardPaste, cb_text})});
+        App->Input.PushEvent(InputEvent {InputEvent::KeyUpEvent({KeyCode::ClipboardPaste})});
     }
-    else if (dik == KeyCode::DIK_CLIPBOARD_PASTE) {
+    else if (dik == KeyCode::ClipboardPaste) {
         auto text = string(dik_text);
         EraseInvalidChars(text, flags);
         if (!text.empty()) {

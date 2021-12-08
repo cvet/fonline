@@ -560,7 +560,7 @@ auto _str::parseWideChar(const wchar_t* str) -> _str&
     const auto len = static_cast<int>(wcslen(str));
 
     if (len != 0) {
-        auto* buf = static_cast<char*>(alloca(UTF8_BUF_SIZE(len)));
+        auto* buf = static_cast<char*>(alloca(len * 4));
         const auto r = WideCharToMultiByte(CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr);
 
         _s += string(buf, r);

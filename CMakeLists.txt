@@ -53,10 +53,10 @@ set( FO_COMPANY_NAME "Unknown" )
 set( FO_GAME_VERSION "0.0.1" )
 set( FO_ENGINE_VERSION "" )
 set( FO_MULTIPLAYER_SCRIPTING YES )
-set( FO_SINGLEPLAYER_SCRIPTING YES )
-set( FO_NATIVE_SCRIPTING YES )
-set( FO_ANGELSCRIPT_SCRIPTING YES )
-set( FO_MONO_SCRIPTING YES )
+set( FO_SINGLEPLAYER_SCRIPTING NO )
+set( FO_NATIVE_SCRIPTING NO )
+set( FO_ANGELSCRIPT_SCRIPTING NO )
+set( FO_MONO_SCRIPTING NO )
 set( FO_OS "" )
 set( FO_OS_UPPER "" )
 set( FO_BUILD_CONFIGURATION "" )
@@ -130,7 +130,6 @@ set( FO_TOOLS_SOURCE "" )
 set( FO_SCRIPTING_SOURCE "" )
 set( FO_SINGLE_SOURCE "" )
 set( FO_TESTS_SOURCE "" )
-set( FO_LINT_SOURCE "" )
 set( FO_CORE_LIBS_GROUP "" )
 set( FO_COMMANDS_GROUP "" )
 set( FO_APPLICATIONS_GROUP "" )
@@ -139,9 +138,16 @@ set( FO_CONTRIBUTION_DIR "" )
 set( FO_CONTENT "" )
 set( FO_RESOURCES "" )
 set( FO_SPRITE_ATLAS "" )
-set( FO_SCRIPT_API "" )
-set( FO_ANGELSCRIPT_FILES "" )
+set( FO_CODEGEN_COMMAND "" )
+set( FO_CODEGEN_META_SOURCE "" )
+set( FO_CODEGEN_OUTPUT "" )
+set( FO_NATIVE_SOURCE "" )
+set( FO_NATIVE_ENTRIES "" )
+set( FO_ANGELSCRIPT_SOURCE "" )
+set( FO_ANGELSCRIPT_EXTENSION_SOURCE "" )
+set( FO_ANGELSCRIPT_EXTENSION_ENTRIES "" )
 set( FO_MONO_ASSEMBLIES "" )
+set( FO_MONO_SOURCE "" )
 set( FO_CONFIGS "" )
 set( FO_PACKAGES "" )
 
@@ -471,42 +477,66 @@ macro( AddRawResources )
 		list( APPEND FO_RESOURCES "Raw,${FO_CONTRIBUTION_DIR}/${dir}" )
 	endforeach()
 endmacro()
-macro( AddScriptApi )
-	ResolveContributedFiles( ${ARGN} )
-	list( APPEND FO_SCRIPT_API ${result} )
+macro( AddNativeIncludeDir )
+	if( FO_NATIVE_SCRIPTING )
+		foreach( dir ${ARGN} )
+			include_directories( "${FO_CONTRIBUTION_DIR}/${dir}" )
+		endforeach()
+	endif()
 endmacro()
-macro( AddNativeIncludeDir target )
-	# Todo:
-	# list( TRANSFORM ARGN PREPEND ${FO_CONTRIBUTION_DIR} OUTPUT_VARIABLE result )
-	# include_directories( ${result} )
+macro( AddNativeSource )
+	if( FO_NATIVE_SCRIPTING )
+		ResolveContributedFiles( ${ARGN} )
+		list( APPEND FO_NATIVE_SOURCE ${result} )
+	endif()
 endmacro()
-macro( AddNativeSource target )
-	# Todo:
-	# ResolveContributedFiles( ${ARGN} )
+macro( AddNativeEntry funcName )
+	if( FO_NATIVE_SCRIPTING )
+		list( APPEND FO_NATIVE_ENTRIES ${funcName} )
+	endif()
 endmacro()
 macro( AddAngelScriptSource )
-	ResolveContributedFiles( ${ARGN} )
-	list( APPEND FO_ANGELSCRIPT_FILES ${result} )
+	if( FO_ANGELSCRIPT_SCRIPTING )
+		ResolveContributedFiles( ${ARGN} )
+		list( APPEND FO_ANGELSCRIPT_SOURCE ${result} )
+	endif()
+endmacro()
+macro( AddAngelScriptExtensionSource )
+	if( FO_ANGELSCRIPT_SCRIPTING )
+		ResolveContributedFiles( ${ARGN} )
+		list( APPEND FO_ANGELSCRIPT_EXTENSION_SOURCE ${result} )
+	endif()
+endmacro()
+macro( AddAngelScriptExtensionEntry funcName )
+	if( FO_ANGELSCRIPT_SCRIPTING )
+		list( APPEND FO_ANGELSCRIPT_EXTENSION_ENTRIES ${funcName} )
+	endif()
 endmacro()
 macro( AddMonoAssembly assembly )
-	list( APPEND FO_MONO_ASSEMBLIES ${assembly} )
-	set( MonoAssembly_${assembly}_CommonRefs "" )
-	set( MonoAssembly_${assembly}_ServerRefs "" )
-	set( MonoAssembly_${assembly}_ClientRefs "" )
-	set( MonoAssembly_${assembly}_SingleRefs "" )
-	set( MonoAssembly_${assembly}_MapperRefs "" )
-	set( MonoAssembly_${assembly}_CommonSource "" )
-	set( MonoAssembly_${assembly}_ServerSource "" )
-	set( MonoAssembly_${assembly}_ClientSource "" )
-	set( MonoAssembly_${assembly}_SingleSource "" )
-	set( MonoAssembly_${assembly}_MapperSource "" )
+	if( FO_MONO_SCRIPTING )
+		list( APPEND FO_MONO_ASSEMBLIES ${assembly} )
+		set( MonoAssembly_${assembly}_CommonRefs "" )
+		set( MonoAssembly_${assembly}_ServerRefs "" )
+		set( MonoAssembly_${assembly}_ClientRefs "" )
+		set( MonoAssembly_${assembly}_SingleRefs "" )
+		set( MonoAssembly_${assembly}_MapperRefs "" )
+		set( MonoAssembly_${assembly}_CommonSource "" )
+		set( MonoAssembly_${assembly}_ServerSource "" )
+		set( MonoAssembly_${assembly}_ClientSource "" )
+		set( MonoAssembly_${assembly}_SingleSource "" )
+		set( MonoAssembly_${assembly}_MapperSource "" )
+	endif()
 endmacro()
 macro( AddMonoReference assembly target )
-	list( APPEND MonoAssembly_${assembly}_${target}Refs ${ARGN} )
+	if( FO_MONO_SCRIPTING )
+		list( APPEND MonoAssembly_${assembly}_${target}Refs ${ARGN} )
+	endif()
 endmacro()
 macro( AddMonoSource assembly target )
-	ResolveContributedFiles( ${ARGN} )
-	list( APPEND MonoAssembly_${assembly}_${target}Source ${result} )
+	if( FO_MONO_SCRIPTING )
+		ResolveContributedFiles( ${ARGN} )
+		list( APPEND MonoAssembly_${assembly}_${target}Source ${result} )
+	endif()
 endmacro()
 macro( CreateConfig config inheritenConfig )
 	list( APPEND FO_CONFIGS ${config} )
@@ -541,8 +571,9 @@ endif()
 
 # Core contrinution
 set( FO_CONTRIBUTION_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
-AddNativeIncludeDir( "Common" "Source/Scripting/Native" )
-AddNativeSource( "Common" "Source/Scripting/Native/*.cpp" )
+AddNativeIncludeDir( "Source/Scripting/Native" )
+AddNativeSource( "Source/Scripting/Native/*.cpp" )
+AddNativeSource( "Source/Scripting/Native/*.h" )
 AddAngelScriptSource( "Source/Scripting/AngelScript/*.fos" )
 AddMonoAssembly( "FOnline" )
 AddMonoSource( "FOnline" "Common" "Source/Scripting/Mono/*.cs" )
@@ -600,42 +631,35 @@ include_directories( "Source/Tools" )
 include_directories( "Source/Scripting" )
 
 # Generated includes
-macro( GenerateInclude includeName )
-	set( GeneratedInclude_${includeName} "// Automatically generated, do not change manually\n" )
+macro( GenerateSourceFile fileName )
+	set( GeneratedSource_${fileName} "// Automatically generated, do not change manually\n" )
 endmacro()
-macro( AddGeneratedIncludeLine includeName line )
-	set( GeneratedInclude_${includeName} "${GeneratedInclude_${includeName}}${line}\n" )
+macro( AddGeneratedSourceLine fileName line )
+	set( GeneratedSource_${fileName} "${GeneratedSource_${fileName}}${line}\n" )
 endmacro()
-macro( FinalizeGeneratedInclude includeName )
-	set( filePath "${CMAKE_BINARY_DIR}/GeneratedSource/${includeName}.h" )
+macro( FinalizeGeneratedSource fileName fileExt )
+	set( filePath "${CMAKE_BINARY_DIR}/GeneratedSource/${fileName}.${fileExt}" )
 	set( curContent "" )
 	if( EXISTS ${filePath} )
 		file( READ ${filePath} curContent )
 	endif()
-	if( NOT "${curContent}" STREQUAL "${GeneratedInclude_${includeName}}" )
-		file( WRITE ${filePath} "${GeneratedInclude_${includeName}}" )
+	if( NOT "${curContent}" STREQUAL "${GeneratedSource_${fileName}}" )
+		file( WRITE ${filePath} "${GeneratedSource_${fileName}}" )
 	endif()
 endmacro()
 include_directories( "${CMAKE_BINARY_DIR}/GeneratedSource" )
 
-# Custom script API
-GenerateInclude( "ScriptApi-Custom" )
-foreach( headerPath ${FO_SCRIPT_API} )
-	AddGeneratedIncludeLine( "ScriptApi-Custom" "#include \"${headerPath}\"" )
-endforeach()
-FinalizeGeneratedInclude( "ScriptApi-Custom" )
-
 # Embedded resources
-GenerateInclude( "EmbeddedResources-Include" )
+GenerateSourceFile( "EmbeddedResources-Include" )
 file( GLOB bins "Resources/Embedded/*.zipped" )
 foreach( bin ${bins} )
 	string( REGEX MATCH "([^/]+)$" filename ${bin} )
 	string( REGEX REPLACE "\\.| " "_" filename ${filename} )
 	file( READ ${bin} filedata HEX )
 	string( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " filedata ${filedata} )
-	AddGeneratedIncludeLine( "EmbeddedResources-Include" "const unsigned char Resource_${filename}[] = { ${filedata}};" )
+	AddGeneratedSourceLine( "EmbeddedResources-Include" "const unsigned char Resource_${filename}[] = { ${filedata}};" )
 endforeach()
-FinalizeGeneratedInclude( "EmbeddedResources-Include" )
+FinalizeGeneratedSource( "EmbeddedResources-Include" "h" )
 
 # Unique hash for build
 if( FO_ENGINE_VERSION STREQUAL "" )
@@ -648,26 +672,26 @@ if( FO_ENGINE_VERSION STREQUAL "" )
 	endif()
 endif()
 
-GenerateInclude( "Version-Include" )
+GenerateSourceFile( "Version-Include" )
 if( FO_ENGINE_VERSION STREQUAL "" )
 	if( $ENV{GITHUB_SHA} )
 		StatusMessage( "Build version: ${FO_GIT_HASH} (commit hash at GitHub)" )
-		AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_GIT_HASH}; /* Commit hash at GitHub */" )
-		AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_GIT_HASH}\";" )
-		AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_GITHUB = true;" )
+		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_GIT_HASH}; /* Commit hash at GitHub */" )
+		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_GIT_HASH}\";" )
+		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_GITHUB = true;" )
 	else()
 		StatusMessage( "Build version: ${FO_GIT_HASH} (commit hash)" )
-		AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_GIT_HASH}; /* Commit hash */" )
-		AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_GIT_HASH}\";" )
-		AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_GITHUB = false;" )
+		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_GIT_HASH}; /* Commit hash */" )
+		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_GIT_HASH}\";" )
+		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_GITHUB = false;" )
 	endif()
 else()
 	StatusMessage( "Build version: ${FO_ENGINE_VERSION} (custom version)" )
-	AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_ENGINE_VERSION}; /* Custom version */" )
-	AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_ENGINE_VERSION}\";" )
-	AddGeneratedIncludeLine( "Version-Include" "static constexpr auto FO_GITHUB = false;" )
+	AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_ENGINE_VERSION}; /* Custom version */" )
+	AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_ENGINE_VERSION}\";" )
+	AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_GITHUB = false;" )
 endif()
-FinalizeGeneratedInclude( "Version-Include" )
+FinalizeGeneratedSource( "Version-Include" "h" )
 
 # Third-party libs
 StatusMessage( "Third-party libs:" )
@@ -1053,8 +1077,30 @@ if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	DisableLibWarnings( spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl )
 endif()
 
+# Native scripting
+if( FO_NATIVE_SCRIPTING )
+	# Generated native scripting files placed here
+	include_directories( ${FO_SCRIPTS_OUTPUT} )
+
+	# Entry points
+	GenerateSourceFile( "NativeScriptingEntries" )
+	foreach( funcName ${FO_NATIVE_ENTRIES} )
+		AddGeneratedSourceLine( "NativeScriptingEntries" "FO_ENTRY_POINT(${funcName})" )
+	endforeach()
+	AddGeneratedSourceLine( "NativeScriptingEntries" "#undef FO_ENTRY_POINT" )
+	FinalizeGeneratedSource( "NativeScriptingEntries" "h" )
+endif()
+
 # AngelScript scripting
 if( FO_ANGELSCRIPT_SCRIPTING )
+	# Extension entry points
+	GenerateSourceFile( "AngelScriptExtensionEntries" )
+	foreach( funcName ${FO_ANGELSCRIPT_EXTENSION_ENTRIES} )
+		AddGeneratedSourceLine( "AngelScriptExtensionEntries" "FO_ENTRY_POINT(${funcName})" )
+	endforeach()
+	AddGeneratedSourceLine( "AngelScriptExtensionEntries" "#undef FO_ENTRY_POINT" )
+	FinalizeGeneratedSource( "AngelScriptExtensionEntries" "h" )
+
 	# AngelScript
 	StatusMessage( "+ AngelScript" )
 	set( FO_ANGELSCRIPT_DIR "ThirdParty/AngelScript" )
@@ -1151,7 +1197,6 @@ set( FO_COMMON_SOURCE
 	"Source/Common/GenericUtils.h"
 	"Source/Common/GeometryHelper.cpp"
 	"Source/Common/GeometryHelper.h"
-	"Source/Common/KeyCodes-Include.h"
 	"Source/Common/LineTracer.cpp"
 	"Source/Common/LineTracer.h"
 	"Source/Common/Log.cpp"
@@ -1168,6 +1213,7 @@ set( FO_COMMON_SOURCE
 	"Source/Common/NetProtocol-Include.h"
 	"Source/Common/Properties.cpp"
 	"Source/Common/Properties.h"
+	"Source/Common/Properties-Include.h"
 	"Source/Common/ProtoManager.cpp"
 	"Source/Common/ProtoManager.h"
 	"Source/Common/ScriptSystem.cpp"
@@ -1279,103 +1325,287 @@ set( FO_TOOLS_SOURCE
 	"Source/Tools/ModelBaker.h"
 	"Source/Tools/ModelBaker.cpp" )
 
-set( FO_SCRIPTING_SOURCE
-	"Source/Scripting/AngelScriptScripting.cpp"
-	"Source/Scripting/MonoScripting.cpp"
-	"Source/Scripting/NativeScripting.cpp" )
+set( FO_SERVER_SCRIPTING_SOURCE
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
+	"Source/Scripting/CommonGlobalScriptMethods.cpp"
+	"Source/Scripting/ServerGlobalScriptMethods.cpp"
+	"Source/Scripting/ServerPlayerScriptMethods.cpp"
+	"Source/Scripting/ServerItemScriptMethods.cpp"
+	"Source/Scripting/ServerCritterScriptMethods.cpp"
+	"Source/Scripting/ServerMapScriptMethods.cpp"
+	"Source/Scripting/ServerLocationScriptMethods.cpp" )
+	
+set( FO_CLIENT_SCRIPTING_SOURCE
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
+	"Source/Scripting/CommonGlobalScriptMethods.cpp"
+	"Source/Scripting/ClientGlobalScriptMethods.cpp"
+	"Source/Scripting/ClientPlayerScriptMethods.cpp"
+	"Source/Scripting/ClientItemScriptMethods.cpp"
+	"Source/Scripting/ClientCritterScriptMethods.cpp"
+	"Source/Scripting/ClientMapScriptMethods.cpp"
+	"Source/Scripting/ClientLocationScriptMethods.cpp" )
 
+set( FO_MAPPER_SCRIPTING_SOURCE
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
+	"Source/Scripting/CommonGlobalScriptMethods.cpp"
+	"Source/Scripting/MapperGlobalScriptMethods.cpp" )
+	
+set( FO_SCRIPTING_SOURCE
+	"Source/Scripting/AngelScriptScripting-Template.cpp"
+	"Source/Scripting/MonoScripting-Template.cpp"
+	"Source/Scripting/NativeScripting-Template.cpp"
+	"Source/Scripting/ServerGlobalScriptMethods.cpp"
+	"Source/Scripting/ServerPlayerScriptMethods.cpp"
+	"Source/Scripting/ServerItemScriptMethods.cpp"
+	"Source/Scripting/ServerCritterScriptMethods.cpp"
+	"Source/Scripting/ServerMapScriptMethods.cpp"
+	"Source/Scripting/ServerLocationScriptMethods.cpp"
+	"Source/Scripting/ClientGlobalScriptMethods.cpp"
+	"Source/Scripting/ClientPlayerScriptMethods.cpp"
+	"Source/Scripting/ClientItemScriptMethods.cpp"
+	"Source/Scripting/ClientCritterScriptMethods.cpp"
+	"Source/Scripting/ClientMapScriptMethods.cpp"
+	"Source/Scripting/ClientLocationScriptMethods.cpp"
+	"Source/Scripting/MapperGlobalScriptMethods.cpp"
+	"Source/Scripting/CommonGlobalScriptMethods.cpp" )
+	
 set( FO_TESTS_SOURCE
 	"Source/Tests/UnitTest1.cpp" )
 
-set( FO_LINT_SOURCE
-	"Source/Scripting/ScriptingLint.cpp"
-	"Source/Scripting/ScriptApi-Client.h"
-	"Source/Scripting/ScriptApi-Common.h"
-	"Source/Scripting/ScriptApi-Enums.h"
-	"Source/Scripting/ScriptApi-Events.h"
-	"Source/Scripting/ScriptApi-Mapper.h"
-	"Source/Scripting/ScriptApi-Properties.h"
-	"Source/Scripting/ScriptApi-Server.h"
-	"${CMAKE_BINARY_DIR}/GeneratedSource/ScriptApi-Custom.h" )
+# Scripting code generation
+if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
+	include( FindPython )
+	find_package( Python REQUIRED COMPONENTS Interpreter )
 
-# Make symlink of scripting API files for correct linting
-function( MirrorSource fileDir fileName fileExt postfix )
-	if( NOT EXISTS "${CMAKE_BINARY_DIR}/GeneratedSource/${fileName}-${postfix}.${fileExt}" )
-		file( CREATE_LINK "${fileDir}/${fileName}.${fileExt}" "${CMAKE_BINARY_DIR}/GeneratedSource/${fileName}-${postfix}.${fileExt}" COPY_ON_ERROR SYMBOLIC )
+	set( FO_CODEGEN_COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/gen-scripting-code.py" )
+	list( APPEND FO_CODEGEN_COMMAND -output ${FO_SCRIPTS_OUTPUT} )
+
+	list( APPEND FO_CODEGEN_COMMAND -markdown )
+	if( FONLINE_INFO_MARKDOWN_OUTPUT )
+		list( APPEND FO_CODEGEN_COMMAND -mdpath "${FONLINE_INFO_MARKDOWN_OUTPUT}" )
 	endif()
-endfunction()
 
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Client" "h" "Mirror" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Common" "h" "Mirror" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Enums" "h" "Mirror" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Events" "h" "Mirror" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Mapper" "h" "Mirror" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Properties" "h" "Mirror" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "ScriptApi-Server" "h" "Mirror" )
-MirrorSource( "${CMAKE_BINARY_DIR}/GeneratedSource" "ScriptApi-Custom" "h" "Mirror" )
+	if( FO_NATIVE_SCRIPTING )
+		list( APPEND FO_CODEGEN_COMMAND -native )
+	endif()
+	if( FO_ANGELSCRIPT_SCRIPTING )
+		list( APPEND FO_CODEGEN_COMMAND -angelscript )
+	endif()
+	if( FO_MONO_SCRIPTING )
+		list( APPEND FO_CODEGEN_COMMAND -csharp )
+	endif()
+	if( FO_MULTIPLAYER_SCRIPTING )
+		list( APPEND FO_CODEGEN_COMMAND -multiplayer )
+	endif()
+	if( FO_SINGLEPLAYER_SCRIPTING )
+		list( APPEND FO_CODEGEN_COMMAND -singleplayer )
+	endif()
+	list( APPEND FO_CODEGEN_COMMAND -mapper )
 
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server" "ServerScripting" "h" "AngelScript" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server" "ServerScripting" "h" "Mono" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Server" "ServerScripting" "h" "Native" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client" "ClientScripting" "h" "AngelScript" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client" "ClientScripting" "h" "Mono" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Client" "ClientScripting" "h" "Native" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools" "MapperScripting" "h" "AngelScript" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools" "MapperScripting" "h" "Mono" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Tools" "MapperScripting" "h" "Native" )
+	foreach( src ${FO_ANGELSCRIPT_SOURCE} )
+		list( APPEND FO_CODEGEN_COMMAND -assource ${src} )
+	endforeach()
 
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "AngelScriptScripting" "cpp" "Server" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "AngelScriptScripting" "cpp" "Client" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "AngelScriptScripting" "cpp" "Mapper" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "AngelScriptScripting" "cpp" "Single" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "AngelScriptScripting" "cpp" "ServerCompiler" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "AngelScriptScripting" "cpp" "ClientCompiler" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "AngelScriptScripting" "cpp" "MapperCompiler" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "MonoScripting" "cpp" "Server" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "MonoScripting" "cpp" "Client" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "MonoScripting" "cpp" "Mapper" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "MonoScripting" "cpp" "Single" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "NativeScripting" "cpp" "Server" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "NativeScripting" "cpp" "Client" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "NativeScripting" "cpp" "Mapper" )
-MirrorSource( "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting" "NativeScripting" "cpp" "Single" )
+	foreach( entry ${FO_MONO_ASSEMBLIES} )
+		list( APPEND FO_CODEGEN_COMMAND -monoassembly ${entry} )
+		foreach( ref ${MonoAssembly_${entry}_CommonRefs} )
+			list( APPEND FO_CODEGEN_COMMAND -monoserverref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND -monoclientref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND -monosingleref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND -monomapperref "${entry},${ref}" )
+		endforeach()
+		foreach( ref ${MonoAssembly_${entry}_ServerRefs} )
+			list( APPEND FO_CODEGEN_COMMAND -monoserverref "${entry},${ref}" )
+		endforeach()
+		foreach( ref ${MonoAssembly_${entry}_ClientRefs} )
+			list( APPEND FO_CODEGEN_COMMAND -monoclientref "${entry},${ref}" )
+		endforeach()
+		foreach( ref ${MonoAssembly_${entry}_SingleRefs} )
+			list( APPEND FO_CODEGEN_COMMAND -monosingleref "${entry},${ref}" )
+		endforeach()
+		foreach( ref ${MonoAssembly_${entry}_MapperRefs} )
+			list( APPEND FO_CODEGEN_COMMAND -monomapperref "${entry},${ref}" )
+		endforeach()
+		foreach( src ${MonoAssembly_${entry}_CommonSource} )
+			list( APPEND FO_CODEGEN_COMMAND -monoserversource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND -monoclientsource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND -monosinglesource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND -monomappersource "${entry},${src}" )
+			list( APPEND FO_MONO_SOURCE ${src} )
+		endforeach()
+		foreach( src ${MonoAssembly_${entry}_ServerSource} )
+			list( APPEND FO_CODEGEN_COMMAND -monoserversource "${entry},${src}" )
+			list( APPEND FO_MONO_SOURCE ${src} )
+		endforeach()
+		foreach( src ${MonoAssembly_${entry}_ClientSource} )
+			list( APPEND FO_CODEGEN_COMMAND -monoclientsource "${entry},${src}" )
+			list( APPEND FO_MONO_SOURCE ${src} )
+		endforeach()
+		foreach( src ${MonoAssembly_${entry}_SingleSource} )
+			list( APPEND FO_CODEGEN_COMMAND -monosinglesource "${entry},${src}" )
+			list( APPEND FO_MONO_SOURCE ${src} )
+		endforeach()
+		foreach( src ${MonoAssembly_${entry}_MapperSource} )
+			list( APPEND FO_CODEGEN_COMMAND -monomappersource "${entry},${src}" )
+			list( APPEND FO_MONO_SOURCE ${src} )
+		endforeach()
+	endforeach()
+
+	foreach( entry ${FO_CONTENT} )
+		list( APPEND FO_CODEGEN_COMMAND -content ${entry} )
+	endforeach()
+
+	list( APPEND FO_CODEGEN_META_SOURCE
+		${FO_SCRIPTING_SOURCE}
+		${FO_COMMON_SOURCE}
+		${FO_SERVER_SOURCE}
+		${FO_CLIENT_SOURCE}
+		${FO_TOOLS_SOURCE}
+		${FO_NATIVE_SOURCE}
+		${FO_ANGELSCRIPT_SOURCE}
+		${FO_MONO_SOURCE} )
+
+	foreach( entry ${FO_CODEGEN_META_SOURCE} )
+		list( APPEND FO_CODEGEN_COMMAND -meta ${entry} )
+	endforeach()
+
+	list( APPEND FO_CODEGEN_OUTPUT
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" )
+
+	add_custom_command( OUTPUT ${FO_CODEGEN_OUTPUT}
+		COMMAND ${FO_CODEGEN_COMMAND}
+		DEPENDS ${FO_CODEGEN_META_SOURCE}
+		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+		COMMENT "Auto generate scripting code" )
+		
+	add_custom_target( GenerateScriptingCode
+		COMMAND ${FO_CODEGEN_COMMAND}
+		DEPENDS ${FO_CODEGEN_OUTPUT}
+		SOURCES ${FO_CODEGEN_META_SOURCE}
+		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+		COMMENT "Generate scripting code"
+		VERBATIM )
+	list( APPEND FO_COMMANDS_GROUP "GenerateScriptingCode" )
+
+else()
+	# Generate scripting stubs
+	function( MakeStub target1 target2 )
+		set( fileName "${target1}-${target2}" )
+		GenerateSourceFile( ${fileName} )
+		AddGeneratedSourceLine( ${fileName} "#include \"${target2}Scripting.h\"" )
+		AddGeneratedSourceLine( ${fileName} "void ${target2}ScriptSystem::Init${target1}() { }" )
+		FinalizeGeneratedSource( ${fileName} "cpp" )
+	endfunction()
+	function( MakeStubSingle target )
+		set( fileName "${target}-Single" )
+		GenerateSourceFile( ${fileName} )
+		AddGeneratedSourceLine( ${fileName} "#include \"ServerScripting.h\"" )
+		AddGeneratedSourceLine( ${fileName} "#include \"ClientScripting.h\"" )
+		AddGeneratedSourceLine( ${fileName} "void ServerScriptSystem::Init${target}() { }" )
+		AddGeneratedSourceLine( ${fileName} "void ClientScriptSystem::Init${target}() { }" )
+		FinalizeGeneratedSource( ${fileName} "cpp" )
+	endfunction()
+	function( MakeStubCompiler target )
+		set( fileName "AngelScriptScripting-${target}Compiler" )
+		GenerateSourceFile( ${fileName} )
+		AddGeneratedSourceLine( ${fileName} "struct ${target}ScriptSystem { void InitAngelScriptScripting(const char*); };" )
+		AddGeneratedSourceLine( ${fileName} "void ${target}ScriptSystem::InitAngelScriptScripting(const char*) { }" )
+		FinalizeGeneratedSource( ${fileName} "cpp" )
+	endfunction()
+	function( MakeStubSingleCompiler )
+		set( fileName "AngelScriptScripting-SingleCompiler" )
+		GenerateSourceFile( ${fileName} )
+		AddGeneratedSourceLine( ${fileName} "struct ServerScriptSystem { void InitAngelScriptScripting(const char*); };" )
+		AddGeneratedSourceLine( ${fileName} "struct ClientScriptSystem { void InitAngelScriptScripting(const char*); };" )
+		AddGeneratedSourceLine( ${fileName} "void ServerScriptSystem::InitAngelScriptScripting(const char*) { }" )
+		AddGeneratedSourceLine( ${fileName} "void ClientScriptSystem::InitAngelScriptScripting(const char*) { }" )
+		FinalizeGeneratedSource( ${fileName} "cpp" )
+	endfunction()
+	
+	MakeStub( "AngelScriptScripting" "Server" )
+	MakeStub( "AngelScriptScripting" "Client" )
+	MakeStub( "AngelScriptScripting" "Mapper" )
+	MakeStub( "MonoScripting" "Server" )
+	MakeStub( "MonoScripting" "Client" )
+	MakeStub( "MonoScripting" "Mapper" )
+	MakeStub( "NativeScripting" "Server" )
+	MakeStub( "NativeScripting" "Client" )
+	MakeStub( "NativeScripting" "Mapper" )
+	MakeStubSingle( "AngelScriptScripting" )
+	MakeStubSingle( "NativeScripting" )
+	MakeStubSingle( "MonoScripting" )
+	MakeStubCompiler( "Server" )
+	MakeStubCompiler( "Client" )
+	MakeStubCompiler( "Mapper" )
+	MakeStubSingleCompiler()
+endif()
 
 # Applications
 StatusMessage( "Applications:" )
 
 if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER )
 	add_library( CommonLib STATIC ${FO_COMMON_SOURCE} )
-	set_target_properties( CommonLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	set_target_properties( CommonLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS} )
 	list( APPEND FO_CORE_LIBS_GROUP "CommonLib" )
 endif()
 if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_MAPPER )
 	add_library( ClientLib STATIC ${FO_CLIENT_SOURCE} )
-	set_target_properties( ClientLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	set_target_properties( ClientLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( ClientLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS} )
 	list( APPEND FO_CORE_LIBS_GROUP "ClientLib" )
 endif()
 if( FONLINE_BUILD_SERVER )
 	add_library( ServerLib STATIC ${FO_SERVER_SOURCE} )
-	set_target_properties( ServerLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	set_target_properties( ServerLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( ServerLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS} )
 	list( APPEND FO_CORE_LIBS_GROUP "ServerLib" )
 endif()
 
 if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_MAPPER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
-	add_library( ClientScriptingLib STATIC "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/ClientScripting-AngelScript.h" "${CMAKE_BINARY_DIR}/GeneratedSource/ClientScripting-Mono.h" "${CMAKE_BINARY_DIR}/GeneratedSource/ClientScripting-Native.h" )
-	set_target_properties( ClientScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_SERVER_SCRIPTING=0;FO_CLIENT_SCRIPTING=1;FO_MAPPER_SCRIPTING=0;FO_SINGLEPLAYER_SCRIPTING=0;FO_ANGELSCRIPT_COMPILER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	add_library( ClientScriptingLib STATIC "${FO_NATIVE_SOURCE}" "${FO_CLIENT_SCRIPTING_SOURCE}" )
+	set_target_properties( ClientScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	list( APPEND FO_CORE_LIBS_GROUP "ClientScriptingLib" )
+	if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
+		add_dependencies( ClientScriptingLib GenerateScriptingCode )
+	endif()
 endif()
 if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
-	add_library( ServerScriptingLib STATIC "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/ServerScripting-AngelScript.h" "${CMAKE_BINARY_DIR}/GeneratedSource/ServerScripting-Mono.h" "${CMAKE_BINARY_DIR}/GeneratedSource/ServerScripting-Native.h" )
-	set_target_properties( ServerScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_SERVER_SCRIPTING=1;FO_CLIENT_SCRIPTING=0;FO_MAPPER_SCRIPTING=0;FO_SINGLEPLAYER_SCRIPTING=0;FO_ANGELSCRIPT_COMPILER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	add_library( ServerScriptingLib STATIC "${FO_NATIVE_SOURCE}" "${FO_SERVER_SCRIPTING_SOURCE}" )
+	set_target_properties( ServerScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	list( APPEND FO_CORE_LIBS_GROUP "ServerScriptingLib" )
+	if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
+		add_dependencies( ServerScriptingLib GenerateScriptingCode )
+	endif()
 endif()
 if( FONLINE_BUILD_MAPPER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
-	add_library( MapperScriptingLib STATIC "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/MapperScripting-AngelScript.h" "${CMAKE_BINARY_DIR}/GeneratedSource/MapperScripting-Mono.h" "${CMAKE_BINARY_DIR}/GeneratedSource/MapperScripting-Native.h" )
-	set_target_properties( MapperScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_SERVER_SCRIPTING=0;FO_CLIENT_SCRIPTING=0;FO_MAPPER_SCRIPTING=1;FO_SINGLEPLAYER_SCRIPTING=0;FO_ANGELSCRIPT_COMPILER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=1" )
+	add_library( MapperScriptingLib STATIC "${FO_NATIVE_SOURCE}" "${FO_MAPPER_SCRIPTING_SOURCE}" )
+	set_target_properties( MapperScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	list( APPEND FO_CORE_LIBS_GROUP "MapperScriptingLib" )
+	if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
+		add_dependencies( MapperScriptingLib GenerateScriptingCode )
+	endif()
 endif()
 
 if( FONLINE_BUILD_CLIENT )
@@ -1393,7 +1623,7 @@ if( FONLINE_BUILD_CLIENT )
 		set_target_properties( FOnlineClient PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT} )
 	endif()
 	set_target_properties( FOnlineClient PROPERTIES OUTPUT_NAME "FOnlineClient" )
-	set_target_properties( FOnlineClient PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	set_target_properties( FOnlineClient PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineClient "ClientLib" "ClientScriptingLib" "CommonLib" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
@@ -1403,7 +1633,7 @@ if( FONLINE_BUILD_SERVER )
 	add_executable( FOnlineServer WIN32 "Source/Applications/ServerApp.cpp" "Source/Common/Application.cpp" "Source/Server/AppGui.cpp" "Source/Server/AppGuiDX.cpp" "Resources/Default.rc" )
 	set_target_properties( FOnlineServer PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer" )
-	set_target_properties( FOnlineServer PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	set_target_properties( FOnlineServer PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineServer "ServerLib" "ServerScriptingLib" "CommonLib" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 
 	StatusMessage( "+ FOnlineServerHeadless" )
@@ -1411,7 +1641,7 @@ if( FONLINE_BUILD_SERVER )
 	add_executable( FOnlineServerHeadless "Source/Applications/ServerHeadlessApp.cpp" "Source/Common/ApplicationHeadless.cpp" "Source/Server/AppGuiStub.cpp" )
 	set_target_properties( FOnlineServerHeadless PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SERVER_OUTPUT} )
 	set_target_properties( FOnlineServerHeadless PROPERTIES OUTPUT_NAME "FOnlineServerHeadless" )
-	set_target_properties( FOnlineServerHeadless PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	set_target_properties( FOnlineServerHeadless PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineServerHeadless "ServerLib" "ServerScriptingLib" "CommonLib" "${CMAKE_DL_LIBS}" )
 
 	if( WIN32 )
@@ -1420,7 +1650,7 @@ if( FONLINE_BUILD_SERVER )
 		add_executable( FOnlineServerService "Source/Applications/ServerServiceApp.cpp" "Source/Common/ApplicationHeadless.cpp" "Source/Server/AppGuiStub.cpp" )
 		set_target_properties( FOnlineServerService PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerService PROPERTIES OUTPUT_NAME "FOnlineServerService" )
-		set_target_properties( FOnlineServerService PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+		set_target_properties( FOnlineServerService PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 		target_link_libraries( FOnlineServerService "ServerLib" "ServerScriptingLib" "CommonLib" "${CMAKE_DL_LIBS}" )
 	else()
 		StatusMessage( "+ FOnlineServerDaemon" )
@@ -1428,7 +1658,7 @@ if( FONLINE_BUILD_SERVER )
 		add_executable( FOnlineServerDaemon "Source/Applications/ServerDaemonApp.cpp" "Source/Common/ApplicationHeadless.cpp" "Source/Server/AppGuiStub.cpp" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon" )
-		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 		target_link_libraries( FOnlineServerDaemon "ServerLib" "ServerScriptingLib" "CommonLib" "${CMAKE_DL_LIBS}" )
 	endif()
 endif()
@@ -1437,9 +1667,12 @@ if( FONLINE_BUILD_SINGLE )
 	set( FO_SINGLE_SOURCE ${FO_SERVER_SOURCE} ${FO_CLIENT_SOURCE} ${FO_COMMON_SOURCE} )
 	list( APPEND FO_SINGLE_SOURCE "Source/Common/Application.cpp" "Source/Server/AppGuiStub.cpp" )
 
-	add_library( SingleScriptingLib STATIC "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp" )
-	set_target_properties( SingleScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1;FO_SERVER_SCRIPTING=0;FO_CLIENT_SCRIPTING=0;FO_MAPPER_SCRIPTING=0;FO_SINGLEPLAYER_SCRIPTING=1;FO_ANGELSCRIPT_COMPILER=0;FO_API_MULTIPLAYER_ONLY=0;FO_API_SINGLEPLAYER_ONLY=1" )
+	add_library( SingleScriptingLib STATIC "${FO_NATIVE_SOURCE}" "${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp" )
+	set_target_properties( SingleScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1" )
 	list( APPEND FO_CORE_LIBS_GROUP "SingleScriptingLib" )
+	if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
+		add_dependencies( SingleScriptingLib GenerateScriptingCode )
+	endif()
 
 	if( NOT FO_BUILD_LIBRARY )
 		StatusMessage( "+ FOnlineSingle" )
@@ -1453,17 +1686,17 @@ if( FONLINE_BUILD_SINGLE )
 		set_target_properties( FOnlineSingle PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${FO_SINGLE_OUTPUT} )
 	endif()
 	set_target_properties( FOnlineSingle PROPERTIES OUTPUT_NAME "FOnlineSingle" )
-	set_target_properties( FOnlineSingle PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1;FO_API_MULTIPLAYER_ONLY=0;FO_API_SINGLEPLAYER_ONLY=1" )
+	set_target_properties( FOnlineSingle PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1" )
 	target_link_libraries( FOnlineSingle "SingleScriptingLib" "bson_static" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
 if( FONLINE_BUILD_MAPPER )
 	StatusMessage( "+ FOnlineMapper" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineMapper" )
-	add_executable( FOnlineMapper WIN32 "Source/Applications/MapperApp.cpp" "Source/Common/Application.cpp" "Source/Tools/Mapper.h" "Source/Tools/Mapper.cpp" "Resources/Default.rc" "Source/Tools/MapperScripting.h" )
+	add_executable( FOnlineMapper WIN32 "Source/Applications/MapperApp.cpp" "Source/Common/Application.cpp" "Source/Tools/Mapper.h" "Source/Tools/Mapper.cpp" "Source/Scripting/MapperGlobalScriptMethods.cpp" "Resources/Default.rc" "Source/Tools/MapperScripting.h" )
 	set_target_properties( FOnlineMapper PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TOOLS_OUTPUT} )
 	set_target_properties( FOnlineMapper PROPERTIES OUTPUT_NAME "FOnlineMapper" )
-	set_target_properties( FOnlineMapper PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=1" )
+	set_target_properties( FOnlineMapper PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineMapper "MapperScriptingLib" "ClientScriptingLib" "ClientLib" "CommonLib" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
@@ -1477,7 +1710,7 @@ if( FONLINE_BUILD_BAKER )
 	target_link_libraries( FOnlineBaker "CommonLib" "${FO_BAKER_SYSTEM_LIBS}" "${FO_BAKER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
-if( FONLINE_BUILD_ASCOMPILER )
+if( FONLINE_BUILD_ASCOMPILER AND FO_ANGELSCRIPT_SCRIPTING )
 	StatusMessage( "+ FOnlineASCompiler" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineASCompiler" )
 	add_executable( FOnlineASCompiler "Source/Applications/ASCompilerApp.cpp" "Source/Common/ApplicationHeadless.cpp" )
@@ -1486,23 +1719,34 @@ if( FONLINE_BUILD_ASCOMPILER )
 	set_target_properties( FOnlineASCompiler PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineASCompiler "CommonLib" "${CMAKE_DL_LIBS}" )
 
-	add_library( ASCompilerServerLib STATIC "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp" )
-	set_target_properties( ASCompilerServerLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_SERVER_SCRIPTING=1;FO_CLIENT_SCRIPTING=0;FO_MAPPER_SCRIPTING=0;FO_SINGLEPLAYER_SCRIPTING=0;FO_ANGELSCRIPT_COMPILER=1;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
-	add_library( ASCompilerClientLib STATIC "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp" )
-	set_target_properties( ASCompilerClientLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_SERVER_SCRIPTING=0;FO_CLIENT_SCRIPTING=1;FO_MAPPER_SCRIPTING=0;FO_SINGLEPLAYER_SCRIPTING=0;FO_ANGELSCRIPT_COMPILER=1;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
-	add_library( ASCompilerMapperLib STATIC "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp" )
-	set_target_properties( ASCompilerMapperLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0;FO_SERVER_SCRIPTING=0;FO_CLIENT_SCRIPTING=0;FO_MAPPER_SCRIPTING=1;FO_SINGLEPLAYER_SCRIPTING=0;FO_ANGELSCRIPT_COMPILER=1;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=0" )
+	add_library( ASCompilerServerLib STATIC "${FO_ANGELSCRIPT_EXTENSION_SOURCE}" "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp" )
+	set_target_properties( ASCompilerServerLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
+	add_dependencies( ASCompilerServerLib GenerateScriptingCode )
+	add_library( ASCompilerClientLib STATIC "${FO_ANGELSCRIPT_EXTENSION_SOURCE}" "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp" )
+	set_target_properties( ASCompilerClientLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
+	add_dependencies( ASCompilerClientLib GenerateScriptingCode )
+	add_library( ASCompilerMapperLib STATIC "${FO_ANGELSCRIPT_EXTENSION_SOURCE}" "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp" )
+	set_target_properties( ASCompilerMapperLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
+	add_dependencies( ASCompilerMapperLib GenerateScriptingCode )
 	target_link_libraries( FOnlineASCompiler "ASCompilerServerLib" "ASCompilerClientLib" "ASCompilerMapperLib" "Angelscript" "AngelscriptExt" )
 	list( APPEND FO_CORE_LIBS_GROUP "ASCompilerServerLib" "ASCompilerClientLib" "ASCompilerMapperLib" )
+	
+	if( FONLINE_BUILD_SINGLE )
+		add_library( ASCompilerSingleLib STATIC "${FO_ANGELSCRIPT_EXTENSION_SOURCE}" "${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp" )
+		set_target_properties( ASCompilerSingleLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1" )
+		add_dependencies( ASCompilerSingleLib GenerateScriptingCode )
+		target_link_libraries( FOnlineASCompiler "ASCompilerSingleLib" )
+		list( APPEND FO_CORE_LIBS_GROUP "ASCompilerSingleLib" )
+	endif()
 endif()
 
 if( FONLINE_UNIT_TESTS )
 	StatusMessage( "+ FOnlineUnitTests" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineUnitTests" )
-	add_executable( FOnlineUnitTests "Source/Applications/TestingApp.cpp" ${FO_LINT_SOURCE} ${FO_TESTS_SOURCE} ${FO_TOOLS_SOURCE} ${FO_SERVER_SOURCE} "Source/Server/AppGuiStub.cpp" ${FO_CLIENT_SOURCE} ${FO_COMMON_SOURCE} "Source/Common/ApplicationHeadless.cpp" "Source/Applications/ServerApp.cpp" "Source/Applications/ServerServiceApp.cpp" "Source/Applications/ServerDaemonApp.cpp" "Source/Applications/ServerHeadlessApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/MapperApp.cpp" "Source/Applications/BakerApp.cpp" )
+	add_executable( FOnlineUnitTests "Source/Applications/TestingApp.cpp" ${FO_TESTS_SOURCE} ${FO_TOOLS_SOURCE} ${FO_SERVER_SOURCE} "Source/Server/AppGuiStub.cpp" ${FO_CLIENT_SOURCE} ${FO_COMMON_SOURCE} "Source/Common/ApplicationHeadless.cpp" "Source/Applications/ServerApp.cpp" "Source/Applications/ServerServiceApp.cpp" "Source/Applications/ServerDaemonApp.cpp" "Source/Applications/ServerHeadlessApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/MapperApp.cpp" "Source/Applications/BakerApp.cpp" )
 	set_target_properties( FOnlineUnitTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineUnitTests PROPERTIES OUTPUT_NAME "FOnlineUnitTests" )
-	set_target_properties( FOnlineUnitTests PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=1;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=1" )
+	set_target_properties( FOnlineUnitTests PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=1;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineUnitTests "ServerScriptingLib" "ClientScriptingLib" "MapperScriptingLib" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_BAKER_SYSTEM_LIBS}" "${FO_BAKER_LIBS}" "${FO_SERVER_SYSTEM_LIBS}" "${FO_SERVER_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
@@ -1512,7 +1756,7 @@ if( FONLINE_CODE_COVERAGE )
 	add_executable( FOnlineCodeCoverage "Source/Applications/TestingApp.cpp" ${FO_TESTS_SOURCE} ${FO_TOOLS_SOURCE} ${FO_SERVER_SOURCE} "Source/Server/AppGuiStub.cpp" ${FO_CLIENT_SOURCE} ${FO_COMMON_SOURCE} "Source/Common/ApplicationHeadless.cpp" "Source/Applications/ServerApp.cpp" "Source/Applications/ServerServiceApp.cpp" "Source/Applications/ServerDaemonApp.cpp" "Source/Applications/ServerHeadlessApp.cpp" "Source/Applications/ClientApp.cpp" "Source/Applications/MapperApp.cpp" "Source/Applications/BakerApp.cpp" )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES OUTPUT_NAME "FOnlineCodeCoverage" )
-	set_target_properties( FOnlineCodeCoverage PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=1;FO_SINGLEPLAYER=0;FO_API_MULTIPLAYER_ONLY=1;FO_API_SINGLEPLAYER_ONLY=1" )
+	set_target_properties( FOnlineCodeCoverage PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=1;FO_SINGLEPLAYER=0" )
 	if( CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
 		target_compile_options( FOnlineCodeCoverage PRIVATE "-O0;-fprofile-instr-generate;-fcoverage-mapping" )
 	elseif( CMAKE_CXX_COMPILER_ID MATCHES "GNU" )
@@ -1522,153 +1766,10 @@ if( FONLINE_CODE_COVERAGE )
 	target_link_libraries( FOnlineCodeCoverage "ServerScriptingLib" "ClientScriptingLib" "MapperScriptingLib" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_BAKER_SYSTEM_LIBS}" "${FO_BAKER_LIBS}" "${FO_SERVER_SYSTEM_LIBS}" "${FO_SERVER_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
-# Scripts
-set( genScriptApi "" )
-set( compileNativeScripts "" )
+# Scripts compilation
 set( compileASScripts "" )
 set( compileMonoScripts "" )
-set( genApiDepends "" )
 if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
-	# Script API meta
-	get_property( idirs DIRECTORY PROPERTY INCLUDE_DIRECTORIES )
-	if( MSVC )
-		list( JOIN idirs ";/I;" idirsStr )
-		set( metaArgs "/nologo;/EP;/C;/I;${idirsStr}" )
-	else()
-		list( JOIN idirs ";-I;" idirsStr )
-		set( metaArgs "-E;-C;-I;${idirsStr}" )
-	endif()
-
-	add_custom_command( OUTPUT "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=1 -DFO_API_SINGLEPLAYER_ONLY=1 -DFO_API_NATIVE_ONLY=1 -DFO_API_ANGELSCRIPT_ONLY=1 -DFO_API_MONO_ONLY=1
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=1 -DFO_API_SINGLEPLAYER_ONLY=0 -DFO_API_NATIVE_ONLY=1 -DFO_API_ANGELSCRIPT_ONLY=1 -DFO_API_MONO_ONLY=1
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta-MP.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=0 -DFO_API_SINGLEPLAYER_ONLY=1 -DFO_API_NATIVE_ONLY=1 -DFO_API_ANGELSCRIPT_ONLY=1 -DFO_API_MONO_ONLY=1
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta-SP.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=1 -DFO_API_SINGLEPLAYER_ONLY=0 -DFO_API_NATIVE_ONLY=1 -DFO_API_ANGELSCRIPT_ONLY=0 -DFO_API_MONO_ONLY=0
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta-MP-Native.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=1 -DFO_API_SINGLEPLAYER_ONLY=0 -DFO_API_NATIVE_ONLY=0 -DFO_API_ANGELSCRIPT_ONLY=1 -DFO_API_MONO_ONLY=0
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta-MP-AngelScript.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=1 -DFO_API_SINGLEPLAYER_ONLY=0 -DFO_API_NATIVE_ONLY=0 -DFO_API_ANGELSCRIPT_ONLY=0 -DFO_API_MONO_ONLY=1
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta-MP-Mono.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=0 -DFO_API_SINGLEPLAYER_ONLY=1 -DFO_API_NATIVE_ONLY=1 -DFO_API_ANGELSCRIPT_ONLY=0 -DFO_API_MONO_ONLY=0
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta-SP-Native.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=0 -DFO_API_SINGLEPLAYER_ONLY=1 -DFO_API_NATIVE_ONLY=0 -DFO_API_ANGELSCRIPT_ONLY=1 -DFO_API_MONO_ONLY=0
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta-SP-AngelScript.txt"
-		COMMAND ${CMAKE_CXX_COMPILER} ${metaArgs} -DFO_API_MULTIPLAYER_ONLY=0 -DFO_API_SINGLEPLAYER_ONLY=1 -DFO_API_NATIVE_ONLY=0 -DFO_API_ANGELSCRIPT_ONLY=0 -DFO_API_MONO_ONLY=1
-			"${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h" > "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta-SP-Mono.txt"
-		MAIN_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h"
-		DEPENDS ${FO_SCRIPT_API} ${FO_SCRIPTING_SOURCE}
-		COMMENT "Generate script API meta file" )
-
-	# Script API generation
-	if( APPLE ) # Workaraund for xcode builds
-		set( genApiDepends "" )
-	else()
-		set( genApiDepends "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt" )
-	endif()
-
-	set( genApiCommands -meta "${FO_SCRIPTS_OUTPUT}/ScriptApiMeta.txt" -output ${FO_SCRIPTS_OUTPUT} )
-
-	list( APPEND genApiCommands -markdown )
-	if( FONLINE_INFO_MARKDOWN_OUTPUT )
-		list( APPEND genApiCommands -mdpath "${FONLINE_INFO_MARKDOWN_OUTPUT}" )
-	endif()
-
-	if( FO_NATIVE_SCRIPTING )
-		list( APPEND genApiCommands -native )
-	endif()
-	if( FO_ANGELSCRIPT_SCRIPTING )
-		list( APPEND genApiCommands -angelscript )
-	endif()
-	if( FO_MONO_SCRIPTING )
-		list( APPEND genApiCommands -csharp )
-	endif()
-	if( FO_MULTIPLAYER_SCRIPTING )
-		list( APPEND genApiCommands -multiplayer )
-	endif()
-	if( FO_SINGLEPLAYER_SCRIPTING )
-		list( APPEND genApiCommands -singleplayer )
-	endif()
-	list( APPEND genApiCommands -mapper )
-
-	foreach( src ${FO_ANGELSCRIPT_FILES} )
-		list( APPEND genApiCommands -assource ${src} )
-	endforeach()
-
-	set( csFiles "" )
-	foreach( entry ${FO_MONO_ASSEMBLIES} )
-		list( APPEND genApiCommands -monoassembly ${entry} )
-		foreach( ref ${MonoAssembly_${entry}_CommonRefs} )
-			list( APPEND genApiCommands -monoserverref "${entry},${ref}" )
-			list( APPEND genApiCommands -monoclientref "${entry},${ref}" )
-			list( APPEND genApiCommands -monosingleref "${entry},${ref}" )
-			list( APPEND genApiCommands -monomapperref "${entry},${ref}" )
-		endforeach()
-		foreach( ref ${MonoAssembly_${entry}_ServerRefs} )
-			list( APPEND genApiCommands -monoserverref "${entry},${ref}" )
-		endforeach()
-		foreach( ref ${MonoAssembly_${entry}_ClientRefs} )
-			list( APPEND genApiCommands -monoclientref "${entry},${ref}" )
-		endforeach()
-		foreach( ref ${MonoAssembly_${entry}_SingleRefs} )
-			list( APPEND genApiCommands -monosingleref "${entry},${ref}" )
-		endforeach()
-		foreach( ref ${MonoAssembly_${entry}_MapperRefs} )
-			list( APPEND genApiCommands -monomapperref "${entry},${ref}" )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_CommonSource} )
-			list( APPEND genApiCommands -monoserversource "${entry},${src}" )
-			list( APPEND genApiCommands -monoclientsource "${entry},${src}" )
-			list( APPEND genApiCommands -monosinglesource "${entry},${src}" )
-			list( APPEND genApiCommands -monomappersource "${entry},${src}" )
-			list( APPEND csFiles ${src} )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_ServerSource} )
-			list( APPEND genApiCommands -monoserversource "${entry},${src}" )
-			list( APPEND csFiles ${src} )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_ClientSource} )
-			list( APPEND genApiCommands -monoclientsource "${entry},${src}" )
-			list( APPEND csFiles ${src} )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_SingleSource} )
-			list( APPEND genApiCommands -monosinglesource "${entry},${src}" )
-			list( APPEND csFiles ${src} )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_MapperSource} )
-			list( APPEND genApiCommands -monomappersource "${entry},${src}" )
-			list( APPEND csFiles ${src} )
-		endforeach()
-	endforeach()
-
-	foreach( entry ${FO_CONTENT} )
-		list( APPEND genApiCommands -content ${entry} )
-	endforeach()
-
-	set( genScriptApi python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/gen-script-api.py" ${genApiCommands} )
-	add_custom_target( GenerateScriptApi
-		COMMAND ${genScriptApi}
-		DEPENDS ${genApiDepends}
-		SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/Source/Scripting/ScriptApiMeta.h"
-		WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
-		COMMENT "Generate script API" )
-	list( APPEND FO_COMMANDS_GROUP "GenerateScriptApi" )
-
-	# Compile Native scripts
-	if( FO_NATIVE_SCRIPTING )
-		set( compileNativeScripts "" )
-		add_custom_target( CompileNativeScripts
-			COMMAND ${genScriptApi}
-			COMMAND ${compileNativeScripts}
-			DEPENDS ${genApiDepends}
-			# SOURCES ${FO_NATIVE_SOURCE}
-			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
-			COMMENT "Compile Native scripts" )
-		list( APPEND FO_COMMANDS_GROUP "CompileNativeScripts" )
-	endif()
-
 	# Compile AngelScript scripts
 	if( FO_ANGELSCRIPT_SCRIPTING )
 		set( compileASScripts FOnlineASCompiler
@@ -1684,10 +1785,10 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		endif()
 
 		add_custom_target( CompileAngelScripts
-			COMMAND ${genScriptApi}
+			COMMAND ${FO_CODEGEN_COMMAND}
 			COMMAND ${compileASScripts}
-			DEPENDS ${genApiDepends}
-			SOURCES ${FO_ANGELSCRIPT_FILES}
+			DEPENDS ${FO_CODEGEN_OUTPUT}
+			SOURCES ${FO_ANGELSCRIPT_SOURCE}
 			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 			COMMENT "Compile AngelScript scripts" )
 		list( APPEND FO_COMMANDS_GROUP "CompileAngelScripts" )
@@ -1700,13 +1801,13 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 			list( APPEND monoCompileCommands -assembly ${entry} )
 		endforeach()
 
-		set( compileMonoScripts python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands} )
+		set( compileMonoScripts ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands} )
 
 		add_custom_target( CompileMonoScripts
-			COMMAND ${genScriptApi}
+			COMMAND ${FO_CODEGEN_COMMAND}
 			COMMAND ${compileMonoScripts}
-			DEPENDS ${genApiDepends}
-			SOURCES ${csFiles}
+			DEPENDS ${FO_CODEGEN_OUTPUT}
+			SOURCES ${FO_MONO_SOURCE}
 			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 			COMMENT "Compile Mono scripts" )
 		list( APPEND FO_COMMANDS_GROUP "CompileMonoScripts" )
@@ -1714,12 +1815,11 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 
 	# Compile all scripts
 	add_custom_target( CompileAllScripts
-		COMMAND ${genScriptApi}
-		COMMAND ${compileNativeScripts}
+		COMMAND ${FO_CODEGEN_COMMAND}
 		COMMAND ${compileASScripts}
 		COMMAND ${compileMonoScripts}
-		DEPENDS ${genApiDepends}
-		SOURCES ${FO_ANGELSCRIPT_FILES} ${csFiles}
+		DEPENDS ${FO_CODEGEN_OUTPUT}
+		SOURCES ${FO_ANGELSCRIPT_SOURCE} ${FO_MONO_SOURCE}
 		WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 		COMMENT "Compile all scripts" )
 	list( APPEND FO_COMMANDS_GROUP "CompileAllScripts" )
@@ -1758,13 +1858,12 @@ list( APPEND FO_COMMANDS_GROUP "BakeAll" )
 # Packaging
 if( FO_PACKAGES )
 	add_custom_target( MakeAllPackages
-		COMMAND ${genScriptApi}
-		COMMAND ${compileNativeScripts}
+		COMMAND ${FO_CODEGEN_COMMAND}
 		COMMAND ${compileASScripts}
 		COMMAND ${compileMonoScripts}
 		COMMAND ${bakeContent}
 		COMMAND ${bakeResources}
-		DEPENDS ${genApiDepends}
+		DEPENDS ${FO_CODEGEN_OUTPUT}
 		WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
 		COMMENT "Make all packages" )
 	list( APPEND FO_COMMANDS_GROUP "MakeAllPackages" )
@@ -1773,13 +1872,12 @@ if( FO_PACKAGES )
 
 	foreach( package ${FO_PACKAGES} )
 		add_custom_target( MakePackage-${package}
-			COMMAND ${genScriptApi}
-			COMMAND ${compileNativeScripts}
+			COMMAND ${FO_CODEGEN_COMMAND}
 			COMMAND ${compileASScripts}
 			COMMAND ${compileMonoScripts}
 			COMMAND ${bakeContent}
 			COMMAND ${bakeResources}
-			DEPENDS ${genApiDepends}
+			DEPENDS ${FO_CODEGEN_OUTPUT}
 			WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
 			COMMENT "Make package ${package}" )
 		list( APPEND FO_COMMANDS_GROUP "MakePackage-${package}" )
@@ -1792,7 +1890,7 @@ if( FO_PACKAGES )
 			list( GET entry 3 packType )
 			list( GET entry 4 customConfig )
 
-			set( packageCommands python "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" )
+			set( packageCommands ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" )
 			list( APPEND packageCommands -devname "${FO_DEV_NAME}" )
 			list( APPEND packageCommands -nicename "${FO_NICE_NAME}" )
 			list( APPEND packageCommands -author "${FO_COMPANY_NAME}" )

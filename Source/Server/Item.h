@@ -38,11 +38,28 @@
 #include "Entity.h"
 #include "ServerScripting.h"
 
-#define FO_API_ITEM_HEADER 1
-#include "ScriptApi.h"
-
 class Item;
 class Critter;
+
+///@ ExportEnum
+enum class ItemOwnership : uchar
+{
+    Nowhere = 0,
+    CritterInventory = 1,
+    MapHex = 2,
+    ItemContainer = 3,
+};
+
+///@ ExportEnum
+enum class CornerType : uchar
+{
+    NorthSouth = 0,
+    West = 1,
+    East = 2,
+    South = 3,
+    North = 4,
+    EastWest = 5,
+};
 
 class Item final : public Entity
 {
@@ -80,12 +97,9 @@ public:
     ScriptFunc<void, Critter*, Item*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 
-#define FO_API_ITEM_CLASS 1
-#include "ScriptApi.h"
-
     PROPERTIES_HEADER();
-#define FO_API_ITEM_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY(access, type, name)
+#include "Properties-Include.h"
 
 private:
     ServerScriptSystem& _scriptSys;

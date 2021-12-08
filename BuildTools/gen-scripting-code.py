@@ -3,13 +3,15 @@
 import os
 import argparse
 import uuid
+
+# Todo: exclude mmh3 dependency
 try:
     import mmh3 as mmh3
 except ImportError:
     import pymmh3 as mmh3
 
 parser = argparse.ArgumentParser(description='FOnline scripts generation')
-parser.add_argument('-meta', dest='meta', required=True, help='path to script api metadata (ScriptApiMeta.txt)')
+parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
 parser.add_argument('-multiplayer', dest='multiplayer', action='store_true', help='generate multiplayer api')
 parser.add_argument('-singleplayer', dest='singleplayer', action='store_true', help='generate singleplayer api')
 parser.add_argument('-mapper', dest='mapper', action='store_true', help='generate mapper api')
@@ -60,7 +62,7 @@ def getGuid(name):
 def getHash(s):
     return str(mmh3.hash(s, seed=0))
 
-# Parse meta information.
+# Parse meta information
 doc = None
 class MetaInfo:
     def __init__(self, metaName):
@@ -471,6 +473,127 @@ if args.markdown:
     if args.mapper:
         genApiMarkdown('Mapper')
 
+"""
+if True:
+    # Generate source
+    def parseType(t):
+        def mapType(t):
+            typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
+                    'int64': 'int64', 'uint64': 'uint64'}
+            return typeMap[t] if t in typeMap else t
+        tt = t.split('.')
+        if tt[0] == 'dict':
+            r = mapType(tt[1]) + '=>' + mapType(tt[2])
+        elif tt[0] == 'callback':
+            r = 'std::function<void(' + mapType(tt[1]) + ')>'
+        elif tt[0] == 'predicate':
+            r = 'std::function<bool(' + mapType(tt[1]) + ')>'
+        else:
+            r = mapType(tt[0])
+        if 'arr' in tt:
+            r = r + '[]'
+        if 'ref' in tt:
+            r += '&'
+        return r
+    def parseArgs(args):
+        return ', '.join([parseType(a[0]) + ' ' + a[1] for a in args])
+    def writeDoc(doc):
+        if doc:
+            for d in doc:
+                writeFile('///# ' + d)
+    def writeMethod(tok, entity, spOnly):
+        name, ret, ags, doc = tok
+        writeDoc(doc)
+        writeFile('///@ Method ' + entity + ' ' + parseType(ret) + ' ' + name + '(' + parseArgs(ags) + ')' + (' ExcludeInSingleplayer' if not spOnly else ''))
+    def writeProp(tok, entity):
+        rw, name, access, ret, mods, doc = i
+        writeDoc(doc)
+        writeFile('///@ Property ' + entity + ' ' + access + ' ' + ('const ' if rw == 'ro' else '') + parseType(ret) + ' ' + name + (' Engine ' + ' '.join(mods)).rstrip())
+
+    createFile('CommonScripting.h')
+    writeFile('#pragma once')
+    writeFile('')
+    writeFile('#include "Common.h"')
+    writeFile('')
+    
+    # Global    
+    for i in mainMeta.properties['global']:
+        rw, name, access, ret, mods, doc = i
+        writeFile('///@ ExportProperty Global' + (' ReadOnly' if rw == 'ro' else '') + (' ' + ' '.join(mods) if mods else ''))
+        writeFile('CLASS_PROPERTY(' + access + ', ' + ret + ', ' + name + ');')
+    writeFile('')
+    for i in mainMeta.properties['global']:
+        rw, name, access, ret, mods, doc = i
+        writeFile('CLASS_PROPERTY_IMPL(GlobalVars, ' + name + ');')
+    writeFile('')
+    
+    for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
+        if mainMeta.properties[entity.lower()]:
+            for i in mainMeta.properties[entity.lower()]:
+                rw, name, access, ret, mods, doc = i
+                writeFile('///@ ExportProperty ' + entity + (' ReadOnly' if rw == 'ro' else '') + (' ' + ' '.join(mods) if mods else ''))
+                writeFile('CLASS_PROPERTY(' + access + ', ' + ret + ', ' + name + ');')
+            writeFile('')
+            for i in mainMeta.properties[entity.lower()]:
+                rw, name, access, ret, mods, doc = i
+                writeFile('CLASS_PROPERTY_IMPL(' + entity + ', ' + name + ');')
+            writeFile('')
+            
+    # Enums
+    for i in mainMeta.enums:
+        group, entries, doc = i
+        writeDoc(doc)
+        writeFile('///@ Enum ' + group)
+        for e in entries:
+            name, val, edoc = e
+            writeDoc(edoc)
+            writeFile('///@ Enum ' + group + ' ' + name + ' = ' + val)
+        writeFile('')
+            
+    for i in mainMeta.methods['globalcommon']:
+        writeMethod(i, 'Global Common', i in spMeta.methods['globalcommon'])
+    writeFile('')
+    for i in mainMeta.methods['globalserver']:
+        writeMethod(i, 'Global Server', i in spMeta.methods['globalserver'])
+    writeFile('')
+    for i in mainMeta.methods['globalclient']:
+        writeMethod(i, 'Global Client', i in spMeta.methods['globalclient'])
+    writeFile('')
+    for i in mainMeta.methods['globalmapper']:
+        writeMethod(i, 'Global Mapper', i in spMeta.methods['globalmapper'])
+    writeFile('')
+
+    # Entities
+    for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
+        if mainMeta.properties[entity.lower()]:
+            for i in mainMeta.properties[entity.lower()]:
+                writeProp(i, entity)
+            writeFile('')
+        if mainMeta.methods[entity.lower()]:
+            for i in mainMeta.methods[entity.lower()]:
+                writeMethod(i, entity + ' Server', i in spMeta.methods[entity.lower()])
+            writeFile('')
+        if mainMeta.methods[entity.lower() + 'view']:
+            for i in mainMeta.methods[entity.lower() + 'view']:
+                writeMethod(i, entity + ' Client', i in spMeta.methods[entity.lower() + 'view'])
+            writeFile('')
+
+    # Events
+    for ename in ['server', 'client', 'mapper']:
+        for e in mainMeta.events[ename]:
+            name, eargs, doc = e
+            writeDoc(doc)
+            writeFile('///@ Event ' + ename[0].upper() + ename[1:] + ' ' + name + '(' + parseArgs(eargs) + ')')
+        writeFile('')
+
+    # Settings
+    for i in mainMeta.settings:
+        ret, name, init, doc = i
+        writeDoc(doc)
+        writeFile('///@ Setting ' + parseType(ret) + ' ' + name + ' = ...')
+    writeFile('')
+"""
+        
 def genApi(target):
     nativeMeta = mpNativeMeta if target in ['Server', 'Client'] else (spNativeMeta if target == 'Single' else mainMeta)
     angelScriptMeta = mpAngelScriptMeta if target in ['Server', 'Client'] else (spAngelScriptMeta if target == 'Single' else mainMeta)
@@ -479,25 +602,16 @@ def genApi(target):
     # C++ projects
     if args.native:
         createFile('FOnline.' + target + '.h')
-        writeFile('// FOnline scripting native API')
-        writeFile('')
-        writeFile('#include <cstdint>')
-        writeFile('#include <vector>')
-        writeFile('#include <map>')
-        writeFile('#include <function>')
-        writeFile('')
-        writeFile('using hash = uint32_t;')
-        writeFile('using uint = uint32_t;')
-        writeFile('')
 
         # Generate source
         def parseType(t):
             def mapType(t):
                 typeMap = {'char': 'int8_t', 'uchar': 'uint8_t', 'short': 'int16_t', 'ushort': 'uint16_t',
-                        'int64': 'int64_t', 'uint64': 'uint64_t', 'ItemView': 'ScriptItem*',
+                        'int64': 'int64_t', 'uint64': 'uint64_t', 'ItemView': 'ScriptItem*', 'ItemHexView': 'ScriptItem*',
                         'PlayerView': 'ScriptPlayer*', 'Player': 'ScriptPlayer*',
                         'CritterView': 'ScriptCritter*', 'MapView': 'ScriptMap*', 'LocationView': 'ScriptLocation*',
-                        'Item': 'ScriptItem*', 'Critter': 'ScriptCritter*', 'Map': 'ScriptMap*', 'Location': 'ScriptLocation*'}
+                        'Item': 'ScriptItem*', 'Critter': 'ScriptCritter*', 'Map': 'ScriptMap*', 'Location': 'ScriptLocation*',
+                        'string': 'std::string', 'Entity': 'ScriptEntity*', 'MapSprite': 'MapSprite*'}
                 return typeMap[t] if t in typeMap else t
             tt = t.split('.')
             if tt[0] == 'dict':
@@ -517,8 +631,14 @@ def genApi(target):
             return ', '.join([parseType(a[0]) + ' ' + a[1] for a in args])
         def writeDoc(ident, doc):
             if doc:
+                writeFile(''.center(ident) + '/**')
                 for d in doc:
-                    writeFile(''.center(ident) + d)
+                    writeFile(''.center(ident) + ' * ' + d)
+                writeFile(''.center(ident) + ' */')
+            else:
+                writeFile(''.center(ident) + '/**')
+                writeFile(''.center(ident) + ' * ...')
+                writeFile(''.center(ident) + ' */')
         def writeMethod(tok, entity):
             writeDoc(4, tok[3])
             writeFile('    ' + parseType(tok[1]) + ' ' + tok[0] + '(' + parseArgs(tok[2]) + ');')
@@ -537,6 +657,47 @@ def genApi(target):
                     writeDoc(4, comms)
                     writeFile('    void Set' + name + '(' + parseType(ret) + ' value);')
                     writeFile('')
+
+        # Header
+        writeFile('// FOnline scripting native API')
+        writeFile('')
+        writeFile('#include <cstdint>')
+        writeFile('#include <vector>')
+        writeFile('#include <map>')
+        writeFile('#include <functional>')
+        writeFile('')
+        
+        # Namespace begin
+        writeFile('namespace FOnline')
+        writeFile('{')
+        writeFile('')
+        
+        # Usings
+        writeFile('using hash = uint32_t;')
+        writeFile('using uint = uint32_t;')
+        writeFile('')
+        
+        # Forward declarations
+        writeFile('class ScriptEntity;')
+        for entity in ['Player', 'Item', 'Critter', 'Map', 'Location']:
+            writeFile('class Script' + entity + ';')
+        writeFile('class MapSprite;')
+        writeFile('')
+        
+        # Enums
+        for i in nativeMeta.enums:
+            group, entries, doc = i
+            writeDoc(0, doc)
+            writeFile('enum class ' + group)
+            writeFile('{')
+            for e in entries:
+                name, val, edoc = e
+                writeDoc(4, edoc)
+                writeFile('    ' + name + ' = ' + val + ',')
+                if e != entries[len(entries) - 1]:
+                    writeFile('')
+            writeFile('};')
+            writeFile('')
 
         # Global
         writeFile('class ScriptGame')
@@ -607,8 +768,10 @@ def genApi(target):
                 writeFile('* ' + name + '(' + parseArgs(eargs) + ')')
                 writeDoc(doc)
             writeFile('')
+        """
 
         # Settings
+        """
         writeFile('## Settings')
         writeFile('')
         for i in nativeMeta.settings:
@@ -616,22 +779,10 @@ def genApi(target):
             writeFile('* ' + parseType(ret) + ' ' + name + ' = ' + init)
             writeDoc(doc)
             writeFile('')
-
-        # Enums
-        writeFile('## Enums')
-        writeFile('')
-        for i in nativeMeta.enums:
-            group, entries, doc = i
-            writeFile('### ' + group)
-            writeDoc(doc)
-            writeFile('')
-            for e in entries:
-                name, val, edoc = e
-                writeFile('* ' + name + ' = ' + val)
-                writeDoc(edoc)
-            writeFile('')
+        """
 
         # Content pids
+        """
         writeFile('## Content')
         writeFile('')
         def writeEnums(name, lst):
@@ -646,6 +797,9 @@ def genApi(target):
         writeEnums('Map', content['fomap'])
         writeEnums('Location', content['foloc'])
         """
+        
+        # Namespace end
+        writeFile('} // namespace FOnline')
 
     # AngelScript root file
     if args.angelscript:

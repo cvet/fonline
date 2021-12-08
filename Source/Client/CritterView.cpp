@@ -36,12 +36,9 @@
 #include "ItemView.h"
 #include "StringUtils.h"
 
-#define FO_API_CRITTER_VIEW_IMPL 1
-#include "ScriptApi.h"
-
 PROPERTIES_IMPL(CritterView, "Critter", false);
-#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(CritterView, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
+#define CRITTER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(CritterView, access, type, name)
+#include "Properties-Include.h"
 
 CritterView::CritterView(uint id, const ProtoCritter* proto, CritterViewSettings& settings, SpriteManager& spr_mngr, ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, bool mapper_mode) : Entity(id, EntityType::CritterView, PropertiesRegistrator, proto), _settings {settings}, _geomHelper(_settings), _sprMngr {spr_mngr}, _resMngr {res_mngr}, _effectMngr {effect_mngr}, _scriptSys {script_sys}, _gameTime {game_time}, _mapperMode {mapper_mode}
 {

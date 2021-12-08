@@ -4,8 +4,8 @@ CUR_DIR="$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)"
 source $CUR_DIR/setup-env.sh
 
 TARGET="CompileAllScripts"
-if [ "$1" = "gen-api" ]; then
-    TARGET="GenerateScriptApi"
+if [ "$1" = "gen-code" ]; then
+    TARGET="GenerateScriptingCode"
 elif [ "$1" = "native" ]; then
     TARGET="CompileNativeScripts"
 elif [ "$1" = "angelscript" ]; then

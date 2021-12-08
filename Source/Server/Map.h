@@ -42,9 +42,6 @@
 #include "Settings.h"
 #include "Timer.h"
 
-#define FO_API_MAP_HEADER 1
-#include "ScriptApi.h"
-
 class Item;
 class Critter;
 class Map;
@@ -147,12 +144,9 @@ public:
     void UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void RecacheHexFlags(ushort hx, ushort hy);
 
-#define FO_API_MAP_CLASS 1
-#include "ScriptApi.h"
-
     PROPERTIES_HEADER();
-#define FO_API_MAP_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+#define MAP_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
 
 private:
     MapSettings& _settings;

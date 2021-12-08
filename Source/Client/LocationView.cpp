@@ -33,12 +33,9 @@
 
 #include "LocationView.h"
 
-#define FO_API_LOCATION_VIEW_IMPL 1
-#include "ScriptApi.h"
-
 PROPERTIES_IMPL(LocationView, "Location", false);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(LocationView, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
+#define LOCATION_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(LocationView, access, type, name)
+#include "Properties-Include.h"
 
 LocationView::LocationView(uint id, const ProtoLocation* proto) : Entity(id, EntityType::LocationView, PropertiesRegistrator, proto)
 {
