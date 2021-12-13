@@ -68,8 +68,10 @@ TwoBitMask::~TwoBitMask()
     }
 }
 
-void TwoBitMask::Set2Bit(uint x, uint y, int val) const
+void TwoBitMask::Set2Bit(uint x, uint y, int val)
 {
+    NON_CONST_METHOD_HINT();
+
     if (x >= _width || y >= _height) {
         return;
     }
@@ -90,8 +92,10 @@ auto TwoBitMask::Get2Bit(uint x, uint y) const -> int
     return _data[y * _widthBytes + x / 4] >> x % 4 * 2 & 3;
 }
 
-void TwoBitMask::Fill(int fill) const
+void TwoBitMask::Fill(int fill)
 {
+    NON_CONST_METHOD_HINT();
+
     std::memset(_data, fill, static_cast<size_t>(_widthBytes) * _height);
 }
 

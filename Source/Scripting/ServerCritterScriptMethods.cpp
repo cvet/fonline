@@ -38,6 +38,7 @@
 #include "Server.h"
 #include "ServerScripting.h"
 #include "StringUtils.h"
+#include "TwoBitMask.h"
 
 // ReSharper disable CppInconsistentNaming
 
@@ -780,18 +781,22 @@
     const auto zx = loc->GetWorldX() / server->Settings.GlobalMapZoneLength;
     const auto zy = loc->GetWorldY() / server->Settings.GlobalMapZoneLength;
 
-    if (auto gmap_fog = self->GetGlobalMapFog(); gmap_fog.size() != GM_ZONES_FOG_SIZE) {
+    auto gmap_fog = self->GetGlobalMapFog();
+
+    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
         gmap_fog.resize(GM_ZONES_FOG_SIZE);
         self->SetGlobalMapFog(gmap_fog);
     }
 
-    /*TwoBitMask gmap_mask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
+    auto gmap_mask = TwoBitMask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
+
     if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL) {
         gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
         self->SetGlobalMapFog(gmap_fog);
-        if (!self->GetMapId())
+        if (!self->GetMapId()) {
             self->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
-    }*/
+        }
+    }
 }
 
 ///# ...
@@ -830,18 +835,22 @@
         return;
     }
 
-    if (auto gmap_fog = self->GetGlobalMapFog(); gmap_fog.size() != GM_ZONES_FOG_SIZE) {
+    auto gmap_fog = self->GetGlobalMapFog();
+
+    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
         gmap_fog.resize(GM_ZONES_FOG_SIZE);
         self->SetGlobalMapFog(gmap_fog);
     }
 
-    /*TwoBitMask gmap_mask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
+    auto gmap_mask = TwoBitMask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
+
     if (gmap_mask.Get2Bit(zoneX, zoneY) != fog) {
         gmap_mask.Set2Bit(zoneX, zoneY, fog);
         self->SetGlobalMapFog(gmap_fog);
-        if (!self->GetMapId())
+        if (!self->GetMapId()) {
             self->Send_GlobalMapFog(zoneX, zoneY, fog);
-    }*/
+        }
+    }
 }
 
 ///# ...
@@ -855,14 +864,15 @@
         return GM_FOG_FULL;
     }
 
-    if (auto gmap_fog = self->GetGlobalMapFog(); gmap_fog.size() != GM_ZONES_FOG_SIZE) {
+    auto gmap_fog = self->GetGlobalMapFog();
+
+    if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
         gmap_fog.resize(GM_ZONES_FOG_SIZE);
         self->SetGlobalMapFog(gmap_fog);
     }
 
-    /*TwoBitMask gmap_mask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
-    return gmap_mask.Get2Bit(zoneX, zoneY);*/
-    return 0;
+    const auto gmap_mask = TwoBitMask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
+    return gmap_mask.Get2Bit(zoneX, zoneY);
 }
 
 ///# ...
