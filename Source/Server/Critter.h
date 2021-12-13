@@ -43,15 +43,6 @@
 #include "Timer.h"
 
 ///@ ExportEnum
-enum class CritterCondition : uchar
-{
-    Unknown = 0,
-    Alive = 1,
-    Knockout = 2,
-    Dead = 3,
-};
-
-///@ ExportEnum
 enum class MovingState : uchar
 {
     InProgress = 0,
@@ -173,7 +164,7 @@ public:
     void SendAndBroadcast_Action(int action, int action_ext, Item* item);
     void SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot);
     void SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void SendAndBroadcast_SetAnims(int cond, uint anim1, uint anim2);
+    void SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2);
     void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uchar how_say, bool unsafe_text);
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
@@ -206,7 +197,7 @@ public:
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2);
+    void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);

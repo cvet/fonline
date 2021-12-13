@@ -396,7 +396,7 @@ public:
     RefCounter(const RefCounter&) = delete;
     RefCounter(RefCounter&&) = delete;
     auto operator=(const RefCounter&) -> RefCounter& = delete;
-    auto operator=(RefCounter &&) -> RefCounter& = delete;
+    auto operator=(RefCounter&&) -> RefCounter& = delete;
 
     virtual ~RefCounter()
     {
@@ -429,8 +429,9 @@ public:
 
     explicit ptr(T* p) : _value {p}
     {
-        if (_value)
+        if (_value) {
             ++_value->ptrCounter;
+        }
     }
 
     ptr(const type& other)
@@ -500,6 +501,17 @@ auto constexpr operator"" _len(const char* str, size_t size) -> size_t
     return size;
 }
 
+// Scriptable object class decorator
+#define SCRIPTABLE_OBJECT() \
+    void AddRef() { ++RefCounter; } \
+    void Release() \
+    { \
+        if (--RefCounter == 0) { \
+            delete this; \
+        } \
+    } \
+    int RefCounter { 1 }
+
 // Generic helpers
 #define STRINGIFY(x) STRINGIFY2(x)
 #define STRINGIFY2(x) #x
@@ -552,7 +564,7 @@ public:
     MemoryPool(const MemoryPool&) = delete;
     MemoryPool(MemoryPool&&) noexcept = default;
     auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool &&) -> MemoryPool& = delete;
+    auto operator=(MemoryPool&&) -> MemoryPool& = delete;
 
     ~MemoryPool()
     {
@@ -939,11 +951,6 @@ static constexpr ushort MAXHEX_MAX = 4000;
 #define ANSWER_BEGIN (0xF0)
 #define ANSWER_END (0xF1)
 #define ANSWER_BARTER (0xF2)
-
-// Crit conditions
-#define COND_ALIVE (1)
-#define COND_KNOCKOUT (2)
-#define COND_DEAD (3)
 
 // Run-time critters flags
 // Todo: remove critter flags

@@ -45,18 +45,10 @@ class Sprites;
 class Sprite;
 using SpriteVec = vector<Sprite*>;
 
-class MapSprite
+///@ ExportObject Client
+struct MapSprite
 {
-public:
-    void AddRef() const { ++RefCount; }
-    void Release() const
-    {
-        if (--RefCount == 0)
-            delete this;
-    }
-    static MapSprite* Factory() { return new MapSprite(); }
-
-    mutable int RefCount {1};
+    SCRIPTABLE_OBJECT();
     bool Valid {};
     uint SprId {};
     ushort HexX {};

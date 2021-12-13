@@ -814,7 +814,7 @@
 ///# param func ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Global_AddTextListener([[maybe_unused]] FOServer* server, int sayType, string_view firstStr, uint parameter, const std::function<void(Entity)>& func)
+[[maybe_unused]] void Server_Global_AddTextListener([[maybe_unused]] FOServer* server, int sayType, string_view firstStr, uint parameter, const std::function<void(Entity*)>& func)
 {
     /*if (firstStr.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN)
         throw ScriptException("First string arg length greater than maximum");

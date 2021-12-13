@@ -318,14 +318,12 @@ void MapManager::GenerateMapContent(Map* map)
         id_map.insert(std::make_pair(base_cr->GetId(), npc->GetId()));
 
         // Check condition
-        if (npc->GetCond() != COND_ALIVE) {
-            if (npc->GetCond() == COND_DEAD) {
-                npc->SetCurrentHp(_settings.DeadHitPoints - 1);
+        if (npc->GetCond() == CritterCondition::Dead) {
+            npc->SetCurrentHp(_settings.DeadHitPoints - 1);
 
-                const auto multihex = npc->GetMultihex();
-                map->UnsetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, false);
-                map->SetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, true);
-            }
+            const auto multihex = npc->GetMultihex();
+            map->UnsetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, false);
+            map->SetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, true);
         }
     }
 

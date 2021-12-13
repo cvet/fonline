@@ -409,7 +409,7 @@ void Player::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2)
+void Player::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
 {
     NON_CONST_METHOD_HINT();
 

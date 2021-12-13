@@ -94,7 +94,7 @@ public:
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2);
+    void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);

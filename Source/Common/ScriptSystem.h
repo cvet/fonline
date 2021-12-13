@@ -41,6 +41,7 @@
 
 DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
+DECLARE_EXCEPTION(ScriptInitException);
 
 class NameResolver
 {

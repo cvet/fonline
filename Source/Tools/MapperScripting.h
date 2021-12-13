@@ -48,13 +48,13 @@ public:
         InitMonoScripting();
     }
 
-    ///@ ExportEvent Mapper
+    ///@ ExportEvent
     ScriptEvent<string& /*text*/> ConsoleMessageEvent {};
-    ///@ ExportEvent Mapper
+    ///@ ExportEvent
     ScriptEvent<MapView* /*map*/> EditMapLoadEvent {};
-    ///@ ExportEvent Mapper
+    ///@ ExportEvent
     ScriptEvent<MapView* /*map*/> EditMapSaveEvent {};
-    ///@ ExportEvent Mapper
+    ///@ ExportEvent
     ScriptEvent<Entity* /*entity*/, vector<int>& /*properties*/> InspectorPropertiesEvent {};
 
 private:

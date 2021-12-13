@@ -127,6 +127,9 @@ set( FO_COMMON_SOURCE "" )
 set( FO_SERVER_SOURCE "" )
 set( FO_CLIENT_SOURCE "" )
 set( FO_TOOLS_SOURCE "" )
+set( FO_SERVER_SCRIPTING_SOURCE "" )
+set( FO_CLIENT_SCRIPTING_SOURCE "" )
+set( FO_MAPPER_SCRIPTING_SOURCE "" )
 set( FO_SCRIPTING_SOURCE "" )
 set( FO_SINGLE_SOURCE "" )
 set( FO_TESTS_SOURCE "" )
@@ -139,6 +142,7 @@ set( FO_CONTENT "" )
 set( FO_RESOURCES "" )
 set( FO_SPRITE_ATLAS "" )
 set( FO_CODEGEN_COMMAND "" )
+set( FO_CODEGEN_COMMAND_ARGS "" )
 set( FO_CODEGEN_META_SOURCE "" )
 set( FO_CODEGEN_OUTPUT "" )
 set( FO_NATIVE_SOURCE "" )
@@ -1093,14 +1097,6 @@ endif()
 
 # AngelScript scripting
 if( FO_ANGELSCRIPT_SCRIPTING )
-	# Extension entry points
-	GenerateSourceFile( "AngelScriptExtensionEntries" )
-	foreach( funcName ${FO_ANGELSCRIPT_EXTENSION_ENTRIES} )
-		AddGeneratedSourceLine( "AngelScriptExtensionEntries" "FO_ENTRY_POINT(${funcName})" )
-	endforeach()
-	AddGeneratedSourceLine( "AngelScriptExtensionEntries" "#undef FO_ENTRY_POINT" )
-	FinalizeGeneratedSource( "AngelScriptExtensionEntries" "h" )
-
 	# AngelScript
 	StatusMessage( "+ AngelScript" )
 	set( FO_ANGELSCRIPT_DIR "ThirdParty/AngelScript" )
@@ -1380,85 +1376,85 @@ set( FO_TESTS_SOURCE
 
 # Scripting code generation
 if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
-	include( FindPython )
-	find_package( Python REQUIRED COMPONENTS Interpreter )
+	include( FindPython3 )
+	find_package( Python3 REQUIRED COMPONENTS Interpreter )
+	
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -output "${FO_SCRIPTS_OUTPUT}" )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_BINARY_DIR}/GeneratedSource" )
 
-	set( FO_CODEGEN_COMMAND ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/gen-scripting-code.py" )
-	list( APPEND FO_CODEGEN_COMMAND -output ${FO_SCRIPTS_OUTPUT} )
-
-	list( APPEND FO_CODEGEN_COMMAND -markdown )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -markdown )
 	if( FONLINE_INFO_MARKDOWN_OUTPUT )
-		list( APPEND FO_CODEGEN_COMMAND -mdpath "${FONLINE_INFO_MARKDOWN_OUTPUT}" )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -mdpath "${FONLINE_INFO_MARKDOWN_OUTPUT}" )
 	endif()
 
 	if( FO_NATIVE_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND -native )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -native )
 	endif()
 	if( FO_ANGELSCRIPT_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND -angelscript )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -angelscript )
 	endif()
 	if( FO_MONO_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND -csharp )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -csharp )
 	endif()
 	if( FO_MULTIPLAYER_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND -multiplayer )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -multiplayer )
 	endif()
 	if( FO_SINGLEPLAYER_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND -singleplayer )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -singleplayer )
 	endif()
-	list( APPEND FO_CODEGEN_COMMAND -mapper )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -mapper )
 
 	foreach( src ${FO_ANGELSCRIPT_SOURCE} )
-		list( APPEND FO_CODEGEN_COMMAND -assource ${src} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -assource ${src} )
 	endforeach()
 
 	foreach( entry ${FO_MONO_ASSEMBLIES} )
-		list( APPEND FO_CODEGEN_COMMAND -monoassembly ${entry} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoassembly ${entry} )
 		foreach( ref ${MonoAssembly_${entry}_CommonRefs} )
-			list( APPEND FO_CODEGEN_COMMAND -monoserverref "${entry},${ref}" )
-			list( APPEND FO_CODEGEN_COMMAND -monoclientref "${entry},${ref}" )
-			list( APPEND FO_CODEGEN_COMMAND -monosingleref "${entry},${ref}" )
-			list( APPEND FO_CODEGEN_COMMAND -monomapperref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monosingleref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}" )
 		endforeach()
 		foreach( ref ${MonoAssembly_${entry}_ServerRefs} )
-			list( APPEND FO_CODEGEN_COMMAND -monoserverref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}" )
 		endforeach()
 		foreach( ref ${MonoAssembly_${entry}_ClientRefs} )
-			list( APPEND FO_CODEGEN_COMMAND -monoclientref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}" )
 		endforeach()
 		foreach( ref ${MonoAssembly_${entry}_SingleRefs} )
-			list( APPEND FO_CODEGEN_COMMAND -monosingleref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monosingleref "${entry},${ref}" )
 		endforeach()
 		foreach( ref ${MonoAssembly_${entry}_MapperRefs} )
-			list( APPEND FO_CODEGEN_COMMAND -monomapperref "${entry},${ref}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}" )
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_CommonSource} )
-			list( APPEND FO_CODEGEN_COMMAND -monoserversource "${entry},${src}" )
-			list( APPEND FO_CODEGEN_COMMAND -monoclientsource "${entry},${src}" )
-			list( APPEND FO_CODEGEN_COMMAND -monosinglesource "${entry},${src}" )
-			list( APPEND FO_CODEGEN_COMMAND -monomappersource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monosinglesource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}" )
 			list( APPEND FO_MONO_SOURCE ${src} )
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_ServerSource} )
-			list( APPEND FO_CODEGEN_COMMAND -monoserversource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}" )
 			list( APPEND FO_MONO_SOURCE ${src} )
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_ClientSource} )
-			list( APPEND FO_CODEGEN_COMMAND -monoclientsource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}" )
 			list( APPEND FO_MONO_SOURCE ${src} )
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_SingleSource} )
-			list( APPEND FO_CODEGEN_COMMAND -monosinglesource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monosinglesource "${entry},${src}" )
 			list( APPEND FO_MONO_SOURCE ${src} )
 		endforeach()
 		foreach( src ${MonoAssembly_${entry}_MapperSource} )
-			list( APPEND FO_CODEGEN_COMMAND -monomappersource "${entry},${src}" )
+			list( APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}" )
 			list( APPEND FO_MONO_SOURCE ${src} )
 		endforeach()
 	endforeach()
-
+	
 	foreach( entry ${FO_CONTENT} )
-		list( APPEND FO_CODEGEN_COMMAND -content ${entry} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -content ${entry} )
 	endforeach()
 
 	list( APPEND FO_CODEGEN_META_SOURCE
@@ -1472,9 +1468,9 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		${FO_MONO_SOURCE} )
 
 	foreach( entry ${FO_CODEGEN_META_SOURCE} )
-		list( APPEND FO_CODEGEN_COMMAND -meta ${entry} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -meta ${entry} )
 	endforeach()
-
+	
 	list( APPEND FO_CODEGEN_OUTPUT
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
@@ -1492,20 +1488,25 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" )
-
+	
+	file( WRITE "${CMAKE_BINARY_DIR}/gen-scripting-code-args.txt" "" )
+	foreach( entry ${FO_CODEGEN_COMMAND_ARGS} )
+		file( APPEND "${CMAKE_BINARY_DIR}/gen-scripting-code-args.txt" "${entry}\n" )
+	endforeach()
+	
+	set( FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/gen-scripting-code.py" "@${CMAKE_BINARY_DIR}/gen-scripting-code-args.txt" )
+	
 	add_custom_command( OUTPUT ${FO_CODEGEN_OUTPUT}
 		COMMAND ${FO_CODEGEN_COMMAND}
 		DEPENDS ${FO_CODEGEN_META_SOURCE}
-		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-		COMMENT "Auto generate scripting code" )
+		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+		COMMENT "Scripting code generation" )
 		
 	add_custom_target( GenerateScriptingCode
 		COMMAND ${FO_CODEGEN_COMMAND}
-		DEPENDS ${FO_CODEGEN_OUTPUT}
 		SOURCES ${FO_CODEGEN_META_SOURCE}
-		WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-		COMMENT "Generate scripting code"
-		VERBATIM )
+		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+		COMMENT "Run scripting code generation" )
 	list( APPEND FO_COMMANDS_GROUP "GenerateScriptingCode" )
 
 else()
@@ -1801,7 +1802,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 			list( APPEND monoCompileCommands -assembly ${entry} )
 		endforeach()
 
-		set( compileMonoScripts ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands} )
+		set( compileMonoScripts ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands} )
 
 		add_custom_target( CompileMonoScripts
 			COMMAND ${FO_CODEGEN_COMMAND}
@@ -1890,7 +1891,7 @@ if( FO_PACKAGES )
 			list( GET entry 3 packType )
 			list( GET entry 4 customConfig )
 
-			set( packageCommands ${Python_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" )
+			set( packageCommands ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" )
 			list( APPEND packageCommands -devname "${FO_DEV_NAME}" )
 			list( APPEND packageCommands -nicename "${FO_NICE_NAME}" )
 			list( APPEND packageCommands -author "${FO_COMPANY_NAME}" )

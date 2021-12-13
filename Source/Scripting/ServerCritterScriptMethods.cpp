@@ -649,7 +649,7 @@
 ///# ...
 ///# param cond ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetCondition([[maybe_unused]] FOServer* server, Critter* self, int cond)
+[[maybe_unused]] void Server_Critter_SetCondition([[maybe_unused]] FOServer* server, Critter* self, CritterCondition cond)
 {
     const auto prev_cond = self->GetCond();
     if (prev_cond == cond) {
@@ -665,7 +665,7 @@
         const auto hx = self->GetHexX();
         const auto hy = self->GetHexY();
         const auto multihex = self->GetMultihex();
-        const auto is_dead = (cond == COND_DEAD);
+        const auto is_dead = (cond == CritterCondition::Dead);
 
         map->UnsetFlagCritter(hx, hy, multihex, !is_dead);
         map->SetFlagCritter(hx, hy, multihex, is_dead);
@@ -708,17 +708,17 @@
 ///# param anim1 ...
 ///# param anim2 ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetConditionAnims([[maybe_unused]] FOServer* server, Critter* self, int cond, uint anim1, uint anim2)
+[[maybe_unused]] void Server_Critter_SetConditionAnims([[maybe_unused]] FOServer* server, Critter* self, CritterCondition cond, uint anim1, uint anim2)
 {
-    if (cond == 0 || cond == COND_ALIVE) {
+    if (cond == CritterCondition::Alive) {
         self->SetAnim1Life(anim1);
         self->SetAnim2Life(anim2);
     }
-    if (cond == 0 || cond == COND_KNOCKOUT) {
+    if (cond == CritterCondition::Knockout) {
         self->SetAnim1Knockout(anim1);
         self->SetAnim2Knockout(anim2);
     }
-    if (cond == 0 || cond == COND_DEAD) {
+    if (cond == CritterCondition::Dead) {
         self->SetAnim1Dead(anim1);
         self->SetAnim2Dead(anim2);
     }

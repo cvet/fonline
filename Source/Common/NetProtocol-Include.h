@@ -487,12 +487,12 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_SET_ANIMS MAKE_NETMSG_HEADER(96)
-#define NETMSG_CRITTER_SET_ANIMS_SIZE (sizeof(uint) + sizeof(int) + sizeof(uint) * 3)
+#define NETMSG_CRITTER_SET_ANIMS_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uchar) + sizeof(uint) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // uint crid
-// int cond
+// CritterCondition cond
 // uint ind1
 // uint ind2
 // ////////////////////////////////////////////////////////////////////////

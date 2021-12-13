@@ -1922,7 +1922,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     Bin >> hy;
     Bin >> dir;
 
-    int cond;
+    CritterCondition cond;
     uint anim1_alive;
     uint anim1_ko;
     uint anim1_dead;
@@ -2539,7 +2539,7 @@ void FOClient::Net_OnCritterAnimate()
 void FOClient::Net_OnCritterSetAnims()
 {
     uint crid;
-    int cond;
+    CritterCondition cond;
     uint anim1;
     uint anim2;
     Bin >> crid;
@@ -2554,15 +2554,15 @@ void FOClient::Net_OnCritterSetAnims()
         return;
     }
 
-    if (cond == 0 || cond == COND_ALIVE) {
+    if (cond == CritterCondition::Alive) {
         cr->SetAnim1Life(anim1);
         cr->SetAnim2Life(anim2);
     }
-    if (cond == 0 || cond == COND_KNOCKOUT) {
+    if (cond == CritterCondition::Knockout) {
         cr->SetAnim1Knockout(anim1);
         cr->SetAnim2Knockout(anim2);
     }
-    if (cond == 0 || cond == COND_DEAD) {
+    if (cond == CritterCondition::Dead) {
         cr->SetAnim1Dead(anim1);
         cr->SetAnim2Dead(anim2);
     }

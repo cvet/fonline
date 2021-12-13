@@ -66,9 +66,9 @@ public:
     [[nodiscard]] auto IsChosen() const -> bool { return IsBitSet(Flags, FCRIT_CHOSEN); }
     [[nodiscard]] auto IsOnline() const -> bool { return !IsBitSet(Flags, FCRIT_DISCONNECT); }
     [[nodiscard]] auto IsOffline() const -> bool { return IsBitSet(Flags, FCRIT_DISCONNECT); }
-    [[nodiscard]] auto IsAlive() const -> bool { return GetCond() == COND_ALIVE; }
-    [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == COND_KNOCKOUT; }
-    [[nodiscard]] auto IsDead() const -> bool { return GetCond() == COND_DEAD; }
+    [[nodiscard]] auto IsAlive() const -> bool { return GetCond() == CritterCondition::Alive; }
+    [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == CritterCondition::Knockout; }
+    [[nodiscard]] auto IsDead() const -> bool { return GetCond() == CritterCondition::Dead; }
     [[nodiscard]] auto IsCombatMode() const -> bool;
     [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
     [[nodiscard]] auto IsLastHexes() const -> bool;

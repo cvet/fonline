@@ -73,17 +73,17 @@ auto Critter::GetAttackDist(Item* weap, uchar use) -> uint
 
 auto Critter::IsAlive() const -> bool
 {
-    return GetCond() == COND_ALIVE;
+    return GetCond() == CritterCondition::Alive;
 }
 
 auto Critter::IsDead() const -> bool
 {
-    return GetCond() == COND_DEAD;
+    return GetCond() == CritterCondition::Dead;
 }
 
 auto Critter::IsKnockout() const -> bool
 {
-    return GetCond() == COND_KNOCKOUT;
+    return GetCond() == CritterCondition::Knockout;
 }
 
 auto Critter::CheckFind(uchar find_type) const -> bool
@@ -496,7 +496,7 @@ void Critter::SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool 
     }
 }
 
-void Critter::SendAndBroadcast_SetAnims(int cond, uint anim1, uint anim2)
+void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2)
 {
     Send_SetAnims(this, cond, anim1, anim2);
 
@@ -1029,7 +1029,7 @@ void Critter::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item,
     }
 }
 
-void Critter::Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2)
+void Critter::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
 {
     NON_CONST_METHOD_HINT();
 

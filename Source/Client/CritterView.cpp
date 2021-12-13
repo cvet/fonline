@@ -418,14 +418,14 @@ void CritterView::Action(int action, int action_ext, ItemView* item, bool local_
 
     switch (action) {
     case ACTION_KNOCKOUT:
-        SetCond(COND_KNOCKOUT);
+        SetCond(CritterCondition::Knockout);
         SetAnim2Knockout(action_ext);
         break;
     case ACTION_STANDUP:
-        SetCond(COND_ALIVE);
+        SetCond(CritterCondition::Alive);
         break;
     case ACTION_DEAD: {
-        SetCond(COND_DEAD);
+        SetCond(CritterCondition::Dead);
         SetAnim2Dead(action_ext);
         auto* anim = GetCurAnim();
         _needReset = true;
@@ -438,7 +438,7 @@ void CritterView::Action(int action, int action_ext, ItemView* item, bool local_
         SetBit(Flags, FCRIT_DISCONNECT);
         break;
     case ACTION_RESPAWN:
-        SetCond(COND_ALIVE);
+        SetCond(CritterCondition::Alive);
         Alpha = 0;
         SetFade(true);
         AnimateStay();
@@ -568,7 +568,7 @@ void CritterView::AnimateStay()
             _stayAnim.AnimTick = anim->Ticks;
             _stayAnim.BeginFrm = 0;
             _stayAnim.EndFrm = anim->CntFrm - 1;
-            if (GetCond() == COND_DEAD) {
+            if (GetCond() == CritterCondition::Dead) {
                 _stayAnim.BeginFrm = _stayAnim.EndFrm;
             }
             _curSpr = _stayAnim.BeginFrm;
@@ -608,7 +608,7 @@ void CritterView::AnimateStay()
         ProcessAnim(true, false, anim1, anim2, nullptr);
         SetOffs(0, 0, true);
 
-        if (GetCond() == COND_ALIVE || GetCond() == COND_KNOCKOUT) {
+        if (GetCond() == CritterCondition::Alive || GetCond() == CritterCondition::Knockout) {
             _model->SetAnimation(anim1, anim2, GetLayers3dData(), IsCombatMode() ? ANIMATION_COMBAT : 0);
         }
         else {
@@ -673,14 +673,12 @@ auto CritterView::IsFree() const -> bool
 auto CritterView::GetAnim1() const -> uint
 {
     switch (GetCond()) {
-    case COND_ALIVE:
+    case CritterCondition::Alive:
         return GetAnim1Life() != 0u ? GetAnim1Life() : ANIM1_UNARMED;
-    case COND_KNOCKOUT:
+    case CritterCondition::Knockout:
         return GetAnim1Knockout() != 0u ? GetAnim1Knockout() : ANIM1_UNARMED;
-    case COND_DEAD:
+    case CritterCondition::Dead:
         return GetAnim1Dead() != 0u ? GetAnim1Dead() : ANIM1_UNARMED;
-    default:
-        break;
     }
     return ANIM1_UNARMED;
 }
@@ -688,14 +686,12 @@ auto CritterView::GetAnim1() const -> uint
 auto CritterView::GetAnim2() const -> uint
 {
     switch (GetCond()) {
-    case COND_ALIVE:
+    case CritterCondition::Alive:
         return GetAnim2Life() != 0u ? GetAnim2Life() : IsCombatMode() && _settings.Anim2CombatIdle != 0u ? _settings.Anim2CombatIdle : ANIM2_IDLE;
-    case COND_KNOCKOUT:
+    case CritterCondition::Knockout:
         return GetAnim2Knockout() != 0u ? GetAnim2Knockout() : ANIM2_IDLE_PRONE_FRONT;
-    case COND_DEAD:
+    case CritterCondition::Dead:
         return GetAnim2Dead() != 0u ? GetAnim2Dead() : ANIM2_DEAD_FRONT;
-    default:
-        break;
     }
     return ANIM2_IDLE;
 }
@@ -904,7 +900,7 @@ void CritterView::Process()
 
     // Battle 3d mode
     // Todo: do same for 2d animations
-    if (_model != nullptr && _settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == COND_ALIVE && GetAnim2Life() == 0u) {
+    if (_model != nullptr && _settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Life() == 0u) {
         if (_settings.Anim2CombatBegin != 0u && IsCombatMode() && _model->GetAnim2() != static_cast<int>(_settings.Anim2CombatIdle)) {
             Animate(0, _settings.Anim2CombatBegin, nullptr);
         }
@@ -915,7 +911,7 @@ void CritterView::Process()
 
     // Fidget animation
     if (_gameTime.GameTick() >= _tickFidget) {
-        if (_animSequence.empty() && GetCond() == COND_ALIVE && IsFree() && MoveSteps.empty() && !IsCombatMode()) {
+        if (_animSequence.empty() && GetCond() == CritterCondition::Alive && IsFree() && MoveSteps.empty() && !IsCombatMode()) {
             Action(ACTION_FIDGET, 0, nullptr, false);
         }
 

@@ -101,6 +101,11 @@ public:
     bool IsDestroyed {};
     bool IsDestroying {};
 
+    // Scripting handles
+    void* AngelScriptObj {};
+    void* MonoObj {};
+    void* NativeObj {};
+
 protected:
     Entity(uint id, EntityType type, PropertyRegistrator* registartor, const ProtoEntity* proto);
     virtual ~Entity();
@@ -166,6 +171,14 @@ public:
     PROPERTIES_HEADER();
 #define ITEM_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
+};
+
+///@ ExportEnum
+enum class CritterCondition : uchar
+{
+    Alive = 0,
+    Knockout = 1,
+    Dead = 2,
 };
 
 class ProtoCritter final : public ProtoEntity

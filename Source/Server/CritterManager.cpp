@@ -211,8 +211,6 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
 
     _entityMngr.RegisterEntity(npc);
 
-    npc->SetCond(COND_ALIVE);
-
     auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 

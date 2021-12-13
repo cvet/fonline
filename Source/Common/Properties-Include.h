@@ -50,382 +50,382 @@
 #define LOCATION_PROPERTY(...)
 #endif
 
-///@ ExportProperty Global ReadOnly
+///@ ExportProperty ReadOnly
 GLOBAL_PROPERTY(PrivateCommon, ushort, Year)
-///@ ExportProperty Global ReadOnly
+///@ ExportProperty ReadOnly
 GLOBAL_PROPERTY(PrivateCommon, ushort, Month)
-///@ ExportProperty Global ReadOnly
+///@ ExportProperty ReadOnly
 GLOBAL_PROPERTY(PrivateCommon, ushort, Day)
-///@ ExportProperty Global ReadOnly
+///@ ExportProperty ReadOnly
 GLOBAL_PROPERTY(PrivateCommon, ushort, Hour)
-///@ ExportProperty Global ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 GLOBAL_PROPERTY(PrivateCommon, ushort, Minute)
-///@ ExportProperty Global ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 GLOBAL_PROPERTY(PrivateCommon, ushort, Second)
-///@ ExportProperty Global ReadOnly
+///@ ExportProperty ReadOnly
 GLOBAL_PROPERTY(PrivateCommon, ushort, TimeMultiplier)
-///@ ExportProperty Global ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 GLOBAL_PROPERTY(PrivateServer, uint, LastEntityId)
-///@ ExportProperty Global ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 GLOBAL_PROPERTY(PrivateCommon, uint, LastDeferredCallId)
-///@ ExportProperty Global ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 GLOBAL_PROPERTY(PrivateCommon, uint, HistoryRecordsId)
 
-///@ ExportProperty Player
+///@ ExportProperty
 PLAYER_PROPERTY(PrivateServer, vector<uint>, ConnectionIp)
-///@ ExportProperty Player
+///@ ExportProperty
 PLAYER_PROPERTY(PrivateServer, vector<ushort>, ConnectionPort)
 
-///@ ExportProperty Item ReadOnly Type = ItemOwnership
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, Accessory)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uint, MapId)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, ushort, HexX)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, ushort, HexY)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uint, CritId)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, CritSlot)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uint, ContainerId)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uint, ContainerStack)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, float, FlyEffectSpeed)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, hash, PicMap)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, hash, PicInv)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, short, OffsetX)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, short, OffsetY)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, bool, Stackable)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, GroundLevel)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, Opened)
-///@ ExportProperty Item ReadOnly Type = CornerType
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, Corner)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, Slot)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, uint, Weight)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, uint, Volume)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, bool, DisableEgg)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, ushort, AnimWaitBase)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, ushort, AnimWaitRndMin)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, ushort, AnimWaitRndMax)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, AnimStay0)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, AnimStay1)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, AnimShow0)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, AnimShow1)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, AnimHide0)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, uchar, AnimHide1)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, char, DrawOrderOffsetHexY)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, vector<uchar>, BlockLines)
-///@ ExportProperty Item ReadOnly
+///@ ExportProperty ReadOnly
 ITEM_PROPERTY(Public, bool, IsStatic)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsScenery)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsWall)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsCanOpen)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsScrollBlock)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsHidden)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsHiddenPicture)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsHiddenInStatic)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsFlat)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsNoBlock)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsShootThru)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsLightThru)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsAlwaysView)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsBadItem)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsNoHighlight)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsShowAnim)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsShowAnimExt)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsLight)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsGeck)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsTrap)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsTrigger)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsNoLightInfluence)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsGag)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsColorize)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsColorizeInv)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsCanTalk)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, bool, IsRadio)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, string, Lexems)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(PublicModifiable, short, SortValue)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, uchar, Info)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(PublicModifiable, uchar, Mode)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, char, LightIntensity)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, uchar, LightDistance)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, uchar, LightFlags)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, uint, LightColor)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(PrivateServer, hash, ScriptId)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Public, uint, Count)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Protected, short, TrapValue)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Protected, ushort, RadioChannel)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Protected, ushort, RadioFlags)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Protected, uchar, RadioBroadcastSend)
-///@ ExportProperty Item
+///@ ExportProperty
 ITEM_PROPERTY(Protected, uchar, RadioBroadcastRecv)
 
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, hash, ModelName)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, uint, WalkTime)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, uint, RunTime)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(Protected, uint, Multihex)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, uint, MapId)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, uint, RefMapId)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, hash, RefMapPid)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, uint, RefLocationId)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, hash, RefLocationPid)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, ushort, HexX)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, ushort, HexY)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, uchar, Dir)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, string, Password)
-///@ ExportProperty Critter ReadOnly Type = CritterCondition
-CRITTER_PROPERTY(PrivateCommon, uchar, Cond)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
+CRITTER_PROPERTY(PrivateCommon, CritterCondition, Cond)
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, bool, ClientToDelete)
-///@ ExportProperty Critter NoHistory
+///@ ExportProperty NoHistory
 CRITTER_PROPERTY(Protected, ushort, WorldX)
-///@ ExportProperty Critter NoHistory
+///@ ExportProperty NoHistory
 CRITTER_PROPERTY(Protected, ushort, WorldY)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(Protected, uint, GlobalMapLeaderId)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, uint, GlobalMapTripId)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, uint, RefGlobalMapTripId)
-///@ ExportProperty Critter ReadOnly
+///@ ExportProperty ReadOnly
 CRITTER_PROPERTY(PrivateServer, uint, RefGlobalMapLeaderId)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateServer, ushort, LastMapHexX)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateServer, ushort, LastMapHexY)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, uint, Anim1Life)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, uint, Anim1Knockout)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, uint, Anim1Dead)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, uint, Anim2Life)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, uint, Anim2Knockout)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateCommon, uint, Anim2Dead)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateServer, vector<uchar>, GlobalMapFog)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateServer, vector<hash>, TE_FuncNum)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateServer, vector<uint>, TE_Rate)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateServer, vector<uint>, TE_NextTime)
-///@ ExportProperty Critter ReadOnly NoHistory
+///@ ExportProperty ReadOnly NoHistory
 CRITTER_PROPERTY(PrivateServer, vector<int>, TE_Identifier)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(VirtualProtected, uint, LookDistance)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, char, Gender)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, hash, NpcRole)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, int, ReplicationTime)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, uint, TalkDistance)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, int, ScaleFactor)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, int, CurrentHp)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, uint, MaxTalkers)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, hash, DialogId)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, string, Lexems)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, uint, HomeMapId)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, ushort, HomeHexX)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, ushort, HomeHexY)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, uchar, HomeDir)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, vector<uint>, KnownLocations)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, uint, ShowCritterDist1)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, uint, ShowCritterDist2)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, uint, ShowCritterDist3)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateServer, hash, ScriptId)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, vector<hash>, KnownLocProtoId)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(PrivateClient, vector<int>, ModelLayers)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, bool, IsHide)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, bool, IsNoHome)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, bool, IsGeck)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, bool, IsNoUnarmed)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(VirtualProtected, bool, IsNoWalk)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(VirtualProtected, bool, IsNoRun)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Protected, bool, IsNoRotate)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, bool, IsNoTalk)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, bool, IsNoFlatten)
-///@ ExportProperty Critter
+///@ ExportProperty
 CRITTER_PROPERTY(Public, uint, TimeoutBattle)
-///@ ExportProperty Critter Temporary
+///@ ExportProperty Temporary
 CRITTER_PROPERTY(Protected, uint, TimeoutTransfer)
-///@ ExportProperty Critter Temporary
+///@ ExportProperty Temporary
 CRITTER_PROPERTY(Protected, uint, TimeoutRemoveFromGame)
 
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, uint, LoopTime1)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, uint, LoopTime2)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, uint, LoopTime3)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, uint, LoopTime4)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, uint, LoopTime5)
-///@ ExportProperty Map ReadOnly Temporary
+///@ ExportProperty ReadOnly Temporary
 MAP_PROPERTY(PrivateServer, string, FileDir)
-///@ ExportProperty Map ReadOnly
+///@ ExportProperty ReadOnly
 MAP_PROPERTY(PrivateServer, ushort, Width)
-///@ ExportProperty Map ReadOnly
+///@ ExportProperty ReadOnly
 MAP_PROPERTY(PrivateServer, ushort, Height)
-///@ ExportProperty Map ReadOnly
+///@ ExportProperty ReadOnly
 MAP_PROPERTY(PrivateServer, ushort, WorkHexX)
-///@ ExportProperty Map ReadOnly
+///@ ExportProperty ReadOnly
 MAP_PROPERTY(PrivateServer, ushort, WorkHexY)
-///@ ExportProperty Map ReadOnly
+///@ ExportProperty ReadOnly
 MAP_PROPERTY(PrivateServer, uint, LocId)
-///@ ExportProperty Map ReadOnly
+///@ ExportProperty ReadOnly
 MAP_PROPERTY(PrivateServer, uint, LocMapIndex)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, uchar, RainCapacity)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, int, CurDayTime)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, hash, ScriptId)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, vector<int>, DayTime)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, vector<uchar>, DayColor)
-///@ ExportProperty Map
+///@ ExportProperty
 MAP_PROPERTY(PrivateServer, bool, IsNoLogOut)
 
-///@ ExportProperty Location ReadOnly
+///@ ExportProperty ReadOnly
 LOCATION_PROPERTY(PrivateServer, vector<hash>, MapProtos)
-///@ ExportProperty Location ReadOnly
+///@ ExportProperty ReadOnly
 LOCATION_PROPERTY(PrivateServer, vector<hash>, MapEntrances)
-///@ ExportProperty Location ReadOnly
+///@ ExportProperty ReadOnly
 LOCATION_PROPERTY(PrivateServer, vector<hash>, Automaps)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, uint, MaxPlayers)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, bool, AutoGarbage)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, bool, GeckVisible)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, hash, EntranceScript)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, ushort, WorldX)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, ushort, WorldY)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, ushort, Radius)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, bool, Hidden)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, bool, ToGarbage)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, uint, Color)
-///@ ExportProperty Location
+///@ ExportProperty
 LOCATION_PROPERTY(PrivateServer, bool, IsEncounter)
 
 #undef GLOBAL_PROPERTY

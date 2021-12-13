@@ -3173,7 +3173,6 @@ auto FOMapper::AddCritter(hash pid, ushort hx, ushort hy) -> CritterView*
     cr->SetHexX(hx);
     cr->SetHexY(hy);
     cr->SetDir(NpcDir);
-    cr->SetCond(COND_ALIVE);
     cr->Init();
 
     HexMngr.AddCritter(cr);

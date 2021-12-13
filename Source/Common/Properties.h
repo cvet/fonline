@@ -200,7 +200,7 @@ public:
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
-        return *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
+        return *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
@@ -210,7 +210,27 @@ public:
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
         T old_value = *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
         if (new_value != old_value) {
-            *reinterpret_cast<T*>(_podData[prop->_podDataOffset]) = new_value;
+            *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
+            // setCallback(enumValue, old_value)
+        }
+    }
+
+    template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+    [[nodiscard]] auto GetValue(Property* prop) const -> T
+    {
+        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
+        return *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
+    }
+
+    template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+    void SetValue(Property* prop, T new_value)
+    {
+        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
+        T old_value = *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
+        if (new_value != old_value) {
+            *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
             // setCallback(enumValue, old_value)
         }
     }
