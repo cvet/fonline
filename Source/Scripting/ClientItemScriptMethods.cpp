@@ -43,15 +43,15 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Item_GetMapPos([[maybe_unused]] FOClient* client, ItemView* self, ushort& hx, ushort& hy)
+[[maybe_unused]] bool Client_Item_GetMapPos(ItemView* self, ushort& hx, ushort& hy)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (!self->GetEngine()->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
     }
 
     switch (self->GetAccessory()) {
     case ITEM_ACCESSORY_CRITTER: {
-        auto* const cr = client->GetCritter(self->GetCritId());
+        const auto* cr = self->GetEngine()->GetCritter(self->GetCritId());
         if (!cr) {
             throw ScriptException("CritterCl accessory, CritterCl not found");
         }
@@ -67,7 +67,7 @@
             throw ScriptException("Container accessory, crosslinks");
         }
 
-        ItemView* cont = client->GetItem(self->GetContainerId());
+        ItemView* cont = self->GetEngine()->GetItem(self->GetContainerId());
         if (!cont) {
             throw ScriptException("Container accessory, container not found");
         }
@@ -85,7 +85,7 @@
 ///# param fromFrame ...
 ///# param toFrame ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Item_Animate([[maybe_unused]] FOClient* client, ItemView* self, uint fromFrame, uint toFrame)
+[[maybe_unused]] void Client_Item_Animate(ItemView* self, uint fromFrame, uint toFrame)
 {
     if (self->Type == EntityType::ItemHexView) {
         auto* item_hex = static_cast<ItemHexView*>(self);
@@ -97,7 +97,7 @@
 ///# param stackId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Item_GetItems([[maybe_unused]] FOClient* client, ItemView* self, uint stackId)
+[[maybe_unused]] vector<ItemView*> Client_Item_GetItems(ItemView* self, uint stackId)
 {
     vector<ItemView*> items;
     // Todo: need attention!

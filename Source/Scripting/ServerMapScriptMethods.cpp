@@ -44,7 +44,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Map_GetLocation([[maybe_unused]] FOServer* server, Map* self)
+[[maybe_unused]] Location* Server_Map_GetLocation(Map* self)
 {
     return self->GetLocation();
 }
@@ -53,7 +53,7 @@
 ///# param funcName ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetScript([[maybe_unused]] FOServer* server, Map* self, string_view funcName)
+[[maybe_unused]] void Server_Map_SetScript(Map* self, string_view funcName)
 {
     if (!funcName.empty()) {
         if (!self->SetScript(funcName, true)) {
@@ -73,13 +73,13 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_AddItem([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, hash protoId, uint count, const map<int, int>& props)
+[[maybe_unused]] Item* Server_Map_AddItem(Map* self, ushort hx, ushort hy, hash protoId, uint count, const map<int, int>& props)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto* proto = server->ProtoMngr.GetProtoItem(protoId);
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
     if (!proto) {
         throw ScriptException("Invalid proto '{}' arg.", _str().parseHash(protoId));
     }
@@ -95,16 +95,16 @@
             props_.SetValueAsIntProps(key, value);
         }
 
-        return server->CreateItemOnHex(self, hx, hy, protoId, count > 0 ? count : 1, &props_, true);
+        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count > 0 ? count : 1, &props_, true);
     }
 
-    return server->CreateItemOnHex(self, hx, hy, protoId, count > 0 ? count : 1, nullptr, true);
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count > 0 ? count : 1, nullptr, true);
 }
 
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems([[maybe_unused]] FOServer* server, Map* self)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self)
 {
     return self->GetItemsPid(0);
 }
@@ -114,7 +114,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsOnHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy)
+[[maybe_unused]] vector<Item*> Server_Map_GetItemsOnHex(Map* self, ushort hx, ushort hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -130,7 +130,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsAroundHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, uint radius, hash pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hash pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -143,7 +143,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsByPid([[maybe_unused]] FOServer* server, Map* self, hash pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetItemsByPid(Map* self, hash pid)
 {
     return self->GetItemsPid(pid);
 }
@@ -152,7 +152,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsByPredicate([[maybe_unused]] FOServer* server, Map* self, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItemsByPredicate(Map* self, const std::function<bool(Item*)>& predicate)
 {
     auto map_items = self->GetItems();
     vector<Item*> items;
@@ -171,7 +171,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsOnHexByPredicate([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItemsOnHexByPredicate(Map* self, ushort hx, ushort hy, const std::function<bool(Item*)>& predicate)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -196,7 +196,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsAroundHexByPredicate([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, uint radius, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItemsAroundHexByPredicate(Map* self, ushort hx, ushort hy, uint radius, const std::function<bool(Item*)>& predicate)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -218,7 +218,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItem([[maybe_unused]] FOServer* server, Map* self, uint itemId)
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint itemId)
 {
     if (itemId == 0u) {
         throw ScriptException("Item id arg is zero");
@@ -233,7 +233,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItemOnHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, hash pid)
+[[maybe_unused]] Item* Server_Map_GetItemOnHex(Map* self, ushort hx, ushort hy, hash pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -247,7 +247,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetCritterOnHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy)
+[[maybe_unused]] Critter* Server_Map_GetCritterOnHex(Map* self, ushort hx, ushort hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -266,7 +266,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetStaticItemOnHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, hash pid)
+[[maybe_unused]] Item* Server_Map_GetStaticItemOnHex(Map* self, ushort hx, ushort hy, hash pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -280,7 +280,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsInHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy)
+[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsInHex(Map* self, ushort hx, ushort hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -296,7 +296,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsAroundHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, uint radius, hash pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hash pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -309,7 +309,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsByPid([[maybe_unused]] FOServer* server, Map* self, hash pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsByPid(Map* self, hash pid)
 {
     return self->GetStaticItemsByPid(pid);
 }
@@ -318,7 +318,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsByPredicate([[maybe_unused]] FOServer* server, Map* self, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsByPredicate(Map* self, const std::function<bool(Item*)>& predicate)
 {
     const auto& map_static_items = self->GetStaticMap()->StaticItemsVec;
     vector<Item*> items;
@@ -334,7 +334,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItems([[maybe_unused]] FOServer* server, Map* self)
+[[maybe_unused]] vector<Item*> Server_Map_GetStaticItems(Map* self)
 {
     return self->GetStaticMap()->StaticItemsVec;
 }
@@ -343,7 +343,7 @@
 ///# param crid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetCritter([[maybe_unused]] FOServer* server, Map* self, uint crid)
+[[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, uint crid)
 {
     return self->GetCritter(crid);
 }
@@ -355,14 +355,14 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersAroundHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, uint radius, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersAroundHex(Map* self, ushort hx, ushort hy, uint radius, uchar findType)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
     auto critters = self->GetCrittersHex(hx, hy, radius, findType);
-    std::sort(critters.begin(), critters.end(), [server, hx, hy](const Critter* cr1, const Critter* cr2) { return server->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < server->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
+    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return self->GetEngine()->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
     return critters;
 }
 
@@ -371,7 +371,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersByPids([[maybe_unused]] FOServer* server, Map* self, hash pid, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersByPids(Map* self, hash pid, uchar findType)
 {
     vector<Critter*> critters;
     if (pid == 0u) {
@@ -406,7 +406,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath([[maybe_unused]] FOServer* server, Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType)
 {
     vector<Critter*> critters;
     TraceData trace;
@@ -419,7 +419,7 @@
     trace.Angle = angle;
     trace.Critters = &critters;
     trace.FindType = findType;
-    server->MapMngr.TraceBullet(trace);
+    self->GetEngine()->MapMngr.TraceBullet(trace);
 
     return critters;
 }
@@ -438,7 +438,7 @@
 ///# param blockHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWithBlockInPath([[maybe_unused]] FOServer* server, Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWithBlockInPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
 {
     vector<Critter*> critters;
     pair<ushort, ushort> block;
@@ -456,7 +456,7 @@
     trace.PreBlock = &pre_block;
     trace.Block = &block;
 
-    server->MapMngr.TraceBullet(trace);
+    self->GetEngine()->MapMngr.TraceBullet(trace);
 
     preBlockHx = pre_block.first;
     preBlockHy = pre_block.second;
@@ -473,7 +473,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoViewPath([[maybe_unused]] FOServer* server, Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoViewPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uchar findType)
 {
     vector<Critter*> critters;
     for (auto* cr : self->GetCritters()) {
@@ -491,7 +491,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersSeeing([[maybe_unused]] FOServer* server, Map* self, const vector<Critter*>& critters, bool lookOnThem, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vector<Critter*>& critters, bool lookOnThem, uchar findType)
 {
     vector<Critter*> result_critters;
     for (auto* cr : critters) {
@@ -512,7 +512,7 @@
 ///# param angle ...
 ///# param dist ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_GetHexInPath([[maybe_unused]] FOServer* server, Map* self, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
+[[maybe_unused]] void Server_Map_GetHexInPath(Map* self, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
 {
     pair<ushort, ushort> pre_block;
     pair<ushort, ushort> block;
@@ -527,7 +527,7 @@
     trace.PreBlock = &pre_block;
     trace.Block = &block;
 
-    server->MapMngr.TraceBullet(trace);
+    self->GetEngine()->MapMngr.TraceBullet(trace);
 
     toHx = pre_block.first;
     toHy = pre_block.second;
@@ -541,7 +541,7 @@
 ///# param angle ...
 ///# param dist ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_GetWallHexInPath([[maybe_unused]] FOServer* server, Map* self, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
+[[maybe_unused]] void Server_Map_GetWallHexInPath(Map* self, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
 {
     pair<ushort, ushort> last_passed;
     TraceData trace;
@@ -554,7 +554,7 @@
     trace.Angle = angle;
     trace.LastPassed = &last_passed;
 
-    server->MapMngr.TraceBullet(trace);
+    self->GetEngine()->MapMngr.TraceBullet(trace);
 
     if (trace.IsHaveLastPassed) {
         toHx = last_passed.first;
@@ -574,7 +574,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetPathLengthToHex([[maybe_unused]] FOServer* server, Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Server_Map_GetPathLengthToHex(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
     if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -591,7 +591,7 @@
     input.ToY = toHy;
     input.Cut = cut;
 
-    const auto output = server->MapMngr.FindPath(input);
+    const auto output = self->GetEngine()->MapMngr.FindPath(input);
 
     if (output.Result != FindPathResult::Ok) {
         return 0;
@@ -607,7 +607,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetPathLengthToCritter([[maybe_unused]] FOServer* server, Map* self, Critter* cr, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Server_Map_GetPathLengthToCritter(Map* self, Critter* cr, ushort toHx, ushort toHy, uint cut)
 {
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -627,7 +627,7 @@
     input.Multihex = cr->GetMultihex();
     input.Cut = cut;
 
-    const auto output = server->MapMngr.FindPath(input);
+    const auto output = self->GetEngine()->MapMngr.FindPath(input);
 
     if (output.Result != FindPathResult::Ok) {
         return 0;
@@ -644,13 +644,13 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_AddNpc([[maybe_unused]] FOServer* server, Map* self, hash protoId, ushort hx, ushort hy, uchar dir, const map<int, int>& props)
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hash protoId, ushort hx, ushort hy, uchar dir, const map<int, int>& props)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto* proto = server->ProtoMngr.GetProtoCritter(protoId);
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
     if (!proto) {
         throw ScriptException("Proto '{}' not found.", _str().parseHash(protoId));
     }
@@ -663,10 +663,10 @@
             props_.SetValueAsIntProps(key, value);
         }
 
-        npc = server->CrMngr.CreateNpc(protoId, &props_, self, hx, hy, dir, false);
+        npc = self->GetEngine()->CrMngr.CreateNpc(protoId, &props_, self, hx, hy, dir, false);
     }
     else {
-        npc = server->CrMngr.CreateNpc(protoId, nullptr, self, hx, hy, dir, false);
+        npc = self->GetEngine()->CrMngr.CreateNpc(protoId, nullptr, self, hx, hy, dir, false);
     }
 
     if (npc == nullptr) {
@@ -681,7 +681,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetNpcCount([[maybe_unused]] FOServer* server, Map* self, int npcRole, uchar findType)
+[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, int npcRole, uchar findType)
 {
     return self->GetNpcCount(npcRole, findType);
 }
@@ -692,7 +692,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetNpc([[maybe_unused]] FOServer* server, Map* self, int npcRole, uchar findType, uint skipCount)
+[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, int npcRole, uchar findType, uint skipCount)
 {
     return self->GetNpc(npcRole, findType, skipCount);
 }
@@ -702,7 +702,7 @@
 ///# param hexY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexPassed([[maybe_unused]] FOServer* server, Map* self, ushort hexX, ushort hexY)
+[[maybe_unused]] bool Server_Map_IsHexPassed(Map* self, ushort hexX, ushort hexY)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -717,7 +717,7 @@
 ///# param radius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexesPassed([[maybe_unused]] FOServer* server, Map* self, ushort hexX, ushort hexY, uint radius)
+[[maybe_unused]] bool Server_Map_IsHexesPassed(Map* self, ushort hexX, ushort hexY, uint radius)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -731,7 +731,7 @@
 ///# param hexY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_IsHexRaked([[maybe_unused]] FOServer* server, Map* self, ushort hexX, ushort hexY)
+[[maybe_unused]] bool Server_Map_IsHexRaked(Map* self, ushort hexX, ushort hexY)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -746,7 +746,7 @@
 ///# param color ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetText([[maybe_unused]] FOServer* server, Map* self, ushort hexX, ushort hexY, uint color, string_view text)
+[[maybe_unused]] void Server_Map_SetText(Map* self, ushort hexX, ushort hexY, uint color, string_view text)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -761,7 +761,7 @@
 ///# param textMsg ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsg([[maybe_unused]] FOServer* server, Map* self, ushort hexX, ushort hexY, uint color, ushort textMsg, uint strNum)
+[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, ushort hexX, ushort hexY, uint color, ushort textMsg, uint strNum)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -778,7 +778,7 @@
 ///# param strNum ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsgLex([[maybe_unused]] FOServer* server, Map* self, ushort hexX, ushort hexY, uint color, ushort textMsg, uint strNum, string_view lexems)
+[[maybe_unused]] void Server_Map_SetTextMsgLex(Map* self, ushort hexX, ushort hexY, uint color, ushort textMsg, uint strNum, string_view lexems)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -793,7 +793,7 @@
 ///# param hy ...
 ///# param radius ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_RunEffect([[maybe_unused]] FOServer* server, Map* self, hash effPid, ushort hx, ushort hy, uint radius)
+[[maybe_unused]] void Server_Map_RunEffect(Map* self, hash effPid, ushort hx, ushort hy, uint radius)
 {
     if (effPid == 0u) {
         throw ScriptException("Effect pid invalid arg");
@@ -814,7 +814,7 @@
 ///# param toHx ...
 ///# param toHy ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_RunFlyEffect([[maybe_unused]] FOServer* server, Map* self, hash effPid, Critter* fromCr, Critter* toCr, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] void Server_Map_RunFlyEffect(Map* self, hash effPid, Critter* fromCr, Critter* toCr, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
 {
     if (effPid == 0u) {
         throw ScriptException("Effect pid invalid arg");
@@ -837,9 +837,9 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_CheckPlaceForItem([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, hash pid)
+[[maybe_unused]] bool Server_Map_CheckPlaceForItem(Map* self, ushort hx, ushort hy, hash pid)
 {
-    const auto* proto_item = server->ProtoMngr.GetProtoItem(pid);
+    const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
     if (!proto_item) {
         throw ScriptException("Proto item not found");
     }
@@ -852,7 +852,7 @@
 ///# param hy ...
 ///# param full ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_BlockHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy, bool full)
+[[maybe_unused]] void Server_Map_BlockHex(Map* self, ushort hx, ushort hy, bool full)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -868,7 +868,7 @@
 ///# param hx ...
 ///# param hy ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_UnblockHex([[maybe_unused]] FOServer* server, Map* self, ushort hx, ushort hy)
+[[maybe_unused]] void Server_Map_UnblockHex(Map* self, ushort hx, ushort hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -881,7 +881,7 @@
 ///# ...
 ///# param soundName ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_PlaySound([[maybe_unused]] FOServer* server, Map* self, string_view soundName)
+[[maybe_unused]] void Server_Map_PlaySound(Map* self, string_view soundName)
 {
     for (Critter* cr : self->GetPlayers()) {
         cr->Send_PlaySound(0, soundName);
@@ -894,14 +894,14 @@
 ///# param hy ...
 ///# param radius ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_PlaySoundInRadius([[maybe_unused]] FOServer* server, Map* self, string_view soundName, ushort hx, ushort hy, uint radius)
+[[maybe_unused]] void Server_Map_PlaySoundInRadius(Map* self, string_view soundName, ushort hx, ushort hy, uint radius)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
     for (Critter* cr : self->GetPlayers()) {
-        if (server->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
+        if (self->GetEngine()->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
             cr->Send_PlaySound(0, soundName);
         }
     }
@@ -910,9 +910,9 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_Regenerate([[maybe_unused]] FOServer* server, Map* self)
+[[maybe_unused]] void Server_Map_Regenerate(Map* self)
 {
-    server->MapMngr.RegenerateMap(self);
+    self->GetEngine()->MapMngr.RegenerateMap(self);
 }
 
 ///# ...
@@ -922,9 +922,9 @@
 ///# param steps ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_MoveHexByDir([[maybe_unused]] FOServer* server, Map* self, ushort& hx, ushort& hy, uchar dir, uint steps)
+[[maybe_unused]] bool Server_Map_MoveHexByDir(Map* self, ushort& hx, ushort& hy, uchar dir, uint steps)
 {
-    if (dir >= server->Settings.MapDirCount) {
+    if (dir >= self->GetEngine()->Settings.MapDirCount) {
         throw ScriptException("Invalid dir arg");
     }
     if (steps == 0u) {
@@ -939,11 +939,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= server->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+            result |= self->GetEngine()->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
         }
     }
     else {
-        result = server->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+        result = self->GetEngine()->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
     }
 
     hx = hx_;
@@ -957,18 +957,18 @@
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_VerifyTrigger([[maybe_unused]] FOServer* server, Map* self, Critter* cr, ushort hx, ushort hy, uchar dir)
+[[maybe_unused]] void Server_Map_VerifyTrigger(Map* self, Critter* cr, ushort hx, ushort hy, uchar dir)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
-    if (dir >= server->Settings.MapDirCount) {
+    if (dir >= self->GetEngine()->Settings.MapDirCount) {
         throw ScriptException("Invalid dir arg");
     }
 
     auto from_hx = hx;
     auto from_hy = hy;
-    if (server->GeomHelper.MoveHexByDir(from_hx, from_hy, server->GeomHelper.ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
-        server->VerifyTrigger(self, cr, from_hx, from_hy, hx, hy, dir);
+    if (self->GetEngine()->GeomHelper.MoveHexByDir(from_hx, from_hy, self->GetEngine()->GeomHelper.ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
+        self->GetEngine()->VerifyTrigger(self, cr, from_hx, from_hy, hx, hy, dir);
     }
 }

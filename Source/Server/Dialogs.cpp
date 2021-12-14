@@ -39,11 +39,12 @@
 #include "Location.h"
 #include "Log.h"
 #include "Map.h"
+#include "ServerEntity.h"
 #include "StringUtils.h"
 
 static auto GetPropEnumIndex(string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
 {
-    auto* prop_global = GlobalVars::PropertiesRegistrator->Find(str);
+    auto* prop_global = ServerGlobals::PropertiesRegistrator->Find(str);
     auto* prop_critter = Critter::PropertiesRegistrator->Find(str);
     auto* prop_item = Item::PropertiesRegistrator->Find(str);
     auto* prop_location = Location::PropertiesRegistrator->Find(str);

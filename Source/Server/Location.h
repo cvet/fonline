@@ -35,17 +35,17 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "ServerEntity.h"
 #include "ServerScripting.h"
 
 class Map;
 class Location;
 
-class Location final : public Entity
+class Location final : public ServerEntity
 {
 public:
     Location() = delete;
-    Location(uint id, const ProtoLocation* proto, ServerScriptSystem& script_sys);
+    Location(FOServer* engine, uint id, const ProtoLocation* proto);
     Location(const Location&) = delete;
     Location(Location&&) noexcept = delete;
     auto operator=(const Location&) = delete;
@@ -76,6 +76,5 @@ public:
 #include "Properties-Include.h"
 
 private:
-    ServerScriptSystem& _scriptSys;
     vector<Map*> _locMaps {};
 };

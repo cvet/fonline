@@ -34,7 +34,7 @@
 #include "Entity.h"
 #include "StringUtils.h"
 
-Entity::Entity(uint id, EntityType type, PropertyRegistrator* registartor, const ProtoEntity* proto) : Props {registartor}, Id {id}, Type {type}, Proto {proto}
+Entity::Entity(EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto) : Props {registrator}, Type {type}, Proto {proto}
 {
     if (Proto != nullptr) {
         Proto->AddRef();
@@ -47,18 +47,6 @@ Entity::~Entity()
     if (Proto != nullptr) {
         Proto->Release();
     }
-}
-
-auto Entity::GetId() const -> uint
-{
-    return Id;
-}
-
-void Entity::SetId(uint id)
-{
-    NON_CONST_METHOD_HINT();
-
-    const_cast<uint&>(Id) = id;
 }
 
 auto Entity::GetProtoId() const -> hash
@@ -97,7 +85,7 @@ void Entity::Release() const
     }
 }
 
-ProtoEntity::ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator) : Entity(0, type, registrator, nullptr), ProtoId(proto_id)
+ProtoEntity::ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator) : Entity(type, registrator, nullptr), ProtoId(proto_id)
 {
     RUNTIME_ASSERT(ProtoId);
 }
@@ -105,18 +93,6 @@ ProtoEntity::ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* re
 auto ProtoEntity::HaveComponent(hash name) const -> bool
 {
     return Components.count(name) > 0;
-}
-
-CustomEntity::CustomEntity(uint id, uint sub_type, PropertyRegistrator* registrator) : Entity(id, EntityType::Custom, registrator, nullptr), SubType(sub_type)
-{
-}
-
-PROPERTIES_IMPL(GlobalVars, "GlobalVars", true);
-#define GLOBAL_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(GlobalVars, access, type, name)
-#include "Properties-Include.h"
-
-GlobalVars::GlobalVars() : Entity(0, EntityType::Global, PropertiesRegistrator, nullptr)
-{
 }
 
 PROPERTIES_IMPL(ProtoPlayer, "Player", true);

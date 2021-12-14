@@ -31,40 +31,34 @@
 // SOFTWARE.
 //
 
-#include "Common.h"
+#include "ServerEntity.h"
+#include "StringUtils.h"
 
-#include "Server.h"
-#include "ServerScripting.h"
-
-// ReSharper disable CppInconsistentNaming
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] int Server_Player_GetAccess(Player* self)
+ServerEntity::ServerEntity(FOServer* engine, uint id, EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(type, registrator, proto), _engine {engine}, _id {id}
 {
-    return self->Access;
 }
 
-///# ...
-///# param access ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Player_SetAccess(Player* self, int access)
+auto ServerEntity::GetId() const -> uint
 {
-    if (access < ACCESS_CLIENT || access > ACCESS_ADMIN) {
-        throw ScriptException("Wrong access type");
-    }
+    return _id;
+}
 
-    if (access == self->Access) {
-        return true;
-    }
+void ServerEntity::SetId(uint id)
+{
+    _id = id;
+}
 
-    string pass;
-    const auto allow = self->GetEngine()->ScriptSys.PlayerGetAccessEvent(self, access, pass);
-    if (allow) {
-        self->Access = static_cast<uchar>(access);
-    }
+auto ServerEntity::GetEngine() -> FOServer*
+{
+    NON_CONST_METHOD_HINT();
 
-    return allow;
+    return _engine;
+}
+
+PROPERTIES_IMPL(ServerGlobals, "Globals", true);
+#define GLOBAL_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(ServerGlobals, access, type, name)
+#include "Properties-Include.h"
+
+ServerGlobals::ServerGlobals(FOServer* engine) : ServerEntity(engine, 1, EntityType::Global, PropertiesRegistrator, nullptr)
+{
 }

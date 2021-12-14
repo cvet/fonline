@@ -41,6 +41,7 @@
 #include "Map.h"
 #include "ServerScripting.h"
 
+class FOServer;
 class ProtoManager;
 class EntityManager;
 class MapManager;
@@ -50,7 +51,7 @@ class ItemManager final
 {
 public:
     ItemManager() = delete;
-    ItemManager(ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, CritterManager& cr_mngr, ServerScriptSystem& script_sys);
+    explicit ItemManager(FOServer* engine);
     ItemManager(const ItemManager&) = delete;
     ItemManager(ItemManager&&) noexcept = delete;
     auto operator=(const ItemManager&) = delete;
@@ -92,11 +93,7 @@ private:
 
     void EraseItemHolder(Item* item, Entity* holder);
 
-    ProtoManager& _protoMngr;
-    EntityManager& _entityMngr;
-    MapManager& _mapMngr;
-    CritterManager& _crMngr;
-    ServerScriptSystem& _scriptSys;
+    FOServer* _engine;
     vector<Item*> _radioItems {};
     bool _nonConstHelper {};
 };

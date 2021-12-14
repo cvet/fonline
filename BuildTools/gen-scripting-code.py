@@ -284,7 +284,8 @@ def parseTags():
                     'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
                     'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
                     'bool': 'bool', 'bool&': 'bool&', 'hash': 'hash', 'hash&': 'hash&', 'void': 'void',
-                    'Entity*': 'Entity', 'Player*': 'Player', 'PlayerView*': 'Player',
+                    'Entity*': 'Entity', 'ClientEntity*': 'Entity', 'ServerEntity*': 'Entity',
+                    'Player*': 'Player', 'PlayerView*': 'Player',
                     'Item*': 'Item', 'ItemView*': 'Item', 'Critter*': 'Critter', 'CritterView*': 'Critter',
                     'Map*': 'Map', 'MapView*': 'Map', 'Location*': 'Location', 'LocationView*': 'Location',
                     'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string':  'string'}
@@ -367,17 +368,41 @@ def parseTags():
                 value = tok[3] if len(tok) > 3 and tok[2] == '=' else getHash(key)
                 flags = tok[2 if len(tok) < 3 or tok[2] != '=' else 4:]
                 
-                def calcUnderlyingType(kv):
-                    return 'int'
+                def calcUnderlyingMetaType(kv):
+                    if kv:
+                        minValue = 0xFFFFFFFF
+                        maxValue = -0xFFFFFFFF
+                        for i in kv:
+                            v = int(i[1])
+                            minValue = v if v < minValue else minValue
+                            maxValue = v if v > maxValue else maxValue
+                        if minValue < 0:
+                            if maxValue <= 0xFF / 2 and -minValue <= 0xFF / 2:
+                                return 'int8'
+                            if maxValue <= 0xFFFF / 2 and -minValue <= 0xFFFF / 2:
+                                return 'int16'
+                            if maxValue <= 0xFFFFFFFF / 2 and -minValue <= 0xFFFFFFFF / 2:
+                                return 'int'
+                        else:
+                            assert maxValue <= 0xFFFFFFFF
+                            if maxValue <= 0xFF:
+                                return 'uint8'
+                            if maxValue <= 0xFFFF:
+                                return 'uint16'
+                            if maxValue <= 0xFFFFFFFF:
+                                return 'uint'
+                        assert False, 'Can\'t deduce enum underlying type (' + minValue + ', ' + maxValue + ')'
+                    else:
+                        return 'uint8'
                 
                 for g in codeGenTags['Enum']:
                     if g[0] == grname:
                         g[2].append((key, value, []))
-                        g[1] = calcUnderlyingType(g[2])
+                        g[1] = calcUnderlyingMetaType(g[2])
                         break
                 else:
                     keyValues = [(key, value, [])]
-                    codeGenTags['Enum'].append([grname, calcUnderlyingType(keyValues), keyValues, flags, comment])
+                    codeGenTags['Enum'].append([grname, calcUnderlyingMetaType(keyValues), keyValues, flags, comment])
                 
                 validTypes.add(grname)
                 
@@ -466,7 +491,7 @@ def parseTags():
                 funcArgs = fixTemplateComma(funcArgs, 'map')
                 
                 resultArgs = []
-                for arg in funcArgs.split(',')[2 if entity != 'Global' else 1:]:
+                for arg in funcArgs.split(',')[1 if entity != 'Global' else 1:]:
                     arg = arg.strip()
                     sep = arg.rfind(' ')
                     argType = engineTypeToMetaType(arg[:sep].rstrip())
@@ -822,7 +847,7 @@ def genCode(lang, target, isASCompiler=False):
             elif tt[0] == 'predicate':
                 return 'asIScriptFunction*'
             elif tt[0] in entities:
-                return 'AS' + target + tt[0] + '*'
+                return tt[0] + ('View' if target != 'Server' else '') + '*'
             elif tt[0] in userObjects:
                 return tt[0] + '*'
             else:
@@ -845,8 +870,6 @@ def genCode(lang, target, isASCompiler=False):
                 return 'MarshalDict<' + metaTypeToEngineType(tt[1]) + ', ' + metaTypeToEngineType(tt[2]) + '>(' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
                 return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1])
-            elif tt[0] in entities:
-                return '(' + metaTypeToEngineType(t) + ')' + v + '->GameEntity'
             return v
             
         def marshalBack(t, v):
@@ -859,15 +882,12 @@ def genCode(lang, target, isASCompiler=False):
                 return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1]) + ', ' + metaTypeToEngineType(tt[2]) + '>(' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
                 return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1])
-            elif tt[0] in entities:
-                return '(' + metaTypeToASEngineType(t) + ')' + v + '->AngelScriptObj'
             return v
             
         entities = ['Player', 'Item', 'Critter', 'Map', 'Location']
         
         defineLines = []
         globalLines = []
-        entityCasts = []
         registerLines = []
         
         defineLines.append('#define SERVER_SCRIPTING ' + ('1' if target == 'Server' else '0'))
@@ -889,6 +909,12 @@ def genCode(lang, target, isASCompiler=False):
                 
         # User scriptable objects
         if isASCompiler:
+            globalLines.append('// Compiler entity stubs')
+            for entity in entities:
+                engineEntityType = entity + ('View' if target != 'Server' else '')
+                globalLines.append('struct ' + engineEntityType + ' : BaseEntity { };')
+            globalLines.append('')
+            
             globalLines.append('// Scriptable objects')
             for eo in codeGenTags['ExportObject']:
                 targ, objName, fields, _, _ = eo
@@ -900,31 +926,19 @@ def genCode(lang, target, isASCompiler=False):
                         globalLines.append('    ' + metaTypeToEngineType(f[0]) + ' ' + f[1] + ';')
                     globalLines.append('};')
                     globalLines.append('')
-
-        # Wrapper classes
-        globalLines.append('// Entity wrappers')
-        for entity in entities:
-            entityType = 'AS' + target + entity
-            if isASCompiler:
-                globalLines.append('struct ' + entity + ';')
-            globalLines.append('struct ' + entityType + ' final : ASBaseEntity')
-            globalLines.append('{')
-            globalLines.append('    explicit ' + entityType + '(Entity* entity) : ASBaseEntity(entity) { }')
-            globalLines.append('};')
-            globalLines.append('')
             
         # Marshalling functions
         globalLines.append('// Marshalling functions')
         for entity in entities:
-            entityType = 'AS' + target + entity
+            engineEntityType = entity + ('View' if target != 'Server' else '')
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
                 if targ == target and ent == entity:
                     if not isASCompiler:
                         globalLines.append('extern ' + metaTypeToEngineType(ret, True) + ' ' + target + '_' + entity + '_' + name +
-                                '(FO' + target + '*, ' + entity + ('View' if target != 'Server' else '') + '*' + (', ' if params else '') +
+                                '(' + entity + ('View' if target != 'Server' else '') + '*' + (', ' if params else '') +
                                 ', '.join([metaTypeToEngineType(p[0]) for p in params]) + ');')
-                    globalLines.append('static ' + metaTypeToASEngineType(ret, True) + ' AS_' + target + '_' + entity + '_' + name + '(' + entityType + '* self' +
+                    globalLines.append('static ' + metaTypeToASEngineType(ret, True) + ' AS_' + target + '_' + entity + '_' + name + '(' + engineEntityType + '* self' +
                             (', ' if params else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
                     globalLines.append('{')
                     if not isASCompiler:
@@ -935,8 +949,7 @@ def genCode(lang, target, isASCompiler=False):
                         for p in params:
                             globalLines.append('    auto&& _' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
                         globalLines.append('    ' + ('auto _result = ' if ret != 'void' else '') + target + '_' + entity + '_' + name +
-                                '(self->GameEngine, (' + entity + ('View' if target != 'Server' else '') + '*)self->GameEntity' + (', ' if params else '') +
-                                ', '.join(['_' + p[1] for p in params]) + ');')
+                                '(self' + (', ' if params else '') + ', '.join(['_' + p[1] for p in params]) + ');')
                         for p in params:
                             pass # Marshall back
                         if ret != 'void':
@@ -950,12 +963,6 @@ def genCode(lang, target, isASCompiler=False):
         
         # Generate global methods
         globalLines.append('')
-        
-        # Casts
-        for entity in entities:
-            entityType = 'AS' + target + entity
-            entityCasts.append('CHECK_CAST(' + entityType + ', EntityType::' + entity + ')')
-            entityCasts.append('CHECK_CAST(' + entityType + ', EntityType::' + entity + 'View)')
         
         # Register enums
         registerLines.append('// Enums')
@@ -987,9 +994,9 @@ def genCode(lang, target, isASCompiler=False):
         # Register entities
         registerLines.append('// Register entities')
         for entity in entities:
-            entityType = 'AS' + target + entity
-            registerLines.append('REGISTER_ENTITY("' + entity + '", ' + entityType + ');')
-            registerLines.append('REGISTER_ENTITY_CAST("' + entity + '", ' + entityType + ');')
+            engineEntityType = entity + ('View' if target != 'Server' else '')
+            registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
+            registerLines.append('REGISTER_ENTITY_CAST("' + entity + '", ' + engineEntityType + ');')
         registerLines.append('')
         
         # Funcdefs
@@ -1004,12 +1011,11 @@ def genCode(lang, target, isASCompiler=False):
         # Register entity methods
         registerLines.append('// Register entity methods')
         for entity in entities:
-            entityType = 'AS' + target + entity
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
                 if targ == target and ent == entity:
                     registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret) + ' ' + name + '(' +
-                            ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(' + target + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
+                            ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + target + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
         registerLines.append('')
         
         # Register entity properties
@@ -1035,7 +1041,6 @@ def genCode(lang, target, isASCompiler=False):
             insertFileLines(lines, lineIndex)
             
         insertGenLines(registerLines, 'Register')
-        insertGenLines(entityCasts, 'EntityCasts')
         insertGenLines(globalLines, 'Global')
         insertGenLines(defineLines, 'Defines')
 

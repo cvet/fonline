@@ -35,13 +35,13 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "ClientEntity.h"
 
-class ItemView : public Entity
+class ItemView : public ClientEntity
 {
 public:
     ItemView() = delete;
-    ItemView(uint id, const ProtoItem* proto);
+    ItemView(FOClient* engine, uint id, const ProtoItem* proto);
     ItemView(const ItemView&) = delete;
     ItemView(ItemView&&) noexcept = delete;
     auto operator=(const ItemView&) = delete;

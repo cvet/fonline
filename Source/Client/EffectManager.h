@@ -42,6 +42,8 @@
 
 DECLARE_EXCEPTION(EffectManagerException);
 
+class FOServer;
+
 struct EffectCollection
 {
     RenderEffect* Contour {};

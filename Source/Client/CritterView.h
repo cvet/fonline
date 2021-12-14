@@ -38,23 +38,16 @@
 #include "3dStuff.h"
 #include "Application.h"
 #include "ClientScripting.h"
-#include "EffectManager.h"
-#include "Entity.h"
-#include "GeometryHelper.h"
-#include "ProtoManager.h"
-#include "ResourceManager.h"
-#include "Settings.h"
-#include "SoundManager.h"
+#include "ClientEntity.h"
 #include "SpriteManager.h"
-#include "Timer.h"
 
 class ItemView;
 
-class CritterView final : public Entity
+class CritterView final : public ClientEntity
 {
 public:
     CritterView() = delete;
-    CritterView(uint id, const ProtoCritter* proto, CritterViewSettings& settings, SpriteManager& spr_mngr, ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_timer, bool mapper_mode);
+    CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode);
     CritterView(const CritterView&) = delete;
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;
@@ -167,14 +160,8 @@ private:
 
     void SetFade(bool fade_up);
 
-    CritterViewSettings& _settings;
-    GeometryHelper _geomHelper;
-    SpriteManager& _sprMngr;
-    ResourceManager& _resMngr;
-    EffectManager& _effectMngr;
-    ClientScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
-    bool _mapperMode {};
+    FOClient* _engine;
+    bool _mapperMode;
     bool _needReset {};
     uint _resetTick {};
     uint _curSpr {};

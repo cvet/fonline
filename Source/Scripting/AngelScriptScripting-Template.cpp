@@ -70,16 +70,16 @@ DECLARE_EXCEPTION(ScriptCompilerException);
 
 #if SERVER_SCRIPTING
 #define SCRIPTING_CLASS ServerScriptSystem
-#define ASBaseEntity ASServerEntity
 #define FOEngine FOServer
+#define BaseEntity ServerEntity
 #elif CLIENT_SCRIPTING
 #define SCRIPTING_CLASS ClientScriptSystem
-#define ASBaseEntity ASClientEntity
 #define FOEngine FOClient
+#define BaseEntity ClientEntity
 #elif MAPPER_SCRIPTING
 #define SCRIPTING_CLASS MapperScriptSystem
-#define ASBaseEntity ASMapperEntity
 #define FOEngine FOMapper
+#define BaseEntity ClientEntity
 #else
 #error Invalid setup
 #endif
@@ -161,27 +161,42 @@ struct Property
     };
 };
 
-struct Entity;
+struct BaseEntity
+{
+    void AddRef() { }
+    void Release() { }
+
+    uint GetId() { return 0u; }
+    hash GetProtoId() { return 0u; }
+    FOEngine* GetEngine() { return nullptr; }
+
+    int RefCounter {1};
+    bool IsDestroyed {};
+    bool IsDestroying {};
+};
+
 #define INIT_ARGS const char* script_path
 struct SCRIPTING_CLASS
 {
     void InitAngelScriptScripting(INIT_ARGS);
 };
+
+#define ENTITY_VERIFY(e)
 #endif
 
 #if !COMPILER_MODE
 #define INIT_ARGS
+
+#define ENTITY_VERIFY(e) \
+    if (e && e->IsDestroyed) { \
+        throw ScriptException("Access to destroyed entity"); \
+    }
 #endif
 
 #define AS_VERIFY(expr) \
     as_result = expr; \
     if (as_result < 0) { \
         throw ScriptInitException(#expr); \
-    }
-
-#define ENTITY_VERIFY(e) \
-    if (e && e->IsDestroyed()) { \
-        throw ScriptException("Access to destroyed entity"); \
     }
 
 #if !COMPILER_MODE
@@ -352,109 +367,58 @@ static auto MarshalBackScalarDict(const char* type, const map<T, U>& map) -> CSc
     return as_dict;
 }
 
-struct ASBaseEntity
+static auto Entity_Id(BaseEntity* self) -> uint
 {
-#if !COMPILER_MODE
-    explicit ASBaseEntity(Entity* entity) : GameEntity {entity}
-    {
-        // ...
-        GameEntity->AddRef();
-    }
+    ENTITY_VERIFY(self);
+    return self->GetId();
+}
 
-    ~ASBaseEntity()
-    {
-        // ...
-        GameEntity->Release();
-    }
+static auto Entity_ProtoId(BaseEntity* self) -> hash
+{
+    ENTITY_VERIFY(self);
+    return self->GetProtoId();
+}
 
-    void AddRef()
-    {
-        // ...
-        ++RefCounter;
-    }
+static auto Entity_IsDestroyed(BaseEntity* self) -> bool
+{
+    // May call on destroyed entity
+    return self->IsDestroyed;
+}
 
-    void Release()
-    {
-        if (--RefCounter == 0) {
-            delete this;
-        }
-    }
-
-    hash GetId() const
-    {
-        ENTITY_VERIFY(this);
-        return GameEntity->Id;
-    }
-
-    hash GetProtoId() const
-    {
-        ENTITY_VERIFY(this);
-        return GameEntity->GetProtoId();
-    }
-
-    bool IsDestroyed() const
-    {
-        // May call on destroyed entity
-        return GameEntity->IsDestroyed;
-    }
-
-    bool IsDestroying() const
-    {
-        // May call on destroyed entity
-        return GameEntity->IsDestroying;
-    }
-
-#else
-    explicit ASBaseEntity(Entity* entity) { }
-    ~ASBaseEntity() = default;
-    void AddRef() { }
-    void Release() { }
-    uint GetId() { return 0u; }
-    hash GetProtoId() { return 0u; }
-    bool IsDestroyed() { return false; }
-    bool IsDestroying() { return false; }
-#endif
-
-    Entity* GameEntity {};
-    FOEngine* GameEngine {};
-    int RefCounter {1};
-};
+static auto Entity_IsDestroying(BaseEntity* self) -> bool
+{
+    // May call on destroyed entity
+    return self->IsDestroying;
+}
 
 ///@ CodeGen Global
 
 template<class T>
-static ASBaseEntity* EntityDownCast(T* a)
+static BaseEntity* EntityDownCast(T* a)
 {
-    if (!a) {
+    if (a == nullptr) {
         return nullptr;
     }
 
-    auto* b = static_cast<ASBaseEntity*>(a);
+    auto* b = static_cast<BaseEntity*>(a);
     b->AddRef();
+
     return b;
 }
 
 template<class T>
-static T* EntityUpCast(ASBaseEntity* a)
+static T* EntityUpCast(BaseEntity* a)
 {
-    if (!a) {
+    if (a == nullptr) {
         return nullptr;
     }
 
-#define CHECK_CAST(cast_class, entity_type) \
-    if constexpr (std::is_same<T, cast_class>::value) { \
-        if (a->GameEntity->Type == (entity_type)) { \
-            auto* b = static_cast<T*>(a); \
-            b->AddRef(); \
-            return b; \
-        } \
+    auto* b = dynamic_cast<T*>(a);
+    if (b != nullptr) {
+        b->AddRef();
     }
 
-    ///@ CodeGen EntityCasts
-
-#undef CHECK_CAST
-
-    return nullptr;
+    return b;
 }
 
 static const string ContextStatesStr[] = {
@@ -535,10 +499,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(real_class, AddRef), SCRIPT_METHOD_CONV)); \
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(real_class, Release), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_METHOD(real_class, GetProtoId), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hash get_ProtoId() const", SCRIPT_METHOD(real_class, GetProtoId), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_METHOD(real_class, IsDestroyed), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_METHOD(real_class, IsDestroying), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hash get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectProperty(class_name, "const int RefCounter", offsetof(real_class, RefCounter)))
 #define REGISTER_ENTITY_CAST(class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
@@ -546,7 +510,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
-    REGISTER_ENTITY("Entity", ASBaseEntity);
+    REGISTER_ENTITY("Entity", BaseEntity);
 
     ///@ CodeGen Register
 

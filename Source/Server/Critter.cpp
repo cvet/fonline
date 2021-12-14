@@ -37,13 +37,14 @@
 #include "Map.h"
 #include "MapManager.h"
 #include "Player.h"
+#include "Server.h"
 #include "Settings.h"
 
 PROPERTIES_IMPL(Critter, "Critter", true);
 #define CRITTER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Critter, access, type, name)
 #include "Properties-Include.h"
 
-Critter::Critter(uint id, Player* owner, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Entity(id, EntityType::Critter, PropertiesRegistrator, proto), _player {owner}, _settings {settings}, _geomHelper(_settings), _scriptSys {script_sys}, _gameTime {game_time}
+Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, EntityType::Critter, PropertiesRegistrator, proto), _player {owner}
 {
     if (_player != nullptr) {
         _player->AddRef();
@@ -61,13 +62,13 @@ Critter::~Critter()
 
 auto Critter::GetOfflineTime() const -> uint
 {
-    return _playerDetached ? _gameTime.FrameTick() - _playerDetachTick : 0u;
+    return _playerDetached ? _engine->GameTime.FrameTick() - _playerDetachTick : 0u;
 }
 
 auto Critter::GetAttackDist(Item* weap, uchar use) -> uint
 {
     uint dist = 1;
-    _scriptSys.CritterGetAttackDistantionEvent(this, weap, use, dist);
+    _engine->ScriptSys.CritterGetAttackDistantionEvent(this, weap, use, dist);
     return dist;
 }
 
@@ -109,7 +110,7 @@ void Critter::DetachPlayer()
     _player->Release();
     _player = nullptr;
     _playerDetached = true;
-    _playerDetachTick = _gameTime.FrameTick();
+    _playerDetachTick = _engine->GameTime.FrameTick();
 }
 
 void Critter::AttachPlayer(Player* owner)
@@ -174,7 +175,7 @@ auto Critter::GetCrFromVisCr(uchar find_type, bool vis_cr_self) -> vector<Critte
 auto Critter::GetGlobalMapCritter(uint cr_id) const -> Critter*
 {
     RUNTIME_ASSERT(GlobalMapGroup);
-    const auto it = std::find_if(GlobalMapGroup->begin(), GlobalMapGroup->end(), [&cr_id](Critter* other) { return other->Id == cr_id; });
+    const auto it = std::find_if(GlobalMapGroup->begin(), GlobalMapGroup->end(), [&cr_id](Critter* other) { return other->GetId() == cr_id; });
     return it != GlobalMapGroup->end() ? *it : nullptr;
 }
 
@@ -265,7 +266,7 @@ void Critter::SetItem(Item* item)
         item->SetCritSlot(0);
     }
     item->SetAccessory(ITEM_ACCESSORY_CRITTER);
-    item->SetCritId(Id);
+    item->SetCritId(GetId());
 }
 
 auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
@@ -391,7 +392,7 @@ auto Critter::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
     return true;
 }
 
-void Critter::Broadcast_Property(NetProperty::Type type, Property* prop, Entity* entity)
+void Critter::Broadcast_Property(NetProperty::Type type, Property* prop, ServerEntity* entity)
 {
     if (VisCr.empty()) {
         return;
@@ -525,10 +526,10 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
 
     auto dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _settings.ShoutDist + GetMultihex();
+        dist = _engine->Settings.ShoutDist + GetMultihex();
     }
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _settings.WhisperDist + GetMultihex();
+        dist = _engine->Settings.WhisperDist + GetMultihex();
     }
 
     for (auto* cr : to_cr) {
@@ -539,7 +540,7 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
         if (dist == -1) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
-        else if (_geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
     }
@@ -555,10 +556,10 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
 
     auto dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _settings.ShoutDist + GetMultihex();
+        dist = _engine->Settings.ShoutDist + GetMultihex();
     }
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _settings.WhisperDist + GetMultihex();
+        dist = _engine->Settings.WhisperDist + GetMultihex();
     }
 
     for (auto* cr : to_cr) {
@@ -569,7 +570,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
         if (dist == -1) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
-        else if (_geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
     }
@@ -585,10 +586,10 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
 
     auto dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _settings.ShoutDist + GetMultihex();
+        dist = _engine->Settings.ShoutDist + GetMultihex();
     }
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _settings.WhisperDist + GetMultihex();
+        dist = _engine->Settings.WhisperDist + GetMultihex();
     }
 
     for (auto* cr : to_cr) {
@@ -599,7 +600,7 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
         if (dist == -1) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
-        else if (_geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
     }
@@ -611,13 +612,13 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
     case MESSAGE_TO_VISIBLE_ME: {
         auto critters = VisCr;
         for (auto* cr : critters) {
-            _scriptSys.CritterMessageEvent(cr, this, num, val);
+            _engine->ScriptSys.CritterMessageEvent(cr, this, num, val);
         }
     } break;
     case MESSAGE_TO_IAM_VISIBLE: {
         auto critters = VisCrSelf;
         for (auto* cr : critters) {
-            _scriptSys.CritterMessageEvent(cr, this, num, val);
+            _engine->ScriptSys.CritterMessageEvent(cr, this, num, val);
         }
     } break;
     case MESSAGE_TO_ALL_ON_MAP: {
@@ -628,7 +629,7 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
 
         auto critters = map->GetCritters();
         for (auto* cr : critters) {
-            _scriptSys.CritterMessageEvent(cr, this, num, val);
+            _engine->ScriptSys.CritterMessageEvent(cr, this, num, val);
         }
     } break;
     default:
@@ -638,13 +639,13 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
 
 auto Critter::IsTransferTimeouts(bool send) -> bool
 {
-    if (GetTimeoutTransfer() > _gameTime.GetFullSecond()) {
+    if (GetTimeoutTransfer() > _engine->GameTime.GetFullSecond()) {
         if (send) {
             Send_TextMsg(this, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME);
         }
         return true;
     }
-    if (GetTimeoutBattle() > _gameTime.GetFullSecond()) {
+    if (GetTimeoutBattle() > _engine->GameTime.GetFullSecond()) {
         if (send) {
             Send_TextMsg(this, STR_TIMEOUT_BATTLE_WAIT, SAY_NETMSG, TEXTMSG_GAME);
         }
@@ -694,7 +695,7 @@ auto Critter::IsFreeToTalk() const -> bool
 {
     auto max_talkers = GetMaxTalkers();
     if (max_talkers == 0u) {
-        max_talkers = _settings.NpcMaxTalkers;
+        max_talkers = _engine->Settings.NpcMaxTalkers;
     }
 
     return GetTalkedPlayers() < max_talkers;
@@ -777,7 +778,7 @@ void Critter::ContinueTimeEvents(int offs_time)
     te_next_time->Release();*/
 }
 
-void Critter::Send_Property(NetProperty::Type type, Property* prop, Entity* entity)
+void Critter::Send_Property(NetProperty::Type type, Property* prop, ServerEntity* entity)
 {
     NON_CONST_METHOD_HINT();
 

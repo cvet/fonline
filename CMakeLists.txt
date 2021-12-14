@@ -1268,6 +1268,8 @@ set( FO_SERVER_SOURCE
 	"Source/Server/PropertiesSerializator.h"
 	"Source/Server/Server.cpp"
 	"Source/Server/Server.h"
+	"Source/Server/ServerEntity.cpp"
+	"Source/Server/ServerEntity.h"
 	"Source/Server/ServerScripting.h" )
 
 list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGui.cpp" )
@@ -1281,6 +1283,8 @@ set( FO_CLIENT_SOURCE
 	"Source/Client/3dStuff.h"
 	"Source/Client/Client.cpp"
 	"Source/Client/Client.h"
+	"Source/Client/ClientEntity.cpp"
+	"Source/Client/ClientEntity.h"
 	"Source/Client/ClientScripting.h"
 	"Source/Client/CritterView.cpp"
 	"Source/Client/CritterView.h"

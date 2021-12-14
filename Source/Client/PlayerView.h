@@ -34,13 +34,14 @@
 #pragma once
 
 #include "Common.h"
-#include "Entity.h"
 
-class PlayerView final : public Entity
+#include "ClientEntity.h"
+
+class PlayerView final : public ClientEntity
 {
 public:
     PlayerView() = delete;
-    PlayerView(uint id, const ProtoPlayer* proto);
+    PlayerView(FOClient* engine, uint id, const ProtoPlayer* proto);
     PlayerView(const PlayerView&) = delete;
     PlayerView(PlayerView&&) noexcept = delete;
     auto operator=(const PlayerView&) = delete;

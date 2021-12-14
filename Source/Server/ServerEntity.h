@@ -31,40 +31,44 @@
 // SOFTWARE.
 //
 
+#pragma once
+
 #include "Common.h"
 
-#include "Server.h"
-#include "ServerScripting.h"
+#include "Entity.h"
 
-// ReSharper disable CppInconsistentNaming
+class FOServer;
 
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] int Server_Player_GetAccess(Player* self)
+class ServerEntity : public Entity
 {
-    return self->Access;
-}
+public:
+    ServerEntity() = delete;
+    ServerEntity(const ServerEntity&) = delete;
+    ServerEntity(ServerEntity&&) noexcept = delete;
+    auto operator=(const ServerEntity&) = delete;
+    auto operator=(ServerEntity&&) noexcept = delete;
+    ~ServerEntity() override = default;
 
-///# ...
-///# param access ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Player_SetAccess(Player* self, int access)
+    [[nodiscard]] auto GetId() const -> uint;
+    [[nodiscard]] auto GetEngine() -> FOServer*;
+
+    void SetId(uint id);
+
+protected:
+    ServerEntity(FOServer* engine, uint id, EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto);
+
+    FOServer* _engine;
+
+private:
+    uint _id;
+};
+
+class ServerGlobals final : public ServerEntity
 {
-    if (access < ACCESS_CLIENT || access > ACCESS_ADMIN) {
-        throw ScriptException("Wrong access type");
-    }
+public:
+    explicit ServerGlobals(FOServer* engine);
 
-    if (access == self->Access) {
-        return true;
-    }
-
-    string pass;
-    const auto allow = self->GetEngine()->ScriptSys.PlayerGetAccessEvent(self, access, pass);
-    if (allow) {
-        self->Access = static_cast<uchar>(access);
-    }
-
-    return allow;
-}
+    PROPERTIES_HEADER();
+#define GLOBAL_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
+};

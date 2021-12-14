@@ -41,7 +41,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Location_GetMapCount([[maybe_unused]] FOServer* server, Location* self)
+[[maybe_unused]] uint Server_Location_GetMapCount(Location* self)
 {
     return self->GetMapsCount();
 }
@@ -50,7 +50,7 @@
 ///# param mapPid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Location_GetMap([[maybe_unused]] FOServer* server, Location* self, hash mapPid)
+[[maybe_unused]] Map* Server_Location_GetMap(Location* self, hash mapPid)
 {
     for (auto* map : self->GetMaps()) {
         if (map->GetProtoId() == mapPid) {
@@ -64,7 +64,7 @@
 ///# param index ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Location_GetMapByIndex([[maybe_unused]] FOServer* server, Location* self, uint index)
+[[maybe_unused]] Map* Server_Location_GetMapByIndex(Location* self, uint index)
 {
     auto maps = self->GetMaps();
     if (index >= maps.size()) {
@@ -77,7 +77,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Map*> Server_Location_GetMaps([[maybe_unused]] FOServer* server, Location* self)
+[[maybe_unused]] vector<Map*> Server_Location_GetMaps(Location* self)
 {
     return self->GetMaps();
 }
@@ -88,7 +88,7 @@
 ///# param entrance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Location_GetEntrance([[maybe_unused]] FOServer* server, Location* self, uint entranceIndex, uint& mapIndex, hash& entrance)
+[[maybe_unused]] void Server_Location_GetEntrance(Location* self, uint entranceIndex, uint& mapIndex, hash& entrance)
 {
     const auto map_entrances = self->GetMapEntrances();
     const auto count = static_cast<uint>(map_entrances.size()) / 2u;
@@ -105,7 +105,7 @@
 ///# param entrances ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Location_GetEntrances([[maybe_unused]] FOServer* server, Location* self, vector<int>& mapsIndex, vector<hash>& entrances)
+[[maybe_unused]] uint Server_Location_GetEntrances(Location* self, vector<int>& mapsIndex, vector<hash>& entrances)
 {
     auto map_entrances = self->GetMapEntrances();
     const auto count = static_cast<uint>(map_entrances.size()) / 2u;
@@ -123,9 +123,9 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Location_Regenerate([[maybe_unused]] FOServer* server, Location* self)
+[[maybe_unused]] void Server_Location_Regenerate(Location* self)
 {
     for (auto* map : self->GetMaps()) {
-        server->MapMngr.RegenerateMap(map);
+        self->GetEngine()->MapMngr.RegenerateMap(map);
     }
 }

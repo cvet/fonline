@@ -36,21 +36,17 @@
 #include "Common.h"
 
 #include "ClientConnection.h"
-#include "Dialogs.h"
-#include "Entity.h"
-#include "GeometryHelper.h"
+#include "ServerEntity.h"
 #include "ServerScripting.h"
-#include "Settings.h"
-#include "Timer.h"
 
 class Critter;
 class MapManager;
 
-class Player final : public Entity
+class Player final : public ServerEntity
 {
 public:
     Player() = delete;
-    Player(uint id, ClientConnection* connection, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Player(FOServer* engine, uint id, ClientConnection* connection, const ProtoCritter* proto);
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
@@ -65,7 +61,7 @@ public:
     [[nodiscard]] auto GetOwnedCritter() const -> const Critter* { return _ownedCr; }
     [[nodiscard]] auto GetOwnedCritter() -> Critter* { return _ownedCr; }
 
-    void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
+    void Send_Property(NetProperty::Type type, Property* prop, ServerEntity* entity);
 
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
@@ -124,9 +120,6 @@ public:
 #include "Properties-Include.h"
 
 private:
-    CritterSettings& _settings;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
     Critter* _ownedCr {}; // Todo: allow attach many critters to sigle player
     uint _talkNextTick {};
 };

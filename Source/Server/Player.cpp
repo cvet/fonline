@@ -35,23 +35,20 @@
 #include "Critter.h"
 #include "CritterManager.h"
 #include "Item.h"
-#include "ItemManager.h"
 #include "Location.h"
-#include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
-#include "ProtoManager.h"
+#include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
 PROPERTIES_IMPL(Player, "Player", true);
 #define PLAYER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Player, access, type, name)
 #include "Properties-Include.h"
 
-Player::Player(uint id, ClientConnection* connection, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Entity(id, EntityType::Player, PropertiesRegistrator, proto), _settings {settings}, _scriptSys {script_sys}, _gameTime {game_time}
+Player::Player(FOServer* engine, uint id, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, EntityType::Player, PropertiesRegistrator, proto)
 {
     Connection = connection;
-    _talkNextTick = _gameTime.GameTick() + PROCESS_TALK_TICK;
+    _talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
 }
 
 Player::~Player()
@@ -207,7 +204,7 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     IsTransferring = true;
 }
 
-void Player::Send_Property(NetProperty::Type type, Property* prop, Entity* entity)
+void Player::Send_Property(NetProperty::Type type, Property* prop, ServerEntity* entity)
 {
     NON_CONST_METHOD_HINT();
 
@@ -256,16 +253,16 @@ void Player::Send_Property(NetProperty::Type type, Property* prop, Entity* entit
     switch (type) {
     case NetProperty::CritterItem:
         Connection->Bout << dynamic_cast<Item*>(entity)->GetCritId();
-        Connection->Bout << entity->Id;
+        Connection->Bout << entity->GetId();
         break;
     case NetProperty::Critter:
-        Connection->Bout << entity->Id;
+        Connection->Bout << entity->GetId();
         break;
     case NetProperty::MapItem:
-        Connection->Bout << entity->Id;
+        Connection->Bout << entity->GetId();
         break;
     case NetProperty::ChosenItem:
-        Connection->Bout << entity->Id;
+        Connection->Bout << entity->GetId();
         break;
     default:
         break;
@@ -355,7 +352,7 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     items.reserve(inv.size());
     for (auto* item_ : inv) {
         const auto slot = item_->GetCritSlot();
-        if (slot < _settings.CritterSlotEnabled.size() && _settings.CritterSlotEnabled[slot] && slot < _settings.CritterSlotSendData.size() && _settings.CritterSlotSendData[slot]) {
+        if (slot < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[slot] && slot < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[slot]) {
             items.push_back(item_);
         }
     }
@@ -746,7 +743,7 @@ void Player::Send_Talk()
 
         auto talk_time = _ownedCr->_talk.TalkTime;
         if (talk_time != 0u) {
-            const auto diff = _gameTime.GameTick() - _ownedCr->_talk.StartTick;
+            const auto diff = _engine->GameTime.GameTick() - _ownedCr->_talk.StartTick;
             talk_time = diff < talk_time ? talk_time - diff : 1;
         }
 
@@ -1008,7 +1005,7 @@ void Player::Send_CombatResult(uint* combat_res, uint len)
     if (IsSendDisabled()) {
         return;
     }
-    if (combat_res == nullptr || len > _settings.FloodSize / sizeof(uint)) {
+    if (combat_res == nullptr || len > _engine->Settings.FloodSize / sizeof(uint)) {
         return;
     }
 

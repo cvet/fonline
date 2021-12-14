@@ -41,7 +41,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_IsChosen([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsChosen(CritterView* self)
 {
     return self->IsChosen();
 }
@@ -49,7 +49,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsPlayer([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsPlayer(CritterView* self)
 {
     return self->IsPlayer();
 }
@@ -57,7 +57,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_IsNpc([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsNpc(CritterView* self)
 {
     return self->IsNpc();
 }
@@ -65,7 +65,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsOffline([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsOffline(CritterView* self)
 {
     return self->IsOffline();
 }
@@ -73,7 +73,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsAlive([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsAlive(CritterView* self)
 {
     return self->IsAlive();
 }
@@ -81,7 +81,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsKnockout([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsKnockout(CritterView* self)
 {
     return self->IsKnockout();
 }
@@ -89,7 +89,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsDead([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsDead(CritterView* self)
 {
     return self->IsDead();
 }
@@ -97,7 +97,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsFree([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsFree(CritterView* self)
 {
     return self->IsFree();
 }
@@ -105,7 +105,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsBusy([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsBusy(CritterView* self)
 {
     return !self->IsFree();
 }
@@ -113,7 +113,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_IsModel([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsModel(CritterView* self)
 {
     return self->IsModel();
 }
@@ -123,7 +123,7 @@
 ///# param anim2 ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_IsAnimAvailable([[maybe_unused]] FOClient* client, CritterView* self, uint anim1, uint anim2)
+[[maybe_unused]] bool Client_Critter_IsAnimAvailable(CritterView* self, uint anim1, uint anim2)
 {
     return self->IsAnimAvailable(anim1, anim2);
 }
@@ -131,7 +131,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_IsAnimPlaying([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsAnimPlaying(CritterView* self)
 {
     return self->IsAnim();
 }
@@ -139,7 +139,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Critter_GetAnim1([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] uint Client_Critter_GetAnim1(CritterView* self)
 {
     return self->GetAnim1();
 }
@@ -148,7 +148,7 @@
 ///# param anim1 ...
 ///# param anim2 ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_Animate([[maybe_unused]] FOClient* client, CritterView* self, uint anim1, uint anim2)
+[[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2)
 {
     self->Animate(anim1, anim2, nullptr);
 }
@@ -158,14 +158,14 @@
 ///# param anim2 ...
 ///# param actionItem ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_AnimateExt([[maybe_unused]] FOClient* client, CritterView* self, uint anim1, uint anim2, ItemView* actionItem)
+[[maybe_unused]] void Client_Critter_AnimateExt(CritterView* self, uint anim1, uint anim2, ItemView* actionItem)
 {
     self->Animate(anim1, anim2, actionItem);
 }
 
 ///# ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_StopAnim([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] void Client_Critter_StopAnim(CritterView* self)
 {
     self->ClearAnim();
 }
@@ -173,7 +173,7 @@
 ///# ...
 ///# param ms ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Critter_Wait([[maybe_unused]] FOClient* client, CritterView* self, uint ms)
+[[maybe_unused]] void Client_Critter_Wait(CritterView* self, uint ms)
 {
     self->TickStart(ms);
 }
@@ -182,7 +182,7 @@
 ///# param protoId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Critter_CountItem([[maybe_unused]] FOClient* client, CritterView* self, hash protoId)
+[[maybe_unused]] uint Client_Critter_CountItem(CritterView* self, hash protoId)
 {
     return self->CountItemPid(protoId);
 }
@@ -191,7 +191,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItem([[maybe_unused]] FOClient* client, CritterView* self, uint itemId)
+[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, uint itemId)
 {
     return self->GetItem(itemId);
 }
@@ -200,7 +200,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItemByPredicate([[maybe_unused]] FOClient* client, CritterView* self, const std::function<bool(ItemView*)>& predicate)
+[[maybe_unused]] ItemView* Client_Critter_GetItemByPredicate(CritterView* self, const std::function<bool(ItemView*)>& predicate)
 {
     auto inv_items = self->InvItems;
     for (auto* item : inv_items) {
@@ -215,7 +215,7 @@
 ///# param slot ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItemBySlot([[maybe_unused]] FOClient* client, CritterView* self, int slot)
+[[maybe_unused]] ItemView* Client_Critter_GetItemBySlot(CritterView* self, int slot)
 {
     return self->GetItemSlot(slot);
 }
@@ -224,9 +224,9 @@
 ///# param protoId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItemByPid([[maybe_unused]] FOClient* client, CritterView* self, hash protoId)
+[[maybe_unused]] ItemView* Client_Critter_GetItemByPid(CritterView* self, hash protoId)
 {
-    const auto* proto_item = client->ProtoMngr.GetProtoItem(protoId);
+    const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
     if (!proto_item) {
         return static_cast<ItemView*>(nullptr);
     }
@@ -257,7 +257,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Critter_GetItems([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 {
     return self->InvItems;
 }
@@ -266,7 +266,7 @@
 ///# param slot ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Critter_GetItemsBySlot([[maybe_unused]] FOClient* client, CritterView* self, int slot)
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItemsBySlot(CritterView* self, int slot)
 {
     return self->GetItemsSlot(slot);
 }
@@ -275,7 +275,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Critter_GetItemsByPredicate([[maybe_unused]] FOClient* client, CritterView* self, const std::function<bool(ItemView*)>& predicate)
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItemsByPredicate(CritterView* self, const std::function<bool(ItemView*)>& predicate)
 {
     auto inv_items = self->InvItems;
     vector<ItemView*> items;
@@ -291,16 +291,16 @@
 ///# ...
 ///# param visible ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_SetVisibility([[maybe_unused]] FOClient* client, CritterView* self, bool visible)
+[[maybe_unused]] void Client_Critter_SetVisibility(CritterView* self, bool visible)
 {
     self->Visible = visible;
-    client->HexMngr.RefreshMap();
+    self->GetEngine()->HexMngr.RefreshMap();
 }
 
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_GetVisibility([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] bool Client_Critter_GetVisibility(CritterView* self)
 {
     return self->Visible;
 }
@@ -308,7 +308,7 @@
 ///# ...
 ///# param value ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_SetContourColor([[maybe_unused]] FOClient* client, CritterView* self, uint value)
+[[maybe_unused]] void Client_Critter_SetContourColor(CritterView* self, uint value)
 {
     if (self->SprDrawValid) {
         self->SprDraw->SetContour(self->SprDraw->ContourType, value);
@@ -320,7 +320,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Critter_GetContourColor([[maybe_unused]] FOClient* client, CritterView* self)
+[[maybe_unused]] uint Client_Critter_GetContourColor(CritterView* self)
 {
     return self->ContourColor;
 }
@@ -333,7 +333,7 @@
 ///# param h ...
 ///# param lines ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_GetNameTextInfo([[maybe_unused]] FOClient* client, CritterView* self, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines)
+[[maybe_unused]] void Client_Critter_GetNameTextInfo(CritterView* self, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines)
 {
     self->GetNameTextInfo(nameVisible, x, y, w, h, lines);
 }
@@ -344,7 +344,7 @@
 ///# param normalizedTime ...
 ///# param animCallback ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_AddAnimCallback([[maybe_unused]] FOClient* client, CritterView* self, uint anim1, uint anim2, float normalizedTime, const std::function<void(CritterView*)>& animCallback)
+[[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, uint anim1, uint anim2, float normalizedTime, const std::function<void(CritterView*)>& animCallback)
 {
     if (!self->IsModel()) {
         throw ScriptException("Critter is not 3D model");
@@ -366,7 +366,7 @@
 ///# param boneY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_GetBonePos([[maybe_unused]] FOClient* client, CritterView* self, hash boneName, int& boneX, int& boneY)
+[[maybe_unused]] bool Client_Critter_GetBonePos(CritterView* self, hash boneName, int& boneX, int& boneY)
 {
     if (!self->IsModel()) {
         throw ScriptException("Critter is not 3d");

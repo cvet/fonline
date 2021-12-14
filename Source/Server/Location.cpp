@@ -40,7 +40,7 @@ PROPERTIES_IMPL(Location, "Location", true);
 #define LOCATION_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Location, access, type, name)
 #include "Properties-Include.h"
 
-Location::Location(uint id, const ProtoLocation* proto, ServerScriptSystem& script_sys) : Entity(id, EntityType::Location, PropertiesRegistrator, proto), _scriptSys {script_sys}
+Location::Location(FOServer* engine, uint id, const ProtoLocation* proto) : ServerEntity(engine, id, EntityType::Location, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(proto);
 }

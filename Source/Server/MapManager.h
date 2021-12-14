@@ -50,6 +50,7 @@ static constexpr auto FPATH_MAX_PATH = 400;
 
 DECLARE_EXCEPTION(MapManagerException);
 
+class FOServer;
 class ProtoManager;
 class EntityManager;
 class ItemManager;
@@ -132,7 +133,7 @@ class MapManager final
 {
 public:
     MapManager() = delete;
-    MapManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time);
+    explicit MapManager(FOServer* engine);
     MapManager(const MapManager&) = delete;
     MapManager(MapManager&&) noexcept = delete;
     auto operator=(const MapManager&) = delete;
@@ -187,14 +188,7 @@ private:
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 
-    ServerSettings& _settings;
-    GeometryHelper _geomHelper;
-    ProtoManager& _protoMngr;
-    EntityManager& _entityMngr;
-    CritterManager& _crMngr;
-    ItemManager& _itemMngr;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
+    FOServer* _engine;
     bool _runGarbager {true};
     bool _smoothSwitcher {};
     map<const ProtoMap*, StaticMap> _staticMaps {};

@@ -35,12 +35,9 @@
 
 #include "Common.h"
 
-#include "Entity.h"
-#include "GeometryHelper.h"
 #include "MapLoader.h"
+#include "ServerEntity.h"
 #include "ServerScripting.h"
-#include "Settings.h"
-#include "Timer.h"
 
 class Item;
 class Critter;
@@ -62,13 +59,13 @@ struct StaticMap
     vector<MapTile> Tiles {};
 };
 
-class Map final : public Entity
+class Map final : public ServerEntity
 {
     friend class MapManager;
 
 public:
     Map() = delete;
-    Map(uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map, MapSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map);
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;
@@ -78,6 +75,7 @@ public:
     [[nodiscard]] auto GetStaticMap() const -> const StaticMap* { return _staticMap; }
     [[nodiscard]] auto GetProtoMap() const -> const ProtoMap*;
     [[nodiscard]] auto GetLocation() -> Location*;
+    [[nodiscard]] auto GetLocation() const -> const Location*;
     [[nodiscard]] auto GetItem(uint item_id) -> Item*;
     [[nodiscard]] auto GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(ushort hx, ushort hy) -> Item*;
@@ -132,7 +130,7 @@ public:
     auto AddItem(Item* item, ushort hx, ushort hy) -> bool;
     void SetItem(Item* item, ushort hx, ushort hy);
     void EraseItem(uint item_id);
-    void SendProperty(NetProperty::Type type, Property* prop, Entity* entity);
+    void SendProperty(NetProperty::Type type, Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
     void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
     void SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius);
@@ -149,10 +147,6 @@ public:
 #include "Properties-Include.h"
 
 private:
-    MapSettings& _settings;
-    GeometryHelper _geomHelper;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
     const StaticMap* _staticMap {};
     uchar* _hexFlags {};
     int _hexFlagsSize {};

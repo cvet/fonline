@@ -55,6 +55,8 @@
 
 static constexpr int MAX_FIND_PATH = 600;
 
+class FOClient;
+
 struct ViewField
 {
     int HexX {};
@@ -157,7 +159,7 @@ public:
     };
 
     HexManager() = delete;
-    HexManager(bool mapper_mode, HexSettings& settings, ProtoManager& proto_mngr, SpriteManager& spr_mngr, EffectManager& effect_mngr, ResourceManager& res_mngr, ClientScriptSystem& script_sys, GameTimer& game_time);
+    explicit HexManager(FOClient* engine);
     HexManager(const HexManager&) = delete;
     HexManager(HexManager&&) noexcept = delete;
     auto operator=(const HexManager&) = delete;
@@ -177,6 +179,8 @@ public:
     [[nodiscard]] auto GetMapDayTime() -> int*;
     [[nodiscard]] auto GetMapDayColor() -> uchar*;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
+
+    void EnableMapperMode();
 
     auto FindPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool;
     auto CutPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
@@ -308,14 +312,7 @@ private:
     void RealRebuildLight();
     void CollectLightSources();
 
-    HexSettings& _settings;
-    GeometryHelper _geomHelper;
-    ProtoManager& _protoMngr;
-    SpriteManager& _sprMngr;
-    EffectManager& _effectMngr;
-    ResourceManager& _resMngr;
-    ClientScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
+    FOClient* _engine;
     SpriteVec _spritesPool {};
     Sprites _mainTree;
     Sprites _tilesTree;

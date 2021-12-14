@@ -45,6 +45,7 @@
 #include "Settings.h"
 #include "Timer.h"
 
+class FOServer;
 class ProtoManager;
 class EntityManager;
 class MapManager;
@@ -54,7 +55,7 @@ class CritterManager final
 {
 public:
     CritterManager() = delete;
-    CritterManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time);
+    explicit CritterManager(FOServer* engine);
     CritterManager(const CritterManager&) = delete;
     CritterManager(CritterManager&&) noexcept = delete;
     auto operator=(const CritterManager&) = delete;
@@ -86,13 +87,6 @@ public:
     void CloseTalk(Critter* cr);
 
 private:
-    ServerSettings& _settings;
-    GeometryHelper _geomHelper;
-    ProtoManager& _protoMngr;
-    EntityManager& _entityMngr;
-    MapManager& _mapMngr;
-    ItemManager& _itemMngr;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
+    FOServer* _engine;
     bool _nonConstHelper {};
 };

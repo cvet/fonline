@@ -69,7 +69,6 @@ enum class EntityType
     CritterView,
     MapView,
     LocationView,
-    Custom,
     Global,
     Max,
 };
@@ -81,20 +80,17 @@ class Entity
 public:
     Entity() = delete;
     Entity(const Entity&) = delete;
-    Entity(Entity&&) noexcept = default;
+    Entity(Entity&&) noexcept = delete;
     auto operator=(const Entity&) = delete;
     auto operator=(Entity&&) noexcept = delete;
 
-    [[nodiscard]] auto GetId() const -> uint;
     [[nodiscard]] auto GetProtoId() const -> hash;
     [[nodiscard]] auto GetName() const -> string;
 
-    void SetId(uint id); // Todo: use passkey for SetId
     void AddRef() const;
     void Release() const;
 
     Properties Props;
-    const uint Id;
     const EntityType Type;
     const ProtoEntity* Proto;
     mutable int RefCounter {1};
@@ -102,12 +98,11 @@ public:
     bool IsDestroying {};
 
     // Scripting handles
-    void* AngelScriptObj {};
     void* MonoObj {};
     void* NativeObj {};
 
 protected:
-    Entity(uint id, EntityType type, PropertyRegistrator* registartor, const ProtoEntity* proto);
+    Entity(EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto);
     virtual ~Entity();
 
     bool _nonConstHelper {};
@@ -126,24 +121,6 @@ public:
 
 protected:
     ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator);
-};
-
-class CustomEntity final : public Entity
-{
-public:
-    CustomEntity(uint id, uint sub_type, PropertyRegistrator* registrator);
-
-    const uint SubType;
-};
-
-class GlobalVars final : public Entity
-{
-public:
-    GlobalVars();
-
-    PROPERTIES_HEADER();
-#define GLOBAL_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
 };
 
 class ProtoPlayer final : public ProtoEntity

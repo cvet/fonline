@@ -38,7 +38,7 @@ PROPERTIES_IMPL(ItemView, "Item", false);
 #define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(ItemView, access, type, name)
 #include "Properties-Include.h"
 
-ItemView::ItemView(uint id, const ProtoItem* proto) : Entity(id, EntityType::ItemView, PropertiesRegistrator, proto)
+ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, EntityType::ItemView, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(Proto);
     RUNTIME_ASSERT(GetCount() > 0);
@@ -46,7 +46,7 @@ ItemView::ItemView(uint id, const ProtoItem* proto) : Entity(id, EntityType::Ite
 
 auto ItemView::Clone() const -> ItemView*
 {
-    auto* clone = new ItemView(Id, dynamic_cast<const ProtoItem*>(Proto));
+    auto* clone = new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(Proto));
     clone->Props = Props;
     return clone;
 }

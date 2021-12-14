@@ -763,10 +763,10 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
         (data_vec).resize(data_count_); \
         for (ushort i_ = 0; i_ < data_count_; i_++) { \
             uint data_size_; \
-            Bin >> data_size_; \
+            (bin) >> data_size_; \
             (data_vec)[i_].resize(data_size_); \
             if (data_size_ > 0u) { \
-                Bin.Pop(&(data_vec)[i_][0], data_size_); \
+                (bin).Pop(&(data_vec)[i_][0], data_size_); \
             } \
         } \
     } while (0)

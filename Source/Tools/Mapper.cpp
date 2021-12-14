@@ -43,19 +43,21 @@
 #include "sha1.h"
 #include "sha2.h"
 
-FOMapper::FOMapper(GlobalSettings& settings) : Settings {settings}, GameTime(Settings), ProtoMngr(FileMngr), GeomHelper(Settings), IfaceIni(""), ScriptSys(this, settings, FileMngr), Cache("Data/Cache.fobin"), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, ScriptSys, GameTime), ResMngr(FileMngr, SprMngr, ScriptSys), HexMngr(true, Settings, ProtoMngr, SprMngr, EffectMngr, ResMngr, ScriptSys, GameTime), Keyb(Settings, SprMngr)
+FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings), SettingsExt {settings}, IfaceIni(""), ScriptSysExt(this, settings, FileMngr)
 {
+    HexMngr.EnableMapperMode();
+
     Animations.resize(10000);
 
     // Mouse
     const auto [w, h] = SprMngr.GetWindowSize();
     const auto [x, y] = SprMngr.GetMousePosition();
-    Settings.MouseX = std::clamp(x, 0, w - 1);
-    Settings.MouseY = std::clamp(y, 0, h - 1);
+    SettingsExt.MouseX = std::clamp(x, 0, w - 1);
+    SettingsExt.MouseY = std::clamp(y, 0, h - 1);
 
     // Setup write paths
-    ServerWritePath = Settings.ServerDir;
-    ClientWritePath = Settings.WorkDir;
+    ServerWritePath = SettingsExt.ServerDir;
+    ClientWritePath = SettingsExt.WorkDir;
 
     // Resources
     FileMngr.AddDataSource("$Basic", false);
@@ -83,7 +85,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : Settings {settings}, GameTime(Set
     RUNTIME_ASSERT(init_face_ok);
 
     // Language Packs
-    CurLang.LoadFromFiles(FileMngr, Settings.Language);
+    CurLang.LoadFromFiles(FileMngr, SettingsExt.Language);
 
     // Prototypes
     // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileMngr);
@@ -134,15 +136,15 @@ FOMapper::FOMapper(GlobalSettings& settings) : Settings {settings}, GameTime(Set
     HexMngr.SwitchShowTrack();
     ChangeGameTime();
 
-    if (!Settings.StartMap.empty()) {
-        const auto map_name = Settings.StartMap;
+    if (!SettingsExt.StartMap.empty()) {
+        const auto map_name = SettingsExt.StartMap;
         auto* pmap = new ProtoMap(_str(map_name).toHash());
         const bool initialized = 0;
         // pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
 
         if (initialized && HexMngr.SetProtoMap(*pmap)) {
-            auto hexX = Settings.StartHexX;
-            auto hexY = Settings.StartHexY;
+            auto hexX = SettingsExt.StartHexX;
+            auto hexY = SettingsExt.StartHexY;
             if (hexX < 0 || hexX >= pmap->GetWidth()) {
                 hexX = pmap->GetWorkHexX();
             }
@@ -151,7 +153,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : Settings {settings}, GameTime(Set
             }
             HexMngr.FindSetCenter(hexX, hexY);
 
-            auto* map = new MapView(0, pmap);
+            auto* map = new MapView(this, 0, pmap);
             ActiveMap = map;
             LoadedMaps.push_back(map);
             RunMapLoadScript(map);
@@ -179,7 +181,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : Settings {settings}, GameTime(Set
         prev = pos + 1;
     }
     ConsoleHistory = _str(history_str).normalizeLineEndings().split('\n');
-    while (ConsoleHistory.size() > Settings.ConsoleHistorySize) {
+    while (ConsoleHistory.size() > SettingsExt.ConsoleHistorySize) {
         ConsoleHistory.erase(ConsoleHistory.begin());
     }
     ConsoleHistoryCur = static_cast<int>(ConsoleHistory.size());
@@ -203,10 +205,10 @@ auto FOMapper::InitIface() -> int
 
     IfaceLoadRect(IntWMain, "IntMain");
     if (IntX == -1) {
-        IntX = (Settings.ScreenWidth - IntWMain.Width()) / 2;
+        IntX = (SettingsExt.ScreenWidth - IntWMain.Width()) / 2;
     }
     if (IntY == -1) {
-        IntY = Settings.ScreenHeight - IntWMain.Height();
+        IntY = SettingsExt.ScreenHeight - IntWMain.Height();
     }
 
     IfaceLoadRect(IntWWork, "IntWork");
@@ -561,10 +563,10 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         }
 
         // Disable keyboard events
-        if (!script_result || Settings.DisableKeyboardEvents)
+        if (!script_result || SettingsExt.DisableKeyboardEvents)
         {
             if (dikdw == KeyCode::Escape && Keyb.ShiftDwn)
-                Settings.Quit = true;
+                SettingsExt.Quit = true;
             continue;
         }
 
@@ -588,34 +590,34 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             switch (dikdw)
             {
             case KeyCode::F1:
-                Settings.ShowItem = !Settings.ShowItem;
+                SettingsExt.ShowItem = !SettingsExt.ShowItem;
                 HexMngr.RefreshMap();
                 break;
             case KeyCode::F2:
-                Settings.ShowScen = !Settings.ShowScen;
+                SettingsExt.ShowScen = !SettingsExt.ShowScen;
                 HexMngr.RefreshMap();
                 break;
             case KeyCode::F3:
-                Settings.ShowWall = !Settings.ShowWall;
+                SettingsExt.ShowWall = !SettingsExt.ShowWall;
                 HexMngr.RefreshMap();
                 break;
             case KeyCode::F4:
-                Settings.ShowCrit = !Settings.ShowCrit;
+                SettingsExt.ShowCrit = !SettingsExt.ShowCrit;
                 HexMngr.RefreshMap();
                 break;
             case KeyCode::F5:
-                Settings.ShowTile = !Settings.ShowTile;
+                SettingsExt.ShowTile = !SettingsExt.ShowTile;
                 HexMngr.RefreshMap();
                 break;
             case KeyCode::F6:
-                Settings.ShowFast = !Settings.ShowFast;
+                SettingsExt.ShowFast = !SettingsExt.ShowFast;
                 HexMngr.RefreshMap();
                 break;
             case KeyCode::F7:
                 IntVisible = !IntVisible;
                 break;
             case KeyCode::F8:
-                Settings.MouseScroll = !Settings.MouseScroll;
+                SettingsExt.MouseScroll = !SettingsExt.MouseScroll;
                 break;
             case KeyCode::F9:
                 ObjVisible = !ObjVisible;
@@ -626,15 +628,15 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
 
             // Fullscreen
             case KeyCode::F11:
-                if (!Settings.FullScreen)
+                if (!SettingsExt.FullScreen)
                 {
                     if (SprMngr.EnableFullscreen())
-                        Settings.FullScreen = true;
+                        SettingsExt.FullScreen = true;
                 }
                 else
                 {
                     if (SprMngr.DisableFullscreen())
-                        Settings.FullScreen = false;
+                        SettingsExt.FullScreen = false;
                 }
                 SprMngr.RefreshViewport();
                 continue;
@@ -765,16 +767,16 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                 }
                 break;
             case KeyCode::D:
-                Settings.ScrollCheck = !Settings.ScrollCheck;
+                SettingsExt.ScrollCheck = !SettingsExt.ScrollCheck;
                 break;
             case KeyCode::B:
                 HexMngr.MarkPassedHexes();
                 break;
             case KeyCode::Q:
-                Settings.ShowCorners = !Settings.ShowCorners;
+                SettingsExt.ShowCorners = !SettingsExt.ShowCorners;
                 break;
             case KeyCode::E:
-                Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
+                SettingsExt.ShowDrawOrder = !SettingsExt.ShowDrawOrder;
                 break;
             case KeyCode::M:
                 DrawCrExtInfo++;
@@ -804,16 +806,16 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                     switch (dikdw)
                     {
                     case KeyCode::Left:
-                        Settings.ScrollKeybLeft = true;
+                        SettingsExt.ScrollKeybLeft = true;
                         break;
                     case KeyCode::Right:
-                        Settings.ScrollKeybRight = true;
+                        SettingsExt.ScrollKeybRight = true;
                         break;
                     case KeyCode::Up:
-                        Settings.ScrollKeybUp = true;
+                        SettingsExt.ScrollKeybUp = true;
                         break;
                     case KeyCode::Down:
-                        Settings.ScrollKeybDown = true;
+                        SettingsExt.ScrollKeybDown = true;
                         break;
                     default:
                         break;
@@ -830,16 +832,16 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             switch (dikup)
             {
             case KeyCode::Left:
-                Settings.ScrollKeybLeft = false;
+                SettingsExt.ScrollKeybLeft = false;
                 break;
             case KeyCode::Right:
-                Settings.ScrollKeybRight = false;
+                SettingsExt.ScrollKeybRight = false;
                 break;
             case KeyCode::Up:
-                Settings.ScrollKeybUp = false;
+                SettingsExt.ScrollKeybUp = false;
                 break;
             case KeyCode::Down:
-                Settings.ScrollKeybDown = false;
+                SettingsExt.ScrollKeybDown = false;
                 break;
             default:
                 break;
@@ -853,25 +855,25 @@ void FOMapper::ParseMouse()
     // Mouse position
     int mx = 0, my = 0;
     SDL_GetMouseState(&mx, &my);
-    Settings.MouseX = std::clamp(mx, 0, Settings.ScreenWidth - 1);
-    Settings.MouseY = std::clamp(my, 0, Settings.ScreenHeight - 1);
+    SettingsExt.MouseX = std::clamp(mx, 0, SettingsExt.ScreenWidth - 1);
+    SettingsExt.MouseY = std::clamp(my, 0, SettingsExt.ScreenHeight - 1);
 
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused())
     {
-        Settings.MainWindowMouseEvents.clear();
+        SettingsExt.MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
         ScriptSys.InputLostEvent();
         return;
     }
 
     // Mouse move
-    if (Settings.LastMouseX != Settings.MouseX || Settings.LastMouseY != Settings.MouseY)
+    if (SettingsExt.LastMouseX != SettingsExt.MouseX || SettingsExt.LastMouseY != SettingsExt.MouseY)
     {
-        int ox = Settings.MouseX - Settings.LastMouseX;
-        int oy = Settings.MouseY - Settings.LastMouseY;
-        Settings.LastMouseX = Settings.MouseX;
-        Settings.LastMouseY = Settings.MouseY;
+        int ox = SettingsExt.MouseX - SettingsExt.LastMouseX;
+        int oy = SettingsExt.MouseY - SettingsExt.LastMouseY;
+        SettingsExt.LastMouseX = SettingsExt.MouseX;
+        SettingsExt.LastMouseY = SettingsExt.MouseY;
 
         ScriptSys.MouseMoveEvent(ox, oy);
 
@@ -879,34 +881,34 @@ void FOMapper::ParseMouse()
     }
 
     // Mouse Scroll
-    if (Settings.MouseScroll)
+    if (SettingsExt.MouseScroll)
     {
-        if (Settings.MouseX >= Settings.ScreenWidth - 1)
-            Settings.ScrollMouseRight = true;
+        if (SettingsExt.MouseX >= SettingsExt.ScreenWidth - 1)
+            SettingsExt.ScrollMouseRight = true;
         else
-            Settings.ScrollMouseRight = false;
+            SettingsExt.ScrollMouseRight = false;
 
-        if (Settings.MouseX <= 0)
-            Settings.ScrollMouseLeft = true;
+        if (SettingsExt.MouseX <= 0)
+            SettingsExt.ScrollMouseLeft = true;
         else
-            Settings.ScrollMouseLeft = false;
+            SettingsExt.ScrollMouseLeft = false;
 
-        if (Settings.MouseY >= Settings.ScreenHeight - 1)
-            Settings.ScrollMouseDown = true;
+        if (SettingsExt.MouseY >= SettingsExt.ScreenHeight - 1)
+            SettingsExt.ScrollMouseDown = true;
         else
-            Settings.ScrollMouseDown = false;
+            SettingsExt.ScrollMouseDown = false;
 
-        if (Settings.MouseY <= 0)
-            Settings.ScrollMouseUp = true;
+        if (SettingsExt.MouseY <= 0)
+            SettingsExt.ScrollMouseUp = true;
         else
-            Settings.ScrollMouseUp = false;
+            SettingsExt.ScrollMouseUp = false;
     }
 
     // Get buffered data
-    if (Settings.MainWindowMouseEvents.empty())
+    if (SettingsExt.MainWindowMouseEvents.empty())
         return;
-    IntVec events = Settings.MainWindowMouseEvents;
-    Settings.MainWindowMouseEvents.clear();
+    IntVec events = SettingsExt.MainWindowMouseEvents;
+    SettingsExt.MainWindowMouseEvents.clear();
 
     // Process events
     for (uint i = 0; i < events.size(); i += 3)
@@ -951,7 +953,7 @@ void FOMapper::ParseMouse()
             script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT4);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(8))
             script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT4);
-        if (!script_result || Settings.DisableMouseEvents)
+        if (!script_result || SettingsExt.DisableMouseEvents)
             continue;
 
         // Wheel
@@ -1083,7 +1085,7 @@ void FOMapper::MainLoop()
     static auto last_call = GameTime.FrameTick();
     static uint call_counter = 0;
     if ((GameTime.FrameTick() - last_call) >= 1000) {
-        Settings.FPS = call_counter;
+        SettingsExt.FPS = call_counter;
         call_counter = 0;
         last_call = GameTime.FrameTick();
     }
@@ -1099,50 +1101,50 @@ void FOMapper::MainLoop()
         {
             int sw = 0, sh = 0;
             SprMngr.GetWindowSize(sw, sh);
-            int x = (int)(event.motion.x / (float)sw * (float)Settings.ScreenWidth);
-            int y = (int)(event.motion.y / (float)sh * (float)Settings.ScreenHeight);
-            Settings.MouseX = std::clamp(x, 0, Settings.ScreenWidth - 1);
-            Settings.MouseY = std::clamp(y, 0, Settings.ScreenHeight - 1);
+            int x = (int)(event.motion.x / (float)sw * (float)SettingsExt.ScreenWidth);
+            int y = (int)(event.motion.y / (float)sh * (float)SettingsExt.ScreenHeight);
+            SettingsExt.MouseX = std::clamp(x, 0, SettingsExt.ScreenWidth - 1);
+            SettingsExt.MouseY = std::clamp(y, 0, SettingsExt.ScreenHeight - 1);
         }
         else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
         {
-            Settings.MainWindowKeyboardEvents.push_back(event.type);
-            Settings.MainWindowKeyboardEvents.push_back(event.key.keysym.scancode);
-            Settings.MainWindowKeyboardEventsText.push_back("");
+            SettingsExt.MainWindowKeyboardEvents.push_back(event.type);
+            SettingsExt.MainWindowKeyboardEvents.push_back(event.key.keysym.scancode);
+            SettingsExt.MainWindowKeyboardEventsText.push_back("");
         }
         else if (event.type == SDL_TEXTINPUT)
         {
-            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-            Settings.MainWindowKeyboardEvents.push_back(510);
-            Settings.MainWindowKeyboardEventsText.push_back(event.text.text);
-            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-            Settings.MainWindowKeyboardEvents.push_back(510);
-            Settings.MainWindowKeyboardEventsText.push_back(event.text.text);
+            SettingsExt.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
+            SettingsExt.MainWindowKeyboardEvents.push_back(510);
+            SettingsExt.MainWindowKeyboardEventsText.push_back(event.text.text);
+            SettingsExt.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
+            SettingsExt.MainWindowKeyboardEvents.push_back(510);
+            SettingsExt.MainWindowKeyboardEventsText.push_back(event.text.text);
         }
         else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
         {
-            Settings.MainWindowMouseEvents.push_back(event.type);
-            Settings.MainWindowMouseEvents.push_back(event.button.button);
-            Settings.MainWindowMouseEvents.push_back(0);
+            SettingsExt.MainWindowMouseEvents.push_back(event.type);
+            SettingsExt.MainWindowMouseEvents.push_back(event.button.button);
+            SettingsExt.MainWindowMouseEvents.push_back(0);
         }
         else if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP)
         {
-            Settings.MainWindowMouseEvents.push_back(
+            SettingsExt.MainWindowMouseEvents.push_back(
                 event.type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP);
-            Settings.MainWindowMouseEvents.push_back(SDL_BUTTON_LEFT);
-            Settings.MainWindowMouseEvents.push_back(0);
-            Settings.MouseX = (int)(event.tfinger.x * (float)Settings.ScreenWidth);
-            Settings.MouseY = (int)(event.tfinger.y * (float)Settings.ScreenHeight);
+            SettingsExt.MainWindowMouseEvents.push_back(SDL_BUTTON_LEFT);
+            SettingsExt.MainWindowMouseEvents.push_back(0);
+            SettingsExt.MouseX = (int)(event.tfinger.x * (float)SettingsExt.ScreenWidth);
+            SettingsExt.MouseY = (int)(event.tfinger.y * (float)SettingsExt.ScreenHeight);
         }
         else if (event.type == SDL_MOUSEWHEEL)
         {
-            Settings.MainWindowMouseEvents.push_back(event.type);
-            Settings.MainWindowMouseEvents.push_back(SDL_BUTTON_MIDDLE);
-            Settings.MainWindowMouseEvents.push_back(-event.wheel.y);
+            SettingsExt.MainWindowMouseEvents.push_back(event.type);
+            SettingsExt.MainWindowMouseEvents.push_back(SDL_BUTTON_MIDDLE);
+            SettingsExt.MainWindowMouseEvents.push_back(-event.wheel.y);
         }
         else if (event.type == SDL_QUIT)
         {
-            Settings.Quit = true;
+            SettingsExt.Quit = true;
         }
     }*/
 
@@ -1215,8 +1217,8 @@ void FOMapper::MainLoop()
                 const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, percent);
                 const auto& field = HexMngr.GetField(map_text.HexX, map_text.HexY);
 
-                const auto x = static_cast<int>((field.ScrX + Settings.MapHexWidth / 2 + Settings.ScrOx) / Settings.SpritesZoom - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
-                const auto y = static_cast<int>((field.ScrY + Settings.MapHexLineHeight / 2 - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + Settings.ScrOy) / Settings.SpritesZoom - 70.0f);
+                const auto x = static_cast<int>((field.ScrX + SettingsExt.MapHexWidth / 2 + SettingsExt.ScrOx) / SettingsExt.SpritesZoom - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
+                const auto y = static_cast<int>((field.ScrY + SettingsExt.MapHexLineHeight / 2 - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + SettingsExt.ScrOy) / SettingsExt.SpritesZoom - 70.0f);
 
                 auto color = map_text.Color;
                 if (map_text.Fade) {
@@ -1243,11 +1245,11 @@ void FOMapper::MainLoop()
     SprMngr.EndScene();
 
     // Fixed FPS
-    if (!Settings.VSync && (Settings.FixedFPS != 0)) {
-        if (Settings.FixedFPS > 0) {
+    if (!SettingsExt.VSync && (SettingsExt.FixedFPS != 0)) {
+        if (SettingsExt.FixedFPS > 0) {
             static auto balance = 0.0;
             const auto elapsed = Timer::RealtimeTick() - start_loop;
-            const auto need_elapsed = 1000.0 / static_cast<double>(Settings.FixedFPS);
+            const auto need_elapsed = 1000.0 / static_cast<double>(SettingsExt.FixedFPS);
             if (need_elapsed > elapsed) {
                 const auto sleep = need_elapsed - elapsed + balance;
                 balance = fmod(sleep, 1.0);
@@ -1255,7 +1257,7 @@ void FOMapper::MainLoop()
             }
         }
         else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(-Settings.FixedFPS));
+            std::this_thread::sleep_for(std::chrono::milliseconds(-SettingsExt.FixedFPS));
         }
     }
 }
@@ -1346,7 +1348,7 @@ void FOMapper::RefreshTiles(int tab)
 
                 // Make secondary collection name
                 string collection_name_ex;
-                if (Settings.SplitTilesCollection) {
+                if (SettingsExt.SplitTilesCollection) {
                     auto pos = fname.find_last_of('/');
                     if (pos == string::npos) {
                         pos = 0;
@@ -1496,25 +1498,25 @@ void FOMapper::IntDraw()
     SprMngr.DrawStr(IRect(IntBMess, IntX, IntY), TabsName[INT_MODE_MESS], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
     SprMngr.DrawStr(IRect(IntBList, IntX, IntY), TabsName[INT_MODE_LIST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
 
-    if (Settings.ShowItem) {
+    if (SettingsExt.ShowItem) {
         SprMngr.DrawSprite(IntPShow, IntBShowItem[0] + IntX, IntBShowItem[1] + IntY, 0);
     }
-    if (Settings.ShowScen) {
+    if (SettingsExt.ShowScen) {
         SprMngr.DrawSprite(IntPShow, IntBShowScen[0] + IntX, IntBShowScen[1] + IntY, 0);
     }
-    if (Settings.ShowWall) {
+    if (SettingsExt.ShowWall) {
         SprMngr.DrawSprite(IntPShow, IntBShowWall[0] + IntX, IntBShowWall[1] + IntY, 0);
     }
-    if (Settings.ShowCrit) {
+    if (SettingsExt.ShowCrit) {
         SprMngr.DrawSprite(IntPShow, IntBShowCrit[0] + IntX, IntBShowCrit[1] + IntY, 0);
     }
-    if (Settings.ShowTile) {
+    if (SettingsExt.ShowTile) {
         SprMngr.DrawSprite(IntPShow, IntBShowTile[0] + IntX, IntBShowTile[1] + IntY, 0);
     }
-    if (Settings.ShowRoof) {
+    if (SettingsExt.ShowRoof) {
         SprMngr.DrawSprite(IntPShow, IntBShowRoof[0] + IntX, IntBShowRoof[1] + IntY, 0);
     }
-    if (Settings.ShowFast) {
+    if (SettingsExt.ShowFast) {
         SprMngr.DrawSprite(IntPShow, IntBShowFast[0] + IntX, IntBShowFast[1] + IntY, 0);
     }
 
@@ -1701,7 +1703,7 @@ void FOMapper::IntDraw()
             auto& stab = snd;
 
             auto color = (TabsActive[SubTabsActiveTab] == &stab ? COLOR_TEXT_WHITE : COLOR_TEXT);
-            auto r = IRect(SubTabsRect.Left + SubTabsX + 5, SubTabsRect.Top + SubTabsY + posy, SubTabsRect.Left + SubTabsX + 5 + Settings.ScreenWidth, SubTabsRect.Top + SubTabsY + posy + line_height - 1);
+            auto r = IRect(SubTabsRect.Left + SubTabsX + 5, SubTabsRect.Top + SubTabsY + posy, SubTabsRect.Left + SubTabsX + 5 + SettingsExt.ScreenWidth, SubTabsRect.Top + SubTabsY + posy + line_height - 1);
             if (IsCurInRect(r)) {
                 color = COLOR_TEXT_DWHITE;
             }
@@ -1728,18 +1730,18 @@ void FOMapper::IntDraw()
         auto hex_thru = false;
         ushort hx = 0;
         ushort hy = 0;
-        if (HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+        if (HexMngr.GetHexPixel(SettingsExt.MouseX, SettingsExt.MouseY, hx, hy)) {
             hex_thru = true;
         }
         auto day_time = HexMngr.GetDayTime();
-        SprMngr.DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
+        SprMngr.DrawStr(IRect(SettingsExt.ScreenWidth - 100, 0, SettingsExt.ScreenWidth, SettingsExt.ScreenHeight),
             _str("Map '{}'\n"
                  "Hex {} {}\n"
                  "Time {} : {}\n"
                  "Fps {}\n"
                  "Tile layer {}\n"
                  "{}",
-                ActiveMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
+                ActiveMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, SettingsExt.FPS, TileLayer, SettingsExt.ScrollCheck ? "Scroll check" : ""),
             FT_NOBREAK_LINE, 0, FONT_DEFAULT);
     }
 }
@@ -1783,7 +1785,7 @@ void FOMapper::ObjDraw()
         }
     }
 
-    DrawLine("Id", "", _str("{} ({})", entity->Id, static_cast<int>(entity->Id)), true, r);
+    DrawLine("Id", "", _str("{} ({})", entity->GetId(), static_cast<int>(entity->GetId())), true, r);
     DrawLine("ProtoName", "", _str().parseHash(entity->GetProtoId()), true, r);
     if (cr != nullptr) {
         DrawLine("Type", "", "Critter", true, r);
@@ -1922,7 +1924,7 @@ void FOMapper::SelectEntityProp(int line)
     }
 }
 
-auto FOMapper::GetInspectorEntity() -> Entity*
+auto FOMapper::GetInspectorEntity() -> ClientEntity*
 {
     auto* entity = (IntMode == INT_MODE_INCONT && (InContItem != nullptr) ? InContItem : (!SelectedEntities.empty() ? SelectedEntities[0] : nullptr));
     if (entity == InspectorEntity) {
@@ -1934,7 +1936,7 @@ auto FOMapper::GetInspectorEntity() -> Entity*
 
     if (entity != nullptr) {
         vector<int> enum_values;
-        ScriptSys.InspectorPropertiesEvent(entity, enum_values);
+        ScriptSysExt.InspectorPropertiesEvent(entity, enum_values);
         for (auto enum_value : enum_values) {
             ShowProps.push_back(enum_value != 0 ? entity->Props.FindByEnum(enum_value) : nullptr);
         }
@@ -1990,13 +1992,13 @@ void FOMapper::IntLMouseDown()
     if ((!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) && (!ObjVisible || SelectedEntities.empty() || !IsCurInRect(ObjWMain, ObjX, ObjY))) {
         InContItem = nullptr;
 
-        if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX1, SelectHY1)) {
+        if (!HexMngr.GetHexPixel(SettingsExt.MouseX, SettingsExt.MouseY, SelectHX1, SelectHY1)) {
             return;
         }
         SelectHX2 = SelectHX1;
         SelectHY2 = SelectHY1;
-        SelectX = Settings.MouseX;
-        SelectY = Settings.MouseY;
+        SelectX = SettingsExt.MouseX;
+        SelectY = SettingsExt.MouseY;
 
         if (CurMode == CUR_MODE_DEFAULT) {
             if (Keyb.ShiftDwn) {
@@ -2056,7 +2058,7 @@ void FOMapper::IntLMouseDown()
     // Object editor
     if (ObjVisible && !SelectedEntities.empty() && IsCurInRect(ObjWMain, ObjX, ObjY)) {
         if (IsCurInRect(ObjWWork, ObjX, ObjY)) {
-            SelectEntityProp((Settings.MouseY - ObjY - ObjWWork[1]) / DRAW_NEXT_HEIGHT);
+            SelectEntityProp((SettingsExt.MouseY - ObjY - ObjWWork[1]) / DRAW_NEXT_HEIGHT);
         }
 
         if (IsCurInRect(ObjBToAll, ObjX, ObjY)) {
@@ -2066,8 +2068,8 @@ void FOMapper::IntLMouseDown()
         }
         if (!ObjFix) {
             IntHold = INT_OBJECT;
-            ItemVectX = Settings.MouseX - ObjX;
-            ItemVectY = Settings.MouseY - ObjY;
+            ItemVectX = SettingsExt.MouseX - ObjX;
+            ItemVectY = SettingsExt.MouseY - ObjY;
         }
 
         return;
@@ -2079,7 +2081,7 @@ void FOMapper::IntLMouseDown()
     }
 
     if (IsCurInRect(IntWWork, IntX, IntY)) {
-        int ind = (Settings.MouseX - IntX - IntWWork[0]) / ProtoWidth;
+        int ind = (SettingsExt.MouseX - IntX - IntWWork[0]) / ProtoWidth;
 
         if (IsObjectMode() && !(*CurItemProtos).empty()) {
             ind += *CurProtoScroll;
@@ -2185,7 +2187,7 @@ void FOMapper::IntLMouseDown()
                     auto* cr = dynamic_cast<CritterView*>(SelectedEntities[0]);
 
                     auto to_slot = InContItem->GetCritSlot() + 1;
-                    while (to_slot >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
+                    while (to_slot >= SettingsExt.CritterSlotEnabled.size() || !SettingsExt.CritterSlotEnabled[to_slot % 256]) {
                         to_slot++;
                     }
                     to_slot %= 256;
@@ -2366,31 +2368,31 @@ void FOMapper::IntLMouseDown()
         }
     }
     else if (IsCurInRect(IntBShowItem, IntX, IntY)) {
-        Settings.ShowItem = !Settings.ShowItem;
+        SettingsExt.ShowItem = !SettingsExt.ShowItem;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowScen, IntX, IntY)) {
-        Settings.ShowScen = !Settings.ShowScen;
+        SettingsExt.ShowScen = !SettingsExt.ShowScen;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowWall, IntX, IntY)) {
-        Settings.ShowWall = !Settings.ShowWall;
+        SettingsExt.ShowWall = !SettingsExt.ShowWall;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowCrit, IntX, IntY)) {
-        Settings.ShowCrit = !Settings.ShowCrit;
+        SettingsExt.ShowCrit = !SettingsExt.ShowCrit;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowTile, IntX, IntY)) {
-        Settings.ShowTile = !Settings.ShowTile;
+        SettingsExt.ShowTile = !SettingsExt.ShowTile;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowRoof, IntX, IntY)) {
-        Settings.ShowRoof = !Settings.ShowRoof;
+        SettingsExt.ShowRoof = !SettingsExt.ShowRoof;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBShowFast, IntX, IntY)) {
-        Settings.ShowFast = !Settings.ShowFast;
+        SettingsExt.ShowFast = !SettingsExt.ShowFast;
         HexMngr.RefreshMap();
     }
     else if (IsCurInRect(IntBSelectItem, IntX, IntY)) {
@@ -2413,8 +2415,8 @@ void FOMapper::IntLMouseDown()
     }
     else if (!IntFix) {
         IntHold = INT_MAIN;
-        IntVectX = Settings.MouseX - IntX;
-        IntVectY = Settings.MouseY - IntY;
+        IntVectX = SettingsExt.MouseX - IntX;
+        IntVectY = SettingsExt.MouseY - IntY;
         return;
     }
     else {
@@ -2426,7 +2428,7 @@ void FOMapper::IntLMouseDown()
 
 void FOMapper::IntLMouseUp()
 {
-    if (IntHold == INT_SELECT && HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2)) {
+    if (IntHold == INT_SELECT && HexMngr.GetHexPixel(SettingsExt.MouseX, SettingsExt.MouseY, SelectHX2, SelectHY2)) {
         if (CurMode == CUR_MODE_DEFAULT) {
             if (SelectHX1 != SelectHX2 || SelectHY1 != SelectHY2) {
                 HexMngr.ClearHexTrack();
@@ -2456,10 +2458,10 @@ void FOMapper::IntLMouseUp()
                     HexMngr.GetCritters(hx, hy, critters, FIND_ALL);
 
                     // Tile, roof
-                    if (IsSelectTile && Settings.ShowTile) {
+                    if (IsSelectTile && SettingsExt.ShowTile) {
                         SelectAddTile(hx, hy, false);
                     }
-                    if (IsSelectRoof && Settings.ShowRoof) {
+                    if (IsSelectRoof && SettingsExt.ShowRoof) {
                         SelectAddTile(hx, hy, true);
                     }
                 }
@@ -2469,26 +2471,26 @@ void FOMapper::IntLMouseUp()
                     if (HexMngr.IsIgnorePid(pid)) {
                         continue;
                     }
-                    if (!Settings.ShowFast && HexMngr.IsFastPid(pid)) {
+                    if (!SettingsExt.ShowFast && HexMngr.IsFastPid(pid)) {
                         continue;
                     }
 
-                    if (!item->IsAnyScenery() && IsSelectItem && Settings.ShowItem) {
+                    if (!item->IsAnyScenery() && IsSelectItem && SettingsExt.ShowItem) {
                         SelectAddItem(item);
                     }
-                    else if (item->IsScenery() && IsSelectScen && Settings.ShowScen) {
+                    else if (item->IsScenery() && IsSelectScen && SettingsExt.ShowScen) {
                         SelectAddItem(item);
                     }
-                    else if (item->IsWall() && IsSelectWall && Settings.ShowWall) {
+                    else if (item->IsWall() && IsSelectWall && SettingsExt.ShowWall) {
                         SelectAddItem(item);
                     }
-                    else if (Settings.ShowFast && HexMngr.IsFastPid(pid)) {
+                    else if (SettingsExt.ShowFast && HexMngr.IsFastPid(pid)) {
                         SelectAddItem(item);
                     }
                 }
 
                 for (auto* cr : critters) {
-                    if (IsSelectCrit && Settings.ShowCrit) {
+                    if (IsSelectCrit && SettingsExt.ShowCrit) {
                         SelectAddCrit(cr);
                     }
                 }
@@ -2496,7 +2498,7 @@ void FOMapper::IntLMouseUp()
             else {
                 ItemHexView* item = nullptr;
                 CritterView* cr = nullptr;
-                HexMngr.GetSmthPixel(Settings.MouseX, Settings.MouseY, item, cr);
+                HexMngr.GetSmthPixel(SettingsExt.MouseX, SettingsExt.MouseY, item, cr);
 
                 if (item != nullptr) {
                     if (!HexMngr.IsIgnorePid(item->GetProtoId())) {
@@ -2524,7 +2526,7 @@ void FOMapper::IntMouseMove()
 {
     if (IntHold == INT_SELECT) {
         HexMngr.ClearHexTrack();
-        if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2)) {
+        if (!HexMngr.GetHexPixel(SettingsExt.MouseX, SettingsExt.MouseY, SelectHX2, SelectHY2)) {
             if ((SelectHX2 != 0u) || (SelectHY2 != 0u)) {
                 HexMngr.RefreshMap();
                 SelectHX2 = SelectHY2 = 0;
@@ -2558,8 +2560,8 @@ void FOMapper::IntMouseMove()
         else if (CurMode == CUR_MODE_MOVE_SELECTION) {
             auto offs_hx = static_cast<int>(SelectHX2) - static_cast<int>(SelectHX1);
             auto offs_hy = static_cast<int>(SelectHY2) - static_cast<int>(SelectHY1);
-            auto offs_x = Settings.MouseX - SelectX;
-            auto offs_y = Settings.MouseY - SelectY;
+            auto offs_x = SettingsExt.MouseX - SelectX;
+            auto offs_y = SettingsExt.MouseY - SelectY;
             if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y)) {
                 SelectHX1 += offs_hx;
                 SelectHY1 += offs_hy;
@@ -2570,12 +2572,12 @@ void FOMapper::IntMouseMove()
         }
     }
     else if (IntHold == INT_MAIN) {
-        IntX = Settings.MouseX - IntVectX;
-        IntY = Settings.MouseY - IntVectY;
+        IntX = SettingsExt.MouseX - IntVectX;
+        IntY = SettingsExt.MouseY - IntVectY;
     }
     else if (IntHold == INT_OBJECT) {
-        ObjX = Settings.MouseX - ItemVectX;
-        ObjY = Settings.MouseY - ItemVectY;
+        ObjX = SettingsExt.MouseX - ItemVectX;
+        ObjY = SettingsExt.MouseY - ItemVectY;
     }
 }
 
@@ -2689,15 +2691,15 @@ void FOMapper::IntSetMode(int mode)
         if (SubTabsX < 0) {
             SubTabsX = 0;
         }
-        if (SubTabsX + SubTabsRect.Width() > Settings.ScreenWidth) {
-            SubTabsX -= SubTabsX + SubTabsRect.Width() - Settings.ScreenWidth;
+        if (SubTabsX + SubTabsRect.Width() > SettingsExt.ScreenWidth) {
+            SubTabsX -= SubTabsX + SubTabsRect.Width() - SettingsExt.ScreenWidth;
         }
 
         if (SubTabsY < 0) {
             SubTabsY = 0;
         }
-        if (SubTabsY + SubTabsRect.Height() > Settings.ScreenHeight) {
-            SubTabsY -= SubTabsY + SubTabsRect.Height() - Settings.ScreenHeight;
+        if (SubTabsY + SubTabsRect.Height() > SettingsExt.ScreenHeight) {
+            SubTabsY -= SubTabsY + SubTabsRect.Height() - SettingsExt.ScreenHeight;
         }
 
         return;
@@ -2715,7 +2717,7 @@ void FOMapper::IntSetMode(int mode)
     }
 }
 
-void FOMapper::MoveEntity(Entity* entity, ushort hx, ushort hy)
+void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
 {
     if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
         return;
@@ -2739,7 +2741,7 @@ void FOMapper::MoveEntity(Entity* entity, ushort hx, ushort hy)
     }
 }
 
-void FOMapper::DeleteEntity(Entity* entity)
+void FOMapper::DeleteEntity(ClientEntity* entity)
 {
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
     if (it != SelectedEntities.end()) {
@@ -2747,10 +2749,10 @@ void FOMapper::DeleteEntity(Entity* entity)
     }
 
     if (entity->Type == EntityType::CritterView) {
-        HexMngr.DeleteCritter(entity->Id);
+        HexMngr.DeleteCritter(entity->GetId());
     }
     else if (entity->Type == EntityType::ItemHexView) {
-        HexMngr.FinishItem(entity->Id, false);
+        HexMngr.FinishItem(entity->GetId(), false);
     }
 }
 
@@ -2811,7 +2813,7 @@ void FOMapper::SelectAddTile(ushort hx, ushort hy, bool is_roof)
     }
 }
 
-void FOMapper::SelectAdd(Entity* entity)
+void FOMapper::SelectAdd(ClientEntity* entity)
 {
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
     if (it == SelectedEntities.end()) {
@@ -2826,7 +2828,7 @@ void FOMapper::SelectAdd(Entity* entity)
     }
 }
 
-void FOMapper::SelectErase(Entity* entity)
+void FOMapper::SelectErase(ClientEntity* entity)
 {
     const auto it = std::find(SelectedEntities.begin(), SelectedEntities.end(), entity);
     if (it != SelectedEntities.end()) {
@@ -2847,10 +2849,10 @@ void FOMapper::SelectAll()
 
     for (const auto hx : xrange(HexMngr.GetWidth())) {
         for (const auto hy : xrange(HexMngr.GetHeight())) {
-            if (IsSelectTile && Settings.ShowTile) {
+            if (IsSelectTile && SettingsExt.ShowTile) {
                 SelectAddTile(hx, hy, false);
             }
-            if (IsSelectRoof && Settings.ShowRoof) {
+            if (IsSelectRoof && SettingsExt.ShowRoof) {
                 SelectAddTile(hx, hy, true);
             }
         }
@@ -2861,18 +2863,18 @@ void FOMapper::SelectAll()
             continue;
         }
 
-        if (!item->IsAnyScenery() && IsSelectItem && Settings.ShowItem) {
+        if (!item->IsAnyScenery() && IsSelectItem && SettingsExt.ShowItem) {
             SelectAddItem(item);
         }
-        else if (item->IsScenery() && IsSelectScen && Settings.ShowScen) {
+        else if (item->IsScenery() && IsSelectScen && SettingsExt.ShowScen) {
             SelectAddItem(item);
         }
-        else if (item->IsWall() && IsSelectWall && Settings.ShowWall) {
+        else if (item->IsWall() && IsSelectWall && SettingsExt.ShowWall) {
             SelectAddItem(item);
         }
     }
 
-    if (IsSelectCrit && Settings.ShowCrit) {
+    if (IsSelectCrit && SettingsExt.ShowCrit) {
         for (auto [id, cr] : HexMngr.GetCritters()) {
             SelectAddCrit(cr);
         }
@@ -2901,11 +2903,11 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
 
     // Tile step
     if (hex_move && !SelectedTile.empty()) {
-        if (std::abs(offs_hx) < Settings.MapTileStep && std::abs(offs_hy) < Settings.MapTileStep) {
+        if (std::abs(offs_hx) < SettingsExt.MapTileStep && std::abs(offs_hy) < SettingsExt.MapTileStep) {
             return false;
         }
-        offs_hx -= offs_hx % Settings.MapTileStep;
-        offs_hy -= offs_hy % Settings.MapTileStep;
+        offs_hx -= offs_hx % SettingsExt.MapTileStep;
+        offs_hy -= offs_hy % SettingsExt.MapTileStep;
     }
 
     // Setup hex moving switcher
@@ -2921,8 +2923,8 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
     if (!hex_move) {
         static auto small_ox = 0.0f;
         static auto small_oy = 0.0f;
-        auto ox = static_cast<float>(offs_x) * Settings.SpritesZoom + small_ox;
-        auto oy = static_cast<float>(offs_y) * Settings.SpritesZoom + small_oy;
+        auto ox = static_cast<float>(offs_x) * SettingsExt.SpritesZoom + small_ox;
+        auto oy = static_cast<float>(offs_y) * SettingsExt.SpritesZoom + small_oy;
         if (offs_x != 0 && std::fabs(ox) < 1.0f) {
             small_ox = ox;
         }
@@ -2945,7 +2947,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             int hx = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexX() : (dynamic_cast<ItemHexView*>(entity))->GetHexX());
             int hy = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexY() : (dynamic_cast<ItemHexView*>(entity))->GetHexY());
 
-            if (Settings.MapHexagonal) {
+            if (SettingsExt.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
                     GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
@@ -2968,7 +2970,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         for (auto& stile : SelectedTile) {
             int hx = stile.HexX;
             int hy = stile.HexY;
-            if (Settings.MapHexagonal) {
+            if (SettingsExt.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
                     GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
@@ -3009,7 +3011,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             int hx = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexX() : (dynamic_cast<ItemHexView*>(entity))->GetHexX());
             int hy = (entity->Type == EntityType::CritterView ? (dynamic_cast<CritterView*>(entity))->GetHexY() : (dynamic_cast<ItemHexView*>(entity))->GetHexY());
 
-            if (Settings.MapHexagonal) {
+            if (SettingsExt.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
                     GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
@@ -3071,7 +3073,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
         else {
             int hx = stile.HexX;
             int hy = stile.HexY;
-            if (Settings.MapHexagonal) {
+            if (SettingsExt.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
                     GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
@@ -3238,8 +3240,8 @@ void FOMapper::AddTile(hash name, ushort hx, ushort hy, short ox, short oy, ucha
 {
     RUNTIME_ASSERT(ActiveMap);
 
-    hx -= hx % Settings.MapTileStep;
-    hy -= hy % Settings.MapTileStep;
+    hx -= hx % SettingsExt.MapTileStep;
+    hy -= hy % SettingsExt.MapTileStep;
 
     if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
         return;
@@ -3491,7 +3493,7 @@ void FOMapper::CurDraw()
         if (anim != nullptr) {
             const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si != nullptr) {
-                SprMngr.DrawSprite(anim, Settings.MouseX, Settings.MouseY, COLOR_IFACE);
+                SprMngr.DrawSprite(anim, SettingsExt.MouseX, SettingsExt.MouseY, COLOR_IFACE);
             }
         }
     } break;
@@ -3501,16 +3503,16 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!HexMngr.GetHexPixel(SettingsExt.MouseX, SettingsExt.MouseY, hx, hy)) {
                 break;
             }
 
             const auto spr_id = GetProtoItemCurSprId(proto_item);
             const auto* si = SprMngr.GetSpriteInfo(spr_id);
             if (si != nullptr) {
-                const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
-                const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
-                SprMngr.DrawSpriteSize(spr_id, static_cast<int>(x / Settings.SpritesZoom), static_cast<int>(y / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (SettingsExt.MapHexWidth / 2) + SettingsExt.ScrOx + proto_item->GetOffsetX();
+                const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + (SettingsExt.MapHexHeight / 2) + SettingsExt.ScrOy + proto_item->GetOffsetY();
+                SprMngr.DrawSpriteSize(spr_id, static_cast<int>(x / SettingsExt.SpritesZoom), static_cast<int>(y / SettingsExt.SpritesZoom), static_cast<int>(si->Width / SettingsExt.SpritesZoom), static_cast<int>(si->Height / SettingsExt.SpritesZoom), true, false, 0);
             }
         }
         else if (IsTileMode() && !CurTileHashes->empty()) {
@@ -3521,26 +3523,26 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!HexMngr.GetHexPixel(SettingsExt.MouseX, SettingsExt.MouseY, hx, hy)) {
                 break;
             }
 
             const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si != nullptr) {
-                hx -= hx % Settings.MapTileStep;
-                hy -= hy % Settings.MapTileStep;
+                hx -= hx % SettingsExt.MapTileStep;
+                hy -= hy % SettingsExt.MapTileStep;
                 auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
                 auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
                 if (!DrawRoof) {
-                    x += Settings.MapTileOffsX;
-                    y += Settings.MapTileOffsY;
+                    x += SettingsExt.MapTileOffsX;
+                    y += SettingsExt.MapTileOffsY;
                 }
                 else {
-                    x += Settings.MapRoofOffsX;
-                    y += Settings.MapRoofOffsY;
+                    x += SettingsExt.MapRoofOffsX;
+                    y += SettingsExt.MapRoofOffsY;
                 }
 
-                SprMngr.DrawSpriteSize(anim, static_cast<int>((x + Settings.ScrOx) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(anim, static_cast<int>((x + SettingsExt.ScrOx) / SettingsExt.SpritesZoom), static_cast<int>((y + SettingsExt.ScrOy) / SettingsExt.SpritesZoom), static_cast<int>(si->Width / SettingsExt.SpritesZoom), static_cast<int>(si->Height / SettingsExt.SpritesZoom), true, false, 0);
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -3552,7 +3554,7 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!HexMngr.GetHexPixel(SettingsExt.MouseX, SettingsExt.MouseY, hx, hy)) {
                 break;
             }
 
@@ -3561,7 +3563,7 @@ void FOMapper::CurDraw()
                 const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
                 const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
 
-                SprMngr.DrawSpriteSize(spr_id, static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(spr_id, static_cast<int>((x + SettingsExt.ScrOx + (SettingsExt.MapHexWidth / 2)) / SettingsExt.SpritesZoom), static_cast<int>((y + SettingsExt.ScrOy + (SettingsExt.MapHexHeight / 2)) / SettingsExt.SpritesZoom), static_cast<int>(si->Width / SettingsExt.SpritesZoom), static_cast<int>(si->Height / SettingsExt.SpritesZoom), true, false, 0);
             }
         }
         else {
@@ -3598,7 +3600,7 @@ void FOMapper::CurMMouseDown()
 {
     if (SelectedEntities.empty()) {
         NpcDir++;
-        if (NpcDir >= Settings.MapDirCount) {
+        if (NpcDir >= SettingsExt.MapDirCount) {
             NpcDir = 0;
         }
 
@@ -3609,7 +3611,7 @@ void FOMapper::CurMMouseDown()
             if (entity->Type == EntityType::CritterView) {
                 auto* cr = dynamic_cast<CritterView*>(entity);
                 auto dir = cr->GetDir() + 1;
-                if (dir >= Settings.MapDirCount) {
+                if (dir >= SettingsExt.MapDirCount) {
                     dir = 0;
                 }
                 cr->ChangeDir(dir, true);
@@ -3620,17 +3622,17 @@ void FOMapper::CurMMouseDown()
 
 auto FOMapper::IsCurInRect(const IRect& rect, int ax, int ay) const -> bool
 {
-    return Settings.MouseX >= rect[0] + ax && Settings.MouseY >= rect[1] + ay && Settings.MouseX <= rect[2] + ax && Settings.MouseY <= rect[3] + ay;
+    return SettingsExt.MouseX >= rect[0] + ax && SettingsExt.MouseY >= rect[1] + ay && SettingsExt.MouseX <= rect[2] + ax && SettingsExt.MouseY <= rect[3] + ay;
 }
 
 auto FOMapper::IsCurInRect(const IRect& rect) const -> bool
 {
-    return Settings.MouseX >= rect[0] && Settings.MouseY >= rect[1] && Settings.MouseX <= rect[2] && Settings.MouseY <= rect[3];
+    return SettingsExt.MouseX >= rect[0] && SettingsExt.MouseY >= rect[1] && SettingsExt.MouseX <= rect[2] && SettingsExt.MouseY <= rect[3];
 }
 
 auto FOMapper::IsCurInRectNoTransp(uint spr_id, const IRect& rect, int ax, int ay) const -> bool
 {
-    return IsCurInRect(rect, ax, ay) && SprMngr.IsPixNoTransp(spr_id, Settings.MouseX - rect.Left - ax, Settings.MouseY - rect.Top - ay, false);
+    return IsCurInRect(rect, ax, ay) && SprMngr.IsPixNoTransp(spr_id, SettingsExt.MouseX - rect.Left - ax, SettingsExt.MouseY - rect.Top - ay, false);
 }
 
 auto FOMapper::IsCurInInterface() const -> bool
@@ -3653,17 +3655,17 @@ auto FOMapper::GetCurHex(ushort& hx, ushort& hy, bool ignore_interface) -> bool
     if (!ignore_interface && IsCurInInterface()) {
         return false;
     }
-    return HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy);
+    return HexMngr.GetHexPixel(SettingsExt.MouseX, SettingsExt.MouseY, hx, hy);
 }
 
 void FOMapper::ConsoleDraw()
 {
     if (ConsoleEdit) {
-        SprMngr.DrawSprite(ConsolePic, IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, 0);
+        SprMngr.DrawSprite(ConsolePic, IntX + ConsolePicX, (IntVisible ? IntY : SettingsExt.ScreenHeight) + ConsolePicY, 0);
 
         auto str = ConsoleStr;
         str.insert(ConsoleCur, GameTime.FrameTick() % 800 < 400 ? "!" : ".");
-        SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsoleTextY, Settings.ScreenWidth, Settings.ScreenHeight), str, FT_NOBREAK, 0, FONT_DEFAULT);
+        SprMngr.DrawStr(IRect(IntX + ConsoleTextX, (IntVisible ? IntY : SettingsExt.ScreenHeight) + ConsoleTextY, SettingsExt.ScreenWidth, SettingsExt.ScreenHeight), str, FT_NOBREAK, 0, FONT_DEFAULT);
     }
 }
 
@@ -3683,7 +3685,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
                         i = -1;
                     }
                 }
-                while (ConsoleHistory.size() > Settings.ConsoleHistorySize) {
+                while (ConsoleHistory.size() > SettingsExt.ConsoleHistorySize) {
                     ConsoleHistory.erase(ConsoleHistory.begin());
                 }
                 ConsoleHistoryCur = static_cast<int>(ConsoleHistory.size());
@@ -3696,7 +3698,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
                 Cache.SetString("mapper_console.txt", history_str);
 
                 // Process command
-                const auto process_command = ScriptSys.ConsoleMessageEvent(ConsoleStr);
+                const auto process_command = ScriptSysExt.ConsoleMessageEvent(ConsoleStr);
                 AddMess(ConsoleStr);
                 if (process_command) {
                     ParseCommand(ConsoleStr);
@@ -3799,7 +3801,7 @@ void FOMapper::ParseCommand(string_view command)
 
         HexMngr.FindSetCenter(pmap->GetWorkHexX(), pmap->GetWorkHexY());
 
-        MapView* map = new MapView(0, pmap);
+        auto* map = new MapView(this, 0, pmap);
         ActiveMap = map;
         LoadedMaps.push_back(map);
 
@@ -3877,7 +3879,7 @@ void FOMapper::ParseCommand(string_view command)
         if (!SelectedEntities.empty()) {
             for (auto* entity : SelectedEntities) {
                 if (entity->Type == EntityType::CritterView) {
-                    CritterView* cr = dynamic_cast<CritterView*>(entity);
+                    auto* cr = dynamic_cast<CritterView*>(entity);
                     cr->ClearAnim();
                     for (uint j = 0; j < anims.size() / 2; j++) {
                         cr->Animate(anims[j * 2], anims[j * 2 + 1], nullptr);
@@ -3931,7 +3933,7 @@ void FOMapper::ParseCommand(string_view command)
             AddMess("Create map success.");
             HexMngr.FindSetCenter(150, 150);
 
-            MapView* map = new MapView(0, pmap);
+            auto* map = new MapView(this, 0, pmap);
             ActiveMap = map;
             LoadedMaps.push_back(map);
         }
@@ -4068,13 +4070,13 @@ void FOMapper::RunStartScript()
 void FOMapper::RunMapLoadScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    ScriptSys.EditMapLoadEvent(map);
+    ScriptSysExt.EditMapLoadEvent(map);
 }
 
 void FOMapper::RunMapSaveScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    ScriptSys.EditMapSaveEvent(map);
+    ScriptSysExt.EditMapSaveEvent(map);
 }
 
 void FOMapper::DrawIfaceLayer(uint /*layer*/)
@@ -4088,9 +4090,10 @@ void FOMapper::OnSetItemFlags(Entity* entity, Property* prop, void* /*cur_value*
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
-    ItemView* item = dynamic_cast<ItemView*>(entity);
+    auto* item = dynamic_cast<ItemView*>(entity);
+
     if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded()) {
-        ItemHexView* hex_item = dynamic_cast<ItemHexView*>(item);
+        auto* hex_item = dynamic_cast<ItemHexView*>(item);
         bool rebuild_cache = false;
         if (prop == ItemView::PropertyIsColorize) {
             hex_item->RefreshAlpha();
@@ -4102,7 +4105,8 @@ void FOMapper::OnSetItemFlags(Entity* entity, Property* prop, void* /*cur_value*
             rebuild_cache = true;
         }
         else if (prop == ItemView::PropertyIsLightThru) {
-            HexMngr.RebuildLight(), rebuild_cache = true;
+            HexMngr.RebuildLight();
+            rebuild_cache = true;
         }
         else if (prop == ItemView::PropertyIsNoBlock) {
             rebuild_cache = true;
@@ -4124,10 +4128,10 @@ void FOMapper::OnSetItemSomeLight(Entity* /*entity*/, Property* /*prop*/, void* 
 
 void FOMapper::OnSetItemPicMap(Entity* entity, Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
 {
-    ItemView* item = dynamic_cast<ItemView*>(entity);
+    auto* item = dynamic_cast<ItemView*>(entity);
 
     if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
-        ItemHexView* hex_item = dynamic_cast<ItemHexView*>(item);
+        auto* hex_item = dynamic_cast<ItemHexView*>(item);
         hex_item->RefreshAnim();
     }
 }
@@ -4136,10 +4140,10 @@ void FOMapper::OnSetItemOffsetXY(Entity* entity, Property* /*prop*/, void* /*cur
 {
     // OffsetX, OffsetY
 
-    ItemView* item = dynamic_cast<ItemView*>(entity);
+    auto* item = dynamic_cast<ItemView*>(entity);
 
     if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded()) {
-        ItemHexView* hex_item = dynamic_cast<ItemHexView*>(item);
+        auto* hex_item = dynamic_cast<ItemHexView*>(item);
         hex_item->SetAnimOffs();
         HexMngr.ProcessHexBorders(hex_item);
     }
@@ -4147,12 +4151,12 @@ void FOMapper::OnSetItemOffsetXY(Entity* entity, Property* /*prop*/, void* /*cur
 
 void FOMapper::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_value, void* old_value)
 {
-    ItemView* item = dynamic_cast<ItemView*>(entity);
+    auto* item = dynamic_cast<ItemView*>(entity);
     const bool cur = *static_cast<bool*>(cur_value);
     const bool old = *static_cast<bool*>(old_value);
 
     if (item->GetIsCanOpen()) {
-        ItemHexView* hex_item = dynamic_cast<ItemHexView*>(item);
+        auto* hex_item = dynamic_cast<ItemHexView*>(item);
         if (!old && cur) {
             hex_item->SetAnimFromStart();
         }

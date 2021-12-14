@@ -292,7 +292,7 @@ static void AdminWork(FOServer* server, Session* session)
             std::exit(0);
         }
         else if (cmd == "stop") {
-            if (!server->Started) {
+            if (!server->IsStarted()) {
                 WriteLog("Admin panel ({}): Server starting, wait.\n", admin_name);
             }
             else {
@@ -301,7 +301,7 @@ static void AdminWork(FOServer* server, Session* session)
             }
         }
         else if (cmd == "state") {
-            if (!server->Started) {
+            if (!server->IsStarted()) {
                 WriteLog("Admin panel ({}): Server starting.\n", admin_name);
             }
             else {
@@ -309,7 +309,7 @@ static void AdminWork(FOServer* server, Session* session)
             }
         }
         else if (!cmd.empty() && cmd[0] == '~') {
-            if (server->Started) {
+            if (server->IsStarted()) {
                 auto send_fail = false;
                 LogFunc func = [&admin_name, &session, &send_fail](string_view str) {
                     auto buf = string(str);
@@ -329,7 +329,7 @@ static void AdminWork(FOServer* server, Session* session)
                     uint msg = 0;
                     buf >> msg;
                     WriteLog("Admin panel ({}): Execute command '{}'.\n", admin_name, cmd);
-                    server->Process_Command(buf, func, nullptr, admin_name);
+                    // server->Process_Command(buf, func, nullptr, admin_name);
                 }
 
                 if (send_fail) {

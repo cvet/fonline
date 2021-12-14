@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "ServerEntity.h"
 #include "ServerScripting.h"
 
 class Item;
@@ -61,14 +61,14 @@ enum class CornerType : uchar
     EastWest = 5,
 };
 
-class Item final : public Entity
+class Item final : public ServerEntity
 {
     friend class Entity;
     friend class ItemManager;
 
 public:
     Item() = delete;
-    Item(uint id, const ProtoItem* proto, ServerScriptSystem& script_sys);
+    Item(FOServer* engine, uint id, const ProtoItem* proto);
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
@@ -82,7 +82,7 @@ public:
     [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
     [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
     [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return dynamic_cast<const ProtoItem*>(Proto); }
-    [[nodiscard]] auto ContGetItem(uint item_id, bool skip_hide) -> Item*;
+    [[nodiscard]] auto ContGetItem(uint item_id, bool skip_hidden) -> Item*;
     [[nodiscard]] auto ContGetAllItems(bool skip_hidden) -> vector<Item*>;
     [[nodiscard]] auto ContGetItemByPid(hash pid, uint stack_id) -> Item*;
     [[nodiscard]] auto ContGetItems(uint stack_id) -> vector<Item*>;
@@ -102,7 +102,6 @@ public:
 #include "Properties-Include.h"
 
 private:
-    ServerScriptSystem& _scriptSys;
     vector<Item*>* _childItems {};
     bool _nonConstHelper {};
 };

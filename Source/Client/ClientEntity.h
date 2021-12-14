@@ -31,40 +31,44 @@
 // SOFTWARE.
 //
 
+#pragma once
+
 #include "Common.h"
 
-#include "Server.h"
-#include "ServerScripting.h"
+#include "Entity.h"
 
-// ReSharper disable CppInconsistentNaming
+class FOClient;
 
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] int Server_Player_GetAccess(Player* self)
+class ClientEntity : public Entity
 {
-    return self->Access;
-}
+public:
+    ClientEntity() = delete;
+    ClientEntity(const ClientEntity&) = delete;
+    ClientEntity(ClientEntity&&) noexcept = delete;
+    auto operator=(const ClientEntity&) = delete;
+    auto operator=(ClientEntity&&) noexcept = delete;
+    ~ClientEntity() override = default;
 
-///# ...
-///# param access ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Player_SetAccess(Player* self, int access)
+    [[nodiscard]] auto GetId() const -> uint;
+    [[nodiscard]] auto GetEngine() -> FOClient*;
+
+    void SetId(uint id);
+
+protected:
+    ClientEntity(FOClient* engine, uint id, EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto);
+
+    FOClient* _engine;
+
+private:
+    uint _id;
+};
+
+class ClientGlobals final : public ClientEntity
 {
-    if (access < ACCESS_CLIENT || access > ACCESS_ADMIN) {
-        throw ScriptException("Wrong access type");
-    }
+public:
+    explicit ClientGlobals(FOClient* engine);
 
-    if (access == self->Access) {
-        return true;
-    }
-
-    string pass;
-    const auto allow = self->GetEngine()->ScriptSys.PlayerGetAccessEvent(self, access, pass);
-    if (allow) {
-        self->Access = static_cast<uchar>(access);
-    }
-
-    return allow;
-}
+    PROPERTIES_HEADER();
+#define GLOBAL_PROPERTY CLASS_PROPERTY
+#include "Properties-Include.h"
+};

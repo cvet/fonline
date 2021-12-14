@@ -36,11 +36,8 @@
 #include "Common.h"
 
 #include "Dialogs.h"
-#include "Entity.h"
-#include "GeometryHelper.h"
+#include "ServerEntity.h"
 #include "ServerScripting.h"
-#include "Settings.h"
-#include "Timer.h"
 
 ///@ ExportEnum
 enum class MovingState : uchar
@@ -73,7 +70,7 @@ class Item;
 class Map;
 class Location;
 
-class Critter final : public Entity
+class Critter final : public ServerEntity
 {
     friend class Player;
     friend class CritterManager;
@@ -94,7 +91,7 @@ public:
     };
 
     Critter() = delete;
-    Critter(uint id, Player* owner, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto);
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
     auto operator=(const Critter&) = delete;
@@ -154,7 +151,7 @@ public:
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
 
-    void Broadcast_Property(NetProperty::Type type, Property* prop, Entity* entity);
+    void Broadcast_Property(NetProperty::Type type, Property* prop, ServerEntity* entity);
     void Broadcast_Move(uint move_params);
     void Broadcast_Position();
     void Broadcast_Action(int action, int action_ext, Item* item);
@@ -169,7 +166,7 @@ public:
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
 
-    void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
+    void Send_Property(NetProperty::Type type, Property* prop, ServerEntity* entity);
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
     void Send_AddCritter(Critter* cr);
@@ -247,10 +244,6 @@ public:
     TalkData Talk {}; // Todo: incapsulate Critter::Talk
 
 private:
-    CritterSettings& _settings;
-    GeometryHelper _geomHelper;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
     Player* _player {};
     bool _playerDetached {};
     uint _playerDetachTick {};

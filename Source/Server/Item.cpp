@@ -34,16 +34,12 @@
 #include "Item.h"
 #include "CritterManager.h"
 #include "ItemManager.h"
-#include "Log.h"
-#include "MapManager.h"
-#include "ProtoManager.h"
-#include "StringUtils.h"
 
 PROPERTIES_IMPL(Item, "Item", true);
 #define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Item, access, type, name)
 #include "Properties-Include.h"
 
-Item::Item(uint id, const ProtoItem* proto, ServerScriptSystem& script_sys) : Entity(id, EntityType::Item, PropertiesRegistrator, proto), _scriptSys {script_sys}
+Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, EntityType::Item, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(GetCount() > 0);
@@ -114,7 +110,7 @@ auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
     return nullptr;
 }
 
-auto Item::ContGetAllItems(bool skip_hide) -> vector<Item*>
+auto Item::ContGetAllItems(bool skip_hidden) -> vector<Item*>
 {
     NON_CONST_METHOD_HINT();
 
@@ -126,7 +122,7 @@ auto Item::ContGetAllItems(bool skip_hide) -> vector<Item*>
     items.reserve(_childItems->size());
 
     for (auto* item : *_childItems) {
-        if (!skip_hide || !item->GetIsHidden()) {
+        if (!skip_hidden || !item->GetIsHidden()) {
             items.push_back(item);
         }
     }
