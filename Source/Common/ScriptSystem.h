@@ -156,17 +156,17 @@ public:
         return func && func(args...);
     }
 
+    struct NativeImpl;
+    shared_ptr<NativeImpl> NativeData {};
+    struct AngelScriptImpl;
+    shared_ptr<AngelScriptImpl> AngelScriptData {};
+    struct MonoImpl;
+    shared_ptr<MonoImpl> MonoData {};
+
 protected:
     void* _mainObj;
     GlobalSettings& _settings;
     FileManager& _fileMngr;
-
-    struct NativeImpl;
-    shared_ptr<NativeImpl> _pNativeImpl {};
-    struct AngelScriptImpl;
-    shared_ptr<AngelScriptImpl> _pAngelScriptImpl {};
-    struct MonoImpl;
-    shared_ptr<MonoImpl> _pMonoImpl {};
 
     /*
 public:

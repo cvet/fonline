@@ -815,6 +815,8 @@ def genCode(lang, target, isASCompiler=False):
             elif tt[0] == 'predicate':
                 assert not ret
                 r = 'std::function<bool(' + metaTypeToEngineType(tt[1], True) + ')>'
+            elif tt[0] == 'Entity':
+                return 'BaseEntity*'
             elif tt[0] in entities:
                 if target != 'Server':
                     r = tt[0] + 'View*'
@@ -846,6 +848,8 @@ def genCode(lang, target, isASCompiler=False):
                 return 'asIScriptFunction*'
             elif tt[0] == 'predicate':
                 return 'asIScriptFunction*'
+            elif tt[0] == 'Entity':
+                return 'BaseEntity*'
             elif tt[0] in entities:
                 return tt[0] + ('View' if target != 'Server' else '') + '*'
             elif tt[0] in userObjects:
@@ -865,25 +869,26 @@ def genCode(lang, target, isASCompiler=False):
         def marshalIn(t, v):
             tt = t.split('.')
             if tt[0] == 'arr':
-                return 'MarshalArray<' + metaTypeToEngineType(tt[1]) + '>(' + v + ')'
+                return 'MarshalArray<' + metaTypeToEngineType(tt[1], True) + '>(GET_AS_ENGINE(), ' + v + ')'
             elif tt[0] == 'dict':
-                return 'MarshalDict<' + metaTypeToEngineType(tt[1]) + ', ' + metaTypeToEngineType(tt[2]) + '>(' + v + ')'
+                return 'MarshalDict<' + metaTypeToEngineType(tt[1], True) + ', ' + metaTypeToEngineType(tt[2], True) + '>(GET_AS_ENGINE(), ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
-                return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1])
+                return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], True)
             return v
             
         def marshalBack(t, v):
             tt = t.split('.')
             if tt[0] == 'arr':
                 if tt[1] in entities or tt[1] in userObjects:
-                    return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1]) + '>("' + metaTypeToASType(tt[1]) + '[]", ' + v + ')'
-                return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1]) + '>("' + metaTypeToASType(tt[1]) + '[]", ' + v + ')'
+                    return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], True) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1]) + '[]", ' + v + ')'
+                return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1], True) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1]) + '[]", ' + v + ')'
             elif tt[0] == 'dict':
-                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1]) + ', ' + metaTypeToEngineType(tt[2]) + '>(' + v + ')'
+                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], True) + ', ' + metaTypeToEngineType(tt[2], True) + '>(GET_AS_ENGINE(), ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
-                return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1])
+                return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], True)
             return v
-            
+        
+        allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
         entities = ['Player', 'Item', 'Critter', 'Map', 'Location']
         
         defineLines = []
@@ -918,7 +923,7 @@ def genCode(lang, target, isASCompiler=False):
             globalLines.append('// Scriptable objects')
             for eo in codeGenTags['ExportObject']:
                 targ, objName, fields, _, _ = eo
-                if targ == target or targ == 'Common':
+                if targ in allowedTargets:
                     globalLines.append('struct ' + objName)
                     globalLines.append('{')
                     globalLines.append('    int RefCounter;')
@@ -928,17 +933,19 @@ def genCode(lang, target, isASCompiler=False):
                     globalLines.append('')
             
         # Marshalling functions
-        globalLines.append('// Marshalling functions')
+        globalLines.append('// Marshalling entity functions')
+        globalLines.append('#define GET_AS_ENGINE() self->GetEngine()->ScriptSys.AngelScriptData->Engine')
+        globalLines.append('')
         for entity in entities:
             engineEntityType = entity + ('View' if target != 'Server' else '')
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
-                if targ == target and ent == entity:
+                if targ in allowedTargets and ent == entity:
                     if not isASCompiler:
-                        globalLines.append('extern ' + metaTypeToEngineType(ret, True) + ' ' + target + '_' + entity + '_' + name +
+                        globalLines.append('extern ' + metaTypeToEngineType(ret, True) + ' ' + targ + '_' + entity + '_' + name +
                                 '(' + entity + ('View' if target != 'Server' else '') + '*' + (', ' if params else '') +
                                 ', '.join([metaTypeToEngineType(p[0]) for p in params]) + ');')
-                    globalLines.append('static ' + metaTypeToASEngineType(ret, True) + ' AS_' + target + '_' + entity + '_' + name + '(' + engineEntityType + '* self' +
+                    globalLines.append('static ' + metaTypeToASEngineType(ret, True) + ' AS_' + targ + '_' + entity + '_' + name + '(' + engineEntityType + '* self' +
                             (', ' if params else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
                     globalLines.append('{')
                     if not isASCompiler:
@@ -948,21 +955,49 @@ def genCode(lang, target, isASCompiler=False):
                                 globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
                         for p in params:
                             globalLines.append('    auto&& _' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
-                        globalLines.append('    ' + ('auto _result = ' if ret != 'void' else '') + target + '_' + entity + '_' + name +
+                        globalLines.append('    ' + ('auto _callResult = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
                                 '(self' + (', ' if params else '') + ', '.join(['_' + p[1] for p in params]) + ');')
                         for p in params:
                             pass # Marshall back
                         if ret != 'void':
-                            globalLines.append('    return ' + marshalBack(ret, '_result') + ';')
+                            globalLines.append('    return ' + marshalBack(ret, '_callResult') + ';')
                     else:
                         if ret != 'void':
                             globalLines.append('    return 0;')
                     globalLines.append('}')
                     globalLines.append('')
-        globalLines.append('')
         
         # Generate global methods
+        globalLines.append('// Marshalling global functions')
+        globalLines.append('#undef GET_AS_ENGINE')
+        globalLines.append('#define GET_AS_ENGINE() engine->ScriptSys.AngelScriptData->Engine')
         globalLines.append('')
+        for methodTag in codeGenTags['ExportMethod']:
+            targ, ent, name, ret, params, exportFlags, comment = methodTag
+            if targ in allowedTargets and ent == 'Global':
+                if not isASCompiler:
+                    globalLines.append('extern ' + metaTypeToEngineType(ret, True) + ' ' + targ + '_Global_' + name +
+                            '(FO' + target + '*' + (', ' if params else '') + ', '.join([metaTypeToEngineType(p[0]) for p in params]) + ');')
+                globalLines.append('static ' + metaTypeToASEngineType(ret, True) + ' AS_' + targ + '_Global_' + name + '(FO' + target + '* engine' +
+                        (', ' if params else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
+                globalLines.append('{')
+                if not isASCompiler:
+                    for p in params:
+                        if p[0] in entities:
+                            globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
+                    for p in params:
+                        globalLines.append('    auto&& _' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
+                    globalLines.append('    ' + ('auto _callResult = ' if ret != 'void' else '') + targ + '_Global_' + name +
+                            '(engine' + (', ' if params else '') + ', '.join(['_' + p[1] for p in params]) + ');')
+                    for p in params:
+                        pass # Marshall back
+                    if ret != 'void':
+                        globalLines.append('    return ' + marshalBack(ret, '_callResult') + ';')
+                else:
+                    if ret != 'void':
+                        globalLines.append('    return 0;')
+                globalLines.append('}')
+                globalLines.append('')
         
         # Register enums
         registerLines.append('// Enums')
@@ -980,7 +1015,7 @@ def genCode(lang, target, isASCompiler=False):
         # Register exported objects
         for eo in codeGenTags['ExportObject']:
             targ, objName, fields, _, _ = eo
-            if targ == target or targ == 'Common':
+            if targ in allowedTargets:
                 registerLines.append('static_assert(std::is_standard_layout_v<' + objName + '>, "' + objName + ' is not standart layout type");')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectType("' + objName + '", sizeof(' + objName + '), asOBJ_REF));')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(' + objName + ', AddRef), SCRIPT_METHOD_CONV));')
@@ -1013,9 +1048,9 @@ def genCode(lang, target, isASCompiler=False):
         for entity in entities:
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
-                if targ == target and ent == entity:
+                if targ in allowedTargets and ent == entity:
                     registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret) + ' ' + name + '(' +
-                            ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + target + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
+                            ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
         registerLines.append('')
         
         # Register entity properties

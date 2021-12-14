@@ -105,8 +105,9 @@ DECLARE_EXCEPTION(ScriptCompilerException);
 #include "weakref/weakref.h"
 
 #if COMPILER_MODE
-#undef FOEngine
-#define FOEngine void
+struct FOServer;
+struct FOClient;
+struct FOMapper;
 
 // Copy-paste from Entity.h
 enum class EntityType
@@ -188,7 +189,7 @@ struct SCRIPTING_CLASS
 #define INIT_ARGS
 
 #define ENTITY_VERIFY(e) \
-    if (e && e->IsDestroyed) { \
+    if (e != nullptr && e->IsDestroyed) { \
         throw ScriptException("Access to destroyed entity"); \
     }
 #endif
@@ -251,11 +252,8 @@ static T* ScriptableObject_Factory()
 }
 
 // Arrays stuff
-static asIScriptEngine* ASEngine;
-
-static auto CreateASArray(const char* type) -> CScriptArray*
+static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> CScriptArray*
 {
-    asIScriptEngine* as_engine = 0;
     RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
     RUNTIME_ASSERT(type_id);
@@ -267,7 +265,7 @@ static auto CreateASArray(const char* type) -> CScriptArray*
 }
 
 template<typename Type>
-static void VerifyEntityArray(CScriptArray* as_array)
+static void VerifyEntityArray(asIScriptEngine* as_engine, CScriptArray* as_array)
 {
     for (const auto i : xrange(as_array->GetSize())) {
         ENTITY_VERIFY(*reinterpret_cast<Type*>(as_array->At(i)));
@@ -275,7 +273,7 @@ static void VerifyEntityArray(CScriptArray* as_array)
 }
 
 template<typename T>
-static auto MarshalArray(CScriptArray* as_array) -> vector<T>
+static auto MarshalArray(asIScriptEngine* as_engine, CScriptArray* as_array) -> vector<T>
 {
     if (as_array == nullptr || as_array->GetSize() == 0u) {
         return {};
@@ -291,14 +289,14 @@ static auto MarshalArray(CScriptArray* as_array) -> vector<T>
 }
 
 template<typename T>
-static auto MarshalBackScalarArray(const char* type, const vector<T>& vec) -> CScriptArray*
+static auto MarshalBackScalarArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
 {
-    auto* as_array = CreateASArray(type);
+    auto* as_array = CreateASArray(as_engine, type);
 
     if (!vec.empty()) {
         as_array->Resize(static_cast<asUINT>(vec.size()));
         for (size_t i = 0; i < vec.size(); i++) {
-            *reinterpret_cast<T*>(as_array->At(i)) = vec[i];
+            *reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
         }
     }
 
@@ -306,9 +304,9 @@ static auto MarshalBackScalarArray(const char* type, const vector<T>& vec) -> CS
 }
 
 template<typename T>
-static auto MarshalBackRefArray(const char* type, const vector<T>& vec) -> CScriptArray*
+static auto MarshalBackRefArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
 {
-    auto* as_array = CreateASArray(type);
+    auto* as_array = CreateASArray(as_engine, type);
 
     if (!vec.empty()) {
         as_array->Resize(static_cast<asUINT>(vec.size()));
@@ -323,9 +321,8 @@ static auto MarshalBackRefArray(const char* type, const vector<T>& vec) -> CScri
     return as_array;
 }
 
-static auto CreateASDict(const char* type) -> CScriptDict*
+static auto CreateASDict(asIScriptEngine* as_engine, const char* type) -> CScriptDict*
 {
-    asIScriptEngine* as_engine = 0;
     RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
     RUNTIME_ASSERT(type_id);
@@ -337,7 +334,7 @@ static auto CreateASDict(const char* type) -> CScriptDict*
 }
 
 template<typename T, typename U>
-static auto MarshalDict(CScriptDict* as_dict) -> map<T, U>
+static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
 {
     if (as_dict == nullptr || as_dict->GetSize() == 0u) {
         return {};
@@ -352,9 +349,9 @@ static auto MarshalDict(CScriptDict* as_dict) -> map<T, U>
 }
 
 template<typename T, typename U>
-static auto MarshalBackScalarDict(const char* type, const map<T, U>& map) -> CScriptDict*
+static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
-    auto* as_dict = CreateASDict(type);
+    auto* as_dict = CreateASDict(as_engine, type);
 
     if (!map.empty()) {
         // as_array->Resize(static_cast<asUINT>(vec.size()));
@@ -455,9 +452,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RUNTIME_ASSERT(engine);
 
 #if !COMPILER_MODE
-    _pAngelScriptImpl = std::make_unique<AngelScriptImpl>();
-    _pAngelScriptImpl->Engine = engine;
-    // asEngine->ShutDownAndRelease();
+    AngelScriptData = std::make_unique<AngelScriptImpl>();
+    AngelScriptData->Engine = engine;
 #endif
 
     int as_result;
@@ -676,9 +672,6 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
         throw ScriptCompilerException("Can't read root script file", script_path);
     }
 
-#define FO_ENTRY_POINT(func_name) func_name(this, engine);
-#include "AngelScriptExtensionEntries.h"
-
     Preprocessor::UndefAll();
 #if SERVER_SCRIPTING
     Preprocessor::Define("SERVER");
@@ -759,11 +752,8 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
     RUNTIME_ASSERT(!buf.empty());
     RUNTIME_ASSERT(!lnt_data.empty());
 
-#define FO_ENTRY_POINT(func_name) func_name(this, engine);
-#include "AngelScriptExtensionEntries.h"
-
     asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);
-    if (!mod) {
+    if (mod == nullptr) {
         throw ScriptException("Create root module fail");
     }
 
