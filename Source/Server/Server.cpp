@@ -4389,7 +4389,7 @@ void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_val
     }
 }
 
-auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter* /*slave*/) -> bool
+auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter * /*slave*/) -> bool
 {
     /*int bind_id = (int)demand.ParamId;
     ScriptSys.PrepareContext(bind_id, master->GetName());
@@ -4402,7 +4402,7 @@ auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/,
     return false;
 }
 
-auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter* /*slave*/) -> uint
+auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter * /*slave*/) -> uint
 {
     /*int bind_id = (int)result.ParamId;
     ScriptSys.PrepareContext(

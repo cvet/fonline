@@ -485,11 +485,11 @@
     // if (!pmap->EditorLoad(mapper->ServerFileMngr, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
     //     return nullptr;
 
-    //auto* map = new MapView(0, pmap);
-    //mapper->LoadedMaps.push_back(map);
-    //mapper->RunMapLoadScript(map);
+    // auto* map = new MapView(0, pmap);
+    // mapper->LoadedMaps.push_back(map);
+    // mapper->RunMapLoadScript(map);
 
-    //return map;
+    // return map;
     return nullptr;
 }
 

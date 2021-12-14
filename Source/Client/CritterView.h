@@ -37,8 +37,8 @@
 
 #include "3dStuff.h"
 #include "Application.h"
-#include "ClientScripting.h"
 #include "ClientEntity.h"
+#include "ClientScripting.h"
 #include "SpriteManager.h"
 
 class ItemView;

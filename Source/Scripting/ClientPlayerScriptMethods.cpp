@@ -35,11 +35,11 @@
 
 #include "Client.h"
 #include "ClientScripting.h"
-#include "NetCommand.h"
+#include "FileSystem.h"
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
-#include "FileSystem.h"
-#include "StringUtils.h"
 #include "Log.h"
+#include "NetCommand.h"
+#include "StringUtils.h"
 
 // ReSharper disable CppInconsistentNaming

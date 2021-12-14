@@ -367,12 +367,8 @@ Please follow these instructions to understand how to use this engine by design:
 * ApplicationHeadless: move different renderers to separate modules
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
-* Entity: fix proto name recognition
-* Entity: remove EntityType enum, use dynamic cast
-* Entity: use passkey for SetId
 * FileSystem: handle apply file writing
 * GenericUtils: script handling in ConvertParamValue
-* KeyCodes-Include: rename DIK_ to Key or something else
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: delete \n appendix from WriteLog
@@ -395,24 +391,14 @@ Please follow these instructions to understand how to use this engine by design:
 * Testing: fix script system
 * Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
 * Testing: send client dumps to server
-* MonoScripting: set Mono domain user data
-* MonoScripting: get Mono domain user data
-* ScriptApi-Client: solve recursion in GetMapPos
-* ScriptApi-Client: need attention!
-* ScriptApi-Common: fix script system
-* ScriptApi-Mapper: need attention! (4)
-* ScriptApi-Server: fix ITEM_ACCESSORY_CONTAINER recursion
-* ScriptApi-Server: need attention!
-* ScriptApi: add FO_API_*_VIRTUAL_PROPERTY and FO_API_*_VIRTUAL_READONLY_PROPERTY
-* ScriptApi: add supporting of components for properties
-* ScriptApi: split FO_API_SETTING by subgroups (CLIENT, SERVER, RENDER, etc)
-* ScriptApi: improve RPC calls
-* ScriptApi: add custom entities handling
-* ScriptApi: add Proto* to scripts that have readable properties
-* ScriptApi: add local entity events
-* ScriptApi: add ImGui bindings
-* ScriptApi: hex coords to single structure (hx, hy -> coord)
-* ScriptApi: remove for better portability (2)
+* ClientItemScriptMethods: solve recursion in GetMapPos
+* ClientItemScriptMethods: need attention!
+* CommonGlobalScriptMethods: fix script system
+* MapperGlobalScriptMethods: need attention! (4)
+* MonoScripting-Template: set Mono domain user data
+* MonoScripting-Template: get Mono domain user data
+* ServerCritterScriptMethods: need attention!
+* ServerItemScriptMethods: fix ITEM_ACCESSORY_CONTAINER recursion
 * AdminPanel: admin panel network to Asio
 * Critter: rename to IsOwnedByPlayer
 * Critter: replace to !IsOwnedByPlayer
@@ -443,7 +429,6 @@ Please follow these instructions to understand how to use this engine by design:
 * ImageBaker: swap colors of fo palette once in header
 * Mapper: need attention! (24)
 * Mapper: mapper render iface layer
-* Mapper: rename FOMapper to just Mapper
   
 ## Repository structure
 

@@ -205,13 +205,13 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     return static_cast<int>(retval);
 
 #elif !FO_WINDOWS && !FO_WEB
-    FILE* in = popen(command.c_str(), "r");
+    FILE* in = popen(string(command).c_str(), "r");
     if (!in) {
         return -1;
     }
 
     string log;
-    char buf[TEMP_BUF_SIZE];
+    char buf[4096];
     while (fgets(buf, sizeof(buf), in)) {
         log += buf;
         PrintLog(log, false, log_callback);
@@ -361,7 +361,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     ::ShellExecuteW(nullptr, L"open", _str(link).toWideChar().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 #endif
 #elif !FO_IOS
-    int r = system((string("xdg-open ") + link).c_str());
+    int r = system((string("xdg-open ") + string(link)).c_str());
     UNUSED_VARIABLE(r); // Supress compiler warning
 #endif
 }

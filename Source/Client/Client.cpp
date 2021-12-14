@@ -3779,10 +3779,10 @@ void FOClient::Net_OnUpdateFilesList()
     }
 
 #if FO_WINDOWS
-    // if (Update->ClientOutdated && !have_exe)
+    // if (_updateData->ClientOutdated && !have_exe)
     //    UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
 #else
-    if (Update->ClientOutdated)
+    if (_updateData->ClientOutdated)
         UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
 #endif
 }
