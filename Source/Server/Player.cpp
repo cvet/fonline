@@ -45,7 +45,7 @@ PROPERTIES_IMPL(Player, "Player", true);
 #define PLAYER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Player, access, type, name)
 #include "Properties-Include.h"
 
-Player::Player(FOServer* engine, uint id, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, EntityType::Player, PropertiesRegistrator, proto)
+Player::Player(FOServer* engine, uint id, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, PropertiesRegistrator, proto)
 {
     Connection = connection;
     _talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
@@ -204,7 +204,7 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     IsTransferring = true;
 }
 
-void Player::Send_Property(NetProperty::Type type, Property* prop, ServerEntity* entity)
+void Player::Send_Property(NetProperty::Type type, Property* prop, Entity* entity)
 {
     NON_CONST_METHOD_HINT();
 
@@ -253,16 +253,16 @@ void Player::Send_Property(NetProperty::Type type, Property* prop, ServerEntity*
     switch (type) {
     case NetProperty::CritterItem:
         Connection->Bout << dynamic_cast<Item*>(entity)->GetCritId();
-        Connection->Bout << entity->GetId();
+        Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     case NetProperty::Critter:
-        Connection->Bout << entity->GetId();
+        Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     case NetProperty::MapItem:
-        Connection->Bout << entity->GetId();
+        Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     case NetProperty::ChosenItem:
-        Connection->Bout << entity->GetId();
+        Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     default:
         break;

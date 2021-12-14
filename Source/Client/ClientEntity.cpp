@@ -33,7 +33,7 @@
 
 #include "ClientEntity.h"
 
-ClientEntity::ClientEntity(FOClient* engine, uint id, EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(type, registrator, proto), _engine {engine}, _id {id}
+ClientEntity::ClientEntity(FOClient* engine, uint id, PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator, proto), _engine {engine}, _id {id}
 {
 }
 
@@ -58,6 +58,6 @@ PROPERTIES_IMPL(ClientGlobals, "Globals", false);
 #define GLOBAL_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(ClientGlobals, access, type, name)
 #include "Properties-Include.h"
 
-ClientGlobals::ClientGlobals(FOClient* engine) : ClientEntity(engine, 1, EntityType::Global, PropertiesRegistrator, nullptr)
+ClientGlobals::ClientGlobals() : Entity(PropertiesRegistrator, nullptr)
 {
 }

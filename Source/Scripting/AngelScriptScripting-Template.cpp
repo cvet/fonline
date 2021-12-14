@@ -109,59 +109,6 @@ struct FOServer;
 struct FOClient;
 struct FOMapper;
 
-// Copy-paste from Entity.h
-enum class EntityType
-{
-    Player,
-    PlayerProto,
-    ItemProto,
-    CritterProto,
-    MapProto,
-    LocationProto,
-    Item,
-    Critter,
-    Map,
-    Location,
-    PlayerView,
-    ItemView,
-    ItemHexView,
-    CritterView,
-    MapView,
-    LocationView,
-    Custom,
-    Global,
-    Max,
-};
-
-struct Property
-{
-    // Copy-paste from Properties.h
-    enum AccessType
-    {
-        PrivateCommon = 0x0010,
-        PrivateClient = 0x0020,
-        PrivateServer = 0x0040,
-        Public = 0x0100,
-        PublicModifiable = 0x0200,
-        PublicFullModifiable = 0x0400,
-        Protected = 0x1000,
-        ProtectedModifiable = 0x2000,
-        VirtualPrivateCommon = 0x0011,
-        VirtualPrivateClient = 0x0021,
-        VirtualPrivateServer = 0x0041,
-        VirtualPublic = 0x0101,
-        VirtualProtected = 0x1001,
-
-        VirtualMask = 0x000F,
-        PrivateMask = 0x00F0,
-        PublicMask = 0x0F00,
-        ProtectedMask = 0xF000,
-        ClientOnlyMask = 0x0020,
-        ServerOnlyMask = 0x0040,
-        ModifiableMask = 0x2600,
-    };
-};
-
 struct BaseEntity
 {
     void AddRef() { }

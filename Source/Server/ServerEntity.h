@@ -41,6 +41,8 @@ class FOServer;
 
 class ServerEntity : public Entity
 {
+    friend class EntityManager;
+
 public:
     ServerEntity() = delete;
     ServerEntity(const ServerEntity&) = delete;
@@ -52,21 +54,21 @@ public:
     [[nodiscard]] auto GetId() const -> uint;
     [[nodiscard]] auto GetEngine() -> FOServer*;
 
-    void SetId(uint id);
-
 protected:
-    ServerEntity(FOServer* engine, uint id, EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto);
+    ServerEntity(FOServer* engine, uint id, PropertyRegistrator* registrator, const ProtoEntity* proto);
 
     FOServer* _engine;
 
 private:
+    void SetId(uint id); // Invoked by EntityManager
+
     uint _id;
 };
 
-class ServerGlobals final : public ServerEntity
+class ServerGlobals final : public Entity
 {
 public:
-    explicit ServerGlobals(FOServer* engine);
+    ServerGlobals();
 
     PROPERTIES_HEADER();
 #define GLOBAL_PROPERTY CLASS_PROPERTY

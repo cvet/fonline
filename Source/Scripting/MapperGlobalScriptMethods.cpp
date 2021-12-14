@@ -620,14 +620,14 @@
     maxhy = std::clamp(maxhy, MAXHEX_MIN, MAXHEX_MAX);
 
     if (pmap->GetWorkHexX() >= maxhx) {
-        pmap->SetWorkHexX(maxhx - 1);
+        pmap->SetWorkHexX_ReadOnlyWorkaround(maxhx - 1);
     }
     if (pmap->GetWorkHexY() >= maxhy) {
-        pmap->SetWorkHexY(maxhy - 1);
+        pmap->SetWorkHexY_ReadOnlyWorkaround(maxhy - 1);
     }
 
-    pmap->SetWidth(maxhx);
-    pmap->SetHeight(maxhy);
+    pmap->SetWidth_ReadOnlyWorkaround(maxhx);
+    pmap->SetHeight_ReadOnlyWorkaround(maxhy);
 
     // Delete truncated entities
     if (maxhx < old_maxhx || maxhy < old_maxhy) {

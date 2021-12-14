@@ -38,7 +38,7 @@ PROPERTIES_IMPL(ItemView, "Item", false);
 #define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(ItemView, access, type, name)
 #include "Properties-Include.h"
 
-ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, EntityType::ItemView, PropertiesRegistrator, proto)
+ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, PropertiesRegistrator, proto)
 {
     RUNTIME_ASSERT(Proto);
     RUNTIME_ASSERT(GetCount() > 0);

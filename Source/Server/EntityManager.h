@@ -67,9 +67,8 @@ public:
     ~EntityManager() = default;
 
     [[nodiscard]] auto FindCritterItems(uint crid) -> vector<Item*>;
-    [[nodiscard]] auto GetEntity(uint id, EntityType type) -> ServerEntity*;
-    [[nodiscard]] auto GetEntities(EntityType type) -> vector<ServerEntity*>;
-    [[nodiscard]] auto GetEntitiesCount(EntityType type) const -> uint;
+    [[nodiscard]] auto GetEntity(uint id) -> ServerEntity*;
+    [[nodiscard]] auto GetEntities() -> vector<ServerEntity*>;
     [[nodiscard]] auto GetPlayer(uint id) -> Player*;
     [[nodiscard]] auto GetPlayers() -> vector<Player*>;
     [[nodiscard]] auto GetPlayers() const -> vector<const Player*>;
@@ -93,6 +92,5 @@ public:
 private:
     FOServer* _engine;
     map<uint, ServerEntity*> _allEntities {};
-    uint _entitiesCount[static_cast<int>(EntityType::Max)] {};
     bool _nonConstHelper {};
 };

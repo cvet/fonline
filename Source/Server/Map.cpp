@@ -45,7 +45,7 @@ PROPERTIES_IMPL(Map, "Map", true);
 #define MAP_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Map, access, type, name)
 #include "Properties-Include.h"
 
-Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, EntityType::Map, PropertiesRegistrator, proto), _staticMap {static_map}, _mapLocation {location}
+Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, PropertiesRegistrator, proto), _staticMap {static_map}, _mapLocation {location}
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(_staticMap);

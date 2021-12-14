@@ -50,7 +50,8 @@
 
 FOClient::FOClient(GlobalSettings& settings) : Settings {settings}, GeomHelper(Settings), ScriptSys(this, settings, FileMngr), GameTime(Settings), ProtoMngr(FileMngr), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, ScriptSys, GameTime), ResMngr(FileMngr, SprMngr, ScriptSys), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
-    Globals = new ClientGlobals(this);
+    Globals = new ClientGlobals();
+
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
     _netSock = INVALID_SOCKET;
     _initNetReason = INIT_NET_REASON_NONE;

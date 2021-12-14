@@ -44,7 +44,7 @@ PROPERTIES_IMPL(Critter, "Critter", true);
 #define CRITTER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Critter, access, type, name)
 #include "Properties-Include.h"
 
-Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, EntityType::Critter, PropertiesRegistrator, proto), _player {owner}
+Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, PropertiesRegistrator, proto), _player {owner}
 {
     if (_player != nullptr) {
         _player->AddRef();

@@ -98,7 +98,8 @@ public:
     {
         ushort HexX {};
         ushort HexY {};
-        EntityType Type {};
+        bool IsCritter {};
+        bool IsItem {};
         const ProtoEntity* Proto {};
         Properties* Props {};
         vector<EntityBuf*> Children {};

@@ -92,7 +92,8 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     }
 
     // Load globals
-    Globals = new ServerGlobals(this);
+    Globals = new ServerGlobals();
+
     const auto globals_doc = DbStorage.Get("Globals", 1);
     if (globals_doc.empty()) {
         DbStorage.Insert("Globals", 1, {{"_Proto", string("")}});

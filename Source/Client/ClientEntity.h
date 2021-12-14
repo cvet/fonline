@@ -55,7 +55,7 @@ public:
     void SetId(uint id);
 
 protected:
-    ClientEntity(FOClient* engine, uint id, EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto);
+    ClientEntity(FOClient* engine, uint id, PropertyRegistrator* registrator, const ProtoEntity* proto);
 
     FOClient* _engine;
 
@@ -63,10 +63,10 @@ private:
     uint _id;
 };
 
-class ClientGlobals final : public ClientEntity
+class ClientGlobals final : public Entity
 {
 public:
-    explicit ClientGlobals(FOClient* engine);
+    explicit ClientGlobals();
 
     PROPERTIES_HEADER();
 #define GLOBAL_PROPERTY CLASS_PROPERTY

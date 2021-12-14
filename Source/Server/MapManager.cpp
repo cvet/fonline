@@ -427,8 +427,8 @@ void MapManager::DeleteMapContent(Map* map)
 
 auto MapManager::GetLocationAndMapsStatistics() const -> string
 {
-    const auto locations = _engine->EntityMngr.GetEntities(EntityType::Location);
-    const auto maps = _engine->EntityMngr.GetEntities(EntityType::Map);
+    const auto locations = _engine->EntityMngr.GetLocations();
+    const auto maps = _engine->EntityMngr.GetMaps();
 
     string result = _str("Locations count: {}\n", static_cast<uint>(locations.size()));
     result += _str("Maps count: {}\n", static_cast<uint>(maps.size()));
@@ -536,6 +536,7 @@ void MapManager::RegenerateMap(Map* map)
     for (auto* item : map->GetItems()) {
         _engine->ScriptSys.ItemInitEvent(item, true);
     }
+
     _engine->ScriptSys.MapInitEvent(map, true);
 }
 
@@ -546,7 +547,8 @@ auto MapManager::GetMap(uint map_id) -> Map*
     if (map_id == 0u) {
         return nullptr;
     }
-    return dynamic_cast<Map*>(_engine->EntityMngr.GetEntity(map_id, EntityType::Map));
+
+    return _engine->EntityMngr.GetMap(map_id);
 }
 
 auto MapManager::GetMap(uint map_id) const -> const Map*
@@ -561,6 +563,7 @@ auto MapManager::GetMapByPid(hash map_pid, uint skip_count) -> Map*
     if (map_pid == 0u) {
         return nullptr;
     }
+
     return _engine->EntityMngr.GetMapByPid(map_pid, skip_count);
 }
 
@@ -573,7 +576,7 @@ auto MapManager::GetMaps() -> vector<Map*>
 
 auto MapManager::GetMapsCount() const -> uint
 {
-    return _engine->EntityMngr.GetEntitiesCount(EntityType::Map);
+    return static_cast<uint>(_engine->EntityMngr.GetMaps().size());
 }
 
 auto MapManager::GetLocationByMap(uint map_id) -> Location*
@@ -592,7 +595,8 @@ auto MapManager::GetLocation(uint loc_id) -> Location*
     if (loc_id == 0u) {
         return nullptr;
     }
-    return dynamic_cast<Location*>(_engine->EntityMngr.GetEntity(loc_id, EntityType::Location));
+
+    return _engine->EntityMngr.GetLocation(loc_id);
 }
 
 auto MapManager::GetLocation(uint loc_id) const -> const Location*
@@ -651,7 +655,7 @@ auto MapManager::GetLocations() -> vector<Location*>
 
 auto MapManager::GetLocationsCount() const -> uint
 {
-    return _engine->EntityMngr.GetEntitiesCount(EntityType::Location);
+    return static_cast<uint>(_engine->EntityMngr.GetLocations().size());
 }
 
 void MapManager::LocationGarbager()

@@ -214,7 +214,7 @@ auto ItemManager::GetItems() -> vector<Item*>
 
 auto ItemManager::GetItemsCount() const -> uint
 {
-    return _engine->EntityMngr.GetEntitiesCount(EntityType::Item);
+    return static_cast<uint>(_engine->EntityMngr.GetItems().size());
 }
 
 auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> Item*
@@ -329,7 +329,7 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
 
 auto ItemManager::GetItem(uint item_id) -> Item*
 {
-    return dynamic_cast<Item*>(_engine->EntityMngr.GetEntity(item_id, EntityType::Item));
+    return _engine->EntityMngr.GetItem(item_id);
 }
 
 auto ItemManager::GetItem(uint item_id) const -> const Item*

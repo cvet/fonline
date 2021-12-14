@@ -48,30 +48,13 @@
     inline void Set##prop(prop_type value) { Props.SetValue<prop_type>(Property##prop, value); } \
     inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(Property##prop) > 0; }
 
-#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop) Property* class_name::Property##prop = class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop);
+#define CLASS_READONLY_PROPERTY(access_type, prop_type, prop) \
+    static Property* Property##prop; \
+    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(Property##prop); } \
+    inline void Set##prop##_ReadOnlyWorkaround(prop_type value) { Props.SetValue<prop_type>(Property##prop, value); } \
+    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(Property##prop) > 0; }
 
-// Todo: remove EntityType enum, use dynamic cast
-enum class EntityType
-{
-    Player,
-    PlayerProto,
-    ItemProto,
-    CritterProto,
-    MapProto,
-    LocationProto,
-    Item,
-    Critter,
-    Map,
-    Location,
-    PlayerView,
-    ItemView,
-    ItemHexView,
-    CritterView,
-    MapView,
-    LocationView,
-    Global,
-    Max,
-};
+#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop) Property* class_name::Property##prop = class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop);
 
 class ProtoEntity;
 
@@ -91,7 +74,6 @@ public:
     void Release() const;
 
     Properties Props;
-    const EntityType Type;
     const ProtoEntity* Proto;
     mutable int RefCounter {1};
     bool IsDestroyed {};
@@ -102,7 +84,7 @@ public:
     void* NativeObj {};
 
 protected:
-    Entity(EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto);
+    Entity(PropertyRegistrator* registrator, const ProtoEntity* proto);
     virtual ~Entity();
 
     bool _nonConstHelper {};
@@ -120,7 +102,7 @@ public:
     string CollectionName {};
 
 protected:
-    ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator);
+    ProtoEntity(hash proto_id, PropertyRegistrator* registrator);
 };
 
 class ProtoPlayer final : public ProtoEntity
@@ -129,7 +111,7 @@ public:
     explicit ProtoPlayer(hash pid);
 
     PROPERTIES_HEADER();
-#define PLAYER_PROPERTY CLASS_PROPERTY
+#define PLAYER_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };
 
@@ -146,7 +128,7 @@ public:
     mutable int64 InstanceCount {};
 
     PROPERTIES_HEADER();
-#define ITEM_PROPERTY CLASS_PROPERTY
+#define ITEM_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };
 
@@ -164,7 +146,7 @@ public:
     explicit ProtoCritter(hash pid);
 
     PROPERTIES_HEADER();
-#define CRITTER_PROPERTY CLASS_PROPERTY
+#define CRITTER_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };
 
@@ -174,7 +156,7 @@ public:
     explicit ProtoMap(hash pid);
 
     PROPERTIES_HEADER();
-#define MAP_PROPERTY CLASS_PROPERTY
+#define MAP_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };
 
@@ -184,6 +166,6 @@ public:
     explicit ProtoLocation(hash pid);
 
     PROPERTIES_HEADER();
-#define LOCATION_PROPERTY CLASS_PROPERTY
+#define LOCATION_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };

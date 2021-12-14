@@ -87,9 +87,8 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Item_Animate(ItemView* self, uint fromFrame, uint toFrame)
 {
-    if (self->Type == EntityType::ItemHexView) {
-        auto* item_hex = static_cast<ItemHexView*>(self);
-        item_hex->SetAnim(fromFrame, toFrame);
+    if (auto* hex_item = dynamic_cast<ItemHexView*>(self); hex_item != nullptr) {
+        hex_item->SetAnim(fromFrame, toFrame);
     }
 }
 

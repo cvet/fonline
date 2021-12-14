@@ -41,7 +41,6 @@
 
 ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto) : ItemView(engine, id, proto)
 {
-    const_cast<EntityType&>(Type) = EntityType::ItemHexView;
     DrawEffect = _engine->EffectMngr.Effects.Generic;
 }
 

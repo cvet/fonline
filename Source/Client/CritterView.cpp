@@ -46,7 +46,7 @@ PROPERTIES_IMPL(CritterView, "Critter", false);
 #define CRITTER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(CritterView, access, type, name)
 #include "Properties-Include.h"
 
-CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode) : ClientEntity(engine, id, EntityType::CritterView, PropertiesRegistrator, proto), _mapperMode {mapper_mode}
+CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode) : ClientEntity(engine, id, PropertiesRegistrator, proto), _mapperMode {mapper_mode}
 {
     _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u);
     DrawEffect = _engine->EffectMngr.Effects.Critter;

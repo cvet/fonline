@@ -34,7 +34,7 @@
 #include "Entity.h"
 #include "StringUtils.h"
 
-Entity::Entity(EntityType type, PropertyRegistrator* registrator, const ProtoEntity* proto) : Props {registrator}, Type {type}, Proto {proto}
+Entity::Entity(PropertyRegistrator* registrator, const ProtoEntity* proto) : Props {registrator}, Proto {proto}
 {
     if (Proto != nullptr) {
         Proto->AddRef();
@@ -56,21 +56,7 @@ auto Entity::GetProtoId() const -> hash
 
 auto Entity::GetName() const -> string
 {
-    switch (Type) {
-    case EntityType::ItemProto:
-        [[fallthrough]];
-    case EntityType::CritterProto:
-        [[fallthrough]];
-    case EntityType::MapProto:
-        [[fallthrough]];
-    case EntityType::LocationProto:
-        // return _str().parseHash(const_cast<ProtoEntity*>(this)->ProtoId);
-        return "TODO"; // Todo: fix proto name recognition
-    default:
-        break;
-    }
-    // return Proto != nullptr ? _str().parseHash(Proto->ProtoId) : "Unnamed";
-    return "";
+    return Proto != nullptr ? _str().parseHash(Proto->ProtoId).str() : "Unnamed";
 }
 
 void Entity::AddRef() const
@@ -85,7 +71,7 @@ void Entity::Release() const
     }
 }
 
-ProtoEntity::ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator) : Entity(type, registrator, nullptr), ProtoId(proto_id)
+ProtoEntity::ProtoEntity(hash proto_id, PropertyRegistrator* registrator) : Entity(registrator, nullptr), ProtoId(proto_id)
 {
     RUNTIME_ASSERT(ProtoId);
 }
@@ -99,7 +85,7 @@ PROPERTIES_IMPL(ProtoPlayer, "Player", true);
 #define PLAYER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoPlayer, access, type, name)
 #include "Properties-Include.h"
 
-ProtoPlayer::ProtoPlayer(hash pid) : ProtoEntity(pid, EntityType::PlayerProto, PropertiesRegistrator)
+ProtoPlayer::ProtoPlayer(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
 {
 }
 
@@ -107,7 +93,7 @@ PROPERTIES_IMPL(ProtoItem, "Item", true);
 #define ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoItem, access, type, name)
 #include "Properties-Include.h"
 
-ProtoItem::ProtoItem(hash pid) : ProtoEntity(pid, EntityType::ItemProto, PropertiesRegistrator)
+ProtoItem::ProtoItem(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
 {
 }
 
@@ -115,7 +101,7 @@ PROPERTIES_IMPL(ProtoCritter, "Critter", true);
 #define CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoCritter, access, type, name)
 #include "Properties-Include.h"
 
-ProtoCritter::ProtoCritter(hash pid) : ProtoEntity(pid, EntityType::CritterProto, PropertiesRegistrator)
+ProtoCritter::ProtoCritter(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
 {
 }
 
@@ -123,7 +109,7 @@ PROPERTIES_IMPL(ProtoMap, "Map", true);
 #define MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoMap, access, type, name)
 #include "Properties-Include.h"
 
-ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, EntityType::MapProto, PropertiesRegistrator)
+ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
 {
 }
 
@@ -131,6 +117,6 @@ PROPERTIES_IMPL(ProtoLocation, "Location", true);
 #define LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoLocation, access, type, name)
 #include "Properties-Include.h"
 
-ProtoLocation::ProtoLocation(hash pid) : ProtoEntity(pid, EntityType::LocationProto, PropertiesRegistrator)
+ProtoLocation::ProtoLocation(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
 {
 }

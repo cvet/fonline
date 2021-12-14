@@ -376,15 +376,15 @@ auto CritterManager::GetPlayerById(uint id) -> Player*
 {
     NON_CONST_METHOD_HINT();
 
-    return dynamic_cast<Player*>(_engine->EntityMngr.GetEntity(id, EntityType::Player));
+    return dynamic_cast<Player*>(_engine->EntityMngr.GetEntity(id));
 }
 
 auto CritterManager::GetPlayerByName(string_view name) -> Player*
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* entity : _engine->EntityMngr.GetEntities(EntityType::Player)) {
-        if (auto* player = dynamic_cast<Player*>(entity); _str(name).compareIgnoreCaseUtf8(player->GetName())) {
+    for (auto* entity : _engine->EntityMngr.GetEntities()) {
+        if (auto* player = dynamic_cast<Player*>(entity); player != nullptr && _str(name).compareIgnoreCaseUtf8(player->GetName())) {
             return player;
         }
     }
@@ -520,12 +520,12 @@ void CritterManager::CloseTalk(Critter* cr)
 
 auto CritterManager::PlayersInGame() const -> uint
 {
-    return _engine->EntityMngr.GetEntitiesCount(EntityType::Player);
+    return static_cast<uint>(_engine->EntityMngr.GetPlayers().size());
 }
 
 auto CritterManager::NpcInGame() const -> uint
 {
-    return _engine->EntityMngr.GetEntitiesCount(EntityType::Critter);
+    return static_cast<uint>(_engine->EntityMngr.GetCritters().size());
 }
 
 auto CritterManager::CrittersInGame() const -> uint
