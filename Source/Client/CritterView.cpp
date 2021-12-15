@@ -139,7 +139,7 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
     InvItems.erase(it);
 
     item->IsDestroyed = true;
-    _engine->ScriptSys.RemoveEntity(item);
+    _engine->ScriptSys->RemoveEntity(item);
     item->Release();
 
     if (animate && !IsAnim()) {
@@ -232,7 +232,7 @@ auto CritterView::CheckFind(uchar find_type) const -> bool
 auto CritterView::GetAttackDist() -> uint
 {
     uint dist = 0;
-    _engine->ScriptSys.CritterGetAttackDistantionEvent(this, nullptr, 0, dist);
+    _engine->CritterGetAttackDistantionEvent.Raise(this, nullptr, 0, dist);
     return dist;
 }
 
@@ -420,7 +420,7 @@ void CritterView::Move(uchar dir)
 
 void CritterView::Action(int action, int action_ext, ItemView* item, bool local_call /* = true */)
 {
-    _engine->ScriptSys.CritterActionEvent(local_call, this, action, action_ext, item);
+    _engine->CritterActionEvent.Raise(local_call, this, action, action_ext, item);
 
     switch (action) {
     case ACTION_KNOCKOUT:
@@ -705,10 +705,10 @@ auto CritterView::GetAnim2() const -> uint
 void CritterView::ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item)
 {
     if (is2d) {
-        _engine->ScriptSys.Animation2dProcessEvent(animate_stay, this, anim1, anim2, item);
+        _engine->Animation2dProcessEvent.Raise(animate_stay, this, anim1, anim2, item);
     }
     else {
-        _engine->ScriptSys.Animation3dProcessEvent(animate_stay, this, anim1, anim2, item);
+        _engine->Animation3dProcessEvent.Raise(animate_stay, this, anim1, anim2, item);
     }
 }
 

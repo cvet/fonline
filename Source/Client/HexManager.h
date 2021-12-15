@@ -38,7 +38,6 @@
 #include "Common.h"
 
 #include "CacheStorage.h"
-#include "ClientScripting.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"

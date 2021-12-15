@@ -38,7 +38,6 @@
 #include "GeometryHelper.h"
 #include "Log.h"
 #include "Mapper.h"
-#include "MapperScripting.h"
 #include "StringUtils.h"
 
 // ReSharper disable CppInconsistentNaming

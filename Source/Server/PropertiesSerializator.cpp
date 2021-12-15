@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Properties* base, const NameResolver& name_resolver) -> DataBase::Document
+auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Properties* base, const EnumResolver& name_resolver) -> DataBase::Document
 {
     RUNTIME_ASSERT(!base || props->_registrator == base->_registrator);
 
@@ -88,7 +88,7 @@ auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Pro
     return doc;
 }
 
-auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const DataBase::Document& /*doc*/, const NameResolver & /*name_resolver*/) -> bool
+auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const DataBase::Document& /*doc*/, const EnumResolver & /*name_resolver*/) -> bool
 {
     /*bool is_error = false;
     for (const auto& kv : doc)
@@ -123,7 +123,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 continue;
             }
 
-            int e = name_resolver.GetEnumValue(prop->asObjType->GetName(), std::get<string>(value), is_error);
+            int e = name_resolver.ResolveEnumValue(prop->asObjType->GetName(), std::get<string>(value), is_error);
             prop->SetPropRawData(props, (uchar*)&e, prop->baseSize);
         }
         else if (prop->isHash || prop->isResource)
@@ -260,7 +260,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 {
                     RUNTIME_ASSERT(arr[i].index() == DataBase::StringValue);
 
-                    int e = name_resolver.GetEnumValue(enum_name, std::get<string>(arr[i]), is_error);
+                    int e = name_resolver.ResolveEnumValue(enum_name, std::get<string>(arr[i]), is_error);
                     *(int*)(data + i * sizeof(int)) = e;
                 }
 
@@ -565,7 +565,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                 else if (key_element_type_id == asTYPEID_BOOL)
                     *(bool*)(data + data_pos) = (bool)_str(kv.first).toBool();
                 else if (!(key_element_type_id & asTYPEID_MASK_OBJECT) && key_element_type_id > asTYPEID_DOUBLE)
-                    *(int*)(data + data_pos) = name_resolver.GetEnumValue(key_element_type_name, kv.first, is_error);
+                    *(int*)(data + data_pos) = name_resolver.ResolveEnumValue(key_element_type_name, kv.first, is_error);
                 else
                     throw UnreachablePlaceException(LINE_STR);
 
@@ -587,7 +587,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                         for (auto& e : arr)
                         {
                             *(int*)(data + data_pos) =
-                                name_resolver.GetEnumValue(arr_element_type_name, std::get<string>(e), is_error);
+                                name_resolver.ResolveEnumValue(arr_element_type_name, std::get<string>(e), is_error);
                             data_pos += sizeof(int);
                         }
                     }
@@ -723,7 +723,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
                         PARSE_VALUE(bool);
                     else
                         *(int*)(data + data_pos) =
-                            name_resolver.GetEnumValue(value_element_type_name, std::get<string>(kv.second), is_error);
+                            name_resolver.ResolveEnumValue(value_element_type_name, std::get<string>(kv.second), is_error);
 
 #undef PARSE_VALUE
 
@@ -747,7 +747,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* /*props*/, const Dat
     return false;
 }
 
-auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, const Property* /*prop*/, const NameResolver & /*name_resolver*/) -> DataBase::Value
+auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, const Property* /*prop*/, const EnumResolver & /*name_resolver*/) -> DataBase::Value
 {
     /*RUNTIME_ASSERT(prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1));
     RUNTIME_ASSERT(!prop->isTemporary);
@@ -780,7 +780,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, 
 
 #undef PARSE_VALUE
 
-        return name_resolver.GetEnumValueName(prop->asObjType->GetName(), *(int*)&props->podData[prop->podDataOffset]);
+        return name_resolver.ResolveEnumValueName(prop->asObjType->GetName(), *(int*)&props->podData[prop->podDataOffset]);
     }
     else if (prop->dataType == Property::String)
     {
@@ -854,7 +854,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, 
                 else if (element_type_id == asTYPEID_BOOL)
                     arr.push_back((bool)*(bool*)(data + i * element_size));
                 else if (!(element_type_id & asTYPEID_MASK_OBJECT) && element_type_id > asTYPEID_DOUBLE)
-                    arr.push_back(name_resolver.GetEnumValueName(element_type_name, *(int*)(data + i * element_size)));
+                    arr.push_back(name_resolver.ResolveEnumValueName(element_type_name, *(int*)(data + i * element_size)));
                 else
                     throw UnreachablePlaceException(LINE_STR);
             }
@@ -892,7 +892,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, 
                 else if (type_id == asTYPEID_BOOL)
                     return _str("{}", (bool)*(bool*)p).str();
                 else if (!(type_id & asTYPEID_MASK_OBJECT) && type_id > asTYPEID_DOUBLE)
-                    return name_resolver.GetEnumValueName(type_name, *(int*)p);
+                    return name_resolver.ResolveEnumValueName(type_name, *(int*)p);
                 else
                     throw UnreachablePlaceException(LINE_STR);
                 return string();
@@ -963,7 +963,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, 
                                     arr.push_back((bool)*(bool*)(data + i * arr_element_size));
                                 else if (!(arr_element_type_id & asTYPEID_MASK_OBJECT) &&
                                     arr_element_type_id > asTYPEID_DOUBLE)
-                                    arr.push_back(name_resolver.GetEnumValueName(
+                                    arr.push_back(name_resolver.ResolveEnumValueName(
                                         arr_element_type_name, *(int*)(data + i * arr_element_size)));
                                 else
                                     throw UnreachablePlaceException(LINE_STR);
@@ -1037,7 +1037,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, 
                         dict.insert(std::make_pair(std::move(key_str), (bool)*(bool*)pvalue));
                     else if (!(value_type_id & asTYPEID_MASK_OBJECT) && value_type_id > asTYPEID_DOUBLE)
                         dict.insert(std::make_pair(std::move(key_str),
-                            name_resolver.GetEnumValueName(value_element_type_name, *(int*)pvalue)));
+                            name_resolver.ResolveEnumValueName(value_element_type_name, *(int*)pvalue)));
                     else
                         throw UnreachablePlaceException(LINE_STR);
                 }

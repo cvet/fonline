@@ -124,7 +124,7 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
     }
 
     // Change item
-    _engine->ScriptSys.CritterMoveItemEvent(cr, item, -1);
+    _engine->CritterMoveItemEvent.Raise(cr, item, -1);
 }
 
 void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
@@ -147,7 +147,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
         cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
     }
 
-    _engine->ScriptSys.CritterMoveItemEvent(cr, item, item->GetCritSlot());
+    _engine->CritterMoveItemEvent.Raise(cr, item, item->GetCritSlot());
 }
 
 auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
@@ -231,7 +231,7 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
     RUNTIME_ASSERT(can);
     _engine->MapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
 
-    _engine->ScriptSys.CritterInitEvent(npc, true);
+    _engine->CritterInitEvent.Raise(npc, true);
     npc->SetScript("", true);
 
     _engine->MapMngr.ProcessVisibleItems(npc);
@@ -251,7 +251,7 @@ void CritterManager::DeleteNpc(Critter* cr)
     cr->IsDestroying = true;
 
     // Finish event
-    _engine->ScriptSys.CritterFinishEvent(cr);
+    _engine->CritterFinishEvent.Raise(cr);
 
     // Tear off from environment
     cr->LockMapTransfers++;
@@ -501,9 +501,9 @@ void CritterManager::CloseTalk(Critter* cr)
             talker = GetCritter(cr->_talk.CritterId);
             if (talker != nullptr) {
                 if (cr->_talk.Barter) {
-                    _engine->ScriptSys.CritterBarterEvent(cr, talker, false, talker->GetBarterPlayers());
+                    _engine->CritterBarterEvent.Raise(cr, talker, false, talker->GetBarterPlayers());
                 }
-                _engine->ScriptSys.CritterTalkEvent(cr, talker, false, talker->GetTalkedPlayers());
+                _engine->CritterTalkEvent.Raise(cr, talker, false, talker->GetTalkedPlayers());
             }
         }
 

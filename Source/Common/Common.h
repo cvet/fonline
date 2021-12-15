@@ -1190,6 +1190,22 @@ constexpr auto xrange(T value)
 
 // ReSharper restore CppInconsistentNaming
 
+class EnumResolver
+{
+public:
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool& fail) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& fail) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value) const -> string = 0;
+};
+
+class AnimationResolver
+{
+public:
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3, hash& arg4, uint& arg5, uint& arg6) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hash arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
+};
+
 extern void SetAppName(const char* name);
 extern auto GetAppName() -> const char*;
 

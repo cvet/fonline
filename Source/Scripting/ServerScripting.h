@@ -35,16 +35,24 @@
 
 #include "Common.h"
 
-#include "DataBase.h"
-#include "Properties.h"
 #include "ScriptSystem.h"
 
-class PropertiesSerializator final
+class FOServer;
+
+class ServerScriptSystem : public ScriptSystem
 {
 public:
-    PropertiesSerializator() = delete;
+    ServerScriptSystem(FOServer* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
+    {
+        InitNativeScripting();
+        InitAngelScriptScripting();
+        InitMonoScripting();
+    }
 
-    [[nodiscard]] static auto SaveToDbDocument(const Properties* props, const Properties* base, const EnumResolver& name_resolver) -> DataBase::Document;
-    [[nodiscard]] static auto LoadFromDbDocument(Properties* props, const DataBase::Document& doc, const EnumResolver& name_resolver) -> bool;
-    [[nodiscard]] static auto SavePropertyToDbValue(const Properties* props, const Property* prop, const EnumResolver& name_resolver) -> DataBase::Value;
+private:
+    void InitNativeScripting();
+    void InitAngelScriptScripting();
+    void InitMonoScripting();
+
+    FOServer* _engine;
 };

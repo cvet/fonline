@@ -38,7 +38,6 @@
 #include "3dStuff.h"
 #include "Application.h"
 #include "ClientEntity.h"
-#include "ClientScripting.h"
 #include "SpriteManager.h"
 
 class ItemView;
@@ -160,7 +159,6 @@ private:
 
     void SetFade(bool fade_up);
 
-    FOClient* _engine;
     bool _mapperMode;
     bool _needReset {};
     uint _resetTick {};

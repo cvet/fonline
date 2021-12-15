@@ -825,7 +825,7 @@ static auto DecodeString(string_view str) -> string
         CHECK_PRIMITIVE(asTYPEID_UINT64, uint64);
         CHECK_PRIMITIVE(asTYPEID_DOUBLE, double);
         CHECK_PRIMITIVE(asTYPEID_FLOAT, float);
-        // return Script::GetEnumValueName(Script::GetEngine()->GetTypeDeclaration(type_id), VALUE_AS(int));
+        // return Script::ResolveEnumValueName(Script::GetEngine()->GetTypeDeclaration(type_id), VALUE_AS(int));
         return "";
 
 #undef VALUE_AS
@@ -920,7 +920,7 @@ void* ReadValue(
         CHECK_PRIMITIVE(asTYPEID_DOUBLE, double, toDouble);
         CHECK_PRIMITIVE(asTYPEID_FLOAT, float, toFloat);
 
-        // int v = Script::GetEnumValue(Script::GetEngine()->GetTypeDeclaration(type_id), value, is_error);
+        // int v = Script::ResolveEnumValue(Script::GetEngine()->GetTypeDeclaration(type_id), value, is_error);
         // std::memcpy(pod_buf, &v, sizeof(v));
         // return pod_buf;
         return 0;

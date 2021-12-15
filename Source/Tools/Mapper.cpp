@@ -36,6 +36,7 @@
 #include "DiskFileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
+#include "MapperScripting.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
@@ -43,7 +44,7 @@
 #include "sha1.h"
 #include "sha2.h"
 
-FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings), SettingsExt {settings}, IfaceIni(""), ScriptSysExt(this, settings, FileMngr)
+FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScriptSystem(this, settings)), SettingsExt {settings}, IfaceIni("")
 {
     HexMngr.EnableMapperMode();
 
@@ -508,7 +509,7 @@ void FOMapper::ProcessInputEvents()
         }
 
         Keyb.Lost();
-        ScriptSys.InputLostEvent();
+        InputLostEvent.Raise();
         return;
     }
 
@@ -554,12 +555,12 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         if (dikdw)
         {
             string event_text_script = event_text;
-            script_result = ScriptSys.KeyDownEvent(dikdw, event_text_script);
+            script_result = KeyDownEvent.Raise(dikdw, event_text_script);
         }
         if (dikup)
         {
             string event_text_script = event_text;
-            script_result = ScriptSys.KeyUpEvent(dikup, event_text_script);
+            script_result = KeyUpEvent.Raise(dikup, event_text_script);
         }
 
         // Disable keyboard events
@@ -863,7 +864,7 @@ void FOMapper::ParseMouse()
     {
         SettingsExt.MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
-        ScriptSys.InputLostEvent();
+        InputLostEvent.Raise();
         return;
     }
 
@@ -875,7 +876,7 @@ void FOMapper::ParseMouse()
         SettingsExt.LastMouseX = SettingsExt.MouseX;
         SettingsExt.LastMouseY = SettingsExt.MouseY;
 
-        ScriptSys.MouseMoveEvent(ox, oy);
+        MouseMoveEvent.Raise(ox, oy);
 
         IntMouseMove();
     }
@@ -920,39 +921,39 @@ void FOMapper::ParseMouse()
         // Scripts
         bool script_result = true;
         if (event == SDL_MOUSEWHEEL)
-            script_result = ScriptSys.MouseDownEvent(event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
+            script_result = MouseDownEvent.Raise(event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT)
-            script_result = ScriptSys.MouseDownEvent(MOUSE_BUTTON_LEFT);
+            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT)
-            script_result = ScriptSys.MouseUpEvent(MOUSE_BUTTON_LEFT);
+            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT)
-            script_result = ScriptSys.MouseDownEvent(MOUSE_BUTTON_RIGHT);
+            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT)
-            script_result = ScriptSys.MouseUpEvent(MOUSE_BUTTON_RIGHT);
+            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE)
-            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_MIDDLE);
+            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE)
-            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_MIDDLE);
+            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(4))
-            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT0);
+            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(4))
-            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT0);
+            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(5))
-            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT1);
+            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(5))
-            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT1);
+            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(6))
-            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT2);
+            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(6))
-            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT2);
+            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(7))
-            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT3);
+            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(7))
-            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT3);
+            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(8))
-            script_result = ScriptSys.MouseDown, MOUSE_BUTTON_EXT4);
+            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT4);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(8))
-            script_result = ScriptSys.MouseUp, MOUSE_BUTTON_EXT4);
+            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT4);
         if (!script_result || SettingsExt.DisableMouseEvents)
             continue;
 
@@ -1149,7 +1150,7 @@ void FOMapper::MainLoop()
     }*/
 
     // Script loop
-    ScriptSys.LoopEvent();
+    LoopEvent.Raise();
 
     // Input
     ConsoleProcess();
@@ -1935,7 +1936,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
 
     if (entity != nullptr) {
         vector<int> enum_values;
-        ScriptSysExt.InspectorPropertiesEvent(entity, enum_values);
+        InspectorPropertiesEvent.Raise(entity, enum_values);
         for (auto enum_value : enum_values) {
             ShowProps.push_back(enum_value != 0 ? entity->Props.FindByEnum(enum_value) : nullptr);
         }
@@ -3733,7 +3734,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
                 Cache.SetString("mapper_console.txt", history_str);
 
                 // Process command
-                const auto process_command = ScriptSysExt.ConsoleMessageEvent(ConsoleStr);
+                const auto process_command = ConsoleMessageEvent.Raise(ConsoleStr);
                 AddMess(ConsoleStr);
                 if (process_command) {
                     ParseCommand(ConsoleStr);
@@ -4098,25 +4099,25 @@ auto FOMapper::SaveLogFile() -> bool
 
 void FOMapper::RunStartScript()
 {
-    ScriptSys.StartEvent();
+    StartEvent.Raise();
 }
 
 void FOMapper::RunMapLoadScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    ScriptSysExt.EditMapLoadEvent(map);
+    EditMapLoadEvent.Raise(map);
 }
 
 void FOMapper::RunMapSaveScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    ScriptSysExt.EditMapSaveEvent(map);
+    EditMapSaveEvent.Raise(map);
 }
 
 void FOMapper::DrawIfaceLayer(uint /*layer*/)
 {
     SpritesCanDraw = true;
-    ScriptSys.RenderIfaceEvent(); // Todo: mapper render iface layer
+    RenderIfaceEvent.Raise(); // Todo: mapper render iface layer
     SpritesCanDraw = false;
 }
 

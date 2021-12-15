@@ -36,7 +36,6 @@
 #include "Common.h"
 
 #include "ServerEntity.h"
-#include "ServerScripting.h"
 
 class Map;
 class Location;

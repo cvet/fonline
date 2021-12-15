@@ -41,7 +41,6 @@
 #include "Item.h"
 #include "Map.h"
 #include "Player.h"
-#include "ServerScripting.h"
 #include "Settings.h"
 #include "Timer.h"
 

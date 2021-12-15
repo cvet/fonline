@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "ClientScripting.h"
 #include "Log.h"
 #include "Mapper.h"
 #include "Settings.h"
@@ -49,6 +50,18 @@ struct MapperAppData
     FOMapper* Mapper {};
 };
 GLOBAL_DATA(MapperAppData, Data);
+
+#if !FO_TESTING
+void ClientScriptSystem::InitNativeScripting()
+{
+}
+void ClientScriptSystem::InitAngelScriptScripting()
+{
+}
+void ClientScriptSystem::InitMonoScripting()
+{
+}
+#endif
 
 static void MapperEntry(void*)
 {

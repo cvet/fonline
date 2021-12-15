@@ -119,7 +119,7 @@ static auto GetPropEnumIndex(string_view str, bool is_demand, uchar& type, bool&
     return prop->GetRegIndex();
 }
 
-DialogManager::DialogManager(FileManager& file_mngr, ServerScriptSystem& script_sys) : _fileMngr {file_mngr}, _scriptSys {script_sys}
+DialogManager::DialogManager(FileManager& file_mngr, ScriptSystem& script_sys) : _fileMngr {file_mngr}, _scriptSys {script_sys}
 {
 }
 

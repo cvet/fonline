@@ -68,7 +68,7 @@ auto Critter::GetOfflineTime() const -> uint
 auto Critter::GetAttackDist(Item* weap, uchar use) -> uint
 {
     uint dist = 1;
-    _engine->ScriptSys.CritterGetAttackDistantionEvent(this, weap, use, dist);
+    _engine->CritterGetAttackDistantionEvent.Raise(this, weap, use, dist);
     return dist;
 }
 
@@ -612,13 +612,13 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
     case MESSAGE_TO_VISIBLE_ME: {
         auto critters = VisCr;
         for (auto* cr : critters) {
-            _engine->ScriptSys.CritterMessageEvent(cr, this, num, val);
+            _engine->CritterMessageEvent.Raise(cr, this, num, val);
         }
     } break;
     case MESSAGE_TO_IAM_VISIBLE: {
         auto critters = VisCrSelf;
         for (auto* cr : critters) {
-            _engine->ScriptSys.CritterMessageEvent(cr, this, num, val);
+            _engine->CritterMessageEvent.Raise(cr, this, num, val);
         }
     } break;
     case MESSAGE_TO_ALL_ON_MAP: {
@@ -629,7 +629,7 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
 
         auto critters = map->GetCritters();
         for (auto* cr : critters) {
-            _engine->ScriptSys.CritterMessageEvent(cr, this, num, val);
+            _engine->CritterMessageEvent.Raise(cr, this, num, val);
         }
     } break;
     default:

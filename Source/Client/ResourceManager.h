@@ -36,14 +36,13 @@
 #include "Common.h"
 
 #include "3dStuff.h"
-#include "ClientScripting.h"
 #include "SpriteManager.h"
 
 class ResourceManager final
 {
 public:
     ResourceManager() = delete;
-    ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, ClientScriptSystem& script_sys);
+    ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver);
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager(ResourceManager&&) noexcept = delete;
     auto operator=(const ResourceManager&) = delete;
@@ -82,7 +81,7 @@ private:
 
     FileManager& _fileMngr;
     SpriteManager& _sprMngr;
-    ClientScriptSystem& _scriptSys;
+    AnimationResolver& _animNameResolver;
     EventUnsubscriber _eventUnsubscriber {};
     map<uint, string> _namesHash {};
     map<hash, LoadedAnim> _loadedAnims {};

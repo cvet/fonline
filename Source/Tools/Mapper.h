@@ -48,12 +48,12 @@
 #include "LocationView.h"
 #include "MapLoader.h"
 #include "MapView.h"
-#include "MapperScripting.h"
 #include "MsgFiles.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
@@ -269,9 +269,17 @@ public:
     void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
     void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
 
+    ///@ ExportEvent
+    ScriptEvent<string& /*text*/> ConsoleMessageEvent {};
+    ///@ ExportEvent
+    ScriptEvent<MapView* /*map*/> EditMapLoadEvent {};
+    ///@ ExportEvent
+    ScriptEvent<MapView* /*map*/> EditMapSaveEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Entity* /*entity*/, vector<int>& /*properties*/> InspectorPropertiesEvent {};
+
     MapperSettings& SettingsExt;
     FileManager ServerFileMngr;
-    MapperScriptSystem ScriptSysExt;
 
     ConfigFile IfaceIni;
     string ServerWritePath {};

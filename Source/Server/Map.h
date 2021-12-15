@@ -37,7 +37,6 @@
 
 #include "MapLoader.h"
 #include "ServerEntity.h"
-#include "ServerScripting.h"
 
 class Item;
 class Critter;

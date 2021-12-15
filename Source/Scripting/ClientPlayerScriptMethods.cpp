@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "Client.h"
-#include "ClientScripting.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "GeometryHelper.h"

@@ -36,20 +36,11 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "FileSystem.h"
 #include "Settings.h"
 
 DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
-
-class NameResolver
-{
-public:
-    [[nodiscard]] virtual auto GetEnumValue(string_view enum_value_name, bool& fail) const -> int = 0;
-    [[nodiscard]] virtual auto GetEnumValue(string_view enum_name, string_view value_name, bool& fail) const -> int = 0;
-    [[nodiscard]] virtual auto GetEnumValueName(string_view enum_name, int value) const -> string = 0;
-};
 
 template<typename... Args>
 class ScriptEvent final
@@ -65,11 +56,13 @@ public:
         return *this;
     }
 
-    auto operator()(Args... args) -> bool
+    auto Raise(Args... args) -> bool
     {
-        for (auto& cb : _callbacks)
-            if (cb(std::forward<Args>(args)...))
+        for (auto& cb : _callbacks) {
+            if (cb(std::forward<Args>(args)...)) {
                 return true;
+            }
+        }
         return false;
     }
 
@@ -109,20 +102,20 @@ private:
     Func _func {};
 };
 
-class ScriptSystem : public NameResolver
+class ScriptSystem : public EnumResolver
 {
 public:
     ScriptSystem() = delete;
-    ScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr);
+    explicit ScriptSystem(GlobalSettings& settings);
     ScriptSystem(const ScriptSystem&) = delete;
     ScriptSystem(ScriptSystem&&) noexcept = delete;
     auto operator=(const ScriptSystem&) = delete;
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    [[nodiscard]] auto GetEnumValue(string_view /*enum_value_name*/, bool& /*fail*/) const -> int override { return 0; }
-    [[nodiscard]] auto GetEnumValue(string_view /*enum_name*/, string_view /*value_name*/, bool& /*fail*/) const -> int override { return 0; }
-    [[nodiscard]] auto GetEnumValueName(string_view /*enum_name*/, int /*value*/) const -> string override { return ""; }
+    [[nodiscard]] auto ResolveEnumValue(string_view /*enum_value_name*/, bool& /*fail*/) const -> int override { return 0; }
+    [[nodiscard]] auto ResolveEnumValue(string_view /*enum_name*/, string_view /*value_name*/, bool& /*fail*/) const -> int override { return 0; }
+    [[nodiscard]] auto ResolveEnumValueName(string_view /*enum_name*/, int /*value*/) const -> string override { return ""; }
 
     void RemoveEntity(Entity* entity) { }
 
@@ -164,9 +157,7 @@ public:
     shared_ptr<MonoImpl> MonoData {};
 
 protected:
-    void* _mainObj;
     GlobalSettings& _settings;
-    FileManager& _fileMngr;
 
     /*
 public:

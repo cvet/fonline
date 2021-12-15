@@ -36,7 +36,7 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-ScriptSystem::ScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr) : _mainObj {obj}, _settings {settings}, _fileMngr {file_mngr}
+ScriptSystem::ScriptSystem(GlobalSettings& settings) : _settings {settings}
 {
 }
 
@@ -871,7 +871,7 @@ void ScriptSystem::CacheEnumValues()
     }
 }
 
-int ScriptSystem::GetEnumValue(string_view enum_value_name, bool& fail)
+int ScriptSystem::ResolveEnumValue(string_view enum_value_name, bool& fail)
 {
     auto it = cachedEnums.find(enum_value_name);
     if (it == cachedEnums.end())
@@ -883,14 +883,14 @@ int ScriptSystem::GetEnumValue(string_view enum_value_name, bool& fail)
     return it->second;
 }
 
-int ScriptSystem::GetEnumValue(string_view enum_name, string_view value_name, bool& fail)
+int ScriptSystem::ResolveEnumValue(string_view enum_name, string_view value_name, bool& fail)
 {
     if (_str(value_name).isNumber())
         return _str(value_name).toInt();
-    return GetEnumValue(_str("{}::{}", enum_name, value_name), fail);
+    return ResolveEnumValue(_str("{}::{}", enum_name, value_name), fail);
 }
 
-string ScriptSystem::GetEnumValueName(string_view enum_name, int value)
+string ScriptSystem::ResolveEnumValueName(string_view enum_name, int value)
 {
     auto it = cachedEnumNames.find(enum_name);
     RUNTIME_ASSERT(it != cachedEnumNames.end());

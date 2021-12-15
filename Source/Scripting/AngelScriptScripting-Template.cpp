@@ -181,15 +181,11 @@ static void DummyFunc(asIScriptGeneric* gen)
 }
 #endif
 
-#if COMPILER_MODE
-//#define GET_AS_ENGINE(game_engine) (asIScriptEngine*)
-#else
+#if !COMPILER_MODE
 struct ScriptSystem::AngelScriptImpl
 {
     asIScriptEngine* Engine {};
 };
-
-//#define GET_AS_ENGINE(game_engine) (asIScriptEngine*)game_engine->ScriptSys._pAngelScriptImpl
 #endif
 
 template<typename T>
@@ -379,10 +375,12 @@ static const string ContextStatesStr[] = {
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
     const char* type = "Error";
-    if (msg->type == asMSGTYPE_WARNING)
+    if (msg->type == asMSGTYPE_WARNING) {
         type = "Warning";
-    else if (msg->type == asMSGTYPE_INFORMATION)
+    }
+    else if (msg->type == asMSGTYPE_INFORMATION) {
         type = "Info";
+    }
 
     WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message, Preprocessor::ResolveOriginalLine(msg->row));
 }
@@ -430,10 +428,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RegisterScriptMath(engine);
     RegisterScriptWeakRef(engine);
     RegisterScriptReflection(engine);
-
-#if !COMPILER_MODE
-    engine->SetUserData(_mainObj);
-#endif
 
     AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
     AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
@@ -518,7 +512,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
-    File script_file = _fileMngr.ReadFile("...");
+    File script_file = _engine->FileMngr.ReadFile("...");
     RestoreRootModule(engine, script_file);
 #endif
 }

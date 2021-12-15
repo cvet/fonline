@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "Server.h"
-#include "ServerScripting.h"
 
 // ReSharper disable CppInconsistentNaming
 
@@ -61,7 +60,7 @@
     }
 
     string pass;
-    const auto allow = self->GetEngine()->ScriptSys.PlayerGetAccessEvent(self, access, pass);
+    const auto allow = self->GetEngine()->PlayerGetAccessEvent.Raise(self, access, pass);
     if (allow) {
         self->Access = static_cast<uchar>(access);
     }

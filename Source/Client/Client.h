@@ -39,7 +39,6 @@
 
 #include "3dStuff.h"
 #include "CacheStorage.h"
-#include "ClientScripting.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"
@@ -56,6 +55,7 @@
 #include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
@@ -131,7 +131,7 @@ constexpr auto INIT_NET_REASON_REG = 2;
 constexpr auto INIT_NET_REASON_LOAD = 3;
 constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient // Todo: rename FOClient to just Client (after reworking server Client to ClientConnection)
+class FOClient : public AnimationResolver
 {
 public:
     struct MapText
@@ -148,12 +148,16 @@ public:
     };
 
     FOClient() = delete;
-    explicit FOClient(GlobalSettings& settings);
+    explicit FOClient(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
     FOClient(const FOClient&) = delete;
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;
     auto operator=(FOClient&&) noexcept = delete;
     ~FOClient();
+
+    [[nodiscard]] auto ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3, hash& arg4, uint& arg5, uint& arg6) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationFallout(hash arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
 
     [[nodiscard]] auto GetChosen() -> CritterView* { return _chosen; }
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
@@ -192,12 +196,96 @@ public:
     auto IsScreenPresent(int screen) -> bool;
     void RunScreenScript(bool show, int screen, map<string, int> params);
 
+    ///@ ExportEvent
+    ScriptEvent<> StartEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> FinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<string /*login*/, string /*password*/> AutoLoginEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> LoopEvent {};
+    ///@ ExportEvent
+    ScriptEvent<vector<int>& /*screens*/> GetActiveScreensEvent {};
+    ///@ ExportEvent
+    ScriptEvent<bool /*show*/, int /*screen*/, map<string, int> /*data*/> ScreenChangeEvent {};
+    ///@ ExportEvent
+    ScriptEvent<int /*offsetX*/, int /*offsetY*/> ScreenScrollEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> RenderIfaceEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> RenderMapEvent {};
+    ///@ ExportEvent
+    ScriptEvent<MouseButton /*button*/> MouseDownEvent {};
+    ///@ ExportEvent
+    ScriptEvent<MouseButton /*button*/> MouseUpEvent {};
+    ///@ ExportEvent
+    ScriptEvent<int /*offsetX*/, int /*offsetY*/> MouseMoveEvent {};
+    ///@ ExportEvent
+    ScriptEvent<KeyCode /*key*/, string /*text*/> KeyDownEvent {};
+    ///@ ExportEvent
+    ScriptEvent<KeyCode /*key*/> KeyUpEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> InputLostEvent {};
+    ///@ ExportEvent
+    ScriptEvent<CritterView* /*critter*/> CritterInEvent {};
+    ///@ ExportEvent
+    ScriptEvent<CritterView* /*critter*/> CritterOutEvent {};
+    ///@ ExportEvent
+    ScriptEvent<ItemView* /*item*/> ItemMapInEvent {};
+    ///@ ExportEvent
+    ScriptEvent<ItemView* /*item*/, ItemView* /*oldItem*/> ItemMapChangedEvent {};
+    ///@ ExportEvent
+    ScriptEvent<ItemView* /*item*/> ItemMapOutEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> ItemInvAllInEvent {};
+    ///@ ExportEvent
+    ScriptEvent<ItemView* /*item*/> ItemInvInEvent {};
+    ///@ ExportEvent
+    ScriptEvent<ItemView* /*item*/, ItemView* /*oldItem*/> ItemInvChangedEvent {};
+    ///@ ExportEvent
+    ScriptEvent<ItemView* /*item*/> ItemInvOutEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> MapLoadEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> MapUnloadEvent {};
+    ///@ ExportEvent
+    ScriptEvent<vector<ItemView*> /*items*/, int /*param*/> ReceiveItemsEvent {};
+    ///@ ExportEvent
+    ScriptEvent<string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/> MapMessageEvent {};
+    ///@ ExportEvent
+    ScriptEvent<string /*text*/, int& /*sayType*/, uint& /*critterId*/, uint& /*delay*/> InMessageEvent {};
+    ///@ ExportEvent
+    ScriptEvent<string& /*text*/, int& /*sayType*/> OutMessageEvent {};
+    ///@ ExportEvent
+    ScriptEvent<string /*text*/, uchar /*type*/, bool /*scriptCall*/> MessageBoxEvent {};
+    ///@ ExportEvent
+    ScriptEvent<vector<uint> /*result*/> CombatResultEvent {};
+    ///@ ExportEvent
+    ScriptEvent<ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/> ItemCheckMoveEvent {};
+    ///@ ExportEvent
+    ScriptEvent<bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, ItemView* /*actionItem*/> CritterActionEvent {};
+    ///@ ExportEvent
+    ScriptEvent<bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/> Animation2dProcessEvent {};
+    ///@ ExportEvent
+    ScriptEvent<bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/> Animation3dProcessEvent {};
+    ///@ ExportEvent
+    ScriptEvent<hash /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/> CritterAnimationEvent {};
+    ///@ ExportEvent
+    ScriptEvent<hash /*arg1*/, uint /*arg2*/, uint /*arg3*/, hash& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationSubstituteEvent {};
+    ///@ ExportEvent
+    ScriptEvent<hash /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationFalloutEvent {};
+    ///@ ExportEvent
+    ScriptEvent<CritterView* /*critter*/, ItemView* /*item*/, char /*toSlot*/> CritterCheckMoveItemEvent {};
+    ///@ ExportEvent
+    ScriptEvent<CritterView* /*critter*/, ItemView* /*item*/, char /*itemMode*/, uint& /*dist*/> CritterGetAttackDistantionEvent {};
+
     ClientSettings& Settings;
     GeometryHelper GeomHelper;
     FileManager FileMngr;
-    ClientScriptSystem ScriptSys;
+    ScriptSystem* ScriptSys;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
+
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     ResourceManager ResMngr;

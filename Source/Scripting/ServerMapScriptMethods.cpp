@@ -36,7 +36,6 @@
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
 #include "Server.h"
-#include "ServerScripting.h"
 #include "StringUtils.h"
 
 // ReSharper disable CppInconsistentNaming

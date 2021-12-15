@@ -121,7 +121,7 @@ auto ModelBone::GetHash(string_view name) -> hash
     return _str(name).toHash();
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _scriptSys {script_sys}, _gameTime {game_time}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
+ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _gameTime {game_time}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
 {
     RUNTIME_ASSERT(_settings.Enable3dRendering);
 
@@ -2268,7 +2268,7 @@ auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed,
         auto model_name = base_model_name;
         const auto anim1_ = anim1;
         const auto anim2_ = anim2;
-        if (_modelMngr._scriptSys.CritterAnimationSubstituteEvent(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) && (anim1 != anim1_ || anim2 != anim2_)) {
+        if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) && (anim1 != anim1_ || anim2 != anim2_)) {
             index = GetAnimationIndexEx(anim1, anim2, speed);
         }
         else {

@@ -42,7 +42,6 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
-#include "ServerScripting.h"
 #include "Settings.h"
 #include "Timer.h"
 

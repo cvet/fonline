@@ -34,7 +34,6 @@
 #include "Common.h"
 
 #include "Server.h"
-#include "ServerScripting.h"
 
 // ReSharper disable CppInconsistentNaming
 

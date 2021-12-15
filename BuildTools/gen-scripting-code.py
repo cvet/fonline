@@ -222,7 +222,7 @@ def parseMetaFile(absPath):
                     elif tagName == 'ExportEvent':
                         for i in range(lineIndex, 0, -1):
                             if lines[i].startswith('class '):
-                                tagContext = lines[i][6:12] + ' ' + lines[lineIndex + 1].strip()
+                                tagContext = lines[i][8:14] + ' ' + lines[lineIndex + 1].strip()
                                 break
                     elif tagName == 'ExportObject':
                         for i in range(lineIndex + 1, len(lines)):
@@ -769,19 +769,9 @@ def genCode(lang, target, isASCompiler=False):
             (lang == 'AngelScript' and not args.angelscript) or \
             (lang == 'Mono' and not args.csharp) or \
             (lang == 'Native' and not args.native):
-        if isASCompiler and target == 'Single':
-            writeFile('struct ServerScriptSystem { void InitAngelScriptScripting(const char*); };')
-            writeFile('struct ClientScriptSystem { void InitAngelScriptScripting(const char*); };')
-            writeFile('void ServerScriptSystem::InitAngelScriptScripting(const char*) { }')
-            writeFile('void ClientScriptSystem::InitAngelScriptScripting(const char*) { }')
-        elif isASCompiler:
+        if isASCompiler:
             writeFile('struct ' + target + 'ScriptSystem { void InitAngelScriptScripting(const char*); };')
             writeFile('void ' + target + 'ScriptSystem::InitAngelScriptScripting(const char*) { }')
-        elif target == 'Single':
-            writeFile('#include "ServerScripting.h"')
-            writeFile('#include "ClientScripting.h"')
-            writeFile('void ServerScriptSystem::Init' + lang + 'Scripting() { }')
-            writeFile('void ClientScriptSystem::Init' + lang + 'Scripting() { }')
         else:
             writeFile('#include "' + target + 'Scripting.h"')
             writeFile('void ' + target + 'ScriptSystem::Init' + lang + 'Scripting() { }')
@@ -934,7 +924,7 @@ def genCode(lang, target, isASCompiler=False):
             
         # Marshalling functions
         globalLines.append('// Marshalling entity functions')
-        globalLines.append('#define GET_AS_ENGINE() self->GetEngine()->ScriptSys.AngelScriptData->Engine')
+        globalLines.append('#define GET_AS_ENGINE() self->GetEngine()->ScriptSys->AngelScriptData->Engine')
         globalLines.append('')
         for entity in entities:
             engineEntityType = entity + ('View' if target != 'Server' else '')
@@ -970,7 +960,7 @@ def genCode(lang, target, isASCompiler=False):
         # Generate global methods
         globalLines.append('// Marshalling global functions')
         globalLines.append('#undef GET_AS_ENGINE')
-        globalLines.append('#define GET_AS_ENGINE() engine->ScriptSys.AngelScriptData->Engine')
+        globalLines.append('#define GET_AS_ENGINE() engine->ScriptSys->AngelScriptData->Engine')
         globalLines.append('')
         for methodTag in codeGenTags['ExportMethod']:
             targ, ent, name, ret, params, exportFlags, comment = methodTag

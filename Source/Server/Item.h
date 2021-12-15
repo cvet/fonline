@@ -35,8 +35,8 @@
 
 #include "Common.h"
 
+#include "ScriptSystem.h"
 #include "ServerEntity.h"
-#include "ServerScripting.h"
 
 class Item;
 class Critter;

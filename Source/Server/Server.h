@@ -51,7 +51,7 @@
 #include "MapManager.h"
 #include "Player.h"
 #include "ProtoManager.h"
-#include "ServerScripting.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
@@ -65,11 +65,11 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer final // Todo: rename FOServer to just Server
+class FOServer final
 {
 public:
     FOServer() = delete;
-    explicit FOServer(GlobalSettings& settings);
+    explicit FOServer(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
     FOServer(const FOServer&) = delete;
     FOServer(FOServer&&) noexcept = delete;
     auto operator=(const FOServer&) = delete;
@@ -93,22 +93,118 @@ public:
     void BeginDialog(Critter* cl, Critter* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
     void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
+    ///@ ExportEvent
+    ScriptEvent<> InitEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> GenerateWorldEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> StartEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> FinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> LoopEvent {};
+    ///@ ExportEvent
+    ScriptEvent<uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/> PlayerRegistrationEvent {};
+    ///@ ExportEvent
+    ScriptEvent<uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/> PlayerLoginEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Player* /*player*/, int /*arg1*/, string& /*arg2*/> PlayerGetAccessEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Player* /*player*/, string /*arg1*/, uchar /*arg2*/> PlayerAllowCommandEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Player* /*player*/> PlayerLogoutEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/> GlobalMapCritterInEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/> GlobalMapCritterOutEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Location* /*location*/, bool /*firstTime*/> LocationInitEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Location* /*location*/> LocationFinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Map* /*map*/, bool /*firstTime*/> MapInitEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Map* /*map*/> MapFinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Map* /*map*/, uint /*loopIndex*/> MapLoopEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Map* /*map*/, Critter* /*critter*/> MapCritterInEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Map* /*map*/, Critter* /*critter*/> MapCritterOutEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Map* /*map*/, Critter* /*critter*/, Critter* /*target*/> MapCheckLookEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Map* /*map*/, Critter* /*critter*/, Item* /*item*/> MapCheckTrapLookEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, bool /*firstTime*/> CritterInitEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/> CritterFinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/> CritterIdleEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/> CritterGlobalMapIdleEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/> CritterCheckMoveItemEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/> CritterMoveItemEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist1Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist2Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist3Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist1Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist2Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist3Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/> CritterShowItemOnMapEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/> CritterHideItemOnMapEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/> CritterChangeItemOnMapEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*receiver*/, int /*num*/, int /*value*/> CritterMessageEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*who*/, bool /*begin*/, uint /*talkers*/> CritterTalkEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/> CritterBarterEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*itemMode*/, uint& /*dist*/> CritterGetAttackDistantionEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/, bool /*firstTime*/> ItemInitEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/> ItemFinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/> ItemWalkEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/> ItemCheckMoveEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/> StaticItemWalkEvent {};
+
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
 
     ServerSettings& Settings;
     GeometryHelper GeomHelper;
     FileManager FileMngr;
-    ServerScriptSystem ScriptSys;
+    ScriptSystem* ScriptSys;
+    GameTimer GameTime;
     ProtoManager ProtoMngr;
+
     EntityManager EntityMngr;
     MapManager MapMngr;
     CritterManager CrMngr;
     ItemManager ItemMngr;
     DialogManager DlgMngr;
-    GameTimer GameTime;
-
     ServerGlobals* Globals {};
+
     DataBase DbStorage {};
     DataBase DbHistory {}; // Todo: remove history DB system?
 

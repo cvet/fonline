@@ -37,9 +37,11 @@
 
 #include "ClientConnection.h"
 #include "ServerEntity.h"
-#include "ServerScripting.h"
 
+class Item;
 class Critter;
+class Map;
+class Location;
 class MapManager;
 
 class Player final : public ServerEntity

@@ -41,7 +41,6 @@
 
 #include "3dStuff.h"
 #include "Application.h"
-#include "ClientScripting.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Settings.h"
@@ -234,7 +233,7 @@ class SpriteManager final
 {
 public:
     SpriteManager() = delete;
-    SpriteManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time);
+    SpriteManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, AnimationResolver& anim_name_resolver);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;

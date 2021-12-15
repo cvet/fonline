@@ -39,7 +39,6 @@
 #include "Entity.h"
 #include "Item.h"
 #include "Map.h"
-#include "ServerScripting.h"
 
 class FOServer;
 class ProtoManager;

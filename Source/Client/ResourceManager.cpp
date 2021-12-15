@@ -41,7 +41,7 @@
 static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
-ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, ClientScriptSystem& script_sys) : _fileMngr {file_mngr}, _sprMngr {spr_mngr}, _scriptSys {script_sys}
+ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) : _fileMngr {file_mngr}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}
 {
     _eventUnsubscriber += _fileMngr.OnDataSourceAdded += [this](DataSource* ds) {
         // Hash all files
@@ -186,7 +186,7 @@ auto ResourceManager::GetCritterAnim(hash model_name, uint anim1, uint anim2, uc
                 auto ox = 0;
                 auto oy = 0;
                 string str;
-                if (_scriptSys.CritterAnimationEvent(model_name, anim1, anim2, pass, flags, ox, oy, str)) {
+                if (_animNameResolver.ResolveCritterAnimation(model_name, anim1, anim2, pass, flags, ox, oy, str)) {
                     if (!str.empty()) {
                         _sprMngr.PushAtlasType(AtlasType::Dynamic);
                         anim = _sprMngr.LoadAnimation(str, false, true);
@@ -256,7 +256,7 @@ auto ResourceManager::GetCritterAnim(hash model_name, uint anim1, uint anim2, uc
         const auto model_name_ = model_name;
         const auto anim1_ = anim1;
         const auto anim2_ = anim2;
-        if (anim == nullptr && _scriptSys.CritterAnimationSubstituteEvent(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2)) {
+        if (anim == nullptr && _animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2)) {
             if (model_name_ != model_name || anim1 != anim1_ || anim2 != anim2_) {
                 continue;
             }
@@ -285,7 +285,7 @@ auto ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint anim2) -
     uint anim1_ex = 0;
     uint anim2_ex = 0;
     uint flags = 0;
-    if (_scriptSys.CritterAnimationFalloutEvent(model_name, anim1, anim2, anim1_ex, anim2_ex, flags)) {
+    if (_animNameResolver.ResolveCritterAnimationFallout(model_name, anim1, anim2, anim1_ex, anim2_ex, flags)) {
         // Load
         auto* anim = LoadFalloutAnimSpr(model_name, anim1, anim2);
         if (anim == nullptr) {

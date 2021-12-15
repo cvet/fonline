@@ -38,7 +38,6 @@
 #include "GeometryHelper.h"
 #include "PropertiesSerializator.h"
 #include "Server.h"
-#include "ServerScripting.h"
 #include "StringUtils.h"
 
 // ReSharper disable CppInconsistentNaming
@@ -575,7 +574,7 @@
     player = new Player(server, id, nullptr, player_proto);
     player->Name = name;
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->Props, doc, server->ScriptSys)) {
+    if (!PropertiesSerializator::LoadFromDbDocument(&player->Props, doc, *server->ScriptSys)) {
         throw ScriptException("Player data db read failed");
     }
 

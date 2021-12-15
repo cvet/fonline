@@ -36,11 +36,12 @@
 #include "GenericUtils.h"
 #include "Networking.h"
 #include "PropertiesSerializator.h"
+#include "ServerScripting.h"
 #include "Testing.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(Settings), ScriptSys(this, settings, FileMngr), ProtoMngr(FileMngr), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(FileMngr, ScriptSys), GameTime(Settings)
+FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys}, ProtoMngr(FileMngr), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(FileMngr, *ScriptSys), GameTime(Settings)
 {
     WriteLog("***   Starting initialization   ***\n");
 
@@ -99,7 +100,7 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
         DbStorage.Insert("Globals", 1, {{"_Proto", string("")}});
     }
     else {
-        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc, ScriptSys)) {
+        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc, *ScriptSys)) {
             throw ServerInitException("Failed to load globals document");
         }
 
@@ -123,13 +124,13 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     }
 
     // Initialization script
-    if (ScriptSys.InitEvent()) {
+    if (InitEvent.Raise()) {
         throw ServerInitException("Initialization script failed");
     }
 
     // Init world
     if (globals_doc.empty()) {
-        if (ScriptSys.GenerateWorldEvent()) {
+        if (GenerateWorldEvent.Raise()) {
             throw ServerInitException("Generate world script failed");
         }
     }
@@ -167,7 +168,7 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     }
 
     // Start script
-    if (ScriptSys.StartEvent()) {
+    if (StartEvent.Raise()) {
         throw ServerInitException("Start script failed");
     }
 
@@ -202,6 +203,8 @@ FOServer::~FOServer()
 {
     delete _tcpServer;
     delete _webSocketsServer;
+    delete ScriptSys;
+    Globals->Release();
 }
 
 void FOServer::Shutdown()
@@ -214,7 +217,7 @@ void FOServer::Shutdown()
         DbHistory.StartChanges();
     }
 
-    ScriptSys.FinishEvent();
+    FinishEvent.Raise();
     EntityMngr.FinalizeEntities();
 
     DbStorage.CommitChanges();
@@ -357,7 +360,7 @@ void FOServer::MainLoop()
     ProcessBans();
 
     // Script game loop
-    ScriptSys.LoopEvent();
+    LoopEvent.Raise();
 
     // Commit changed to data base
     DbStorage.CommitChanges();
@@ -632,7 +635,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
         // Manage saves, exit from game
         /*
          #if !FO_SINGLEPLAYER
-        ScriptSys.PlayerLogoutEvent(cr);
+        PlayerLogoutEvent.Raise(cr);
 #endif
          * const auto id = cl->GetId();
         auto* cl_ = (id != 0u ? CrMngr.GetPlayer(id) : nullptr);
@@ -981,7 +984,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     buf >> cmd;
 
     auto sstr = string(cl_ != nullptr ? "" : admin_panel);
-    auto allow_command = ScriptSys.PlayerAllowCommandEvent(player, sstr, cmd);
+    auto allow_command = PlayerAllowCommandEvent.Raise(player, sstr, cmd);
 
     if (!allow_command && (cl_ == nullptr)) {
         logcb("Command refused by script.");
@@ -1229,7 +1232,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         auto allow = false;
         if (wanted_access != -1) {
             auto& pass = pasw_access;
-            allow = ScriptSys.PlayerGetAccessEvent(player, wanted_access, pass);
+            allow = PlayerGetAccessEvent.Raise(player, wanted_access, pass);
         }
 
         if (!allow) {
@@ -1339,7 +1342,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
             break;
         }
 
-        if (ScriptSys.CallFunc<void, Critter*, int, int, int>(func_name, static_cast<Critter*>(cl_), param0, param1, param2)) {
+        if (ScriptSys->CallFunc<void, Critter*, int, int, int>(func_name, static_cast<Critter*>(cl_), param0, param1, param2)) {
             logcb("Run script success.");
         }
         else {
@@ -1999,7 +2002,7 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* /*cur_value*
             return;
         }
 
-        const auto value = PropertiesSerializator::SavePropertyToDbValue(&server_entity->Props, prop, ScriptSys);
+        const auto value = PropertiesSerializator::SavePropertyToDbValue(&server_entity->Props, prop, *ScriptSys);
         DbStorage.Update(server_entity->Props.GetRegistrator()->GetClassName() + "s", server_entity->GetId(), prop->GetName(), value);
 
         if (DbHistory && !prop->IsNoHistory()) {
@@ -2029,9 +2032,9 @@ void FOServer::ProcessCritter(Critter* cr)
     ProcessMove(cr);
 
     // Idle functions
-    ScriptSys.CritterIdleEvent(cr);
+    CritterIdleEvent.Raise(cr);
     if (cr->GetMapId() == 0u) {
-        ScriptSys.CritterGlobalMapIdleEvent(cr);
+        CritterGlobalMapIdleEvent.Raise(cr);
     }
 
     // Internal misc/drugs time events
@@ -2082,7 +2085,7 @@ void FOServer::ProcessCritter(Critter* cr)
     // Remove player critter from game
     if (cr->IsPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0u && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
         if (cr->GetClientToDelete()) {
-            ScriptSys.CritterFinishEvent(cr);
+            CritterFinishEvent.Raise(cr);
         }
 
         auto* map = MapMngr.GetMap(cr->GetMapId());
@@ -2191,7 +2194,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
                 item->TriggerScriptFunc(cr, item, false, dir);
             }
 
-            ScriptSys.StaticItemWalkEvent(item, cr, false, dir);
+            StaticItemWalkEvent.Raise(item, cr, false, dir);
         }
     }
 
@@ -2201,19 +2204,19 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
                 item->TriggerScriptFunc(cr, item, true, dir);
             }
 
-            ScriptSys.StaticItemWalkEvent(item, cr, true, dir);
+            StaticItemWalkEvent.Raise(item, cr, true, dir);
         }
     }
 
     if (map->IsHexTrigger(from_hx, from_hy)) {
         for (auto* item : map->GetItemsTrigger(from_hx, from_hy)) {
-            ScriptSys.ItemWalkEvent(item, cr, false, dir);
+            ItemWalkEvent.Raise(item, cr, false, dir);
         }
     }
 
     if (map->IsHexTrigger(to_hx, to_hy)) {
         for (auto* item : map->GetItemsTrigger(to_hx, to_hy)) {
-            ScriptSys.ItemWalkEvent(item, cr, true, dir);
+            ItemWalkEvent.Raise(item, cr, true, dir);
         }
     }
 }
@@ -2435,7 +2438,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     uint disallow_msg_num = 0;
     uint disallow_str_num = 0;
     string lexems;
-    const auto allow = ScriptSys.PlayerRegistrationEvent(connection->GetIp(), name, disallow_msg_num, disallow_str_num, lexems);
+    const auto allow = PlayerRegistrationEvent.Raise(connection->GetIp(), name, disallow_msg_num, disallow_str_num, lexems);
     if (!allow) {
         if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
             connection->Send_TextMsgLex(disallow_str_num, lexems);
@@ -2570,7 +2573,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
         uint disallow_msg_num = 0;
         uint disallow_str_num = 0;
         string lexems;
-        if (const auto allow = !ScriptSys.PlayerLoginEvent(connection->GetIp(), name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
+        if (const auto allow = !PlayerLoginEvent.Raise(connection->GetIp(), name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
             if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
                 connection->Send_TextMsgLex(disallow_str_num, lexems);
             }
@@ -2603,7 +2606,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     auto* player = new Player(this, player_id, connection, player_proto);
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->Props, doc, ScriptSys)) {
+    if (!PropertiesSerializator::LoadFromDbDocument(&player->Props, doc, *ScriptSys)) {
         player->Release();
         connection->Send_TextMsg(STR_NET_WRONG_DATA);
         connection->GracefulDisconnect();
@@ -2619,7 +2622,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     RUNTIME_ASSERT(can);
     MapMngr.AddCrToMap(cl, nullptr, 0, 0, 0, 0);
 
-    if (ScriptSys.CritterInitEvent(cl, true)) {
+    if (CritterInitEvent.Raise(cl, true)) {
     }*/
 
     // Connection info
@@ -3875,7 +3878,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hash dlg_pack_id, ushort h
 
         // Todo: don't remeber but need check (IsPlaneNoTalk)
 
-        ScriptSys.CritterTalkEvent(cl, npc, true, npc->GetTalkedPlayers() + 1);
+        CritterTalkEvent.Raise(cl, npc, true, npc->GetTalkedPlayers() + 1);
 
         dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
@@ -4107,7 +4110,7 @@ void FOServer::Process_Dialog(Player* player)
                 return;
             }
 
-            if (!ScriptSys.CritterBarterEvent(cr, npc, true, npc->GetBarterPlayers() + 1)) {
+            if (!CritterBarterEvent.Raise(cr, npc, true, npc->GetBarterPlayers() + 1)) {
                 cr->Talk.Barter = true;
                 cr->Talk.StartTick = GameTime.GameTick();
                 cr->Talk.TalkTime = Settings.DlgBarterMinTime;
@@ -4134,7 +4137,7 @@ void FOServer::Process_Dialog(Player* player)
         cr->Talk.Barter = false;
         dlg_id = cur_dialog->Id;
         if (npc != nullptr) {
-            ScriptSys.CritterBarterEvent(cr, npc, false, npc->GetBarterPlayers() + 1);
+            CritterBarterEvent.Raise(cr, npc, false, npc->GetBarterPlayers() + 1);
         }
     }
 
@@ -4389,7 +4392,7 @@ void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_val
     }
 }
 
-auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter * /*slave*/) -> bool
+auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter* /*slave*/) -> bool
 {
     /*int bind_id = (int)demand.ParamId;
     ScriptSys.PrepareContext(bind_id, master->GetName());
@@ -4402,7 +4405,7 @@ auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/,
     return false;
 }
 
-auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter * /*slave*/) -> uint
+auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter* /*slave*/) -> uint
 {
     /*int bind_id = (int)result.ParamId;
     ScriptSys.PrepareContext(

@@ -51,7 +51,7 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
         entity->SetId(id);
 
-        auto doc = PropertiesSerializator::SaveToDbDocument(&entity->Props, entity->Proto != nullptr ? &entity->Proto->Props : nullptr, _engine->ScriptSys);
+        auto doc = PropertiesSerializator::SaveToDbDocument(&entity->Props, entity->Proto != nullptr ? &entity->Proto->Props : nullptr, *_engine->ScriptSys);
         doc["_Proto"] = (entity->Proto != nullptr ? entity->Proto->GetName() : "");
         _engine->DbStorage.Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
     }
@@ -66,7 +66,7 @@ void EntityManager::UnregisterEntity(ServerEntity* entity)
     RUNTIME_ASSERT(it != _allEntities.end());
     _allEntities.erase(it);
 
-    _engine->ScriptSys.RemoveEntity(entity);
+    _engine->ScriptSys->RemoveEntity(entity);
     _engine->DbStorage.Delete(entity->Props.GetRegistrator()->GetClassName() + "s", entity->GetId());
 
     entity->SetId(0);
@@ -309,7 +309,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 }
 
                 auto* loc = loc_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&loc->Props, doc, _engine->ScriptSys)) {
+                if (!PropertiesSerializator::LoadFromDbDocument(&loc->Props, doc, *_engine->ScriptSys)) {
                     throw EntitiesLoadException("Failed to restore location properties", _str().parseHash(proto_id), id);
                 }
 
@@ -324,7 +324,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 }
 
                 auto* map = map_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc, _engine->ScriptSys)) {
+                if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc, *_engine->ScriptSys)) {
                     throw EntitiesLoadException("Failed to restore map properties", _str().parseHash(proto_id), id);
                 }
 
@@ -337,7 +337,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 }
 
                 auto* npc = npc_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc, _engine->ScriptSys)) {
+                if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc, *_engine->ScriptSys)) {
                     throw EntitiesLoadException("Failed to restore critter properties", _str().parseHash(proto_id), id);
                 }
 
@@ -350,7 +350,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 }
 
                 auto* item = item_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&item->Props, doc, _engine->ScriptSys)) {
+                if (!PropertiesSerializator::LoadFromDbDocument(&item->Props, doc, *_engine->ScriptSys)) {
                     throw EntitiesLoadException("Failed to restore item properties", _str().parseHash(proto_id), id);
                 }
 
@@ -384,24 +384,24 @@ void EntityManager::InitAfterLoad()
         }
 
         if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
-            _engine->ScriptSys.LocationInitEvent(loc, false);
+            _engine->LocationInitEvent.Raise(loc, false);
         }
         else if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
-            _engine->ScriptSys.MapInitEvent(map, false);
+            _engine->MapInitEvent.Raise(map, false);
 
             if (!map->IsDestroyed && map->GetScriptId() != 0u) {
                 map->SetScript("", false);
             }
         }
         else if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
-            _engine->ScriptSys.CritterInitEvent(cr, false);
+            _engine->CritterInitEvent.Raise(cr, false);
 
             if (!cr->IsDestroyed && cr->GetScriptId() != 0u) {
                 cr->SetScript("", false);
             }
         }
         else if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-            _engine->ScriptSys.ItemInitEvent(item, false);
+            _engine->ItemInitEvent.Raise(item, false);
 
             if (!item->IsDestroyed && item->GetScriptId() != 0u) {
                 item->SetScript("", false);
@@ -422,7 +422,7 @@ void EntityManager::FinalizeEntities()
         auto entities_copy = _allEntities;
         for (auto [id, entity] : entities_copy) {
             entity->IsDestroyed = true;
-            _engine->ScriptSys.RemoveEntity(entity);
+            _engine->ScriptSys->RemoveEntity(entity);
             entity->Release();
             _allEntities.erase(id);
         }

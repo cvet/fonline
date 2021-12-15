@@ -315,7 +315,7 @@ auto GenericUtils::ConvertParamValue(string_view str, bool& fail) -> int
     }
 
     // Todo: script handling in ConvertParamValue
-    // return Script::GetEnumValue(str, fail);
+    // return Script::ResolveEnumValue(str, fail);
     throw UnreachablePlaceException(LINE_STR);
 }
 

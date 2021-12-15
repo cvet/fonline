@@ -36,7 +36,6 @@
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
 #include "Server.h"
-#include "ServerScripting.h"
 #include "StringUtils.h"
 #include "TwoBitMask.h"
 
@@ -627,7 +626,7 @@
         throw ScriptException("Slot is not allowed");
     }
 
-    if (!self->GetEngine()->ScriptSys.CritterCheckMoveItemEvent(self, item, slot)) {
+    if (!self->GetEngine()->CritterCheckMoveItemEvent.Raise(self, item, slot)) {
         throw ScriptException("Can't move item");
     }
 
@@ -642,9 +641,9 @@
     self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
 
     if (item_swap) {
-        self->GetEngine()->ScriptSys.CritterMoveItemEvent(self, item_swap, slot);
+        self->GetEngine()->CritterMoveItemEvent.Raise(self, item_swap, slot);
     }
-    self->GetEngine()->ScriptSys.CritterMoveItemEvent(self, item, from_slot);
+    self->GetEngine()->CritterMoveItemEvent.Raise(self, item, from_slot);
 }
 
 ///# ...

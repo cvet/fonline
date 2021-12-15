@@ -35,30 +35,24 @@
 
 #include "Common.h"
 
-#include "ClientScripting.h"
 #include "ScriptSystem.h"
 
-class MapperScriptSystem : public ClientScriptSystem
+class FOMapper;
+
+class MapperScriptSystem : public ScriptSystem
 {
 public:
-    MapperScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr) : ClientScriptSystem(obj, settings, file_mngr)
+    MapperScriptSystem(FOMapper* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
     {
         InitNativeScripting();
         InitAngelScriptScripting();
         InitMonoScripting();
     }
 
-    ///@ ExportEvent
-    ScriptEvent<string& /*text*/> ConsoleMessageEvent {};
-    ///@ ExportEvent
-    ScriptEvent<MapView* /*map*/> EditMapLoadEvent {};
-    ///@ ExportEvent
-    ScriptEvent<MapView* /*map*/> EditMapSaveEvent {};
-    ///@ ExportEvent
-    ScriptEvent<Entity* /*entity*/, vector<int>& /*properties*/> InspectorPropertiesEvent {};
-
 private:
     void InitNativeScripting();
     void InitAngelScriptScripting();
     void InitMonoScripting();
+
+    FOMapper* _engine;
 };

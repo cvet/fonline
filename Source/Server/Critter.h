@@ -37,7 +37,6 @@
 
 #include "Dialogs.h"
 #include "ServerEntity.h"
-#include "ServerScripting.h"
 
 ///@ ExportEnum
 enum class MovingState : uchar

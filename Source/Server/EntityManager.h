@@ -42,7 +42,6 @@
 #include "Location.h"
 #include "Map.h"
 #include "Player.h"
-#include "ServerScripting.h"
 
 DECLARE_EXCEPTION(EntitiesLoadException);
 

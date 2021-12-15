@@ -37,7 +37,6 @@
 
 #include "3dAnimation.h"
 #include "Application.h"
-#include "ClientScripting.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Settings.h"
@@ -165,7 +164,7 @@ public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator);
+    ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -194,8 +193,8 @@ private:
     RenderSettings& _settings;
     FileManager& _fileMngr;
     EffectManager& _effectMngr;
-    ClientScriptSystem& _scriptSys;
     GameTimer& _gameTime;
+    AnimationResolver& _animNameResolver;
     MeshTextureCreator _meshTexCreator {};
     set<hash> _processedFiles {};
     vector<unique_ptr<ModelBone, std::function<void(ModelBone*)>>> _loadedModels {};
