@@ -48,6 +48,8 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
 {
     HexMngr.EnableMapperMode();
 
+    ProtoMngr = std::make_unique<ProtoManager>(ServerFileMngr, *this);
+
     Animations.resize(10000);
 
     // Mouse
@@ -93,7 +95,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     // RUNTIME_ASSERT(protos_ok);
 
     // Initialize tabs
-    const auto& cr_protos = ProtoMngr.GetProtoCritters();
+    const auto& cr_protos = ProtoMngr->GetProtoCritters();
     for (const auto& [pid, proto] : cr_protos) {
         Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.push_back(proto);
         Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.push_back(proto);
@@ -102,7 +104,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
         std::sort(proto.NpcProtos.begin(), proto.NpcProtos.end(), [](const ProtoCritter* a, const ProtoCritter* b) { return a->GetName().compare(b->GetName()); });
     }
 
-    const auto& item_protos = ProtoMngr.GetProtoItems();
+    const auto& item_protos = ProtoMngr->GetProtoItems();
     for (const auto& [pid, proto] : item_protos) {
         Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.push_back(proto);
         Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.push_back(proto);
@@ -139,7 +141,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
 
     if (!SettingsExt.StartMap.empty()) {
         const auto map_name = SettingsExt.StartMap;
-        auto* pmap = new ProtoMap(_str(map_name).toHash());
+        auto* pmap = new ProtoMap(_str(map_name).toHash(), GetPropertyRegistrator("Map"));
         const bool initialized = 0;
         // pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
 
@@ -1619,7 +1621,7 @@ void FOMapper::IntDraw()
         for (; i < j; i++, x += w) {
             auto* proto = (*CurNpcProtos)[i];
 
-            auto model_name = proto->Props.GetValue<hash>(CritterView::PropertyModelName);
+            auto model_name = proto->GetModelName();
             auto spr_id = ResMngr.GetCritterSprId(model_name, 1, 1, NpcDir, nullptr); // &proto->Params[ ST_ANIM3D_LAYER_BEGIN ] );
             if (spr_id == 0u) {
                 continue;
@@ -1885,14 +1887,16 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
 {
     const auto start_line = 3;
     if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int>(ShowProps.size())) {
-        auto* prop = ShowProps[ObjCurLine - start_line];
+        const auto* prop = ShowProps[ObjCurLine - start_line];
         if (prop != nullptr) {
             if (entity->Props.LoadPropertyFromText(prop, ObjCurLineValue)) {
-                if (dynamic_cast<ItemHexView*>(entity) && (prop == ItemHexView::PropertyOffsetX || prop == ItemHexView::PropertyOffsetY)) {
-                    dynamic_cast<ItemHexView*>(entity)->SetAnimOffs();
-                }
-                if (dynamic_cast<ItemHexView*>(entity) && prop == ItemHexView::PropertyPicMap) {
-                    dynamic_cast<ItemHexView*>(entity)->RefreshAnim();
+                if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
+                    if (prop == hex_item->GetPropertyOffsetX() || prop == hex_item->GetPropertyOffsetY()) {
+                        hex_item->SetAnimOffs();
+                    }
+                    if (prop == hex_item->GetPropertyPicMap()) {
+                        hex_item->RefreshAnim();
+                    }
                 }
             }
             else {
@@ -3172,7 +3176,7 @@ auto FOMapper::AddCritter(hash pid, ushort hx, ushort hy) -> CritterView*
 {
     RUNTIME_ASSERT(ActiveMap);
 
-    const auto* proto = ProtoMngr.GetProtoCritter(pid);
+    const auto* proto = ProtoMngr->GetProtoCritter(pid);
     if (proto == nullptr) {
         return nullptr;
     }
@@ -3207,7 +3211,7 @@ auto FOMapper::AddItem(hash pid, ushort hx, ushort hy, Entity* owner) -> ItemVie
     RUNTIME_ASSERT(ActiveMap);
 
     // Checks
-    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
+    const auto* proto_item = ProtoMngr->GetProtoItem(pid);
     if (proto_item == nullptr) {
         return nullptr;
     }
@@ -3583,7 +3587,7 @@ void FOMapper::CurDraw()
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
-            const auto model_name = (*CurNpcProtos)[GetTabIndex()]->Props.GetValue<hash>(CritterView::PropertyModelName);
+            const auto model_name = (*CurNpcProtos)[GetTabIndex()]->GetModelName();
             auto spr_id = ResMngr.GetCritterSprId(model_name, 1, 1, NpcDir, nullptr);
             if (spr_id == 0u) {
                 spr_id = ResMngr.ItemHexDefaultAnim->GetSprId(0);
@@ -3816,7 +3820,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        ProtoMap* pmap = new ProtoMap(_str(map_name).toHash());
+        ProtoMap* pmap = new ProtoMap(_str(map_name).toHash(), GetPropertyRegistrator("Map"));
         // Todo: need attention!
         /*if (!pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr))
         {
@@ -3941,7 +3945,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         if (command_ext == "new") {
-            ProtoMap* pmap = new ProtoMap(_str("new").toHash());
+            ProtoMap* pmap = new ProtoMap(_str("new").toHash(), GetPropertyRegistrator("Map"));
 
             pmap->SetWidth_ReadOnlyWorkaround(MAXHEX_DEFAULT);
             pmap->SetHeight_ReadOnlyWorkaround(MAXHEX_DEFAULT);
@@ -4121,7 +4125,7 @@ void FOMapper::DrawIfaceLayer(uint /*layer*/)
     SpritesCanDraw = false;
 }
 
-void FOMapper::OnSetItemFlags(Entity* entity, Property* prop, void* /*cur_value*/, void* /*old_value*/)
+void FOMapper::OnSetItemFlags(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
@@ -4130,20 +4134,20 @@ void FOMapper::OnSetItemFlags(Entity* entity, Property* prop, void* /*cur_value*
     if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded()) {
         auto* hex_item = dynamic_cast<ItemHexView*>(item);
         bool rebuild_cache = false;
-        if (prop == ItemView::PropertyIsColorize) {
+        if (prop == hex_item->GetPropertyIsColorize()) {
             hex_item->RefreshAlpha();
         }
-        else if (prop == ItemView::PropertyIsBadItem) {
+        else if (prop == hex_item->GetPropertyIsBadItem()) {
             hex_item->SetSprite(nullptr);
         }
-        else if (prop == ItemView::PropertyIsShootThru) {
+        else if (prop == hex_item->GetPropertyIsShootThru()) {
             rebuild_cache = true;
         }
-        else if (prop == ItemView::PropertyIsLightThru) {
+        else if (prop == hex_item->GetPropertyIsLightThru()) {
             HexMngr.RebuildLight();
             rebuild_cache = true;
         }
-        else if (prop == ItemView::PropertyIsNoBlock) {
+        else if (prop == hex_item->GetPropertyIsNoBlock()) {
             rebuild_cache = true;
         }
         if (rebuild_cache) {
@@ -4152,7 +4156,7 @@ void FOMapper::OnSetItemFlags(Entity* entity, Property* prop, void* /*cur_value*
     }
 }
 
-void FOMapper::OnSetItemSomeLight(Entity* /*entity*/, Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
+void FOMapper::OnSetItemSomeLight(Entity* /*entity*/, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
 {
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
@@ -4161,7 +4165,7 @@ void FOMapper::OnSetItemSomeLight(Entity* /*entity*/, Property* /*prop*/, void* 
     }
 }
 
-void FOMapper::OnSetItemPicMap(Entity* entity, Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
+void FOMapper::OnSetItemPicMap(Entity* entity, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
 {
     auto* item = dynamic_cast<ItemView*>(entity);
 
@@ -4171,7 +4175,7 @@ void FOMapper::OnSetItemPicMap(Entity* entity, Property* /*prop*/, void* /*cur_v
     }
 }
 
-void FOMapper::OnSetItemOffsetXY(Entity* entity, Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
+void FOMapper::OnSetItemOffsetXY(Entity* entity, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
 {
     // OffsetX, OffsetY
 
@@ -4184,7 +4188,7 @@ void FOMapper::OnSetItemOffsetXY(Entity* entity, Property* /*prop*/, void* /*cur
     }
 }
 
-void FOMapper::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_value, void* old_value)
+void FOMapper::OnSetItemOpened(Entity* entity, const Property* /*prop*/, void* cur_value, void* old_value)
 {
     auto* item = dynamic_cast<ItemView*>(entity);
     const bool cur = *static_cast<bool*>(cur_value);

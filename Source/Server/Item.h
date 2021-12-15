@@ -97,7 +97,6 @@ public:
     ScriptFunc<void, Critter*, Item*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 
-    PROPERTIES_HEADER();
 #define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY(access, type, name)
 #include "Properties-Include.h"
 

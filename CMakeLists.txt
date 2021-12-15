@@ -1596,6 +1596,16 @@ if( FONLINE_BUILD_SERVER )
 	set_target_properties( ServerScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	list( APPEND FO_CORE_LIBS_GROUP "ServerScriptingLib" )
 endif()
+if( FONLINE_BUILD_MAPPER )
+	add_library( MapperScriptingLib STATIC "${FO_MAPPER_SCRIPTING_SOURCE}" )
+	set_target_properties( MapperScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
+	list( APPEND FO_CORE_LIBS_GROUP "MapperScriptingLib" )
+endif()
+if( FONLINE_BUILD_SINGLE )
+	add_library( SingleScriptingLib STATIC "${FO_SINGLE_SCRIPTING_SOURCE}" )
+	set_target_properties( SingleScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1" )
+	list( APPEND FO_CORE_LIBS_GROUP "SingleScriptingLib" )
+endif()
 
 if( FONLINE_BUILD_CLIENT )
 	if( NOT FO_BUILD_LIBRARY )
@@ -1658,9 +1668,7 @@ if( FONLINE_BUILD_SINGLE )
 		"Source/Server/AppGuiStub.cpp"
 		${FO_COMMON_SOURCE}
 		${FO_SERVER_SOURCE}
-		${FO_CLIENT_SOURCE}
-		${FO_SINGLE_SCRIPTING_SOURCE} )
-
+		${FO_CLIENT_SOURCE} )
 	if( NOT FO_BUILD_LIBRARY )
 		StatusMessage( "+ FOnlineSingle" )
 		list( APPEND FO_APPLICATIONS_GROUP "FOnlineSingle" )
@@ -1674,7 +1682,7 @@ if( FONLINE_BUILD_SINGLE )
 	endif()
 	set_target_properties( FOnlineSingle PROPERTIES OUTPUT_NAME "FOnlineSingle" )
 	set_target_properties( FOnlineSingle PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1" )
-	target_link_libraries( FOnlineSingle "bson_static" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineSingle "SingleScriptingLib" "bson_static" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
 if( FONLINE_BUILD_MAPPER )
@@ -1686,12 +1694,11 @@ if( FONLINE_BUILD_MAPPER )
 		"Source/Tools/Mapper.h"
 		"Source/Tools/Mapper.cpp"
 		"Source/Scripting/MapperGlobalScriptMethods.cpp"
-		${FO_MAPPER_SCRIPTING_SOURCE}
 		"Resources/Default.rc" )
 	set_target_properties( FOnlineMapper PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TOOLS_OUTPUT} )
 	set_target_properties( FOnlineMapper PROPERTIES OUTPUT_NAME "FOnlineMapper" )
 	set_target_properties( FOnlineMapper PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
-	target_link_libraries( FOnlineMapper "ClientLib" "CommonLib" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	target_link_libraries( FOnlineMapper "MapperScriptingLib" "ClientLib" "CommonLib" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
 endif()
 
 if( FONLINE_BUILD_BAKER )

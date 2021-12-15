@@ -165,7 +165,7 @@ public:
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
 
-    void Send_Property(NetProperty::Type type, Property* prop, ServerEntity* entity);
+    void Send_Property(NetProperty::Type type, const Property* prop, ServerEntity* entity);
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
     void Send_AddCritter(Critter* cr);
@@ -236,7 +236,6 @@ public:
     vector<Critter*>* GlobalMapGroup {};
     uint RadioMessageSended {};
 
-    PROPERTIES_HEADER();
 #define CRITTER_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
 

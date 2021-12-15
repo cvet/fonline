@@ -55,7 +55,7 @@ public:
     [[nodiscard]] auto GetEngine() -> FOServer*;
 
 protected:
-    ServerEntity(FOServer* engine, uint id, PropertyRegistrator* registrator, const ProtoEntity* proto);
+    ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto);
 
     FOServer* _engine;
 
@@ -68,9 +68,8 @@ private:
 class ServerGlobals final : public Entity
 {
 public:
-    ServerGlobals();
+    explicit ServerGlobals(const PropertyRegistrator* registrator);
 
-    PROPERTIES_HEADER();
 #define GLOBAL_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
 };

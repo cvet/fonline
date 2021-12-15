@@ -41,7 +41,7 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys}, ProtoMngr(FileMngr), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(FileMngr, *ScriptSys), GameTime(Settings)
+FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(true), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys}, ProtoMngr(FileMngr, *this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this), GameTime(Settings)
 {
     WriteLog("***   Starting initialization   ***\n");
 
@@ -93,7 +93,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : Setting
     }
 
     // Load globals
-    Globals = new ServerGlobals();
+    Globals = new ServerGlobals(GetPropertyRegistrator("Global"));
 
     const auto globals_doc = DbStorage.Get("Globals", 1);
     if (globals_doc.empty()) {
@@ -1182,7 +1182,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
         auto* cr = (crid == 0u ? cl_ : CrMngr.GetCritter(crid));
         if (cr != nullptr) {
-            auto* prop = Critter::PropertiesRegistrator->Find(property_name);
+            const auto* prop = GetPropertyRegistrator("Critter")->Find(property_name);
             if (prop == nullptr) {
                 logcb("Property not found.");
                 return;
@@ -3021,45 +3021,45 @@ void FOServer::Process_Property(Player* player, uint data_size)
     CHECK_IN_BUFF_ERROR(player->Connection);
 
     auto is_public = false;
-    Property* prop = nullptr;
+    const Property* prop = nullptr;
     Entity* entity = nullptr;
     switch (type) {
     case NetProperty::Global:
         is_public = true;
-        prop = ServerGlobals::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Global")->Get(property_index);
         if (prop != nullptr) {
             entity = Globals;
         }
         break;
     case NetProperty::Player:
-        prop = Player::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Player")->Get(property_index);
         if (prop != nullptr) {
             entity = player;
         }
         break;
     case NetProperty::Critter:
         is_public = true;
-        prop = Critter::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Critter")->Get(property_index);
         if (prop != nullptr) {
             entity = CrMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        prop = Critter::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Critter")->Get(property_index);
         if (prop != nullptr) {
             entity = cr;
         }
         break;
     case NetProperty::MapItem:
         is_public = true;
-        prop = Item::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Item")->Get(property_index);
         if (prop != nullptr) {
             entity = ItemMngr.GetItem(item_id);
         }
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        prop = Item::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Item")->Get(property_index);
         if (prop != nullptr) {
             auto* cr = CrMngr.GetCritter(cr_id);
             if (cr != nullptr) {
@@ -3068,21 +3068,21 @@ void FOServer::Process_Property(Player* player, uint data_size)
         }
         break;
     case NetProperty::ChosenItem:
-        prop = Item::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Item")->Get(property_index);
         if (prop != nullptr) {
             entity = cr->GetItem(item_id, true);
         }
         break;
     case NetProperty::Map:
         is_public = true;
-        prop = Map::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Map")->Get(property_index);
         if (prop != nullptr) {
             entity = MapMngr.GetMap(cr->GetMapId());
         }
         break;
     case NetProperty::Location:
         is_public = true;
-        prop = Location::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Location")->Get(property_index);
         if (prop != nullptr) {
             auto* map = MapMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
@@ -3403,31 +3403,31 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
         case DR_PROP_LOCATION:
         case DR_PROP_MAP: {
             Entity* entity = nullptr;
-            PropertyRegistrator* prop_registrator = nullptr;
+            const PropertyRegistrator* prop_registrator = nullptr;
             if (demand.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = ServerGlobals::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Global");
             }
             else if (demand.Type == DR_PROP_CRITTER) {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Critter");
             }
             else if (demand.Type == DR_PROP_CRITTER_DICT) {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Critter");
             }
             else if (demand.Type == DR_PROP_ITEM) {
                 entity = master->GetItemSlot(1);
-                prop_registrator = Item::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Item");
             }
             else if (demand.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
-                prop_registrator = Location::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Location");
             }
             else if (demand.Type == DR_PROP_MAP) {
                 entity = MapMngr.GetMap(master->GetMapId());
-                prop_registrator = Map::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Map");
             }
             if (entity == nullptr) {
                 break;
@@ -3616,31 +3616,31 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
         case DR_PROP_LOCATION:
         case DR_PROP_MAP: {
             Entity* entity = nullptr;
-            PropertyRegistrator* prop_registrator = nullptr;
+            const PropertyRegistrator* prop_registrator = nullptr;
             if (result.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = ServerGlobals::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Global");
             }
             else if (result.Type == DR_PROP_CRITTER) {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Critter");
             }
             else if (result.Type == DR_PROP_CRITTER_DICT) {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Critter");
             }
             else if (result.Type == DR_PROP_ITEM) {
                 entity = master->GetItemSlot(1);
-                prop_registrator = Item::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Item");
             }
             else if (result.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
-                prop_registrator = Location::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Location");
             }
             else if (result.Type == DR_PROP_MAP) {
                 entity = MapMngr.GetMap(master->GetMapId());
-                prop_registrator = Map::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator("Map");
             }
             if (entity == nullptr) {
                 break;
@@ -4289,7 +4289,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, Property* prop, void* cur_val
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->ChangeViewItem(item);
-            if (prop == Item::PropertyIsTrap) {
+            if (prop == item->GetPropertyIsTrap()) {
                 map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
             }
         }

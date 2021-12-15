@@ -47,7 +47,6 @@ public:
     auto operator=(const PlayerView&) = delete;
     auto operator=(PlayerView&&) noexcept = delete;
 
-    PROPERTIES_HEADER();
 #define PLAYER_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
 };

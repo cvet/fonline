@@ -59,7 +59,6 @@ public:
     [[nodiscard]] auto GetInvColor() const -> uint;
     [[nodiscard]] auto LightGetHash() const -> uint;
 
-    PROPERTIES_HEADER();
 #define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY(access, type, name)
 #include "Properties-Include.h"
 };

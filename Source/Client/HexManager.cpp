@@ -419,7 +419,7 @@ auto HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added,
         return 0;
     }
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
+    const auto* proto = _engine->ProtoMngr->GetProtoItem(pid);
     if (proto == nullptr) {
         WriteLog("Proto not found '{}'.\n", _str().parseHash(pid));
         return 0;
@@ -708,7 +708,7 @@ auto HexManager::RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort 
         return false;
     }
 
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(eff_pid);
+    const auto* proto = _engine->ProtoMngr->GetProtoItem(eff_pid);
     if (proto == nullptr) {
         WriteLog("Proto '{}' not found.\n", _str().parseHash(eff_pid));
         return false;
@@ -4051,7 +4051,8 @@ auto HexManager::LoadMap(CacheStorage& cache, hash map_pid) -> bool
                 map_file.CopyMem(&props_data[i][0], data_size);
             }
         }
-        Properties props(ItemView::PropertiesRegistrator);
+
+        auto props = Properties(_engine->GetPropertyRegistrator("Item"));
         props.RestoreData(props_data);
 
         GenerateItem(id, proto_id, props);
@@ -4213,7 +4214,7 @@ void HexManager::GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles,
 
 void HexManager::GenerateItem(uint id, hash proto_id, Properties& props)
 {
-    const auto* proto = _engine->ProtoMngr.GetProtoItem(proto_id);
+    const auto* proto = _engine->ProtoMngr->GetProtoItem(proto_id);
     RUNTIME_ASSERT(proto);
 
     auto* scenery = new ItemHexView(_engine, id, proto, props);
@@ -4265,7 +4266,7 @@ void HexManager::OnResolutionChanged()
     RefreshMap();
 }
 
-auto HexManager::SetProtoMap(ProtoMap & /*pmap*/) -> bool
+auto HexManager::SetProtoMap(ProtoMap& /*pmap*/) -> bool
 {
     // Todo: need attention!
     /*WriteLog("Create map from prototype.\n");

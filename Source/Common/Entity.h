@@ -38,23 +38,25 @@
 #include "MsgFiles.h"
 #include "Properties.h"
 
-#define PROPERTIES_HEADER() static PropertyRegistrator* PropertiesRegistrator
-
-#define PROPERTIES_IMPL(class_name, script_name, is_server) PropertyRegistrator* class_name::PropertiesRegistrator = new PropertyRegistrator(is_server)
+///@ ExportEnum
+enum class CritterCondition : uchar
+{
+    Alive = 0,
+    Knockout = 1,
+    Dead = 2,
+};
 
 #define CLASS_PROPERTY(access_type, prop_type, prop) \
-    static Property* Property##prop; \
-    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(Property##prop); } \
-    inline void Set##prop(prop_type value) { Props.SetValue<prop_type>(Property##prop, value); } \
-    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(Property##prop) > 0; }
+    inline auto GetProperty##prop() const->const Property* { return Props.GetRegistrator()->FindNoComponentCheck(#prop); } \
+    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(GetProperty##prop()); } \
+    inline void Set##prop(prop_type value) { Props.SetValue<prop_type>(GetProperty##prop(), value); } \
+    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(GetProperty##prop()) > 0; }
 
 #define CLASS_READONLY_PROPERTY(access_type, prop_type, prop) \
-    static Property* Property##prop; \
-    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(Property##prop); } \
-    inline void Set##prop##_ReadOnlyWorkaround(prop_type value) { Props.SetValue<prop_type>(Property##prop, value); } \
-    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(Property##prop) > 0; }
-
-#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop) Property* class_name::Property##prop = class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop);
+    inline auto GetProperty##prop() const->const Property* { return Props.GetRegistrator()->FindNoComponentCheck(#prop); } \
+    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(GetProperty##prop()); } \
+    inline void Set##prop##_ReadOnlyWorkaround(prop_type value) { Props.SetValue<prop_type>(GetProperty##prop(), value); } \
+    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(GetProperty##prop()) > 0; }
 
 class ProtoEntity;
 
@@ -84,7 +86,7 @@ public:
     void* NativeObj {};
 
 protected:
-    Entity(PropertyRegistrator* registrator, const ProtoEntity* proto);
+    Entity(const PropertyRegistrator* registrator, const ProtoEntity* proto);
     virtual ~Entity();
 
     bool _nonConstHelper {};
@@ -102,15 +104,14 @@ public:
     string CollectionName {};
 
 protected:
-    ProtoEntity(hash proto_id, PropertyRegistrator* registrator);
+    ProtoEntity(hash proto_id, const PropertyRegistrator* registrator);
 };
 
 class ProtoPlayer final : public ProtoEntity
 {
 public:
-    explicit ProtoPlayer(hash pid);
+    explicit ProtoPlayer(hash proto_id, const PropertyRegistrator* registrator);
 
-    PROPERTIES_HEADER();
 #define PLAYER_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };
@@ -118,7 +119,7 @@ public:
 class ProtoItem final : public ProtoEntity
 {
 public:
-    explicit ProtoItem(hash pid);
+    explicit ProtoItem(hash proto_id, const PropertyRegistrator* registrator);
 
     [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
     [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
@@ -127,25 +128,15 @@ public:
 
     mutable int64 InstanceCount {};
 
-    PROPERTIES_HEADER();
 #define ITEM_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
-};
-
-///@ ExportEnum
-enum class CritterCondition : uchar
-{
-    Alive = 0,
-    Knockout = 1,
-    Dead = 2,
 };
 
 class ProtoCritter final : public ProtoEntity
 {
 public:
-    explicit ProtoCritter(hash pid);
+    explicit ProtoCritter(hash proto_id, const PropertyRegistrator* registrator);
 
-    PROPERTIES_HEADER();
 #define CRITTER_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };
@@ -153,9 +144,8 @@ public:
 class ProtoMap final : public ProtoEntity
 {
 public:
-    explicit ProtoMap(hash pid);
+    explicit ProtoMap(hash proto_id, const PropertyRegistrator* registrator);
 
-    PROPERTIES_HEADER();
 #define MAP_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };
@@ -163,9 +153,8 @@ public:
 class ProtoLocation final : public ProtoEntity
 {
 public:
-    explicit ProtoLocation(hash pid);
+    explicit ProtoLocation(hash proto_id, const PropertyRegistrator* registrator);
 
-    PROPERTIES_HEADER();
 #define LOCATION_PROPERTY CLASS_READONLY_PROPERTY
 #include "Properties-Include.h"
 };

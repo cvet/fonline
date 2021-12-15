@@ -238,7 +238,7 @@ static auto MarshalBackScalarArray(asIScriptEngine* as_engine, const char* type,
 
     if (!vec.empty()) {
         as_array->Resize(static_cast<asUINT>(vec.size()));
-        for (size_t i = 0; i < vec.size(); i++) {
+        for (const auto i : xrange(vec)) {
             *reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
         }
     }
@@ -253,7 +253,7 @@ static auto MarshalBackRefArray(asIScriptEngine* as_engine, const char* type, co
 
     if (!vec.empty()) {
         as_array->Resize(static_cast<asUINT>(vec.size()));
-        for (const auto i : xrange(vec.size())) {
+        for (const auto i : xrange(vec)) {
             *reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
             if (vec[i]) {
                 vec[i]->AddRef();
@@ -298,8 +298,8 @@ static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, 
 
     if (!map.empty()) {
         // as_array->Resize(static_cast<asUINT>(vec.size()));
-        // for (size_t i = 0; i < vec.size(); i++) {
-        //    auto* p = reinterpret_cast<T*>(as_array->At(i));
+        // for (const auto i : xrange(vec)) {
+        //    auto* p = reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i)));
         //    *p = vec[i];
         //}
     }

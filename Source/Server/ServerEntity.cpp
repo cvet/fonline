@@ -34,7 +34,7 @@
 #include "ServerEntity.h"
 #include "StringUtils.h"
 
-ServerEntity::ServerEntity(FOServer* engine, uint id, PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator, proto), _engine {engine}, _id {id}
+ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator, proto), _engine {engine}, _id {id}
 {
 }
 
@@ -55,10 +55,6 @@ auto ServerEntity::GetEngine() -> FOServer*
     return _engine;
 }
 
-PROPERTIES_IMPL(ServerGlobals, "Globals", true);
-#define GLOBAL_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(ServerGlobals, access, type, name)
-#include "Properties-Include.h"
-
-ServerGlobals::ServerGlobals() : Entity(PropertiesRegistrator, nullptr)
+ServerGlobals::ServerGlobals(const PropertyRegistrator* registrator) : Entity(registrator, nullptr)
 {
 }

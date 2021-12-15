@@ -70,7 +70,6 @@ public:
     uint EntranceScriptBindId {};
     int GeckCount {};
 
-    PROPERTIES_HEADER();
 #define LOCATION_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
 

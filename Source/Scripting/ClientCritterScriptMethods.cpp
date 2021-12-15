@@ -225,9 +225,9 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItemByPid(CritterView* self, hash protoId)
 {
-    const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
+    const auto* proto_item = self->GetEngine()->ProtoMngr->GetProtoItem(protoId);
     if (!proto_item) {
-        return static_cast<ItemView*>(nullptr);
+        return nullptr;
     }
 
     if (proto_item->GetStackable()) {
@@ -250,7 +250,7 @@
         return another_slot;
     }
 
-    return static_cast<ItemView*>(nullptr);
+    return nullptr;
 }
 
 ///# ...

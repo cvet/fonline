@@ -96,7 +96,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     StaticMap static_map {};
 
     MapLoader::Load(
-        pmap->GetName(), file_mngr, _engine->ProtoMngr,
+        pmap->GetName(), file_mngr, _engine->ProtoMngr, _engine->GetPropertyRegistrator("Map"),
         [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
             auto* cr = new Critter(_engine, id, nullptr, proto);
             if (!cr->Props.LoadFromText(kv)) {

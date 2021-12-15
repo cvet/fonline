@@ -39,6 +39,7 @@
 #include "MsgFiles.h"
 #include "ScriptSystem.h"
 
+class FOServer;
 class Critter;
 
 enum class TalkType
@@ -136,7 +137,7 @@ class DialogManager final
 {
 public:
     DialogManager() = delete;
-    DialogManager(FileManager& file_mngr, ScriptSystem& script_sys);
+    explicit DialogManager(FOServer* engine);
     DialogManager(const DialogManager&) = delete;
     DialogManager(DialogManager&&) noexcept = default;
     auto operator=(const DialogManager&) = delete;
@@ -160,8 +161,7 @@ private:
 
     [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*;
 
-    FileManager& _fileMngr;
-    ScriptSystem& _scriptSys;
+    FOServer* _engine;
     map<hash, unique_ptr<DialogPack>> _dialogPacks {};
     bool _nonConstHelper {};
 };

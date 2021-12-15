@@ -49,10 +49,8 @@
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ClientScriptSystem(this, settings) : nullptr}, GameTime(Settings), ProtoMngr(FileMngr), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ClientScriptSystem(this, settings) : nullptr}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), Globals {new ClientGlobals(GetPropertyRegistrator("Global"))}, _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
-    Globals = new ClientGlobals();
-
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
     _netSock = INVALID_SOCKET;
     _initNetReason = INIT_NET_REASON_NONE;
@@ -1774,7 +1772,7 @@ void FOClient::Net_SendMove(vector<uchar> steps)
     _netOut << _chosen->GetHexY();
 }
 
-void FOClient::Net_SendProperty(NetProperty::Type type, Property* prop, Entity* entity)
+void FOClient::Net_SendProperty(NetProperty::Type type, const Property* prop, Entity* entity)
 {
     RUNTIME_ASSERT(entity);
 
@@ -1991,7 +1989,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         WriteLog("Invalid positions hx {}, hy {}, dir {}.\n", hx, hy, dir);
     }
     else {
-        const auto* proto = ProtoMngr.GetProtoCritter(is_npc ? npc_pid : _str("Player").toHash());
+        const auto* proto = ProtoMngr->GetProtoCritter(is_npc ? npc_pid : _str("Player").toHash());
         RUNTIME_ASSERT(proto);
 
         auto* cr = new CritterView(this, crid, proto, false);
@@ -2430,7 +2428,7 @@ void FOClient::Net_OnSomeItem()
         _someItem = nullptr;
     }
 
-    const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
+    const auto* proto_item = ProtoMngr->GetProtoItem(item_pid);
     RUNTIME_ASSERT(proto_item);
     _someItem = new ItemView(this, item_id, proto_item);
     _someItem->Props.RestoreData(_tempPropertiesData);
@@ -2510,7 +2508,7 @@ void FOClient::Net_OnCritterMoveItem()
         cr->DeleteAllItems();
 
         for (ushort i = 0; i < slots_data_count; i++) {
-            const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
+            const auto* proto_item = ProtoMngr->GetProtoItem(slots_data_pid[i]);
             if (proto_item != nullptr) {
                 auto* item = new ItemView(this, slots_data_id[i], proto_item);
                 item->Props.RestoreData(slots_data_data[i]);
@@ -2809,7 +2807,7 @@ void FOClient::Net_OnChosenAddItem()
         _chosen->DeleteItem(prev_item, false);
     }
 
-    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
+    const auto* proto_item = ProtoMngr->GetProtoItem(pid);
     RUNTIME_ASSERT(proto_item);
 
     auto* item = new ItemView(this, item_id, proto_item);
@@ -3165,41 +3163,41 @@ void FOClient::Net_OnProperty(uint data_size)
 
     CHECK_IN_BUFF_ERROR();
 
-    Property* prop;
+    const Property* prop;
     Entity* entity = nullptr;
     switch (type) {
     case NetProperty::Global:
-        prop = ClientGlobals::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Global")->Get(property_index);
         if (prop != nullptr) {
             entity = Globals;
         }
         break;
     case NetProperty::Player:
-        prop = PlayerView::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Player")->Get(property_index);
         if (prop != nullptr) {
             entity = _curPlayer;
         }
         break;
     case NetProperty::Critter:
-        prop = CritterView::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Critter")->Get(property_index);
         if (prop != nullptr) {
             entity = GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        prop = CritterView::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Critter")->Get(property_index);
         if (prop != nullptr) {
             entity = _chosen;
         }
         break;
     case NetProperty::MapItem:
-        prop = ItemView::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Item")->Get(property_index);
         if (prop != nullptr) {
             entity = HexMngr.GetItemById(item_id);
         }
         break;
     case NetProperty::CritterItem:
-        prop = ItemView::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Item")->Get(property_index);
         if (prop != nullptr) {
             auto* cr = GetCritter(cr_id);
             if (cr != nullptr) {
@@ -3208,19 +3206,19 @@ void FOClient::Net_OnProperty(uint data_size)
         }
         break;
     case NetProperty::ChosenItem:
-        prop = ItemView::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Item")->Get(property_index);
         if (prop != nullptr) {
             entity = (_chosen != nullptr ? _chosen->GetItem(item_id) : nullptr);
         }
         break;
     case NetProperty::Map:
-        prop = MapView::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Map")->Get(property_index);
         if (prop != nullptr) {
             entity = _curMap;
         }
         break;
     case NetProperty::Location:
-        prop = LocationView::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator("Location")->Get(property_index);
         if (prop != nullptr) {
             entity = _curLocation;
         }
@@ -3408,9 +3406,9 @@ void FOClient::Net_OnLoadMap()
     }
 
     if (map_pid != 0u) {
-        _curLocation = new LocationView(this, 0, ProtoMngr.GetProtoLocation(loc_pid));
+        _curLocation = new LocationView(this, 0, ProtoMngr->GetProtoLocation(loc_pid));
         _curLocation->Props.RestoreData(_tempPropertiesDataExt);
-        _curMap = new MapView(this, 0, ProtoMngr.GetProtoMap(map_pid));
+        _curMap = new MapView(this, 0, ProtoMngr->GetProtoMap(map_pid));
         _curMap->Props.RestoreData(_tempPropertiesData);
     }
 
@@ -3687,7 +3685,7 @@ void FOClient::Net_OnSomeItems()
         _netIn >> item_pid;
         NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
 
-        const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
+        const auto* proto_item = ProtoMngr->GetProtoItem(item_pid);
         if (item_id != 0u && proto_item != nullptr) {
             auto* item = new ItemView(this, item_id, proto_item);
             item->Props.RestoreData(_tempPropertiesData);
@@ -4214,7 +4212,7 @@ void FOClient::AnimProcess()
     }
 }
 
-void FOClient::OnSendGlobalValue(Entity* entity, Property* prop)
+void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(entity);
     RUNTIME_ASSERT(entity == Globals);
@@ -4227,7 +4225,7 @@ void FOClient::OnSendGlobalValue(Entity* entity, Property* prop)
     }
 }
 
-void FOClient::OnSendPlayerValue(Entity* entity, Property* prop)
+void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(entity);
     RUNTIME_ASSERT(entity == _curPlayer);
@@ -4235,7 +4233,7 @@ void FOClient::OnSendPlayerValue(Entity* entity, Property* prop)
     Net_SendProperty(NetProperty::Player, prop, _curPlayer);
 }
 
-void FOClient::OnSendCritterValue(Entity* entity, Property* prop)
+void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     auto* cr = dynamic_cast<CritterView*>(entity);
     if (cr->IsChosen()) {
@@ -4249,7 +4247,7 @@ void FOClient::OnSendCritterValue(Entity* entity, Property* prop)
     }
 }
 
-void FOClient::OnSetCritterModelName(Entity* entity, Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
     UNUSED_VARIABLE(prop);
     UNUSED_VARIABLE(cur_value);
@@ -4260,7 +4258,7 @@ void FOClient::OnSetCritterModelName(Entity* entity, Property* prop, void* cur_v
     cr->Action(ACTION_REFRESH, 0, nullptr, false);
 }
 
-void FOClient::OnSendItemValue(Entity* entity, Property* prop)
+void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && item->GetId() != 0u) {
         if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
@@ -4289,7 +4287,7 @@ void FOClient::OnSendItemValue(Entity* entity, Property* prop)
     }
 }
 
-void FOClient::OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
@@ -4300,21 +4298,21 @@ void FOClient::OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, v
     if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded()) {
         auto hex_item = dynamic_cast<ItemHexView*>(item);
         auto rebuild_cache = false;
-        if (prop == ItemView::PropertyIsColorize) {
+        if (prop == hex_item->GetPropertyIsColorize()) {
             hex_item->RefreshAlpha();
         }
-        else if (prop == ItemView::PropertyIsBadItem) {
+        else if (prop == hex_item->GetPropertyIsBadItem()) {
             hex_item->SetSprite(nullptr);
         }
-        else if (prop == ItemView::PropertyIsShootThru) {
+        else if (prop == hex_item->GetPropertyIsShootThru()) {
             _rebuildLookBordersRequest = true;
             rebuild_cache = true;
         }
-        else if (prop == ItemView::PropertyIsLightThru) {
+        else if (prop == hex_item->GetPropertyIsLightThru()) {
             HexMngr.RebuildLight();
             rebuild_cache = true;
         }
-        else if (prop == ItemView::PropertyIsNoBlock) {
+        else if (prop == hex_item->GetPropertyIsNoBlock()) {
             rebuild_cache = true;
         }
         if (rebuild_cache) {
@@ -4323,7 +4321,7 @@ void FOClient::OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, v
     }
 }
 
-void FOClient::OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
@@ -4337,7 +4335,7 @@ void FOClient::OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_valu
     }
 }
 
-void FOClient::OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
     UNUSED_VARIABLE(prop);
     UNUSED_VARIABLE(cur_value);
@@ -4351,7 +4349,7 @@ void FOClient::OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, 
     }
 }
 
-void FOClient::OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
     // OffsetX, OffsetY
 
@@ -4368,7 +4366,7 @@ void FOClient::OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value
     }
 }
 
-void FOClient::OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
     UNUSED_VARIABLE(prop);
 
@@ -4387,7 +4385,7 @@ void FOClient::OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, 
     }
 }
 
-void FOClient::OnSendMapValue(Entity* entity, Property* prop)
+void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(entity);
     RUNTIME_ASSERT(entity == _curMap);
@@ -4400,7 +4398,7 @@ void FOClient::OnSendMapValue(Entity* entity, Property* prop)
     }
 }
 
-void FOClient::OnSendLocationValue(Entity* entity, Property* prop)
+void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(entity);
     RUNTIME_ASSERT(entity == _curLocation);

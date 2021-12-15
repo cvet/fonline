@@ -42,7 +42,6 @@ class MapView final : public ClientEntity
 public:
     MapView(FOClient* engine, uint id, const ProtoMap* proto);
 
-    PROPERTIES_HEADER();
 #define MAP_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
 };

@@ -39,16 +39,17 @@
 #include "Location.h"
 #include "Log.h"
 #include "Map.h"
+#include "Server.h"
 #include "ServerEntity.h"
 #include "StringUtils.h"
 
-static auto GetPropEnumIndex(string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
+static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
 {
-    auto* prop_global = ServerGlobals::PropertiesRegistrator->Find(str);
-    auto* prop_critter = Critter::PropertiesRegistrator->Find(str);
-    auto* prop_item = Item::PropertiesRegistrator->Find(str);
-    auto* prop_location = Location::PropertiesRegistrator->Find(str);
-    auto* prop_map = Map::PropertiesRegistrator->Find(str);
+    auto* prop_global = engine->GetPropertyRegistrator("Global")->Find(str);
+    auto* prop_critter = engine->GetPropertyRegistrator("Critter")->Find(str);
+    auto* prop_item = engine->GetPropertyRegistrator("Item")->Find(str);
+    auto* prop_location = engine->GetPropertyRegistrator("Location")->Find(str);
+    auto* prop_map = engine->GetPropertyRegistrator("Map")->Find(str);
 
     auto count = 0;
     count += prop_global != nullptr ? 1 : 0;
@@ -66,7 +67,7 @@ static auto GetPropEnumIndex(string_view str, bool is_demand, uchar& type, bool&
         return -1;
     }
 
-    Property* prop = nullptr;
+    const Property* prop = nullptr;
     if (prop_global != nullptr) {
         prop = prop_global;
         type = DR_PROP_GLOBAL;
@@ -119,7 +120,7 @@ static auto GetPropEnumIndex(string_view str, bool is_demand, uchar& type, bool&
     return prop->GetRegIndex();
 }
 
-DialogManager::DialogManager(FileManager& file_mngr, ScriptSystem& script_sys) : _fileMngr {file_mngr}, _scriptSys {script_sys}
+DialogManager::DialogManager(FOServer* engine) : _engine {engine}
 {
 }
 
@@ -129,7 +130,7 @@ auto DialogManager::LoadDialogs() -> bool
 
     _dialogPacks.clear();
 
-    auto files = _fileMngr.FilterFiles("fodlg");
+    auto files = _engine->FileMngr.FilterFiles("fodlg");
     uint files_loaded = 0;
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
@@ -441,7 +442,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         // Name
         input >> name;
         auto is_hash = false;
-        id = static_cast<max_t>(GetPropEnumIndex(name, is_demand, type, is_hash));
+        id = static_cast<max_t>(GetPropEnumIndex(_engine, name, is_demand, type, is_hash));
         if (id == static_cast<max_t>(-1)) {
             fail = true;
         }
@@ -618,7 +619,7 @@ auto DialogManager::GetNotAnswerAction(string_view str) -> ScriptFunc<string, Cr
         return {};
     }
 
-    return _scriptSys.FindFunc<string, Critter*, Critter*>(str);
+    return _engine->ScriptSys->FindFunc<string, Critter*, Critter*>(str);
 }
 
 auto DialogManager::GetDrType(string_view str) -> uchar

@@ -957,7 +957,7 @@ def genCode(lang, target, isASCompiler=False):
                     globalLines.append('}')
                     globalLines.append('')
         
-        # Generate global methods
+        # Marshalling global methods
         globalLines.append('// Marshalling global functions')
         globalLines.append('#undef GET_AS_ENGINE')
         globalLines.append('#define GET_AS_ENGINE() engine->ScriptSys->AngelScriptData->Engine')
@@ -989,6 +989,41 @@ def genCode(lang, target, isASCompiler=False):
                 globalLines.append('}')
                 globalLines.append('')
         
+        # Marshalling properties
+        """
+        globalLines.append('// Marshalling properties')
+        for entity in entities:
+            engineEntityType = entity + ('View' if target != 'Server' else '')
+            for methodTag in codeGenTags['ExportMethod']:
+                targ, ent, name, ret, params, exportFlags, comment = methodTag
+                if targ in allowedTargets and ent == entity:
+                    if not isASCompiler:
+                        globalLines.append('extern ' + metaTypeToEngineType(ret, True) + ' ' + targ + '_' + entity + '_' + name +
+                                '(' + entity + ('View' if target != 'Server' else '') + '*' + (', ' if params else '') +
+                                ', '.join([metaTypeToEngineType(p[0]) for p in params]) + ');')
+                    globalLines.append('static ' + metaTypeToASEngineType(ret, True) + ' AS_' + targ + '_' + entity + '_' + name + '(' + engineEntityType + '* self' +
+                            (', ' if params else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
+                    globalLines.append('{')
+                    if not isASCompiler:
+                        globalLines.append('    ENTITY_VERIFY(self);')
+                        for p in params:
+                            if p[0] in entities:
+                                globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
+                        for p in params:
+                            globalLines.append('    auto&& _' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
+                        globalLines.append('    ' + ('auto _callResult = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
+                                '(self' + (', ' if params else '') + ', '.join(['_' + p[1] for p in params]) + ');')
+                        for p in params:
+                            pass # Marshall back
+                        if ret != 'void':
+                            globalLines.append('    return ' + marshalBack(ret, '_callResult') + ';')
+                    else:
+                        if ret != 'void':
+                            globalLines.append('    return 0;')
+                    globalLines.append('}')
+                    globalLines.append('')
+        """
+        
         # Register enums
         registerLines.append('// Enums')
         for e in codeGenTags['ExportEnum'] + codeGenTags['Enum']:
@@ -999,8 +1034,6 @@ def genCode(lang, target, isASCompiler=False):
             for kv in keyValues:
                 registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", ' + kv[1] + '));')
         registerLines.append('')
-        
-        # Register content enums
         
         # Register exported objects
         for eo in codeGenTags['ExportObject']:

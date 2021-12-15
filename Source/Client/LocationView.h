@@ -42,7 +42,6 @@ class LocationView final : public ClientEntity
 public:
     LocationView(FOClient* engine, uint id, const ProtoLocation* proto);
 
-    PROPERTIES_HEADER();
 #define LOCATION_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
 };

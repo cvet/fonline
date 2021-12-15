@@ -32,12 +32,9 @@
 //
 
 #include "MapView.h"
+#include "Client.h"
 
-PROPERTIES_IMPL(MapView, "Map", false);
-#define MAP_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(MapView, access, type, name)
-#include "Properties-Include.h"
-
-MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntity(engine, id, PropertiesRegistrator, proto)
+MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Map"), proto)
 {
     RUNTIME_ASSERT(proto);
 }

@@ -34,7 +34,7 @@
 #include "Entity.h"
 #include "StringUtils.h"
 
-Entity::Entity(PropertyRegistrator* registrator, const ProtoEntity* proto) : Props {registrator}, Proto {proto}
+Entity::Entity(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Props {registrator}, Proto {proto}
 {
     if (Proto != nullptr) {
         Proto->AddRef();
@@ -71,7 +71,7 @@ void Entity::Release() const
     }
 }
 
-ProtoEntity::ProtoEntity(hash proto_id, PropertyRegistrator* registrator) : Entity(registrator, nullptr), ProtoId(proto_id)
+ProtoEntity::ProtoEntity(hash proto_id, const PropertyRegistrator* registrator) : Entity(registrator, nullptr), ProtoId(proto_id)
 {
     RUNTIME_ASSERT(ProtoId);
 }
@@ -81,42 +81,22 @@ auto ProtoEntity::HaveComponent(hash name) const -> bool
     return Components.count(name) > 0;
 }
 
-PROPERTIES_IMPL(ProtoPlayer, "Player", true);
-#define PLAYER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoPlayer, access, type, name)
-#include "Properties-Include.h"
-
-ProtoPlayer::ProtoPlayer(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
+ProtoPlayer::ProtoPlayer(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoItem, "Item", true);
-#define ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoItem, access, type, name)
-#include "Properties-Include.h"
-
-ProtoItem::ProtoItem(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
+ProtoItem::ProtoItem(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoCritter, "Critter", true);
-#define CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoCritter, access, type, name)
-#include "Properties-Include.h"
-
-ProtoCritter::ProtoCritter(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
+ProtoCritter::ProtoCritter(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoMap, "Map", true);
-#define MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoMap, access, type, name)
-#include "Properties-Include.h"
-
-ProtoMap::ProtoMap(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
+ProtoMap::ProtoMap(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
 {
 }
 
-PROPERTIES_IMPL(ProtoLocation, "Location", true);
-#define LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ProtoLocation, access, type, name)
-#include "Properties-Include.h"
-
-ProtoLocation::ProtoLocation(hash pid) : ProtoEntity(pid, PropertiesRegistrator)
+ProtoLocation::ProtoLocation(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
 {
 }

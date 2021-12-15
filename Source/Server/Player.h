@@ -63,7 +63,7 @@ public:
     [[nodiscard]] auto GetOwnedCritter() const -> const Critter* { return _ownedCr; }
     [[nodiscard]] auto GetOwnedCritter() -> Critter* { return _ownedCr; }
 
-    void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
+    void Send_Property(NetProperty::Type type, const Property* prop, Entity* entity);
 
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
@@ -117,7 +117,6 @@ public:
     string LastSay {};
     uint LastSayEqualCount {};
 
-    PROPERTIES_HEADER();
 #define PLAYER_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
 

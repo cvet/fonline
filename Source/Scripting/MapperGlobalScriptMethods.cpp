@@ -99,7 +99,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr.GetProtoItem(pid);
+    const auto* proto = mapper->ProtoMngr->GetProtoItem(pid);
     if (!proto) {
         throw ScriptException("Invalid item prototype");
     }
@@ -119,7 +119,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr.GetProtoCritter(pid);
+    const auto* proto = mapper->ProtoMngr->GetProtoCritter(pid);
     if (!proto) {
         throw ScriptException("Invalid critter prototype");
     }
@@ -479,7 +479,7 @@
 ///@ ExportMethod
 [[maybe_unused]] MapView* Mapper_Global_LoadMap(FOMapper* mapper, string_view fileName)
 {
-    auto* pmap = new ProtoMap(_str(fileName).toHash());
+    auto* pmap = new ProtoMap(_str(fileName).toHash(), mapper->GetPropertyRegistrator("Map"));
     // Todo: need attention!
     // if (!pmap->EditorLoad(mapper->ServerFileMngr, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
     //     return nullptr;
@@ -1798,7 +1798,7 @@
     auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId != 0u) {
-        const auto* proto_item = mapper->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
+        const auto* proto_item = mapper->ProtoMngr->GetProtoItem(mapSpr->ProtoId);
         if (!proto_item) {
             return;
         }

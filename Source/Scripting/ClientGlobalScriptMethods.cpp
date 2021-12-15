@@ -1661,7 +1661,7 @@
     auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId != 0u) {
-        const auto* const proto_item = client->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
+        const auto* const proto_item = client->ProtoMngr->GetProtoItem(mapSpr->ProtoId);
         if (!proto_item) {
             return;
         }

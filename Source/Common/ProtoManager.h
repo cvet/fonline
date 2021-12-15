@@ -37,14 +37,16 @@
 
 #include "Entity.h"
 #include "FileSystem.h"
+#include "Properties.h"
 
 DECLARE_EXCEPTION(ProtoManagerException);
 
 class ProtoManager final
 {
 public:
-    ProtoManager(FileManager& file_mngr);
-    ProtoManager(const vector<uchar>& data);
+    ProtoManager() = delete;
+    ProtoManager(FileManager& file_mngr, PropertyRegistratorsHolder& property_registrators); // Load from text
+    ProtoManager(const vector<uchar>& data, PropertyRegistratorsHolder& property_registrators); // Restore from binary
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;

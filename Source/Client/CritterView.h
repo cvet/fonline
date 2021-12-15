@@ -135,7 +135,6 @@ public:
     short SprOy {};
     uint FadingTick {};
 
-    PROPERTIES_HEADER();
 #define CRITTER_PROPERTY CLASS_PROPERTY
 #include "Properties-Include.h"
 

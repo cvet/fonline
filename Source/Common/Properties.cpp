@@ -36,6 +36,10 @@
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 
+Property::Property(const PropertyRegistrator* registrator) : _registrator {registrator}
+{
+}
+
 auto Property::CreateRefValue(uchar* /*data*/, uint /*data_size*/) -> unique_ptr<void, std::function<void(void*)>>
 {
     /*if (dataType == Property::Array)
@@ -156,7 +160,7 @@ auto Property::CreateRefValue(uchar* /*data*/, uint /*data_size*/) -> unique_ptr
     return nullptr;
 }
 
-auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool & /*need_delete*/) -> uchar*
+auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool& /*need_delete*/) -> uchar*
 {
     /*need_delete = false;
     if (dataType == Property::String)
@@ -443,9 +447,8 @@ auto Property::IsNoHistory() const -> bool
     return _isNoHistory;
 }
 
-Properties::Properties(PropertyRegistrator* reg)
+Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
-    _registrator = reg;
     RUNTIME_ASSERT(_registrator);
 
     _sendIgnoreEntity = nullptr;
@@ -494,6 +497,10 @@ Properties::~Properties()
 
 auto Properties::operator=(const Properties& other) -> Properties&
 {
+    if (this == &other) {
+        return *this;
+    }
+
     RUNTIME_ASSERT(_registrator == other._registrator);
 
     // Copy POD data
@@ -509,10 +516,8 @@ auto Properties::operator=(const Properties& other) -> Properties&
     return *this;
 }
 
-auto Properties::FindByEnum(int enum_value) -> Property*
+auto Properties::FindByEnum(int enum_value) const -> const Property*
 {
-    NON_CONST_METHOD_HINT();
-
     return _registrator->FindByEnum(enum_value);
 }
 
@@ -976,7 +981,7 @@ void* ReadValue(
     return nullptr;
 }*/
 
-auto Properties::LoadFromText(const map<string, string> & /*key_values*/) -> bool
+auto Properties::LoadFromText(const map<string, string>& /*key_values*/) -> bool
 {
     /*bool is_error = false;
     for (const auto& kv : key_values)
@@ -989,7 +994,7 @@ auto Properties::LoadFromText(const map<string, string> & /*key_values*/) -> boo
             continue;
 
         // Find property
-        Property* prop = registrator->Find(key);
+        const Property* prop = registrator->Find(key);
         if (!prop || (prop->podDataOffset == uint(-1) && prop->complexDataIndex == uint(-1)))
         {
             if (!prop)
@@ -1063,7 +1068,7 @@ auto Properties::SaveToText(Properties* base) const -> map<string, string>
     return key_values;
 }
 
-auto Properties::LoadPropertyFromText(Property* /*prop*/, string_view /*text*/) -> bool
+auto Properties::LoadPropertyFromText(const Property* /*prop*/, string_view /*text*/) -> bool
 {
     /*RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(registrator == prop->registrator);
@@ -1097,7 +1102,7 @@ auto Properties::LoadPropertyFromText(Property* /*prop*/, string_view /*text*/) 
     return false;
 }
 
-auto Properties::SavePropertyToText(Property* prop) const -> string
+auto Properties::SavePropertyToText(const Property* prop) const -> string
 {
     RUNTIME_ASSERT(prop);
     RUNTIME_ASSERT(_registrator == prop->_registrator);
@@ -1130,7 +1135,7 @@ auto Properties::SavePropertyToText(Property* prop) const -> string
     return "";
 }
 
-void Properties::SetSendIgnore(Property* prop, Entity* entity)
+void Properties::SetSendIgnore(const Property* prop, Entity* entity)
 {
     if (prop != nullptr) {
         RUNTIME_ASSERT(_sendIgnoreEntity == nullptr);
@@ -1145,7 +1150,7 @@ void Properties::SetSendIgnore(Property* prop, Entity* entity)
     _sendIgnoreProperty = prop;
 }
 
-auto Properties::GetRawDataSize(Property* prop) const -> uint
+auto Properties::GetRawDataSize(const Property* prop) const -> uint
 {
     uint data_size = 0;
     const auto* data = GetRawData(prop, data_size);
@@ -1153,7 +1158,7 @@ auto Properties::GetRawDataSize(Property* prop) const -> uint
     return data_size;
 }
 
-auto Properties::GetRawData(Property* prop, uint& data_size) const -> const uchar*
+auto Properties::GetRawData(const Property* prop, uint& data_size) const -> const uchar*
 {
     if (prop->_dataType == Property::POD) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
@@ -1166,12 +1171,12 @@ auto Properties::GetRawData(Property* prop, uint& data_size) const -> const ucha
     return _complexData[prop->_complexDataIndex];
 }
 
-auto Properties::GetRawData(Property* prop, uint& data_size) -> uchar*
+auto Properties::GetRawData(const Property* prop, uint& data_size) -> uchar*
 {
     return const_cast<uchar*>(const_cast<const Properties*>(this)->GetRawData(prop, data_size));
 }
 
-void Properties::SetRawData(Property* prop, uchar* data, uint data_size)
+void Properties::SetRawData(const Property* prop, uchar* data, uint data_size)
 {
     if (prop->IsPOD()) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
@@ -1196,7 +1201,7 @@ void Properties::SetRawData(Property* prop, uchar* data, uint data_size)
     }
 }
 
-void Properties::SetValueFromData(Property* prop, uchar* data, uint data_size)
+void Properties::SetValueFromData(const Property* prop, uchar* data, uint data_size)
 {
     /*if (dataType == Property::String)
     {
@@ -1221,7 +1226,7 @@ void Properties::SetValueFromData(Property* prop, uchar* data, uint data_size)
     }*/
 }
 
-auto Properties::GetPODValueAsInt(Property* prop) const -> int
+auto Properties::GetPODValueAsInt(const Property* prop) const -> int
 {
     RUNTIME_ASSERT(prop->_dataType == Property::POD);
 
@@ -1268,7 +1273,7 @@ auto Properties::GetPODValueAsInt(Property* prop) const -> int
     throw UnreachablePlaceException(LINE_STR);
 }
 
-void Properties::SetPODValueAsInt(Property* prop, int value)
+void Properties::SetPODValueAsInt(const Property* prop, int value)
 {
     RUNTIME_ASSERT(prop->_dataType == Property::POD);
 
@@ -1418,9 +1423,8 @@ void Properties::SetValueAsIntProps(int enum_value, int value)
     }
 }
 
-PropertyRegistrator::PropertyRegistrator(bool is_server)
+PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server) : _className {class_name}, _isServer {is_server}
 {
-    _isServer = is_server;
 }
 
 PropertyRegistrator::~PropertyRegistrator()
@@ -1433,7 +1437,7 @@ PropertyRegistrator::~PropertyRegistrator()
     }
 }
 
-auto PropertyRegistrator::Register(Property::AccessType access, const type_info& type, string_view name) -> Property*
+auto PropertyRegistrator::Register(Property::AccessType access, const type_info& type, string_view name) -> const Property*
 {
 #define ISTYPE(t) (type.hash_code() == typeid(t).hash_code())
 
@@ -1529,7 +1533,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     }
 
     // Allocate property
-    auto* prop = new Property();
+    auto* prop = new Property(this);
     const auto reg_index = static_cast<uint>(_registeredProperties.size());
 
     // Disallow set or get accessors
@@ -1617,7 +1621,6 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     }
 
     // Make entry
-    prop->_registrator = this;
     prop->_regIndex = reg_index;
     prop->_getIndex = !disable_get ? _getPropertiesCount++ : static_cast<uint>(-1);
     // prop->enumValue = enum_value;
@@ -1657,6 +1660,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     // prop->maxValue = (max_value ? *max_value : 0);
 
     _registeredProperties.push_back(prop);
+    _registeredPropertiesLookup.emplace(prop->GetName(), prop);
 
     // Fix POD data offsets
     for (auto* prop : _registeredProperties) {
@@ -1673,6 +1677,8 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     }
 
     return prop;
+
+#undef ISTYPE
 }
 
 void PropertyRegistrator::RegisterComponent(string_view name)
@@ -1692,7 +1698,7 @@ auto PropertyRegistrator::GetCount() const -> uint
     return static_cast<uint>(_registeredProperties.size());
 }
 
-auto PropertyRegistrator::Get(uint property_index) -> Property*
+auto PropertyRegistrator::Get(uint property_index) const -> const Property*
 {
     if (property_index < static_cast<uint>(_registeredProperties.size())) {
         return _registeredProperties[property_index];
@@ -1700,22 +1706,30 @@ auto PropertyRegistrator::Get(uint property_index) -> Property*
     return nullptr;
 }
 
-auto PropertyRegistrator::Find(string_view property_name) -> Property*
+auto PropertyRegistrator::Find(string_view property_name) const -> const Property*
 {
     auto key = string(property_name);
-    if (const auto separator = key.find('.'); separator != string::npos) {
+    if (const auto separator = property_name.find('.'); separator != string::npos) {
         key[separator] = '_';
     }
 
-    for (auto& prop : _registeredProperties) {
-        if (prop->_propName == key) {
-            return prop;
-        }
+    if (const auto it = _registeredPropertiesLookup.find(key); it != _registeredPropertiesLookup.end()) {
+        return it->second;
     }
+
     return nullptr;
 }
 
-auto PropertyRegistrator::FindByEnum(int enum_value) -> Property*
+auto PropertyRegistrator::FindNoComponentCheck(string_view property_name) const -> const Property*
+{
+    if (const auto it = _registeredPropertiesLookup.find(string(property_name)); it != _registeredPropertiesLookup.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto PropertyRegistrator::FindByEnum(int enum_value) const -> const Property*
 {
     for (auto& prop : _registeredProperties) {
         if (prop->_enumValue == enum_value) {
@@ -1739,4 +1753,24 @@ void PropertyRegistrator::SetNativeSetCallback(string_view property_name, const 
 auto PropertyRegistrator::GetWholeDataSize() const -> uint
 {
     return _wholePodDataSize;
+}
+
+PropertyRegistratorsHolder::PropertyRegistratorsHolder(bool is_server) : _isServer {is_server}
+{
+}
+
+auto PropertyRegistratorsHolder::CreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
+{
+    RUNTIME_ASSERT(_registrators.count(class_name) == 0u);
+
+    auto* new_registrator = new PropertyRegistrator(class_name, _isServer);
+    _registrators.emplace(class_name, new_registrator);
+    return new_registrator;
+}
+
+auto PropertyRegistratorsHolder::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*
+{
+    const auto it = _registrators.find(class_name);
+    RUNTIME_ASSERT(it != _registrators.end());
+    return it->second;
 }

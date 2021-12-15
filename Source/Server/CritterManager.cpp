@@ -167,7 +167,7 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
         multihex = proto->GetMultihex();
     }
     else {
-        multihex = props->GetValue<uint>(Critter::PropertyMultihex);
+        multihex = props->GetValue<uint>(props->GetRegistrator()->Find("Multihex"));
     }
 
     if (!map->IsHexesPassed(hx, hy, multihex)) {

@@ -131,7 +131,7 @@ constexpr auto INIT_NET_REASON_REG = 2;
 constexpr auto INIT_NET_REASON_LOAD = 3;
 constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : public AnimationResolver
+class FOClient : public PropertyRegistratorsHolder, public AnimationResolver
 {
 public:
     struct MapText
@@ -284,7 +284,6 @@ public:
     FileManager FileMngr;
     ScriptSystem* ScriptSys;
     GameTimer GameTime;
-    ProtoManager ProtoMngr;
 
     EffectManager EffectMngr;
     SpriteManager SprMngr;
@@ -293,8 +292,9 @@ public:
     SoundManager SndMngr;
     Keyboard Keyb;
     CacheStorage Cache;
-    ClientGlobals* Globals {};
+    ClientGlobals* Globals;
 
+    unique_ptr<ProtoManager> ProtoMngr {};
     hash CurMapPid {};
     vector<MapText> GameMapTexts {};
     bool CanDrawInScripts {};
@@ -411,7 +411,7 @@ private:
     void Net_SendUpdate();
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
-    void Net_SendProperty(NetProperty::Type type, Property* prop, Entity* entity);
+    void Net_SendProperty(NetProperty::Type type, const Property* prop, Entity* entity);
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
     void Net_SendGetGameInfo();
     void Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash);
@@ -469,18 +469,18 @@ private:
     void OnText(string_view str, uint crid, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
-    void OnSendGlobalValue(Entity* entity, Property* prop);
-    void OnSendPlayerValue(Entity* entity, Property* prop);
-    void OnSendCritterValue(Entity* entity, Property* prop);
-    void OnSetCritterModelName(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSendItemValue(Entity* entity, Property* prop);
-    void OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSendMapValue(Entity* entity, Property* prop);
-    void OnSendLocationValue(Entity* entity, Property* prop);
+    void OnSendGlobalValue(Entity* entity, const Property* prop);
+    void OnSendPlayerValue(Entity* entity, const Property* prop);
+    void OnSendCritterValue(Entity* entity, const Property* prop);
+    void OnSetCritterModelName(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSendItemValue(Entity* entity, const Property* prop);
+    void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSendMapValue(Entity* entity, const Property* prop);
+    void OnSendLocationValue(Entity* entity, const Property* prop);
 
     void AnimProcess();
 

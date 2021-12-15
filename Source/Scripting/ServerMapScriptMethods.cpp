@@ -87,7 +87,7 @@
     }
 
     if (!props.empty()) {
-        Properties props_(Item::PropertiesRegistrator);
+        Properties props_(self->GetEngine()->GetPropertyRegistrator("Item"));
         props_ = proto->Props;
 
         for (const auto& [key, value] : props) {
@@ -656,7 +656,7 @@
 
     Critter* npc;
     if (!props.empty()) {
-        Properties props_(Critter::PropertiesRegistrator);
+        Properties props_(self->GetEngine()->GetPropertyRegistrator("Critter"));
         props_ = proto->Props;
         for (const auto& [key, value] : props) {
             props_.SetValueAsIntProps(key, value);

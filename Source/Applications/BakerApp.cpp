@@ -73,14 +73,14 @@ int main(int argc, char** argv)
                 content_files.AddDataSource(dir, true);
             }
 
-            // Protos
-            ProtoManager proto_mngr(content_files);
-            auto data = proto_mngr.GetProtosBinaryData();
-            RUNTIME_ASSERT(!data.empty());
-            auto protos_file = DiskFileSystem::OpenFile("Protos.fobin", true);
-            RUNTIME_ASSERT(protos_file);
-            auto protos_write_ok = protos_file.Write(data.data(), static_cast<uint>(data.size()));
-            RUNTIME_ASSERT(protos_write_ok);
+            // Todo: bake prototypes?
+            // ProtoManager proto_mngr(content_files, ...);
+            // auto data = proto_mngr.GetProtosBinaryData();
+            // RUNTIME_ASSERT(!data.empty());
+            // auto protos_file = DiskFileSystem::OpenFile("Protos.fobin", true);
+            // RUNTIME_ASSERT(protos_file);
+            // auto protos_write_ok = protos_file.Write(data.data(), static_cast<uint>(data.size()));
+            // RUNTIME_ASSERT(protos_write_ok);
 
             // Dialogs
             // Todo: add dialogs verification during baking

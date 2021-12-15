@@ -32,12 +32,9 @@
 //
 
 #include "LocationView.h"
+#include "Client.h"
 
-PROPERTIES_IMPL(LocationView, "Location", false);
-#define LOCATION_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(LocationView, access, type, name)
-#include "Properties-Include.h"
-
-LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto) : ClientEntity(engine, id, PropertiesRegistrator, proto)
+LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Location"), proto)
 {
     RUNTIME_ASSERT(proto);
 }

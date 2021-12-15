@@ -32,11 +32,8 @@
 //
 
 #include "PlayerView.h"
+#include "Client.h"
 
-PROPERTIES_IMPL(PlayerView, "Player", false);
-#define PLAYER_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(PlayerView, access, type, name)
-#include "Properties-Include.h"
-
-PlayerView::PlayerView(FOClient* engine, uint id, const ProtoPlayer* proto) : ClientEntity(engine, id, PropertiesRegistrator, proto)
+PlayerView::PlayerView(FOClient* engine, uint id, const ProtoPlayer* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Player"), proto)
 {
 }

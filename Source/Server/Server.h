@@ -65,7 +65,7 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer final
+class FOServer final : public PropertyRegistratorsHolder
 {
 public:
     FOServer() = delete;

@@ -41,11 +41,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-PROPERTIES_IMPL(Map, "Map", true);
-#define MAP_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Map, access, type, name)
-#include "Properties-Include.h"
-
-Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, PropertiesRegistrator, proto), _staticMap {static_map}, _mapLocation {location}
+Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Map"), proto), _staticMap {static_map}, _mapLocation {location}
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(_staticMap);
@@ -321,7 +317,7 @@ void Map::EraseItem(uint item_id)
     item->ViewPlaceOnMap = false;
 }
 
-void Map::SendProperty(NetProperty::Type type, Property* prop, ServerEntity* entity)
+void Map::SendProperty(NetProperty::Type type, const Property* prop, ServerEntity* entity)
 {
     if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
@@ -335,7 +331,7 @@ void Map::SendProperty(NetProperty::Type type, Property* prop, ServerEntity* ent
     else if (type == NetProperty::Map || type == NetProperty::Location) {
         for (auto* cr : GetCritters()) {
             cr->Send_Property(type, prop, entity);
-            if (type == NetProperty::Map && (prop == PropertyDayTime || prop == PropertyDayColor)) {
+            if (type == NetProperty::Map && (prop == GetPropertyDayTime() || prop == GetPropertyDayColor())) {
                 cr->Send_GameInfo(nullptr);
             }
         }

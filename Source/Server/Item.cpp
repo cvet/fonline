@@ -34,12 +34,9 @@
 #include "Item.h"
 #include "CritterManager.h"
 #include "ItemManager.h"
+#include "Server.h"
 
-PROPERTIES_IMPL(Item, "Item", true);
-#define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY_IMPL(Item, access, type, name)
-#include "Properties-Include.h"
-
-Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, PropertiesRegistrator, proto)
+Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Item"), proto)
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(GetCount() > 0);

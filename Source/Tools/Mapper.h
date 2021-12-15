@@ -263,11 +263,11 @@ public:
     void RunMapSaveScript(MapView* map);
     void DrawIfaceLayer(uint layer);
 
-    void OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
 
     ///@ ExportEvent
     ScriptEvent<string& /*text*/> ConsoleMessageEvent {};
