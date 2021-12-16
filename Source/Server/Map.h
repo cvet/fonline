@@ -36,6 +36,8 @@
 #include "Common.h"
 
 #include "MapLoader.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 #include "ServerEntity.h"
 
 class Item;
@@ -58,7 +60,7 @@ struct StaticMap
     vector<MapTile> Tiles {};
 };
 
-class Map final : public ServerEntity
+class Map final : public ServerEntity, public MapProperties
 {
     friend class MapManager;
 
@@ -140,9 +142,6 @@ public:
     void SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void RecacheHexFlags(ushort hx, ushort hy);
-
-#define MAP_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
 
 private:
     const StaticMap* _staticMap {};

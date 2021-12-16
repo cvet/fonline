@@ -36,12 +36,11 @@
 #include "Common.h"
 
 #include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
-class MapView final : public ClientEntity
+class MapView final : public ClientEntity, public MapProperties
 {
 public:
     MapView(FOClient* engine, uint id, const ProtoMap* proto);
-
-#define MAP_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
 };

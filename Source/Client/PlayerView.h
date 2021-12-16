@@ -36,8 +36,10 @@
 #include "Common.h"
 
 #include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
-class PlayerView final : public ClientEntity
+class PlayerView final : public ClientEntity, public PlayerProperties
 {
 public:
     PlayerView() = delete;
@@ -46,7 +48,5 @@ public:
     PlayerView(PlayerView&&) noexcept = delete;
     auto operator=(const PlayerView&) = delete;
     auto operator=(PlayerView&&) noexcept = delete;
-
-#define PLAYER_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
+    ~PlayerView() override = default;
 };

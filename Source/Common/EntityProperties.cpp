@@ -31,44 +31,8 @@
 // SOFTWARE.
 //
 
-#pragma once
-
-#include "Common.h"
-
-#include "Entity.h"
 #include "EntityProperties.h"
-#include "EntityProtos.h"
 
-class FOServer;
-
-class ServerEntity : public EntityWithProto
+EntityProperties::EntityProperties(Properties& props) : _props {props}
 {
-    friend class EntityManager;
-
-public:
-    ServerEntity() = delete;
-    ServerEntity(const ServerEntity&) = delete;
-    ServerEntity(ServerEntity&&) noexcept = delete;
-    auto operator=(const ServerEntity&) = delete;
-    auto operator=(ServerEntity&&) noexcept = delete;
-    ~ServerEntity() override = default;
-
-    [[nodiscard]] auto GetId() const -> uint;
-    [[nodiscard]] auto GetEngine() -> FOServer*;
-
-protected:
-    ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto);
-
-    FOServer* _engine;
-
-private:
-    void SetId(uint id); // Invoked by EntityManager
-
-    uint _id;
-};
-
-class ServerGlobals final : public Entity, public GlobalsProperties
-{
-public:
-    explicit ServerGlobals(const PropertyRegistrator* registrator);
-};
+}

@@ -42,7 +42,7 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Critter"), proto), _mapperMode {mapper_mode}
+CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Critter"), proto), CritterProperties(Props), _mapperMode {mapper_mode}
 {
     _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u);
     DrawEffect = _engine->EffectMngr.Effects.Critter;
@@ -112,7 +112,7 @@ auto CritterView::GetFadeAlpha() -> uchar
 
 void CritterView::AddItem(ItemView* item)
 {
-    item->SetAccessory(ITEM_ACCESSORY_CRITTER);
+    item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritId(GetId());
 
     InvItems.push_back(item);
@@ -126,7 +126,7 @@ void CritterView::AddItem(ItemView* item)
 
 void CritterView::DeleteItem(ItemView* item, bool animate)
 {
-    item->SetAccessory(ITEM_ACCESSORY_NONE);
+    item->SetOwnership(ItemOwnership::Nowhere);
     item->SetCritId(0);
     item->SetCritSlot(0);
 

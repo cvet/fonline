@@ -36,11 +36,13 @@
 #include "Common.h"
 
 #include "ServerEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
 class Map;
 class Location;
 
-class Location final : public ServerEntity
+class Location final : public ServerEntity, public LocationProperties
 {
 public:
     Location() = delete;
@@ -69,9 +71,6 @@ public:
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};
     int GeckCount {};
-
-#define LOCATION_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
 
 private:
     vector<Map*> _locMaps {};

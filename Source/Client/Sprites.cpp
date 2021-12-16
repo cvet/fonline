@@ -217,7 +217,7 @@ void Sprite::SetFlash(uint mask)
     Valid = true;
 }
 
-void Sprite::SetLight(int corner, uchar* light, ushort maxhx, ushort maxhy)
+void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy)
 {
     if (!Valid) {
         return;
@@ -230,21 +230,21 @@ void Sprite::SetLight(int corner, uchar* light, ushort maxhx, ushort maxhy)
 
         switch (corner) {
         default:
-        case CORNER_EAST_WEST:
-        case CORNER_EAST:
+        case CornerType::EastWest:
+        case CornerType::East:
             LightRight = Light - 3;
             LightLeft = Light + 3;
             break;
-        case CORNER_NORTH_SOUTH:
-        case CORNER_WEST:
+        case CornerType::NorthSouth:
+        case CornerType::West:
             LightRight = Light + maxhx * 3;
             LightLeft = Light - maxhx * 3;
             break;
-        case CORNER_SOUTH:
+        case CornerType::South:
             LightRight = Light - 3;
             LightLeft = Light - maxhx * 3;
             break;
-        case CORNER_NORTH:
+        case CornerType::North:
             LightRight = Light + maxhx * 3;
             LightLeft = Light + 3;
             break;

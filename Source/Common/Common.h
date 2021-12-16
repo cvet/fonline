@@ -1035,19 +1035,33 @@ static constexpr uint MOVE_PARAM_STEP_ALLOW = 0x8;
 static constexpr uint MOVE_PARAM_STEP_DISALLOW = 0x10;
 static constexpr uint MOVE_PARAM_RUN = 0x80000000;
 
-// Corner type
-static constexpr uchar CORNER_NORTH_SOUTH = 0;
-static constexpr uchar CORNER_WEST = 1;
-static constexpr uchar CORNER_EAST = 2;
-static constexpr uchar CORNER_SOUTH = 3;
-static constexpr uchar CORNER_NORTH = 4;
-static constexpr uchar CORNER_EAST_WEST = 5;
+///@ ExportEnum
+enum class ItemOwnership : uchar
+{
+    Nowhere = 0,
+    CritterInventory = 1,
+    MapHex = 2,
+    ItemContainer = 3,
+};
 
-// Items accessory
-#define ITEM_ACCESSORY_NONE (0)
-#define ITEM_ACCESSORY_CRITTER (1)
-#define ITEM_ACCESSORY_HEX (2)
-#define ITEM_ACCESSORY_CONTAINER (3)
+///@ ExportEnum
+enum class CornerType : uchar
+{
+    NorthSouth = 0,
+    West = 1,
+    East = 2,
+    South = 3,
+    North = 4,
+    EastWest = 5,
+};
+
+///@ ExportEnum
+enum class CritterCondition : uchar
+{
+    Alive = 0,
+    Knockout = 1,
+    Dead = 2,
+};
 
 // Uses
 #define USE_PRIMARY (0)

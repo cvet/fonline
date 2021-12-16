@@ -35,7 +35,7 @@
 #include "Client.h"
 #include "Timer.h"
 
-ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Item"), proto)
+ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Item"), proto), ItemProperties(Props)
 {
     RUNTIME_ASSERT(Proto);
     RUNTIME_ASSERT(GetCount() > 0);

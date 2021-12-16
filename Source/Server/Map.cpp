@@ -41,7 +41,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Map"), proto), _staticMap {static_map}, _mapLocation {location}
+Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Map"), proto), MapProperties(Props), _staticMap {static_map}, _mapLocation {location}
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(_staticMap);
@@ -248,7 +248,7 @@ void Map::SetItem(Item* item, ushort hx, ushort hy)
 {
     RUNTIME_ASSERT(!_mapItemsById.count(item->GetId()));
 
-    item->SetAccessory(ITEM_ACCESSORY_HEX);
+    item->SetOwnership(ItemOwnership::MapHex);
     item->SetMapId(GetId());
     item->SetHexX(hx);
     item->SetHexY(hy);
@@ -291,7 +291,7 @@ void Map::EraseItem(uint item_id)
         _mapItemsByHex.erase(it_hex_all);
     }
 
-    item->SetAccessory(ITEM_ACCESSORY_NONE);
+    item->SetOwnership(ItemOwnership::Nowhere);
     item->SetMapId(0);
     item->SetHexX(0);
     item->SetHexY(0);

@@ -49,7 +49,7 @@
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), Globals {new ClientGlobals(GetPropertyRegistrator("Global"))}, _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), Globals {new ClientGlobals(GetPropertyRegistrator("Globals"))}, _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
     _netSock = INVALID_SOCKET;
@@ -2816,7 +2816,7 @@ void FOClient::Net_OnChosenAddItem()
 
     auto* item = new ItemView(this, item_id, proto_item);
     item->Props.RestoreData(_tempPropertiesData);
-    item->SetAccessory(ITEM_ACCESSORY_CRITTER);
+    item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritId(_chosen->GetId());
     item->SetCritSlot(slot);
     RUNTIME_ASSERT(!item->GetIsHidden());
@@ -3171,7 +3171,7 @@ void FOClient::Net_OnProperty(uint data_size)
     Entity* entity = nullptr;
     switch (type) {
     case NetProperty::Global:
-        prop = GetPropertyRegistrator("Global")->Get(property_index);
+        prop = GetPropertyRegistrator("Globals")->Get(property_index);
         if (prop != nullptr) {
             entity = Globals;
         }
@@ -4265,7 +4265,7 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, void*
 void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && item->GetId() != 0u) {
-        if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+        if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             auto* cr = GetCritter(item->GetCritId());
             if (cr != nullptr && cr->IsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
@@ -4277,7 +4277,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
                 throw GenericException("Unable to send item (a critter) modifiable property", prop->GetName());
             }
         }
-        else if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+        else if (item->GetOwnership() == ItemOwnership::MapHex) {
             if (prop->GetAccess() == Property::PublicFullModifiable) {
                 Net_SendProperty(NetProperty::MapItem, prop, item);
             }
@@ -4299,8 +4299,8 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, void* cur_va
     UNUSED_VARIABLE(old_value);
 
     auto* item = dynamic_cast<ItemView*>(entity);
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded()) {
-        auto hex_item = dynamic_cast<ItemHexView*>(item);
+    if (item->GetOwnership() == ItemOwnership::MapHex && HexMngr.IsMapLoaded()) {
+        auto* hex_item = dynamic_cast<ItemHexView*>(item);
         auto rebuild_cache = false;
         if (prop == hex_item->GetPropertyIsColorize()) {
             hex_item->RefreshAlpha();
@@ -4347,8 +4347,8 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_v
 
     auto* item = dynamic_cast<ItemView*>(entity);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
-        auto hex_item = dynamic_cast<ItemHexView*>(item);
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
+        auto* hex_item = dynamic_cast<ItemHexView*>(item);
         hex_item->RefreshAnim();
     }
 }
@@ -4363,7 +4363,7 @@ void FOClient::OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur
 
     auto* item = dynamic_cast<ItemView*>(entity);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded()) {
+    if (item->GetOwnership() == ItemOwnership::MapHex && HexMngr.IsMapLoaded()) {
         auto hex_item = dynamic_cast<ItemHexView*>(item);
         hex_item->SetAnimOffs();
         HexMngr.ProcessHexBorders(hex_item);

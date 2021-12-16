@@ -227,17 +227,17 @@ void Field::ProcessCache()
     Flags.IsNotRaked = false;
     Flags.IsNoLight = false;
     Flags.ScrollBlock = false;
-    Corner = 0;
+    Corner = CornerType::NorthSouth;
 
     if (Items != nullptr) {
-        for (auto* item : *Items) {
+        for (const auto* item : *Items) {
             auto pid = item->GetProtoId();
 
             if (item->IsWall()) {
                 Flags.IsWall = true;
                 Flags.IsWallTransp = item->GetIsLightThru();
 
-                Corner = static_cast<uchar>(item->GetCorner());
+                Corner = item->GetCorner();
             }
             else if (item->IsScenery()) {
                 Flags.IsScen = true;
@@ -259,7 +259,7 @@ void Field::ProcessCache()
     }
 
     if (BlockLinesItems != nullptr) {
-        for (auto* item : *BlockLinesItems) {
+        for (const auto* item : *BlockLinesItems) {
             Flags.IsNotPassed = true;
             if (!item->GetIsShootThru()) {
                 Flags.IsNotRaked = true;
@@ -980,7 +980,7 @@ void HexManager::RebuildMap(int rx, int ry)
                 _rainData.push_back(new_drop);
 
                 auto& spr = _mainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr, &_engine->EffectMngr.Effects.Rain, nullptr);
-                spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+                spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
                 field.AddSpriteToChain(&spr);
             }
             else if (_roofSkip == 0 || _roofSkip != GetField(rofx, rofy).RoofNum) {
@@ -988,7 +988,7 @@ void HexManager::RebuildMap(int rx, int ry)
                 _rainData.push_back(new_drop);
 
                 auto& spr = _roofRainTree.AddSprite(DRAW_ORDER_RAIN, nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr, &_engine->EffectMngr.Effects.Rain, nullptr);
-                spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+                spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
                 field.AddSpriteToChain(&spr);
             }
 
@@ -1051,7 +1051,7 @@ void HexManager::RebuildMap(int rx, int ry)
         auto* cr = field.Crit;
         if (cr != nullptr && _engine->Settings.ShowCrit && cr->Visible) {
             auto& spr = _mainTree.AddSprite(EvaluateCritterDrawOrder(cr), nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
-            spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+            spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
             cr->SprDraw = &spr;
             cr->SetSprRect();
 
@@ -1075,7 +1075,7 @@ void HexManager::RebuildMap(int rx, int ry)
                 }
 
                 auto& spr = _mainTree.AddSprite(EvaluateCritterDrawOrder(dead_cr), nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &dead_cr->SprId, &dead_cr->SprOx, &dead_cr->SprOy, &dead_cr->Alpha, &dead_cr->DrawEffect, &dead_cr->SprDrawValid);
-                spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+                spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
                 dead_cr->SprDraw = &spr;
                 dead_cr->SetSprRect();
 
@@ -1227,7 +1227,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 _rainData.push_back(new_drop);
 
                 auto& spr = _mainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr, &_engine->EffectMngr.Effects.Rain, nullptr);
-                spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+                spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
                 field.AddSpriteToChain(&spr);
             }
             else if (_roofSkip == 0 || _roofSkip != GetField(rofx, rofy).RoofNum) {
@@ -1235,7 +1235,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 _rainData.push_back(new_drop);
 
                 auto& spr = _roofRainTree.InsertSprite(DRAW_ORDER_RAIN, nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &new_drop->CurSprId, &new_drop->OffsX, &new_drop->OffsY, nullptr, &_engine->EffectMngr.Effects.Rain, nullptr);
-                spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+                spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
                 field.AddSpriteToChain(&spr);
             }
 
@@ -1298,7 +1298,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
         auto* cr = field.Crit;
         if (cr != nullptr && _engine->Settings.ShowCrit && cr->Visible) {
             auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
-            spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+            spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
             cr->SprDraw = &spr;
             cr->SetSprRect();
 
@@ -1323,7 +1323,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 }
 
                 auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), nx, ny, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
-                spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+                spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
                 cr->SprDraw = &spr;
                 cr->SetSprRect();
 
@@ -1474,8 +1474,8 @@ void HexManager::MarkLightEndNeighbor(ushort hx, ushort hy, bool north_south, ui
 {
     auto& field = GetField(hx, hy);
     if (field.Flags.IsWall) {
-        const int lt = field.Corner;
-        if ((north_south && (lt == CORNER_NORTH_SOUTH || lt == CORNER_NORTH || lt == CORNER_WEST)) || (!north_south && (lt == CORNER_EAST_WEST || lt == CORNER_EAST)) || lt == CORNER_SOUTH) {
+        const auto lt = field.Corner;
+        if ((north_south && (lt == CornerType::NorthSouth || lt == CornerType::North || lt == CornerType::West)) || (!north_south && (lt == CornerType::EastWest || lt == CornerType::East)) || lt == CornerType::South) {
             auto* p = &_hexLight[hy * _maxHexX * 3 + hx * 3];
             const auto light_full = static_cast<int>(inten) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
             const auto light_self = static_cast<int>(inten / 2u) * MAX_LIGHT_HEX / MAX_LIGHT_VALUE * _lightCapacity / 100;
@@ -1514,7 +1514,7 @@ void HexManager::MarkLightEnd(ushort from_hx, ushort from_hy, ushort to_hx, usho
     auto& field = GetField(to_hx, to_hy);
     if (field.Flags.IsWall) {
         is_wall = true;
-        if (field.Corner == CORNER_NORTH_SOUTH || field.Corner == CORNER_NORTH || field.Corner == CORNER_WEST) {
+        if (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West) {
             north_south = true;
         }
     }
@@ -1559,7 +1559,7 @@ void HexManager::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ush
 {
     auto& field = GetField(to_hx, to_hy);
     if (field.Flags.IsWallTransp) {
-        const auto north_south = (field.Corner == CORNER_NORTH_SOUTH || field.Corner == CORNER_NORTH || field.Corner == CORNER_WEST);
+        const auto north_south = (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West);
         const int dir = _engine->GeomHelper.GetFarDir(from_hx, from_hy, to_hx, to_hy);
         if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
             MarkLight(to_hx, to_hy, inten);
@@ -2847,7 +2847,7 @@ void HexManager::SetCritter(CritterView* cr)
 
     if (IsHexToDraw(hx, hy) && cr->Visible) {
         auto& spr = _mainTree.InsertSprite(EvaluateCritterDrawOrder(cr), hx, hy, _engine->Settings.MapHexWidth / 2, _engine->Settings.MapHexHeight / 2, &field.ScrX, &field.ScrY, 0, &cr->SprId, &cr->SprOx, &cr->SprOy, &cr->Alpha, &cr->DrawEffect, &cr->SprDrawValid);
-        spr.SetLight(CORNER_EAST_WEST, _hexLight, _maxHexX, _maxHexY);
+        spr.SetLight(CornerType::EastWest, _hexLight, _maxHexX, _maxHexY);
         cr->SprDraw = &spr;
 
         cr->SetSprRect();
@@ -4343,17 +4343,17 @@ auto HexManager::SetProtoMap(ProtoMap& /*pmap*/) -> bool
         if (entity->Type == EntityType::Item)
         {
             ItemView* entity_item = (ItemView*)entity;
-            if (entity_item->GetAccessory() == ITEM_ACCESSORY_HEX)
+            if (entity_item->GetOwnership() == ItemOwnership::MapHex)
             {
                 GenerateItem(entity_item->Id, entity_item->GetProtoId(), entity_item->Props);
             }
-            else if (entity_item->GetAccessory() == ITEM_ACCESSORY_CRITTER)
+            else if (entity_item->GetOwnership() == ItemOwnership::CritterInventory)
             {
                 CritterView* cr = GetCritter(entity_item->GetCritId());
                 if (cr)
                     cr->AddItem(entity_item->Clone());
             }
-            else if (entity_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER)
+            else if (entity_item->GetOwnership() == ItemOwnership::ItemContainer)
             {
                 ItemView* cont = GetItemById(entity_item->GetContainerId());
                 if (cont)

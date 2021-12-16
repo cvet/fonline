@@ -31,44 +31,24 @@
 // SOFTWARE.
 //
 
-#pragma once
-
-#include "Common.h"
-
-#include "Entity.h"
-#include "EntityProperties.h"
 #include "EntityProtos.h"
 
-class FOServer;
-
-class ServerEntity : public EntityWithProto
+ProtoPlayer::ProtoPlayer(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), PlayerProperties(Props)
 {
-    friend class EntityManager;
+}
 
-public:
-    ServerEntity() = delete;
-    ServerEntity(const ServerEntity&) = delete;
-    ServerEntity(ServerEntity&&) noexcept = delete;
-    auto operator=(const ServerEntity&) = delete;
-    auto operator=(ServerEntity&&) noexcept = delete;
-    ~ServerEntity() override = default;
-
-    [[nodiscard]] auto GetId() const -> uint;
-    [[nodiscard]] auto GetEngine() -> FOServer*;
-
-protected:
-    ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto);
-
-    FOServer* _engine;
-
-private:
-    void SetId(uint id); // Invoked by EntityManager
-
-    uint _id;
-};
-
-class ServerGlobals final : public Entity, public GlobalsProperties
+ProtoItem::ProtoItem(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), ItemProperties(Props)
 {
-public:
-    explicit ServerGlobals(const PropertyRegistrator* registrator);
-};
+}
+
+ProtoCritter::ProtoCritter(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), CritterProperties(Props)
+{
+}
+
+ProtoMap::ProtoMap(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), MapProperties(Props)
+{
+}
+
+ProtoLocation::ProtoLocation(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), LocationProperties(Props)
+{
+}

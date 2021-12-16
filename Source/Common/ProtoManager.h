@@ -35,7 +35,7 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "EntityProtos.h"
 #include "FileSystem.h"
 #include "Properties.h"
 

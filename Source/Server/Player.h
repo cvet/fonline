@@ -36,6 +36,8 @@
 #include "Common.h"
 
 #include "ClientConnection.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 #include "ServerEntity.h"
 
 class Item;
@@ -44,7 +46,7 @@ class Map;
 class Location;
 class MapManager;
 
-class Player final : public ServerEntity
+class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
@@ -116,9 +118,6 @@ public:
     bool IsTransferring {true};
     string LastSay {};
     uint LastSayEqualCount {};
-
-#define PLAYER_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
 
 private:
     Critter* _ownedCr {}; // Todo: allow attach many critters to sigle player

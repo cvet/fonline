@@ -619,14 +619,14 @@
     maxhy = std::clamp(maxhy, MAXHEX_MIN, MAXHEX_MAX);
 
     if (pmap->GetWorkHexX() >= maxhx) {
-        pmap->SetWorkHexX_ReadOnlyWorkaround(maxhx - 1);
+        pmap->SetWorkHexX(maxhx - 1);
     }
     if (pmap->GetWorkHexY() >= maxhy) {
-        pmap->SetWorkHexY_ReadOnlyWorkaround(maxhy - 1);
+        pmap->SetWorkHexY(maxhy - 1);
     }
 
-    pmap->SetWidth_ReadOnlyWorkaround(maxhx);
-    pmap->SetHeight_ReadOnlyWorkaround(maxhy);
+    pmap->SetWidth(maxhx);
+    pmap->SetHeight(maxhy);
 
     // Delete truncated entities
     if (maxhx < old_maxhx || maxhy < old_maxhy) {
@@ -1828,14 +1828,14 @@
     if (!is_flat && !disable_egg) {
         int egg_type = 0;
         switch (corner) {
-        case CORNER_SOUTH:
+        case CornerType::South:
             egg_type = EGG_X_OR_Y;
             break;
-        case CORNER_NORTH:
+        case CornerType::North:
             egg_type = EGG_X_AND_Y;
             break;
-        case CORNER_EAST_WEST:
-        case CORNER_WEST:
+        case CornerType::EastWest:
+        case CornerType::West:
             egg_type = EGG_Y;
             break;
         default:

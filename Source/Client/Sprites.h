@@ -61,7 +61,7 @@ struct MapSprite
     bool NoLight {};
     int DrawOrder {};
     int DrawOrderHyOffset {};
-    int Corner {};
+    CornerType Corner {};
     bool DisableEgg {};
     uint Color {};
     uint ContourColor {};
@@ -91,7 +91,7 @@ public:
     void SetColor(uint color);
     void SetAlpha(uchar* alpha);
     void SetFlash(uint mask);
-    void SetLight(int corner, uchar* light, ushort maxhx, ushort maxhy);
+    void SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy);
     void SetFixedAlpha(uchar alpha);
 
     // Todo:: incapsulate all sprite data

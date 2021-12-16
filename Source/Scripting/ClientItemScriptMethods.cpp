@@ -48,8 +48,8 @@
         throw ScriptException("Map is not loaded");
     }
 
-    switch (self->GetAccessory()) {
-    case ITEM_ACCESSORY_CRITTER: {
+    switch (self->GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
         const auto* cr = self->GetEngine()->GetCritter(self->GetCritId());
         if (!cr) {
             throw ScriptException("CritterCl accessory, CritterCl not found");
@@ -57,11 +57,11 @@
         hx = cr->GetHexX();
         hy = cr->GetHexY();
     } break;
-    case ITEM_ACCESSORY_HEX: {
+    case ItemOwnership::MapHex: {
         hx = self->GetHexX();
         hy = self->GetHexY();
     } break;
-    case ITEM_ACCESSORY_CONTAINER: {
+    case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {
             throw ScriptException("Container accessory, crosslinks");
         }

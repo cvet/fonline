@@ -53,8 +53,8 @@ void ItemManager::LinkItems()
             throw EntitiesLoadException("Can't link static item", item->GetName(), item->GetId());
         }
 
-        switch (item->GetAccessory()) {
-        case ITEM_ACCESSORY_CRITTER: {
+        switch (item->GetOwnership()) {
+        case ItemOwnership::CritterInventory: {
             Critter* cr = _engine->CrMngr.GetCritter(item->GetCritId());
             if (cr == nullptr) {
                 throw EntitiesLoadException("Item critter not found", item->GetName(), item->GetId(), item->GetCritId());
@@ -62,7 +62,7 @@ void ItemManager::LinkItems()
 
             cr->SetItem(item);
         } break;
-        case ITEM_ACCESSORY_HEX: {
+        case ItemOwnership::MapHex: {
             auto* map = _engine->MapMngr.GetMap(item->GetMapId());
             if (map == nullptr) {
                 throw EntitiesLoadException("Item map not found", item->GetName(), item->GetId(), item->GetMapId(), item->GetHexX(), item->GetHexY());
@@ -74,7 +74,7 @@ void ItemManager::LinkItems()
 
             map->SetItem(item, item->GetHexX(), item->GetHexY());
         } break;
-        case ITEM_ACCESSORY_CONTAINER: {
+        case ItemOwnership::ItemContainer: {
             auto* cont = GetItem(item->GetContainerId());
             if (cont == nullptr) {
                 throw EntitiesLoadException("Item container not found", item->GetName(), item->GetId(), item->GetContainerId());
@@ -83,7 +83,7 @@ void ItemManager::LinkItems()
             SetItemToContainer(cont, item);
         } break;
         default:
-            throw EntitiesLoadException("Unknown item accessory id", item->GetName(), item->GetId(), item->GetAccessory());
+            throw EntitiesLoadException("Unknown item accessory id", item->GetName(), item->GetId(), item->GetOwnership());
         }
     }
 
@@ -96,12 +96,12 @@ void ItemManager::InitAfterLoad()
 
 auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
-    switch (item->GetAccessory()) {
-    case ITEM_ACCESSORY_CRITTER:
+    switch (item->GetOwnership()) {
+    case ItemOwnership::CritterInventory:
         return _engine->CrMngr.GetCritter(item->GetCritId());
-    case ITEM_ACCESSORY_HEX:
+    case ItemOwnership::MapHex:
         return _engine->MapMngr.GetMap(item->GetMapId());
-    case ITEM_ACCESSORY_CONTAINER:
+    case ItemOwnership::ItemContainer:
         return GetItem(item->GetContainerId());
     default:
         break;
@@ -111,8 +111,8 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 
 void ItemManager::EraseItemHolder(Item* item, Entity* holder)
 {
-    switch (item->GetAccessory()) {
-    case ITEM_ACCESSORY_CRITTER: {
+    switch (item->GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
         if (holder != nullptr) {
             _engine->CrMngr.EraseItemFromCritter(dynamic_cast<Critter*>(holder), item, true);
         }
@@ -122,13 +122,13 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
         item->SetCritId(0);
         item->SetCritSlot(0);
     } break;
-    case ITEM_ACCESSORY_HEX: {
+    case ItemOwnership::MapHex: {
         if (holder != nullptr) {
             dynamic_cast<Map*>(holder)->EraseItem(item->GetId());
         }
         item->SetMapId(0);
     } break;
-    case ITEM_ACCESSORY_CONTAINER: {
+    case ItemOwnership::ItemContainer: {
         if (holder != nullptr) {
             EraseItemFromContainer(dynamic_cast<Item*>(holder), item);
         }
@@ -138,7 +138,7 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
     default:
         break;
     }
-    item->SetAccessory(ITEM_ACCESSORY_NONE);
+    item->SetOwnership(ItemOwnership::Nowhere);
 }
 
 void ItemManager::SetItemToContainer(Item* cont, Item* item)
@@ -155,7 +155,7 @@ void ItemManager::SetItemToContainer(Item* cont, Item* item)
     RUNTIME_ASSERT(std::find(cont->_childItems->begin(), cont->_childItems->end(), item) == cont->_childItems->end());
 
     cont->_childItems->push_back(item);
-    item->SetAccessory(ITEM_ACCESSORY_CONTAINER);
+    item->SetOwnership(ItemOwnership::ItemContainer);
     item->SetContainerId(cont->GetId());
 }
 
@@ -195,7 +195,7 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
     RUNTIME_ASSERT(it != cont->_childItems->end());
     cont->_childItems->erase(it);
 
-    item->SetAccessory(ITEM_ACCESSORY_NONE);
+    item->SetOwnership(ItemOwnership::Nowhere);
     item->SetContainerId(0);
     item->SetContainerStack(0);
 
@@ -270,7 +270,7 @@ void ItemManager::DeleteItem(Item* item)
     _engine->ItemFinishEvent.Raise(item);
 
     // Tear off from environment
-    while (item->GetAccessory() != ITEM_ACCESSORY_NONE || item->ContIsItems()) {
+    while (item->GetOwnership() != ItemOwnership::Nowhere || item->ContIsItems()) {
         // Delete from owner
         EraseItemHolder(item, GetItemHolder(item));
 
@@ -310,7 +310,7 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
         return nullptr;
     }
 
-    new_item->SetAccessory(ITEM_ACCESSORY_NONE);
+    new_item->SetOwnership(ItemOwnership::Nowhere);
     new_item->SetCritId(0);
     new_item->SetCritSlot(0);
     new_item->SetMapId(0);
@@ -339,7 +339,7 @@ auto ItemManager::GetItem(uint item_id) const -> const Item*
 
 void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks)
 {
-    if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER && item->GetCritId() == to_cr->GetId()) {
+    if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritId() == to_cr->GetId()) {
         return;
     }
 
@@ -366,7 +366,7 @@ void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_che
 
 void ItemManager::MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, ushort to_hy, bool skip_checks)
 {
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy) {
+    if (item->GetOwnership() == ItemOwnership::MapHex && item->GetMapId() == to_map->GetId() && item->GetHexX() == to_hx && item->GetHexY() == to_hy) {
         return;
     }
 
@@ -393,7 +393,7 @@ void ItemManager::MoveItem(Item* item, uint count, Map* to_map, ushort to_hx, us
 
 void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id, bool skip_checks)
 {
-    if (item->GetAccessory() == ITEM_ACCESSORY_CONTAINER && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
+    if (item->GetOwnership() == ItemOwnership::ItemContainer && item->GetContainerId() == to_cont->GetId() && item->GetContainerStack() == stack_id) {
         return;
     }
 
@@ -612,8 +612,7 @@ void ItemManager::UnregisterRadio(Item* radio)
 void ItemManager::RadioSendText(Critter* cr, string_view text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels)
 {
     vector<Item*> radios;
-    auto items = cr->GetItemsNoLock();
-    for (auto* item : items) {
+    for (auto* item : cr->GetRawItems()) {
         if (item->GetIsRadio() && item->RadioIsSendActive() && std::find(channels.begin(), channels.end(), item->GetRadioChannel()) == channels.end()) {
             channels.push_back(item->GetRadioChannel());
             radios.push_back(item);
@@ -679,7 +678,7 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
                 broadcast = RADIO_BROADCAST_FORCE_ALL;
             }
 
-            if (radio->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+            if (radio->GetOwnership() == ItemOwnership::CritterInventory) {
                 auto* cr = _engine->CrMngr.GetCritter(radio->GetCritId());
                 if (cr != nullptr && cr->RadioMessageSended != msg_count) {
                     if (broadcast != RADIO_BROADCAST_FORCE_ALL) {
@@ -718,7 +717,7 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
                     cr->RadioMessageSended = msg_count;
                 }
             }
-            else if (radio->GetAccessory() == ITEM_ACCESSORY_HEX) {
+            else if (radio->GetOwnership() == ItemOwnership::MapHex) {
                 if (broadcast == RADIO_BROADCAST_MAP && broadcast_map_id != radio->GetMapId()) {
                     continue;
                 }

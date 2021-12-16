@@ -45,7 +45,7 @@
 
 static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
 {
-    auto* prop_global = engine->GetPropertyRegistrator("Global")->Find(str);
+    auto* prop_global = engine->GetPropertyRegistrator("Globals")->Find(str);
     auto* prop_critter = engine->GetPropertyRegistrator("Critter")->Find(str);
     auto* prop_item = engine->GetPropertyRegistrator("Item")->Find(str);
     auto* prop_location = engine->GetPropertyRegistrator("Location")->Find(str);

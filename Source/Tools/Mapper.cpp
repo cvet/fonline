@@ -1668,7 +1668,7 @@ void FOMapper::IntDraw()
             SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y, w, h, false, true, col);
 
             SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), _str("x{}", child->GetCount()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
-            if (child->GetAccessory() == ITEM_ACCESSORY_CRITTER && (child->GetCritSlot() != 0u)) {
+            if (child->GetOwnership() == ItemOwnership::CritterInventory && (child->GetCritSlot() != 0u)) {
                 SprMngr.DrawStr(IRect(x, y, x + w, y + h), _str("Slot {}", child->GetCritSlot()), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
             }
         }
@@ -2164,12 +2164,12 @@ void FOMapper::IntLMouseDown()
 
                 // Delete child
                 if (Keyb.AltDwn && InContItem != nullptr) {
-                    if (InContItem->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+                    if (InContItem->GetOwnership() == ItemOwnership::CritterInventory) {
                         auto* owner = HexMngr.GetCritter(InContItem->GetCritId());
                         RUNTIME_ASSERT(owner);
                         owner->DeleteItem(InContItem, true);
                     }
-                    else if (InContItem->GetAccessory() == ITEM_ACCESSORY_CONTAINER) {
+                    else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
                         ItemView* owner = HexMngr.GetItemById(InContItem->GetContainerId());
                         RUNTIME_ASSERT(owner);
                         // owner->ContEraseItem(InContItem); // Todo: need attention!
@@ -3389,7 +3389,7 @@ void FOMapper::BufferCopy()
         entity_buf->HexY = hy;
         entity_buf->IsCritter = (dynamic_cast<CritterView*>(entity) != nullptr);
         entity_buf->IsItem = (dynamic_cast<ItemHexView*>(entity) != nullptr);
-        entity_buf->Proto = entity->Proto;
+        entity_buf->Proto = (dynamic_cast<EntityWithProto*>(entity) != nullptr ? dynamic_cast<EntityWithProto*>(entity)->Proto : nullptr);
         entity_buf->Props = new Properties(entity->Props);
         // Todo: need attention!
         /*for (auto* child : entity->GetChildren())
@@ -3947,8 +3947,8 @@ void FOMapper::ParseCommand(string_view command)
         if (command_ext == "new") {
             ProtoMap* pmap = new ProtoMap(_str("new").toHash(), GetPropertyRegistrator("Map"));
 
-            pmap->SetWidth_ReadOnlyWorkaround(MAXHEX_DEFAULT);
-            pmap->SetHeight_ReadOnlyWorkaround(MAXHEX_DEFAULT);
+            pmap->SetWidth(MAXHEX_DEFAULT);
+            pmap->SetHeight(MAXHEX_DEFAULT);
 
             // Morning	 5.00 -  9.59	 300 - 599
             // Day		10.00 - 18.59	 600 - 1139
@@ -3956,8 +3956,8 @@ void FOMapper::ParseCommand(string_view command)
             // Nigh		23.00 -  4.59	1380
             vector<int> arr = {300, 600, 1140, 1380};
             vector<uchar> arr2 = {18, 128, 103, 51, 18, 128, 95, 40, 53, 128, 86, 29};
-            pmap->SetDayTime_ReadOnlyWorkaround(arr);
-            pmap->SetDayColor_ReadOnlyWorkaround(arr2);
+            pmap->SetDayTime(arr);
+            pmap->SetDayColor(arr2);
 
             // Todo: need attention!
             /*if (ActiveMap != nullptr) {
@@ -4131,7 +4131,7 @@ void FOMapper::OnSetItemFlags(Entity* entity, const Property* prop, void* /*cur_
 
     auto* item = dynamic_cast<ItemView*>(entity);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded()) {
+    if (item->GetOwnership() == ItemOwnership::MapHex && HexMngr.IsMapLoaded()) {
         auto* hex_item = dynamic_cast<ItemHexView*>(item);
         bool rebuild_cache = false;
         if (prop == hex_item->GetPropertyIsColorize()) {
@@ -4169,7 +4169,7 @@ void FOMapper::OnSetItemPicMap(Entity* entity, const Property* /*prop*/, void* /
 {
     auto* item = dynamic_cast<ItemView*>(entity);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* hex_item = dynamic_cast<ItemHexView*>(item);
         hex_item->RefreshAnim();
     }
@@ -4181,7 +4181,7 @@ void FOMapper::OnSetItemOffsetXY(Entity* entity, const Property* /*prop*/, void*
 
     auto* item = dynamic_cast<ItemView*>(entity);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX && HexMngr.IsMapLoaded()) {
+    if (item->GetOwnership() == ItemOwnership::MapHex && HexMngr.IsMapLoaded()) {
         auto* hex_item = dynamic_cast<ItemHexView*>(item);
         hex_item->SetAnimOffs();
         HexMngr.ProcessHexBorders(hex_item);

@@ -50,7 +50,7 @@ void CritterManager::LinkCritters()
 {
     WriteLog("Link critters...\n");
 
-    auto critters = GetAllCritters();
+    const auto critters = GetAllCritters();
     vector<Critter*> critter_groups;
     critter_groups.reserve(critters.size());
 
@@ -138,7 +138,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     RUNTIME_ASSERT(it != cr->_invItems.end());
     cr->_invItems.erase(it);
 
-    item->SetAccessory(ITEM_ACCESSORY_NONE);
+    item->SetOwnership(ItemOwnership::Nowhere);
 
     if (send) {
         cr->Send_EraseItem(item);

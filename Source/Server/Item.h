@@ -35,33 +35,15 @@
 
 #include "Common.h"
 
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 #include "ScriptSystem.h"
 #include "ServerEntity.h"
 
 class Item;
 class Critter;
 
-///@ ExportEnum
-enum class ItemOwnership : uchar
-{
-    Nowhere = 0,
-    CritterInventory = 1,
-    MapHex = 2,
-    ItemContainer = 3,
-};
-
-///@ ExportEnum
-enum class CornerType : uchar
-{
-    NorthSouth = 0,
-    West = 1,
-    East = 2,
-    South = 3,
-    North = 4,
-    EastWest = 5,
-};
-
-class Item final : public ServerEntity
+class Item final : public ServerEntity, public ItemProperties
 {
     friend class Entity;
     friend class ItemManager;
@@ -96,9 +78,6 @@ public:
     ScriptFunc<bool, Critter*, Item*, bool, int> SceneryScriptFunc {};
     ScriptFunc<void, Critter*, Item*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
-
-#define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY(access, type, name)
-#include "Properties-Include.h"
 
 private:
     vector<Item*>* _childItems {};

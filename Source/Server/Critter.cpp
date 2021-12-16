@@ -40,7 +40,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Critter"), proto), _player {owner}
+Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Critter"), proto), CritterProperties(Props), _player {owner}
 {
     if (_player != nullptr) {
         _player->AddRef();
@@ -258,15 +258,18 @@ void Critter::SetItem(Item* item)
 
     _invItems.push_back(item);
 
-    if (item->GetAccessory() != ITEM_ACCESSORY_CRITTER) {
+    if (item->GetOwnership() != ItemOwnership::CritterInventory) {
         item->SetCritSlot(0);
     }
-    item->SetAccessory(ITEM_ACCESSORY_CRITTER);
+
+    item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritId(GetId());
 }
 
 auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
 {
+    NON_CONST_METHOD_HINT();
+
     if (item_id == 0u) {
         return nullptr;
     }
@@ -284,6 +287,8 @@ auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
 
 auto Critter::GetItemByPid(hash item_pid) -> Item*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : _invItems) {
         if (item->GetProtoId() == item_pid) {
             return item;
@@ -294,6 +299,8 @@ auto Critter::GetItemByPid(hash item_pid) -> Item*
 
 auto Critter::GetItemByPidSlot(hash item_pid, int slot) -> Item*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : _invItems) {
         if (item->GetProtoId() == item_pid && item->GetCritSlot() == slot) {
             return item;
@@ -304,6 +311,8 @@ auto Critter::GetItemByPidSlot(hash item_pid, int slot) -> Item*
 
 auto Critter::GetItemSlot(int slot) -> Item*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : _invItems) {
         if (item->GetCritSlot() == slot) {
             return item;
@@ -314,6 +323,8 @@ auto Critter::GetItemSlot(int slot) -> Item*
 
 auto Critter::GetItemsSlot(int slot) -> vector<Item*>
 {
+    NON_CONST_METHOD_HINT();
+
     vector<Item*> items;
     items.reserve(_invItems.size());
 
@@ -325,10 +336,10 @@ auto Critter::GetItemsSlot(int slot) -> vector<Item*>
     return items;
 }
 
-auto Critter::CountItemPid(hash pid) -> uint
+auto Critter::CountItemPid(hash pid) const -> uint
 {
     uint res = 0;
-    for (auto* item : _invItems) {
+    for (const auto* item : _invItems) {
         if (item->GetProtoId() == pid) {
             res += item->GetCount();
         }
@@ -336,10 +347,10 @@ auto Critter::CountItemPid(hash pid) -> uint
     return res;
 }
 
-auto Critter::CountItems() -> uint
+auto Critter::CountItems() const -> uint
 {
     uint count = 0;
-    for (auto* item : _invItems) {
+    for (const auto* item : _invItems) {
         count += item->GetCount();
     }
     return count;
@@ -350,9 +361,9 @@ auto Critter::GetInventory() -> vector<Item*>&
     return _invItems;
 }
 
-auto Critter::IsHaveGeckItem() -> bool
+auto Critter::IsHaveGeckItem() const -> bool
 {
-    for (auto* item : _invItems) {
+    for (const auto* item : _invItems) {
         if (item->GetIsGeck()) {
             return true;
         }
@@ -390,6 +401,8 @@ auto Critter::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
 
 void Critter::Broadcast_Property(NetProperty::Type type, Property* prop, ServerEntity* entity)
 {
+    NON_CONST_METHOD_HINT();
+
     if (VisCr.empty()) {
         return;
     }

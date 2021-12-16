@@ -191,7 +191,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     for (auto& item : static_map.AllItemsVec) {
         if (!item->IsStatic()) {
             item->AddRef();
-            if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+            if (item->GetOwnership() == ItemOwnership::MapHex) {
                 static_map.HexItemsVec.push_back(item);
             }
             else {
@@ -200,7 +200,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
             continue;
         }
 
-        RUNTIME_ASSERT(item->GetAccessory() == ITEM_ACCESSORY_HEX);
+        RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
 
         auto hx = item->GetHexX();
         auto hy = item->GetHexY();
@@ -353,10 +353,10 @@ void MapManager::GenerateMapContent(Map* map)
     for (auto* base_item : map->GetStaticMap()->ChildItemsVec) {
         // Map id
         uint parent_id = 0;
-        if (base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+        if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
             parent_id = base_item->GetCritId();
         }
-        else if (base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER) {
+        else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
             parent_id = base_item->GetContainerId();
         }
         else {
@@ -376,12 +376,12 @@ void MapManager::GenerateMapContent(Map* map)
         }
 
         // Add to parent
-        if (base_item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+        if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
             auto* cr_cont = map->GetCritter(parent_id);
             RUNTIME_ASSERT(cr_cont);
             _engine->CrMngr.AddItemToCritter(cr_cont, item, false);
         }
-        else if (base_item->GetAccessory() == ITEM_ACCESSORY_CONTAINER) {
+        else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
             auto* item_cont = map->GetItem(parent_id);
             RUNTIME_ASSERT(item_cont);
             _engine->ItemMngr.AddItemToContainer(item_cont, item, 0);

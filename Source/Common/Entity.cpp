@@ -34,46 +34,43 @@
 #include "Entity.h"
 #include "StringUtils.h"
 
-Entity::Entity(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Props {registrator}, Proto {proto}
+Entity::Entity(const PropertyRegistrator* registrator) : Props {registrator}
 {
-    if (Proto != nullptr) {
-        Proto->AddRef();
-        Props = Proto->Props;
-    }
-}
-
-Entity::~Entity()
-{
-    if (Proto != nullptr) {
-        Proto->Release();
-    }
-}
-
-auto Entity::GetProtoId() const -> hash
-{
-    return Proto != nullptr ? Proto->ProtoId : 0;
-}
-
-auto Entity::GetName() const -> string
-{
-    return Proto != nullptr ? _str().parseHash(Proto->ProtoId).str() : "Unnamed";
 }
 
 void Entity::AddRef() const
 {
-    ++RefCounter;
+    ++_refCounter;
 }
 
 void Entity::Release() const
 {
-    if (--RefCounter == 0) {
+    if (--_refCounter == 0) {
         delete this;
     }
 }
 
-ProtoEntity::ProtoEntity(hash proto_id, const PropertyRegistrator* registrator) : Entity(registrator, nullptr), ProtoId(proto_id)
+EntityWithProto::EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator), Proto {proto}
+{
+    RUNTIME_ASSERT(Proto);
+
+    Proto->AddRef();
+    Props = Proto->Props;
+}
+
+ProtoEntity::ProtoEntity(hash proto_id, const PropertyRegistrator* registrator) : Entity(registrator), ProtoId {proto_id}
 {
     RUNTIME_ASSERT(ProtoId);
+}
+
+auto ProtoEntity::GetProtoId() const -> hash
+{
+    return ProtoId;
+}
+
+auto ProtoEntity::GetName() const -> string
+{
+    return _str().parseHash(ProtoId).str();
 }
 
 auto ProtoEntity::HaveComponent(hash name) const -> bool
@@ -81,22 +78,17 @@ auto ProtoEntity::HaveComponent(hash name) const -> bool
     return Components.count(name) > 0;
 }
 
-ProtoPlayer::ProtoPlayer(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
+EntityWithProto::~EntityWithProto()
 {
+    Proto->Release();
 }
 
-ProtoItem::ProtoItem(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
+auto EntityWithProto::GetProtoId() const -> hash
 {
+    return Proto->ProtoId;
 }
 
-ProtoCritter::ProtoCritter(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
+auto EntityWithProto::GetName() const -> string
 {
-}
-
-ProtoMap::ProtoMap(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
-{
-}
-
-ProtoLocation::ProtoLocation(hash proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator)
-{
+    return Proto->GetName();
 }

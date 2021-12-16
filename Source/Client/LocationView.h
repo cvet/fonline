@@ -36,12 +36,11 @@
 #include "Common.h"
 
 #include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
-class LocationView final : public ClientEntity
+class LocationView final : public ClientEntity, public LocationProperties
 {
 public:
     LocationView(FOClient* engine, uint id, const ProtoLocation* proto);
-
-#define LOCATION_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
 };

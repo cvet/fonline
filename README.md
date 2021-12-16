@@ -398,7 +398,7 @@ Please follow these instructions to understand how to use this engine by design:
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
 * ServerCritterScriptMethods: need attention!
-* ServerItemScriptMethods: fix ITEM_ACCESSORY_CONTAINER recursion
+* ServerItemScriptMethods: fix ItemOwnership::ItemContainer recursion
 * AdminPanel: admin panel network to Asio
 * Critter: rename to IsOwnedByPlayer
 * Critter: replace to !IsOwnedByPlayer

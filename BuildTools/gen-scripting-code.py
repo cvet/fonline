@@ -217,6 +217,12 @@ def parseMetaFile(absPath):
                                 break
                     elif tagName == 'ExportProperty':
                         tagContext = lines[lineIndex + 1].strip()
+                        for i in range(lineIndex, 0, -1):
+                            if lines[i].startswith('class '):
+                                propPos = lines[i].find('Properties')
+                                assert propPos != -1
+                                tagContext = lines[i][6:propPos] + ' ' + lines[lineIndex + 1].strip()
+                                break
                     elif tagName == 'ExportMethod':
                         tagContext = lines[lineIndex + 1].strip()
                     elif tagName == 'ExportEvent':
@@ -454,9 +460,8 @@ def parseTags():
             try:    
                 exportFlags = tagInfo.split(' ') if tagInfo else []
                 
-                entity = tagContext[:tagContext.find('_')].lstrip()
-                entity = entity[0] + entity[1:].lower()
-                assert entity in ['Global', 'Player', 'Item', 'Critter', 'Map', 'Location'], entity
+                entity = tagContext[:tagContext.find(' ')]
+                assert entity in ['Globals', 'Player', 'Item', 'Critter', 'Map', 'Location'], entity
                 access = tagContext[tagContext.find('(') + 1:tagContext.find(',')].strip()
                 ptype = engineTypeToMetaType(tagContext[tagContext.find(',') + 1:tagContext.rfind(',')].strip())
                 name = tagContext[tagContext.rfind(',') + 1:tagContext.find(')')].strip()

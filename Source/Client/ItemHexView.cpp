@@ -67,7 +67,7 @@ ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vect
 
     SetHexX(hx);
     SetHexY(hy);
-    SetAccessory(ITEM_ACCESSORY_HEX);
+    SetOwnership(ItemOwnership::MapHex);
     HexScrX = hex_scr_x;
     HexScrY = hex_scr_y;
 
@@ -76,7 +76,7 @@ ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vect
 
 void ItemHexView::AfterConstruction()
 {
-    RUNTIME_ASSERT(GetAccessory() == ITEM_ACCESSORY_HEX);
+    RUNTIME_ASSERT(GetOwnership() == ItemOwnership::MapHex);
 
     RefreshAnim();
     RefreshAlpha();
@@ -295,15 +295,15 @@ auto ItemHexView::GetEggType() const -> int
     }
 
     switch (GetCorner()) {
-    case CORNER_SOUTH:
+    case CornerType::South:
         return EGG_X_OR_Y;
-    case CORNER_NORTH:
+    case CornerType::North:
         return EGG_X_AND_Y;
-    case CORNER_EAST_WEST:
-    case CORNER_WEST:
+    case CornerType::EastWest:
+    case CornerType::West:
         return EGG_Y;
     default:
-        return EGG_X; // CORNER_NORTH_SOUTH, CORNER_EAST
+        return EGG_X; // CornerType::NorthSouth, CORNER_EAST
     }
 }
 

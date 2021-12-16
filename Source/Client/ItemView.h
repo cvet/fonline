@@ -36,8 +36,10 @@
 #include "Common.h"
 
 #include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
-class ItemView : public ClientEntity
+class ItemView : public ClientEntity, public ItemProperties
 {
 public:
     ItemView() = delete;
@@ -58,7 +60,4 @@ public:
     [[nodiscard]] auto GetAlpha() const -> uchar;
     [[nodiscard]] auto GetInvColor() const -> uint;
     [[nodiscard]] auto LightGetHash() const -> uint;
-
-#define ITEM_PROPERTY(access, type, name) CLASS_PROPERTY(access, type, name)
-#include "Properties-Include.h"
 };

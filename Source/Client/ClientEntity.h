@@ -36,10 +36,12 @@
 #include "Common.h"
 
 #include "Entity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
 class FOClient;
 
-class ClientEntity : public Entity
+class ClientEntity : public EntityWithProto
 {
 public:
     ClientEntity() = delete;
@@ -63,11 +65,8 @@ private:
     uint _id;
 };
 
-class ClientGlobals final : public Entity
+class ClientGlobals final : public Entity, public GlobalsProperties
 {
 public:
     explicit ClientGlobals(const PropertyRegistrator* registrator);
-
-#define GLOBAL_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
 };

@@ -86,8 +86,8 @@
 {
     Map* map = nullptr;
 
-    switch (self->GetAccessory()) {
-    case ITEM_ACCESSORY_CRITTER: {
+    switch (self->GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
         auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritId());
         if (!cr) {
             throw ScriptException("Critter accessory, critter not found");
@@ -107,7 +107,7 @@
         hx = cr->GetHexX();
         hy = cr->GetHexY();
     } break;
-    case ITEM_ACCESSORY_HEX: {
+    case ItemOwnership::MapHex: {
         map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
         if (!map) {
             throw ScriptException("Hex accessory, map not found");
@@ -116,7 +116,7 @@
         hx = self->GetHexX();
         hy = self->GetHexY();
     } break;
-    case ITEM_ACCESSORY_CONTAINER: {
+    case ItemOwnership::ItemContainer: {
         if (self->GetId() == self->GetContainerId()) {
             throw ScriptException("Container accessory, crosslink");
         }
@@ -126,7 +126,7 @@
             throw ScriptException("Container accessory, container not found");
         }
 
-        // return Item_GetMapPosition(cont, hx, hy); // Todo: fix ITEM_ACCESSORY_CONTAINER recursion
+        // return Item_GetMapPosition(cont, hx, hy); // Todo: fix ItemOwnership::ItemContainer recursion
     } break;
     default:
         throw ScriptException("Unknown accessory");
@@ -141,18 +141,18 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Item_Animate(Item* self, uchar fromFrm, uchar toFrm)
 {
-    switch (self->GetAccessory()) {
-    case ITEM_ACCESSORY_CRITTER: {
+    switch (self->GetOwnership()) {
+    case ItemOwnership::CritterInventory: {
         // Critter* cr=CrMngr.GetCrit(self->ACC_CRITTER.Id);
         // if(cr) cr->Send_AnimateItem(self,from_frm,to_frm);
     } break;
-    case ITEM_ACCESSORY_HEX: {
+    case ItemOwnership::MapHex: {
         auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
         if (map) {
             map->AnimateItem(self, fromFrm, toFrm);
         }
     } break;
-    case ITEM_ACCESSORY_CONTAINER:
+    case ItemOwnership::ItemContainer:
         break;
     default:
         throw ScriptException("Unknown accessory");

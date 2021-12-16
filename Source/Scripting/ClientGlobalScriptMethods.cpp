@@ -1691,14 +1691,14 @@
     if (!is_flat && !disable_egg) {
         int egg_type;
         switch (corner) {
-        case CORNER_SOUTH:
+        case CornerType::South:
             egg_type = EGG_X_OR_Y;
             break;
-        case CORNER_NORTH:
+        case CornerType::North:
             egg_type = EGG_X_AND_Y;
             break;
-        case CORNER_EAST_WEST:
-        case CORNER_WEST:
+        case CornerType::EastWest:
+        case CornerType::West:
             egg_type = EGG_Y;
             break;
         default:

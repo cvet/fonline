@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 #include "Dialogs.h"
 #include "ServerEntity.h"
 
@@ -69,7 +71,7 @@ class Item;
 class Map;
 class Location;
 
-class Critter final : public ServerEntity
+class Critter final : public ServerEntity, public CritterProperties
 {
     friend class Player;
     friend class CritterManager;
@@ -108,16 +110,16 @@ public:
     [[nodiscard]] auto IsKnockout() const -> bool;
     [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
     [[nodiscard]] auto GetItem(uint item_id, bool skip_hide) -> Item*;
-    [[nodiscard]] auto GetItemsNoLock() -> vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetRawItems() -> vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetItemByPid(hash item_pid) -> Item*;
     [[nodiscard]] auto GetItemByPidSlot(hash item_pid, int slot) -> Item*;
     [[nodiscard]] auto GetItemSlot(int slot) -> Item*;
     [[nodiscard]] auto GetItemsSlot(int slot) -> vector<Item*>;
-    [[nodiscard]] auto CountItemPid(hash item_pid) -> uint;
+    [[nodiscard]] auto CountItemPid(hash item_pid) const -> uint;
     [[nodiscard]] auto RealCountItems() const -> uint { return static_cast<uint>(_invItems.size()); }
-    [[nodiscard]] auto CountItems() -> uint;
+    [[nodiscard]] auto CountItems() const -> uint;
     [[nodiscard]] auto GetInventory() -> vector<Item*>&;
-    [[nodiscard]] auto IsHaveGeckItem() -> bool;
+    [[nodiscard]] auto IsHaveGeckItem() const -> bool;
     [[nodiscard]] auto GetCrSelf(uint crid) -> Critter*;
     [[nodiscard]] auto GetCrFromVisCr(uchar find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(uint cr_id) const -> Critter*;
@@ -235,10 +237,6 @@ public:
     uint LookCacheValue {};
     vector<Critter*>* GlobalMapGroup {};
     uint RadioMessageSended {};
-
-#define CRITTER_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
-
     TalkData Talk {}; // Todo: incapsulate Critter::Talk
 
 private:

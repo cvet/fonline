@@ -136,7 +136,7 @@ public:
     vector<ItemHexView*>* BlockLinesItems {};
     short RoofNum {};
     FlagsType Flags {};
-    uchar Corner {};
+    CornerType Corner {};
 };
 
 class HexManager final

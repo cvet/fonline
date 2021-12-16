@@ -37,38 +37,40 @@
 
 #include "Entity.h"
 #include "EntityProperties.h"
-#include "EntityProtos.h"
 
-class FOServer;
-
-class ServerEntity : public EntityWithProto
+class ProtoPlayer final : public ProtoEntity, public PlayerProperties
 {
-    friend class EntityManager;
-
 public:
-    ServerEntity() = delete;
-    ServerEntity(const ServerEntity&) = delete;
-    ServerEntity(ServerEntity&&) noexcept = delete;
-    auto operator=(const ServerEntity&) = delete;
-    auto operator=(ServerEntity&&) noexcept = delete;
-    ~ServerEntity() override = default;
-
-    [[nodiscard]] auto GetId() const -> uint;
-    [[nodiscard]] auto GetEngine() -> FOServer*;
-
-protected:
-    ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto);
-
-    FOServer* _engine;
-
-private:
-    void SetId(uint id); // Invoked by EntityManager
-
-    uint _id;
+    explicit ProtoPlayer(hash proto_id, const PropertyRegistrator* registrator);
 };
 
-class ServerGlobals final : public Entity, public GlobalsProperties
+class ProtoItem final : public ProtoEntity, public ItemProperties
 {
 public:
-    explicit ServerGlobals(const PropertyRegistrator* registrator);
+    explicit ProtoItem(hash proto_id, const PropertyRegistrator* registrator);
+
+    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
+    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
+    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
+    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
+
+    mutable int64 InstanceCount {};
+};
+
+class ProtoCritter final : public ProtoEntity, public CritterProperties
+{
+public:
+    explicit ProtoCritter(hash proto_id, const PropertyRegistrator* registrator);
+};
+
+class ProtoMap final : public ProtoEntity, public MapProperties
+{
+public:
+    explicit ProtoMap(hash proto_id, const PropertyRegistrator* registrator);
+};
+
+class ProtoLocation final : public ProtoEntity, public LocationProperties
+{
+public:
+    explicit ProtoLocation(hash proto_id, const PropertyRegistrator* registrator);
 };

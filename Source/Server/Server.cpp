@@ -93,7 +93,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : Propert
     }
 
     // Load globals
-    Globals = new ServerGlobals(GetPropertyRegistrator("Global"));
+    Globals = new ServerGlobals(GetPropertyRegistrator("Globals"));
 
     const auto globals_doc = DbStorage.Get("Globals", 1);
     if (globals_doc.empty()) {
@@ -2097,8 +2097,7 @@ void FOServer::ProcessCritter(Critter* cr)
         cr->IsDestroyed = true;
 
         // Erase radios from collection
-        auto items = cr->GetItemsNoLock();
-        for (auto* item : items) {
+        for (auto* item : cr->GetRawItems()) {
             if (item->GetIsRadio()) {
                 ItemMngr.UnregisterRadio(item);
             }
@@ -3026,7 +3025,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
     switch (type) {
     case NetProperty::Global:
         is_public = true;
-        prop = GetPropertyRegistrator("Global")->Get(property_index);
+        prop = GetPropertyRegistrator("Globals")->Get(property_index);
         if (prop != nullptr) {
             entity = Globals;
         }
@@ -3406,7 +3405,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
             const PropertyRegistrator* prop_registrator = nullptr;
             if (demand.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator("Global");
+                prop_registrator = GetPropertyRegistrator("Globals");
             }
             else if (demand.Type == DR_PROP_CRITTER) {
                 entity = master;
@@ -3619,7 +3618,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
             const PropertyRegistrator* prop_registrator = nullptr;
             if (result.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = GetPropertyRegistrator("Global");
+                prop_registrator = GetPropertyRegistrator("Globals");
             }
             else if (result.Type == DR_PROP_CRITTER) {
                 entity = master;
@@ -4231,7 +4230,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
     if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
         const auto is_public = (prop->GetAccess() & Property::PublicMask) != 0;
         const auto is_protected = (prop->GetAccess() & Property::ProtectedMask) != 0;
-        if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+        if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             if (is_public || is_protected) {
                 auto* cr = CrMngr.GetCritter(item->GetCritId());
                 if (cr != nullptr) {
@@ -4244,7 +4243,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
                 }
             }
         }
-        else if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+        else if (item->GetOwnership() == ItemOwnership::MapHex) {
             if (is_public) {
                 auto* map = MapMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
@@ -4252,7 +4251,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
                 }
             }
         }
-        else if (item->GetAccessory() == ITEM_ACCESSORY_CONTAINER) {
+        else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
             // Todo: add container properties changing notifications
             // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
         }
@@ -4285,7 +4284,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, Property* prop, void* cur_val
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->ChangeViewItem(item);
@@ -4294,7 +4293,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, Property* prop, void* cur_val
             }
         }
     }
-    else if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+    else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
         auto* cr = CrMngr.GetCritter(item->GetCritId());
         if (cr != nullptr) {
             const auto value = *static_cast<bool*>(cur_value);
@@ -4315,7 +4314,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, Property* /*prop*/, void* cur
     auto* item = dynamic_cast<Item*>(entity);
     auto value = *static_cast<bool*>(cur_value);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
@@ -4327,7 +4326,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, Property* /*prop*/, void* /*c
 {
     // BlockLines
     auto* item = dynamic_cast<Item*>(entity);
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
@@ -4340,7 +4339,7 @@ void FOServer::OnSetItemIsGeck(Entity* entity, Property* /*prop*/, void* cur_val
     auto* item = dynamic_cast<Item*>(entity);
     const auto value = *static_cast<bool*>(cur_value);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->GetLocation()->GeckCount += (value ? 1 : -1);
@@ -4371,7 +4370,7 @@ void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_val
         if (!old && cur) {
             item->SetIsLightThru(true);
 
-            if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+            if (item->GetOwnership() == ItemOwnership::MapHex) {
                 auto* map = MapMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
                     map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
@@ -4381,7 +4380,7 @@ void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_val
         if (old && !cur) {
             item->SetIsLightThru(false);
 
-            if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+            if (item->GetOwnership() == ItemOwnership::MapHex) {
                 auto* map = MapMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
                     map->SetHexFlag(item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM);

@@ -38,27 +38,19 @@
 #include "MsgFiles.h"
 #include "Properties.h"
 
-///@ ExportEnum
-enum class CritterCondition : uchar
+#define ENTITY_PROPERTY(access_type, prop_type, prop) \
+    inline auto GetProperty##prop() const->const Property* { return _props.GetRegistrator()->FindNoComponentCheck(#prop); } \
+    inline prop_type Get##prop() const { return _props.GetValue<prop_type>(GetProperty##prop()); } \
+    inline void Set##prop(prop_type value) { _props.SetValue<prop_type>(GetProperty##prop(), value); } \
+    inline bool IsNonEmpty##prop() const { return _props.GetRawDataSize(GetProperty##prop()) > 0; }
+
+class EntityProperties
 {
-    Alive = 0,
-    Knockout = 1,
-    Dead = 2,
+protected:
+    explicit EntityProperties(Properties& props);
+
+    Properties& _props;
 };
-
-#define CLASS_PROPERTY(access_type, prop_type, prop) \
-    inline auto GetProperty##prop() const->const Property* { return Props.GetRegistrator()->FindNoComponentCheck(#prop); } \
-    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(GetProperty##prop()); } \
-    inline void Set##prop(prop_type value) { Props.SetValue<prop_type>(GetProperty##prop(), value); } \
-    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(GetProperty##prop()) > 0; }
-
-#define CLASS_READONLY_PROPERTY(access_type, prop_type, prop) \
-    inline auto GetProperty##prop() const->const Property* { return Props.GetRegistrator()->FindNoComponentCheck(#prop); } \
-    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(GetProperty##prop()); } \
-    inline void Set##prop##_ReadOnlyWorkaround(prop_type value) { Props.SetValue<prop_type>(GetProperty##prop(), value); } \
-    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(GetProperty##prop()) > 0; }
-
-class ProtoEntity;
 
 class Entity
 {
@@ -69,15 +61,10 @@ public:
     auto operator=(const Entity&) = delete;
     auto operator=(Entity&&) noexcept = delete;
 
-    [[nodiscard]] auto GetProtoId() const -> hash;
-    [[nodiscard]] auto GetName() const -> string;
-
     void AddRef() const;
     void Release() const;
 
     Properties Props;
-    const ProtoEntity* Proto;
-    mutable int RefCounter {1};
     bool IsDestroyed {};
     bool IsDestroying {};
 
@@ -86,15 +73,18 @@ public:
     void* NativeObj {};
 
 protected:
-    Entity(const PropertyRegistrator* registrator, const ProtoEntity* proto);
-    virtual ~Entity();
+    explicit Entity(const PropertyRegistrator* registrator);
+    virtual ~Entity() = default;
 
+    mutable int _refCounter {1};
     bool _nonConstHelper {};
 };
 
 class ProtoEntity : public Entity
 {
 public:
+    [[nodiscard]] auto GetProtoId() const -> hash;
+    [[nodiscard]] auto GetName() const -> string;
     [[nodiscard]] auto HaveComponent(hash name) const -> bool;
 
     const hash ProtoId;
@@ -107,54 +97,21 @@ protected:
     ProtoEntity(hash proto_id, const PropertyRegistrator* registrator);
 };
 
-class ProtoPlayer final : public ProtoEntity
+class EntityWithProto : public Entity
 {
 public:
-    explicit ProtoPlayer(hash proto_id, const PropertyRegistrator* registrator);
+    EntityWithProto() = delete;
+    EntityWithProto(const EntityWithProto&) = delete;
+    EntityWithProto(EntityWithProto&&) noexcept = delete;
+    auto operator=(const EntityWithProto&) = delete;
+    auto operator=(EntityWithProto&&) noexcept = delete;
 
-#define PLAYER_PROPERTY CLASS_READONLY_PROPERTY
-#include "Properties-Include.h"
-};
+    [[nodiscard]] auto GetProtoId() const -> hash;
+    [[nodiscard]] auto GetName() const -> string;
 
-class ProtoItem final : public ProtoEntity
-{
-public:
-    explicit ProtoItem(hash proto_id, const PropertyRegistrator* registrator);
+    const ProtoEntity* Proto;
 
-    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
-    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
-    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
-    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
-
-    mutable int64 InstanceCount {};
-
-#define ITEM_PROPERTY CLASS_READONLY_PROPERTY
-#include "Properties-Include.h"
-};
-
-class ProtoCritter final : public ProtoEntity
-{
-public:
-    explicit ProtoCritter(hash proto_id, const PropertyRegistrator* registrator);
-
-#define CRITTER_PROPERTY CLASS_READONLY_PROPERTY
-#include "Properties-Include.h"
-};
-
-class ProtoMap final : public ProtoEntity
-{
-public:
-    explicit ProtoMap(hash proto_id, const PropertyRegistrator* registrator);
-
-#define MAP_PROPERTY CLASS_READONLY_PROPERTY
-#include "Properties-Include.h"
-};
-
-class ProtoLocation final : public ProtoEntity
-{
-public:
-    explicit ProtoLocation(hash proto_id, const PropertyRegistrator* registrator);
-
-#define LOCATION_PROPERTY CLASS_READONLY_PROPERTY
-#include "Properties-Include.h"
+protected:
+    EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto);
+    ~EntityWithProto() override;
 };

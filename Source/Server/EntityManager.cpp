@@ -159,7 +159,7 @@ auto EntityManager::FindCritterItems(uint crid) -> vector<Item*>
 
     for (auto [id, entity] : _allEntities) {
         if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-            if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER && item->GetCritId() == crid) {
+            if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritId() == crid) {
                 items.push_back(item);
             }
         }

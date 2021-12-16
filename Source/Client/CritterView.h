@@ -38,11 +38,13 @@
 #include "3dStuff.h"
 #include "Application.h"
 #include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 #include "SpriteManager.h"
 
 class ItemView;
 
-class CritterView final : public ClientEntity
+class CritterView final : public ClientEntity, public CritterProperties
 {
 public:
     CritterView() = delete;
@@ -134,9 +136,6 @@ public:
     short SprOx {};
     short SprOy {};
     uint FadingTick {};
-
-#define CRITTER_PROPERTY CLASS_PROPERTY
-#include "Properties-Include.h"
 
 private:
     struct CritterAnim
