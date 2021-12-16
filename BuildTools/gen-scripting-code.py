@@ -56,9 +56,9 @@ codeGenTags = {
         'Enum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
         'Property': [], # (entity, access, type, name, [flags], [comment])
         'Event': [], # (target, name, [(type, name)], [flags], [comment])
-        'RPC': [], # (target, name, [(type, name)], [flags], [comment])
+        'RemoteCall': [], # (target, name, [(type, name)], [flags], [comment])
         'Setting': [], #(type, name, init value, [flags], [comment])
-        'CodeGen': [] } # (lang, absPath, entry, line, padding, [flags], [comment])
+        'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
         
 errors = []
 
@@ -589,7 +589,7 @@ def parseTags():
             except Exception as ex:
                 showError('Invalid tag Event', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
                 
-        for tagMeta in tagsMetas['RPC']:
+        for tagMeta in tagsMetas['RemoteCall']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
@@ -623,10 +623,10 @@ def parseTags():
                 
                 flags = [s for s in tagInfo[braceClosePos + 1:].split(' ') if s]
 
-                codeGenTags['RPC'].append((target, funcName, funcArgs, flags, comment))
+                codeGenTags['RemoteCall'].append((target, funcName, funcArgs, flags, comment))
             
             except Exception as ex:
-                showError('Invalid tag RPC', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
+                showError('Invalid tag RemoteCall', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
                 
         for tagMeta in tagsMetas['Setting']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
@@ -649,18 +649,20 @@ def parseTags():
             try:
                 fname = os.path.basename(absPath)
                 if fname == 'AngelScriptScripting-Template.cpp':
-                    lang = 'AngelScript'
+                    templateType = 'AngelScript'
                 elif fname == 'MonoScripting-Template.cpp':
-                    lang = 'Mono'
+                    templateType = 'Mono'
                 elif fname == 'NativeScripting-Template.cpp':
-                    lang = 'Native'
+                    templateType = 'Native'
+                elif fname == 'RestoreScriptingInfo-Template.cpp':
+                    templateType = 'RestoreInfo'
                 else:
                     assert False, fname
                 
                 flags = tagInfo.split(' ')
                 assert len(flags) >= 1, 'Invalid CodeGen entry'
                 
-                codeGenTags['CodeGen'].append((lang, absPath, flags[0], lineIndex, tagContext, flags[1:], comment))
+                codeGenTags['CodeGen'].append((templateType, absPath, flags[0], lineIndex, tagContext, flags[1:], comment))
             
             except Exception as ex:
                 showError('Invalid tag CodeGen', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -760,6 +762,36 @@ def flushFiles():
             f.write('\n'.join(lines) + '\n')
 
 # Code
+curCodeGenTemplateType = None
+
+def writeCodeGenTemplate(templateType):
+    global curCodeGenTemplateType
+    curCodeGenTemplateType = templateType
+    
+    templatePath = None
+    for genTag in codeGenTags['CodeGen']:
+        if curCodeGenTemplateType == genTag[0]:
+            templatePath = genTag[1]
+            break
+    assert templatePath, 'Code gen template not found'
+    
+    with open(templatePath, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    insertFileLines([l.rstrip('\r\n') for l in lines], 0)
+
+def insertCodeGenLines(lines, entryName):
+    def findTag():
+        for genTag in codeGenTags['CodeGen']:
+            if curCodeGenTemplateType == genTag[0] and entryName == genTag[2]:
+                return genTag[3] + 1, genTag[4]
+        assert False, 'Code gen entry ' + entryName + ' in ' + curCodeGenTemplateType + ' not found'
+    lineIndex, padding = findTag()
+    
+    if padding:
+        lines = [''.center(padding) + l for l in lines]
+    
+    insertFileLines(lines, lineIndex)
+
 def genCode(lang, target, isASCompiler=False):
     createFile(lang + 'Scripting' + '-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
     
@@ -779,16 +811,7 @@ def genCode(lang, target, isASCompiler=False):
         return
     
     # Generate from template
-    templatePath = None
-    for genTag in codeGenTags['CodeGen']:
-        if lang == genTag[0]:
-            templatePath = genTag[1]
-            break
-    assert templatePath, 'Code gen template path not found'
-
-    with open(templatePath, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-    insertFileLines([l.rstrip('\r\n') for l in lines], 0)
+    writeCodeGenTemplate(lang)
     
     # lang, absPath, entry, line, flags, comment = genTag    
     if lang == 'AngelScript':
@@ -1025,8 +1048,8 @@ def genCode(lang, target, isASCompiler=False):
         """
         
         # Register enums
-        registerLines.append('// Enums')
-        for e in codeGenTags['ExportEnum'] + codeGenTags['Enum']:
+        registerLines.append('// Engine enums')
+        for e in codeGenTags['ExportEnum']:
             gname, _, keyValues, _, _ = e
             groupStrName = 'enum_group_name_' + gname.lower()
             registerLines.append('const char* ' + groupStrName + ' = "' + gname + '";')
@@ -1034,6 +1057,20 @@ def genCode(lang, target, isASCompiler=False):
             for kv in keyValues:
                 registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", ' + kv[1] + '));')
         registerLines.append('')
+        
+        registerLines.append('// Script enums')
+        if target != 'Client' or isASCompiler:
+            for e in codeGenTags['Enum']:
+                gname, _, keyValues, _, _ = e
+                groupStrName = 'enum_group_name_' + gname.lower()
+                registerLines.append('const char* ' + groupStrName + ' = "' + gname + '";')
+                registerLines.append('AS_VERIFY(engine->RegisterEnum(' + groupStrName + '));')
+                for kv in keyValues:
+                    registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", ' + kv[1] + '));')
+            registerLines.append('')
+        
+        else:
+            registerLines.append('// Will be restored later')
         
         # Register exported objects
         for eo in codeGenTags['ExportObject']:
@@ -1085,28 +1122,47 @@ def genCode(lang, target, isASCompiler=False):
         # Register global properties
         
         # Modify file content (from bottom to top)
-        def insertGenLines(lines, entryName):
-            def findTag():
-                for genTag in codeGenTags['CodeGen']:
-                    if lang == genTag[0] and entryName == genTag[2]:
-                        return genTag[3] + 1, genTag[4]
-                assert False, 'Code gen entry ' + entryName + ' in ' + lang + ' not found'
-            lineIndex, padding = findTag()
-            
-            if padding:
-                lines = [''.center(padding) + l for l in lines]
-            
-            insertFileLines(lines, lineIndex)
-            
-        insertGenLines(registerLines, 'Register')
-        insertGenLines(globalLines, 'Global')
-        insertGenLines(defineLines, 'Defines')
+        insertCodeGenLines(registerLines, 'Register')
+        insertCodeGenLines(globalLines, 'Global')
+        insertCodeGenLines(defineLines, 'Defines')
 
     elif lang == 'Mono':
         assert False, 'Mono generation not implemented'
     
     elif lang == 'Native':
         assert False, 'Native generation not implemented'
+
+def genRestoreInfo():
+    restoreLines = []
+    
+    # Skip if not multiplayer mode
+    if args.multiplayer:
+        # Enums
+        restoreLines.append('AddRestoreInfo("Enums",')
+        restoreLines.append('{')
+        for e in codeGenTags['Enum']:
+            gname, utype, keyValues, _, _ = e
+            restoreLines.append('    "' + gname + ' ' + utype + ' ' + ' '.join([kv[0] + '=' + kv[1] for kv in keyValues]) + '",')
+        restoreLines.append('});')
+        restoreLines.append('')
+        
+        # Properties
+        
+        # RemoteCalls
+        
+        # Events
+        
+        # Settings
+        pass
+    
+    createFile('RestoreScriptingInfo-Server.cpp', args.genoutput)
+    writeCodeGenTemplate('RestoreInfo')
+    insertCodeGenLines(restoreLines, 'Body')
+    insertCodeGenLines(['#define SERVER_SCRIPTING 1', '#define CLIENT_SCRIPTING 0'], 'Defines')
+    
+    createFile('RestoreScriptingInfo-Client.cpp', args.genoutput)
+    writeCodeGenTemplate('RestoreInfo')
+    insertCodeGenLines(['#define SERVER_SCRIPTING 0', '#define CLIENT_SCRIPTING 1'], 'Defines')
 
 try:
     genCode('AngelScript', 'Server')
@@ -1125,6 +1181,7 @@ try:
     genCode('Native', 'Client')
     genCode('Native', 'Mapper')
     genCode('Native', 'Single')
+    genRestoreInfo()
     
 except Exception as ex:
     showError('Code generation failed', ex)

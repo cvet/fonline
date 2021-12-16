@@ -1353,12 +1353,14 @@ set( FO_SERVER_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Server.cpp"
 	"Source/Scripting/ServerScripting.h" )
 	
 set( FO_CLIENT_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Client.cpp"
 	"Source/Scripting/ClientScripting.h" )
 
 set( FO_MAPPER_SCRIPTING_SOURCE
@@ -1377,6 +1379,7 @@ set( FO_SCRIPTING_SOURCE
 	"Source/Scripting/AngelScriptScripting-Template.cpp"
 	"Source/Scripting/MonoScripting-Template.cpp"
 	"Source/Scripting/NativeScripting-Template.cpp"
+	"Source/Scripting/RestoreScriptingInfo-Template.cpp"
 	"Source/Scripting/ServerGlobalScriptMethods.cpp"
 	"Source/Scripting/ServerPlayerScriptMethods.cpp"
 	"Source/Scripting/ServerItemScriptMethods.cpp"
@@ -1507,7 +1510,9 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" )
+		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Server.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Client.cpp" )
 	
 	file( WRITE "${CMAKE_BINARY_DIR}/gen-scripting-code-args.txt" "" )
 	foreach( entry ${FO_CODEGEN_COMMAND_ARGS} )

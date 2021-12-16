@@ -80,6 +80,9 @@ void ServerScriptSystem::InitAngelScriptScripting()
 void ServerScriptSystem::InitMonoScripting()
 {
 }
+void ServerScriptSystem::WriteRestoreInfo()
+{
+}
 #endif
 
 static void ClientEntry(void*)

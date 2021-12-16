@@ -49,7 +49,7 @@
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ClientScriptSystem(this, settings) : nullptr}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), Globals {new ClientGlobals(GetPropertyRegistrator("Global"))}, _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), Globals {new ClientGlobals(GetPropertyRegistrator("Global"))}, _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
     _netSock = INVALID_SOCKET;
@@ -341,14 +341,18 @@ void FOClient::UpdateFilesLoop()
                 }
 
                 // Reinitialize data
-                if (_updateData->CacheChanged) {
-                    _curLang.LoadFromCache(Cache, _curLang.Name);
-                }
-                // if (Update->FilesChanged)
-                //    Settings.Init(0, {});
                 if (_initCalls >= 2 && (_updateData->CacheChanged || _updateData->FilesChanged)) {
                     throw ClientRestartException("Restart");
                 }
+
+                if (_updateData->CacheChanged) {
+                    _curLang.LoadFromCache(Cache, _curLang.Name);
+                }
+
+                // if (Update->FilesChanged)
+                //    Settings.Init(0, {});
+
+                //ScriptSys = new ClientScriptSystem(this, Settings);
 
                 return;
             }

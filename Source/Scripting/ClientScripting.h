@@ -42,8 +42,9 @@ class FOClient;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    ClientScriptSystem(FOClient* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
+    ClientScriptSystem(FOClient* engine, GlobalSettings& settings, const vector<uchar>& restore_info_bin) : ScriptSystem(settings), _engine {engine}
     {
+        PrepareRestoreInfo(restore_info_bin);
         InitNativeScripting();
         InitAngelScriptScripting();
         InitMonoScripting();
@@ -54,5 +55,8 @@ private:
     void InitAngelScriptScripting();
     void InitMonoScripting();
 
+    void PrepareRestoreInfo(const vector<uchar>& restore_info_bin);
+
     FOClient* _engine;
+    map<string, vector<string>> _restoreInfo {};
 };

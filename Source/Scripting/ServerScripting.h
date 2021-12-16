@@ -47,12 +47,20 @@ public:
         InitNativeScripting();
         InitAngelScriptScripting();
         InitMonoScripting();
+        WriteRestoreInfo();
     }
+
+    [[nodiscard]] auto GetInfoForRestore() const -> const vector<uchar>&;
 
 private:
     void InitNativeScripting();
     void InitAngelScriptScripting();
     void InitMonoScripting();
 
+    void WriteRestoreInfo();
+    void AddRestoreInfo(string_view key, vector<string>&& info);
+
     FOServer* _engine;
+    map<string, vector<string>> _restoreInfo {};
+    vector<uchar> _restoreInfoBin {};
 };

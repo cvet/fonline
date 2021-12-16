@@ -39,6 +39,8 @@
 // ReSharper disable CppClangTidyClangDiagnosticExtraSemiStmt
 // ReSharper disable CppUseAuto
 
+///@ CodeGen Template AngelScript
+
 ///@ CodeGen Defines
 
 #ifdef __clang__
@@ -502,6 +504,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASLocation, Set_##name), SCRIPT_METHOD_CONV));
     #include "ScriptApi.h"
     */
+
+#if CLIENT_SCRIPTING && !COMPILER_MODE
+    (void)_restoreInfo;
+#endif
 
 #if CLIENT_SCRIPTING
     // AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &BIND_CLASS ClientCurMap));

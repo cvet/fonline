@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+///@ CodeGen Template Mono
+
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wunused-function"
