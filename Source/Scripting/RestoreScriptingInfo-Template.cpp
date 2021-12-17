@@ -43,6 +43,11 @@
 
 ///@ CodeGen Defines
 
+#ifndef SERVER_SCRIPTING
+#cmakedefine01 SERVER_SCRIPTING
+#cmakedefine01 CLIENT_SCRIPTING
+#endif
+
 #if SERVER_SCRIPTING
 #include "ServerScripting.h"
 #elif CLIENT_SCRIPTING

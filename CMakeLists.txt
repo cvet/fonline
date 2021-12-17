@@ -1570,6 +1570,15 @@ else()
 	MakeStubCompiler( "Client" )
 	MakeStubCompiler( "Mapper" )
 	MakeStubCompiler( "Single" )
+	
+	set( SERVER_SCRIPTING 1 )
+	set( CLIENT_SCRIPTING 0 )
+	configure_file( "Source/Scripting/RestoreScriptingInfo-Template.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Server.cpp" )
+	set( SERVER_SCRIPTING 0 )
+	set( CLIENT_SCRIPTING 1 )
+	configure_file( "Source/Scripting/RestoreScriptingInfo-Template.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Client.cpp" )
+	unset( SERVER_SCRIPTING )
+	unset( CLIENT_SCRIPTING )
 endif()
 
 # Applications
