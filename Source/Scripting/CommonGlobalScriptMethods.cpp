@@ -384,7 +384,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     {
         for( asUINT i = 0; i < props->GetSize(); i++ )
         {
-            if( !Properties::SetValueAsIntProps( (Properties*) &item->Props, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
+            if( !Properties::SetValueAsIntProps( (Properties*) &item->_props, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
             {
                 item->Release();
                 return nullptr;

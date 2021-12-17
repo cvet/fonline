@@ -53,7 +53,7 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hash, T*>& protos
 
         vector<uchar*>* props_data = nullptr;
         vector<uint>* props_data_sizes = nullptr;
-        proto_item->Props.StoreData(true, &props_data, &props_data_sizes);
+        proto_item->StoreData(true, &props_data, &props_data_sizes);
         WriteData(data, static_cast<ushort>(props_data->size()));
         for (size_t i = 0; i < props_data->size(); i++) {
             const auto cur_size = props_data_sizes->at(i);
@@ -86,7 +86,7 @@ static void ReadProtosFromBinary(const PropertyRegistrator* property_registrator
             const auto* const_props_data = ReadDataArr<uchar>(data, props_data_sizes[j], pos);
             props_data[j] = const_cast<uchar*>(const_props_data);
         }
-        proto->Props.RestoreData(props_data, props_data_sizes);
+        proto->RestoreData(props_data, props_data_sizes);
         RUNTIME_ASSERT(!protos.count(proto_id));
         protos.insert(std::make_pair(proto_id, proto));
     }
@@ -218,7 +218,7 @@ static void ParseProtos(FileManager& file_mngr, const PropertyRegistrator* prope
 
         // Create proto
         auto* proto = new std::remove_const_t<T>(pid, property_registrator);
-        if (!proto->Props.LoadFromText(final_kv)) {
+        if (!proto->LoadFromText(final_kv)) {
             delete proto;
             throw ProtoManagerException("Proto item fail to load properties", base_name);
         }
@@ -227,7 +227,7 @@ static void ParseProtos(FileManager& file_mngr, const PropertyRegistrator* prope
         if (final_kv.count("$Components")) {
             for (const auto& component_name : _str(final_kv["$Components"]).split(' ')) {
                 auto component_name_hash = _str(component_name).toHash();
-                if (!proto->Props.GetRegistrator()->IsComponentRegistered(component_name_hash)) {
+                if (!proto->GetProperties().GetRegistrator()->IsComponentRegistered(component_name_hash)) {
                     throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
                 }
                 proto->Components.insert(component_name_hash);
@@ -344,11 +344,11 @@ static auto ValidateProtoResourcesExt(const map<hash, T*>& protos, set<hash>& ha
     auto errors = 0;
     for (auto& kv : protos) {
         T* proto = kv.second;
-        const auto* registrator = proto->Props.GetRegistrator();
+        const auto* registrator = proto->GetProperties().GetRegistrator();
         for (uint i = 0; i < registrator->GetCount(); i++) {
             auto* prop = registrator->Get(i);
             if (prop->IsResource()) {
-                hash h = proto->Props.template GetValue<hash>(prop);
+                hash h = proto->GetProperties().template GetValue<hash>(prop);
                 if (h && !hashes.count(h)) {
                     WriteLog("Resource '{}' not found for property '{}' in prototype '{}'.\n", _str().parseHash(h), prop->GetName(), proto->GetName());
                     errors++;

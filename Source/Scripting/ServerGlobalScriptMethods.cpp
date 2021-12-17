@@ -119,7 +119,7 @@
     }
 
     auto* item = server->ItemMngr.GetItem(itemId);
-    if (!item || item->IsDestroyed) {
+    if (!item || item->IsDestroyed()) {
         return static_cast<Item*>(nullptr);
     }
 
@@ -222,7 +222,7 @@
     }
 
     for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed) {
+        if (item == nullptr || item->IsDestroyed()) {
             continue;
         }
 
@@ -247,7 +247,7 @@
     }
 
     for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed) {
+        if (item == nullptr || item->IsDestroyed()) {
             continue;
         }
 
@@ -268,7 +268,7 @@
     }
 
     for (auto* item : items) {
-        if (item == nullptr || item->IsDestroyed) {
+        if (item == nullptr || item->IsDestroyed()) {
             continue;
         }
 
@@ -574,7 +574,7 @@
     player = new Player(server, id, nullptr, player_proto);
     player->Name = name;
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->Props, doc, *server->ScriptSys)) {
+    if (!PropertiesSerializator::LoadFromDbDocument(&player->GetPropertiesForEdit(), doc, *server->ScriptSys)) {
         throw ScriptException("Player data db read failed");
     }
 
@@ -861,7 +861,7 @@
 {
     vector<Item*> items;
     for (auto* item : server->ItemMngr.GetItems()) {
-        if (!item->IsDestroyed && (pid == 0u || pid == item->GetProtoId())) {
+        if (!item->IsDestroyed() && (pid == 0u || pid == item->GetProtoId())) {
             items.push_back(item);
         }
     }
@@ -894,7 +894,7 @@
     vector<Critter*> npcs;
 
     for (auto* npc_ : server->CrMngr.GetAllNpc()) {
-        if (!npc_->IsDestroyed && (pid == 0u || pid == npc_->GetProtoId())) {
+        if (!npc_->IsDestroyed() && (pid == 0u || pid == npc_->GetProtoId())) {
             npcs.push_back(npc_);
         }
     }

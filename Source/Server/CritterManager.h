@@ -74,7 +74,7 @@ public:
     [[nodiscard]] auto NpcInGame() const -> uint;
     [[nodiscard]] auto CrittersInGame() const -> uint;
 
-    [[nodiscard]] auto CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
+    [[nodiscard]] auto CreateNpc(hash proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
 
     void LinkCritters();
     void InitAfterLoad();

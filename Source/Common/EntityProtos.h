@@ -41,13 +41,13 @@
 class ProtoPlayer final : public ProtoEntity, public PlayerProperties
 {
 public:
-    explicit ProtoPlayer(hash proto_id, const PropertyRegistrator* registrator);
+    ProtoPlayer(hash proto_id, const PropertyRegistrator* registrator);
 };
 
 class ProtoItem final : public ProtoEntity, public ItemProperties
 {
 public:
-    explicit ProtoItem(hash proto_id, const PropertyRegistrator* registrator);
+    ProtoItem(hash proto_id, const PropertyRegistrator* registrator);
 
     [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
     [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
@@ -60,17 +60,17 @@ public:
 class ProtoCritter final : public ProtoEntity, public CritterProperties
 {
 public:
-    explicit ProtoCritter(hash proto_id, const PropertyRegistrator* registrator);
+    ProtoCritter(hash proto_id, const PropertyRegistrator* registrator);
 };
 
 class ProtoMap final : public ProtoEntity, public MapProperties
 {
 public:
-    explicit ProtoMap(hash proto_id, const PropertyRegistrator* registrator);
+    ProtoMap(hash proto_id, const PropertyRegistrator* registrator);
 };
 
 class ProtoLocation final : public ProtoEntity, public LocationProperties
 {
 public:
-    explicit ProtoLocation(hash proto_id, const PropertyRegistrator* registrator);
+    ProtoLocation(hash proto_id, const PropertyRegistrator* registrator);
 };

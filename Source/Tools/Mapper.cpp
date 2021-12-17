@@ -1805,7 +1805,7 @@ void FOMapper::ObjDraw()
 
     for (auto* prop : ShowProps) {
         if (prop != nullptr) {
-            auto value = entity->Props.SavePropertyToText(prop);
+            auto value = entity->GetProperties().SavePropertyToText(prop);
             DrawLine(prop->GetName(), prop->GetTypeName(), value, prop->IsConst(), r);
         }
         else {
@@ -1889,7 +1889,7 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
     if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int>(ShowProps.size())) {
         const auto* prop = ShowProps[ObjCurLine - start_line];
         if (prop != nullptr) {
-            if (entity->Props.LoadPropertyFromText(prop, ObjCurLineValue)) {
+            if (entity->GetPropertiesForEdit().LoadPropertyFromText(prop, ObjCurLineValue)) {
                 if (auto* hex_item = dynamic_cast<ItemHexView*>(entity); hex_item != nullptr) {
                     if (prop == hex_item->GetPropertyOffsetX() || prop == hex_item->GetPropertyOffsetY()) {
                         hex_item->SetAnimOffs();
@@ -1900,7 +1900,7 @@ void FOMapper::ObjKeyDownApply(Entity* entity)
                 }
             }
             else {
-                const auto r = entity->Props.LoadPropertyFromText(prop, ObjCurLineInitValue);
+                const auto r = entity->GetPropertiesForEdit().LoadPropertyFromText(prop, ObjCurLineInitValue);
                 UNUSED_VARIABLE(r);
             }
         }
@@ -1922,7 +1922,7 @@ void FOMapper::SelectEntityProp(int line)
             ObjCurLine = static_cast<int>(ShowProps.size()) + start_line - 1;
         }
         if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int>(ShowProps.size()) && (ShowProps[ObjCurLine - start_line] != nullptr)) {
-            ObjCurLineInitValue = ObjCurLineValue = entity->Props.SavePropertyToText(ShowProps[ObjCurLine - start_line]);
+            ObjCurLineInitValue = ObjCurLineValue = entity->GetProperties().SavePropertyToText(ShowProps[ObjCurLine - start_line]);
             ObjCurLineIsConst = ShowProps[ObjCurLine - start_line]->IsConst();
         }
     }
@@ -1942,7 +1942,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
         vector<int> enum_values;
         InspectorPropertiesEvent.Raise(entity, enum_values);
         for (auto enum_value : enum_values) {
-            ShowProps.push_back(enum_value != 0 ? entity->Props.FindByEnum(enum_value) : nullptr);
+            ShowProps.push_back(enum_value != 0 ? entity->GetProperties().FindByEnum(enum_value) : nullptr);
         }
     }
 
@@ -3316,7 +3316,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
                              // new CritterView(
                              //--((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity->Proto, Settings,
                              // SprMngr, ResMngr);
-        cr->Props = (dynamic_cast<CritterView*>(entity))->Props;
+        cr->SetProperties(entity->GetProperties());
         cr->SetHexX(hx);
         cr->SetHexY(hy);
         cr->Init();
@@ -3343,7 +3343,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
         {
             RUNTIME_ASSERT(from_child->Type == EntityType::Item);
             ItemView* to_child = new ItemView(--pmap->LastEntityId, (ProtoItem*)from_child->Proto);
-            to_child->Props = from_child->Props;
+            to_child->_props = from_child->_props;
             if (to->Type == EntityType::CritterView)
                 ((CritterView*)to)->AddItem(to_child);
             else
@@ -3390,7 +3390,7 @@ void FOMapper::BufferCopy()
         entity_buf->IsCritter = (dynamic_cast<CritterView*>(entity) != nullptr);
         entity_buf->IsItem = (dynamic_cast<ItemHexView*>(entity) != nullptr);
         entity_buf->Proto = (dynamic_cast<EntityWithProto*>(entity) != nullptr ? dynamic_cast<EntityWithProto*>(entity)->Proto : nullptr);
-        entity_buf->Props = new Properties(entity->Props);
+        entity_buf->Props = new Properties(entity->GetProperties());
         // Todo: need attention!
         /*for (auto* child : entity->GetChildren())
         {
@@ -3469,7 +3469,7 @@ void FOMapper::BufferPaste(int, int)
             CritterView* cr = 0; // Todo: need attention!
             // new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
             //  (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
-            cr->Props = *entity_buf.Props;
+            cr->SetProperties(*entity_buf.Props);
             cr->SetHexX(hx);
             cr->SetHexY(hy);
             cr->Init();
@@ -3482,7 +3482,7 @@ void FOMapper::BufferPaste(int, int)
             // HexMngr.AddItem(
             //  --((ProtoMap*)ActiveMap->Proto)->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr);
             ItemHexView* item = HexMngr.GetItemById(id);
-            item->Props = *entity_buf.Props;
+            item->SetProperties(*entity_buf.Props);
             SelectAdd(item);
             owner = item;
         }
@@ -3493,7 +3493,7 @@ void FOMapper::BufferPaste(int, int)
             for (auto& child_buf : entity_buf->Children) {
                 RUNTIME_ASSERT(child_buf->Type == EntityType::Item);
                 ItemView* child = new ItemView(--pmap->LastEntityId, (ProtoItem*)child_buf->Proto);
-                child->Props = *child_buf->Props;
+                child->_props = *child_buf->_props;
                 if (entity->Type == EntityType::CritterView)
                     ((CritterView*)entity)->AddItem(child);
                 else

@@ -150,7 +150,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     _engine->CritterMoveItemEvent.Raise(cr, item, item->GetCritSlot());
 }
 
-auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
+auto CritterManager::CreateNpc(hash proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
 {
     NON_CONST_METHOD_HINT();
 
@@ -207,7 +207,7 @@ auto CritterManager::CreateNpc(hash proto_id, Properties* props, Map* map, ushor
 
     auto* npc = new Critter(_engine, 0, nullptr, proto);
     if (props != nullptr) {
-        npc->Props = *props;
+        npc->SetProperties(*props);
     }
 
     _engine->EntityMngr.RegisterEntity(npc);
@@ -245,10 +245,11 @@ void CritterManager::DeleteNpc(Critter* cr)
     RUNTIME_ASSERT(cr->IsNpc());
 
     // Redundant calls
-    if (cr->IsDestroying || cr->IsDestroyed) {
+    if (cr->IsDestroying() || cr->IsDestroyed()) {
         return;
     }
-    cr->IsDestroying = true;
+    
+    cr->MarkAsDestroying();
 
     // Finish event
     _engine->CritterFinishEvent.Raise(cr);
@@ -277,7 +278,7 @@ void CritterManager::DeleteNpc(Critter* cr)
     _engine->EntityMngr.UnregisterEntity(cr);
 
     // Invalidate for use
-    cr->IsDestroyed = true;
+    cr->MarkAsDestroyed();
     cr->Release();
 }
 

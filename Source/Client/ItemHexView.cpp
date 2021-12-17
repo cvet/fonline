@@ -46,7 +46,7 @@ ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto) : It
 
 ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, const Properties& props) : ItemHexView(engine, id, proto)
 {
-    Props = props;
+    SetProperties(props);
 
     AfterConstruction();
 }
@@ -54,7 +54,7 @@ ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, cons
 ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data) : ItemHexView(engine, id, proto)
 {
     RUNTIME_ASSERT(props_data);
-    Props.RestoreData(*props_data);
+    RestoreData(*props_data);
 
     AfterConstruction();
 }
@@ -62,7 +62,7 @@ ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vect
 ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y) : ItemHexView(engine, id, proto)
 {
     if (props_data != nullptr) {
-        Props.RestoreData(*props_data);
+        RestoreData(*props_data);
     }
 
     SetHexX(hx);

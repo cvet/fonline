@@ -99,7 +99,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
         pmap->GetName(), file_mngr, _engine->ProtoMngr, _engine->GetPropertyRegistrator("Map"),
         [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
             auto* cr = new Critter(_engine, id, nullptr, proto);
-            if (!cr->Props.LoadFromText(kv)) {
+            if (!cr->LoadFromText(kv)) {
                 cr->Release();
                 return false;
             }
@@ -109,7 +109,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
         },
         [&static_map, this](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
             auto* item = new Item(_engine, id, proto);
-            if (!item->Props.LoadFromText(kv)) {
+            if (!item->LoadFromText(kv)) {
                 item->Release();
                 return false;
             }
@@ -258,7 +258,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
             WriteData(scenery_data, item->GetProtoId());
             vector<uchar*>* all_data = nullptr;
             vector<uint>* all_data_sizes = nullptr;
-            item->Props.StoreData(false, &all_data, &all_data_sizes);
+            item->StoreData(false, &all_data, &all_data_sizes);
             WriteData(scenery_data, static_cast<uint>(all_data->size()));
             for (size_t i = 0; i < all_data->size(); i++) {
                 WriteData(scenery_data, all_data_sizes->at(i));
@@ -310,7 +310,7 @@ void MapManager::GenerateMapContent(Map* map)
 
     // Generate npc
     for (auto* base_cr : map->GetStaticMap()->CrittersVec) {
-        auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->Props, map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
+        auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
         if (npc == nullptr) {
             WriteLog("Create npc '{}' on map '{}' fail, continue generate.\n", base_cr->GetName(), map->GetName());
             continue;
@@ -331,7 +331,7 @@ void MapManager::GenerateMapContent(Map* map)
     // Generate hex items
     for (const auto* base_item : map->GetStaticMap()->HexItemsVec) {
         // Create item
-        auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->Props);
+        auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         if (item == nullptr) {
             WriteLog("Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName());
             continue;
@@ -369,7 +369,7 @@ void MapManager::GenerateMapContent(Map* map)
         parent_id = id_map[parent_id];
 
         // Create item
-        auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->Props);
+        auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         if (item == nullptr) {
             WriteLog("Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName());
             continue;
@@ -631,7 +631,7 @@ auto MapManager::GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Loc
 
     vector<Location*> locs;
     for (auto* loc : _engine->EntityMngr.GetLocations()) {
-        if (!loc->IsDestroyed && loc->IsLocVisible() && IsIntersectZone(wx, wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), zone_radius)) {
+        if (!loc->IsDestroyed() && loc->IsLocVisible() && IsIntersectZone(wx, wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), zone_radius)) {
             locs.push_back(loc);
         }
     }
@@ -683,13 +683,13 @@ void MapManager::DeleteLocation(Location* loc, vector<Critter*>* gmap_player_cri
     auto maps = loc->GetMaps();
 
     // Redundant calls
-    if (loc->IsDestroying || loc->IsDestroyed) {
+    if (loc->IsDestroying() || loc->IsDestroyed()) {
         return;
     }
 
-    loc->IsDestroying = true;
+    loc->MarkAsDestroying();
     for (auto& map : maps) {
-        map->IsDestroying = true;
+        map->MarkAsDestroying();
     }
 
     // Finish events
@@ -724,9 +724,9 @@ void MapManager::DeleteLocation(Location* loc, vector<Critter*>* gmap_player_cri
     }
 
     // Invalidate for use
-    loc->IsDestroyed = true;
+    loc->MarkAsDestroyed();
     for (auto* map : maps) {
-        map->IsDestroyed = true;
+        map->MarkAsDestroyed();
     }
 
     // Release after some time
@@ -1778,7 +1778,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
 {
     NON_CONST_METHOD_HINT();
 
-    if (view_cr->IsDestroyed) {
+    if (view_cr->IsDestroyed()) {
         return;
     }
 
@@ -1821,7 +1821,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     const auto sneak_base_self = view_cr->GetSneakCoefficient();
 
     for (auto* cr : map->GetCritters()) {
-        if (cr == view_cr || cr->IsDestroyed) {
+        if (cr == view_cr || cr->IsDestroyed()) {
             continue;
         }
 
@@ -2131,7 +2131,7 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
 {
     NON_CONST_METHOD_HINT();
 
-    if (view_cr->IsDestroyed) {
+    if (view_cr->IsDestroyed()) {
         return;
     }
 
@@ -2187,7 +2187,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushor
 {
     NON_CONST_METHOD_HINT();
 
-    if (view_cr->IsDestroyed) {
+    if (view_cr->IsDestroyed()) {
         return;
     }
 
@@ -2196,7 +2196,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushor
     // Critters
     const auto dirs_count = _engine->Settings.MapDirCount;
     for (auto* cr : map->GetCritters()) {
-        if (cr == view_cr || cr->IsDestroyed) {
+        if (cr == view_cr || cr->IsDestroyed()) {
             continue;
         }
 

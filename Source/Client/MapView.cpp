@@ -34,7 +34,7 @@
 #include "MapView.h"
 #include "Client.h"
 
-MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Map"), proto), MapProperties(Props)
+MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Map"), proto), MapProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
 }

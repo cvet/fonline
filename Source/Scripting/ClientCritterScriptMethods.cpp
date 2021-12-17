@@ -203,7 +203,7 @@
 {
     auto inv_items = self->InvItems;
     for (auto* item : inv_items) {
-        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             return item;
         }
     }
@@ -280,7 +280,7 @@
     vector<ItemView*> items;
     items.reserve(inv_items.size());
     for (auto* item : inv_items) {
-        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             items.push_back(item);
         }
     }
@@ -353,7 +353,7 @@
     }
 
     self->GetModel()->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [self, animCallback] {
-                                                        if (!self->IsDestroyed) {
+                                                        if (!self->IsDestroyed()) {
                                                             animCallback(self);
                                                         }
                                                     }});

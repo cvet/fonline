@@ -34,7 +34,7 @@
 #include "Entity.h"
 #include "StringUtils.h"
 
-Entity::Entity(const PropertyRegistrator* registrator) : Props {registrator}
+Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
 {
 }
 
@@ -50,12 +50,97 @@ void Entity::Release() const
     }
 }
 
+auto Entity::GetClassName() const -> string_view
+{
+    return _props.GetRegistrator()->GetClassName();
+}
+
+auto Entity::GetProperties() const -> const Properties&
+{
+    return _props;
+}
+
+auto Entity::GetPropertiesForEdit() -> Properties&
+{
+    return _props;
+}
+
+auto Entity::IsDestroying() const -> bool
+{
+    return _isDestroying;
+}
+
+auto Entity::IsDestroyed() const -> bool
+{
+    return _isDestroyed;
+}
+
+void Entity::MarkAsDestroying()
+{
+    RUNTIME_ASSERT(!_isDestroying);
+    RUNTIME_ASSERT(!_isDestroyed);
+
+    _isDestroying = true;
+}
+
+void Entity::MarkAsDestroyed()
+{
+    RUNTIME_ASSERT(!_isDestroyed);
+
+    _isDestroying = true;
+    _isDestroyed = true;
+}
+
+void Entity::SetProperties(const Properties& props)
+{
+    _props = props;
+}
+
+auto Entity::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
+{
+    return _props.StoreData(with_protected, all_data, all_data_sizes);
+}
+
+void Entity::RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes)
+{
+    _props.RestoreData(all_data, all_data_sizes);
+}
+
+void Entity::RestoreData(vector<vector<uchar>>& properties_data)
+{
+    _props.RestoreData(properties_data);
+}
+
+auto Entity::LoadFromText(const map<string, string>& key_values) -> bool
+{
+    return _props.LoadFromText(key_values);
+}
+
+void Entity::SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send)
+{
+    // Todo: not exception safe, revert ignore with raii
+    if (ignore_send) {
+        _props.SetSendIgnore(prop, this);
+    }
+
+    _props.SetValueFromData(prop, data.data(), static_cast<uint>(data.size()));
+
+    if (ignore_send) {
+        _props.SetSendIgnore(nullptr, nullptr);
+    }
+}
+
+void Entity::SetValueAsInt(const Property* prop, int value)
+{
+    _props.SetPODValueAsInt(prop, value);
+}
+
 EntityWithProto::EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator), Proto {proto}
 {
     RUNTIME_ASSERT(Proto);
 
     Proto->AddRef();
-    Props = Proto->Props;
+    SetProperties(Proto->GetProperties());
 }
 
 ProtoEntity::ProtoEntity(hash proto_id, const PropertyRegistrator* registrator) : Entity(registrator), ProtoId {proto_id}

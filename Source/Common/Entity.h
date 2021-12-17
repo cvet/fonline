@@ -39,17 +39,17 @@
 #include "Properties.h"
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
-    inline auto GetProperty##prop() const->const Property* { return _props.GetRegistrator()->FindNoComponentCheck(#prop); } \
-    inline prop_type Get##prop() const { return _props.GetValue<prop_type>(GetProperty##prop()); } \
-    inline void Set##prop(prop_type value) { _props.SetValue<prop_type>(GetProperty##prop(), value); } \
-    inline bool IsNonEmpty##prop() const { return _props.GetRawDataSize(GetProperty##prop()) > 0; }
+    inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->FindNoComponentCheck(#prop); } \
+    inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
+    inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
+    inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0; }
 
 class EntityProperties
 {
 protected:
     explicit EntityProperties(Properties& props);
 
-    Properties& _props;
+    Properties& _propsRef;
 };
 
 class Entity
@@ -61,23 +61,39 @@ public:
     auto operator=(const Entity&) = delete;
     auto operator=(Entity&&) noexcept = delete;
 
+    [[nodiscard]] auto GetClassName() const -> string_view;
+    [[nodiscard]] auto GetProperties() const -> const Properties&;
+    [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
+    [[nodiscard]] auto IsDestroying() const -> bool;
+    [[nodiscard]] auto IsDestroyed() const -> bool;
+
+    void SetProperties(const Properties& props);
+    auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
+    void RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes);
+    void RestoreData(vector<vector<uchar>>& properties_data);
+    auto LoadFromText(const map<string, string>& key_values) -> bool;
+    void SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send);
+    void SetValueAsInt(const Property* prop, int value);
+
     void AddRef() const;
     void Release() const;
 
-    Properties Props;
-    bool IsDestroyed {};
-    bool IsDestroying {};
-
-    // Scripting handles
-    void* MonoObj {};
-    void* NativeObj {};
+    void MarkAsDestroying();
+    void MarkAsDestroyed();
 
 protected:
     explicit Entity(const PropertyRegistrator* registrator);
     virtual ~Entity() = default;
 
-    mutable int _refCounter {1};
+    auto GetInitRef() -> Properties& { return _props; }
+    
     bool _nonConstHelper {};
+
+private:
+    Properties _props;
+    bool _isDestroying {};
+    bool _isDestroyed {};
+    mutable int _refCounter {1};
 };
 
 class ProtoEntity : public Entity

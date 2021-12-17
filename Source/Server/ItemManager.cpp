@@ -227,7 +227,7 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
 
     auto* item = new Item(_engine, 0, proto);
     if (props != nullptr) {
-        item->Props = *props;
+        item->SetProperties(*props);
     }
 
     // Main collection
@@ -245,12 +245,12 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
 
     // Scripts
     _engine->ItemInitEvent.Raise(item, true);
-    if (!item->IsDestroyed) {
+    if (!item->IsDestroyed()) {
         item->SetScript("", true);
     }
 
     // Verify destroying
-    if (item->IsDestroyed) {
+    if (item->IsDestroyed()) {
         WriteLog("Item destroyed after prototype '{}' initialization.\n", _str().parseHash(pid));
         return nullptr;
     }
@@ -261,10 +261,11 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
 void ItemManager::DeleteItem(Item* item)
 {
     // Redundant calls
-    if (item->IsDestroying || item->IsDestroyed) {
+    if (item->IsDestroying() || item->IsDestroyed()) {
         return;
     }
-    item->IsDestroying = true;
+    
+    item->MarkAsDestroying();
 
     // Finish events
     _engine->ItemFinishEvent.Raise(item);
@@ -293,7 +294,7 @@ void ItemManager::DeleteItem(Item* item)
     _engine->EntityMngr.UnregisterEntity(item);
 
     // Invalidate for use
-    item->IsDestroyed = true;
+    item->MarkAsDestroyed();
     item->Release();
 }
 
@@ -304,7 +305,7 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     RUNTIME_ASSERT(count > 0);
     RUNTIME_ASSERT(count < item_count);
 
-    auto* new_item = CreateItem(item->GetProtoId(), count, &item->Props); // Ignore init script
+    auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties()); // Ignore init script
     if (new_item == nullptr) {
         WriteLog("Create item '{}' fail, count {}.\n", item->GetName(), count);
         return nullptr;
@@ -645,7 +646,7 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
 
     // Send
     for (auto* radio : _radioItems) {
-        if (!radio->IsDestroyed && radio->GetRadioChannel() == channel && radio->RadioIsRecvActive()) {
+        if (!radio->IsDestroyed() && radio->GetRadioChannel() == channel && radio->RadioIsRecvActive()) {
             if (broadcast_type != RADIO_BROADCAST_FORCE_ALL && radio->GetRadioBroadcastRecv() != RADIO_BROADCAST_FORCE_ALL) {
                 if (broadcast_type == RADIO_BROADCAST_WORLD) {
                     broadcast = radio->GetRadioBroadcastRecv();

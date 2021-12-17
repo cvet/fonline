@@ -224,7 +224,7 @@ public:
     void SetCritterContour(uint crid, int contour);
     void SetCrittersContour(int contour);
     void SetMultihex(ushort hx, ushort hy, uint multihex, bool set);
-    auto AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data) -> uint;
+    void AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data);
     void FinishItem(uint id, bool is_deleted);
     void DeleteItem(ItemHexView* item, bool destroy_item, vector<ItemHexView*>::iterator* it_hex_items);
     void PushItem(ItemHexView* item);

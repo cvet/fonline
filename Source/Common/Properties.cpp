@@ -1135,7 +1135,7 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
     return "";
 }
 
-void Properties::SetSendIgnore(const Property* prop, Entity* entity)
+void Properties::SetSendIgnore(const Property* prop, const Entity* entity)
 {
     if (prop != nullptr) {
         RUNTIME_ASSERT(_sendIgnoreEntity == nullptr);
@@ -1176,7 +1176,7 @@ auto Properties::GetRawData(const Property* prop, uint& data_size) -> uchar*
     return const_cast<uchar*>(const_cast<const Properties*>(this)->GetRawData(prop, data_size));
 }
 
-void Properties::SetRawData(const Property* prop, uchar* data, uint data_size)
+void Properties::SetRawData(const Property* prop, const uchar* data, uint data_size)
 {
     if (prop->IsPOD()) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
@@ -1201,7 +1201,7 @@ void Properties::SetRawData(const Property* prop, uchar* data, uint data_size)
     }
 }
 
-void Properties::SetValueFromData(const Property* prop, uchar* data, uint data_size)
+void Properties::SetValueFromData(const Property* prop, const uchar* data, uint data_size)
 {
     /*if (dataType == Property::String)
     {
@@ -1688,7 +1688,7 @@ void PropertyRegistrator::RegisterComponent(string_view name)
     _registeredComponents.insert(name_hash);
 }
 
-auto PropertyRegistrator::GetClassName() const -> string
+auto PropertyRegistrator::GetClassName() const -> string_view
 {
     return _className;
 }

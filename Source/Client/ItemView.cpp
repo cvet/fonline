@@ -35,7 +35,7 @@
 #include "Client.h"
 #include "Timer.h"
 
-ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Item"), proto), ItemProperties(Props)
+ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Item"), proto), ItemProperties(GetInitRef())
 {
     RUNTIME_ASSERT(Proto);
     RUNTIME_ASSERT(GetCount() > 0);
@@ -44,7 +44,7 @@ ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEn
 auto ItemView::Clone() const -> ItemView*
 {
     auto* clone = new ItemView(_engine, GetId(), dynamic_cast<const ProtoItem*>(Proto));
-    clone->Props = Props;
+    clone->SetProperties(GetProperties());
     return clone;
 }
 

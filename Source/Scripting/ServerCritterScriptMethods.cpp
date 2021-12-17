@@ -188,7 +188,7 @@
     }
 
     for (auto* cr_ : group) {
-        if (cr_ != nullptr && !cr_->IsDestroyed) {
+        if (cr_ != nullptr && !cr_->IsDestroyed()) {
             self->GetEngine()->MapMngr.TransitToGlobal(cr_, self->GetId(), true);
         }
     }
@@ -542,7 +542,7 @@
 {
     auto inv_items_copy = self->GetInventory(); // Make copy cuz predicate call can change inventory
     for (auto* item : inv_items_copy) {
-        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             return item;
         }
     }
@@ -595,7 +595,7 @@
     vector<Item*> items;
     items.reserve(inv_items.size());
     for (auto* item : inv_items) {
-        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             items.push_back(item);
         }
     }

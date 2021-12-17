@@ -54,6 +54,6 @@ auto ClientEntity::GetEngine() -> FOClient*
     return _engine;
 }
 
-ClientGlobals::ClientGlobals(const PropertyRegistrator* registrator) : Entity(registrator), GlobalsProperties(Props)
+ClientGlobals::ClientGlobals(const PropertyRegistrator* registrator) : Entity(registrator), GlobalsProperties(GetInitRef())
 {
 }

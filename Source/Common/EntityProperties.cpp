@@ -33,6 +33,6 @@
 
 #include "EntityProperties.h"
 
-EntityProperties::EntityProperties(Properties& props) : _props {props}
+EntityProperties::EntityProperties(Properties& props) : _propsRef {props}
 {
 }

@@ -100,7 +100,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : Propert
         DbStorage.Insert("Globals", 1, {{"_Proto", string("")}});
     }
     else {
-        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc, *ScriptSys)) {
+        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->GetPropertiesForEdit(), globals_doc, *ScriptSys)) {
             throw ServerInitException("Failed to load globals document");
         }
 
@@ -154,7 +154,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : Propert
         EntityMngr.InitAfterLoad();
 
         for (auto* item : EntityMngr.GetItems()) {
-            if (!item->IsDestroyed && item->GetIsRadio()) {
+            if (!item->IsDestroyed() && item->GetIsRadio()) {
                 ItemMngr.RegisterRadio(item);
             }
         }
@@ -323,7 +323,7 @@ void FOServer::MainLoop()
         }
 
         for (auto* player : players) {
-            RUNTIME_ASSERT(!player->IsDestroyed);
+            RUNTIME_ASSERT(!player->IsDestroyed());
 
             ProcessConnection(player->Connection);
             ProcessPlayerConnection(player);
@@ -336,7 +336,7 @@ void FOServer::MainLoop()
 
     // Process critters
     for (auto* cr : EntityMngr.GetCritters()) {
-        if (cr->IsDestroyed) {
+        if (cr->IsDestroyed()) {
             continue;
         }
 
@@ -345,7 +345,7 @@ void FOServer::MainLoop()
 
     // Process maps
     for (auto* map : EntityMngr.GetMaps()) {
-        if (map->IsDestroyed) {
+        if (map->IsDestroyed()) {
             continue;
         }
 
@@ -993,8 +993,9 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
 #define CHECK_ALLOW_COMMAND() \
     do { \
-        if (!allow_command) \
+        if (!allow_command) { \
             return; \
+        } \
     } while (0)
 
 #define CHECK_ADMIN_PANEL() \
@@ -1192,7 +1193,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
                 return;
             }
 
-            cr->Props.SetValue<int>(prop, property_value);
+            cr->SetValueAsInt(prop, property_value);
             logcb("Done.");
         }
         else {
@@ -1725,7 +1726,7 @@ void FOServer::DispatchLogToClients()
 
     for (const auto& str : _logLines) {
         for (auto it = _logClients.begin(); it < _logClients.end();) {
-            if (auto* player = *it; !player->IsDestroyed) {
+            if (auto* player = *it; !player->IsDestroyed()) {
                 player->Send_TextEx(0, str, SAY_NETMSG, false);
                 ++it;
             }
@@ -2002,8 +2003,8 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* /*cur_value*
             return;
         }
 
-        const auto value = PropertiesSerializator::SavePropertyToDbValue(&server_entity->Props, prop, *ScriptSys);
-        DbStorage.Update(server_entity->Props.GetRegistrator()->GetClassName() + "s", server_entity->GetId(), prop->GetName(), value);
+        const auto value = PropertiesSerializator::SavePropertyToDbValue(&server_entity->GetProperties(), prop, *ScriptSys);
+        DbStorage.Update(_str("{}s", server_entity->GetClassName()), server_entity->GetId(), prop->GetName(), value);
 
         if (DbHistory && !prop->IsNoHistory()) {
             const auto id = Globals->GetHistoryRecordsId();
@@ -2017,7 +2018,7 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* /*cur_value*
             doc["Property"] = prop->GetName();
             doc["Value"] = value;
 
-            DbHistory.Insert(server_entity->Props.GetRegistrator()->GetClassName() + "sHistory", id, doc);
+            DbHistory.Insert(_str("{}sHistory", server_entity->GetClassName()), id, doc);
         }
     }
 }
@@ -2094,7 +2095,7 @@ void FOServer::ProcessCritter(Critter* cr)
         // Destroy
         const auto full_delete = cr->GetClientToDelete();
         EntityMngr.UnregisterEntity(cr);
-        cr->IsDestroyed = true;
+        cr->MarkAsDestroyed();
 
         // Erase radios from collection
         for (auto* item : cr->GetRawItems()) {
@@ -2271,7 +2272,7 @@ void FOServer::Process_Update(ClientConnection* connection)
     vector<uchar*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     if (!outdated) {
-        msg_len += sizeof(ushort) + Globals->Props.StoreData(false, &global_vars_data, &global_vars_data_sizes);
+        msg_len += sizeof(ushort) + Globals->StoreData(false, &global_vars_data, &global_vars_data_sizes);
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
@@ -2605,7 +2606,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     auto* player = new Player(this, player_id, connection, player_proto);
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->Props, doc, *ScriptSys)) {
+    if (!PropertiesSerializator::LoadFromDbDocument(&player->GetPropertiesForEdit(), doc, *ScriptSys)) {
         player->Release();
         connection->Send_TextMsg(STR_NET_WRONG_DATA);
         connection->GracefulDisconnect();
@@ -2668,12 +2669,12 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     vector<uchar*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
-    const auto whole_global_vars_data_size = Globals->Props.StoreData(false, &global_vars_data, &global_vars_data_sizes);
+    const auto whole_global_vars_data_size = Globals->StoreData(false, &global_vars_data, &global_vars_data_sizes);
     msg_len += sizeof(ushort) + whole_global_vars_data_size;
 
     vector<uchar*>* player_data = nullptr;
     vector<uint>* player_data_sizes = nullptr;
-    const auto whole_player_data_size = Globals->Props.StoreData(false, &player_data, &player_data_sizes);
+    const auto whole_player_data_size = Globals->StoreData(false, &player_data, &player_data_sizes);
     msg_len += sizeof(ushort) + whole_player_data_size;
 
     CONNECTION_OUTPUT_BEGIN(connection);
@@ -3117,7 +3118,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
     }
 
     // Todo: disable send changing field by client to this client
-    entity->Props.SetValueFromData(prop, data.data(), static_cast<uint>(data.size()));
+    entity->SetValueFromData(prop, data, false);
 }
 
 void FOServer::OnSendGlobalValue(Entity* entity, Property* prop)
@@ -3474,7 +3475,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
                 }*/
             }
             else {
-                val = entity->Props.GetPODValueAsInt(prop);
+                val = entity->GetProperties().GetPODValueAsInt(prop);
             }
 
             switch (demand.Op) {

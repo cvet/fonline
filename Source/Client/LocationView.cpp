@@ -34,7 +34,7 @@
 #include "LocationView.h"
 #include "Client.h"
 
-LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Location"), proto), LocationProperties(Props)
+LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Location"), proto), LocationProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
 }

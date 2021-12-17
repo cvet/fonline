@@ -402,42 +402,29 @@ void HexManager::EraseFieldItem(ushort hx, ushort hy, ItemHexView* item)
     }
 }
 
-auto HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data) -> uint
+void HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data)
 {
-    if (id == 0u) {
-        WriteLog("Item id is zero.\n");
-        return 0;
-    }
-
-    if (!IsMapLoaded()) {
-        WriteLog("Map is not loaded.");
-        return 0;
-    }
-
-    if (hx >= _maxHexX || hy >= _maxHexY) {
-        WriteLog("Position hx {} or hy {} error value.\n", hx, hy);
-        return 0;
-    }
+    RUNTIME_ASSERT(id != 0u);
+    RUNTIME_ASSERT(IsMapLoaded());
+    RUNTIME_ASSERT(!(hx >= _maxHexX || hy >= _maxHexY));
 
     const auto* proto = _engine->ProtoMngr->GetProtoItem(pid);
-    if (proto == nullptr) {
-        WriteLog("Proto not found '{}'.\n", _str().parseHash(pid));
-        return 0;
-    }
+    RUNTIME_ASSERT(proto);
 
     // Change
     auto* item_old = GetItemById(id);
     if (item_old != nullptr) {
-        if (item_old->GetProtoId() == pid && item_old->GetHexX() == hx && item_old->GetHexY() == hy) {
-            item_old->IsDestroyed = false;
+        // Todo: rework smooth item re-appearing before same item still on map
+        /*if (item_old->GetProtoId() == pid && item_old->GetHexX() == hx && item_old->GetHexY() == hy) {
+            item_old->IsDestroyed() = false;
             if (item_old->IsFinishing()) {
                 item_old->StopFinishing();
             }
             if (data != nullptr) {
-                item_old->Props.RestoreData(*data);
+                item_old->RestoreData(*data);
             }
             return item_old->GetId();
-        }
+        }*/
 
         DeleteItem(item_old, true, nullptr);
     }
@@ -467,8 +454,6 @@ auto HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added,
             RebuildLight();
         }
     }
-
-    return item->GetId();
 }
 
 void HexManager::FinishItem(uint id, bool is_deleted)
@@ -518,7 +503,7 @@ void HexManager::DeleteItem(ItemHexView* item, bool destroy_item, vector<ItemHex
     }
 
     if (destroy_item) {
-        item->IsDestroyed = true;
+        item->MarkAsDestroyed();
         _engine->ScriptSys->RemoveEntity(item);
         item->Release();
     }
@@ -2939,7 +2924,7 @@ void HexManager::DeleteCritter(uint crid)
     }
     RemoveCritter(cr);
     cr->DeleteAllItems();
-    cr->IsDestroyed = true;
+    cr->MarkAsDestroyed();
     _engine->ScriptSys->RemoveEntity(cr);
     cr->Release();
     _critters.erase(it);
@@ -2950,7 +2935,7 @@ void HexManager::DeleteCritters()
     for (auto& [id, cr] : _critters) {
         RemoveCritter(cr);
         cr->DeleteAllItems();
-        cr->IsDestroyed = true;
+        cr->MarkAsDestroyed();
         _engine->ScriptSys->RemoveEntity(cr);
         cr->Release();
     }
@@ -4345,7 +4330,7 @@ auto HexManager::SetProtoMap(ProtoMap& /*pmap*/) -> bool
             ItemView* entity_item = (ItemView*)entity;
             if (entity_item->GetOwnership() == ItemOwnership::MapHex)
             {
-                GenerateItem(entity_item->Id, entity_item->GetProtoId(), entity_item->Props);
+                GenerateItem(entity_item->Id, entity_item->GetProtoId(), entity_item->_props);
             }
             else if (entity_item->GetOwnership() == ItemOwnership::CritterInventory)
             {
@@ -4369,7 +4354,7 @@ auto HexManager::SetProtoMap(ProtoMap& /*pmap*/) -> bool
             CritterView* entity_cr = (CritterView*)entity;
             CritterView* cr =
                 new CritterView(entity_cr->Id, (ProtoCritter*)entity_cr->Proto, settings, sprMngr, resMngr);
-            cr->Props = entity_cr->Props;
+            cr->_props = entity_cr->_props;
             cr->Init();
             AddCritter(cr);
         }
@@ -4412,7 +4397,7 @@ void HexManager::GetProtoMap(ProtoMap& pmap)
         else
             throw UnreachablePlaceException(LINE_STR);
 
-        store_entity->Props = entity->Props;
+        store_entity->_props = entity->_props;
         pmap.AllEntities.push_back(store_entity);
         for (auto& child : entity->GetChildren())
         {

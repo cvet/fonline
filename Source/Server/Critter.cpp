@@ -40,7 +40,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Critter"), proto), CritterProperties(Props), _player {owner}
+Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Critter"), proto), CritterProperties(GetInitRef()), _player {owner}
 {
     if (_player != nullptr) {
         _player->AddRef();

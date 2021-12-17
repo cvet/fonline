@@ -216,7 +216,7 @@
 [[maybe_unused]] void Mapper_Global_DeleteEntities(FOMapper* mapper, const vector<ClientEntity*>& entities)
 {
     for (auto* entity : entities) {
-        if (entity != nullptr && !entity->IsDestroyed) {
+        if (entity != nullptr && !entity->IsDestroyed()) {
             mapper->DeleteEntity(entity);
         }
     }

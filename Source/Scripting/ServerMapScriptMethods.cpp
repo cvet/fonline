@@ -88,7 +88,7 @@
 
     if (!props.empty()) {
         Properties props_(self->GetEngine()->GetPropertyRegistrator("Item"));
-        props_ = proto->Props;
+        props_ = proto->GetProperties();
 
         for (const auto& [key, value] : props) {
             props_.SetValueAsIntProps(key, value);
@@ -157,7 +157,7 @@
     vector<Item*> items;
     items.reserve(map_items.size());
     for (auto* item : map_items) {
-        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             items.push_back(item);
         }
     }
@@ -181,7 +181,7 @@
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
-        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             items.push_back(item);
         }
     }
@@ -206,7 +206,7 @@
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
-        if (!item->IsDestroyed && predicate(item) && !item->IsDestroyed) {
+        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             items.push_back(item);
         }
     }
@@ -657,7 +657,8 @@
     Critter* npc;
     if (!props.empty()) {
         Properties props_(self->GetEngine()->GetPropertyRegistrator("Critter"));
-        props_ = proto->Props;
+        props_ = proto->GetProperties();
+
         for (const auto& [key, value] : props) {
             props_.SetValueAsIntProps(key, value);
         }

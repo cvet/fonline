@@ -187,9 +187,9 @@ public:
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
     void RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes);
     void RestoreData(vector<vector<uchar>>& all_data);
-    void SetSendIgnore(const Property* prop, Entity* entity);
-    void SetRawData(const Property* prop, uchar* data, uint data_size);
-    void SetValueFromData(const Property* prop, uchar* data, uint data_size);
+    void SetSendIgnore(const Property* prop, const Entity* entity);
+    void SetRawData(const Property* prop, const uchar* data, uint data_size);
+    void SetValueFromData(const Property* prop, const uchar* data, uint data_size);
     void SetPODValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int enum_value, int value);
     void SetValueAsIntByName(string_view enum_name, int value);
@@ -289,7 +289,7 @@ private:
     mutable vector<uchar*> _storeData {};
     mutable vector<uint> _storeDataSizes {};
     mutable vector<ushort> _storeDataComplexIndicies {};
-    Entity* _sendIgnoreEntity {};
+    const Entity* _sendIgnoreEntity {};
     const Property* _sendIgnoreProperty {};
     bool _nonConstHelper {};
 };
@@ -309,7 +309,7 @@ public:
     auto operator=(PropertyRegistrator&&) noexcept = delete;
     ~PropertyRegistrator();
 
-    [[nodiscard]] auto GetClassName() const -> string;
+    [[nodiscard]] auto GetClassName() const -> string_view;
     [[nodiscard]] auto GetCount() const -> uint;
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto FindNoComponentCheck(string_view property_name) const -> const Property*;

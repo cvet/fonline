@@ -920,8 +920,8 @@ def genCode(lang, target, isASCompiler=False):
         
         # Enums
         if isASCompiler:
-            globalLines.append('// Enums')
-            for e in codeGenTags['ExportEnum'] + codeGenTags['Enum']:
+            globalLines.append('// Script enums')
+            for e in codeGenTags['Enum']:
                 gname, utype, keyValues, _, _ = e
                 globalLines.append('enum class ' + gname + ' : ' + metaTypeToEngineType(utype))
                 globalLines.append('{')

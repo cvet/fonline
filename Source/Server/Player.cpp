@@ -41,7 +41,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, uint id, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Player"), proto), PlayerProperties(Props)
+Player::Player(FOServer* engine, uint id, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Player"), proto), PlayerProperties(GetInitRef())
 {
     Connection = connection;
     _talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
@@ -87,7 +87,7 @@ void Player::Send_AddCritter(Critter* cr)
 
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = cr->Props.StoreData(IsBitSet(cr->Flags, FCRIT_CHOSEN), &data, &data_sizes);
+    const auto whole_data_size = cr->StoreData(IsBitSet(cr->Flags, FCRIT_CHOSEN), &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -174,8 +174,8 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     vector<uchar*>* loc_data = nullptr;
     vector<uint>* loc_data_sizes = nullptr;
     if (map != nullptr) {
-        const auto map_whole_data_size = map->Props.StoreData(false, &map_data, &map_data_sizes);
-        const auto loc_whole_data_size = loc->Props.StoreData(false, &loc_data, &loc_data_sizes);
+        const auto map_whole_data_size = map->StoreData(false, &map_data, &map_data_sizes);
+        const auto loc_whole_data_size = loc->StoreData(false, &loc_data, &loc_data_sizes);
         msg_len += sizeof(ushort) + map_whole_data_size + sizeof(ushort) + loc_whole_data_size;
     }
 
@@ -229,7 +229,7 @@ void Player::Send_Property(NetProperty::Type type, const Property* prop, Entity*
     }
 
     uint data_size = 0;
-    void* data = entity->Props.GetRawData(prop, data_size);
+    const void* data = entity->GetProperties().GetRawData(prop, data_size);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
@@ -357,7 +357,7 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     vector<vector<uchar*>*> items_data(items.size());
     vector<vector<uint>*> items_data_sizes(items.size());
     for (const auto i : xrange(items)) {
-        const auto whole_data_size = items[i]->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
+        const auto whole_data_size = items[i]->StoreData(false, &items_data[i], &items_data_sizes[i]);
         msg_len += sizeof(uchar) + sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
     }
 
@@ -432,7 +432,7 @@ void Player::Send_AddItemOnMap(Item* item)
 
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = item->Props.StoreData(false, &data, &data_sizes);
+    const auto whole_data_size = item->StoreData(false, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -492,7 +492,7 @@ void Player::Send_AddItem(Item* item)
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hash) + sizeof(uchar);
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = item->Props.StoreData(true, &data, &data_sizes);
+    const auto whole_data_size = item->StoreData(true, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -682,7 +682,7 @@ void Player::Send_AllProperties()
 
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = Props.StoreData(true, &data, &data_sizes);
+    const auto whole_data_size = StoreData(true, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -1187,7 +1187,7 @@ void Player::Send_SomeItem(Item* item)
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hash) + sizeof(uchar);
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = item->Props.StoreData(false, &data, &data_sizes);
+    const auto whole_data_size = item->StoreData(false, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -1267,7 +1267,7 @@ void Player::Send_SomeItems(const vector<Item*>* items, int param)
     vector<vector<uchar*>*> items_data(items != nullptr ? items->size() : 0);
     vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
     for (size_t i = 0, j = items_data.size(); i < j; i++) {
-        const auto whole_data_size = items->at(i)->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
+        const auto whole_data_size = items->at(i)->StoreData(false, &items_data[i], &items_data_sizes[i]);
         msg_len += sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
     }
 

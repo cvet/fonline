@@ -352,7 +352,7 @@ void FOClient::UpdateFilesLoop()
                 // if (Update->FilesChanged)
                 //    Settings.Init(0, {});
 
-                //ScriptSys = new ClientScriptSystem(this, Settings);
+                // ScriptSys = new ClientScriptSystem(this, Settings);
 
                 return;
             }
@@ -1279,7 +1279,7 @@ void FOClient::NetDisconnect()
         _netOut.SetError(false);
 
         if (_curPlayer != nullptr) {
-            _curPlayer->IsDestroyed = true;
+            _curPlayer->MarkAsDestroyed();
             _curPlayer->Release();
             _curPlayer = nullptr;
         }
@@ -1804,7 +1804,7 @@ void FOClient::Net_SendProperty(NetProperty::Type type, const Property* prop, En
     }
 
     uint data_size = 0;
-    void* data = client_entity->Props.GetRawData(prop, data_size);
+    const void* data = client_entity->GetProperties().GetRawData(prop, data_size);
 
     const auto is_pod = prop->IsPOD();
     if (is_pod) {
@@ -1923,16 +1923,16 @@ void FOClient::Net_OnLoginSuccess()
     _netOut.SetEncryptKey(bin_seed);
     _netIn.SetEncryptKey(bout_seed);
 
-    Globals->Props.RestoreData(_globalsPropertiesData);
+    Globals->RestoreData(_globalsPropertiesData);
 
     if (_curPlayer != nullptr) {
-        _curPlayer->IsDestroyed = true;
+        _curPlayer->MarkAsDestroyed();
         _curPlayer->Release();
         _curPlayer = nullptr;
     }
 
     _curPlayer = new PlayerView(this, player_id, nullptr); // Todo: proto player?
-    _curPlayer->Props.RestoreData(_playerPropertiesData);
+    _curPlayer->RestoreData(_playerPropertiesData);
 }
 
 void FOClient::Net_OnAddCritter(bool is_npc)
@@ -1997,7 +1997,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         RUNTIME_ASSERT(proto);
 
         auto* cr = new CritterView(this, crid, proto, false);
-        cr->Props.RestoreData(_tempPropertiesData);
+        cr->RestoreData(_tempPropertiesData);
         cr->SetHexX(hx);
         cr->SetHexY(hy);
         cr->SetDir(dir);
@@ -2435,7 +2435,7 @@ void FOClient::Net_OnSomeItem()
     const auto* proto_item = ProtoMngr->GetProtoItem(item_pid);
     RUNTIME_ASSERT(proto_item);
     _someItem = new ItemView(this, item_id, proto_item);
-    _someItem->Props.RestoreData(_tempPropertiesData);
+    _someItem->RestoreData(_tempPropertiesData);
 }
 
 void FOClient::Net_OnCritterAction()
@@ -2515,7 +2515,7 @@ void FOClient::Net_OnCritterMoveItem()
             const auto* proto_item = ProtoMngr->GetProtoItem(slots_data_pid[i]);
             if (proto_item != nullptr) {
                 auto* item = new ItemView(this, slots_data_id[i], proto_item);
-                item->Props.RestoreData(slots_data_data[i]);
+                item->RestoreData(slots_data_data[i]);
                 item->SetCritSlot(slots_data_slot[i]);
                 cr->AddItem(item);
             }
@@ -2755,7 +2755,7 @@ void FOClient::Net_OnAllProperties()
         return;
     }
 
-    _chosen->Props.RestoreData(_tempPropertiesData);
+    _chosen->RestoreData(_tempPropertiesData);
 
     // Animate
     if (!_chosen->IsAnim()) {
@@ -2815,7 +2815,7 @@ void FOClient::Net_OnChosenAddItem()
     RUNTIME_ASSERT(proto_item);
 
     auto* item = new ItemView(this, item_id, proto_item);
-    item->Props.RestoreData(_tempPropertiesData);
+    item->RestoreData(_tempPropertiesData);
     item->SetOwnership(ItemOwnership::CritterInventory);
     item->SetCritId(_chosen->GetId());
     item->SetCritSlot(slot);
@@ -3167,76 +3167,50 @@ void FOClient::Net_OnProperty(uint data_size)
 
     CHECK_IN_BUFF_ERROR();
 
-    const Property* prop;
     Entity* entity = nullptr;
     switch (type) {
     case NetProperty::Global:
-        prop = GetPropertyRegistrator("Globals")->Get(property_index);
-        if (prop != nullptr) {
-            entity = Globals;
-        }
+        entity = Globals;
         break;
     case NetProperty::Player:
-        prop = GetPropertyRegistrator("Player")->Get(property_index);
-        if (prop != nullptr) {
-            entity = _curPlayer;
-        }
+        entity = _curPlayer;
         break;
     case NetProperty::Critter:
-        prop = GetPropertyRegistrator("Critter")->Get(property_index);
-        if (prop != nullptr) {
-            entity = GetCritter(cr_id);
-        }
+        entity = GetCritter(cr_id);
         break;
     case NetProperty::Chosen:
-        prop = GetPropertyRegistrator("Critter")->Get(property_index);
-        if (prop != nullptr) {
-            entity = _chosen;
-        }
+        entity = _chosen;
         break;
     case NetProperty::MapItem:
-        prop = GetPropertyRegistrator("Item")->Get(property_index);
-        if (prop != nullptr) {
-            entity = HexMngr.GetItemById(item_id);
-        }
+        entity = HexMngr.GetItemById(item_id);
         break;
     case NetProperty::CritterItem:
-        prop = GetPropertyRegistrator("Item")->Get(property_index);
-        if (prop != nullptr) {
-            auto* cr = GetCritter(cr_id);
-            if (cr != nullptr) {
-                entity = cr->GetItem(item_id);
-            }
+        if (auto* cr = GetCritter(cr_id); cr != nullptr) {
+            entity = cr->GetItem(item_id);
         }
         break;
     case NetProperty::ChosenItem:
-        prop = GetPropertyRegistrator("Item")->Get(property_index);
-        if (prop != nullptr) {
-            entity = (_chosen != nullptr ? _chosen->GetItem(item_id) : nullptr);
-        }
+        entity = (_chosen != nullptr ? _chosen->GetItem(item_id) : nullptr);
         break;
     case NetProperty::Map:
-        prop = GetPropertyRegistrator("Map")->Get(property_index);
-        if (prop != nullptr) {
-            entity = _curMap;
-        }
+        entity = _curMap;
         break;
     case NetProperty::Location:
-        prop = GetPropertyRegistrator("Location")->Get(property_index);
-        if (prop != nullptr) {
-            entity = _curLocation;
-        }
+        entity = _curLocation;
         break;
     default:
         throw UnreachablePlaceException(LINE_STR);
     }
-    if (prop == nullptr || entity == nullptr) {
+    if (entity == nullptr) {
         return;
     }
 
-    entity->Props.SetSendIgnore(prop, entity);
-    entity->Props.SetValueFromData(prop, _tempPropertyData.data(), static_cast<uint>(_tempPropertyData.size()));
-    entity->Props.SetSendIgnore(nullptr, nullptr);
+    const auto* prop = entity->GetProperties().GetRegistrator()->Get(property_index);
+    if (prop == nullptr) {
+        return;
+    }
+
+    entity->SetValueFromData(prop, _tempPropertyData, true);
 
     if (type == NetProperty::MapItem) {
         ItemMapChangedEvent.Raise(dynamic_cast<ItemView*>(entity), dynamic_cast<ItemView*>(entity));
@@ -3398,22 +3372,22 @@ void FOClient::Net_OnLoadMap()
     CHECK_IN_BUFF_ERROR();
 
     if (_curMap != nullptr) {
-        _curMap->IsDestroyed = true;
+        _curMap->MarkAsDestroyed();
         _curMap->Release();
         _curMap = nullptr;
     }
 
     if (_curLocation != nullptr) {
-        _curLocation->IsDestroyed = true;
+        _curLocation->MarkAsDestroyed();
         _curLocation->Release();
         _curLocation = nullptr;
     }
 
     if (map_pid != 0u) {
         _curLocation = new LocationView(this, 0, ProtoMngr->GetProtoLocation(loc_pid));
-        _curLocation->Props.RestoreData(_tempPropertiesDataExt);
+        _curLocation->RestoreData(_tempPropertiesDataExt);
         _curMap = new MapView(this, 0, ProtoMngr->GetProtoMap(map_pid));
-        _curMap->Props.RestoreData(_tempPropertiesData);
+        _curMap->RestoreData(_tempPropertiesData);
     }
 
     Settings.SpritesZoom = 1.0f;
@@ -3692,7 +3666,7 @@ void FOClient::Net_OnSomeItems()
         const auto* proto_item = ProtoMngr->GetProtoItem(item_pid);
         if (item_id != 0u && proto_item != nullptr) {
             auto* item = new ItemView(this, item_id, proto_item);
-            item->Props.RestoreData(_tempPropertiesData);
+            item->RestoreData(_tempPropertiesData);
             item_container.push_back(item);
         }
     }

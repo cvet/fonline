@@ -102,7 +102,7 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Global_GetChosen(FOClient* client)
 {
-    if (client->GetChosen() && client->GetChosen()->IsDestroyed) {
+    if (client->GetChosen() && client->GetChosen()->IsDestroyed()) {
         return nullptr;
     }
     return client->GetChosen();
@@ -135,7 +135,7 @@
         }
     }
 
-    if (item == nullptr || item->IsDestroyed) {
+    if (item == nullptr || item->IsDestroyed()) {
         return static_cast<ItemView*>(nullptr);
     }
     return item;
@@ -213,7 +213,7 @@
         return static_cast<CritterView*>(nullptr); // throw ScriptException("Critter id arg is zero";
     }
     auto* const cr = client->GetCritter(critterId);
-    if (!cr || cr->IsDestroyed) {
+    if (!cr || cr->IsDestroyed()) {
         return static_cast<CritterView*>(nullptr);
     }
     return cr;

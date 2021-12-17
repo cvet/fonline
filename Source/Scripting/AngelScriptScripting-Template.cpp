@@ -61,13 +61,6 @@
 #include "Mapper.h"
 #include "MapperScripting.h"
 #endif
-
-#else
-#include "FileSystem.h"
-#include "StringUtils.h"
-
-DECLARE_EXCEPTION(ScriptInitException);
-DECLARE_EXCEPTION(ScriptCompilerException);
 #endif
 
 #if SERVER_SCRIPTING
@@ -86,10 +79,14 @@ DECLARE_EXCEPTION(ScriptCompilerException);
 #error Invalid setup
 #endif
 
+#include "Application.h"
+#include "FileSystem.h"
+#include "Log.h"
+#include "StringUtils.h"
+
 #include "AngelScriptExtensions.h"
 #include "AngelScriptReflection.h"
 #include "AngelScriptScriptDict.h"
-#include "Log.h"
 
 #include "../autowrapper/aswrappedcall.h"
 #include "angelscript.h"
@@ -107,6 +104,9 @@ DECLARE_EXCEPTION(ScriptCompilerException);
 #include "weakref/weakref.h"
 
 #if COMPILER_MODE
+DECLARE_EXCEPTION(ScriptInitException);
+DECLARE_EXCEPTION(ScriptCompilerException);
+
 struct FOServer;
 struct FOClient;
 struct FOMapper;
@@ -115,13 +115,11 @@ struct BaseEntity
 {
     void AddRef() { }
     void Release() { }
-
     uint GetId() { return 0u; }
     hash GetProtoId() { return 0u; }
     FOEngine* GetEngine() { return nullptr; }
-
-    bool IsDestroyed {};
-    bool IsDestroying {};
+    auto IsDestroyed() -> bool { return false; }
+    auto IsDestroying() -> bool { return false; }
 };
 
 #define INIT_ARGS const char* script_path
@@ -137,7 +135,7 @@ struct SCRIPTING_CLASS
 #define INIT_ARGS
 
 #define ENTITY_VERIFY(e) \
-    if (e != nullptr && e->IsDestroyed) { \
+    if ((e) != nullptr && (e)->IsDestroyed()) { \
         throw ScriptException("Access to destroyed entity"); \
     }
 #endif
@@ -323,13 +321,13 @@ static auto Entity_ProtoId(BaseEntity* self) -> hash
 static auto Entity_IsDestroyed(BaseEntity* self) -> bool
 {
     // May call on destroyed entity
-    return self->IsDestroyed;
+    return self->IsDestroyed();
 }
 
 static auto Entity_IsDestroying(BaseEntity* self) -> bool
 {
     // May call on destroyed entity
-    return self->IsDestroying;
+    return self->IsDestroying();
 }
 
 ///@ CodeGen Global
