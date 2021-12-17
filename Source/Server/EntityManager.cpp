@@ -45,9 +45,9 @@ EntityManager::EntityManager(FOServer* engine) : _engine {engine}
 void EntityManager::RegisterEntity(ServerEntity* entity)
 {
     if (entity->GetId() == 0u) {
-        auto id = _engine->Globals->GetLastEntityId() + 1;
+        auto id = _engine->GetLastEntityId() + 1;
         id = std::max(id, 2u);
-        _engine->Globals->SetLastEntityId(id);
+        _engine->SetLastEntityId(id);
 
         entity->SetId(id);
 

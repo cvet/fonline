@@ -397,14 +397,14 @@ auto Property::GetBaseSize() const -> uint
     return _baseSize;
 }
 
-auto Property::IsPOD() const -> bool
+auto Property::IsPlainData() const -> bool
 {
-    return _dataType == POD;
+    return _dataType == DataType::PlainData;
 }
 
 auto Property::IsDict() const -> bool
 {
-    return _dataType == Dict;
+    return _dataType == DataType::Dict;
 }
 
 auto Property::IsHash() const -> bool
@@ -454,7 +454,7 @@ Properties::Properties(const PropertyRegistrator* registrator) : _registrator {r
     _sendIgnoreEntity = nullptr;
     _sendIgnoreProperty = nullptr;
 
-    // Allocate POD data
+    // Allocate PlainData data
     if (!_registrator->_podDataPool.empty()) {
         _podData = _registrator->_podDataPool.back();
         _registrator->_podDataPool.pop_back();
@@ -472,7 +472,7 @@ Properties::Properties(const PropertyRegistrator* registrator) : _registrator {r
 
 Properties::Properties(const Properties& other) : Properties(other._registrator)
 {
-    // Copy POD data
+    // Copy PlainData data
     std::memcpy(&_podData[0], &other._podData[0], _registrator->_wholePodDataSize);
 
     // Copy complex data
@@ -503,7 +503,7 @@ auto Properties::operator=(const Properties& other) -> Properties&
 
     RUNTIME_ASSERT(_registrator == other._registrator);
 
-    // Copy POD data
+    // Copy PlainData data
     std::memcpy(&_podData[0], &other._podData[0], _registrator->_wholePodDataSize);
 
     // Copy complex data
@@ -540,7 +540,7 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     _storeData.resize(0);
     _storeDataSizes.resize(0);
 
-    // Store POD properties data
+    // Store PlainData properties data
     _storeData.push_back(_podData);
     _storeDataSizes.push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
     whole_size += _storeDataSizes.back();
@@ -577,7 +577,7 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
 
 void Properties::RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes)
 {
-    // Restore POD data
+    // Restore PlainData data
     const auto public_size = static_cast<uint>(_registrator->_publicPodDataSpace.size());
     const auto protected_size = static_cast<uint>(_registrator->_protectedPodDataSpace.size());
     RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size);
@@ -1160,7 +1160,7 @@ auto Properties::GetRawDataSize(const Property* prop) const -> uint
 
 auto Properties::GetRawData(const Property* prop, uint& data_size) const -> const uchar*
 {
-    if (prop->_dataType == Property::POD) {
+    if (prop->_dataType == Property::DataType::PlainData) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
         data_size = prop->_baseSize;
         return &_podData[prop->_podDataOffset];
@@ -1178,7 +1178,7 @@ auto Properties::GetRawData(const Property* prop, uint& data_size) -> uchar*
 
 void Properties::SetRawData(const Property* prop, const uchar* data, uint data_size)
 {
-    if (prop->IsPOD()) {
+    if (prop->IsPlainData()) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
         RUNTIME_ASSERT(prop->_baseSize == data_size);
 
@@ -1210,7 +1210,7 @@ void Properties::SetValueFromData(const Property* prop, const uchar* data, uint 
             str.assign((char*)data, data_size);
         GenericSet(entity, &str);
     }
-    else if (dataType == Property::POD)
+    else if (dataType == Property::PlainData)
     {
         RUNTIME_ASSERT(data_size == baseSize);
         GenericSet(entity, data);
@@ -1228,7 +1228,7 @@ void Properties::SetValueFromData(const Property* prop, const uchar* data, uint 
 
 auto Properties::GetPODValueAsInt(const Property* prop) const -> int
 {
-    RUNTIME_ASSERT(prop->_dataType == Property::POD);
+    RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBoolDataType) {
         return GetValue<bool>(prop) ? 1 : 0;
@@ -1275,7 +1275,7 @@ auto Properties::GetPODValueAsInt(const Property* prop) const -> int
 
 void Properties::SetPODValueAsInt(const Property* prop, int value)
 {
-    RUNTIME_ASSERT(prop->_dataType == Property::POD);
+    RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
     if (prop->_isBoolDataType) {
         SetValue<bool>(prop, value != 0);
@@ -1324,8 +1324,8 @@ auto Properties::GetValueAsInt(int enum_value) const -> int
     if (prop == nullptr) {
         throw PropertiesException("Enum not found", enum_value);
     }
-    if (!prop->IsPOD()) {
-        throw PropertiesException("Can't retreive integer value from non POD property", prop->GetName());
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
     }
     if (!prop->IsReadable()) {
         throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
@@ -1340,8 +1340,8 @@ void Properties::SetValueAsInt(int enum_value, int value)
     if (prop == nullptr) {
         throw PropertiesException("Enum not found", enum_value);
     }
-    if (!prop->IsPOD()) {
-        throw PropertiesException("Can't set integer value to non POD property", prop->GetName());
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
     }
     if (!prop->IsWritable()) {
         throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
@@ -1356,8 +1356,8 @@ void Properties::SetValueAsIntByName(string_view enum_name, int value)
     if (prop == nullptr) {
         throw PropertiesException("Enum not found", enum_name);
     }
-    if (!prop->IsPOD()) {
-        throw PropertiesException("Can't set by name integer value from non POD property", prop->GetName());
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't set by name integer value from non PlainData property", prop->GetName());
     }
     if (!prop->IsWritable()) {
         throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
@@ -1372,13 +1372,13 @@ void Properties::SetValueAsIntProps(int enum_value, int value)
     if (prop == nullptr) {
         throw PropertiesException("Enum not found", enum_value);
     }
-    if (!prop->IsPOD()) {
-        throw PropertiesException("Can't set integer value to non POD property", prop->GetName());
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
     }
     if (!prop->IsWritable()) {
         throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
     }
-    if ((prop->_accessType & Property::VirtualMask) != 0) {
+    if (IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
 
@@ -1441,7 +1441,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
 {
 #define ISTYPE(t) (type.hash_code() == typeid(t).hash_code())
 
-    auto data_type = Property::DataType::POD;
+    auto data_type = Property::DataType::PlainData;
     uint data_size = 0;
     auto is_int_data_type = false;
     auto is_signed_int_data_type = false;
@@ -1457,7 +1457,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     const auto is_hash_sub2 = false;
 
     if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) || ISTYPE(ushort) || ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(float) || ISTYPE(double) || ISTYPE(bool)) {
-        data_type = Property::POD;
+        data_type = Property::DataType::PlainData;
 
         if (ISTYPE(char) || ISTYPE(uchar) || ISTYPE(bool)) {
             data_size = 1;
@@ -1482,11 +1482,11 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
         // is_enum_data_type = (type_id > asTYPEID_DOUBLE);
     }
     else if (ISTYPE(string)) {
-        data_type = Property::String;
+        data_type = Property::DataType::String;
         data_size = sizeof(string);
     }
     else if (ISTYPE(vector<int>)) {
-        data_type = Property::Array;
+        data_type = Property::DataType::Array;
         data_size = sizeof(void*);
 
         auto is_array_of_pod = ISTYPE(vector<int>);
@@ -1494,7 +1494,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
         is_hash_sub0 = ISTYPE(vector<hash>);
     }
     else if (ISTYPE(vector<int>)) {
-        data_type = Property::Dict;
+        data_type = Property::DataType::Dict;
         data_size = sizeof(void*);
 
         /*int value_sub_type_id = as_obj_type->GetSubTypeId(1);
@@ -1509,7 +1509,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
             if (!is_dict_of_string && !is_dict_array_of_pod && !is_dict_of_array_of_string)
             {
                 WriteLog(
-                    "Invalid property type '{}', dict value must have POD/string type or array of POD/string type.\n",
+                    "Invalid property type '{}', dict value must have PlainData/string type or array of PlainData/string type.\n",
                     type_name);
                 return nullptr;
             }
@@ -1539,13 +1539,13 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     // Disallow set or get accessors
     auto disable_get = false;
     auto disable_set = false;
-    if (_isServer && (access & Property::ClientOnlyMask) != 0) {
+    if (_isServer && IsEnumSet(access, Property::AccessType::ClientOnlyMask)) {
         disable_get = disable_set = true;
     }
-    if (!_isServer && (access & Property::ServerOnlyMask) != 0) {
+    if (!_isServer && IsEnumSet(access, Property::AccessType::ServerOnlyMask)) {
         disable_get = disable_set = true;
     }
-    if (!_isServer && ((access & Property::PublicMask) != 0 || (access & Property::ProtectedMask) != 0) && (access & Property::ModifiableMask) == 0) {
+    if (!_isServer && (IsEnumSet(access, Property::AccessType::PublicMask) || IsEnumSet(access, Property::AccessType::ProtectedMask)) && !IsEnumSet(access, Property::AccessType::ModifiableMask)) {
         disable_set = true;
     }
     // if (is_const) {
@@ -1561,12 +1561,12 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     if (!disable_set) {
     }
 
-    // POD property data offset
+    // PlainData property data offset
     auto data_base_offset = static_cast<uint>(-1);
-    if (data_type == Property::POD && !disable_get && (access & Property::VirtualMask) == 0) {
-        const auto is_public = (access & Property::PublicMask) != 0;
-        const auto is_protected = (access & Property::ProtectedMask) != 0;
-        auto& space = is_public ? _publicPodDataSpace : is_protected ? _protectedPodDataSpace : _privatePodDataSpace;
+    if (data_type == Property::DataType::PlainData && !disable_get && !IsEnumSet(access, Property::AccessType::VirtualMask)) {
+        const auto is_public = IsEnumSet(access, Property::AccessType::PublicMask);
+        const auto is_protected = IsEnumSet(access, Property::AccessType::ProtectedMask);
+        auto& space = (is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace));
 
         const auto space_size = static_cast<uint>(space.size());
         uint space_pos = 0;
@@ -1602,17 +1602,17 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
 
     // Complex property data index
     auto complex_data_index = static_cast<uint>(-1);
-    if (data_type != Property::POD && (!disable_get || !disable_set) && (access & Property::VirtualMask) == 0) {
+    if (data_type != Property::DataType::PlainData && (!disable_get || !disable_set) && !IsEnumSet(access, Property::AccessType::VirtualMask)) {
         complex_data_index = _complexPropertiesCount++;
-        if ((access & Property::PublicMask) != 0) {
+        if (IsEnumSet(access, Property::AccessType::PublicMask)) {
             _publicComplexDataProps.push_back(static_cast<ushort>(reg_index));
             _publicProtectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
         }
-        else if ((access & Property::ProtectedMask) != 0) {
+        else if (IsEnumSet(access, Property::AccessType::ProtectedMask)) {
             _protectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
             _publicProtectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
         }
-        else if ((access & Property::PrivateMask) != 0) {
+        else if (IsEnumSet(access, Property::AccessType::PrivateMask)) {
             _privateComplexDataProps.push_back(static_cast<ushort>(reg_index));
         }
         else {
@@ -1662,16 +1662,16 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     _registeredProperties.push_back(prop);
     _registeredPropertiesLookup.emplace(prop->GetName(), prop);
 
-    // Fix POD data offsets
+    // Fix PlainData data offsets
     for (auto* prop : _registeredProperties) {
         if (prop->_podDataOffset == static_cast<uint>(-1)) {
             continue;
         }
 
-        if ((prop->_accessType & Property::ProtectedMask) != 0) {
+        if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
             prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
         }
-        else if ((prop->_accessType & Property::PrivateMask) != 0) {
+        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
             prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
         }
     }

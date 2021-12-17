@@ -399,7 +399,7 @@ auto Critter::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
     return true;
 }
 
-void Critter::Broadcast_Property(NetProperty::Type type, Property* prop, ServerEntity* entity)
+void Critter::Broadcast_Property(NetProperty type, Property* prop, ServerEntity* entity)
 {
     NON_CONST_METHOD_HINT();
 
@@ -787,7 +787,7 @@ void Critter::ContinueTimeEvents(int offs_time)
     te_next_time->Release();*/
 }
 
-void Critter::Send_Property(NetProperty::Type type, const Property* prop, ServerEntity* entity)
+void Critter::Send_Property(NetProperty type, const Property* prop, ServerEntity* entity)
 {
     NON_CONST_METHOD_HINT();
 

@@ -54,7 +54,3 @@ auto ServerEntity::GetEngine() -> FOServer*
 
     return _engine;
 }
-
-ServerGlobals::ServerGlobals(const PropertyRegistrator* registrator) : Entity(registrator), GlobalsProperties(GetInitRef())
-{
-}

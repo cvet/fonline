@@ -47,7 +47,7 @@
 ///# ...
 ///# param condition ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Global_Assert([[maybe_unused]] void* dummy, bool condition)
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] void* dummy, bool condition)
 {
     if (!condition) {
         throw ScriptException("Assertion failed");
@@ -57,7 +57,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Global_ThrowException([[maybe_unused]] void* dummy, string_view message)
+[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] void* dummy, string_view message)
 {
     throw ScriptException(message);
 }
@@ -65,7 +65,7 @@
 ///# ...
 ///# param time ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Global_Yield([[maybe_unused]] void* dummy, uint time)
+[[maybe_unused]] void Common_Game_Yield([[maybe_unused]] void* dummy, uint time)
 {
     // Todo: fix script system
     // Script::SuspendCurrentContext(time);
@@ -76,7 +76,7 @@
 ///# param result ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Common_Global_StrToInt([[maybe_unused]] void* dummy, string_view text, int& result)
+[[maybe_unused]] bool Common_Game_StrToInt([[maybe_unused]] void* dummy, string_view text, int& result)
 {
     if (!_str(text).isNumber()) {
         return false;
@@ -90,7 +90,7 @@
 ///# param result ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Common_Global_StrToFloat([[maybe_unused]] void* dummy, string_view text, float& result)
+[[maybe_unused]] bool Common_Game_StrToFloat([[maybe_unused]] void* dummy, string_view text, float& result)
 {
     if (!_str(text).isNumber()) {
         return false;
@@ -228,7 +228,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param command ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Common_Global_SystemCall([[maybe_unused]] void* dummy, string_view command)
+[[maybe_unused]] int Common_Game_SystemCall([[maybe_unused]] void* dummy, string_view command)
 {
     auto prefix = command.substr(0, command.find(' '));
     return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
@@ -239,7 +239,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param output ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Common_Global_SystemCallExt([[maybe_unused]] void* dummy, string_view command, string& output)
+[[maybe_unused]] int Common_Game_SystemCallExt([[maybe_unused]] void* dummy, string_view command, string& output)
 {
     output = "";
 
@@ -256,7 +256,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param maxValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Common_Global_Random([[maybe_unused]] void* dummy, int minValue, int maxValue)
+[[maybe_unused]] int Common_Game_Random([[maybe_unused]] void* dummy, int minValue, int maxValue)
 {
     return GenericUtils::Random(minValue, maxValue);
 }
@@ -264,7 +264,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Common_Global_Log([[maybe_unused]] void* dummy, string_view text)
+[[maybe_unused]] void Common_Game_Log([[maybe_unused]] void* dummy, string_view text)
 {
     WriteLog("{}\n", text);
 }
@@ -273,7 +273,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hash Common_Global_GetStrHash([[maybe_unused]] void* dummy, string_view text)
+[[maybe_unused]] hash Common_Game_GetStrHash([[maybe_unused]] void* dummy, string_view text)
 {
     if (text.empty()) {
         return 0;
@@ -285,7 +285,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param value ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Global_GetHashStr([[maybe_unused]] void* dummy, hash value)
+[[maybe_unused]] string Common_Game_GetHashStr([[maybe_unused]] void* dummy, hash value)
 {
     return _str().parseHash(value).str();
 }
@@ -295,7 +295,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param length ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Global_DecodeUTF8([[maybe_unused]] void* dummy, string_view text, uint& length)
+[[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] void* dummy, string_view text, uint& length)
 {
     const auto str = string(text);
     return utf8::Decode(str.c_str(), &length);
@@ -305,7 +305,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param ucs ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Global_EncodeUTF8([[maybe_unused]] void* dummy, uint ucs)
+[[maybe_unused]] string Common_Game_EncodeUTF8([[maybe_unused]] void* dummy, uint ucs)
 {
     char buf[4];
     const auto len = utf8::Encode(ucs, buf);
@@ -316,7 +316,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Global_SHA1([[maybe_unused]] void* dummy, string_view text)
+[[maybe_unused]] string Common_Game_SHA1([[maybe_unused]] void* dummy, string_view text)
 {
     SHA1_CTX ctx;
     _SHA1_Init(&ctx);
@@ -337,7 +337,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Global_SHA2([[maybe_unused]] void* dummy, string_view text)
+[[maybe_unused]] string Common_Game_SHA2([[maybe_unused]] void* dummy, string_view text)
 {
     const uint digest_size = 32;
     uchar digest[digest_size];
@@ -354,7 +354,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# ...
 ///# param link ...
 ///@ ExportMethod
-[[maybe_unused]] void Common_Global_OpenLink([[maybe_unused]] void* dummy, string_view link)
+[[maybe_unused]] void Common_Game_OpenLink([[maybe_unused]] void* dummy, string_view link)
 {
 #if FO_WINDOWS
 #if !FO_UWP
@@ -367,39 +367,9 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 }
 
 ///# ...
-///# param pid ...
-///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Entity* Common_Global_GetProtoItem([[maybe_unused]] void* dummy, hash pid, const map<int, int>& props)
-{
-#if 0
-    const auto* proto = ProtoMngr.GetProtoItem( pid );
-    if( !proto ) {
-        return nullptr;
-    }
-
-    Item* item = new Item( 0, proto );
-    if( props )
-    {
-        for( asUINT i = 0; i < props->GetSize(); i++ )
-        {
-            if( !Properties::SetValueAsIntProps( (Properties*) &item->_props, *(int*) props->GetKey( i ), *(int*) props->GetValue( i ) ) )
-            {
-                item->Release();
-                return nullptr;
-            }
-        }
-    }
-    return item;
-#endif
-    return nullptr;
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uint Common_Global_GetUnixTime([[maybe_unused]] void* dummy)
+[[maybe_unused]] uint Common_Game_GetUnixTime([[maybe_unused]] void* dummy)
 {
     return static_cast<uint>(time(nullptr));
 }

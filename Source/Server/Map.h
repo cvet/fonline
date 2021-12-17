@@ -131,7 +131,7 @@ public:
     auto AddItem(Item* item, ushort hx, ushort hy) -> bool;
     void SetItem(Item* item, ushort hx, ushort hy);
     void EraseItem(uint item_id);
-    void SendProperty(NetProperty::Type type, const Property* prop, ServerEntity* entity);
+    void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
     void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
     void SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius);

@@ -49,7 +49,7 @@
 ///# param hy2 ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Mapper_Global_GetHexDistance(FOMapper* mapper, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
+[[maybe_unused]] int Mapper_Game_GetHexDistance(FOMapper* mapper, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
 {
     return mapper->GeomHelper.DistGame(hx1, hy1, hx2, hy2);
 }
@@ -61,7 +61,7 @@
 ///# param toHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Mapper_Global_GetHexDir(FOMapper* mapper, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] uchar Mapper_Game_GetHexDir(FOMapper* mapper, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
 {
     return mapper->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy);
 }
@@ -74,7 +74,7 @@
 ///# param offset ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Mapper_Global_GetHexDirWithOffset(FOMapper* mapper, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
+[[maybe_unused]] uchar Mapper_Game_GetHexDirWithOffset(FOMapper* mapper, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
 {
     return mapper->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
 }
@@ -82,7 +82,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetTick(FOMapper* mapper)
+[[maybe_unused]] uint Mapper_Game_GetTick(FOMapper* mapper)
 {
     return mapper->GameTime.FrameTick();
 }
@@ -93,7 +93,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Global_AddItem(FOMapper* mapper, hash pid, ushort hx, ushort hy)
+[[maybe_unused]] ItemView* Mapper_Game_AddItem(FOMapper* mapper, hash pid, ushort hx, ushort hy)
 {
     if (hx >= mapper->HexMngr.GetWidth() || hy >= mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -113,7 +113,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Global_AddCritter(FOMapper* mapper, hash pid, ushort hx, ushort hy)
+[[maybe_unused]] CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hash pid, ushort hx, ushort hy)
 {
     if (hx >= mapper->HexMngr.GetWidth() || hy >= mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -132,7 +132,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Global_GetItemByHex(FOMapper* mapper, ushort hx, ushort hy)
+[[maybe_unused]] ItemView* Mapper_Game_GetItemByHex(FOMapper* mapper, ushort hx, ushort hy)
 {
     return mapper->HexMngr.GetItem(hx, hy, 0);
 }
@@ -142,7 +142,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Mapper_Global_GetItemsByHex(FOMapper* mapper, ushort hx, ushort hy)
+[[maybe_unused]] vector<ItemView*> Mapper_Game_GetItemsByHex(FOMapper* mapper, ushort hx, ushort hy)
 {
     vector<ItemHexView*> hex_items;
     mapper->HexMngr.GetItems(hx, hy, hex_items);
@@ -162,7 +162,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Global_GetCritterByHex(FOMapper* mapper, ushort hx, ushort hy, int findType)
+[[maybe_unused]] CritterView* Mapper_Game_GetCritterByHex(FOMapper* mapper, ushort hx, ushort hy, int findType)
 {
     vector<CritterView*> critters_;
     mapper->HexMngr.GetCritters(hx, hy, critters_, findType);
@@ -175,7 +175,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<CritterView*> Mapper_Global_GetCrittersByHex(FOMapper* mapper, ushort hx, ushort hy, int findType)
+[[maybe_unused]] vector<CritterView*> Mapper_Game_GetCrittersByHex(FOMapper* mapper, ushort hx, ushort hy, int findType)
 {
     vector<CritterView*> critters;
     mapper->HexMngr.GetCritters(hx, hy, critters, findType);
@@ -187,7 +187,7 @@
 ///# param hx ...
 ///# param hy ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_MoveEntity(FOMapper* mapper, ClientEntity* entity, ushort hx, ushort hy)
+[[maybe_unused]] void Mapper_Game_MoveEntity(FOMapper* mapper, ClientEntity* entity, ushort hx, ushort hy)
 {
     auto hx_ = hx;
     auto hy_ = hy;
@@ -205,7 +205,7 @@
 ///# ...
 ///# param entity ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DeleteEntity(FOMapper* mapper, ClientEntity* entity)
+[[maybe_unused]] void Mapper_Game_DeleteEntity(FOMapper* mapper, ClientEntity* entity)
 {
     mapper->DeleteEntity(entity);
 }
@@ -213,7 +213,7 @@
 ///# ...
 ///# param entities ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DeleteEntities(FOMapper* mapper, const vector<ClientEntity*>& entities)
+[[maybe_unused]] void Mapper_Game_DeleteEntities(FOMapper* mapper, const vector<ClientEntity*>& entities)
 {
     for (auto* entity : entities) {
         if (entity != nullptr && !entity->IsDestroyed()) {
@@ -226,7 +226,7 @@
 ///# param entity ...
 ///# param set ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_SelectEntity(FOMapper* mapper, ClientEntity* entity, bool set)
+[[maybe_unused]] void Mapper_Game_SelectEntity(FOMapper* mapper, ClientEntity* entity, bool set)
 {
     if (entity == nullptr) {
         throw ScriptException("Entity arg is null");
@@ -244,7 +244,7 @@
 ///# param entities ...
 ///# param set ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_SelectEntities(FOMapper* mapper, const vector<ClientEntity*>& entities, bool set)
+[[maybe_unused]] void Mapper_Game_SelectEntities(FOMapper* mapper, const vector<ClientEntity*>& entities, bool set)
 {
     for (auto* entity : entities) {
         if (entity != nullptr) {
@@ -261,7 +261,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ClientEntity* Mapper_Global_GetSelectedEntity(FOMapper* mapper)
+[[maybe_unused]] ClientEntity* Mapper_Game_GetSelectedEntity(FOMapper* mapper)
 {
     return !mapper->SelectedEntities.empty() ? mapper->SelectedEntities[0] : nullptr;
 }
@@ -269,7 +269,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ClientEntity*> Mapper_Global_GetSelectedEntities(FOMapper* mapper)
+[[maybe_unused]] vector<ClientEntity*> Mapper_Game_GetSelectedEntities(FOMapper* mapper)
 {
     vector<ClientEntity*> entities;
     entities.reserve(mapper->SelectedEntities.size());
@@ -287,7 +287,7 @@
 ///# param roof ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetTilesCount(FOMapper* mapper, ushort hx, ushort hy, bool roof)
+[[maybe_unused]] uint Mapper_Game_GetTilesCount(FOMapper* mapper, ushort hx, ushort hy, bool roof)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -309,7 +309,7 @@
 ///# param roof ...
 ///# param layer ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DeleteTile(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] void Mapper_Game_DeleteTile(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -359,7 +359,7 @@
 ///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hash Mapper_Global_GetTileHash(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] hash Mapper_Game_GetTileHash(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -390,7 +390,7 @@
 ///# param roof ...
 ///# param picHash ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_AddTileHash(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash picHash)
+[[maybe_unused]] void Mapper_Game_AddTileHash(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash picHash)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -419,7 +419,7 @@
 ///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Mapper_Global_GetTileName(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] string Mapper_Game_GetTileName(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -450,7 +450,7 @@
 ///# param roof ...
 ///# param picName ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_AddTileName(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string_view picName)
+[[maybe_unused]] void Mapper_Game_AddTileName(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string_view picName)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -477,7 +477,7 @@
 ///# param fileName ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] MapView* Mapper_Global_LoadMap(FOMapper* mapper, string_view fileName)
+[[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
     auto* pmap = new ProtoMap(_str(fileName).toHash(), mapper->GetPropertyRegistrator("Map"));
     // Todo: need attention!
@@ -495,7 +495,7 @@
 ///# ...
 ///# param map ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_UnloadMap(FOMapper* mapper, MapView* map)
+[[maybe_unused]] void Mapper_Game_UnloadMap(FOMapper* mapper, MapView* map)
 {
     if (map == nullptr) {
         throw ScriptException("Proto map arg nullptr");
@@ -521,7 +521,7 @@
 ///# param customName ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Mapper_Global_SaveMap(FOMapper* mapper, MapView* map, string_view customName)
+[[maybe_unused]] bool Mapper_Game_SaveMap(FOMapper* mapper, MapView* map, string_view customName)
 {
     if (map == nullptr) {
         throw ScriptException("Proto map arg nullptr");
@@ -537,7 +537,7 @@
 ///# param map ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Mapper_Global_ShowMap(FOMapper* mapper, MapView* map)
+[[maybe_unused]] bool Mapper_Game_ShowMap(FOMapper* mapper, MapView* map)
 {
     if (map == nullptr) {
         throw ScriptException("Proto map arg nullptr");
@@ -562,7 +562,7 @@
 ///# param index ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<MapView*> Mapper_Global_GetLoadedMaps(FOMapper* mapper, int& index)
+[[maybe_unused]] vector<MapView*> Mapper_Game_GetLoadedMaps(FOMapper* mapper, int& index)
 {
     index = -1;
     for (auto i = 0, j = static_cast<int>(mapper->LoadedMaps.size()); i < j; i++) {
@@ -578,7 +578,7 @@
 ///# param dir ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<string> Mapper_Global_GetMapFileNames(FOMapper* mapper, string_view dir)
+[[maybe_unused]] vector<string> Mapper_Game_GetMapFileNames(FOMapper* mapper, string_view dir)
 {
     vector<string> names;
 
@@ -595,7 +595,7 @@
 ///# param width ...
 ///# param height ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_ResizeMap(FOMapper* mapper, ushort width, ushort height)
+[[maybe_unused]] void Mapper_Game_ResizeMap(FOMapper* mapper, ushort width, ushort height)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -672,7 +672,7 @@
 ///# param tab ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<string> Mapper_Global_TabGetTileDirs(FOMapper* mapper, int tab)
+[[maybe_unused]] vector<string> Mapper_Game_TabGetTileDirs(FOMapper* mapper, int tab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -688,7 +688,7 @@
 ///# param subTab ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<hash> Mapper_Global_TabGetItemPids(FOMapper* mapper, int tab, string_view subTab)
+[[maybe_unused]] vector<hash> Mapper_Game_TabGetItemPids(FOMapper* mapper, int tab, string_view subTab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -707,7 +707,7 @@
 ///# param subTab ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<hash> Mapper_Global_TabGetCritterPids(FOMapper* mapper, int tab, string_view subTab)
+[[maybe_unused]] vector<hash> Mapper_Game_TabGetCritterPids(FOMapper* mapper, int tab, string_view subTab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -726,7 +726,7 @@
 ///# param dirNames ...
 ///# param includeSubdirs ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_TabSetTileDirs(FOMapper* mapper, int tab, const vector<string>& dirNames, const vector<bool>& includeSubdirs)
+[[maybe_unused]] void Mapper_Game_TabSetTileDirs(FOMapper* mapper, int tab, const vector<string>& dirNames, const vector<bool>& includeSubdirs)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -759,7 +759,7 @@
 ///# param subTab ...
 ///# param itemPids ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_TabSetItemPids(FOMapper* mapper, int tab, string_view subTab, const vector<hash>& itemPids)
+[[maybe_unused]] void Mapper_Game_TabSetItemPids(FOMapper* mapper, int tab, string_view subTab, const vector<hash>& itemPids)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -820,7 +820,7 @@
 ///# param subTab ...
 ///# param critterPids ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_TabSetCritterPids(FOMapper* mapper, int tab, string_view subTab, const vector<hash>& critterPids)
+[[maybe_unused]] void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int tab, string_view subTab, const vector<hash>& critterPids)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -879,7 +879,7 @@
 ///# ...
 ///# param tab ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_TabDelete(FOMapper* mapper, int tab)
+[[maybe_unused]] void Mapper_Game_TabDelete(FOMapper* mapper, int tab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -895,7 +895,7 @@
 ///# param subTab ...
 ///# param show ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_TabSelect(FOMapper* mapper, int tab, string_view subTab, bool show)
+[[maybe_unused]] void Mapper_Game_TabSelect(FOMapper* mapper, int tab, string_view subTab, bool show)
 {
     if (tab < 0 || tab >= FOMapper::INT_MODE_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -919,7 +919,7 @@
 ///# param tab ...
 ///# param tabName ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_TabSetName(FOMapper* mapper, int tab, string_view tabName)
+[[maybe_unused]] void Mapper_Game_TabSetName(FOMapper* mapper, int tab, string_view tabName)
 {
     if (tab < 0 || tab >= FOMapper::INT_MODE_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -934,7 +934,7 @@
 ///# param speed ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_MoveScreenToHex(FOMapper* mapper, ushort hx, ushort hy, uint speed, bool canStop)
+[[maybe_unused]] void Mapper_Game_MoveScreenToHex(FOMapper* mapper, ushort hx, ushort hy, uint speed, bool canStop)
 {
     if (hx >= mapper->HexMngr.GetWidth() || hy >= mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -957,7 +957,7 @@
 ///# param speed ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_MoveScreenOffset(FOMapper* mapper, int ox, int oy, uint speed, bool canStop)
+[[maybe_unused]] void Mapper_Game_MoveScreenOffset(FOMapper* mapper, int ox, int oy, uint speed, bool canStop)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -973,7 +973,7 @@
 ///# param steps ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Mapper_Global_MoveHexByDir(FOMapper* mapper, ushort& hx, ushort& hy, uchar dir, uint steps)
+[[maybe_unused]] bool Mapper_Game_MoveHexByDir(FOMapper* mapper, ushort& hx, ushort& hy, uchar dir, uint steps)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -1007,7 +1007,7 @@
 ///# param key ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Mapper_Global_GetIfaceIniStr(FOMapper* mapper, string_view key)
+[[maybe_unused]] string Mapper_Game_GetIfaceIniStr(FOMapper* mapper, string_view key)
 {
     return mapper->IfaceIni.GetStr("", key, "");
 }
@@ -1015,7 +1015,7 @@
 ///# ...
 ///# param msg ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_Message(FOMapper* mapper, string_view msg)
+[[maybe_unused]] void Mapper_Game_Message(FOMapper* mapper, string_view msg)
 {
     mapper->AddMess(msg);
 }
@@ -1024,7 +1024,7 @@
 ///# param textMsg ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_MessageMsg(FOMapper* mapper, int textMsg, uint strNum)
+[[maybe_unused]] void Mapper_Game_MessageMsg(FOMapper* mapper, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -1043,7 +1043,7 @@
 ///# param ox ...
 ///# param oy ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_MapMessage(FOMapper* mapper, string_view text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy)
+[[maybe_unused]] void Mapper_Game_MapMessage(FOMapper* mapper, string_view text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy)
 {
     FOMapper::MapText map_text;
     map_text.HexX = hx;
@@ -1069,7 +1069,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Mapper_Global_GetMsgStr(FOMapper* mapper, int textMsg, uint strNum)
+[[maybe_unused]] string Mapper_Game_GetMsgStr(FOMapper* mapper, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -1084,7 +1084,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Mapper_Global_GetMsgStrSkip(FOMapper* mapper, int textMsg, uint strNum, uint skipCount)
+[[maybe_unused]] string Mapper_Game_GetMsgStrSkip(FOMapper* mapper, int textMsg, uint strNum, uint skipCount)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -1098,7 +1098,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetMsgStrNumUpper(FOMapper* mapper, int textMsg, uint strNum)
+[[maybe_unused]] uint Mapper_Game_GetMsgStrNumUpper(FOMapper* mapper, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -1112,7 +1112,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetMsgStrNumLower(FOMapper* mapper, int textMsg, uint strNum)
+[[maybe_unused]] uint Mapper_Game_GetMsgStrNumLower(FOMapper* mapper, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -1126,7 +1126,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetMsgStrCount(FOMapper* mapper, int textMsg, uint strNum)
+[[maybe_unused]] uint Mapper_Game_GetMsgStrCount(FOMapper* mapper, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -1140,7 +1140,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Mapper_Global_IsMsgStr(FOMapper* mapper, int textMsg, uint strNum)
+[[maybe_unused]] bool Mapper_Game_IsMsgStr(FOMapper* mapper, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -1155,7 +1155,7 @@
 ///# param str ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Mapper_Global_ReplaceTextStr(FOMapper* mapper, string_view text, string_view replace, string_view str)
+[[maybe_unused]] string Mapper_Game_ReplaceTextStr(FOMapper* mapper, string_view text, string_view replace, string_view str)
 {
     const auto pos = text.find(replace, 0);
     if (pos == std::string::npos) {
@@ -1171,7 +1171,7 @@
 ///# param i ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Mapper_Global_ReplaceTextInt(FOMapper* mapper, string_view text, string_view replace, int i)
+[[maybe_unused]] string Mapper_Game_ReplaceTextInt(FOMapper* mapper, string_view text, string_view replace, int i)
 {
     const auto pos = text.find(replace, 0);
     if (pos == std::string::npos) {
@@ -1189,7 +1189,7 @@
 ///# param angle ...
 ///# param dist ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_GetHexInPath(FOMapper* mapper, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
+[[maybe_unused]] void Mapper_Game_GetHexInPath(FOMapper* mapper, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
 {
     pair<ushort, ushort> pre_block;
     pair<ushort, ushort> block;
@@ -1206,7 +1206,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetPathLengthHex(FOMapper* mapper, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Mapper_Game_GetPathLengthHex(FOMapper* mapper, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
     if (fromHx >= mapper->HexMngr.GetWidth() || fromHy >= mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -1237,7 +1237,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Mapper_Global_GetHexPos(FOMapper* mapper, ushort hx, ushort hy, int& x, int& y)
+[[maybe_unused]] bool Mapper_Game_GetHexPos(FOMapper* mapper, ushort hx, ushort hy, int& x, int& y)
 {
     x = y = 0;
 
@@ -1264,7 +1264,7 @@
 ///# param ignoreInterface ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Mapper_Global_GetMonitorHex(FOMapper* mapper, int x, int y, ushort& hx, ushort& hy, bool ignoreInterface)
+[[maybe_unused]] bool Mapper_Game_GetMonitorHex(FOMapper* mapper, int x, int y, ushort& hx, ushort& hy, bool ignoreInterface)
 {
     const auto old_x = mapper->Settings.MouseX;
     const auto old_y = mapper->Settings.MouseY;
@@ -1294,7 +1294,7 @@
 ///# param ignoreInterface ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ClientEntity* Mapper_Global_GetMonitorObject(FOMapper* mapper, int x, int y, bool ignoreInterface)
+[[maybe_unused]] ClientEntity* Mapper_Game_GetMonitorObject(FOMapper* mapper, int x, int y, bool ignoreInterface)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -1322,7 +1322,7 @@
 ///# ...
 ///# param datName ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_AddDataSource(FOMapper* mapper, string_view datName)
+[[maybe_unused]] void Mapper_Game_AddDataSource(FOMapper* mapper, string_view datName)
 {
     mapper->FileMngr.AddDataSource(datName, false);
 
@@ -1335,7 +1335,7 @@
 ///# param fontIndex ...
 ///# param fontFname ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_LoadFont(FOMapper* mapper, int fontIndex, string_view fontFname)
+[[maybe_unused]] void Mapper_Game_LoadFont(FOMapper* mapper, int fontIndex, string_view fontFname)
 {
     bool result;
     if (fontFname.length() > 0 && fontFname[0] == '*') {
@@ -1357,7 +1357,7 @@
 ///# param font ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_SetDefaultFont(FOMapper* mapper, int font, uint color)
+[[maybe_unused]] void Mapper_Game_SetDefaultFont(FOMapper* mapper, int font, uint color)
 {
     mapper->SprMngr.SetDefaultFont(font, color);
 }
@@ -1367,7 +1367,7 @@
 ///# param y ...
 ///# param button ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_MouseClick(FOMapper* mapper, int x, int y, int button)
+[[maybe_unused]] void Mapper_Game_MouseClick(FOMapper* mapper, int x, int y, int button)
 {
     /*IntVec prev_events = mapper->Settings.MainWindowMouseEvents;
     mapper->Settings.MainWindowMouseEvents.clear();
@@ -1396,7 +1396,7 @@
 ///# param key1Text ...
 ///# param key2Text ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_KeyboardPress(FOMapper* mapper, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
+[[maybe_unused]] void Mapper_Game_KeyboardPress(FOMapper* mapper, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
 {
     if (key1 == KeyCode::None && key2 == KeyCode::None) {
         return;
@@ -1420,7 +1420,7 @@
 ///# param fallAnimName ...
 ///# param dropAnimName ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_SetRainAnimation(FOMapper* mapper, string_view fallAnimName, string_view dropAnimName)
+[[maybe_unused]] void Mapper_Game_SetRainAnimation(FOMapper* mapper, string_view fallAnimName, string_view dropAnimName)
 {
     mapper->HexMngr.SetRainAnimation(fallAnimName, dropAnimName);
 }
@@ -1428,7 +1428,7 @@
 ///# ...
 ///# param targetZoom ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_ChangeZoom(FOMapper* mapper, float targetZoom)
+[[maybe_unused]] void Mapper_Game_ChangeZoom(FOMapper* mapper, float targetZoom)
 {
     if (Math::FloatCompare(targetZoom, mapper->Settings.SpritesZoom)) {
         return;
@@ -1465,7 +1465,7 @@
 ///# param sprName ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_LoadSprite(FOMapper* mapper, string_view sprName)
+[[maybe_unused]] uint Mapper_Game_LoadSprite(FOMapper* mapper, string_view sprName)
 {
     return mapper->AnimLoad(sprName, AtlasType::Static);
 }
@@ -1474,7 +1474,7 @@
 ///# param nameHash ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_LoadSpriteHash(FOMapper* mapper, uint nameHash)
+[[maybe_unused]] uint Mapper_Game_LoadSpriteHash(FOMapper* mapper, uint nameHash)
 {
     return mapper->AnimLoad(nameHash, AtlasType::Static);
 }
@@ -1484,7 +1484,7 @@
 ///# param sprIndex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Mapper_Global_GetSpriteWidth(FOMapper* mapper, uint sprId, int sprIndex)
+[[maybe_unused]] int Mapper_Game_GetSpriteWidth(FOMapper* mapper, uint sprId, int sprIndex)
 {
     auto* anim = mapper->AnimGetFrames(sprId);
     if (!anim || sprIndex >= static_cast<int>(anim->CntFrm)) {
@@ -1504,7 +1504,7 @@
 ///# param sprIndex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Mapper_Global_GetSpriteHeight(FOMapper* mapper, uint sprId, int sprIndex)
+[[maybe_unused]] int Mapper_Game_GetSpriteHeight(FOMapper* mapper, uint sprId, int sprIndex)
 {
     auto* anim = mapper->AnimGetFrames(sprId);
     if (!anim || sprIndex >= static_cast<int>(anim->CntFrm)) {
@@ -1523,7 +1523,7 @@
 ///# param sprId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetSpriteCount(FOMapper* mapper, uint sprId)
+[[maybe_unused]] uint Mapper_Game_GetSpriteCount(FOMapper* mapper, uint sprId)
 {
     auto* anim = mapper->AnimGetFrames(sprId);
     return anim ? anim->CntFrm : 0;
@@ -1533,7 +1533,7 @@
 ///# param sprId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetSpriteTicks(FOMapper* mapper, uint sprId)
+[[maybe_unused]] uint Mapper_Game_GetSpriteTicks(FOMapper* mapper, uint sprId)
 {
     auto* anim = mapper->AnimGetFrames(sprId);
     return anim ? anim->Ticks : 0;
@@ -1546,7 +1546,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Global_GetPixelColor(FOMapper* mapper, uint sprId, int frameIndex, int x, int y)
+[[maybe_unused]] uint Mapper_Game_GetPixelColor(FOMapper* mapper, uint sprId, int frameIndex, int x, int y)
 {
     if (sprId == 0u) {
         return 0;
@@ -1571,7 +1571,7 @@
 ///# param th ...
 ///# param lines ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_GetTextInfo(FOMapper* mapper, string_view text, int w, int h, int font, int flags, int& tw, int& th, int& lines)
+[[maybe_unused]] void Mapper_Game_GetTextInfo(FOMapper* mapper, string_view text, int w, int h, int font, int flags, int& tw, int& th, int& lines)
 {
     if (!mapper->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines)) {
         throw ScriptException("Can't evaluate text information", font);
@@ -1586,7 +1586,7 @@
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DrawSprite(FOMapper* mapper, uint sprId, int frameIndex, int x, int y, uint color, bool offs)
+[[maybe_unused]] void Mapper_Game_DrawSprite(FOMapper* mapper, uint sprId, int frameIndex, int x, int y, uint color, bool offs)
 {
     if (!mapper->SpritesCanDraw || !sprId) {
         return;
@@ -1625,7 +1625,7 @@
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DrawSpriteSize(FOMapper* mapper, uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom, uint color, bool offs)
+[[maybe_unused]] void Mapper_Game_DrawSpriteSize(FOMapper* mapper, uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom, uint color, bool offs)
 {
     if (!mapper->SpritesCanDraw || !sprId) {
         return;
@@ -1664,7 +1664,7 @@
 ///# param sprHeight ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DrawSpritePattern(FOMapper* mapper, uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)
+[[maybe_unused]] void Mapper_Game_DrawSpritePattern(FOMapper* mapper, uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)
 {
     if (!mapper->SpritesCanDraw || !sprId) {
         return;
@@ -1688,7 +1688,7 @@
 ///# param font ...
 ///# param flags ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DrawText(FOMapper* mapper, string_view text, int x, int y, int w, int h, uint color, int font, int flags)
+[[maybe_unused]] void Mapper_Game_DrawText(FOMapper* mapper, string_view text, int x, int y, int w, int h, uint color, int font, int flags)
 {
     if (!mapper->SpritesCanDraw) {
         return;
@@ -1718,7 +1718,7 @@
 ///# param primitiveType ...
 ///# param data ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DrawPrimitive(FOMapper* mapper, int primitiveType, const vector<int>& data)
+[[maybe_unused]] void Mapper_Game_DrawPrimitive(FOMapper* mapper, int primitiveType, const vector<int>& data)
 {
     if (!mapper->SpritesCanDraw || data.empty()) {
         return;
@@ -1767,7 +1767,7 @@
 ///# ...
 ///# param mapSpr ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DrawMapSprite(FOMapper* mapper, MapSprite* mapSpr)
+[[maybe_unused]] void Mapper_Game_DrawMapSprite(FOMapper* mapper, MapSprite* mapSpr)
 {
     if (mapSpr == nullptr) {
         throw ScriptException("Map sprite arg is null");
@@ -1868,7 +1868,7 @@
 ///# param center ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DrawCritter2d(FOMapper* mapper, hash modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
+[[maybe_unused]] void Mapper_Game_DrawCritter2d(FOMapper* mapper, hash modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
     auto* anim = mapper->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
     if (anim) {
@@ -1885,7 +1885,7 @@
 ///# param position ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_DrawCritter3d(FOMapper* mapper, uint instance, hash modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
+[[maybe_unused]] void Mapper_Game_DrawCritter3d(FOMapper* mapper, uint instance, hash modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
 {
     // x y
     // rx ry rz
@@ -1967,14 +1967,14 @@
 ///# param w ...
 ///# param h ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_PushDrawScissor(FOMapper* mapper, int x, int y, int w, int h)
+[[maybe_unused]] void Mapper_Game_PushDrawScissor(FOMapper* mapper, int x, int y, int w, int h)
 {
     mapper->SprMngr.PushScissor(x, y, x + w, y + h);
 }
 
 ///# ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Global_PopDrawScissor(FOMapper* mapper)
+[[maybe_unused]] void Mapper_Game_PopDrawScissor(FOMapper* mapper)
 {
     mapper->SprMngr.PopScissor();
 }

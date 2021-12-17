@@ -65,7 +65,7 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer final : public PropertyRegistratorsHolder
+class FOServer final : public PropertyRegistratorsHolder, public ServerEntity, public GameProperties
 {
 public:
     FOServer() = delete;
@@ -74,7 +74,7 @@ public:
     FOServer(FOServer&&) noexcept = delete;
     auto operator=(const FOServer&) = delete;
     auto operator=(FOServer&&) noexcept = delete;
-    ~FOServer();
+    ~FOServer() override;
 
 #if FO_SINGLEPLAYER
     void ConnectClient(FOClient* client) { }
@@ -203,7 +203,6 @@ public:
     CritterManager CrMngr;
     ItemManager ItemMngr;
     DialogManager DlgMngr;
-    ServerGlobals* Globals {};
 
     DataBase DbStorage {};
     DataBase DbHistory {}; // Todo: remove history DB system?

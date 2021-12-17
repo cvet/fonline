@@ -38,9 +38,30 @@
 #include "GeometryHelper.h"
 #include "Log.h"
 #include "NetCommand.h"
+#include "ProtoManager.h"
 #include "StringUtils.h"
 
 // ReSharper disable CppInconsistentNaming
+
+///# ...
+///# param pid ...
+///# param props ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] ClientEntity* Client_Game_GetProtoItem(FOClient* client, hash pid, const map<int, int>& props)
+{
+    const auto* proto = client->ProtoMngr->GetProtoItem(pid);
+    if (!proto) {
+        return nullptr;
+    }
+
+    auto* item = new ItemView(client, 0, proto);
+    for (const auto& [key, value] : props) {
+        item->GetPropertiesForEdit().SetValueAsIntProps(key, value);
+    }
+
+    return item;
+}
 
 ///# ...
 ///# param hx1 ...
@@ -49,7 +70,7 @@
 ///# param hy2 ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Client_Global_GetHexDistance(FOClient* client, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
+[[maybe_unused]] int Client_Game_GetHexDistance(FOClient* client, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
 {
     return client->GeomHelper.DistGame(hx1, hy1, hx2, hy2);
 }
@@ -61,7 +82,7 @@
 ///# param toHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Client_Global_GetHexDir(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] uchar Client_Game_GetHexDir(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
 {
     return client->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy);
 }
@@ -74,7 +95,7 @@
 ///# param offset ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Client_Global_GetHexDirWithOffset(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
+[[maybe_unused]] uchar Client_Game_GetHexDirWithOffset(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
 {
     return client->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
 }
@@ -82,7 +103,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_GetTick(FOClient* client)
+[[maybe_unused]] uint Client_Game_GetTick(FOClient* client)
 {
     return client->GameTime.FrameTick();
 }
@@ -92,7 +113,7 @@
 ///# param separator ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Global_CustomCall(FOClient* client, string_view command, string_view separator)
+[[maybe_unused]] string Client_Game_CustomCall(FOClient* client, string_view command, string_view separator)
 {
     return client->CustomCall(command, separator);
 }
@@ -100,7 +121,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Client_Global_GetChosen(FOClient* client)
+[[maybe_unused]] CritterView* Client_Game_GetChosen(FOClient* client)
 {
     if (client->GetChosen() && client->GetChosen()->IsDestroyed()) {
         return nullptr;
@@ -112,7 +133,7 @@
 ///# param itemId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Global_GetItem(FOClient* client, uint itemId)
+[[maybe_unused]] ItemView* Client_Game_GetItem(FOClient* client, uint itemId)
 {
     if (itemId == 0u) {
         throw ScriptException("Item id arg is zero");
@@ -144,7 +165,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Client_Global_GetVisibleItems(FOClient* client)
+[[maybe_unused]] vector<ItemView*> Client_Game_GetVisibleItems(FOClient* client)
 {
     vector<ItemView*> items;
     if (client->HexMngr.IsMapLoaded()) {
@@ -164,7 +185,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Client_Global_GetVisibleItemsOnHex(FOClient* client, ushort hx, ushort hy)
+[[maybe_unused]] vector<ItemView*> Client_Game_GetVisibleItemsOnHex(FOClient* client, ushort hx, ushort hy)
 {
     vector<ItemHexView*> hex_items;
     if (client->HexMngr.IsMapLoaded()) {
@@ -188,7 +209,7 @@
 ///# param cr2 ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] int Client_Global_GetCritterDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
+[[maybe_unused]] int Client_Game_GetCritterDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -207,7 +228,7 @@
 ///# param critterId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] CritterView* Client_Global_GetCritter(FOClient* client, uint critterId)
+[[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, uint critterId)
 {
     if (critterId == 0u) {
         return static_cast<CritterView*>(nullptr); // throw ScriptException("Critter id arg is zero";
@@ -226,7 +247,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Global_GetCrittersAroundHex(FOClient* client, ushort hx, ushort hy, uint radius, uchar findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersAroundHex(FOClient* client, ushort hx, ushort hy, uint radius, uchar findType)
 {
     if (hx >= client->HexMngr.GetWidth() || hy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -251,7 +272,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Global_GetCrittersByPids(FOClient* client, hash pid, uchar findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersByPids(FOClient* client, hash pid, uchar findType)
 {
     auto& crits = client->HexMngr.GetCritters();
     vector<CritterView*> critters;
@@ -284,7 +305,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Global_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType)
 {
     vector<CritterView*> critters;
     client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, nullptr, nullptr, nullptr, true);
@@ -305,7 +326,7 @@
 ///# param blockHy ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Global_GetCrittersWithBlockInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersWithBlockInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
 {
     vector<CritterView*> critters;
     pair<ushort, ushort> block;
@@ -326,7 +347,7 @@
 ///# param angle ...
 ///# param dist ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Global_GetHexInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
+[[maybe_unused]] void Client_Game_GetHexInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
 {
     pair<ushort, ushort> pre_block;
     pair<ushort, ushort> block;
@@ -343,7 +364,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<uchar> Client_Global_GetPathToHex(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] vector<uchar> Client_Game_GetPathToHex(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
     if (fromHx >= client->HexMngr.GetWidth() || fromHy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -374,7 +395,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<uchar> Client_Global_GetPathToCritter(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] vector<uchar> Client_Game_GetPathToCritter(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
 {
     if (toHx >= client->HexMngr.GetWidth() || toHy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid to hexes args");
@@ -403,7 +424,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Global_GetPathLengthToHex(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Client_Game_GetPathLengthToHex(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
     if (fromHx >= client->HexMngr.GetWidth() || fromHy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -434,7 +455,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Global_GetPathLengthToCritter(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Client_Game_GetPathLengthToCritter(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
 {
     if (toHx >= client->HexMngr.GetWidth() || toHy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid to hexes args");
@@ -460,7 +481,7 @@
 ///# param toColor ...
 ///# param ms ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_FlushScreen(FOClient* client, uint fromColor, uint toColor, uint ms)
+[[maybe_unused]] void Client_Game_FlushScreen(FOClient* client, uint fromColor, uint toColor, uint ms)
 {
     client->ScreenFade(ms, fromColor, toColor, true);
 }
@@ -469,7 +490,7 @@
 ///# param noise ...
 ///# param ms ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_QuakeScreen(FOClient* client, uint noise, uint ms)
+[[maybe_unused]] void Client_Game_QuakeScreen(FOClient* client, uint noise, uint ms)
 {
     client->ScreenQuake(noise, ms);
 }
@@ -478,7 +499,7 @@
 ///# param soundName ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_PlaySound(FOClient* client, string_view soundName)
+[[maybe_unused]] void Client_Game_PlaySound(FOClient* client, string_view soundName)
 {
     if (!client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName)) {
         WriteLog("Sound '{}' not found.\n", soundName);
@@ -490,7 +511,7 @@
 ///# param repeatTime ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_PlayMusic(FOClient* client, string_view musicName, uint repeatTime)
+[[maybe_unused]] void Client_Game_PlayMusic(FOClient* client, string_view musicName, uint repeatTime)
 {
     if (musicName.empty()) {
         client->SndMngr.StopMusic();
@@ -506,7 +527,7 @@
 ///# param videoName ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_PlayVideo(FOClient* client, string_view videoName, bool canStop)
+[[maybe_unused]] void Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canStop)
 {
     // client->SndMngr.StopMusic();
     // client->AddVideo(videoName, canStop, true);
@@ -515,7 +536,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hash Client_Global_GetCurMapPid(FOClient* client)
+[[maybe_unused]] hash Client_Game_GetCurMapPid(FOClient* client)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         return 0;
@@ -526,7 +547,7 @@
 ///# ...
 ///# param msg ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_Message(FOClient* client, string_view msg)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg)
 {
     client->AddMess(SAY_NETMSG, msg, true);
 }
@@ -535,7 +556,7 @@
 ///# param msg ...
 ///# param type ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_MessageExt(FOClient* client, string_view msg, uchar type)
+[[maybe_unused]] void Client_Game_MessageExt(FOClient* client, string_view msg, uchar type)
 {
     client->AddMess(type, msg, true);
 }
@@ -544,7 +565,7 @@
 ///# param textMsg ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_MessageMsg(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] void Client_Game_MessageMsg(FOClient* client, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -558,7 +579,7 @@
 ///# param strNum ...
 ///# param type ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_MessageMsgExt(FOClient* client, int textMsg, uint strNum, int type)
+[[maybe_unused]] void Client_Game_MessageMsgExt(FOClient* client, int textMsg, uint strNum, int type)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -577,7 +598,7 @@
 ///# param ox ...
 ///# param oy ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_MapMessage(FOClient* client, string_view text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy)
+[[maybe_unused]] void Client_Game_MapMessage(FOClient* client, string_view text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy)
 {
     FOClient::MapText map_text;
     map_text.HexX = hx;
@@ -603,7 +624,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Global_GetMsgStr(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] string Client_Game_GetMsgStr(FOClient* client, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -617,7 +638,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Global_GetMsgStrExt(FOClient* client, int textMsg, uint strNum, uint skipCount)
+[[maybe_unused]] string Client_Game_GetMsgStrExt(FOClient* client, int textMsg, uint strNum, uint skipCount)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -630,7 +651,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_GetMsgStrNumUpper(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetMsgStrNumUpper(FOClient* client, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -643,7 +664,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_GetMsgStrNumLower(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetMsgStrNumLower(FOClient* client, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -656,7 +677,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_GetMsgStrCount(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] uint Client_Game_GetMsgStrCount(FOClient* client, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -669,7 +690,7 @@
 ///# param strNum ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Global_IsMsgStr(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] bool Client_Game_IsMsgStr(FOClient* client, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -683,7 +704,7 @@
 ///# param str ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Global_ReplaceTextStr(FOClient* client, string_view text, string_view replace, string_view str)
+[[maybe_unused]] string Client_Game_ReplaceTextStr(FOClient* client, string_view text, string_view replace, string_view str)
 {
     const auto pos = text.find(replace, 0);
     if (pos == std::string::npos) {
@@ -698,7 +719,7 @@
 ///# param i ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Global_ReplaceTextInt(FOClient* client, string_view text, string_view replace, int i)
+[[maybe_unused]] string Client_Game_ReplaceTextInt(FOClient* client, string_view text, string_view replace, int i)
 {
     const auto pos = text.find(replace, 0);
     if (pos == std::string::npos) {
@@ -712,7 +733,7 @@
 ///# param lexems ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Global_FormatTags(FOClient* client, string_view text, string_view lexems)
+[[maybe_unused]] string Client_Game_FormatTags(FOClient* client, string_view text, string_view lexems)
 {
     auto text_copy = string(text);
     client->FormatTags(text_copy, client->GetChosen(), nullptr, lexems);
@@ -725,7 +746,7 @@
 ///# param speed ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_MoveScreenToHex(FOClient* client, ushort hx, ushort hy, uint speed, bool canStop)
+[[maybe_unused]] void Client_Game_MoveScreenToHex(FOClient* client, ushort hx, ushort hy, uint speed, bool canStop)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -748,7 +769,7 @@
 ///# param speed ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_MoveScreenByOffset(FOClient* client, int ox, int oy, uint speed, bool canStop)
+[[maybe_unused]] void Client_Game_MoveScreenByOffset(FOClient* client, int ox, int oy, uint speed, bool canStop)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -762,7 +783,7 @@
 ///# param softLock ...
 ///# param unlockIfSame ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_LockScreenScroll(FOClient* client, CritterView* cr, bool softLock, bool unlockIfSame)
+[[maybe_unused]] void Client_Game_LockScreenScroll(FOClient* client, CritterView* cr, bool softLock, bool unlockIfSame)
 {
     const auto id = (cr != nullptr ? cr->GetId() : 0);
     if (softLock) {
@@ -791,7 +812,7 @@
 ///# param zoneY ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] int Client_Global_GetFog(FOClient* client, ushort zoneX, ushort zoneY)
+[[maybe_unused]] int Client_Game_GetFog(FOClient* client, ushort zoneX, ushort zoneY)
 {
     if (zoneX >= client->Settings.GlobalMapWidth || zoneY >= client->Settings.GlobalMapHeight) {
         throw ScriptException("Invalid world map pos arg");
@@ -803,7 +824,7 @@
 ///# param dayPart ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_GetDayTime(FOClient* client, uint dayPart)
+[[maybe_unused]] uint Client_Game_GetDayTime(FOClient* client, uint dayPart)
 {
     if (dayPart >= 4) {
         throw ScriptException("Invalid day part arg");
@@ -821,7 +842,7 @@
 ///# param g ...
 ///# param b ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_GetDayColor(FOClient* client, uint dayPart, uchar& r, uchar& g, uchar& b)
+[[maybe_unused]] void Client_Game_GetDayColor(FOClient* client, uint dayPart, uchar& r, uchar& g, uchar& b)
 {
     r = g = b = 0;
     if (dayPart >= 4) {
@@ -839,7 +860,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Global_GetFullSecond(FOClient* client)
+[[maybe_unused]] uint Client_Game_GetFullSecond(FOClient* client)
 {
     return client->GameTime.GetFullSecond();
 }
@@ -853,7 +874,7 @@
 ///# param second ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Global_EvaluateFullSecond(FOClient* client, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
+[[maybe_unused]] uint Client_Game_EvaluateFullSecond(FOClient* client, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
 {
     if (year && year < client->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
@@ -873,10 +894,10 @@
     auto day_ = day;
 
     if (year_ == 0u) {
-        year_ = client->Globals->GetYear();
+        year_ = client->GetYear();
     }
     if (month_ == 0u) {
-        month_ = client->Globals->GetMonth();
+        month_ = client->GetMonth();
     }
 
     if (day_ != 0u) {
@@ -887,7 +908,7 @@
     }
 
     if (day_ == 0u) {
-        day_ = client->Globals->GetDay();
+        day_ = client->GetDay();
     }
 
     if (hour > 23) {
@@ -913,7 +934,7 @@
 ///# param minute ...
 ///# param second ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Global_GetGameTime(FOClient* client, uint fullSecond, ushort& year, ushort& month, ushort& day, ushort& dayOfWeek, ushort& hour, ushort& minute, ushort& second)
+[[maybe_unused]] void Client_Game_GetGameTime(FOClient* client, uint fullSecond, ushort& year, ushort& month, ushort& day, ushort& dayOfWeek, ushort& hour, ushort& minute, ushort& second)
 {
     const auto dt = client->GameTime.GetGameTime(fullSecond);
     year = dt.Year;
@@ -932,7 +953,7 @@
 ///# param steps ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Global_MoveHexByDir(FOClient* client, ushort& hx, ushort& hy, uchar dir, uint steps)
+[[maybe_unused]] bool Client_Game_MoveHexByDir(FOClient* client, ushort& hx, ushort& hy, uchar dir, uint steps)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -969,7 +990,7 @@
 ///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hash Client_Global_GetTileName(FOClient* client, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] hash Client_Game_GetTileName(FOClient* client, ushort hx, ushort hy, bool roof, int layer)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -1002,7 +1023,7 @@
 ///# ...
 ///# param fnames ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_Preload3dFiles(FOClient* client, const vector<string>& fnames)
+[[maybe_unused]] void Client_Game_Preload3dFiles(FOClient* client, const vector<string>& fnames)
 {
     for (size_t i = 0; i < fnames.size(); i++) {
         client->Preload3dFiles.push_back(fnames[i]);
@@ -1011,7 +1032,7 @@
 
 ///# ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Global_WaitPing(FOClient* client)
+[[maybe_unused]] void Client_Game_WaitPing(FOClient* client)
 {
     client->WaitPing();
 }
@@ -1021,7 +1042,7 @@
 ///# param fontFname ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_LoadFont(FOClient* client, int fontIndex, string_view fontFname)
+[[maybe_unused]] void Client_Game_LoadFont(FOClient* client, int fontIndex, string_view fontFname)
 {
     client->SprMngr.PushAtlasType(AtlasType::Static);
 
@@ -1047,7 +1068,7 @@
 ///# param font ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SetDefaultFont(FOClient* client, int font, uint color)
+[[maybe_unused]] void Client_Game_SetDefaultFont(FOClient* client, int font, uint color)
 {
     client->SprMngr.SetDefaultFont(font, color);
 }
@@ -1059,7 +1080,7 @@
 ///# param effectDefines ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SetEffect(FOClient* client, EffectType effectType, int effectSubtype, string_view effectName, string_view effectDefines)
+[[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int effectSubtype, string_view effectName, string_view effectDefines)
 {
     RenderEffect* effect = nullptr;
     if (!effectName.empty()) {
@@ -1159,7 +1180,7 @@
 ///# param onlyRoof ...
 ///# param onlyLight ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_RedrawMap(FOClient* client, bool onlyTiles, bool onlyRoof, bool onlyLight)
+[[maybe_unused]] void Client_Game_RedrawMap(FOClient* client, bool onlyTiles, bool onlyRoof, bool onlyLight)
 {
     if (client->HexMngr.IsMapLoaded()) {
         if (onlyTiles) {
@@ -1182,7 +1203,7 @@
 ///# param y ...
 ///# param button ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SimulateMouseClick(FOClient* client, int x, int y, int button)
+[[maybe_unused]] void Client_Game_SimulateMouseClick(FOClient* client, int x, int y, int button)
 {
     /*App->Input.PushEvent({InputEvent::MouseDown({(MouseButton)button})});
 
@@ -1212,7 +1233,7 @@
 ///# param key1Text ...
 ///# param key2Text ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SimulateKeyboardPress(FOClient* client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
+[[maybe_unused]] void Client_Game_SimulateKeyboardPress(FOClient* client, KeyCode key1, KeyCode key2, string_view key1Text, string_view key2Text)
 {
     if (key1 == KeyCode::None && key2 == KeyCode::None) {
         return;
@@ -1236,7 +1257,7 @@
 ///# param fallAnimName ...
 ///# param dropAnimName ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SetRainAnim(FOClient* client, string_view fallAnimName, string_view dropAnimName)
+[[maybe_unused]] void Client_Game_SetRainAnim(FOClient* client, string_view fallAnimName, string_view dropAnimName)
 {
     client->HexMngr.SetRainAnimation(fallAnimName, dropAnimName);
 }
@@ -1244,7 +1265,7 @@
 ///# ...
 ///# param targetZoom ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_ChangeZoom(FOClient* client, float targetZoom)
+[[maybe_unused]] void Client_Game_ChangeZoom(FOClient* client, float targetZoom)
 {
     if (targetZoom == client->Settings.SpritesZoom) {
         return;
@@ -1288,7 +1309,7 @@
 ///# param second ...
 ///# param milliseconds ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Global_GetTime(FOClient* client, ushort& year, ushort& month, ushort& day, ushort& dayOfWeek, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds)
+[[maybe_unused]] void Client_Game_GetTime(FOClient* client, ushort& year, ushort& month, ushort& day, ushort& dayOfWeek, ushort& hour, ushort& minute, ushort& second, ushort& milliseconds)
 {
     const auto cur_time = Timer::GetCurrentDateTime();
     year = cur_time.Year;
@@ -1304,7 +1325,7 @@
 ///# ...
 ///# param datName ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Global_AddDataSource(FOClient* client, string_view datName)
+[[maybe_unused]] void Client_Game_AddDataSource(FOClient* client, string_view datName)
 {
     client->FileMngr.AddDataSource(datName, true);
 }
@@ -1313,7 +1334,7 @@
 ///# param sprName ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_LoadSprite(FOClient* client, string_view sprName)
+[[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
 {
     return client->AnimLoad(sprName, AtlasType::Static);
 }
@@ -1322,7 +1343,7 @@
 ///# param nameHash ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_LoadSpriteByHash(FOClient* client, hash nameHash)
+[[maybe_unused]] uint Client_Game_LoadSpriteByHash(FOClient* client, hash nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::Static);
 }
@@ -1332,7 +1353,7 @@
 ///# param frameIndex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Client_Global_GetSpriteWidth(FOClient* client, uint sprId, int frameIndex)
+[[maybe_unused]] int Client_Game_GetSpriteWidth(FOClient* client, uint sprId, int frameIndex)
 {
     auto* anim = client->AnimGetFrames(sprId);
     if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
@@ -1352,7 +1373,7 @@
 ///# param frameIndex ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Client_Global_GetSpriteHeight(FOClient* client, uint sprId, int frameIndex)
+[[maybe_unused]] int Client_Game_GetSpriteHeight(FOClient* client, uint sprId, int frameIndex)
 {
     auto* anim = client->AnimGetFrames(sprId);
     if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
@@ -1370,7 +1391,7 @@
 ///# param sprId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_GetSpriteCount(FOClient* client, uint sprId)
+[[maybe_unused]] uint Client_Game_GetSpriteCount(FOClient* client, uint sprId)
 {
     auto* const anim = client->AnimGetFrames(sprId);
     return anim ? anim->CntFrm : 0;
@@ -1380,7 +1401,7 @@
 ///# param sprId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_GetSpriteTicks(FOClient* client, uint sprId)
+[[maybe_unused]] uint Client_Game_GetSpriteTicks(FOClient* client, uint sprId)
 {
     auto* const anim = client->AnimGetFrames(sprId);
     return anim ? anim->Ticks : 0;
@@ -1393,7 +1414,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Global_GetSpritePixelColor(FOClient* client, uint sprId, int frameIndex, int x, int y)
+[[maybe_unused]] uint Client_Game_GetSpritePixelColor(FOClient* client, uint sprId, int frameIndex, int x, int y)
 {
     if (sprId == 0u) {
         return 0;
@@ -1418,7 +1439,7 @@
 ///# param th ...
 ///# param lines ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_GetTextInfo(FOClient* client, string_view text, int w, int h, int font, int flags, int& tw, int& th, int& lines)
+[[maybe_unused]] void Client_Game_GetTextInfo(FOClient* client, string_view text, int w, int h, int font, int flags, int& tw, int& th, int& lines)
 {
     if (!client->SprMngr.GetTextInfo(w, h, text, font, flags, tw, th, lines)) {
         throw ScriptException("Can't evaluate text information", font);
@@ -1433,7 +1454,7 @@
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, uint color, bool offs)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, uint color, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1476,7 +1497,7 @@
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_DrawSpriteSized(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom, uint color, bool offs)
+[[maybe_unused]] void Client_Game_DrawSpriteSized(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom, uint color, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1519,7 +1540,7 @@
 ///# param sprHeight ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_DrawSpritePattern(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)
+[[maybe_unused]] void Client_Game_DrawSpritePattern(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, int sprWidth, int sprHeight, uint color)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1547,7 +1568,7 @@
 ///# param font ...
 ///# param flags ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_DrawText(FOClient* client, string_view text, int x, int y, int w, int h, uint color, int font, int flags)
+[[maybe_unused]] void Client_Game_DrawText(FOClient* client, string_view text, int x, int y, int w, int h, uint color, int font, int flags)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1578,7 +1599,7 @@
 ///# param primitiveType ...
 ///# param data ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_DrawPrimitive(FOClient* client, int primitiveType, const vector<int>& data)
+[[maybe_unused]] void Client_Game_DrawPrimitive(FOClient* client, int primitiveType, const vector<int>& data)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1630,7 +1651,7 @@
 ///# ...
 ///# param mapSpr ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_DrawMapSprite(FOClient* client, MapSprite* mapSpr)
+[[maybe_unused]] void Client_Game_DrawMapSprite(FOClient* client, MapSprite* mapSpr)
 {
     if (mapSpr == nullptr) {
         throw ScriptException("Map sprite arg is null");
@@ -1731,7 +1752,7 @@
 ///# param center ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_DrawCritter2d(FOClient* client, hash modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
+[[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hash modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
     auto* anim = client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
     if (anim) {
@@ -1748,7 +1769,7 @@
 ///# param position ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_DrawCritter3d(FOClient* client, uint instance, hash modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
+[[maybe_unused]] void Client_Game_DrawCritter3d(FOClient* client, uint instance, hash modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
 {
     // x y
     // rx ry rz
@@ -1829,14 +1850,14 @@
 ///# param w ...
 ///# param h ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_PushDrawScissor(FOClient* client, int x, int y, int w, int h)
+[[maybe_unused]] void Client_Game_PushDrawScissor(FOClient* client, int x, int y, int w, int h)
 {
     client->SprMngr.PushScissor(x, y, x + w, y + h);
 }
 
 ///# ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_PopDrawScissor(FOClient* client)
+[[maybe_unused]] void Client_Game_PopDrawScissor(FOClient* client)
 {
     client->SprMngr.PopScissor();
 }
@@ -1844,7 +1865,7 @@
 ///# ...
 ///# param forceClear ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_ActivateOffscreenSurface(FOClient* client, bool forceClear)
+[[maybe_unused]] void Client_Game_ActivateOffscreenSurface(FOClient* client, bool forceClear)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1882,7 +1903,7 @@
 ///# ...
 ///# param effectSubtype ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_PresentOffscreenSurface(FOClient* client, int effectSubtype)
+[[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1913,7 +1934,7 @@
 ///# param w ...
 ///# param h ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_PresentOffscreenSurfaceExt(FOClient* client, int effectSubtype, int x, int y, int w, int h)
+[[maybe_unused]] void Client_Game_PresentOffscreenSurfaceExt(FOClient* client, int effectSubtype, int x, int y, int w, int h)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1950,7 +1971,7 @@
 ///# param toW ...
 ///# param toH ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_PresentOffscreenSurfaceExt2(FOClient* client, int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
+[[maybe_unused]] void Client_Game_PresentOffscreenSurfaceExt2(FOClient* client, int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1980,7 +2001,7 @@
 ///# param screen ...
 ///# param data ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_ShowScreen(FOClient* client, int screen, const map<string, int>& data)
+[[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, int>& data)
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
         client->ShowMainScreen(screen, data);
@@ -1996,7 +2017,7 @@
 ///# ...
 ///# param screen ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_HideScreen(FOClient* client, int screen)
+[[maybe_unused]] void Client_Game_HideScreen(FOClient* client, int screen)
 {
     client->HideScreen(screen);
 }
@@ -2008,7 +2029,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Global_GetHexMonitorPos(FOClient* client, ushort hx, ushort hy, int& x, int& y)
+[[maybe_unused]] bool Client_Game_GetHexMonitorPos(FOClient* client, ushort hx, ushort hy, int& x, int& y)
 {
     x = y = 0;
     if (client->HexMngr.IsMapLoaded() && hx < client->HexMngr.GetWidth() && hy < client->HexMngr.GetHeight()) {
@@ -2029,7 +2050,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Global_GetHexByMonitorPos(FOClient* client, int x, int y, ushort& hx, ushort& hy)
+[[maybe_unused]] bool Client_Game_GetHexByMonitorPos(FOClient* client, int x, int y, ushort& hx, ushort& hy)
 {
     const auto old_x = client->Settings.MouseX;
     const auto old_y = client->Settings.MouseY;
@@ -2053,7 +2074,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Global_GetItemByMonitorPos(FOClient* client, int x, int y)
+[[maybe_unused]] ItemView* Client_Game_GetItemByMonitorPos(FOClient* client, int x, int y)
 {
     bool item_egg;
     return client->HexMngr.GetItemPixel(x, y, item_egg);
@@ -2064,7 +2085,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Client_Global_GetCritterByMonitorPos(FOClient* client, int x, int y)
+[[maybe_unused]] CritterView* Client_Game_GetCritterByMonitorPos(FOClient* client, int x, int y)
 {
     return client->HexMngr.GetCritterPixel(x, y, false);
 }
@@ -2074,7 +2095,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ClientEntity* Client_Global_GetEntityByMonitorPos(FOClient* client, int x, int y)
+[[maybe_unused]] ClientEntity* Client_Game_GetEntityByMonitorPos(FOClient* client, int x, int y)
 {
     ItemHexView* item = nullptr;
     CritterView* cr = nullptr;
@@ -2085,7 +2106,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ushort Client_Global_GetMapWidth(FOClient* client)
+[[maybe_unused]] ushort Client_Game_GetMapWidth(FOClient* client)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -2097,7 +2118,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ushort Client_Global_GetMapHeight(FOClient* client)
+[[maybe_unused]] ushort Client_Game_GetMapHeight(FOClient* client)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -2111,7 +2132,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Global_IsMapHexPassed(FOClient* client, ushort hx, ushort hy)
+[[maybe_unused]] bool Client_Game_IsMapHexPassed(FOClient* client, ushort hx, ushort hy)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -2128,7 +2149,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Global_IsMapHexRaked(FOClient* client, ushort hx, ushort hy)
+[[maybe_unused]] bool Client_Game_IsMapHexRaked(FOClient* client, ushort hx, ushort hy)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -2143,7 +2164,7 @@
 ///# ...
 ///# param filePath ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SaveScreenshot(FOClient* client, string_view filePath)
+[[maybe_unused]] void Client_Game_SaveScreenshot(FOClient* client, string_view filePath)
 {
     // client->SprMngr.SaveTexture(nullptr, _str(filePath).formatPath(), true);
 }
@@ -2153,7 +2174,7 @@
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SaveText(FOClient* client, string_view filePath, string_view text)
+[[maybe_unused]] void Client_Game_SaveText(FOClient* client, string_view filePath, string_view text)
 {
     auto f = DiskFileSystem::OpenFile(_str(filePath).formatPath(), true);
     if (!f) {
@@ -2169,7 +2190,7 @@
 ///# param name ...
 ///# param data ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SetCacheData(FOClient* client, string_view name, const vector<uchar>& data)
+[[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uchar>& data)
 {
     client->Cache.SetData(name, data);
 }
@@ -2179,7 +2200,7 @@
 ///# param data ...
 ///# param dataSize ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SetCacheDataExt(FOClient* client, string_view name, const vector<uchar>& data, uint dataSize)
+[[maybe_unused]] void Client_Game_SetCacheDataExt(FOClient* client, string_view name, const vector<uchar>& data, uint dataSize)
 {
     auto data_copy = data;
     data_copy.resize(dataSize);
@@ -2190,7 +2211,7 @@
 ///# param name ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<uchar> Client_Global_GetCacheData(FOClient* client, string_view name)
+[[maybe_unused]] vector<uchar> Client_Game_GetCacheData(FOClient* client, string_view name)
 {
     return client->Cache.GetData(name);
 }
@@ -2199,7 +2220,7 @@
 ///# param name ...
 ///# param str ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SetCacheText(FOClient* client, string_view name, string_view str)
+[[maybe_unused]] void Client_Game_SetCacheText(FOClient* client, string_view name, string_view str)
 {
     client->Cache.SetString(name, str);
 }
@@ -2208,7 +2229,7 @@
 ///# param name ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Global_GetCacheText(FOClient* client, string_view name)
+[[maybe_unused]] string Client_Game_GetCacheText(FOClient* client, string_view name)
 {
     return client->Cache.GetString(name);
 }
@@ -2217,7 +2238,7 @@
 ///# param name ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Global_IsCacheEntry(FOClient* client, string_view name)
+[[maybe_unused]] bool Client_Game_IsCacheEntry(FOClient* client, string_view name)
 {
     return client->Cache.HasEntry(name);
 }
@@ -2225,7 +2246,7 @@
 ///# ...
 ///# param name ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_RemoveCacheEntry(FOClient* client, string_view name)
+[[maybe_unused]] void Client_Game_RemoveCacheEntry(FOClient* client, string_view name)
 {
     client->Cache.EraseEntry(name);
 }
@@ -2233,7 +2254,7 @@
 ///# ...
 ///# param keyValues ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Global_SetUserConfig(FOClient* client, const map<string, string>& keyValues)
+[[maybe_unused]] void Client_Game_SetUserConfig(FOClient* client, const map<string, string>& keyValues)
 {
     auto cfg_user = client->FileMngr.WriteFile(CONFIG_NAME, false);
     for (const auto& [key, value] : keyValues) {

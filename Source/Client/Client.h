@@ -108,7 +108,7 @@ constexpr auto INIT_NET_REASON_REG = 2;
 constexpr auto INIT_NET_REASON_LOAD = 3;
 constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : public PropertyRegistratorsHolder, public AnimationResolver
+class FOClient : public PropertyRegistratorsHolder, public ClientEntity, public GameProperties, public AnimationResolver
 {
 public:
     struct MapText
@@ -130,13 +130,13 @@ public:
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;
     auto operator=(FOClient&&) noexcept = delete;
-    ~FOClient();
+    ~FOClient() override;
 
     [[nodiscard]] auto ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3, hash& arg4, uint& arg5, uint& arg6) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationFallout(hash arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
 
-    [[nodiscard]] auto GetChosen() -> CritterView* { return _chosen; }
+    [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCritter(uint crid) -> CritterView* { return HexMngr.GetCritter(crid); }
     [[nodiscard]] auto GetItem(uint item_id) -> ItemHexView* { return HexMngr.GetItemById(item_id); }
@@ -269,7 +269,6 @@ public:
     SoundManager SndMngr;
     Keyboard Keyb;
     CacheStorage Cache;
-    ClientGlobals* Globals;
 
     unique_ptr<ProtoManager> ProtoMngr {};
     hash CurMapPid {};
@@ -388,7 +387,7 @@ private:
     void Net_SendUpdate();
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
-    void Net_SendProperty(NetProperty::Type type, const Property* prop, Entity* entity);
+    void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
     void Net_SendGetGameInfo();
     void Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash);

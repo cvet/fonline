@@ -56,7 +56,7 @@ class Property final
     friend class PropertiesSerializator;
 
 public:
-    enum AccessType
+    enum class AccessType
     {
         PrivateCommon = 0x0010,
         PrivateClient = 0x0020,
@@ -93,7 +93,7 @@ public:
     [[nodiscard]] auto GetEnumValue() const -> int;
     [[nodiscard]] auto GetAccess() const -> AccessType;
     [[nodiscard]] auto GetBaseSize() const -> uint;
-    [[nodiscard]] auto IsPOD() const -> bool;
+    [[nodiscard]] auto IsPlainData() const -> bool;
     [[nodiscard]] auto IsDict() const -> bool;
     [[nodiscard]] auto IsHash() const -> bool;
     [[nodiscard]] auto IsResource() const -> bool;
@@ -105,9 +105,9 @@ public:
     [[nodiscard]] auto IsNoHistory() const -> bool;
 
 private:
-    enum DataType
+    enum class DataType
     {
-        POD,
+        PlainData,
         String,
         Array,
         Dict,
@@ -199,7 +199,7 @@ public:
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
         return *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
     }
 
@@ -207,7 +207,7 @@ public:
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
         T old_value = *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
         if (new_value != old_value) {
             *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
@@ -219,7 +219,7 @@ public:
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
         return *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
     }
 
@@ -227,7 +227,7 @@ public:
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::POD);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
         T old_value = *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
         if (new_value != old_value) {
             *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
@@ -330,7 +330,7 @@ private:
     set<hash> _registeredComponents {};
     uint _getPropertiesCount {};
 
-    // POD info
+    // PlainData info
     uint _wholePodDataSize {};
     vector<bool> _publicPodDataSpace {};
     vector<bool> _protectedPodDataSpace {};

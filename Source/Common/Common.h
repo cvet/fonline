@@ -531,21 +531,27 @@ auto constexpr operator"" _len(const char* str, size_t size) -> size_t
 #define BIN32(bin32, bin24, bin16, bin8) ((BIN8(bin32) << 24) | (BIN8(bin24) << 16) | (BIN8(bin16) << 8) | (BIN8(bin8)))
 
 template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
-constexpr auto IsBitSet(T x, T y) -> bool
+constexpr auto IsBitSet(T x, T y) noexcept -> bool
 {
     return (x & y) != 0;
 }
 
 template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
-constexpr void SetBit(T& x, T y)
+constexpr void SetBit(T& x, T y) noexcept
 {
     x = x | y;
 }
 
 template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
-constexpr void UnsetBit(T& x, T y)
+constexpr void UnsetBit(T& x, T y) noexcept
 {
     x = (x | y) ^ y;
+}
+
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+constexpr bool IsEnumSet(T value, T check) noexcept
+{
+    return (static_cast<int>(value) & static_cast<int>(check)) != 0;
 }
 
 // Float constants
@@ -829,25 +835,6 @@ struct TPoint
 using IPoint = TPoint<int>;
 using FPoint = TPoint<float>;
 
-// Todo: move NetProperty to more proper place
-class NetProperty
-{
-public:
-    enum Type
-    {
-        None = 0,
-        Global, // No extra args
-        Player, // No extra args
-        Critter, // One extra arg: cr_id
-        Chosen, // No extra args
-        MapItem, // One extra arg: item_id
-        CritterItem, // Two extra args: cr_id item_id
-        ChosenItem, // One extra arg: item_id
-        Map, // No extra args
-        Location, // No extra args
-    };
-};
-
 // Generic constants
 // Todo: eliminate as much defines as possible
 // Todo: convert all defines to constants and enums
@@ -1034,6 +1021,21 @@ static constexpr uint MOVE_PARAM_STEP_DIR = 0x7;
 static constexpr uint MOVE_PARAM_STEP_ALLOW = 0x8;
 static constexpr uint MOVE_PARAM_STEP_DISALLOW = 0x10;
 static constexpr uint MOVE_PARAM_RUN = 0x80000000;
+
+// Property type in network interaction
+enum class NetProperty : uchar
+{
+    None = 0,
+    Game, // No extra args
+    Player, // No extra args
+    Critter, // One extra arg: cr_id
+    Chosen, // No extra args
+    MapItem, // One extra arg: item_id
+    CritterItem, // Two extra args: cr_id item_id
+    ChosenItem, // One extra arg: item_id
+    Map, // No extra args
+    Location, // No extra args
+};
 
 ///@ ExportEnum
 enum class EffectType : uint

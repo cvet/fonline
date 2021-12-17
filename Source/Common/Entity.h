@@ -38,6 +38,13 @@
 #include "MsgFiles.h"
 #include "Properties.h"
 
+///@ ExportEntity Game FOServer FOClient Singleton
+///@ ExportEntity Player Player PlayerView
+///@ ExportEntity Item Item ItemView
+///@ ExportEntity Critter Critter CritterView
+///@ ExportEntity Map Map MapView
+///@ ExportEntity Location Location LocationView
+
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->FindNoComponentCheck(#prop); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \

@@ -152,7 +152,7 @@ public:
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
 
-    void Broadcast_Property(NetProperty::Type type, Property* prop, ServerEntity* entity);
+    void Broadcast_Property(NetProperty type, Property* prop, ServerEntity* entity);
     void Broadcast_Move(uint move_params);
     void Broadcast_Position();
     void Broadcast_Action(int action, int action_ext, Item* item);
@@ -167,7 +167,7 @@ public:
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
 
-    void Send_Property(NetProperty::Type type, const Property* prop, ServerEntity* entity);
+    void Send_Property(NetProperty type, const Property* prop, ServerEntity* entity);
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
     void Send_AddCritter(Critter* cr);

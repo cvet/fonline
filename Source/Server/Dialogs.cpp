@@ -100,9 +100,9 @@ static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, 
     }
     else
     {
-        if (!prop->IsPOD())
+        if (!prop->IsPlainData())
         {
-            WriteLog("DR property '{}' is not POD type.\n", str);
+            WriteLog("DR property '{}' is not PlainData type.\n", str);
             return -1;
         }
     }*/

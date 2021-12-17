@@ -134,6 +134,8 @@ struct SCRIPTING_CLASS
 #if !COMPILER_MODE
 #define INIT_ARGS
 
+#define GET_AS_ENGINE() self->GetEngine()->ScriptSys->AngelScriptData->Engine
+
 #define ENTITY_VERIFY(e) \
     if ((e) != nullptr && (e)->IsDestroyed()) { \
         throw ScriptException("Access to destroyed entity"); \

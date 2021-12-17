@@ -66,9 +66,3 @@ private:
 
     uint _id;
 };
-
-class ServerGlobals final : public Entity, public GlobalsProperties
-{
-public:
-    explicit ServerGlobals(const PropertyRegistrator* registrator);
-};

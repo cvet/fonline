@@ -755,7 +755,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* /*props*/, 
     uint data_size;
     uchar* data = prop->GetPropRawData(props, data_size);
 
-    if (prop->dataType == Property::POD)
+    if (prop->dataType == Property::PlainData)
     {
         RUNTIME_ASSERT(prop->podDataOffset != uint(-1));
 

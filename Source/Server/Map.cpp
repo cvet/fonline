@@ -317,7 +317,7 @@ void Map::EraseItem(uint item_id)
     item->ViewPlaceOnMap = false;
 }
 
-void Map::SendProperty(NetProperty::Type type, const Property* prop, ServerEntity* entity)
+void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* entity)
 {
     if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);

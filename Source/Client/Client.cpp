@@ -49,7 +49,7 @@
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), Globals {new ClientGlobals(GetPropertyRegistrator("Globals"))}, _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), ClientEntity(this, 1, GetPropertyRegistrator("Game"), nullptr), GameProperties(GetInitRef()), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
     _netSock = INVALID_SOCKET;
@@ -129,7 +129,6 @@ FOClient::~FOClient()
     }
 
     delete ScriptSys;
-    Globals->Release();
 }
 
 auto FOClient::ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool
@@ -145,6 +144,13 @@ auto FOClient::ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3
 auto FOClient::ResolveCritterAnimationFallout(hash arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool
 {
     return CritterAnimationFalloutEvent.Raise(arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+auto FOClient::GetChosen() -> CritterView*
+{
+    NON_CONST_METHOD_HINT();
+
+    return _chosen;
 }
 
 void FOClient::ProcessAutoLogin()
@@ -647,15 +653,14 @@ void FOClient::MainLoop()
 
     // Game time
     if (time_changed) {
-        if (Globals != nullptr) {
-            const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
-            Globals->SetYear(st.Year);
-            Globals->SetMonth(st.Month);
-            Globals->SetDay(st.Day);
-            Globals->SetHour(st.Hour);
-            Globals->SetMinute(st.Minute);
-            Globals->SetSecond(st.Second);
-        }
+        const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
+
+        SetYear(st.Year);
+        SetMonth(st.Month);
+        SetDay(st.Day);
+        SetHour(st.Hour);
+        SetMinute(st.Minute);
+        SetSecond(st.Second);
 
         SetDayTime(false);
     }
@@ -1776,7 +1781,7 @@ void FOClient::Net_SendMove(vector<uchar> steps)
     _netOut << _chosen->GetHexY();
 }
 
-void FOClient::Net_SendProperty(NetProperty::Type type, const Property* prop, Entity* entity)
+void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
 {
     RUNTIME_ASSERT(entity);
 
@@ -1806,7 +1811,7 @@ void FOClient::Net_SendProperty(NetProperty::Type type, const Property* prop, En
     uint data_size = 0;
     const void* data = client_entity->GetProperties().GetRawData(prop, data_size);
 
-    const auto is_pod = prop->IsPOD();
+    const auto is_pod = prop->IsPlainData();
     if (is_pod) {
         _netOut << NETMSG_SEND_POD_PROPERTY(data_size, additional_args);
     }
@@ -1923,7 +1928,7 @@ void FOClient::Net_OnLoginSuccess()
     _netOut.SetEncryptKey(bin_seed);
     _netIn.SetEncryptKey(bout_seed);
 
-    Globals->RestoreData(_globalsPropertiesData);
+    RestoreData(_globalsPropertiesData);
 
     if (_curPlayer != nullptr) {
         _curPlayer->MarkAsDestroyed();
@@ -3122,7 +3127,7 @@ void FOClient::Net_OnProperty(uint data_size)
 
     char type_ = 0;
     _netIn >> type_;
-    const auto type = static_cast<NetProperty::Type>(type_);
+    const auto type = static_cast<NetProperty>(type_);
 
     uint cr_id;
     uint item_id;
@@ -3169,8 +3174,8 @@ void FOClient::Net_OnProperty(uint data_size)
 
     Entity* entity = nullptr;
     switch (type) {
-    case NetProperty::Global:
-        entity = Globals;
+    case NetProperty::Game:
+        entity = this;
         break;
     case NetProperty::Player:
         entity = _curPlayer;
@@ -3328,13 +3333,14 @@ void FOClient::Net_OnGameInfo()
     CHECK_IN_BUFF_ERROR();
 
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
-    Globals->SetYear(year);
-    Globals->SetMonth(month);
-    Globals->SetDay(day);
-    Globals->SetHour(hour);
-    Globals->SetMinute(minute);
-    Globals->SetSecond(second);
-    Globals->SetTimeMultiplier(multiplier);
+
+    SetYear(year);
+    SetMonth(month);
+    SetDay(day);
+    SetHour(hour);
+    SetMinute(minute);
+    SetSecond(second);
+    SetTimeMultiplier(multiplier);
 
     HexMngr.SetWeather(time, rain);
     SetDayTime(true);
@@ -4193,10 +4199,10 @@ void FOClient::AnimProcess()
 void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     UNUSED_VARIABLE(entity);
-    RUNTIME_ASSERT(entity == Globals);
+    RUNTIME_ASSERT(entity == this);
 
-    if (prop->GetAccess() == Property::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Global, prop, Globals);
+    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+        Net_SendProperty(NetProperty::Game, prop, this);
     }
     else {
         throw GenericException("Unable to send global modifiable property", prop->GetName());
@@ -4217,7 +4223,7 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
     if (cr->IsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
     }
-    else if (prop->GetAccess() == Property::PublicFullModifiable) {
+    else if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
         Net_SendProperty(NetProperty::Critter, prop, cr);
     }
     else {
@@ -4244,7 +4250,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
             if (cr != nullptr && cr->IsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
             }
-            else if (cr != nullptr && prop->GetAccess() == Property::PublicFullModifiable) {
+            else if (cr != nullptr && prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
                 Net_SendProperty(NetProperty::CritterItem, prop, item);
             }
             else {
@@ -4252,7 +4258,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
             }
         }
         else if (item->GetOwnership() == ItemOwnership::MapHex) {
-            if (prop->GetAccess() == Property::PublicFullModifiable) {
+            if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
                 Net_SendProperty(NetProperty::MapItem, prop, item);
             }
             else {
@@ -4368,7 +4374,7 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
     UNUSED_VARIABLE(entity);
     RUNTIME_ASSERT(entity == _curMap);
 
-    if (prop->GetAccess() == Property::PublicFullModifiable) {
+    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
         Net_SendProperty(NetProperty::Map, prop, _curMap);
     }
     else {
@@ -4381,7 +4387,7 @@ void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
     UNUSED_VARIABLE(entity);
     RUNTIME_ASSERT(entity == _curLocation);
 
-    if (prop->GetAccess() == Property::PublicFullModifiable) {
+    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
         Net_SendProperty(NetProperty::Location, prop, _curLocation);
     }
     else {

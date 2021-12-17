@@ -1628,7 +1628,10 @@ if( FONLINE_BUILD_CLIENT )
 	if( NOT FO_BUILD_LIBRARY )
 		StatusMessage( "+ FOnlineClient" )
 		list( APPEND FO_APPLICATIONS_GROUP "FOnlineClient" )
-		add_executable( FOnlineClient WIN32 "Source/Applications/ClientApp.cpp" "Source/Common/Application.cpp" "Resources/Default.rc" )
+		add_executable( FOnlineClient WIN32
+			"Source/Applications/ClientApp.cpp"
+			"Source/Common/Application.cpp"
+			"Resources/Default.rc" )
 		# Todo: cmake make bundles for Mac and iOS
 		# add_executable( FOnlineClient MACOSX_BUNDLE ... "Default.rc" )
 		set_target_properties( FOnlineClient PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_CLIENT_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_CLIENT_OUTPUT} )
@@ -1646,7 +1649,12 @@ endif()
 if( FONLINE_BUILD_SERVER )
 	StatusMessage( "+ FOnlineServer" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineServer" )
-	add_executable( FOnlineServer WIN32 "Source/Applications/ServerApp.cpp" "Source/Common/Application.cpp" "Source/Server/AppGui.cpp" "Source/Server/AppGuiDX.cpp" "Resources/Default.rc" )
+	add_executable( FOnlineServer WIN32
+		"Source/Applications/ServerApp.cpp"
+		"Source/Common/Application.cpp"
+		"Source/Server/AppGui.cpp"
+		"Source/Server/AppGuiDX.cpp"
+		"Resources/Default.rc" )
 	set_target_properties( FOnlineServer PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SERVER_OUTPUT} )
 	set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer" )
 	set_target_properties( FOnlineServer PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
@@ -1654,7 +1662,10 @@ if( FONLINE_BUILD_SERVER )
 
 	StatusMessage( "+ FOnlineServerHeadless" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineServerHeadless" )
-	add_executable( FOnlineServerHeadless "Source/Applications/ServerHeadlessApp.cpp" "Source/Common/ApplicationHeadless.cpp" "Source/Server/AppGuiStub.cpp" )
+	add_executable( FOnlineServerHeadless
+		"Source/Applications/ServerHeadlessApp.cpp"
+		"Source/Common/ApplicationHeadless.cpp"
+		"Source/Server/AppGuiStub.cpp" )
 	set_target_properties( FOnlineServerHeadless PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SERVER_OUTPUT} )
 	set_target_properties( FOnlineServerHeadless PROPERTIES OUTPUT_NAME "FOnlineServerHeadless" )
 	set_target_properties( FOnlineServerHeadless PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
@@ -1663,7 +1674,10 @@ if( FONLINE_BUILD_SERVER )
 	if( WIN32 )
 		StatusMessage( "+ FOnlineServerService" )
 		list( APPEND FO_APPLICATIONS_GROUP "FOnlineServerService" )
-		add_executable( FOnlineServerService "Source/Applications/ServerServiceApp.cpp" "Source/Common/ApplicationHeadless.cpp" "Source/Server/AppGuiStub.cpp" )
+		add_executable( FOnlineServerService
+			"Source/Applications/ServerServiceApp.cpp"
+			"Source/Common/ApplicationHeadless.cpp"
+			"Source/Server/AppGuiStub.cpp" )
 		set_target_properties( FOnlineServerService PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerService PROPERTIES OUTPUT_NAME "FOnlineServerService" )
 		set_target_properties( FOnlineServerService PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
@@ -1671,7 +1685,10 @@ if( FONLINE_BUILD_SERVER )
 	else()
 		StatusMessage( "+ FOnlineServerDaemon" )
 		list( APPEND FO_APPLICATIONS_GROUP "FOnlineServerDaemon" )
-		add_executable( FOnlineServerDaemon "Source/Applications/ServerDaemonApp.cpp" "Source/Common/ApplicationHeadless.cpp" "Source/Server/AppGuiStub.cpp" )
+		add_executable( FOnlineServerDaemon
+			"Source/Applications/ServerDaemonApp.cpp"
+			"Source/Common/ApplicationHeadless.cpp"
+			"Source/Server/AppGuiStub.cpp" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SERVER_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SERVER_OUTPUT} )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
@@ -1689,7 +1706,10 @@ if( FONLINE_BUILD_SINGLE )
 	if( NOT FO_BUILD_LIBRARY )
 		StatusMessage( "+ FOnlineSingle" )
 		list( APPEND FO_APPLICATIONS_GROUP "FOnlineSingle" )
-		add_executable( FOnlineSingle WIN32 "Source/Applications/ClientApp.cpp" ${FO_SINGLE_SOURCE} "Resources/Default.rc" )
+		add_executable( FOnlineSingle WIN32
+			"Source/Applications/ClientApp.cpp"
+			${FO_SINGLE_SOURCE}
+			"Resources/Default.rc" )
 		set_target_properties( FOnlineSingle PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_SINGLE_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_SINGLE_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_SINGLE_OUTPUT} )
 	else()
 		StatusMessage( "+ FOnlineSingle (shared library)" )
@@ -1721,7 +1741,16 @@ endif()
 if( FONLINE_BUILD_BAKER )
 	StatusMessage( "+ FOnlineBaker" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineBaker" )
-	add_executable( FOnlineBaker "Source/Applications/BakerApp.cpp" "Source/Common/ApplicationHeadless.cpp" "Source/Tools/ImageBaker.h" "Source/Tools/ImageBaker.cpp" "Source/Tools/ModelBaker.h" "Source/Tools/ModelBaker.cpp" "Source/Tools/EffectBaker.h" "Source/Tools/EffectBaker.cpp" "Source/Tools/F2Palette-Include.h" )
+	add_executable( FOnlineBaker
+		"Source/Applications/BakerApp.cpp"
+		"Source/Common/ApplicationHeadless.cpp"
+		"Source/Tools/ImageBaker.h"
+		"Source/Tools/ImageBaker.cpp"
+		"Source/Tools/ModelBaker.h"
+		"Source/Tools/ModelBaker.cpp"
+		"Source/Tools/EffectBaker.h"
+		"Source/Tools/EffectBaker.cpp"
+		"Source/Tools/F2Palette-Include.h" )
 	set_target_properties( FOnlineBaker PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TOOLS_OUTPUT} )
 	set_target_properties( FOnlineBaker PROPERTIES OUTPUT_NAME "FOnlineBaker" )
 	set_target_properties( FOnlineBaker PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
@@ -1763,6 +1792,7 @@ if( FONLINE_UNIT_TESTS )
 		${FO_SERVER_SCRIPTING_SOURCE}
 		${FO_CLIENT_SCRIPTING_SOURCE}
 		${FO_MAPPER_SCRIPTING_SOURCE}
+		"Source/Scripting/MapperGlobalScriptMethods.cpp"
 		"Source/Common/ApplicationHeadless.cpp"
 		"Source/Applications/ServerApp.cpp"
 		"Source/Applications/ServerServiceApp.cpp"
@@ -1791,6 +1821,7 @@ if( FONLINE_CODE_COVERAGE )
 		${FO_SERVER_SCRIPTING_SOURCE}
 		${FO_CLIENT_SCRIPTING_SOURCE}
 		${FO_MAPPER_SCRIPTING_SOURCE}
+		"Source/Scripting/MapperGlobalScriptMethods.cpp"
 		"Source/Common/ApplicationHeadless.cpp"
 		"Source/Applications/ServerApp.cpp"
 		"Source/Applications/ServerServiceApp.cpp"

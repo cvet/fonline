@@ -200,7 +200,7 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     IsTransferring = true;
 }
 
-void Player::Send_Property(NetProperty::Type type, const Property* prop, Entity* entity)
+void Player::Send_Property(NetProperty type, const Property* prop, Entity* entity)
 {
     NON_CONST_METHOD_HINT();
 
@@ -233,7 +233,7 @@ void Player::Send_Property(NetProperty::Type type, const Property* prop, Entity*
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
-    const auto is_pod = prop->IsPOD();
+    const auto is_pod = prop->IsPlainData();
     if (is_pod) {
         Connection->Bout << NETMSG_POD_PROPERTY(data_size, additional_args);
     }

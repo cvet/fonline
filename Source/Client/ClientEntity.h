@@ -64,9 +64,3 @@ protected:
 private:
     uint _id;
 };
-
-class ClientGlobals final : public Entity, public GlobalsProperties
-{
-public:
-    explicit ClientGlobals(const PropertyRegistrator* registrator);
-};

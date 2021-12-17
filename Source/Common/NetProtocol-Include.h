@@ -704,7 +704,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 #define NETMSG_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(uint) * (x) + sizeof(ushort) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Property changed
-// NetProperty::Type type
+// NetProperty type
 // uint vars[x]
 // ushort property_index
 // uchar data[b]
@@ -714,7 +714,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // Property changed
 // uint msg_len
-// NetProperty::Type type
+// NetProperty type
 // uint vars[x]
 // ushort property_index
 // uchar data[msg_len - ...]
@@ -724,7 +724,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 #define NETMSG_SEND_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(uint) * (x) + sizeof(ushort) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Client change property
-// NetProperty::Type type
+// NetProperty type
 // uint vars[x]
 // ushort property_index
 // uchar data[b]
@@ -734,7 +734,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // Client change property
 // uint msg_len
-// NetProperty::Type type
+// NetProperty type
 // uint vars[x]
 // ushort property_index
 // uchar data[msg_len - ...]

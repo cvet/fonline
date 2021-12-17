@@ -37,10 +37,10 @@
 
 #include "Entity.h"
 
-class GlobalsProperties : public EntityProperties
+class GameProperties : public EntityProperties
 {
 public:
-    explicit GlobalsProperties(Properties& props) : EntityProperties(props) { }
+    explicit GameProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, Year)

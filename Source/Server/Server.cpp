@@ -41,7 +41,7 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(true), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys}, ProtoMngr(FileMngr, *this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this), GameTime(Settings)
+FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(true), ServerEntity(this, 1, GetPropertyRegistrator("Game"), nullptr), GameProperties(GetInitRef()), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys}, ProtoMngr(FileMngr, *this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this), GameTime(Settings)
 {
     WriteLog("***   Starting initialization   ***\n");
 
@@ -92,19 +92,16 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : Propert
         throw ServerInitException("Can't init items lang packs");
     }
 
-    // Load globals
-    Globals = new ServerGlobals(GetPropertyRegistrator("Globals"));
-
-    const auto globals_doc = DbStorage.Get("Globals", 1);
+    const auto globals_doc = DbStorage.Get("Game", 1);
     if (globals_doc.empty()) {
-        DbStorage.Insert("Globals", 1, {{"_Proto", string("")}});
+        DbStorage.Insert("Game", 1, {{"_Proto", string("")}});
     }
     else {
-        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->GetPropertiesForEdit(), globals_doc, *ScriptSys)) {
+        if (!PropertiesSerializator::LoadFromDbDocument(&GetPropertiesForEdit(), globals_doc, *ScriptSys)) {
             throw ServerInitException("Failed to load globals document");
         }
 
-        GameTime.Reset(Globals->GetYear(), Globals->GetMonth(), Globals->GetDay(), Globals->GetHour(), Globals->GetMinute(), Globals->GetSecond(), Globals->GetTimeMultiplier());
+        GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
     }
 
     // Todo: restore hashes loading
@@ -204,7 +201,6 @@ FOServer::~FOServer()
     delete _tcpServer;
     delete _webSocketsServer;
     delete ScriptSys;
-    Globals->Release();
 }
 
 void FOServer::Shutdown()
@@ -282,12 +278,12 @@ void FOServer::MainLoop()
 
     if (GameTime.FrameAdvance()) {
         const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
-        Globals->SetYear(st.Year);
-        Globals->SetMonth(st.Month);
-        Globals->SetDay(st.Day);
-        Globals->SetHour(st.Hour);
-        Globals->SetMinute(st.Minute);
-        Globals->SetSecond(st.Second);
+        SetYear(st.Year);
+        SetMonth(st.Month);
+        SetDay(st.Day);
+        SetHour(st.Hour);
+        SetMinute(st.Minute);
+        SetSecond(st.Second);
     }
 
     // Cycle time
@@ -455,7 +451,7 @@ void FOServer::DrawGui()
     if (ImGui::Begin("Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         _gui.Stats = "";
         const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
-        _gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*Globals->GetTimeMultiplier()*/);
+        _gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*GetTimeMultiplier()*/);
         _gui.Stats += _str("Connections: {}\n", _stats.CurOnline);
         _gui.Stats += _str("Players in game: {}\n", CrMngr.PlayersInGame());
         _gui.Stats += _str("NPC in game: {}\n", CrMngr.NpcInGame());
@@ -1188,7 +1184,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
                 logcb("Property not found.");
                 return;
             }
-            if (!prop->IsPOD() || prop->GetBaseSize() != 4) {
+            if (!prop->IsPlainData() || prop->GetBaseSize() != 4) {
                 logcb("For now you can modify only int/uint properties.");
                 return;
             }
@@ -1559,13 +1555,13 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     RUNTIME_ASSERT(minute >= 0 && minute <= 59);
     RUNTIME_ASSERT(second >= 0 && second <= 59);
 
-    Globals->SetTimeMultiplier(multiplier);
-    Globals->SetYear(year);
-    Globals->SetMonth(month);
-    Globals->SetDay(day);
-    Globals->SetHour(hour);
-    Globals->SetMinute(minute);
-    Globals->SetSecond(second);
+    SetTimeMultiplier(multiplier);
+    SetYear(year);
+    SetMonth(month);
+    SetDay(day);
+    SetHour(hour);
+    SetMinute(minute);
+    SetSecond(second);
 
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
@@ -2007,8 +2003,8 @@ void FOServer::EntitySetValue(Entity* entity, Property* prop, void* /*cur_value*
         DbStorage.Update(_str("{}s", server_entity->GetClassName()), server_entity->GetId(), prop->GetName(), value);
 
         if (DbHistory && !prop->IsNoHistory()) {
-            const auto id = Globals->GetHistoryRecordsId();
-            Globals->SetHistoryRecordsId(id + 1);
+            const auto id = GetHistoryRecordsId();
+            SetHistoryRecordsId(id + 1);
 
             const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
@@ -2061,7 +2057,7 @@ void FOServer::ProcessCritter(Critter* cr)
 
             cr->EraseCrTimeEvent(0);
 
-            uint time = Globals->GetTimeMultiplier() * 1800; // 30 minutes on error
+            uint time = GetTimeMultiplier() * 1800; // 30 minutes on error
             ScriptSys.PrepareScriptFuncContext(func_num, cr->GetName());
             ScriptSys.SetArgEntity(cr);
             ScriptSys.SetArgUInt(identifier);
@@ -2272,7 +2268,7 @@ void FOServer::Process_Update(ClientConnection* connection)
     vector<uchar*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     if (!outdated) {
-        msg_len += sizeof(ushort) + Globals->StoreData(false, &global_vars_data, &global_vars_data_sizes);
+        msg_len += sizeof(ushort) + StoreData(false, &global_vars_data, &global_vars_data_sizes);
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
@@ -2669,12 +2665,12 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     vector<uchar*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
-    const auto whole_global_vars_data_size = Globals->StoreData(false, &global_vars_data, &global_vars_data_sizes);
+    const auto whole_global_vars_data_size = StoreData(false, &global_vars_data, &global_vars_data_sizes);
     msg_len += sizeof(ushort) + whole_global_vars_data_size;
 
     vector<uchar*>* player_data = nullptr;
     vector<uint>* player_data_sizes = nullptr;
-    const auto whole_player_data_size = Globals->StoreData(false, &player_data, &player_data_sizes);
+    const auto whole_player_data_size = StoreData(false, &player_data, &player_data_sizes);
     msg_len += sizeof(ushort) + whole_player_data_size;
 
     CONNECTION_OUTPUT_BEGIN(connection);
@@ -2973,7 +2969,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
     char type_ = 0;
     player->Connection->Bin >> type_;
-    const auto type = static_cast<NetProperty::Type>(type_);
+    const auto type = static_cast<NetProperty>(type_);
 
     uint additional_args = 0;
     switch (type) {
@@ -3024,11 +3020,11 @@ void FOServer::Process_Property(Player* player, uint data_size)
     const Property* prop = nullptr;
     Entity* entity = nullptr;
     switch (type) {
-    case NetProperty::Global:
+    case NetProperty::Game:
         is_public = true;
         prop = GetPropertyRegistrator("Globals")->Get(property_index);
         if (prop != nullptr) {
-            entity = Globals;
+            entity = this;
         }
         break;
     case NetProperty::Player:
@@ -3098,22 +3094,22 @@ void FOServer::Process_Property(Player* player, uint data_size)
     }
 
     const auto access = prop->GetAccess();
-    if (is_public && (access & Property::PublicMask) == 0) {
+    if (is_public && !IsEnumSet(access, Property::AccessType::PublicMask)) {
         return;
     }
-    if (!is_public && (access & (Property::ProtectedMask | Property::PublicMask)) == 0) {
+    if (!is_public && (!IsEnumSet(access, Property::AccessType::ProtectedMask) || !IsEnumSet(access, Property::AccessType::PublicMask))) {
         return;
     }
-    if ((access & Property::ModifiableMask) == 0) {
+    if (!IsEnumSet(access, Property::AccessType::ModifiableMask)) {
         return;
     }
-    if (is_public && access != Property::PublicFullModifiable) {
+    if (is_public && access != Property::AccessType::PublicFullModifiable) {
         return;
     }
-    if (prop->IsPOD() && data_size != prop->GetBaseSize()) {
+    if (prop->IsPlainData() && data_size != prop->GetBaseSize()) {
         return;
     }
-    if (!prop->IsPOD() && data_size != 0) {
+    if (!prop->IsPlainData() && data_size != 0) {
         return;
     }
 
@@ -3123,9 +3119,9 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
 void FOServer::OnSendGlobalValue(Entity* entity, Property* prop)
 {
-    if ((prop->GetAccess() & Property::PublicMask) != 0) {
+    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto* player : EntityMngr.GetPlayers()) {
-            player->Send_Property(NetProperty::Global, prop, Globals);
+            player->Send_Property(NetProperty::Game, prop, this);
         }
     }
 }
@@ -3141,8 +3137,8 @@ void FOServer::OnSendCritterValue(Entity* entity, Property* prop)
 {
     auto* cr = dynamic_cast<Critter*>(entity);
 
-    const auto is_public = (prop->GetAccess() & Property::PublicMask) != 0;
-    const auto is_protected = (prop->GetAccess() & Property::ProtectedMask) != 0;
+    const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
+    const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
 
     if (is_public || is_protected) {
         cr->Send_Property(NetProperty::Chosen, prop, cr);
@@ -3154,7 +3150,7 @@ void FOServer::OnSendCritterValue(Entity* entity, Property* prop)
 
 void FOServer::OnSendMapValue(Entity* entity, Property* prop)
 {
-    if ((prop->GetAccess() & Property::PublicMask) != 0) {
+    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
         map->SendProperty(NetProperty::Map, prop, map);
     }
@@ -3162,7 +3158,7 @@ void FOServer::OnSendMapValue(Entity* entity, Property* prop)
 
 void FOServer::OnSendLocationValue(Entity* entity, Property* prop)
 {
-    if ((prop->GetAccess() & Property::PublicMask) != 0) {
+    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
         for (auto* map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
@@ -4229,8 +4225,8 @@ auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint co
 void FOServer::OnSendItemValue(Entity* entity, Property* prop)
 {
     if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
-        const auto is_public = (prop->GetAccess() & Property::PublicMask) != 0;
-        const auto is_protected = (prop->GetAccess() & Property::ProtectedMask) != 0;
+        const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
+        const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             if (is_public || is_protected) {
                 auto* cr = CrMngr.GetCritter(item->GetCritId());
