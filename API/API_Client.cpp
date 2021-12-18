@@ -113,7 +113,7 @@ bool HexManager_ChangeTile( uint name_hash, ushort hx, ushort hy, short ox, shor
     }*/
 }
 
-size_t HexMngr_GetAllItems_ScriptArray(ScriptArray* script_array)
+size_t HexMngr_GetAllItems_ScriptArray(CScriptArray* script_array)
 {
 	ItemPtrVec items;
 	ItemHexVec& item_hexes = FOClient::Self->HexMngr.GetItems();

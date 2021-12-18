@@ -360,7 +360,6 @@ public:
     uchar      Accessory;
     bool       ViewPlaceOnMap;
     short      Reserved0;
-	//uint       contourColor;
 	int ColorContour;
     union     // 8
     {

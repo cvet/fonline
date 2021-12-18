@@ -521,6 +521,12 @@
     <ClInclude Include="..\API\API_Common.h">
       <Filter>API</Filter>
     </ClInclude>
+    <ClInclude Include="..\API\API_AngelScript.h">
+      <Filter>API</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h">
+      <Filter>AngelScript\Preprocessor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -804,6 +810,12 @@
     </ClCompile>
     <ClCompile Include="..\API\API_Client.cpp">
       <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="..\API\API_AngelScript.cpp">
+      <Filter>API</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp">
+      <Filter>AngelScript\Preprocessor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

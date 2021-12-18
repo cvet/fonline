@@ -1511,7 +1511,7 @@ void FOClient::ProcessItemsCollection( int collection, ItemVec& init_items, Item
     if( Script::PrepareContext( ClientFunctions.ItemsCollection, _FUNC_, "Game" ) )
     {
         // Create script array
-        ScriptArray* arr = Script::CreateArray( "ItemCl@[]" );
+        CScriptArray* arr = Script::CreateArray( "ItemCl@[]" );
         if( arr )
         {
             // Clone to script array
@@ -5435,7 +5435,7 @@ int FOClient::GetActiveScreen( IntVec** screens /* = NULL */ )
 
     if( Script::PrepareContext( ClientFunctions.GetActiveScreens, _FUNC_, "Game" ) )
     {
-        ScriptArray* arr = Script::CreateArray( "int[]" );
+        CScriptArray* arr = Script::CreateArray( "int[]" );
         if( arr )
         {
             Script::SetArgObject( arr );
@@ -10101,7 +10101,7 @@ void FOClient::ElevatorGenerate( uint param )
 
     if( !Script::PrepareContext( ClientFunctions.GetElevator, _FUNC_, "Game" ) )
         return;
-    ScriptArray* arr = Script::CreateArray( "int[]" );
+    CScriptArray* arr = Script::CreateArray( "int[]" );
     if( !arr )
         return;
     Script::SetArgUInt( param );

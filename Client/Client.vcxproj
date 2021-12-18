@@ -134,7 +134,7 @@
     <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|x64'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
     <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|x64'" />
-    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">FOnline</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">FOnlineOGL</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">FOnlineD3D</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">FOnlineDbg</TargetName>
   </PropertyGroup>
@@ -160,7 +160,7 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)FOnline.pch</PrecompiledHeaderOutputFile>
       <AssemblerOutput>All</AssemblerOutput>
@@ -220,7 +220,7 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)FOnline.pch</PrecompiledHeaderOutputFile>
       <AssemblerOutput>All</AssemblerOutput>
@@ -511,10 +511,12 @@
     <ResourceCompile Include="Client.rc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\API\API_AngelScript.h" />
     <ClInclude Include="..\API\API_Client.h" />
     <ClInclude Include="..\API\API_Common.h" />
     <ClInclude Include="..\Source\3dAnimation.h" />
     <ClInclude Include="..\Source\3dStuff.h" />
+    <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h" />
     <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\GL\glew.h" />
@@ -670,8 +672,10 @@
     <ClInclude Include="..\Source\SHA2\sha2.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\API\API_AngelScript.cpp" />
     <ClCompile Include="..\API\API_Client.cpp" />
     <ClCompile Include="..\Source\3dStuff.cpp" />
+    <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp" />
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>

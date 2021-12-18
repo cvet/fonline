@@ -55,7 +55,7 @@ CritterCl::~CritterCl()
     if( Layers3d )
     {
         #ifdef FONLINE_CLIENT
-        ( (ScriptArray*) Layers3d )->Release();
+        ( (CScriptArray*) Layers3d )->Release();
         #else
         uint* layers = (uint*) Layers3d;
         SAFEDELA( layers );
@@ -104,7 +104,7 @@ void CritterCl::GenParams()
     #ifdef FONLINE_CLIENT
     if( Script::PrepareContext( ClientFunctions.PlayerGeneration, _FUNC_, "Registration" ) )
     {
-        ScriptArray* arr = Script::CreateArray( "int[]" );
+        CScriptArray* arr = Script::CreateArray( "int[]" );
         if( !arr )
             return;
         arr->Resize( MAX_PARAMS );
@@ -1370,7 +1370,7 @@ int* CritterCl::GetLayers3dData()
 {
     #ifdef FONLINE_CLIENT
     static int   layers[ LAYERS3D_COUNT ];
-    ScriptArray* arr = (ScriptArray*) Layers3d;
+    CScriptArray* arr = (CScriptArray*) Layers3d;
     memcpy( layers, arr->At( 0 ), sizeof( layers ) );
     return layers;
     #endif
@@ -1412,9 +1412,9 @@ void CritterCl::SetBaseType( uint type )
         if( !Layers3d )
         {
             Layers3d = Script::CreateArray( "int[]" );
-            ( (ScriptArray*) Layers3d )->Resize( LAYERS3D_COUNT );
+            ( (CScriptArray*) Layers3d )->Resize( LAYERS3D_COUNT );
         }
-        memzero( ( (ScriptArray*) Layers3d )->At( 0 ), LAYERS3D_COUNT * sizeof( int ) );
+        memzero( ( (CScriptArray*) Layers3d )->At( 0 ), LAYERS3D_COUNT * sizeof( int ) );
         #else
         if( !Layers3d )
             Layers3d = new int[ LAYERS3D_COUNT ];

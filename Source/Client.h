@@ -500,8 +500,8 @@ public:
         static uint       Crit_CountItem( CritterCl* cr, ushort proto_id );
         static uint       Crit_CountItemByType( CritterCl* cr, uchar type );
         static Item*      Crit_GetItem( CritterCl* cr, ushort proto_id, int slot );
-        static uint       Crit_GetItems( CritterCl* cr, int slot, ScriptArray* items );
-        static uint       Crit_GetItemsByType( CritterCl* cr, int type, ScriptArray* items );
+        static uint       Crit_GetItems( CritterCl* cr, int slot, CScriptArray* items );
+        static uint       Crit_GetItemsByType( CritterCl* cr, int type, CScriptArray* items );
         static ProtoItem* Crit_GetSlotProto( CritterCl* cr, int slot, uchar& mode );
         static void       Crit_SetVisible( CritterCl* cr, bool visible );
         static bool       Crit_GetVisible( CritterCl* cr );
@@ -521,15 +521,15 @@ public:
         static Item*  Item_GetChild( Item* item, uint childIndex );
 
         static CritterCl*    Global_GetChosen();
-        static uint          Global_GetChosenActions( ScriptArray* actions );
-        static void          Global_SetChosenActions( ScriptArray* actions );
+        static uint          Global_GetChosenActions( CScriptArray* actions );
+        static void          Global_SetChosenActions( CScriptArray* actions );
         static Item*         Global_GetItem( uint item_id );
         static uint          Global_GetCrittersDistantion( CritterCl* cr1, CritterCl* cr2 );
         static CritterCl*    Global_GetCritter( uint critter_id );
-        static uint          Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type, ScriptArray* critters );
-        static uint          Global_GetCrittersByPids( ushort pid, int find_type, ScriptArray* critters );
-        static uint          Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters );
-        static uint          Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, ScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy );
+        static uint          Global_GetCritters( ushort hx, ushort hy, uint radius, int find_type, CScriptArray* critters );
+        static uint          Global_GetCrittersByPids( ushort pid, int find_type, CScriptArray* critters );
+        static uint          Global_GetCrittersInPath( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters );
+        static uint          Global_GetCrittersInPathBlock( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, float angle, uint dist, int find_type, CScriptArray* critters, ushort& pre_block_hx, ushort& pre_block_hy, ushort& block_hx, ushort& block_hy );
         static void          Global_GetHexInPath( ushort from_hx, ushort from_hy, ushort& to_hx, ushort& to_hy, float angle, uint dist );
         static uint          Global_GetPathLengthHex( ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uint cut );
         static uint          Global_GetPathLengthCr( CritterCl* cr, ushort to_hx, ushort to_hy, uint cut );
@@ -542,8 +542,8 @@ public:
         static bool          Global_IsTurnBased();
         static uint          Global_GetTurnBasedTime();
         static ushort        Global_GetCurrentMapPid();
-        static uint          Global_GetMessageFilters( ScriptArray* filters );
-        static void          Global_SetMessageFilters( ScriptArray* filters );
+        static uint          Global_GetMessageFilters( CScriptArray* filters );
+        static void          Global_SetMessageFilters( CScriptArray* filters );
         static void          Global_Message( ScriptString& msg );
         static void          Global_MessageType( ScriptString& msg, int type );
         static void          Global_MessageMsg( int text_msg, uint str_num );
@@ -602,8 +602,8 @@ public:
         static uint          Global_GetCritterAlias( uint cr_type );
         static ScriptString* Global_GetCritterTypeName( uint cr_type );
         static ScriptString* Global_GetCritterSoundName( uint cr_type );
-        static void          Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
-        static void          Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, ScriptArray* p4 );
+        static void          Global_RunServerScript( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, CScriptArray* p4 );
+        static void          Global_RunServerScriptUnsafe( ScriptString& func_name, int p0, int p1, int p2, ScriptString* p3, CScriptArray* p4 );
 
         static uint Global_LoadSprite( ScriptString& spr_name, int path_index );
         static uint Global_LoadSpriteHash( uint name_hash, uchar dir );
@@ -616,10 +616,10 @@ public:
         static void Global_DrawSpriteSize( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color );
         static void Global_DrawSpriteSizeOffs( uint spr_id, int spr_index, int x, int y, int w, int h, bool scratch, bool center, uint color, bool offs );
         static void Global_DrawText( ScriptString& text, int x, int y, int w, int h, uint color, int font, int flags );
-        static void Global_DrawPrimitive( int primitive_type, ScriptArray& data );
+        static void Global_DrawPrimitive( int primitive_type, CScriptArray& data );
         static void Global_DrawMapSprite( ushort hx, ushort hy, ushort proto_id, uint spr_id, int spr_index, int ox, int oy );
         static void Global_DrawCritter2d( uint crtype, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color );
-        static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, ScriptArray* layers, ScriptArray* position, uint color );
+        static void Global_DrawCritter3d( uint instance, uint crtype, uint anim1, uint anim2, CScriptArray* layers, CScriptArray* position, uint color );
 
 		static void          Global_OpenWebLink(ScriptString& text);
 		static void          Global_ChosenRefreshMap();
