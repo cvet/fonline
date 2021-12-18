@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2011 Andreas Jonsson
+   Copyright (c) 2003-2013 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -48,14 +48,18 @@ public:
 	~asCMap();
 
 	int   Insert(const KEY &key, const VAL &value);
+	int   Insert(asSMapNode<KEY,VAL> *node);
 	int   GetCount() const;
 	
 	const KEY &GetKey(const asSMapNode<KEY,VAL> *cursor) const;
 	const VAL &GetValue(const asSMapNode<KEY,VAL> *cursor) const;
-	VAL &GetValue(asSMapNode<KEY,VAL> *cursor);
+	VAL       &GetValue(asSMapNode<KEY,VAL> *cursor);
 
 	void Erase(asSMapNode<KEY,VAL> *cursor);
+	asSMapNode<KEY,VAL> *Remove(asSMapNode<KEY,VAL> *cursor);
 	void EraseAll();
+
+	void SwapWith(asCMap<KEY,VAL> &other);
 
 	// Returns true as long as cursor is valid
 
@@ -70,6 +74,9 @@ public:
 	int CheckIntegrity(asSMapNode<KEY,VAL> *node) const;
 
 protected:
+	// Don't allow value assignment
+	asCMap &operator=(const asCMap &) { return *this; }
+
 	void BalanceInsert(asSMapNode<KEY,VAL> *node);
 	void BalanceErase(asSMapNode<KEY,VAL> *child, asSMapNode<KEY,VAL> *parent);
 
@@ -99,6 +106,7 @@ protected:
 template <class KEY, class VAL> struct asSMapNode
 {
 	asSMapNode() {parent = 0; left = 0; right = 0; isRed = true;}
+	void Init(KEY k, VAL v) {key = k; value = v; parent = 0; left = 0; right = 0; isRed = true;}
 
 	asSMapNode *parent;
 	asSMapNode *left;
@@ -120,6 +128,19 @@ template <class KEY, class VAL>
 asCMap<KEY, VAL>::~asCMap()
 {
 	EraseAll();
+}
+
+template <class KEY, class VAL>
+void asCMap<KEY,VAL>::SwapWith(asCMap<KEY,VAL> &other)
+{
+	asSMapNode<KEY,VAL> *tmpRoot  = root;
+	int                  tmpCount = count;
+
+	root  = other.root;
+	count = other.count;
+
+	other.root  = tmpRoot;
+	other.count = tmpCount;
 }
 
 template <class KEY, class VAL>
@@ -156,9 +177,21 @@ int asCMap<KEY, VAL>::Insert(const KEY &key, const VAL &value)
 {
 	typedef asSMapNode<KEY,VAL> node_t;
 	asSMapNode<KEY,VAL> *nnode = asNEW(node_t);
+	if( nnode == 0 )
+	{
+		// Out of memory
+		return -1;
+	}
+
 	nnode->key   = key;
 	nnode->value = value;
 
+	return Insert(nnode);
+}
+
+template <class KEY, class VAL>
+int asCMap<KEY, VAL>::Insert(asSMapNode<KEY,VAL> *nnode)
+{
 	// Insert the node
 	if( root == 0 )
 		root = nnode;
@@ -231,10 +264,10 @@ void asCMap<KEY, VAL>::BalanceInsert(asSMapNode<KEY, VAL> *node)
 
 				if( node == node->parent->right ) 
 				{
-                    // Make the node a left child
-                    node = node->parent;
-                    RotateLeft(node);
-                }
+					// Make the node a left child
+					node = node->parent;
+					RotateLeft(node);
+				}
 
 				// Change color on parent and grand parent
 				// Then rotate grand parent to the right
@@ -267,10 +300,10 @@ void asCMap<KEY, VAL>::BalanceInsert(asSMapNode<KEY, VAL> *node)
 
 				if( node == node->parent->left ) 
 				{
-                    // Make the node a right child
-                    node = node->parent;
-                    RotateRight(node);
-                }
+					// Make the node a right child
+					node = node->parent;
+					RotateRight(node);
+				}
 				
 				// Change color on parent and grand parent
 				// Then rotate grand parent to the right
@@ -338,7 +371,17 @@ bool asCMap<KEY, VAL>::MoveTo(asSMapNode<KEY,VAL> **out, const KEY &key) const
 template <class KEY, class VAL>
 void asCMap<KEY, VAL>::Erase(asSMapNode<KEY,VAL> *cursor)
 {
-	if( cursor == 0 ) return;
+	asSMapNode<KEY,VAL> *node = Remove(cursor);
+	asASSERT( node == cursor );
+
+	typedef asSMapNode<KEY,VAL> node_t;
+	asDELETE(node,node_t);
+}
+
+template <class KEY, class VAL>
+asSMapNode<KEY,VAL> *asCMap<KEY, VAL>::Remove(asSMapNode<KEY,VAL> *cursor)
+{
+	if( cursor == 0 ) return 0;
 
 	asSMapNode<KEY,VAL> *node = cursor;
 
@@ -362,15 +405,15 @@ void asCMap<KEY, VAL>::Erase(asSMapNode<KEY,VAL> *cursor)
 		child = remove->right;
 
 	if( child ) child->parent = remove->parent;
-    if( remove->parent )
+	if( remove->parent )
 	{
-        if( remove == remove->parent->left )
-            remove->parent->left = child;
-        else
-            remove->parent->right = child;
+		if( remove == remove->parent->left )
+			remove->parent->left = child;
+		else
+			remove->parent->right = child;
 	}
 	else
-        root = child;
+		root = child;
 
 	// If we remove a black node we must make sure the tree is balanced
 	if( ISBLACK(remove) )
@@ -399,10 +442,9 @@ void asCMap<KEY, VAL>::Erase(asSMapNode<KEY,VAL> *cursor)
 		if( remove->right ) remove->right->parent = remove;	
 	}
 
-	typedef asSMapNode<KEY,VAL> node_t;
-	asDELETE(node,node_t);
-
 	count--;
+
+	return node;
 }
 
 // Call method only if removed node was black
@@ -474,17 +516,17 @@ void asCMap<KEY, VAL>::BalanceErase(asSMapNode<KEY, VAL> *child, asSMapNode<KEY,
 				if( ISBLACK(brother->right) )
 				{
 					brother->left->isRed = false;
-                    brother->isRed = true;
-                    RotateRight(brother);
-                    brother = parent->right;
+					brother->isRed = true;
+					RotateRight(brother);
+					brother = parent->right;
 				}
 
 				// Case 4
 				brother->isRed = parent->isRed;
-                parent->isRed = false;
-                brother->right->isRed = false;
-                RotateLeft(parent);
-                break;
+				parent->isRed = false;
+				brother->right->isRed = false;
+				RotateLeft(parent);
+				break;
 			}
 		}
 		else
@@ -522,17 +564,17 @@ void asCMap<KEY, VAL>::BalanceErase(asSMapNode<KEY, VAL> *child, asSMapNode<KEY,
 				if( ISBLACK(brother->left) )
 				{
 					brother->right->isRed = false;
-                    brother->isRed = true;
-                    RotateLeft(brother);
-                    brother = parent->left;
+					brother->isRed = true;
+					RotateLeft(brother);
+					brother = parent->left;
 				}
 
 				// Case 4
 				brother->isRed = parent->isRed;
-                parent->isRed = false;
-                brother->left->isRed = false;
-                RotateRight(parent);
-                break;
+				parent->isRed = false;
+				brother->left->isRed = false;
+				RotateRight(parent);
+				break;
 			}
 		}
 	}

@@ -28,16 +28,16 @@ class BindFunction
 {
 public:
     bool   IsScriptCall;
-    int    ScriptFuncId;
+	asIScriptFunction* ScriptFunc;
     string ModuleName;
     string FuncName;
     string FuncDecl;
     size_t NativeFuncAddr;
 
-    BindFunction( int func_id, size_t native_func_addr, const char* module_name,  const char* func_name, const char* func_decl )
+    BindFunction( asIScriptFunction* func, size_t native_func_addr, const char* module_name,  const char* func_name, const char* func_decl )
     {
         IsScriptCall = ( native_func_addr == 0 );
-        ScriptFuncId = func_id;
+		ScriptFunc = func;
         NativeFuncAddr = native_func_addr;
         ModuleName = module_name;
         FuncName = func_name;
@@ -1665,7 +1665,7 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
         IntVec bad_typeids_class;
         for( int m = 0, n = module->GetObjectTypeCount(); m < n; m++ )
         {
-            asIObjectType* ot = module->GetObjectTypeByIndex( m );
+			asITypeInfo* ot = module->GetObjectTypeByIndex( m );
             for( int i = 0, j = ot->GetPropertyCount(); i < j; i++ )
             {
                 int type = 0;
@@ -1690,7 +1690,7 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
 
             while( type & asTYPEID_TEMPLATE )
             {
-                asIObjectType* obj = (asIObjectType*) Engine->GetObjectTypeById( type );
+				asITypeInfo* obj = ( asITypeInfo*) Engine->GetTypeInfoById( type );
                 if( !obj )
                     break;
                 type = obj->GetSubTypeId();
@@ -1851,19 +1851,24 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
             Str::Format( decl_, decl, func_name );
         else
             Str::Copy( decl_, func_name );
-        int result = module->GetFunctionIdByDecl( decl_ );
-        if( result <= 0 )
-        {
-            if( !disable_log )
-                WriteLogF( _FUNC_, " - Function<%s> in module<%s> not found, result<%d>.\n", decl_, module_name, result );
-            return 0;
-        }
+		asIScriptFunction* script_func = module->GetFunctionByDecl( decl_ );
+		if( !script_func )
+		{
+			if( !disable_log )
+			{
+				WriteLogF( _FUNC_, " - Function<%s> in module<%s> not found.\n", decl_, module_name );
+				if( decl && decl[ 0 ] )
+					WriteLogF( _FUNC_, " - Info format: <%s> <%s> .\n", decl, func_name );
+				else WriteLogF( _FUNC_, " - Info copy: <%s> <%s> .\n", decl, func_name );
+			}
+			return 0;
+		}
 
         // Save to temporary bind
         if( is_temp )
         {
             BindedFunctions[ 1 ].IsScriptCall = true;
-            BindedFunctions[ 1 ].ScriptFuncId = result;
+            BindedFunctions[ 1 ].ScriptFunc = script_func;
             BindedFunctions[ 1 ].NativeFuncAddr = 0;
             return 1;
         }
@@ -1872,12 +1877,12 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
         for( int i = 2, j = (int) BindedFunctions.size(); i < j; i++ )
         {
             BindFunction& bf = BindedFunctions[ i ];
-            if( bf.IsScriptCall && bf.ScriptFuncId == result )
+            if( bf.IsScriptCall && bf.ScriptFunc == script_func )
                 return i;
         }
 
         // Create new bind
-        BindedFunctions.push_back( BindFunction( result, 0, module_name, func_name, decl ) );
+        BindedFunctions.push_back( BindFunction( script_func, 0, module_name, func_name, decl ) );
     }
     else
     {
@@ -1903,7 +1908,7 @@ int Script::Bind( const char* module_name, const char* func_name, const char* de
         if( is_temp )
         {
             BindedFunctions[ 1 ].IsScriptCall = false;
-            BindedFunctions[ 1 ].ScriptFuncId = 0;
+            BindedFunctions[ 1 ].ScriptFunc = nullptr;
             BindedFunctions[ 1 ].NativeFuncAddr = func;
             return 1;
         }
@@ -1950,12 +1955,12 @@ int Script::RebindFunctions()
             if( bind_id <= 0 )
             {
                 WriteLogF( _FUNC_, " - Unable to bind function, module<%s>, function<%s>, declaration<%s>.\n", bf.ModuleName.c_str(), bf.FuncName.c_str(), bf.FuncDecl.c_str() );
-                bf.ScriptFuncId = 0;
+                bf.ScriptFunc = nullptr;
                 errors++;
             }
             else
             {
-                bf.ScriptFuncId = BindedFunctions[ 1 ].ScriptFuncId;
+                bf.ScriptFunc = BindedFunctions[ 1 ].ScriptFunc;
             }
         }
     }
@@ -2243,7 +2248,7 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
 
     BindFunction& bf = BindedFunctions[ bind_id ];
     bool          is_script = bf.IsScriptCall;
-    int           func_id = bf.ScriptFuncId;
+    auto          func = bf.ScriptFunc;
     size_t        func_addr = bf.NativeFuncAddr;
 
     #ifdef SCRIPT_MULTITHREADING
@@ -2253,7 +2258,7 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
 
     if( is_script )
     {
-        if( func_id <= 0 )
+        if( !func )
             return false;
 
         asIScriptContext* ctx = GetGlobalContext();
@@ -2266,10 +2271,10 @@ bool Script::PrepareContext( int bind_id, const char* call_func, const char* ctx
         Str::Append( (char*) ctx->GetUserData(), CONTEXT_BUFFER_SIZE, " : " );
         Str::Append( (char*) ctx->GetUserData(), CONTEXT_BUFFER_SIZE, ctx_info );
 
-        int result = ctx->Prepare( func_id );
+        int result = ctx->Prepare( func );
         if( result < 0 )
         {
-            WriteLogF( _FUNC_, " - Prepare error, context name<%s>, bind_id<%d>, func_id<%d>, error<%d>.\n", ctx->GetUserData(), bind_id, func_id, result );
+            WriteLogF( _FUNC_, " - Prepare error, context name<%s>, bind_id<%d>, func_id<%d>, error<%d>.\n", ctx->GetUserData(), bind_id, func, result );
             GlobalCtxIndex--;
             EndExecution();
             return false;
@@ -2747,9 +2752,9 @@ void Script::CallbackException( asIScriptContext* ctx, void* param )
 /* Array                                                                */
 /************************************************************************/
 
-ScriptArray* Script::CreateArray( const char* type )
+CScriptArray *Script::CreateArray( const char* type )
 {
-    return new ScriptArray( 0, Engine->GetObjectTypeById( Engine->GetTypeIdByDecl( type ) ) );
+	return new CScriptArray( 0, Engine->GetTypeInfoById( Engine->GetTypeIdByDecl( type ) ) );
 }
 
 /************************************************************************/

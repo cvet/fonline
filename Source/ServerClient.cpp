@@ -4270,7 +4270,7 @@ void FOServer::Process_RunServerScript( Client* cl )
     char          p3str[ MAX_FOTEXT ];
     ScriptString* p3 = NULL;
     ushort        p4size;
-    ScriptArray*  p4 = NULL;
+    CScriptArray*  p4 = NULL;
 
     cl->Bin >> msg_len;
     cl->Bin >> unsafe;
@@ -4543,7 +4543,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
         {
             uchar        count = 0;
             uchar        show[ 0x100 ];
-            ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
+            CScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
             if( !arr )
                 break;
             for( uchar i = 0, j = (uchar) loc->Proto->Entrance.size(); i < j; i++ )
@@ -4600,7 +4600,7 @@ void FOServer::Process_RuleGlobal( Client* cl )
             break;
         if( loc->Proto->ScriptBindId > 0 )
         {
-            ScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
+            CScriptArray* arr = MapMngr.GM_CreateGroupArray( cl->GroupMove );
             if( !arr )
                 break;
             bool result = MapMngr.GM_CheckEntrance( loc, arr, entrance );

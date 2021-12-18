@@ -61,6 +61,7 @@ protected:
     virtual void FreeObject();
 
     mutable int      refCount;
+	mutable bool gcFlag;
     asIScriptEngine* engine;
 
     // The structure for holding the values

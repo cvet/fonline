@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -44,18 +44,24 @@
 #include "as_datatype.h"
 #include "as_atomic.h"
 #include "as_scriptfunction.h"
+#include "as_symboltable.h"
 
 BEGIN_AS_NAMESPACE
+
+struct asSNameSpace;
 
 class asCObjectProperty
 {
 public:
 	asCObjectProperty() {accessMask = 0xFFFFFFFF;}
+	asCObjectProperty(const asCObjectProperty &o) : name(o.name), type(o.type), byteOffset(o.byteOffset), accessMask(o.accessMask), isPrivate(o.isPrivate), isProtected(o.isProtected), isInherited(o.isInherited) {}
 	asCString   name;
 	asCDataType type;
 	int         byteOffset;
-	bool		isPrivate;
 	asDWORD     accessMask;
+	bool        isPrivate;
+	bool        isProtected;
+	bool        isInherited;
 };
 
 class asCGlobalProperty
@@ -66,7 +72,7 @@ public:
 
 	void AddRef();
 	void Release();
-	int  GetRefCount();
+	void DestroyInternal();
 
 	void *GetAddressOfValue();
 	void  AllocateMemory();
@@ -76,19 +82,12 @@ public:
 	asCString          name;
 	asCDataType        type;
 	asUINT             id;
-	asCString          nameSpace;
+	asSNameSpace      *nameSpace;
 
 	void SetInitFunc(asCScriptFunction *initFunc);
 	asCScriptFunction *GetInitFunc();
 
-	static void RegisterGCBehaviours(asCScriptEngine *engine);
-
 //protected:
-	void SetGCFlag();
-	bool GetGCFlag();
-	void EnumReferences(asIScriptEngine *);
-	void ReleaseAllHandles(asIScriptEngine *);
-
 	// This is only stored for registered properties, and keeps the pointer given by the application
 	void       *realAddress;
 
@@ -103,7 +102,24 @@ public:
 	// The global property structure is reference counted, so that the
 	// engine can keep track of how many references to the property there are.
 	asCAtomic refCount;
-	bool      gcFlag;
+};
+
+class asCCompGlobPropType : public asIFilter
+{
+public:
+	const asCDataType &m_type;
+
+	asCCompGlobPropType(const asCDataType &type) : m_type(type) {}
+
+	bool operator()(const void *p) const
+	{
+		const asCGlobalProperty* prop = reinterpret_cast<const asCGlobalProperty*>(p);
+		return prop->type == m_type;
+	}
+
+private:
+	// The assignment operator is required for MSVC9, otherwise it will complain that it is not possible to auto generate the operator
+	asCCompGlobPropType &operator=(const asCCompGlobPropType &) {return *this;}
 };
 
 END_AS_NAMESPACE

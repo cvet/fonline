@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -31,8 +31,8 @@
 #include "as_config.h"
 
 #include <stdarg.h>		// va_list, va_start(), etc
-#include <stdlib.h>     // strtod(), strtol()
-#include <string.h> // some compilers declare memcpy() here
+#include <stdlib.h>		// strtod(), strtol()
+#include <string.h>		// some compilers declare memcpy() here
 
 #if !defined(AS_NO_MEMORY_H)
 #include <memory.h>
@@ -55,6 +55,26 @@ asCString::asCString(const asCString &str)
 
 	Assign(str.AddressOf(), str.length);
 }
+
+#ifdef AS_CAN_USE_CPP11
+asCString::asCString(asCString &&str)
+{
+	if( str.length <= 11 )
+	{
+		length = str.length;
+		memcpy(local, str.local, length);
+		local[length] = 0;
+	}
+	else
+	{
+		dynamic = str.dynamic;
+		length = str.length;
+	}
+
+	str.dynamic = 0;
+	str.length = 0;
+}
+#endif // c++11
 
 asCString::asCString(const char *str, size_t len)
 {
@@ -123,6 +143,11 @@ void asCString::Allocate(size_t len, bool keepData)
 	{
 		// Allocate a new dynamic buffer if the new one is larger than the old
 		char *buf = asNEWARRAY(char,len+1);
+		if( buf == 0 )
+		{
+			// Out of memory. Return without modifying anything
+			return;
+		}
 
 		if( keepData )
 		{
@@ -177,6 +202,37 @@ asCString &asCString::operator =(const asCString &str)
 
 	return *this;
 }
+
+#ifdef AS_CAN_USE_CPP11
+asCString &asCString::operator =(asCString &&str)
+{
+	if( this != &str )
+	{
+		if( length > 11 && dynamic )
+		{
+			asDELETEARRAY(dynamic);
+		}
+
+		if ( str.length <= 11 )
+		{
+			length = str.length;
+
+			memcpy(local, str.local, length);
+			local[length] = 0;
+		}
+		else
+		{
+			dynamic = str.dynamic;
+			length = str.length;
+		}
+
+		str.dynamic = 0;
+		str.length = 0;
+	}
+
+	return *this;
+}
+#endif // c++11
 
 asCString &asCString::operator =(char ch)
 {
@@ -268,15 +324,15 @@ const char &asCString::operator [](size_t index) const
 	return AddressOf()[index];
 }
 
-asCString asCString::SubString(size_t start, size_t length) const
+asCString asCString::SubString(size_t in_start, size_t in_length) const
 {
-	if( start >= GetLength() || length == 0 )
+	if( in_start >= GetLength() || in_length == 0 )
 		return asCString("");
 
-	if( length == (size_t)(-1) ) length = GetLength() - start;
+	if( in_length == (size_t)(-1) ) in_length = GetLength() - in_start;
 
 	asCString tmp;
-	tmp.Assign(AddressOf() + start, length);
+	tmp.Assign(AddressOf() + in_start, in_length);
 
 	return tmp;
 }
@@ -303,17 +359,23 @@ size_t asCString::RecalculateLength()
 	return length;
 }
 
-int asCString::FindLast(const char *str) const
+int asCString::FindLast(const char *str, int *count) const
 {
 	// There is no strstr that starts from the end, so 
 	// we'll iterate until we find the last occurrance.
 	// This shouldn't cause a performance problem because
 	// it is not expected that this will be done very often,
 	// and then only on quite short strings anyway.
+
+	if( count ) *count = 0;
+
 	const char *last = 0;
 	const char *curr = AddressOf()-1;
 	while( (curr = strstr(curr+1, str)) != 0 )
+	{
+		if( count ) (*count)++;
 		last = curr;
+	}
 
 	if( last )
 		return int(last - AddressOf());

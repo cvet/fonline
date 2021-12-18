@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2011 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -50,20 +50,52 @@ BEGIN_AS_NAMESPACE
 asCTokenizer::asCTokenizer()
 {
 	engine = 0;
+	memset(keywordTable, 0, sizeof(keywordTable));
 
-	// Initialize the keyword map
+	// Initialize the jump table
 	for( asUINT n = 0; n < numTokenWords; n++ )
 	{
-		if( (tokenWords[n].word[0] >= 'a' && tokenWords[n].word[0] <= 'z') ||
-			(tokenWords[n].word[0] >= 'A' && tokenWords[n].word[0] <= 'Z') )
-			alphaKeywordMap.Insert(asCStringPointer(tokenWords[n].word, strlen(tokenWords[n].word)), tokenWords[n].tokenType);
-		else
-			nonAlphaKeywordMap.Insert(asCStringPointer(tokenWords[n].word, strlen(tokenWords[n].word)), tokenWords[n].tokenType);
+		const sTokenWord& current = tokenWords[n];
+		unsigned char start = current.word[0];
+
+		// Create new jump table entry if none exists
+		if( !keywordTable[start] )
+		{
+			// Surely there won't ever be more than 32 keywords starting with
+			// the same character. Right?
+			keywordTable[start] = asNEWARRAY(const sTokenWord*, 32);
+			memset(keywordTable[start], 0, sizeof(sTokenWord*)*32);
+		}
+
+		// Add the token sorted from longest to shortest so
+		// we check keywords greedily.
+		const sTokenWord** tok = keywordTable[start];
+		unsigned insert = 0, index = 0;
+		while( tok[index] )
+		{
+			if(tok[index]->wordLength >= current.wordLength)
+				++insert;
+			++index;
+		}
+
+		while( index > insert )
+		{
+			tok[index] = tok[index - 1];
+			--index;
+		}
+
+		tok[insert] = &current;
 	}
 }
 
 asCTokenizer::~asCTokenizer()
 {
+	// Deallocate the jump table
+	for( asUINT n = 0; n < 256; n++ )
+	{
+		if( keywordTable[n] )
+			asDELETEARRAY(keywordTable[n]);
+	}
 }
 
 // static
@@ -89,6 +121,14 @@ const char *asCTokenizer::GetDefinition(int tokenType)
 			return tokenWords[n].word;
 
 	return 0;
+}
+
+bool asCTokenizer::IsDigitInRadix(char ch, int radix) const
+{
+	if( ch >= '0' && ch <= '9' ) return (ch -= '0') < radix;
+	if( ch >= 'A' && ch <= 'Z' ) return (ch -= 'A'-10) < radix;
+	if( ch >= 'a' && ch <= 'z' ) return (ch -= 'a'-10) < radix;
+	return false;
 }
 
 eTokenType asCTokenizer::GetToken(const char *source, size_t sourceLength, size_t *tokenLength, asETokenClass *tc) const
@@ -183,7 +223,7 @@ bool asCTokenizer::IsComment(const char *source, size_t sourceLength, size_t &to
 		}
 
 		tokenType   = ttOnelineComment;
-		tokenLength = n+1;
+		tokenLength = n < sourceLength ? n+1 : n;
 
 		return true;
 	}
@@ -214,21 +254,30 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 	// Starting with number
 	if( (source[0] >= '0' && source[0] <= '9') || (source[0] == '.' && sourceLength > 1 && source[1] >= '0' && source[1] <= '9') )
 	{
-		// Is it a hexadecimal number?
-		if( source[0] == '0' && sourceLength > 1 && (source[1] == 'x' || source[1] == 'X') )
+		// Is it a based number?
+		if( source[0] == '0' && sourceLength > 1 )
 		{
-			size_t n;
-			for( n = 2; n < sourceLength; n++ )
-			{
-				if( !(source[n] >= '0' && source[n] <= '9') &&
-					!(source[n] >= 'a' && source[n] <= 'f') &&
-					!(source[n] >= 'A' && source[n] <= 'F') )
-					break;
-			}
+			// Determine the radix for the constant
+			int radix = 0;
+			switch( source[1] )
+ 			{
+			case 'b': case 'B': radix =  2; break;
+			case 'o': case 'O': radix =  8; break;
+			case 'd': case 'D': radix = 10; break;
+			case 'x': case 'X': radix = 16; break;
+ 			}
 
-			tokenType   = ttBitsConstant;
-			tokenLength = n;
-			return true;
+			if( radix )
+			{
+				size_t n;
+				for( n = 2; n < sourceLength; n++ )
+					if( !IsDigitInRadix(source[n], radix) )
+						break;
+
+				tokenType   = ttBitsConstant;
+				tokenLength = n;
+				return true;
+			}
 		}
 
 		size_t n;
@@ -238,13 +287,16 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 				break;
 		}
 
-		if( n < sourceLength && source[n] == '.' )
+		if( n < sourceLength && (source[n] == '.' || source[n] == 'e' || source[n] == 'E') )
 		{
-			n++;
-			for( ; n < sourceLength; n++ )
+			if( source[n] == '.' )
 			{
-				if( source[n] < '0' || source[n] > '9' )
-					break;
+				n++;
+				for( ; n < sourceLength; n++ )
+				{
+					if( source[n] < '0' || source[n] > '9' )
+						break;
+				}
 			}
 
 			if( n < sourceLength && (source[n] == 'e' || source[n] == 'E') )
@@ -343,27 +395,34 @@ bool asCTokenizer::IsConstant(const char *source, size_t sourceLength, size_t &t
 
 bool asCTokenizer::IsIdentifier(const char *source, size_t sourceLength, size_t &tokenLength, eTokenType &tokenType) const
 {
+	// char is unsigned by default on some architectures, e.g. ppc and arm
+	// Make sure the value is always treated as signed in the below comparisons
+	signed char c = source[0];
+
 	// Starting with letter or underscore
-	if( (source[0] >= 'a' && source[0] <= 'z') ||
-		(source[0] >= 'A' && source[0] <= 'Z') ||
-		source[0] == '_' )
+	if( (c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		c == '_' ||
+		(c < 0 && engine->ep.allowUnicodeIdentifiers) )
 	{
 		tokenType   = ttIdentifier;
 		tokenLength = 1;
 
 		for( size_t n = 1; n < sourceLength; n++ )
 		{
-			if( (source[n] >= 'a' && source[n] <= 'z') ||
-				(source[n] >= 'A' && source[n] <= 'Z') ||
-				(source[n] >= '0' && source[n] <= '9') ||
-				source[n] == '_' )
+			c = source[n];
+			if( (c >= 'a' && c <= 'z') ||
+				(c >= 'A' && c <= 'Z') ||
+				(c >= '0' && c <= '9') ||
+				c == '_' ||
+				(c < 0 && engine->ep.allowUnicodeIdentifiers) )
 				tokenLength++;
 			else
 				break;
 		}
 
 		// Make sure the identifier isn't a reserved keyword
-		if( alphaKeywordMap.MoveTo(0, asCStringPointer(source, tokenLength)) )
+		if( IsKeyWord(source, tokenLength, tokenLength, tokenType) )
 			return false;
 
 		return true;
@@ -374,64 +433,42 @@ bool asCTokenizer::IsIdentifier(const char *source, size_t sourceLength, size_t 
 
 bool asCTokenizer::IsKeyWord(const char *source, size_t sourceLength, size_t &tokenLength, eTokenType &tokenType) const
 {
-	// TODO: optimize: This can probably be optimized further with a specialized algorithm
-	//                 As most keywords are shorter, then we should start from the shortest
-	//                 to the longest. Only for some of the keywords is it necessary to look
-	//                 for a longer part, e.g. ! and !is.
-	//
-	//                 We can use a map that separates the tokens based on the first character.
-	//                 The highest number of possible tokens would then be 11 for the letter 'i'.
+	unsigned char start = source[0];
+	const sTokenWord **ptr = keywordTable[start];
 
-	// Choose the best map
-	const asCMap<asCStringPointer,eTokenType> *map;
-	int maxLength;
+	if( !ptr )
+		return false;
 
-	if( (source[0] >= 'a' && source[0] <= 'z') ||
-		(source[0] >= 'A' && source[0] <= 'Z') )
+	for( ; *ptr; ++ptr )
 	{
-		map = &alphaKeywordMap;
-		// 'interface' is the longest alpha keyword
-		maxLength = sourceLength > 9 ? 9 : int(sourceLength);
-	}
-	else
-	{
-		map = &nonAlphaKeywordMap;
-		// '>>>=' is the longest non-alpha keyword
-		maxLength = sourceLength > 4 ? 4 : int(sourceLength);
-	}
-
-	// Find the longest keyword that matches the start of the source string
-	while( maxLength > 0 )
-	{
-		asSMapNode<asCStringPointer, eTokenType> *cursor;
-		if( map->MoveTo(&cursor, asCStringPointer(source, maxLength)) )
+		size_t wlen = (*ptr)->wordLength;
+		if( sourceLength >= wlen && strncmp(source, (*ptr)->word, wlen) == 0 )
 		{
 			// Tokens that end with a character that can be part of an 
 			// identifier require an extra verification to guarantee that 
 			// we don't split an identifier token, e.g. the "!is" token 
 			// and the tokens "!" and "isTrue" in the "!isTrue" expression.
-			if( maxLength < int(sourceLength) &&
-				((source[maxLength-1] >= 'a' && source[maxLength-1] <= 'z') ||
-				 (source[maxLength-1] >= 'A' && source[maxLength-1] <= 'Z')) &&
-				((source[maxLength] >= 'a' && source[maxLength] <= 'z') ||
-				 (source[maxLength] >= 'A' && source[maxLength] <= 'Z') ||
-				 (source[maxLength] >= '0' && source[maxLength] <= '9') ||
-				 (source[maxLength] == '_')) )
+			if( wlen < sourceLength &&
+				((source[wlen-1] >= 'a' && source[wlen-1] <= 'z') ||
+				 (source[wlen-1] >= 'A' && source[wlen-1] <= 'Z') ||
+				 (source[wlen-1] >= '0' && source[wlen-1] <= '9')) &&
+				((source[wlen] >= 'a' && source[wlen] <= 'z') ||
+				 (source[wlen] >= 'A' && source[wlen] <= 'Z') ||
+				 (source[wlen] >= '0' && source[wlen] <= '9') ||
+				 (source[wlen] == '_')) )
 			{
 				// The token doesn't really match, even though 
 				// the start of the source matches the token
-				maxLength--;
 				continue;
 			}
 
-			tokenType   = cursor->value;
-			tokenLength = maxLength;
+			tokenType = (*ptr)->tokenType;
+			tokenLength = wlen;
 			return true;
 		}
-		maxLength--;
 	}
 
-	return false;	
+	return false;
 }
 
 END_AS_NAMESPACE

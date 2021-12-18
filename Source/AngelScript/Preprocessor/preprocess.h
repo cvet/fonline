@@ -62,8 +62,13 @@ namespace Preprocessor
 			{
 				std::string path=CurrentDir+filename;
 
-				FILE* fs=fopen(path.c_str(),"rb");
-				if(!fs) return false;
+				FILE* fs=fopen( ( std::string("Override\\") + path ).c_str(),"rb");
+				if (!fs)
+				{
+					fs = fopen( path.c_str(), "rb");
+					if( !fs )
+						return false;
+				}
 
 				fseek(fs,0,SEEK_END);
 				int len=ftell(fs);
@@ -97,6 +102,7 @@ namespace Preprocessor
 
 	void Define(const std::string& str);
 	void Undefine(const std::string& str);
+	bool Ifdefine(const std::string& str);
 	bool IsDefined(const std::string& str);
 	void UndefAll();
 	void SetPragmaCallback(PragmaCallback* callback);

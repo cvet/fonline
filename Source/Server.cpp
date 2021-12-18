@@ -3413,7 +3413,7 @@ bool FOServer::InitReal()
     STATIC_ASSERT( sizeof( Mutex ) == 24 );
     STATIC_ASSERT( sizeof( MutexSpinlock ) == 4 );
 	STATIC_ASSERT( sizeof( GameOptions ) == 1320 );//hotrinED
-    STATIC_ASSERT( sizeof( ScriptArray ) == 36 );
+    STATIC_ASSERT( sizeof( CScriptArray ) == 28 );
     STATIC_ASSERT( sizeof( ProtoMap::Tile ) == 12 );
     STATIC_ASSERT( PROTO_ITEM_USER_DATA_SIZE == 500 );
 	STATIC_ASSERT( OFFSETOF( Item, IsNotValid ) == 150 );//hotrinED
@@ -4481,7 +4481,7 @@ void FOServer::SaveWorld( const char* fname )
     SaveWorldDeleteIndexes.clear();
     if( Script::PrepareContext( ServerFunctions.WorldSave, _FUNC_, "Game" ) )
     {
-        ScriptArray* delete_indexes = Script::CreateArray( "uint[]" );
+        CScriptArray* delete_indexes = Script::CreateArray( "uint[]" );
         Script::SetArgUInt( SaveWorldIndex + 1 );
         Script::SetArgObject( delete_indexes );
         if( Script::RunPrepared() )
@@ -5061,7 +5061,7 @@ void FOServer::AddTimeEvent( TimeEvent* te )
     TimeEvents.push_back( te );
 }
 
-uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, ScriptArray* val2, bool save )
+uint FOServer::CreateTimeEvent( uint begin_second, const char* script_name, int values, uint val1, CScriptArray* val2, bool save )
 {
     char module_name[ MAX_FOTEXT ];
     char func_name[ MAX_FOTEXT ];
@@ -5137,7 +5137,7 @@ void FOServer::TimeEventEndScriptCallback()
     }
 }
 
-bool FOServer::GetTimeEvent( uint num, uint& duration, ScriptArray* values )
+bool FOServer::GetTimeEvent( uint num, uint& duration, CScriptArray* values )
 {
     TimeEventsLocker.Lock();
 
@@ -5194,7 +5194,7 @@ bool FOServer::GetTimeEvent( uint num, uint& duration, ScriptArray* values )
     return true;
 }
 
-bool FOServer::SetTimeEvent( uint num, uint duration, ScriptArray* values )
+bool FOServer::SetTimeEvent( uint num, uint duration, CScriptArray* values )
 {
     TimeEventsLocker.Lock();
 
@@ -5296,7 +5296,7 @@ void FOServer::ProcessTimeEvents()
     uint wait_time = 0;
     if( Script::PrepareContext( cur_event->BindId, _FUNC_, Str::FormatBuf( "Time event<%u>", cur_event->Num ) ) )
     {
-        ScriptArray* values = NULL;
+        CScriptArray* values = NULL;
         uint         size = (uint) cur_event->Values.size();
 
         if( size > 0 )
@@ -5520,7 +5520,7 @@ bool FOServer::SetAnyData( const string& name, const uchar* data, uint data_size
     return true;
 }
 
-bool FOServer::GetAnyData( const string& name, ScriptArray& script_array )
+bool FOServer::GetAnyData( const string& name, CScriptArray& script_array )
 {
     SCOPE_LOCK( AnyDataLocker );
 

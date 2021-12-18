@@ -1027,8 +1027,8 @@ BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetTurnBasedTime()", asFUNCTI
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint16 GetCurrentMapPid()", asFUNCTION( BIND_CLASS Global_GetCurrentMapPid ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "uint GetMessageFilters(int[]@+ filters)", asFUNCTION( BIND_CLASS Global_GetMessageFilters ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void SetMessageFilters(int[]@+ filters)", asFUNCTION( BIND_CLASS Global_SetMessageFilters ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string& text)", asFUNCTION( BIND_CLASS Global_Message ), asCALL_CDECL ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(string& text, int type)", asFUNCTION( BIND_CLASS Global_MessageType ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(const string& text)", asFUNCTION( BIND_CLASS Global_Message ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(const string& text, int type)", asFUNCTION( BIND_CLASS Global_MessageType ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(int textMsg, uint strNum)", asFUNCTION( BIND_CLASS Global_MessageMsg ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void Message(int textMsg, uint strNum, int type)", asFUNCTION( BIND_CLASS Global_MessageMsgType ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "void MapMessage(string& text, uint16 hx, uint16 hy, uint timeMs, uint color, bool fade, int offsX, int offsY)", asFUNCTION( BIND_CLASS Global_MapMessage ), asCALL_CDECL ) );
@@ -1610,7 +1610,7 @@ BIND_ASSERT( engine->RegisterGlobalProperty( "int __MapRoofSkipSize", &GameOpt.M
 BIND_ASSERT( engine->RegisterGlobalProperty( "float __MapCameraAngle", &GameOpt.MapCameraAngle ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "bool __MapSmoothPath", &GameOpt.MapSmoothPath ) );
 BIND_ASSERT( engine->RegisterGlobalProperty( "string __MapDataPrefix", &GameOpt.MapDataPrefix ) );
-BIND_ASSERT( engine->RegisterGlobalFunction( "void Log(string& text)", asFUNCTION( BIND_CLASS Global_Log ), asCALL_CDECL ) );
+BIND_ASSERT( engine->RegisterGlobalFunction( "void Log(const string& text)", asFUNCTION( BIND_CLASS Global_Log ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "string@ GetLastError()", asFUNCTION( BIND_CLASS Global_GetLastError ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "int Random(int minimum, int maximum)", asFUNCTION( Random ), asCALL_CDECL ) );
 BIND_ASSERT( engine->RegisterGlobalFunction( "ProtoItem@+ GetProtoItem(uint16 protoId)", asFUNCTION( BIND_CLASS Global_GetProtoItem ), asCALL_CDECL ) );

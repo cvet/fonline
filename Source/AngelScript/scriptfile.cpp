@@ -5,6 +5,16 @@
 #include <string.h>
 #include <stdio.h>
 
+// ---------------------------
+// Compilation settings
+//
+
+// Set this flag to turn on/off write support
+//  0 = off
+//  1 = on
+
+#define AS_WRITE_OPS    1
+
 #ifdef _WIN32_WCE
 # include <windows.h> // For GetModuleFileName
 # ifdef GetObject
@@ -52,6 +62,7 @@ void RegisterScriptFile_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "file", "double readDouble()", asMETHOD( ScriptFile, ReadDouble ), asCALL_THISCALL );
     assert( r >= 0 );
+    #if AS_WRITE_OPS == 1
     r = engine->RegisterObjectMethod( "file", "int writeString(const string &in)", asMETHOD( ScriptFile, WriteString ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "file", "int writeInt(int64, uint)", asMETHOD( ScriptFile, WriteInt ), asCALL_THISCALL );
@@ -62,6 +73,7 @@ void RegisterScriptFile_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "file", "int writeDouble(double)", asMETHOD( ScriptFile, WriteDouble ), asCALL_THISCALL );
     assert( r >= 0 );
+    #endif
     r = engine->RegisterObjectMethod( "file", "int getPos() const", asMETHOD( ScriptFile, GetPos ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "file", "int setPos(int)", asMETHOD( ScriptFile, SetPos ), asCALL_THISCALL );
@@ -163,7 +175,7 @@ asQWORD ScriptFile::ReadUint64()
     return data;
 }
 
-unsigned int ScriptFile::ReadData( unsigned int count, ScriptArray& data )
+unsigned int ScriptFile::ReadData( unsigned int count, CScriptArray& data )
 {
     if( !file )
         return 0;
@@ -214,7 +226,7 @@ bool ScriptFile::WriteUint64( asQWORD data )
     return fwrite( &data, sizeof( data ), 1, file ) != 0;
 }
 
-bool ScriptFile::WriteData( ScriptArray& data, unsigned int count )
+bool ScriptFile::WriteData( CScriptArray& data, unsigned int count )
 {
     if( !file )
         return false;
@@ -253,13 +265,13 @@ ScriptFile::~ScriptFile()
 
 void ScriptFile::AddRef() const
 {
-    ++refCount;
+	asAtomicInc(refCount);
 }
 
 void ScriptFile::Release() const
 {
-    if( --refCount == 0 )
-        delete this;
+	if (asAtomicDec(refCount) == 0)
+		delete this;
 }
 
 int ScriptFile::Open( const ScriptString& filename, const ScriptString& mode )
@@ -272,7 +284,11 @@ int ScriptFile::Open( const ScriptString& filename, const ScriptString& mode )
 
     // Validate the mode
     string m;
+    #if AS_WRITE_OPS == 1
     if( mode.c_std_str() != "r" && mode.c_std_str() != "w" && mode.c_std_str() != "a" )
+    #else
+    if( mode.c_std_str() != "r" )
+    #endif
         return -1;
     else
         m = mode.c_std_str();
@@ -309,7 +325,9 @@ int ScriptFile::Open( const ScriptString& filename, const ScriptString& mode )
     m += "b";
 
     // Open the file
-    #if _MSC_VER >= 1400 // MSVC 8.0 / 2005
+    #if _MSC_VER >= 1400 && !defined ( __S3E__ )
+    // MSVC 8.0 / 2005 introduced new functions
+    // Marmalade doesn't use these, even though it uses the MSVC compiler
     fopen_s( &file, myFilename.c_str(), m.c_str() );
     #else
     file = fopen( myFilename.c_str(), m.c_str() );
@@ -552,6 +570,7 @@ bool ScriptFile::IsEOF() const
     return feof( file ) ? true : false;
 }
 
+#if AS_WRITE_OPS == 1
 int ScriptFile::WriteString( const ScriptString& str )
 {
     if( file == 0 )
@@ -648,3 +667,4 @@ int ScriptFile::WriteDouble( double d )
     size_t r = fwrite( &buf, 8, 1, file );
     return int(r);
 }
+#endif

@@ -1079,9 +1079,9 @@ int CraftManager::ProcessCraft( Critter* cr, uint num )
 
         if( crafted.size() && Script::PrepareContext( ServerFunctions.ItemsCrafted, _FUNC_, cr->GetInfo() ) )
         {
-            ScriptArray* crafted_ = Script::CreateArray( "Item@[]" );
-            ScriptArray* crafted_count_ = Script::CreateArray( "uint[]" );
-            ScriptArray* sub_items_ = Script::CreateArray( "Item@[]" );
+            CScriptArray* crafted_ = Script::CreateArray( "Item@[]" );
+            CScriptArray* crafted_count_ = Script::CreateArray( "uint[]" );
+            CScriptArray* sub_items_ = Script::CreateArray( "Item@[]" );
             Script::AppendVectorToArrayRef( crafted, crafted_ );
             Script::AppendVectorToArray( crafted_count, crafted_count_ );
             Script::AppendVectorToArrayRef( sub_items, sub_items_ );

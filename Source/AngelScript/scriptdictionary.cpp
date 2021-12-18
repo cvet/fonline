@@ -3,6 +3,8 @@
 #include "scriptdictionary.h"
 #include "scriptstring.h"
 
+#define AS_USE_STLNAMES    0
+
 using namespace std;
 
 // --------------------------------------------------------------------------
@@ -12,6 +14,7 @@ ScriptDictionary::ScriptDictionary( asIScriptEngine* engine )
 {
     // We start with one reference
     refCount = 1;
+	gcFlag = false;
 
     // Keep a reference to the engine for as long as we live
     // We don't increment the reference counter, because the
@@ -20,7 +23,7 @@ ScriptDictionary::ScriptDictionary( asIScriptEngine* engine )
 
     // Notify the garbage collector of this object
     // TODO: The type id should be cached
-    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetObjectTypeByName( "dictionary" ) );
+    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetTypeInfoByName( "dictionary" ) );
 }
 
 ScriptDictionary::~ScriptDictionary()
@@ -32,30 +35,31 @@ ScriptDictionary::~ScriptDictionary()
 void ScriptDictionary::AddRef() const
 {
     // We need to clear the GC flag
-    refCount = ( refCount & 0x7FFFFFFF ) + 1;
+	gcFlag = false;
+	asAtomicInc(refCount);
 }
 
 void ScriptDictionary::Release() const
 {
     // We need to clear the GC flag
-    refCount = ( refCount & 0x7FFFFFFF ) - 1;
-    if( refCount == 0 )
-        delete this;
+	gcFlag = false;
+	if (asAtomicDec(refCount) == 0)
+		delete this;
 }
 
 int ScriptDictionary::GetRefCount()
 {
-    return refCount & 0x7FFFFFFF;
+	return refCount;
 }
 
 void ScriptDictionary::SetGCFlag()
 {
-    refCount |= 0x80000000;
+	gcFlag = true;
 }
 
 bool ScriptDictionary::GetGCFlag()
 {
-    return ( refCount & 0x80000000 ) ? true : false;
+	return gcFlag;
 }
 
 void ScriptDictionary::EnumReferences( asIScriptEngine* engine )
@@ -110,12 +114,12 @@ void ScriptDictionary::Set( const ScriptString& key, void* value, int typeId )
     {
         // We're receiving a reference to the handle, so we need to dereference it
         valStruct.valueObj = *(void**) value;
-        engine->AddRefScriptObject( valStruct.valueObj, typeId );
+        engine->AddRefScriptObject( valStruct.valueObj, engine->GetTypeInfoById( typeId ) );
     }
     else if( typeId & asTYPEID_MASK_OBJECT )
     {
         // Create a copy of the object
-        valStruct.valueObj = engine->CreateScriptObjectCopy( value, typeId );
+        valStruct.valueObj = engine->CreateScriptObjectCopy( value, engine->GetTypeInfoById(typeId));
     }
     else
     {
@@ -171,12 +175,14 @@ bool ScriptDictionary::Get( const ScriptString& key, void* value, int typeId ) c
         {
             // A handle can be retrieved if the stored type is a handle of same or compatible type
             // or if the stored type is an object that implements the interface that the handle refer to.
-            if( ( it->second.typeId & asTYPEID_MASK_OBJECT ) &&
-                engine->IsHandleCompatibleWithObject( it->second.valueObj, it->second.typeId, typeId ) )
-            {
-                engine->AddRefScriptObject( it->second.valueObj, it->second.typeId );
-                *(void**) value = it->second.valueObj;
+            if( ( it->second.typeId & asTYPEID_MASK_OBJECT ) )
+			{
+				// Don't allow the get if the stored handle is to a const, but the desired handle is not
+				if ((it->second.typeId & asTYPEID_HANDLETOCONST) && !(typeId & asTYPEID_HANDLETOCONST))
+					return false;
 
+				// RefCastObject will increment the refcount if successful
+				engine->RefCastObject(it->second.valueObj, engine->GetTypeInfoById(it->second.typeId), engine->GetTypeInfoById(typeId), reinterpret_cast<void**>(value));
                 return true;
             }
         }
@@ -190,7 +196,7 @@ bool ScriptDictionary::Get( const ScriptString& key, void* value, int typeId ) c
             // Copy the object into the given reference
             if( isCompatible )
             {
-                engine->CopyScriptObject( value, it->second.valueObj, typeId );
+                engine->AssignScriptObject( value, it->second.valueObj, engine->GetTypeInfoById(typeId) );
 
                 return true;
             }
@@ -240,11 +246,22 @@ bool ScriptDictionary::Exists( const ScriptString& key ) const
     map< string, valueStruct >::const_iterator it;
     it = dict.find( key.c_std_str() );
     if( it != dict.end() )
-    {
         return true;
-    }
 
     return false;
+}
+
+bool ScriptDictionary::IsEmpty() const
+{
+    if( dict.size() == 0 )
+        return true;
+
+    return false;
+}
+
+asUINT ScriptDictionary::GetSize() const
+{
+    return asUINT( dict.size() );
 }
 
 void ScriptDictionary::Delete( const ScriptString& key )
@@ -263,14 +280,12 @@ void ScriptDictionary::DeleteAll()
 {
     map< string, valueStruct >::iterator it;
     for( it = dict.begin(); it != dict.end(); it++ )
-    {
         FreeValue( it->second );
-    }
 
     dict.clear();
 }
 
-unsigned int ScriptDictionary::Keys( ScriptArray* keys )
+asUINT ScriptDictionary::Keys( CScriptArray* keys )
 {
     if( keys && !dict.empty() )
     {
@@ -294,7 +309,7 @@ void ScriptDictionary::FreeValue( valueStruct& value )
     if( value.typeId & asTYPEID_MASK_OBJECT )
     {
         // Let the engine release the object
-        engine->ReleaseScriptObject( value.valueObj, value.typeId );
+        engine->ReleaseScriptObject( value.valueObj, engine->GetTypeInfoById( value.typeId ) );
         value.valueObj = 0;
         value.typeId = 0;
     }
@@ -354,12 +369,16 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
 
     r = engine->RegisterObjectMethod( "dictionary", "bool exists(const string &in) const", asMETHOD( ScriptDictionary, Exists ), asCALL_THISCALL );
     assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dictionary", "bool isEmpty() const", asMETHOD( ScriptDictionary, IsEmpty ), asCALL_THISCALL );
+    assert( r >= 0 );
+    r = engine->RegisterObjectMethod( "dictionary", "uint getSize() const", asMETHOD( ScriptDictionary, GetSize ), asCALL_THISCALL );
+    assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dictionary", "void delete(const string &in)", asMETHOD( ScriptDictionary, Delete ), asCALL_THISCALL );
     assert( r >= 0 );
     r = engine->RegisterObjectMethod( "dictionary", "void deleteAll()", asMETHOD( ScriptDictionary, DeleteAll ), asCALL_THISCALL );
     assert( r >= 0 );
 
-    r = engine->RegisterObjectMethod( "dictionary", "uint keys(string@[]@+) const", asMETHOD( ScriptDictionary, Keys ), asCALL_THISCALL );
+    r = engine->RegisterObjectMethod( "dictionary", "uint keys(array<string@>@+) const", asMETHOD( ScriptDictionary, Keys ), asCALL_THISCALL );
     assert( r >= 0 );
 
     // Register GC behaviours
@@ -373,6 +392,21 @@ void RegisterScriptDictionary_Native( asIScriptEngine* engine )
     assert( r >= 0 );
     r = engine->RegisterObjectBehaviour( "dictionary", asBEHAVE_RELEASEREFS, "void f(int&in)", asMETHOD( ScriptDictionary, ReleaseAllReferences ), asCALL_THISCALL );
     assert( r >= 0 );
+
+    #if AS_USE_STLNAMES == 1
+    // Same as isEmpty
+    r = engine->RegisterObjectMethod( "dictionary", "bool empty() const", asMETHOD( ScriptDictionary, IsEmpty ), asCALL_THISCALL );
+    assert( r >= 0 );
+    // Same as getSize
+    r = engine->RegisterObjectMethod( "dictionary", "uint size() const", asMETHOD( ScriptDictionary, GetSize ), asCALL_THISCALL );
+    assert( r >= 0 );
+    // Same as delete
+    r = engine->RegisterObjectMethod( "dictionary", "void erase(const string &in)", asMETHOD( ScriptDictionary, Delete ), asCALL_THISCALL );
+    assert( r >= 0 );
+    // Same as deleteAll
+    r = engine->RegisterObjectMethod( "dictionary", "void clear()", asMETHOD( ScriptDictionary, DeleteAll ), asCALL_THISCALL );
+    assert( r >= 0 );
+    #endif
 }
 
 void RegisterScriptDictionary_Generic( asIScriptEngine* engine )

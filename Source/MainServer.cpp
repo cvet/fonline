@@ -116,23 +116,25 @@ int main( int argc, char** argv )
         return 0;
     }
 
+	// Logging
+	if( !strstr( CommandLine, "-nologpath" ) )
+	{
+		char log_path[ MAX_FOPATH ] = { 0 };
+		if( strstr( CommandLine, "-logpath " ) )
+		{
+			const char* ptr = strstr( CommandLine, "-logpath " ) + Str::Length( "-logpath " );
+			Str::Copy( log_path, ptr );
+		}
+		Str::EraseFrontBackSpecificChars( log_path );
+		Str::Append( log_path, "FOnlineServer.log" );
+		LogToFile( log_path );
+	}
     // Check single player parameters
     if( strstr( CommandLine, "-singleplayer " ) )
     {
         # ifdef FO_WINDOWS
         Singleplayer = true;
         Timer::SetGamePause( true );
-
-        // Logging
-        char log_path[ MAX_FOPATH ] = { 0 };
-        if( !strstr( CommandLine, "-nologpath" ) && strstr( CommandLine, "-logpath " ) )
-        {
-            const char* ptr = strstr( CommandLine, "-logpath " ) + Str::Length( "-logpath " );
-            Str::Copy( log_path, ptr );
-        }
-        Str::EraseFrontBackSpecificChars( log_path );
-        Str::Append( log_path, "FOnlineServer.log" );
-        LogToFile( log_path );
 
         WriteLog( "Singleplayer mode.\n" );
 

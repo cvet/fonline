@@ -232,7 +232,7 @@ void ScriptAny::Assign( const ScriptAny& other )
     // Hold on to the object type reference so it isn't destroyed too early
     if( other.value.valueObj && ( other.value.typeId & asTYPEID_MASK_OBJECT ) )
     {
-        asIObjectType* ot = engine->GetObjectTypeById( other.value.typeId );
+        asITypeInfo* ot = engine->GetTypeInfoById( other.value.typeId );
         if( ot )
             ot->AddRef();
     }
@@ -244,12 +244,12 @@ void ScriptAny::Assign( const ScriptAny& other )
     {
         // For handles, copy the pointer and increment the reference count
         value.valueObj = other.value.valueObj;
-        engine->AddRefScriptObject( value.valueObj, value.typeId );
+        engine->AddRefScriptObject( value.valueObj, engine->GetTypeInfoById( value.typeId ) );
     }
     else if( value.typeId & asTYPEID_MASK_OBJECT )
     {
         // Create a copy of the object
-        value.valueObj = engine->CreateScriptObjectCopy( other.value.valueObj, value.typeId );
+        value.valueObj = engine->CreateScriptObjectCopy( other.value.valueObj, engine->GetTypeInfoById(value.typeId));
     }
     else
     {
@@ -272,24 +272,26 @@ ScriptAny::ScriptAny( asIScriptEngine* engine )
 {
     this->engine = engine;
     refCount = 1;
+	gcFlag = false;
 
     value.typeId = 0;
     value.valueInt = 0;
 
     // Notify the garbage collector of this object
-    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetObjectTypeByName( "any" ) );
+    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetTypeInfoByName( "any" ) );
 }
 
 ScriptAny::ScriptAny( void* ref, int refTypeId, asIScriptEngine* engine )
 {
     this->engine = engine;
     refCount = 1;
+	gcFlag = false;
 
     value.typeId = 0;
     value.valueInt = 0;
 
     // Notify the garbage collector of this object
-    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetObjectTypeByName( "any" ) );
+    engine->NotifyGarbageCollectorOfNewObject( this, engine->GetTypeInfoByName( "any" ) );
 
     Store( ref, refTypeId );
 }
@@ -301,10 +303,13 @@ ScriptAny::~ScriptAny()
 
 void ScriptAny::Store( void* ref, int refTypeId )
 {
+	// This method is not expected to be used for primitive types, except for bool, int64, or double
+	assert(refTypeId > asTYPEID_DOUBLE || refTypeId == asTYPEID_VOID || refTypeId == asTYPEID_BOOL || refTypeId == asTYPEID_INT64 || refTypeId == asTYPEID_DOUBLE);
+
     // Hold on to the object type reference so it isn't destroyed too early
     if( *(void**) ref && ( refTypeId & asTYPEID_MASK_OBJECT ) )
     {
-        asIObjectType* ot = engine->GetObjectTypeById( refTypeId );
+        asITypeInfo* ot = engine->GetTypeInfoById( refTypeId );
         if( ot )
             ot->AddRef();
     }
@@ -316,12 +321,12 @@ void ScriptAny::Store( void* ref, int refTypeId )
     {
         // We're receiving a reference to the handle, so we need to dereference it
         value.valueObj = *(void**) ref;
-        engine->AddRefScriptObject( value.valueObj, value.typeId );
+        engine->AddRefScriptObject( value.valueObj, engine->GetTypeInfoById(value.typeId));
     }
     else if( value.typeId & asTYPEID_MASK_OBJECT )
     {
         // Create a copy of the object
-        value.valueObj = engine->CreateScriptObjectCopy( ref, value.typeId );
+        value.valueObj = engine->CreateScriptObjectCopy( ref, engine->GetTypeInfoById(value.typeId));
     }
     else
     {
@@ -348,18 +353,21 @@ void ScriptAny::Store( asINT64& ref )
 
 bool ScriptAny::Retrieve( void* ref, int refTypeId ) const
 {
+	// This method is not expected to be used for primitive types, except for bool, int64, or double
+	assert(refTypeId > asTYPEID_DOUBLE || refTypeId == asTYPEID_BOOL || refTypeId == asTYPEID_INT64 || refTypeId == asTYPEID_DOUBLE);
+
     if( refTypeId & asTYPEID_OBJHANDLE )
     {
         // Is the handle type compatible with the stored value?
 
         // A handle can be retrieved if the stored type is a handle of same or compatible type
         // or if the stored type is an object that implements the interface that the handle refer to.
-        if( ( value.typeId & asTYPEID_MASK_OBJECT ) &&
-            engine->IsHandleCompatibleWithObject( value.valueObj, value.typeId, refTypeId ) )
+        if( ( value.typeId & asTYPEID_MASK_OBJECT ) )
         {
-            engine->AddRefScriptObject( value.valueObj, value.typeId );
-            *(void**) ref = value.valueObj;
-
+			// RefCastObject will increment the refCount of the returned pointer if successful
+			engine->RefCastObject(value.valueObj, engine->GetTypeInfoById(value.typeId), engine->GetTypeInfoById(refTypeId), reinterpret_cast<void**>(ref));
+			if (*(asPWORD*)ref == 0)
+				return false;
             return true;
         }
     }
@@ -370,7 +378,7 @@ bool ScriptAny::Retrieve( void* ref, int refTypeId ) const
         // Copy the object into the given reference
         if( value.typeId == refTypeId )
         {
-            engine->CopyScriptObject( ref, value.valueObj, value.typeId );
+            engine->AssignScriptObject( ref, value.valueObj, engine->GetTypeInfoById(value.typeId));
 
             return true;
         }
@@ -423,10 +431,10 @@ void ScriptAny::FreeObject()
     if( value.typeId & asTYPEID_MASK_OBJECT )
     {
         // Let the engine release the object
-        engine->ReleaseScriptObject( value.valueObj, value.typeId );
+        engine->ReleaseScriptObject( value.valueObj, engine->GetTypeInfoById(value.typeId));
 
         // Release the object type info
-        asIObjectType* ot = engine->GetObjectTypeById( value.typeId );
+        asITypeInfo* ot = engine->GetTypeInfoById( value.typeId );
         if( ot )
             ot->Release();
 
@@ -446,7 +454,7 @@ void ScriptAny::EnumReferences( asIScriptEngine* engine )
         engine->GCEnumCallback( value.valueObj );
 
         // The object type itself is also garbage collected
-        asIObjectType* ot = engine->GetObjectTypeById( value.typeId );
+        asITypeInfo* ot = engine->GetTypeInfoById( value.typeId );
         if( ot )
             engine->GCEnumCallback( ot );
     }
@@ -459,29 +467,34 @@ void ScriptAny::ReleaseAllHandles( asIScriptEngine* /*engine*/ )
 
 void ScriptAny::AddRef() const
 {
-    // Increase counter and clear flag set by GC
-    refCount = ( refCount & 0x7FFFFFFF ) + 1;
+	// Increase counter and clear flag set by GC
+	gcFlag = false;
+	asAtomicInc(refCount);
 }
 
 void ScriptAny::Release() const
 {
-    // Now do the actual releasing (clearing the flag set by GC)
-    refCount = ( refCount & 0x7FFFFFFF ) - 1;
-    if( refCount == 0 )
-        delete this;
+	// Decrease the ref counter
+	gcFlag = false;
+	if (asAtomicDec(refCount) == 0)
+	{
+		// Delete this object as no more references to it exists
+		delete this;
+		return;
+	}
 }
 
 int ScriptAny::GetRefCount()
 {
-    return refCount & 0x7FFFFFFF;
+	return refCount;
 }
 
 void ScriptAny::SetFlag()
 {
-    refCount |= 0x80000000;
+	gcFlag = true;
 }
 
 bool ScriptAny::GetFlag()
 {
-    return ( refCount & 0x80000000 ) ? true : false;
+	return gcFlag;
 }

@@ -147,10 +147,10 @@ namespace Script
     void CallbackException( asIScriptContext* ctx, void* param );
 
     // Arrays stuff
-    ScriptArray* CreateArray( const char* type );
+    CScriptArray* CreateArray( const char* type );
 
     template< typename Type >
-    void AppendVectorToArray( vector< Type >& vec, ScriptArray* arr )
+    void AppendVectorToArray( vector< Type >& vec, CScriptArray* arr )
     {
         if( !vec.empty() && arr )
         {
@@ -164,7 +164,7 @@ namespace Script
         }
     }
     template< typename Type >
-    void AppendVectorToArrayRef( vector< Type >& vec, ScriptArray* arr )
+    void AppendVectorToArrayRef( vector< Type >& vec, CScriptArray* arr )
     {
         if( !vec.empty() && arr )
         {
@@ -179,7 +179,7 @@ namespace Script
         }
     }
     template< typename Type >
-    void AssignScriptArrayInVector( vector< Type >& vec, ScriptArray* arr )
+    void AssignScriptArrayInVector( vector< Type >& vec, CScriptArray* arr )
     {
         if( arr )
         {

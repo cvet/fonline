@@ -165,8 +165,8 @@ public:
     void         GM_GroupMove( GlobalMapGroup* group );
     void         GM_GlobalProcess( Critter* cr, GlobalMapGroup* group, int type );
     void         GM_GlobalInvite( GlobalMapGroup* group, int combat_mode );
-    bool         GM_CheckEntrance( Location* loc, ScriptArray* arr, uchar entrance );
-    ScriptArray* GM_CreateGroupArray( GlobalMapGroup* group );
+    bool         GM_CheckEntrance( Location* loc, CScriptArray* arr, uchar entrance );
+	CScriptArray* GM_CreateGroupArray( GlobalMapGroup* group );
 
     // Locations
 private:

@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2007 Andreas Jonsson
+   Copyright (c) 2003-2015 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -60,17 +60,43 @@ void asCScriptNode::Destroy(asCScriptEngine *engine)
 {
 	// Destroy all children
 	asCScriptNode *node = firstChild;
-	asCScriptNode *next;
+	asCScriptNode *nxt;
 
 	while( node )
 	{
-		next = node->next;
+		nxt = node->next;
 		node->Destroy(engine);
-		node = next;
+		node = nxt;
 	}
 
 	// Return the memory to the memory manager
 	engine->memoryMgr.FreeScriptNode(this);
+}
+
+asCScriptNode *asCScriptNode::CreateCopy(asCScriptEngine *engine)
+{
+	void *ptr = engine->memoryMgr.AllocScriptNode();
+	if( ptr == 0 )
+	{
+		// Out of memory
+		return 0;
+	}
+
+	new(ptr) asCScriptNode(nodeType);
+	
+	asCScriptNode *node = reinterpret_cast<asCScriptNode*>(ptr);
+	node->tokenLength = tokenLength;
+	node->tokenPos    = tokenPos;
+	node->tokenType   = tokenType;
+
+	asCScriptNode *child = firstChild;
+	while( child )
+	{
+		node->AddChildLast(child->CreateCopy(engine));
+		child = child->next;
+	}
+
+	return node;
 }
 
 void asCScriptNode::SetToken(sToken *token)
@@ -104,6 +130,9 @@ void asCScriptNode::UpdateSourcePos(size_t pos, size_t length)
 
 void asCScriptNode::AddChildLast(asCScriptNode *node)
 {
+	// We might get a null pointer if the parser encounter an out-of-memory situation
+	if( node == 0 ) return;
+
 	if( lastChild )
 	{
 		lastChild->next = node;

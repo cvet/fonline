@@ -33,14 +33,7 @@ public:
 
     ScriptString& operator=( const ScriptString& other )
     {
-        // Workaround for pointer to reference coercion bug in AS.
-        const ScriptString* ptr = &other;
-        if( ptr == NULL ) {
-            asIScriptContext* ctx = asGetActiveContext();
-            ctx->SetException( "Null pointer string assign" );
-        } else {
-            assign( other.c_str(), other.length() );
-        }
+        assign( other.c_str(), other.length() );
         return *this;
     }
     ScriptString& operator+=( const ScriptString& other )

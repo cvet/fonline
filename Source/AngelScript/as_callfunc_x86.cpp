@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2012 Andreas Jonsson
+   Copyright (c) 2003-2016 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied
    warranty. In no event will the authors be held liable for any
@@ -34,6 +34,8 @@
 //
 // These functions handle the actual calling of system functions
 //
+// Added support for functor methods by Jordi Oliveras Rovira in April, 2014.
+//
 
 
 
@@ -46,13 +48,14 @@
 #include "as_scriptengine.h"
 #include "as_texts.h"
 #include "as_tokendef.h"
+#include "as_context.h"
 
 BEGIN_AS_NAMESPACE
 
 //
 // With some compile level optimizations the functions don't clear the FPU
-// stack themselves. So we have to do it as part of calling the native functions, 
-// as the compiler will not be able to predict when it is supposed to do it by 
+// stack themselves. So we have to do it as part of calling the native functions,
+// as the compiler will not be able to predict when it is supposed to do it by
 // itself due to the dynamic nature of scripts
 //
 // - fninit clears the FPU stack and the FPU control word
@@ -72,60 +75,58 @@ BEGIN_AS_NAMESPACE
 #define _S(x) _TOSTRING(x)
 #define _TOSTRING(x) #x
 
-typedef asQWORD (*t_CallCDeclQW)(const asDWORD *, int, asFUNCTION_t);
-typedef asQWORD (*t_CallCDeclQWObj)(void *obj, const asDWORD *, int, asFUNCTION_t);
-typedef asDWORD (*t_CallCDeclRetByRef)(const asDWORD *, int, asFUNCTION_t, void *);
-typedef asDWORD (*t_CallCDeclObjRetByRef)(void *obj, const asDWORD *, int, asFUNCTION_t, void *);
-typedef asQWORD (*t_CallSTDCallQW)(const asDWORD *, int, asFUNCTION_t);
-typedef asQWORD (*t_CallThisCallQW)(const void *, const asDWORD *, int, asFUNCTION_t);
-typedef asDWORD (*t_CallThisCallRetByRef)(const void *, const asDWORD *, int, asFUNCTION_t, void *);
-
 // Prototypes
-void CallCDeclFunction(const asDWORD *args, int paramSize, asFUNCTION_t func);
-void CallCDeclFunctionObjLast(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func);
-void CallCDeclFunctionObjFirst(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func);
-void CallCDeclFunctionRetByRef_impl(const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr);
-void CallCDeclFunctionRetByRefObjLast_impl(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr);
-void CallCDeclFunctionRetByRefObjFirst_impl(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr);
-void CallSTDCallFunction(const asDWORD *args, int paramSize, asFUNCTION_t func);
-void CallThisCallFunction(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func);
-void CallThisCallFunctionRetByRef_impl(const void *, const asDWORD *, int, asFUNCTION_t, void *retPtr);
-
-// Initialize function pointers
-const t_CallCDeclQW CallCDeclFunctionQWord = (t_CallCDeclQW)CallCDeclFunction;
-const t_CallCDeclQWObj CallCDeclFunctionQWordObjLast = (t_CallCDeclQWObj)CallCDeclFunctionObjLast;
-const t_CallCDeclQWObj CallCDeclFunctionQWordObjFirst = (t_CallCDeclQWObj)CallCDeclFunctionObjFirst;
-const t_CallCDeclRetByRef CallCDeclFunctionRetByRef = (t_CallCDeclRetByRef)CallCDeclFunctionRetByRef_impl;
-const t_CallCDeclObjRetByRef CallCDeclFunctionRetByRefObjLast = (t_CallCDeclObjRetByRef)CallCDeclFunctionRetByRefObjLast_impl;
-const t_CallCDeclObjRetByRef CallCDeclFunctionRetByRefObjFirst = (t_CallCDeclObjRetByRef)CallCDeclFunctionRetByRefObjFirst_impl;
-const t_CallSTDCallQW CallSTDCallFunctionQWord = (t_CallSTDCallQW)CallSTDCallFunction;
-const t_CallThisCallQW CallThisCallFunctionQWord = (t_CallThisCallQW)CallThisCallFunction;
-const t_CallThisCallRetByRef CallThisCallFunctionRetByRef = (t_CallThisCallRetByRef)CallThisCallFunctionRetByRef_impl;
+asQWORD CallCDeclFunction(const asDWORD *args, int paramSize, asFUNCTION_t func);
+asQWORD CallCDeclFunctionObjLast(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func);
+asQWORD CallCDeclFunctionObjFirst(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func);
+asQWORD CallCDeclFunctionRetByRef(const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr);
+asQWORD CallCDeclFunctionRetByRefObjLast(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr);
+asQWORD CallCDeclFunctionRetByRefObjFirst(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr);
+asQWORD CallSTDCallFunction(const asDWORD *args, int paramSize, asFUNCTION_t func);
+asQWORD CallThisCallFunction(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func);
+asQWORD CallThisCallFunctionRetByRef(const void *, const asDWORD *, int, asFUNCTION_t, void *retPtr);
 
 asDWORD GetReturnedFloat();
 asQWORD GetReturnedDouble();
 
-asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, void *obj, asDWORD *args, void *retPointer, asQWORD &/*retQW2*/)
+asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, void *obj, asDWORD *args, void *retPointer, asQWORD &/*retQW2*/, void *secondObject)
 {
-	asCScriptEngine            *engine    = context->engine;
+	asCScriptEngine            *engine    = context->m_engine;
 	asSSystemFunctionInterface *sysFunc   = descr->sysFuncIntf;
 
 	asQWORD retQW = 0;
 
 	// Prepare the parameters
-	int paramSize = sysFunc->paramSize;
 	asDWORD paramBuffer[64];
-	if( sysFunc->takesObjByVal )
+	int callConv = sysFunc->callConv;
+
+	// Changed because need check for ICC_THISCALL_OBJFIRST or
+	// ICC_THISCALL_OBJLAST if sysFunc->takesObjByVal (avoid copy code)
+	// Check if is THISCALL_OBJ* calling convention (in this case needs to add secondObject pointer into stack).
+	bool isThisCallMethod = callConv >= ICC_THISCALL_OBJLAST;
+	int paramSize = isThisCallMethod || sysFunc->takesObjByVal ? 0 : sysFunc->paramSize;
+
+	int dpos = 1;
+
+	if( isThisCallMethod && 
+		(callConv >= ICC_THISCALL_OBJFIRST &&
+		 callConv <= ICC_VIRTUAL_THISCALL_OBJFIRST_RETURNINMEM) )
 	{
-		paramSize = 0;
+		// Add the object pointer as the first parameter
+		paramBuffer[dpos++] = (asDWORD)secondObject;
+		paramSize++;
+	}
+
+	if( sysFunc->takesObjByVal || isThisCallMethod )
+	{
 		int spos = 0;
-		int dpos = 1;
+
 		for( asUINT n = 0; n < descr->parameterTypes.GetLength(); n++ )
 		{
 			if( descr->parameterTypes[n].IsObject() && !descr->parameterTypes[n].IsObjectHandle() && !descr->parameterTypes[n].IsReference() )
 			{
 #ifdef COMPLEX_OBJS_PASSED_BY_REF
-				if( descr->parameterTypes[n].GetObjectType()->flags & COMPLEX_MASK )
+				if( descr->parameterTypes[n].GetTypeInfo()->flags & COMPLEX_MASK )
 				{
 					paramBuffer[dpos++] = args[spos++];
 					paramSize++;
@@ -134,6 +135,14 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 #endif
 				{
 					// Copy the object's memory to the buffer
+					// TODO: bug: Must call the object's copy constructor instead of doing a memcpy, 
+					//            as the object may hold a pointer to itself. It's not enough to 
+					//            change only this memcpy as the assembler routine also makes a copy
+					//            of paramBuffer to the final stack location. To avoid the second 
+					//            copy the C++ routine should point paramBuffer to the final stack
+					//            position and copy the values directly to that location. The assembler
+					//            routines then don't need to copy anything, and will just be 
+					//            responsible for setting up the registers and the stack frame appropriately.
 					memcpy(&paramBuffer[dpos], *(void**)(args+spos), descr->parameterTypes[n].GetSizeInMemoryBytes());
 
 					// Delete the original memory
@@ -156,16 +165,24 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		args = &paramBuffer[1];
 	}
 
+	if( isThisCallMethod && 
+		(callConv >= ICC_THISCALL_OBJLAST &&
+		 callConv <= ICC_VIRTUAL_THISCALL_OBJLAST_RETURNINMEM) )
+	{
+		// Add the object pointer as the last parameter
+		paramBuffer[dpos++] = (asDWORD)secondObject;
+		paramSize++;
+	}
+
 	// Make the actual call
 	asFUNCTION_t func = sysFunc->func;
-	int callConv = sysFunc->callConv;
 	if( sysFunc->hostReturnInMemory )
 		callConv++;
 
 	switch( callConv )
 	{
 	case ICC_CDECL:
-		retQW = CallCDeclFunctionQWord(args, paramSize<<2, func);
+		retQW = CallCDeclFunction(args, paramSize<<2, func);
 		break;
 
 	case ICC_CDECL_RETURNINMEM:
@@ -173,7 +190,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		break;
 
 	case ICC_STDCALL:
-		retQW = CallSTDCallFunctionQWord(args, paramSize<<2, func);
+		retQW = CallSTDCallFunction(args, paramSize<<2, func);
 		break;
 
 	case ICC_STDCALL_RETURNINMEM:
@@ -182,26 +199,34 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		args--;
 		*(asPWORD*)args = (size_t)retPointer;
 
-		retQW = CallSTDCallFunctionQWord(args, paramSize<<2, func);
+		retQW = CallSTDCallFunction(args, paramSize<<2, func);
 		break;
 
 	case ICC_THISCALL:
-		retQW = CallThisCallFunctionQWord(obj, args, paramSize<<2, func);
+	case ICC_THISCALL_OBJFIRST:
+	case ICC_THISCALL_OBJLAST:
+		retQW = CallThisCallFunction(obj, args, paramSize<<2, func);
 		break;
 
 	case ICC_THISCALL_RETURNINMEM:
+	case ICC_THISCALL_OBJFIRST_RETURNINMEM:
+	case ICC_THISCALL_OBJLAST_RETURNINMEM:
 		retQW = CallThisCallFunctionRetByRef(obj, args, paramSize<<2, func, retPointer);
 		break;
 
 	case ICC_VIRTUAL_THISCALL:
+	case ICC_VIRTUAL_THISCALL_OBJFIRST:
+	case ICC_VIRTUAL_THISCALL_OBJLAST:
 		{
 			// Get virtual function table from the object pointer
 			asFUNCTION_t *vftable = *(asFUNCTION_t**)obj;
-			retQW = CallThisCallFunctionQWord(obj, args, paramSize<<2, vftable[FuncPtrToUInt(func)>>2]);
+			retQW = CallThisCallFunction(obj, args, paramSize<<2, vftable[FuncPtrToUInt(func)>>2]);
 		}
 		break;
 
 	case ICC_VIRTUAL_THISCALL_RETURNINMEM:
+	case ICC_VIRTUAL_THISCALL_OBJFIRST_RETURNINMEM:
+	case ICC_VIRTUAL_THISCALL_OBJLAST_RETURNINMEM:
 		{
 			// Get virtual function table from the object pointer
 			asFUNCTION_t *vftable = *(asFUNCTION_t**)obj;
@@ -210,7 +235,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 		break;
 
 	case ICC_CDECL_OBJLAST:
-		retQW = CallCDeclFunctionQWordObjLast(obj, args, paramSize<<2, func);
+		retQW = CallCDeclFunctionObjLast(obj, args, paramSize<<2, func);
 		break;
 
 	case ICC_CDECL_OBJLAST_RETURNINMEM:
@@ -220,7 +245,7 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 
 	case ICC_CDECL_OBJFIRST:
 		// Call the system object method as a cdecl with the obj ref as the first parameter
-		retQW = CallCDeclFunctionQWordObjFirst(obj, args, paramSize<<2, func);
+		retQW = CallCDeclFunctionObjFirst(obj, args, paramSize<<2, func);
 		break;
 
 	case ICC_CDECL_OBJFIRST_RETURNINMEM:
@@ -254,8 +279,10 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 #endif
 
 
-void NOINLINE CallCDeclFunction(const asDWORD *args, int paramSize, asFUNCTION_t func)
+asQWORD NOINLINE CallCDeclFunction(const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -288,28 +315,45 @@ endcopy:
 		// Pop arguments from stack
 		add  esp, paramSize
 
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
-
-		// return value in EAX or EAX:EDX
 	}
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
+	// It is not possible to rely on ESP or BSP to refer to variables or arguments on the stack
+	// depending on compiler settings BSP may not even be used, and the ESP is not always on the
+	// same offset from the local variables. Because the code adjusts the ESP register it is not
+	// possible to inform the arguments through symbolic names below.
 
-	// GNUC 4.6.1 seems to have a bug when compiling with -O2. This wasn't a problem in earlier versions.
-	// Even though the clobber list is specifically listing the esp register, it still doesn't understand
-	// that it cannot rely on esp for getting the function arguments. So in order to work around this
-	// I'm passing the address of the first arg in edx to the inline assembly, and then copy it to ebx
-	// where it is guaranteed to be maintained over the function call.
+	// It's not also not possible to rely on the memory layout of the function arguments, because
+	// on some compiler versions and settings the arguments may be copied to local variables with a
+	// different ordering before they are accessed by the rest of the code.
+
+	// I'm copying the arguments into this array where I know the exact memory layout. The address
+	// of this array will then be passed to the inline asm in the EDX register.
+	volatile asPWORD a[] = {asPWORD(args), asPWORD(paramSize), asPWORD(func)};
 
 	asm __volatile__(
-		_S(CLEAR_FPU_STACK)  "\n"
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)    "\n"
 		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+		"movl  %%edx, %%ebx     \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -323,6 +367,7 @@ endcopy:
 		"subl  %%ecx, %%esp     \n"
 		"pushl %%eax            \n" // Store the original stack pointer
 
+		// Copy all arguments to the stack and call the function
 		"movl  4(%%ebx), %%ecx  \n" // paramSize
 		"movl  0(%%ebx), %%eax  \n" // args
 		"addl  %%ecx, %%eax     \n" // push arguments on the stack
@@ -336,20 +381,37 @@ endcopy:
 		"endcopy:               \n"
 		"call  *8(%%ebx)        \n"
 		"addl  4(%%ebx), %%esp  \n" // pop arguments
-		
+
 		// Pop the alignment bytes
 		"popl  %%esp            \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&args)               // input - pass pointer of args in edx
-		: "%eax", "%ecx", "%esp"   // clobber
+		"popl  %%ebx            \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 
 #endif
+
+	return retQW;
 }
 
-void NOINLINE CallCDeclFunctionObjLast(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
+asQWORD NOINLINE CallCDeclFunctionObjLast(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -386,23 +448,34 @@ endcopy:
 		add  esp, paramSize
 		add  esp, 4
 
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
-
-		// return value in EAX or EAX:EDX
 	}
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(obj);
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
+	volatile asPWORD a[] = {asPWORD(obj), asPWORD(args), asPWORD(paramSize), asPWORD(func)};
 
 	asm __volatile__ (
-		_S(CLEAR_FPU_STACK)  "\n"
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)    "\n"
 		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+		"movl  %%edx, %%ebx     \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -434,17 +507,34 @@ endcopy:
 
 		// Pop the alignment bytes
 		"popl  %%esp            \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&obj)                // input - pass pointer of obj in edx
-		: "%eax", "%ecx", "%esp"   // clobber 
+		"popl  %%ebx            \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 
 #endif
+
+	return retQW;
 }
 
-void NOINLINE CallCDeclFunctionObjFirst(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
+asQWORD NOINLINE CallCDeclFunctionObjFirst(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -481,23 +571,34 @@ endcopy:
 		add  esp, paramSize
 		add  esp, 4
 
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
-
-		// return value in EAX or EAX:EDX
 	}
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(obj);
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
+	volatile asPWORD a[] = {asPWORD(obj), asPWORD(args), asPWORD(paramSize), asPWORD(func)};
 
 	asm __volatile__ (
-		_S(CLEAR_FPU_STACK)  "\n"
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)    "\n"
 		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+		"movl  %%edx, %%ebx     \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -529,17 +630,34 @@ endcopy:
 
 		// Pop the alignment bytes
 		"popl  %%esp            \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&obj)                // input - pass pointer of obj in edx
-		: "%eax", "%ecx", "%esp"   // clobber 
+		"popl  %%ebx            \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 
 #endif
+
+	return retQW;
 }
 
-void NOINLINE CallCDeclFunctionRetByRefObjFirst_impl(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
+asQWORD NOINLINE CallCDeclFunctionRetByRefObjFirst(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -584,24 +702,35 @@ endcopy:
 #else
 		add  esp, 4
 #endif
+
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
-
-		// return value in EAX or EAX:EDX
 	}
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(obj);
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
-	UNUSED_VAR(retPtr);
+	volatile asPWORD a[] = {asPWORD(obj), asPWORD(args), asPWORD(paramSize), asPWORD(func), asPWORD(retPtr)};
 
 	asm __volatile__ (
-		_S(CLEAR_FPU_STACK)  "\n"
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)    "\n"
 		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+		"movl  %%edx, %%ebx     \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -637,16 +766,33 @@ endcopy:
 #endif
 		// Pop the alignment bytes
 		"popl  %%esp            \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&obj)                // input - pass pointer of obj in edx
-		: "%eax", "%ecx", "%esp"   // clobber 
+		"popl  %%ebx            \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 #endif
+
+	return retQW;
 }
 
-void NOINLINE CallCDeclFunctionRetByRef_impl(const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
+asQWORD NOINLINE CallCDeclFunctionRetByRef(const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -686,6 +832,12 @@ endcopy:
 		// Pop the return pointer
 		add  esp, 4
 #endif
+
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
 
@@ -694,15 +846,23 @@ endcopy:
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
-	UNUSED_VAR(retPtr);
+	volatile asPWORD a[] = {asPWORD(args), asPWORD(paramSize), asPWORD(func), asPWORD(retPtr)};
 
 	asm __volatile__ (
-		_S(CLEAR_FPU_STACK)  "\n"
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)    "\n"
 		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+		"movl  %%edx, %%ebx     \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -735,17 +895,34 @@ endcopy:
 #endif
 		// Pop the alignment bytes
 		"popl  %%esp            \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&args)               // input - pass pointer of args in edx
-		: "%eax", "%ecx", "%esp"   // clobber 
+		"popl  %%ebx            \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 
 #endif
+
+	return retQW;
 }
 
-void NOINLINE CallCDeclFunctionRetByRefObjLast_impl(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
+asQWORD NOINLINE CallCDeclFunctionRetByRefObjLast(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -788,24 +965,35 @@ endcopy:
 		// Pop the return pointer
 		add  esp, 4
 #endif
+
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
-
-		// return value in EAX or EAX:EDX
 	}
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(obj);
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
-	UNUSED_VAR(retPtr);
+	volatile asPWORD a[] = {asPWORD(obj), asPWORD(args), asPWORD(paramSize), asPWORD(func), asPWORD(retPtr)};
 
 	asm __volatile__ (
-		_S(CLEAR_FPU_STACK)  "\n"
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)    "\n"
 		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+		"movl  %%edx, %%ebx     \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -841,17 +1029,34 @@ endcopy:
 #endif
 		// Pop the alignment bytes
 		"popl  %%esp            \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&obj)                // input - pass pointer of obj in edx
-		: "%eax", "%ecx", "%esp"   // clobber 
+		"popl  %%ebx            \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 
 #endif
+
+	return retQW;
 }
 
-void NOINLINE CallSTDCallFunction(const asDWORD *args, int paramSize, asFUNCTION_t func)
+asQWORD NOINLINE CallSTDCallFunction(const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -883,22 +1088,34 @@ endcopy:
 
 		// The callee already removed parameters from the stack
 
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
-
-		// return value in EAX or EAX:EDX
 	}
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
+	volatile asPWORD a[] = {asPWORD(args), asPWORD(paramSize), asPWORD(func)};
 
 	asm __volatile__ (
-		_S(CLEAR_FPU_STACK)  "\n"
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)    "\n"
 		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+		"movl  %%edx, %%ebx     \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -927,18 +1144,35 @@ endcopy:
 
 		// Pop the alignment bytes
 		"popl  %%esp            \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&args)               // input - pass pointer of args in edx
-		: "%eax", "%ecx", "%esp"   // clobber 
+		"popl  %%ebx            \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 
 #endif
+
+	return retQW;
 }
 
 
-void NOINLINE CallThisCallFunction(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
+asQWORD NOINLINE CallThisCallFunction(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -985,23 +1219,34 @@ endcopy:
 #endif
 #endif
 
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
-
-		// Return value in EAX or EAX:EDX
 	}
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(obj);
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
+	volatile asPWORD a[] = {asPWORD(obj), asPWORD(args), asPWORD(paramSize), asPWORD(func)};
 
 	asm __volatile__ (
-		_S(CLEAR_FPU_STACK)  "\n"
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)    "\n"
 		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+		"movl  %%edx, %%ebx     \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -1027,24 +1272,46 @@ endcopy:
 		"jne   copyloop1        \n"
 		"endcopy1:              \n"
 		"movl  0(%%ebx), %%ecx  \n" // move obj into ECX
+#ifdef THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 		"pushl %%ecx            \n" // push obj on the stack
+#endif
 		"call  *12(%%ebx)       \n"
+#ifndef THISCALL_CALLEE_POPS_ARGUMENTS
 		"addl  8(%%ebx), %%esp  \n" // pop arguments
+#ifdef THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 		"addl  $4, %%esp        \n" // pop obj
-
+#endif
+#endif
 		// Pop the alignment bytes
 		"popl  %%esp            \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&obj)                // input - pass pointer of obj in edx
-		: "%eax", "%ecx", "%esp"   // clobber 
+		"popl  %%ebx            \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 
 #endif
+
+	return retQW;
 }
 
-void NOINLINE CallThisCallFunctionRetByRef_impl(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
+asQWORD NOINLINE CallThisCallFunctionRetByRef(const void *obj, const asDWORD *args, int paramSize, asFUNCTION_t func, void *retPtr)
 {
+	volatile asQWORD retQW = 0;
+
 #if defined ASM_INTEL
 
 	// Copy the data to the real stack. If we fail to do
@@ -1099,24 +1366,34 @@ endcopy:
 #endif
 #endif
 
+		// Copy return value from EAX:EDX
+		lea  ecx, retQW
+		mov  [ecx], eax
+		mov  4[ecx], edx
+
 		// Restore registers
 		pop  ecx
-
-		// Return value in EAX or EAX:EDX
 	}
 
 #elif defined ASM_AT_N_T
 
-	UNUSED_VAR(obj);
-	UNUSED_VAR(args);
-	UNUSED_VAR(paramSize);
-	UNUSED_VAR(func);
-	UNUSED_VAR(retPtr);
+	volatile asPWORD a[] = {asPWORD(obj), asPWORD(args), asPWORD(paramSize), asPWORD(func), asPWORD(retPtr)};
 
 	asm __volatile__ (
-		_S(CLEAR_FPU_STACK)  "\n"
-		"pushl %%ebx            \n"
-		"movl  %%edx, %%ebx     \n"	
+#ifdef __OPTIMIZE__
+		// When compiled with optimizations the stack unwind doesn't work properly, 
+		// causing exceptions to crash the application. By adding this prologue
+		// and the epilogue below, the stack unwind works as it should. 
+		// TODO: runtime optimize: The prologue/epilogue shouldn't be needed if the correct cfi directives are used below
+		"pushl %%ebp               \n"
+		".cfi_adjust_cfa_offset 4  \n"
+		".cfi_rel_offset ebp, 0    \n"
+		"movl %%esp, %%ebp         \n"
+		".cfi_def_cfa_register ebp \n"
+#endif
+		_S(CLEAR_FPU_STACK)   "\n"
+		"pushl %%ebx           \n"
+		"movl  %%edx, %%ebx    \n"
 
 		// Need to align the stack pointer so that it is aligned to 16 bytes when making the function call.
 		// It is assumed that when entering this function, the stack pointer is already aligned, so we need
@@ -1141,25 +1418,54 @@ endcopy:
 		"subl  $4, %%ecx       \n"
 		"jne   copyloop3       \n"
 		"endcopy3:             \n"
+#ifdef AS_MINGW47
+		// MinGW made some strange choices with 4.7 and the thiscall calling convention,
+		// returning an object in memory is completely different from when not returning
+		// in memory
+		"pushl 0(%%ebx)        \n" // push obj on the stack
+		"movl 16(%%ebx), %%ecx \n" // move the return pointer into ECX
+		"call  *12(%%ebx)      \n" // call the function
+#else
 		"movl  0(%%ebx), %%ecx \n" // move obj into ECX
+#ifdef THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 		"pushl %%ecx           \n" // push obj on the stack
+#endif
 		"pushl 16(%%ebx)       \n" // push retPtr on the stack
 		"call  *12(%%ebx)      \n"
 #ifndef THISCALL_CALLEE_POPS_HIDDEN_RETURN_POINTER
 		"addl  $4, %%esp       \n" // pop return pointer
 #endif
+#ifndef THISCALL_CALLEE_POPS_ARGUMENTS
 		"addl  8(%%ebx), %%esp \n" // pop arguments
+#ifdef THISCALL_PASS_OBJECT_POINTER_ON_THE_STACK
 		"addl  $4, %%esp       \n" // pop the object pointer
-		                           // the return pointer was popped by the callee
+#endif
+#endif
+#endif // AS_MINGW47
 		// Pop the alignment bytes
 		"popl  %%esp           \n"
-		"popl  %%ebx            \n" 
-		:                          // output
-		: "d"(&obj)                // input - pass pointer of obj in edx
-		: "%eax", "%ecx", "%esp"   // clobber 
+		"popl  %%ebx           \n"
+#ifdef __OPTIMIZE__
+		// Epilogue
+		"movl %%ebp, %%esp         \n"
+		".cfi_def_cfa_register esp \n"
+		"popl %%ebp                \n"
+		".cfi_adjust_cfa_offset -4 \n"
+		".cfi_restore ebp          \n"
+#endif
+		// Copy EAX:EDX to retQW. As the stack pointer has been
+		// restored it is now safe to access the local variable
+		"leal  %1, %%ecx        \n"
+		"movl  %%eax, 0(%%ecx)  \n"
+		"movl  %%edx, 4(%%ecx)  \n"
+		:                           // output
+		: "d"(a), "m"(retQW)        // input - pass pointer of args in edx, pass pointer of retQW in memory argument
+		: "%eax", "%ecx"            // clobber
 		);
 
 #endif
+
+	return retQW;
 }
 
 asDWORD GetReturnedFloat()

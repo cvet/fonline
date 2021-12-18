@@ -2227,7 +2227,7 @@ void Map::GenerateSequence( Critter* first_cr )
     // Collect all critters
     CrVec        critters;
     GetCritters( critters, true );
-    ScriptArray* script_critters = Script::CreateArray( "Critter@[]" );
+    CScriptArray* script_critters = Script::CreateArray( "Critter@[]" );
     Script::AppendVectorToArrayRef( critters, script_critters );
 
     // Pass to scripts

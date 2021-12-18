@@ -479,7 +479,7 @@ public:
         // Check name for already used
         for( int i = 0, ii = engine->GetObjectTypeCount(); i < ii; i++ )
         {
-            asIObjectType* ot = engine->GetObjectTypeByIndex( i );
+			asITypeInfo* ot = engine->GetObjectTypeByIndex( i );
             if( !strcmp( ot->GetName(), class_name.c_str() ) )
             {
                 for( int j = 0, jj = ot->GetPropertyCount(); j < jj; j++ )
