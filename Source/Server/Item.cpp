@@ -36,7 +36,7 @@
 #include "ItemManager.h"
 #include "Server.h"
 
-Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator("Item"), proto), ItemProperties(GetInitRef())
+Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(GetCount() > 0);

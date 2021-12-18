@@ -38,6 +38,8 @@
 // ReSharper disable CppClangTidyModernizeUseNodiscard
 // ReSharper disable CppClangTidyClangDiagnosticExtraSemiStmt
 // ReSharper disable CppUseAuto
+// ReSharper disable CppMemberFunctionMayBeConst
+// ReSharper disable CppClangTidyClangDiagnosticOldStyleCast
 
 ///@ CodeGen Template AngelScript
 
@@ -80,8 +82,11 @@
 #endif
 
 #include "Application.h"
+#include "Entity.h"
+#include "EntityProperties.h"
 #include "FileSystem.h"
 #include "Log.h"
+#include "Properties.h"
 #include "StringUtils.h"
 
 #include "AngelScriptExtensions.h"
@@ -156,6 +161,7 @@ struct SCRIPTING_CLASS
 #define SCRIPT_FUNC_CONV asCALL_GENERIC
 #define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
 #define SCRIPT_METHOD_CONV asCALL_GENERIC
+#define SCRIPT_ASGLOBAL_METHOD_CONV asCALL_GENERIC
 #else
 #define SCRIPT_FUNC(name) asFUNCTION(name)
 #define SCRIPT_FUNC_THIS(name) asFUNCTION(name)
@@ -163,29 +169,28 @@ struct SCRIPTING_CLASS
 #define SCRIPT_FUNC_CONV asCALL_CDECL
 #define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
+#define SCRIPT_ASGLOBAL_METHOD_CONV asCALL_THISCALL_ASGLOBAL
 #endif
 #else
-#undef SCRIPT_FUNC
-#undef SCRIPT_FUNC_THIS
-#undef SCRIPT_METHOD
-#undef SCRIPT_FUNC_CONV
-#undef SCRIPT_FUNC_THIS_CONV
-#undef SCRIPT_METHOD_CONV
 #define SCRIPT_FUNC(...) asFUNCTION(DummyFunc)
 #define SCRIPT_FUNC_THIS(...) asFUNCTION(DummyFunc)
 #define SCRIPT_METHOD(...) asFUNCTION(DummyFunc)
 #define SCRIPT_FUNC_CONV asCALL_GENERIC
 #define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
 #define SCRIPT_METHOD_CONV asCALL_GENERIC
+#define SCRIPT_ASGLOBAL_METHOD_CONV asCALL_GENERIC
 static void DummyFunc(asIScriptGeneric* gen)
 {
 }
 #endif
 
 #if !COMPILER_MODE
+struct ASGlobal;
+
 struct ScriptSystem::AngelScriptImpl
 {
     asIScriptEngine* Engine {};
+    ASGlobal* ASGlobalInstance {};
 };
 #endif
 
@@ -332,6 +337,40 @@ static auto Entity_IsDestroying(BaseEntity* self) -> bool
     return self->IsDestroying();
 }
 
+template<typename T>
+static void Property_GetValue(asIScriptGeneric* gen)
+{
+    const auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
+    ENTITY_VERIFY(entity);
+
+    // new (gen->GetAddressOfReturnLocation()) T(((Property*)gen->GetAuxiliary())->GetValue<T>((Entity*)gen->GetObject()));
+}
+
+template<typename T>
+static void Property_SetValue(asIScriptGeneric* gen)
+{
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
+    ENTITY_VERIFY(entity);
+
+    // ((Property*)gen->GetAuxiliary())->SetValue<T>((Entity*)gen->GetObject(), *(T*)gen->GetAddressOfArg(0));
+}
+
+template<typename T>
+static void RegisterProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* decl_get, const char* decl_set)
+{
+#if !COMPILER_MODE
+    const auto* prop = registrator->Register(access, typeid(T), name);
+#else
+    void* prop = nullptr;
+#endif
+
+    int as_result;
+    AS_VERIFY(engine->RegisterObjectMethod(entity, decl_get, asFUNCTION((Property_GetValue<T>)), asCALL_GENERIC, (void*)prop));
+    AS_VERIFY(engine->RegisterObjectMethod(entity, decl_set, asFUNCTION((Property_SetValue<T>)), asCALL_GENERIC, (void*)prop));
+}
+
 ///@ CodeGen Global
 
 template<class T>
@@ -394,12 +433,18 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
 
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
+    FOEngine* game_engine = nullptr;
+
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
     RUNTIME_ASSERT(engine);
+
+    auto* as_global = new ASGlobal();
 
 #if !COMPILER_MODE
     AngelScriptData = std::make_unique<AngelScriptImpl>();
     AngelScriptData->Engine = engine;
+    AngelScriptData->ASGlobalInstance = as_global;
+    as_global->self = game_engine;
 #endif
 
     int as_result;
@@ -433,6 +478,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
     AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
 
+#define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
+    AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(BaseEntity, AddRef), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(BaseEntity, Release), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV));
+
 #define REGISTER_ENTITY(class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(BaseEntity, AddRef), SCRIPT_METHOD_CONV)); \
@@ -440,14 +492,19 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hash get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV));
-#define REGISTER_ENTITY_CAST(class_name, real_class) \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", "const " class_name "@ opCast() const", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
-    REGISTER_ENTITY("Entity", BaseEntity);
+    AS_VERIFY(engine->RegisterObjectType("Entity", 0, asOBJ_REF));
+    AS_VERIFY(engine->RegisterObjectBehaviour("Entity", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(BaseEntity, AddRef), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("Entity", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(BaseEntity, Release), SCRIPT_METHOD_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("Entity", "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("Entity", "hash get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("Entity", "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("Entity", "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV));
 
     ///@ CodeGen Register
 
@@ -519,6 +576,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     File script_file = _engine->FileMngr.ReadFile("...");
     RestoreRootModule(engine, script_file);
 #endif
+
+#if COMPILER_MODE
+    delete as_global;
+#endif
 }
 
 class BinaryStream : public asIBinaryStream
@@ -528,8 +589,10 @@ public:
 
     void Write(const void* ptr, asUINT size) override
     {
-        if (!ptr || !size)
+        if (!ptr || size == 0u) {
             return;
+        }
+
         _binBuf.resize(_binBuf.size() + size);
         std::memcpy(&_binBuf[_writePos], ptr, size);
         _writePos += size;
@@ -537,8 +600,10 @@ public:
 
     void Read(void* ptr, asUINT size) override
     {
-        if (!ptr || !size)
+        if (!ptr || size == 0u) {
             return;
+        }
+
         std::memcpy(ptr, &_binBuf[_readPos], size);
         _readPos += size;
     }
@@ -547,8 +612,8 @@ public:
 
 private:
     std::vector<asBYTE>& _binBuf;
-    int _readPos {};
-    int _writePos {};
+    size_t _readPos {};
+    size_t _writePos {};
 };
 
 #if COMPILER_MODE

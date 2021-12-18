@@ -38,7 +38,7 @@
 #include "MsgFiles.h"
 #include "Properties.h"
 
-///@ ExportEntity Game FOServer FOClient Singleton
+///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView
 ///@ ExportEntity Item Item ItemView
 ///@ ExportEntity Critter Critter CritterView
@@ -46,10 +46,14 @@
 ///@ ExportEntity Location Location LocationView
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
+    static constexpr Property::AccessType prop##_AccessType = Property::AccessType::access_type; \
+    static constexpr const std::type_info& prop##_TypeId = typeid(prop_type); \
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->FindNoComponentCheck(#prop); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
     inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
     inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0; }
+
+#define REGISTER_ENTITY_PROPERTY(name) registrator->Register(name##_AccessType, name##_TypeId, #name)
 
 class EntityProperties
 {
@@ -93,7 +97,7 @@ protected:
     virtual ~Entity() = default;
 
     auto GetInitRef() -> Properties& { return _props; }
-    
+
     bool _nonConstHelper {};
 
 private:

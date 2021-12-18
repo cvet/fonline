@@ -1226,7 +1226,7 @@ void Properties::SetValueFromData(const Property* prop, const uchar* data, uint 
     }*/
 }
 
-auto Properties::GetPODValueAsInt(const Property* prop) const -> int
+auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
 {
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
@@ -1273,7 +1273,7 @@ auto Properties::GetPODValueAsInt(const Property* prop) const -> int
     throw UnreachablePlaceException(LINE_STR);
 }
 
-void Properties::SetPODValueAsInt(const Property* prop, int value)
+void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
 {
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
@@ -1331,7 +1331,7 @@ auto Properties::GetValueAsInt(int enum_value) const -> int
         throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
     }
 
-    return GetPODValueAsInt(prop);
+    return GetPlainDataValueAsInt(prop);
 }
 
 void Properties::SetValueAsInt(int enum_value, int value)
@@ -1347,7 +1347,7 @@ void Properties::SetValueAsInt(int enum_value, int value)
         throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
     }
 
-    SetPODValueAsInt(prop, value);
+    SetPlainDataValueAsInt(prop, value);
 }
 
 void Properties::SetValueAsIntByName(string_view enum_name, int value)
@@ -1363,7 +1363,7 @@ void Properties::SetValueAsIntByName(string_view enum_name, int value)
         throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
     }
 
-    SetPODValueAsInt(prop, value);
+    SetPlainDataValueAsInt(prop, value);
 }
 
 void Properties::SetValueAsIntProps(int enum_value, int value)
@@ -1753,24 +1753,4 @@ void PropertyRegistrator::SetNativeSetCallback(string_view property_name, const 
 auto PropertyRegistrator::GetWholeDataSize() const -> uint
 {
     return _wholePodDataSize;
-}
-
-PropertyRegistratorsHolder::PropertyRegistratorsHolder(bool is_server) : _isServer {is_server}
-{
-}
-
-auto PropertyRegistratorsHolder::CreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
-{
-    RUNTIME_ASSERT(_registrators.count(class_name) == 0u);
-
-    auto* new_registrator = new PropertyRegistrator(class_name, _isServer);
-    _registrators.emplace(class_name, new_registrator);
-    return new_registrator;
-}
-
-auto PropertyRegistratorsHolder::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*
-{
-    const auto it = _registrators.find(class_name);
-    RUNTIME_ASSERT(it != _registrators.end());
-    return it->second;
 }

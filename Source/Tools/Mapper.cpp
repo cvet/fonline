@@ -141,7 +141,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
 
     if (!SettingsExt.StartMap.empty()) {
         const auto map_name = SettingsExt.StartMap;
-        auto* pmap = new ProtoMap(_str(map_name).toHash(), GetPropertyRegistrator("Map"));
+        auto* pmap = new ProtoMap(_str(map_name).toHash(), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
         const bool initialized = 0;
         // pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
 
@@ -3820,7 +3820,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        ProtoMap* pmap = new ProtoMap(_str(map_name).toHash(), GetPropertyRegistrator("Map"));
+        auto* pmap = new ProtoMap(_str(map_name).toHash(), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
         // Todo: need attention!
         /*if (!pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr))
         {
@@ -3945,7 +3945,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         if (command_ext == "new") {
-            ProtoMap* pmap = new ProtoMap(_str("new").toHash(), GetPropertyRegistrator("Map"));
+            auto* pmap = new ProtoMap(_str("new").toHash(), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
 
             pmap->SetWidth(MAXHEX_DEFAULT);
             pmap->SetHeight(MAXHEX_DEFAULT);

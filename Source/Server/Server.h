@@ -65,7 +65,7 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer final : public PropertyRegistratorsHolder, public ServerEntity, public GameProperties
+class FOServer final : public PropertyRegistratorsHolder, public Entity, public GameProperties
 {
 public:
     FOServer() = delete;
@@ -79,6 +79,8 @@ public:
 #if FO_SINGLEPLAYER
     void ConnectClient(FOClient* client) { }
 #endif
+
+    [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
     [[nodiscard]] auto GetIngamePlayersStatistics() const -> string;

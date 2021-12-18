@@ -108,7 +108,7 @@ constexpr auto INIT_NET_REASON_REG = 2;
 constexpr auto INIT_NET_REASON_LOAD = 3;
 constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : public PropertyRegistratorsHolder, public ClientEntity, public GameProperties, public AnimationResolver
+class FOClient : public PropertyRegistratorsHolder, public Entity, public GameProperties, public AnimationResolver
 {
 public:
     struct MapText
@@ -131,6 +131,8 @@ public:
     auto operator=(const FOClient&) = delete;
     auto operator=(FOClient&&) noexcept = delete;
     ~FOClient() override;
+
+    [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
     [[nodiscard]] auto ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3, hash& arg4, uint& arg5, uint& arg6) -> bool override;

@@ -4037,7 +4037,7 @@ auto HexManager::LoadMap(CacheStorage& cache, hash map_pid) -> bool
             }
         }
 
-        auto props = Properties(_engine->GetPropertyRegistrator("Item"));
+        auto props = Properties(_engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME));
         props.RestoreData(props_data);
 
         GenerateItem(id, proto_id, props);

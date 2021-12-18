@@ -87,7 +87,7 @@
     }
 
     if (!props.empty()) {
-        Properties props_(self->GetEngine()->GetPropertyRegistrator("Item"));
+        Properties props_(self->GetEngine()->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME));
         props_ = proto->GetProperties();
 
         for (const auto& [key, value] : props) {
@@ -656,7 +656,7 @@
 
     Critter* npc;
     if (!props.empty()) {
-        Properties props_(self->GetEngine()->GetPropertyRegistrator("Critter"));
+        Properties props_(self->GetEngine()->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME));
         props_ = proto->GetProperties();
 
         for (const auto& [key, value] : props) {

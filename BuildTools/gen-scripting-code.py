@@ -262,8 +262,9 @@ for absPath in metaFiles:
 checkErrors()
 
 userObjects = set()
+scriptEnums = set()
 gameEntities = ['Entity']
-gameEntitiesInfo = {'Entity': {'Server': 'ServerEntity', 'Client': 'ClientEntity'}}
+gameEntitiesInfo = {'Entity': {'Server': 'ServerEntity', 'Client': 'ClientEntity', 'IsGlobal': False}}
 
 def parseTags():
     validTypes = set()
@@ -417,7 +418,10 @@ def parseTags():
                     keyValues = [(key, value, [])]
                     codeGenTags['Enum'].append([grname, calcUnderlyingMetaType(keyValues), keyValues, flags, comment])
                 
-                validTypes.add(grname)
+                    assert grname not in validTypes, 'Enum already in valid types'
+                    validTypes.add(grname)
+                    assert grname not in scriptEnums, 'Enum already added'
+                    scriptEnums.add(grname)
                 
             except Exception as ex:
                 showError('Invalid tag Enum', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -467,18 +471,26 @@ def parseTags():
                 exportFlags = [i for i in tagInfo.split(' ') if i]
                 
                 name = exportFlags[0]
-                assert name not in validTypes
                 serverClassName = exportFlags[1]
                 clientClassName = exportFlags[2]
                 exportFlags = exportFlags[3:]
                 
                 codeGenTags['ExportEntity'].append((name, serverClassName, clientClassName, exportFlags, comment))
-                
+
+                assert name not in validTypes           
                 validTypes.add(name)
-                validTypes.add(name + 'Proto')
-                validTypes.add(name + 'Property')
+                assert name not in gameEntities
                 gameEntities.append(name)
-                gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName}
+                gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags}
+                
+                assert name + 'Proto' not in validTypes
+                validTypes.add(name + 'Proto')
+                
+                assert name + 'Property' not in validTypes
+                validTypes.add(name + 'Property')
+                assert name + 'Property' not in scriptEnums
+                scriptEnums.add(name + 'Property')
+                codeGenTags['Enum'].append([name + 'Property', 'int', [], [], []])
                 
             except Exception as ex:
                 showError('Invalid tag ExportEntity', absPath + ' (' + str(lineIndex + 1) + ')', ex)
@@ -856,7 +868,8 @@ def genCode(lang, target, isASCompiler=False):
         def metaTypeToEngineType(t, ret = False):
             tt = t.split('.')
             if tt[0] == 'dict':
-                r = 'map<' + metaTypeToEngineType(tt[1], True) + ', ' + metaTypeToEngineType(tt[2], True) + '>'
+                d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
+                r = 'map<' + metaTypeToEngineType(tt[1], True) + ', ' + metaTypeToEngineType(d2, True) + '>'
             elif tt[0] == 'arr':
                 r = 'vector<' + metaTypeToEngineType(tt[1], True) + '>'
             elif tt[0] == 'callback':
@@ -870,6 +883,8 @@ def genCode(lang, target, isASCompiler=False):
                     r = gameEntitiesInfo[tt[0]]['Client'] + '*'
                 else:
                     r = gameEntitiesInfo[tt[0]]['Server'] + '*'
+            elif tt[0] in scriptEnums:
+                r = 'AS_' + tt[0]
             elif tt[0] in userObjects:
                 r = tt[0] + '*'
             else:
@@ -920,7 +935,8 @@ def genCode(lang, target, isASCompiler=False):
             if tt[0] == 'arr':
                 return 'MarshalArray<' + metaTypeToEngineType(tt[1], True) + '>(GET_AS_ENGINE(), ' + v + ')'
             elif tt[0] == 'dict':
-                return 'MarshalDict<' + metaTypeToEngineType(tt[1], True) + ', ' + metaTypeToEngineType(tt[2], True) + '>(GET_AS_ENGINE(), ' + v + ')'
+                d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
+                return 'MarshalDict<' + metaTypeToEngineType(tt[1], True) + ', ' + metaTypeToEngineType(d2, True) + '>(GET_AS_ENGINE(), ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
                 return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], True)
             return v
@@ -932,7 +948,8 @@ def genCode(lang, target, isASCompiler=False):
                     return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], True) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1]) + '[]", ' + v + ')'
                 return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1], True) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1]) + '[]", ' + v + ')'
             elif tt[0] == 'dict':
-                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], True) + ', ' + metaTypeToEngineType(tt[2], True) + '>(GET_AS_ENGINE(), ' + v + ')'
+                d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
+                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], True) + ', ' + metaTypeToEngineType(d2, True) + '>(GET_AS_ENGINE(), ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
                 return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], True)
             return v
@@ -949,17 +966,16 @@ def genCode(lang, target, isASCompiler=False):
         defineLines.append('#define COMPILER_MODE ' + ('1' if isASCompiler else '0'))
         
         # Enums
-        if isASCompiler:
-            globalLines.append('// Script enums')
-            for e in codeGenTags['Enum']:
-                gname, utype, keyValues, _, _ = e
-                globalLines.append('enum class ' + gname + ' : ' + metaTypeToEngineType(utype))
-                globalLines.append('{')
-                for kv in keyValues:
-                    globalLines.append('    ' + kv[0] + ' = ' + kv[1] + ',')
-                globalLines.append('};')
-                globalLines.append('')
-                
+        globalLines.append('// Script enums')
+        for e in codeGenTags['Enum']:
+            gname, utype, keyValues, _, _ = e
+            globalLines.append('enum class AS_' + gname + ' : ' + metaTypeToEngineType(utype))
+            globalLines.append('{')
+            for kv in keyValues:
+                globalLines.append('    ' + kv[0] + ' = ' + kv[1] + ',')
+            globalLines.append('};')
+            globalLines.append('')
+
         # User scriptable objects
         if isASCompiler:
             globalLines.append('// Compiler entity stubs')
@@ -982,89 +998,95 @@ def genCode(lang, target, isASCompiler=False):
                     globalLines.append('')
             
         # Marshalling functions
+        def writeMarshalingMethod(entity, targ, name, ret, params, isASGlobal):
+            ident = '    ' if isASGlobal else ''
+            engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+            engineEntityTypeExtern = engineEntityType
+            
+            if entity == 'Game':
+                if target == 'Mapper':
+                    engineEntityType = 'FOMapper'
+                
+                if targ == 'Common':
+                    engineEntityTypeExtern = 'void'
+                elif targ == 'Mapper':
+                    engineEntityTypeExtern = 'FOMapper'
+            
+            globalLines.append(ident + ('static ' if not isASGlobal else '') + metaTypeToASEngineType(ret, True) +
+                    ' AS_' + targ + '_' + entity + '_' + name + '(' +
+                    (engineEntityType + '* self' + (', ' if params else '') if not isASGlobal else '') +
+                    ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
+            globalLines.append(ident + '{')
+            
+            if not isASCompiler:
+                globalLines.append(ident + '    ENTITY_VERIFY(self);')
+                for p in params:
+                    if p[0] in gameEntities:
+                        globalLines.append(ident + '    ENTITY_VERIFY(' + p[1] + ');')
+                for p in params:
+                    globalLines.append(ident + '    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
+                globalLines.append(ident + '    extern ' + metaTypeToEngineType(ret, True) + ' ' + targ + '_' + entity + '_' + name +
+                        '(' + engineEntityTypeExtern + '*' + (', ' if params else '') + ', '.join([metaTypeToEngineType(p[0]) for p in params]) + ');')
+                globalLines.append(ident + '    ' + ('auto out_result = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
+                        '(self' + (', ' if params else '') + ', '.join(['in_' + p[1] for p in params]) + ');')
+                for p in params:
+                    pass # Marshall back
+                if ret != 'void':
+                    globalLines.append(ident + '    return ' + marshalBack(ret, 'out_result') + ';')
+            else:
+                # Stub for compiler
+                globalLines.append(ident + '    throw ScriptCompilerException("Stub");')
+                    
+            globalLines.append(ident + '}')
+            globalLines.append('')
+            
         globalLines.append('// Marshalling entity functions')
         for entity in gameEntities:
-            for methodTag in codeGenTags['ExportMethod']:
-                targ, ent, name, ret, params, exportFlags, comment = methodTag
-                if targ in allowedTargets and ent == entity:
-                    engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
-                    engineEntityTypeExtern = engineEntityType
-                    
-                    if entity == 'Game':
-                        if target == 'Mapper':
-                            engineEntityType = 'FOMapper'
-                        
-                        if targ == 'Common':
-                            engineEntityTypeExtern = 'void'
-                        elif targ == 'Mapper':
-                            engineEntityTypeExtern = 'FOMapper'
-                    
-                    # Extern    
-                    if not isASCompiler:
-                        globalLines.append('extern ' + metaTypeToEngineType(ret, True) + ' ' + targ + '_' + entity + '_' + name +
-                                '(' + engineEntityTypeExtern + '*' + (', ' if params else '') + ', '.join([metaTypeToEngineType(p[0]) for p in params]) + ');')
-                                
-                    # Local
-                    globalLines.append('static ' + metaTypeToASEngineType(ret, True) + ' AS_' + targ + '_' + entity + '_' + name + '(' + engineEntityType + '* self' +
-                            (', ' if params else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
-                    globalLines.append('{')
-                    
-                    if not isASCompiler:
-                        # Call extern from local
-                        globalLines.append('    ENTITY_VERIFY(self);')
-                        for p in params:
-                            if p[0] in gameEntities:
-                                globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
-                        for p in params:
-                            globalLines.append('    auto&& _' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
-                        globalLines.append('    ' + ('auto _callResult = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
-                                '(self' + (', ' if params else '') + ', '.join(['_' + p[1] for p in params]) + ');')
-                        for p in params:
-                            pass # Marshall back
-                        if ret != 'void':
-                            globalLines.append('    return ' + marshalBack(ret, '_callResult') + ';')
-                    else:
-                        # Stub for compiler
-                        if ret != 'void':
-                            globalLines.append('    return 0;')
-                            
-                    globalLines.append('}')
-                    globalLines.append('')
+            if entity != 'Game':
+                for methodTag in codeGenTags['ExportMethod']:
+                    targ, ent, name, ret, params, exportFlags, comment = methodTag
+                    if targ in allowedTargets and ent == entity:
+                        writeMarshalingMethod(entity, targ, name, ret, params, False)
+        
+        globalLines.append('// Marshalling global functions')
+        globalLines.append('struct ASGlobal')
+        globalLines.append('{')
+        for methodTag in codeGenTags['ExportMethod']:
+            targ, ent, name, ret, params, exportFlags, comment = methodTag
+            if targ in allowedTargets and ent == 'Game':
+                writeMarshalingMethod('Game', targ, name, ret, params, True)
+        globalLines.append('    FOEngine* self = nullptr;')
+        globalLines.append('};')
+        globalLines.append('')
         
         # Marshalling properties
-        """
+        def writeMarshalingProperty(entity, type, name):
+            engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+            globalLines.append('static ' + metaTypeToASEngineType(type, True) + ' AS_' + entity + '_Get_' + name + '(' + engineEntityType + '* self)')
+            globalLines.append('{')
+            if not isASCompiler:
+                globalLines.append('    ENTITY_VERIFY(self);')
+                globalLines.append('    return ' + marshalBack(type, 'self->Get' + name + '()') + ';')
+            else:
+                globalLines.append('    throw ScriptCompilerException("Stub");')
+            globalLines.append('}')
+            globalLines.append('')
+            globalLines.append('static void AS_' + entity + '_Set_' + name + '(' + engineEntityType + '* self, ' + metaTypeToASEngineType(type, False) + ' value)')
+            globalLines.append('{')
+            if not isASCompiler:
+                globalLines.append('    ENTITY_VERIFY(self);')
+                globalLines.append('    self->Set' + name + '(' + marshalIn(type, 'value') + ');')
+            else:
+                globalLines.append('    throw ScriptCompilerException("Stub");')
+            globalLines.append('};')
+            globalLines.append('')
+        
         globalLines.append('// Marshalling properties')
         for entity in gameEntities:
-            engineEntityType = entity + ('View' if target != 'Server' else '')
-            for methodTag in codeGenTags['ExportMethod']:
-                targ, ent, name, ret, params, exportFlags, comment = methodTag
-                if targ in allowedTargets and ent == entity:
-                    if not isASCompiler:
-                        globalLines.append('extern ' + metaTypeToEngineType(ret, True) + ' ' + targ + '_' + entity + '_' + name +
-                                '(' + entity + ('View' if target != 'Server' else '') + '*' + (', ' if params else '') +
-                                ', '.join([metaTypeToEngineType(p[0]) for p in params]) + ');')
-                    globalLines.append('static ' + metaTypeToASEngineType(ret, True) + ' AS_' + targ + '_' + entity + '_' + name + '(' + engineEntityType + '* self' +
-                            (', ' if params else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
-                    globalLines.append('{')
-                    if not isASCompiler:
-                        globalLines.append('    ENTITY_VERIFY(self);')
-                        for p in params:
-                            if p[0] in gameEntities:
-                                globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
-                        for p in params:
-                            globalLines.append('    auto&& _' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
-                        globalLines.append('    ' + ('auto _callResult = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
-                                '(self' + (', ' if params else '') + ', '.join(['_' + p[1] for p in params]) + ');')
-                        for p in params:
-                            pass # Marshall back
-                        if ret != 'void':
-                            globalLines.append('    return ' + marshalBack(ret, '_callResult') + ';')
-                    else:
-                        if ret != 'void':
-                            globalLines.append('    return 0;')
-                    globalLines.append('}')
-                    globalLines.append('')
-        """
+            for methodTag in codeGenTags['ExportProperty']:
+                ent, access, type, name, exportFlags, comment = methodTag
+                if ent == entity:
+                    writeMarshalingProperty(entity, type, name)
         
         # Register enums
         registerLines.append('// Engine enums')
@@ -1085,7 +1107,7 @@ def genCode(lang, target, isASCompiler=False):
                 registerLines.append('const char* ' + groupStrName + ' = "' + gname + '";')
                 registerLines.append('AS_VERIFY(engine->RegisterEnum(' + groupStrName + '));')
                 for kv in keyValues:
-                    registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", ' + kv[1] + '));')
+                    registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", static_cast<int>(AS_' + gname + '::' + kv[0] + ')));')
             registerLines.append('')
         
         else:
@@ -1108,9 +1130,12 @@ def genCode(lang, target, isASCompiler=False):
         # Register entities
         registerLines.append('// Register entities')
         for entity in gameEntities:
-            engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
-            registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
-            registerLines.append('REGISTER_ENTITY_CAST("' + entity + '", ' + engineEntityType + ');')
+            if entity != 'Entity':
+                engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+                if gameEntitiesInfo[entity]['IsGlobal']:
+                    registerLines.append('REGISTER_GLOBAL_ENTITY("' + entity + '", ' + engineEntityType + ');')
+                else:
+                    registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
         registerLines.append('')
         
         # Funcdefs
@@ -1122,23 +1147,37 @@ def genCode(lang, target, isASCompiler=False):
             registerLines.append('AS_VERIFY(engine->RegisterFuncdef("void ' + entity + 'PlayerCallback(' + entity + '@+)"));')
         registerLines.append('')
         
-        # Register entity methods
-        registerLines.append('// Register entity methods')
+        # Register entity methods and global functions
+        registerLines.append('// Register methods')
         for entity in gameEntities:
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
                 if targ in allowedTargets and ent == entity:
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret) + ' ' + name + '(' +
-                            ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
+                    if entity == 'Game': # Game methods projected as global functions
+                        registerLines.append('AS_VERIFY(engine->RegisterGlobalFunction("' + metaTypeToASType(ret) + ' ' + name + '(' +
+                                ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_METHOD(ASGlobal, AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_ASGLOBAL_METHOD_CONV, as_global));')
+                    else:
+                        registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret) + ' ' + name + '(' +
+                                ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
         registerLines.append('')
         
         # Register entity properties
-        
-        # Register global methods
-        registerLines.append('// Register global methods')
+        registerLines.append('// Register entity properties')
+        if target != 'Client' or isASCompiler:
+            registerLines.append('PropertyRegistrator* registrator = nullptr;')
+            for entity in gameEntities:
+                if not isASCompiler:
+                    registerLines.append('registrator = game_engine->GetPropertyRegistratorForEdit("' + entity + '");')
+                for methodTag in codeGenTags['Property']:
+                    ent, access, type, name, exportFlags, comment = methodTag
+                    if ent == entity:
+                        registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, True) + '>(engine, registrator, "' + entity +
+                                '", Property::AccessType::' + access + ', "' + name + '", ' +
+                                '"const ' + metaTypeToASType(type) + ('@' if False else '') + ' get_' + name + '() const", ' +
+                                '"void set_' + name + '(' + ('const ' if False else '') + metaTypeToASType(type) + ('@' if False else '') + ')");')
+        else:
+            registerLines.append('// Will be restored later')
         registerLines.append('')
-        
-        # Register global properties
         
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')

@@ -49,7 +49,7 @@
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), ClientEntity(this, 1, GetPropertyRegistrator("Game"), nullptr), GameProperties(GetInitRef()), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), Entity(GetPropertyRegistrator(ENTITY_CLASS_NAME)), GameProperties(GetInitRef()), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
     _netSock = INVALID_SOCKET;

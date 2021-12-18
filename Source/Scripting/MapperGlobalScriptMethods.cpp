@@ -479,7 +479,7 @@
 ///@ ExportMethod
 [[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
-    auto* pmap = new ProtoMap(_str(fileName).toHash(), mapper->GetPropertyRegistrator("Map"));
+    auto* pmap = new ProtoMap(_str(fileName).toHash(), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
     // Todo: need attention!
     // if (!pmap->EditorLoad(mapper->ServerFileMngr, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
     //     return nullptr;

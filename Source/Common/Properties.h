@@ -45,7 +45,7 @@ class Property;
 class PropertyRegistrator;
 class Properties;
 using PropertyVec = vector<const Property*>;
-using NativeSendCallback = std::function<void(Entity*,const Property*)>;
+using NativeSendCallback = std::function<void(Entity*, const Property*)>;
 using NativeCallback = std::function<void(Entity*, const Property*, void*, void*)>;
 using NativeCallbackVec = vector<NativeCallback>;
 
@@ -174,7 +174,7 @@ public:
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const -> uint;
     [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) const -> const uchar*;
     [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) -> uchar*;
-    [[nodiscard]] auto GetPODValueAsInt(const Property* prop) const -> int;
+    [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetValueAsInt(int enum_value) const -> int;
     [[nodiscard]] auto FindByEnum(int enum_value) const -> const Property*;
     [[nodiscard]] auto FindData(string_view property_name) -> void*;
@@ -190,7 +190,7 @@ public:
     void SetSendIgnore(const Property* prop, const Entity* entity);
     void SetRawData(const Property* prop, const uchar* data, uint data_size);
     void SetValueFromData(const Property* prop, const uchar* data, uint data_size);
-    void SetPODValueAsInt(const Property* prop, int value);
+    void SetPlainDataValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int enum_value, int value);
     void SetValueAsIntByName(string_view enum_name, int value);
     void SetValueAsIntProps(int enum_value, int value);
@@ -343,17 +343,4 @@ private:
     vector<ushort> _protectedComplexDataProps {};
     vector<ushort> _publicProtectedComplexDataProps {};
     vector<ushort> _privateComplexDataProps {};
-};
-
-class PropertyRegistratorsHolder
-{
-public:
-    explicit PropertyRegistratorsHolder(bool is_server);
-
-    [[nodiscard]] auto CreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
-    [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
-
-private:
-    bool _isServer;
-    unordered_map<string_view, const PropertyRegistrator*> _registrators {};
 };

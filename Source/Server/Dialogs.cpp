@@ -45,11 +45,11 @@
 
 static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
 {
-    auto* prop_global = engine->GetPropertyRegistrator("Globals")->Find(str);
-    auto* prop_critter = engine->GetPropertyRegistrator("Critter")->Find(str);
-    auto* prop_item = engine->GetPropertyRegistrator("Item")->Find(str);
-    auto* prop_location = engine->GetPropertyRegistrator("Location")->Find(str);
-    auto* prop_map = engine->GetPropertyRegistrator("Map")->Find(str);
+    auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->Find(str);
+    auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->Find(str);
+    auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->Find(str);
+    auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME)->Find(str);
+    auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME)->Find(str);
 
     auto count = 0;
     count += prop_global != nullptr ? 1 : 0;

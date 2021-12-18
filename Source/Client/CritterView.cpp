@@ -42,7 +42,7 @@
 #include "StringUtils.h"
 #include "Timer.h"
 
-CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode) : ClientEntity(engine, id, engine->GetPropertyRegistrator("Critter"), proto), CritterProperties(GetInitRef()), _mapperMode {mapper_mode}
+CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), CritterProperties(GetInitRef()), _mapperMode {mapper_mode}
 {
     _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u);
     DrawEffect = _engine->EffectMngr.Effects.Critter;

@@ -276,10 +276,10 @@ static void ParseProtos(FileManager& file_mngr, const PropertyRegistrator* prope
 
 ProtoManager::ProtoManager(FileManager& file_mngr, PropertyRegistratorsHolder& property_registrators)
 {
-    ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator("Item"), "foitem", "ProtoItem", _itemProtos);
-    ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator("Critter"), "focr", "ProtoCritter", _crProtos);
-    ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator("Map"), "fomap", "ProtoMap", _mapProtos);
-    ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator("Location"), "foloc", "ProtoLocation", _locProtos);
+    ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
+    ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
+    ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
+    ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
 
     // Mapper collections
     for (auto [pid, proto] : _itemProtos) {
@@ -322,10 +322,10 @@ ProtoManager::ProtoManager(const vector<uchar>& data, PropertyRegistratorsHolder
     }
 
     uint pos = 0;
-    ReadProtosFromBinary(property_registrators.GetPropertyRegistrator("Item"), uncompressed_data, pos, _itemProtos);
-    ReadProtosFromBinary(property_registrators.GetPropertyRegistrator("Critter"), uncompressed_data, pos, _crProtos);
-    ReadProtosFromBinary(property_registrators.GetPropertyRegistrator("Map"), uncompressed_data, pos, _mapProtos);
-    ReadProtosFromBinary(property_registrators.GetPropertyRegistrator("Location"), uncompressed_data, pos, _locProtos);
+    ReadProtosFromBinary(property_registrators.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _itemProtos);
+    ReadProtosFromBinary(property_registrators.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _crProtos);
+    ReadProtosFromBinary(property_registrators.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _mapProtos);
+    ReadProtosFromBinary(property_registrators.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _locProtos);
 }
 
 auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>
