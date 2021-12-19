@@ -301,7 +301,7 @@ void Critter::ProcessVisibleCritters()
         if( !GroupMove )
         {
             WriteLogF( _FUNC_, " - GroupMove nullptr, critter<%s>. Creating dump file.\n", GetInfo() );
-            CreateDump( "ProcessVisibleCritters" );
+            CreateDump( "ProcessVisibleCritters", Str::FormatBuf( "%s : - GroupMove nullptr, critter<%s>. Creating dump file.\n", _FUNC_, GetInfo( ) ) );
             return;
         }
 

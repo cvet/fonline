@@ -76,6 +76,8 @@ bool            ConcurrentExecution = false;
 Mutex           ConcurrentExecutionLocker;
 #endif
 
+static ContextVec BusyContexts;
+
 #ifdef FONLINE_SERVER
 Mutex ProfilerLocker;
 Mutex ProfilerCallStacksLocker;
@@ -200,7 +202,6 @@ uint   RunTimeoutSuspend = 600000;     // 10 minutes
 uint   RunTimeoutMessage = 300000;     // 5 minutes
 Thread RunTimeoutThread;
 void RunTimeout( void* );
-
 
 bool Script::Init( bool with_log, Preprocessor::PragmaCallback* pragma_callback, const char* dll_target )
 {
@@ -481,9 +482,13 @@ void* Script::LoadDynamicLibrary( const char* dll_name )
 
     // Load dynamic library
     void* dll = DLL_Load( dll_path );
-    if( !dll )
-        return NULL;
-
+	if( !dll )
+	{
+		
+		WriteLog( "Dll nullptr <%s> error: %u\n", dll_path, GetLastError( ) );
+		return NULL;
+	}
+	WriteLog( "Dll loading <%s>\n", dll_path );
     // Verify compilation target
     size_t* ptr = DLL_GetAddress( dll, edata->DllTarget.c_str() );
     if( !ptr )
@@ -1464,348 +1469,348 @@ bool Script::LoadScript( const char* module_name, const char* source, bool skip_
     // Compute whole version for server, client, mapper
     uint version = ( SERVER_VERSION << 20 ) | ( CLIENT_VERSION << 10 ) | MAPPER_VERSION;
 
-    // Get script names
-    char fname_real[ MAX_FOPATH ];
-    Str::Copy( fname_real, module_name );
-    Str::Replacement( fname_real, '.', DIR_SLASH_C );
-    Str::Append( fname_real, ".fos" );
-    FileManager::FormatPath( fname_real );
+	char fname_real[ MAX_FOPATH ];
+	Str::Copy( fname_real, module_name );
+	Str::Replacement( fname_real, '.', DIR_SLASH_C );
+	Str::Append( fname_real, ".fos" );
+	FileManager::FormatPath( fname_real );
+	// skip_binary = true;
+	char fname_script[ MAX_FOPATH ];
+	if( file_prefix )
+	{
+		string temp = module_name;
+		size_t pos = temp.find_last_of( DIR_SLASH_C );
+		if( pos != string::npos )
+		{
+			temp.insert( pos + 1, file_prefix );
+			Str::Copy( fname_script, temp.c_str( ) );
+		}
+		else
+		{
+			Str::Copy( fname_script, file_prefix );
+			Str::Append( fname_script, module_name );
+		}
+	}
+	else
+	{
+		Str::Copy( fname_script, module_name );
+	}
+	Str::Replacement( fname_script, '.', DIR_SLASH_C );
+	Str::Append( fname_script, ".fos" );
+	FileManager::FormatPath( fname_script );
 
-    char fname_script[ MAX_FOPATH ];
-    if( file_prefix )
-    {
-        string temp = module_name;
-        size_t pos = temp.find_last_of( DIR_SLASH_C );
-        if( pos != string::npos )
-        {
-            temp.insert( pos + 1, file_prefix );
-            Str::Copy( fname_script, temp.c_str() );
-        }
-        else
-        {
-            Str::Copy( fname_script, file_prefix );
-            Str::Append( fname_script, module_name );
-        }
-    }
-    else
-    {
-        Str::Copy( fname_script, module_name );
-    }
-    Str::Replacement( fname_script, '.', DIR_SLASH_C );
-    Str::Append( fname_script, ".fos" );
-    FileManager::FormatPath( fname_script );
+	// Set current pragmas
+	Preprocessor::SetPragmaCallback( edata->PragmaCB );
 
-    // Set current pragmas
-    Preprocessor::SetPragmaCallback( edata->PragmaCB );
+	// Try load precompiled script
+	FileManager file_bin;
+	if( !skip_binary )
+	{
+		FileManager file;
+		file.LoadFile( fname_real, ScriptsPath );
+		file_bin.LoadFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPath );
 
-    // Try load precompiled script
-    FileManager file_bin;
-    if( !skip_binary )
-    {
-        FileManager file;
-        file.LoadFile( fname_real, ScriptsPath );
-        file_bin.LoadFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPath );
+		if( file_bin.IsLoaded( ) && file_bin.GetFsize( ) > sizeof( uint ) )
+		{
+			// Load file dependencies and pragmas
+			char   str[ 1024 ];
+			uint   bin_version = file_bin.GetBEUInt( );
+			uint   dependencies_size = file_bin.GetBEUInt( );
+			StrVec dependencies;
+			for( uint i = 0; i < dependencies_size; i++ )
+			{
+				file_bin.GetStr( str );
+				dependencies.push_back( str );
+			}
+			uint   pragmas_size = file_bin.GetBEUInt( );
+			StrVec pragmas;
+			for( uint i = 0; i < pragmas_size; i++ )
+			{
+				file_bin.GetStr( str );
+				pragmas.push_back( str );
+			}
 
-        if( file_bin.IsLoaded() && file_bin.GetFsize() > sizeof( uint ) )
-        {
-            // Load file dependencies and pragmas
-            char   str[ 1024 ];
-            uint   bin_version = file_bin.GetBEUInt();
-            uint   dependencies_size = file_bin.GetBEUInt();
-            StrVec dependencies;
-            for( uint i = 0; i < dependencies_size; i++ )
-            {
-                file_bin.GetStr( str );
-                dependencies.push_back( str );
-            }
-            uint   pragmas_size = file_bin.GetBEUInt();
-            StrVec pragmas;
-            for( uint i = 0; i < pragmas_size; i++ )
-            {
-                file_bin.GetStr( str );
-                pragmas.push_back( str );
-            }
+			// Check for outdated
+			uint64 last_write, last_write_bin;
+			file_bin.GetTime( NULL, NULL, &last_write_bin );
+			// Main file
+			file.GetTime( NULL, NULL, &last_write );
+			bool no_all_files = !file.IsLoaded( );
+			bool outdated = ( file.IsLoaded( ) && last_write > last_write_bin );
+			// Include files
+			for( uint i = 0, j = ( uint )dependencies.size( ); i < j; i++ )
+			{
+				FileManager file_dep;
+				file_dep.LoadFile( dependencies[ i ].c_str( ), ScriptsPath );
+				file_dep.GetTime( NULL, NULL, &last_write );
+				if( !no_all_files )
+					no_all_files = !file_dep.IsLoaded( );
+				if( !outdated )
+					outdated = ( file_dep.IsLoaded( ) && last_write > last_write_bin );
+			}
 
-            // Check for outdated
-            uint64 last_write, last_write_bin;
-            file_bin.GetTime( NULL, NULL, &last_write_bin );
-            // Main file
-            file.GetTime( NULL, NULL, &last_write );
-            bool no_all_files = !file.IsLoaded();
-            bool outdated = ( file.IsLoaded() && last_write > last_write_bin );
-            // Include files
-            for( uint i = 0, j = (uint) dependencies.size(); i < j; i++ )
-            {
-                FileManager file_dep;
-                file_dep.LoadFile( dependencies[ i ].c_str(), ScriptsPath );
-                file_dep.GetTime( NULL, NULL, &last_write );
-                if( !no_all_files )
-                    no_all_files = !file_dep.IsLoaded();
-                if( !outdated )
-                    outdated = ( file_dep.IsLoaded() && last_write > last_write_bin );
-            }
+			if( no_all_files || ( !outdated && bin_version == version ) )
+			{
+				if( bin_version != version )
+					WriteLogF( _FUNC_, " - Script<%s> compiled in older server version.\n", module_name );
+				if( outdated )
+					WriteLogF( _FUNC_, " - Script<%s> outdated.\n", module_name );
 
-            if( no_all_files || ( !outdated && bin_version == version ) )
-            {
-                if( bin_version != version )
-                    WriteLogF( _FUNC_, " - Script<%s> compiled in older server version.\n", module_name );
-                if( outdated )
-                    WriteLogF( _FUNC_, " - Script<%s> outdated.\n", module_name );
+				// Delete old
+				for( auto it = modules.begin( ), end = modules.end( ); it != end; ++it )
+				{
+					asIScriptModule* module = *it;
+					if( Str::Compare( module->GetName( ), module_name ) )
+					{
+						WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
+						Engine->DiscardModule( module_name );
+						modules.erase( it );
+						break;
+					}
+				}
 
-                // Delete old
-                for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
-                {
-                    asIScriptModule* module = *it;
-                    if( Str::Compare( module->GetName(), module_name ) )
-                    {
-                        WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
-                        Engine->DiscardModule( module_name );
-                        modules.erase( it );
-                        break;
-                    }
-                }
+				asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
+				if( module )
+				{
+					for( uint i = 0, j = ( uint )pragmas.size( ) / 2; i < j; i++ )
+					{
+						Preprocessor::PragmaInstance pi;
+						pi.text = pragmas[ i * 2 + 1 ];
+						pi.current_file = "";
+						pi.current_file_line = 0;
+						pi.root_file = "";
+						pi.global_line = 0;
+						Preprocessor::CallPragma( pragmas[ i * 2 ], pi );
+					}
 
-                asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
-                if( module )
-                {
-                    for( uint i = 0, j = (uint) pragmas.size() / 2; i < j; i++ )
-                    {
-                        Preprocessor::PragmaInstance pi;
-                        pi.text = pragmas[ i * 2 + 1 ];
-                        pi.current_file = "";
-                        pi.current_file_line = 0;
-                        pi.root_file = "";
-                        pi.global_line = 0;
-                        Preprocessor::CallPragma( pragmas[ i * 2 ], pi );
-                    }
+					CBytecodeStream binary;
+					binary.Write( file_bin.GetCurBuf( ), file_bin.GetFsize( ) - file_bin.GetCurPos( ) );
 
-                    CBytecodeStream binary;
-                    binary.Write( file_bin.GetCurBuf(), file_bin.GetFsize() - file_bin.GetCurPos() );
+					if( module->LoadByteCode( &binary ) >= 0 )
+					{
+						Preprocessor::SetParsedPragmas( pragmas );
+						modules.push_back( module );
+						return true;
+					}
+					else
+						WriteLogF( _FUNC_, " - Can't load binary, script<%s>.\n", module_name );
+				}
+				else
+					WriteLogF( _FUNC_, " - Create module fail, script<%s>.\n", module_name );
+			}
+		}
 
-                    if( module->LoadByteCode( &binary ) >= 0 )
-                    {
-                        Preprocessor::SetParsedPragmas( pragmas );
-                        modules.push_back( module );
-                        return true;
-                    }
-                    else
-                        WriteLogF( _FUNC_, " - Can't load binary, script<%s>.\n", module_name );
-                }
-                else
-                    WriteLogF( _FUNC_, " - Create module fail, script<%s>.\n", module_name );
-            }
-        }
+		if( !file.IsLoaded( ) )
+		{
+			WriteLogF( _FUNC_, " - Script<%s> not found.\n", fname_real );
+			return false;
+		}
 
-        if( !file.IsLoaded() )
-        {
-            WriteLogF( _FUNC_, " - Script<%s> not found.\n", fname_real );
-            return false;
-        }
+		file_bin.UnloadFile( );
+	}
 
-        file_bin.UnloadFile();
-    }
+	Preprocessor::VectorOutStream vos;
+	Preprocessor::FileSource      fsrc;
+	Preprocessor::VectorOutStream vos_err;
+	if( source )
+		fsrc.Stream = source;
 
-    Preprocessor::VectorOutStream vos;
-    Preprocessor::FileSource      fsrc;
-    Preprocessor::VectorOutStream vos_err;
-    if( source )
-        fsrc.Stream = source;
-    fsrc.CurrentDir = FileManager::GetFullPath( "", ScriptsPath );
+	fsrc.CurrentDir = FileManager::GetFullPath( "", ScriptsPath );
 
-    if( Preprocessor::Preprocess( fname_real, fsrc, vos, true, &vos_err ) )
-    {
-        vos_err.PushNull();
-        WriteLogF( _FUNC_, " - Unable to preprocess file<%s>, error<%s>.\n", fname_real, vos_err.GetData() );
-        return false;
-    }
-    vos.Format();
+	if( Preprocessor::Preprocess( fname_real, fsrc, vos, true, &vos_err ) )
+	{
+		vos_err.PushNull( );
+		WriteLogF( _FUNC_, " - Unable to preprocess file<%s>, error<%s>.\n", fname_real, vos_err.GetData( ) );
+		return false;
+	}
+	vos.Format( );
 
-    // Delete old
-    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
-    {
-        asIScriptModule* module = *it;
-        if( Str::Compare( module->GetName(), module_name ) )
-        {
-            WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
-            Engine->DiscardModule( module_name );
-            modules.erase( it );
-            break;
-        }
-    }
+	// Delete old
+	for( auto it = modules.begin( ), end = modules.end( ); it != end; ++it )
+	{
+		asIScriptModule* module = *it;
+		if( Str::Compare( module->GetName( ), module_name ) )
+		{
+			WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
+			Engine->DiscardModule( module_name );
+			modules.erase( it );
+			break;
+		}
+	}
 
-    asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
-    if( !module )
-    {
-        WriteLogF( _FUNC_, " - Create module fail, script<%s>.\n", module_name );
-        return false;
-    }
+	asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
+	if( !module )
+	{
+		WriteLogF( _FUNC_, " - Create module fail, script<%s>.\n", module_name );
+		return false;
+	}
 
-    int result = module->AddScriptSection( module_name, vos.GetData(), vos.GetSize(), 0 );
-    if( result < 0 )
-    {
-        WriteLogF( _FUNC_, " - Unable to AddScriptSection module<%s>, result<%d>.\n", module_name, result );
-        return false;
-    }
+	int result = module->AddScriptSection( module_name, vos.GetData( ), vos.GetSize( ), 0 );
+	if( result < 0 )
+	{
+		WriteLogF( _FUNC_, " - Unable to AddScriptSection module<%s>, result<%d>.\n", module_name, result );
+		return false;
+	}
 
-    result = module->Build();
-    if( result < 0 )
-    {
-        WriteLogF( _FUNC_, " - Unable to Build module<%s>, result<%d>.\n", module_name, result );
-        return false;
-    }
+	result = module->Build( );
+	if( result < 0 )
+	{
+		WriteLogF( _FUNC_, " - Unable to Build module<%s>, result<%d>.\n", module_name, result );
+		return false;
+	}
 
-    // Check not allowed global variables
-    if( WrongGlobalObjects.size() )
-    {
-        IntVec bad_typeids;
-        bad_typeids.reserve( WrongGlobalObjects.size() );
-        for( auto it = WrongGlobalObjects.begin(), end = WrongGlobalObjects.end(); it != end; ++it )
-            bad_typeids.push_back( Engine->GetTypeIdByDecl( ( *it ).c_str() ) & asTYPEID_MASK_SEQNBR );
+	// Check not allowed global variables
+	if( WrongGlobalObjects.size( ) )
+	{
+		IntVec bad_typeids;
+		bad_typeids.reserve( WrongGlobalObjects.size( ) );
+		for( auto it = WrongGlobalObjects.begin( ), end = WrongGlobalObjects.end( ); it != end; ++it )
+			bad_typeids.push_back( Engine->GetTypeIdByDecl( ( *it ).c_str( ) ) & asTYPEID_MASK_SEQNBR );
 
-        IntVec bad_typeids_class;
-        for( int m = 0, n = module->GetObjectTypeCount(); m < n; m++ )
-        {
+		IntVec bad_typeids_class;
+		for( int m = 0, n = module->GetObjectTypeCount( ); m < n; m++ )
+		{
 			asITypeInfo* ot = module->GetObjectTypeByIndex( m );
-            for( int i = 0, j = ot->GetPropertyCount(); i < j; i++ )
-            {
-                int type = 0;
-                ot->GetProperty( i, NULL, &type, NULL, NULL );
-                type &= asTYPEID_MASK_SEQNBR;
-                for( uint k = 0; k < bad_typeids.size(); k++ )
-                {
-                    if( type == bad_typeids[ k ] )
-                    {
-                        bad_typeids_class.push_back( ot->GetTypeId() & asTYPEID_MASK_SEQNBR );
-                        break;
-                    }
-                }
-            }
-        }
+			for( int i = 0, j = ot->GetPropertyCount( ); i < j; i++ )
+			{
+				int type = 0;
+				ot->GetProperty( i, NULL, &type, NULL, NULL );
+				type &= asTYPEID_MASK_SEQNBR;
+				for( uint k = 0; k < bad_typeids.size( ); k++ )
+				{
+					if( type == bad_typeids[ k ] )
+					{
+						bad_typeids_class.push_back( ot->GetTypeId( ) & asTYPEID_MASK_SEQNBR );
+						break;
+					}
+				}
+			}
+		}
 
-        bool global_fail = false;
-        for( int i = 0, j = module->GetGlobalVarCount(); i < j; i++ )
-        {
-            int type = 0;
-            module->GetGlobalVar( i, NULL, NULL, &type, NULL );
+		bool global_fail = false;
+		for( int i = 0, j = module->GetGlobalVarCount( ); i < j; i++ )
+		{
+			int type = 0;
+			module->GetGlobalVar( i, NULL, NULL, &type, NULL );
 
-            while( type & asTYPEID_TEMPLATE )
-            {
-				asITypeInfo* obj = ( asITypeInfo*) Engine->GetTypeInfoById( type );
-                if( !obj )
-                    break;
-                type = obj->GetSubTypeId();
-            }
+			while( type & asTYPEID_TEMPLATE )
+			{
+				asITypeInfo* obj = ( asITypeInfo* )Engine->GetTypeInfoById( type );
+				if( !obj )
+					break;
+				type = obj->GetSubTypeId( );
+			}
 
-            type &= asTYPEID_MASK_SEQNBR;
+			type &= asTYPEID_MASK_SEQNBR;
 
-            for( uint k = 0; k < bad_typeids.size(); k++ )
-            {
-                if( type == bad_typeids[ k ] )
-                {
-                    const char* name = NULL;
-                    module->GetGlobalVar( i, &name, NULL, NULL );
-                    string      msg = "The global variable '" + string( name ) + "' uses a type that cannot be stored globally";
-                    Engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, msg.c_str() );
-                    global_fail = true;
-                    break;
-                }
-            }
-            if( std::find( bad_typeids_class.begin(), bad_typeids_class.end(), type ) != bad_typeids_class.end() )
-            {
-                const char* name = NULL;
-                module->GetGlobalVar( i, &name, NULL, NULL );
-                string      msg = "The global variable '" + string( name ) + "' uses a type in class property that cannot be stored globally";
-                Engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, msg.c_str() );
-                global_fail = true;
-            }
-        }
+			for( uint k = 0; k < bad_typeids.size( ); k++ )
+			{
+				if( type == bad_typeids[ k ] )
+				{
+					const char* name = NULL;
+					module->GetGlobalVar( i, &name, NULL, NULL );
+					string      msg = "The global variable '" + string( name ) + "' uses a type that cannot be stored globally";
+					Engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, msg.c_str( ) );
+					global_fail = true;
+					break;
+				}
+			}
+			if( std::find( bad_typeids_class.begin( ), bad_typeids_class.end( ), type ) != bad_typeids_class.end( ) )
+			{
+				const char* name = NULL;
+				module->GetGlobalVar( i, &name, NULL, NULL );
+				string      msg = "The global variable '" + string( name ) + "' uses a type in class property that cannot be stored globally";
+				Engine->WriteMessage( "", 0, 0, asMSGTYPE_ERROR, msg.c_str( ) );
+				global_fail = true;
+			}
+		}
 
-        if( global_fail )
-        {
-            WriteLogF( _FUNC_, " - Wrong global variables in module<%s>.\n", module_name );
-            return false;
-        }
-    }
+		if( global_fail )
+		{
+			WriteLogF( _FUNC_, " - Wrong global variables in module<%s>.\n", module_name );
+			return false;
+		}
+	}
 
-    // Done, add to collection
-    modules.push_back( module );
+	// Done, add to collection
+	modules.push_back( module );
 
-    // Save binary version of script and preprocessed version
-    if( !skip_binary && !file_bin.IsLoaded() )
-    {
-        CBytecodeStream binary;
-        if( module->SaveByteCode( &binary ) >= 0 )
-        {
-            std::vector< asBYTE >& data = binary.GetBuf();
-            const StrVec&          dependencies = Preprocessor::GetFileDependencies();
-            const StrVec&          pragmas = Preprocessor::GetParsedPragmas();
+	// Save binary version of script and preprocessed version
+	if( !skip_binary && !file_bin.IsLoaded( ) )
+	{
+		CBytecodeStream binary;
+		if( module->SaveByteCode( &binary ) >= 0 )
+		{
+			std::vector< asBYTE >& data = binary.GetBuf( );
+			const StrVec&          dependencies = Preprocessor::GetFileDependencies( );
+			const StrVec&          pragmas = Preprocessor::GetParsedPragmas( );
 
-            file_bin.SetBEUInt( version );
-            file_bin.SetBEUInt( (uint) dependencies.size() );
-            for( uint i = 0, j = (uint) dependencies.size(); i < j; i++ )
-                file_bin.SetData( (uchar*) dependencies[ i ].c_str(), (uint) dependencies[ i ].length() + 1 );
-            file_bin.SetBEUInt( (uint) pragmas.size() );
-            for( uint i = 0, j = (uint) pragmas.size(); i < j; i++ )
-                file_bin.SetData( (uchar*) pragmas[ i ].c_str(), (uint) pragmas[ i ].length() + 1 );
-            file_bin.SetData( &data[ 0 ], (uint) data.size() );
+			file_bin.SetBEUInt( version );
+			file_bin.SetBEUInt( ( uint )dependencies.size( ) );
+			for( uint i = 0, j = ( uint )dependencies.size( ); i < j; i++ )
+				file_bin.SetData( ( uchar* )dependencies[ i ].c_str( ), ( uint )dependencies[ i ].length( ) + 1 );
+			file_bin.SetBEUInt( ( uint )pragmas.size( ) );
+			for( uint i = 0, j = ( uint )pragmas.size( ); i < j; i++ )
+				file_bin.SetData( ( uchar* )pragmas[ i ].c_str( ), ( uint )pragmas[ i ].length( ) + 1 );
+			file_bin.SetData( &data[ 0 ], ( uint )data.size( ) );
 
-            if( !file_bin.SaveOutBufToFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPath ) )
-                WriteLogF( _FUNC_, " - Can't save bytecode, script<%s>.\n", module_name );
-        }
-        else
-        {
-            WriteLogF( _FUNC_, " - Can't write bytecode, script<%s>.\n", module_name );
-        }
+			if( !file_bin.SaveOutBufToFile( Str::FormatBuf( "%sb", fname_script ), ScriptsPath ) )
+				WriteLogF( _FUNC_, " - Can't save bytecode, script<%s>.\n", module_name );
+		}
+		else
+		{
+			WriteLogF( _FUNC_, " - Can't write bytecode, script<%s>.\n", module_name );
+		}
 
-        FileManager file_prep;
-        file_prep.SetData( (void*) vos.GetData(), vos.GetSize() );
-        if( !file_prep.SaveOutBufToFile( Str::FormatBuf( "%sp", fname_script ), ScriptsPath ) )
-            WriteLogF( _FUNC_, " - Can't write preprocessed file, script<%s>.\n", module_name );
-    }
-    return true;
+		FileManager file_prep;
+		file_prep.SetData( ( void* )vos.GetData( ), vos.GetSize( ) );
+		if( !file_prep.SaveOutBufToFile( Str::FormatBuf( "%sp", fname_script ), ScriptsPath ) )
+			WriteLogF( _FUNC_, " - Can't write preprocessed file, script<%s>.\n", module_name );
+	}
+	return true;
 }
 
 bool Script::LoadScript( const char* module_name, const uchar* bytecode, uint len )
 {
-    if( !bytecode || !len )
-    {
-        WriteLogF( _FUNC_, " - Bytecode empty, module name<%s>.\n", module_name );
-        return false;
-    }
+	if( !bytecode || !len )
+	{
+		WriteLogF( _FUNC_, " - Bytecode empty, module name<%s>.\n", module_name );
+		return false;
+	}
 
-    EngineData*      edata = (EngineData*) Engine->GetUserData();
-    ScriptModuleVec& modules = edata->Modules;
+	EngineData*      edata = ( EngineData* )Engine->GetUserData( );
+	ScriptModuleVec& modules = edata->Modules;
 
-    for( auto it = modules.begin(), end = modules.end(); it != end; ++it )
-    {
-        asIScriptModule* module = *it;
-        if( Str::Compare( module->GetName(), module_name ) )
-        {
-            WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
-            Engine->DiscardModule( module_name );
-            modules.erase( it );
-            break;
-        }
-    }
+	for( auto it = modules.begin( ), end = modules.end( ); it != end; ++it )
+	{
+		asIScriptModule* module = *it;
+		if( Str::Compare( module->GetName( ), module_name ) )
+		{
+			WriteLogF( _FUNC_, " - Warning, script for this name<%s> already exist. Discard it.\n", module_name );
+			Engine->DiscardModule( module_name );
+			modules.erase( it );
+			break;
+		}
+	}
 
-    asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
-    if( !module )
-    {
-        WriteLogF( _FUNC_, " - Create module fail, script<%s>.\n", module_name );
-        return false;
-    }
+	asIScriptModule* module = Engine->GetModule( module_name, asGM_ALWAYS_CREATE );
+	if( !module )
+	{
+		WriteLogF( _FUNC_, " - Create module fail, script<%s>.\n", module_name );
+		return false;
+	}
 
-    CBytecodeStream binary;
-    binary.Write( bytecode, len );
-    int             result = module->LoadByteCode( &binary );
-    if( result < 0 )
-    {
-        WriteLogF( _FUNC_, " - Can't load binary, module<%s>, result<%d>.\n", module_name, result );
-        return false;
-    }
+	CBytecodeStream binary;
+	binary.Write( bytecode, len );
+	int             result = module->LoadByteCode( &binary );
+	if( result < 0 )
+	{
+		WriteLogF( _FUNC_, " - Can't load binary, module<%s>, result<%d>.\n", module_name, result );
+		return false;
+	}
 
-    modules.push_back( module );
-    return true;
+	modules.push_back( module );
+	return true;
 }
 
 int Script::BindImportedFunctions()
@@ -1972,7 +1977,7 @@ bool Script::ReparseScriptName( const char* script_name, char* module_name, char
     if( !script_name || !module_name || !func_name )
     {
         WriteLogF( _FUNC_, " - Some name null ptr.\n" );
-        CreateDump( "ReparseScriptName" );
+        CreateDump( "ReparseScriptName", "Some name null ptr.\n" );
         return false;
     }
 
@@ -2609,6 +2614,50 @@ bool Script::SynchronizeThread()
     }
     #endif
     return true;
+}
+
+string Script::GetTraceback( )
+{
+	string     result = "";
+	for( int i = GLOBAL_CONTEXT_STACK_SIZE - 1; i >= 0; i-- )
+	{
+		auto ctx = GlobalCtx[i];
+		if( !ctx )
+			continue;
+
+		int                      line, column;
+		const asIScriptFunction* func;
+		int                      stack_size = ctx->GetCallstackSize( );
+
+		result += Str::FormatBuf( "Context<%s>, state<%s>, call stack<%d>:\n", ctx->GetUserData( ), ContextStatesStr[ ( int )ctx->GetState( ) ], stack_size );
+
+		// Print current function
+		if( ctx->GetState( ) == asEXECUTION_EXCEPTION )
+		{
+			line = ctx->GetExceptionLineNumber( &column );
+			func = ctx->GetExceptionFunction( );
+		}
+		else
+		{
+			line = ctx->GetLineNumber( 0, &column );
+			func = ctx->GetFunction( 0 );
+		}
+		if( func )
+			result += Str::FormatBuf( "  %d) %s : %s : %d, %d.\n", stack_size - 1, func->GetModuleName( ), func->GetDeclaration( ), line, column );
+
+		// Print call stack
+		for( int i = 1; i < stack_size; i++ )
+		{
+			func = ctx->GetFunction( i );
+			line = ctx->GetLineNumber( i, &column );
+			if( func )
+				result += Str::FormatBuf( "  %d) %s : %s : %d, %d.\n", stack_size - i - 1, func->GetModuleName( ), func->GetDeclaration( ), line, column );
+		}
+		result += "\n";
+	}
+	if( result.empty( ) )
+		result = "-----------\n\n";
+	return result;
 }
 
 bool Script::ResynchronizeThread()

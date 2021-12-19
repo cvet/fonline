@@ -91,10 +91,10 @@ int main( int argc, char** argv )
     cfg.LoadFile( GetConfigFileName(), PT_SERVER_ROOT );
 
     // Memory debugging
-    MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
+    /*MemoryDebugLevel = cfg.GetInt( "MemoryDebugLevel", 0 );
     if( MemoryDebugLevel >= 3 )
         Debugger::StartTraceMemory();
-
+		*/
     // Make command line
     SetCommandLine( argc, argv );
 
@@ -392,7 +392,7 @@ void GUICallback( Fl_Widget* widget, void* data )
     }
     else if( widget == GuiBtnCreateDump )
     {
-        CreateDump( "ManualDump" );
+        CreateDump( "ManualDump", "----" );
     }
     else if( widget == GuiBtnMemory )
     {

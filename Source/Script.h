@@ -15,6 +15,8 @@
 typedef void ( *EndExecutionCallback )();
 typedef std::vector< asIScriptModule* > ScriptModuleVec;
 
+typedef vector< asIScriptContext* >             ContextVec;
+
 struct EngineData
 {
     ScriptModuleVec                      Modules;
@@ -96,6 +98,8 @@ namespace Script
     void  CallPragmas( const StrVec& pragmas );
     bool  LoadScript( const char* module_name, const char* source, bool skip_binary, const char* file_prefix = NULL );
     bool  LoadScript( const char* module_name, const uchar* bytecode, uint len );
+
+	string GetTraceback( );
 
     int  BindImportedFunctions();
     int  Bind( const char* module_name, const char* func_name, const char* decl, bool is_temp, bool disable_log = false );
@@ -200,30 +204,30 @@ namespace Script
 class CBytecodeStream: public asIBinaryStream
 {
 private:
-    int                   readPos;
-    int                   writePos;
-    std::vector< asBYTE > binBuf;
+	int                   readPos;
+	int                   writePos;
+	std::vector< asBYTE > binBuf;
 
 public:
-    CBytecodeStream()
-    {
-        writePos = 0;
-        readPos = 0;
-    }
-    void Write( const void* ptr, asUINT size )
-    {
-        if( !ptr || !size ) return;
-        binBuf.resize( binBuf.size() + size );
-        memcpy( &binBuf[ writePos ], ptr, size );
-        writePos += size;
-    }
-    void Read( void* ptr, asUINT size )
-    {
-        if( !ptr || !size ) return;
-        memcpy( ptr, &binBuf[ readPos ], size );
-        readPos += size;
-    }
-    std::vector< asBYTE >& GetBuf() { return binBuf; }
+	CBytecodeStream( )
+	{
+		writePos = 0;
+		readPos = 0;
+	}
+	void Write( const void* ptr, asUINT size )
+	{
+		if( !ptr || !size ) return;
+		binBuf.resize( binBuf.size( ) + size );
+		memcpy( &binBuf[ writePos ], ptr, size );
+		writePos += size;
+	}
+	void Read( void* ptr, asUINT size )
+	{
+		if( !ptr || !size ) return;
+		memcpy( ptr, &binBuf[ readPos ], size );
+		readPos += size;
+	}
+	std::vector< asBYTE >& GetBuf( ) { return binBuf; }
 };
 
 #endif // __SCRIPT__

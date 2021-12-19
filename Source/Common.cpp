@@ -857,8 +857,6 @@ void GetClientOptions()
     cfg.GetStr( CLIENT_CONFIG_APP, "Language", "russ", buf );
     GETOPTIONS_CMD_LINE_STR( buf, "Language" );
     Str::Lower( buf );
-    if( Str::Compare( buf, "russ" ) )
-        SetExceptionsRussianText();
 
     // Int / Bool
     GameOpt.OpenGLDebug = cfg.GetInt( CLIENT_CONFIG_APP, "OpenGLDebug", false ) != 0;
@@ -1011,7 +1009,7 @@ MapperScriptFunctions MapperFunctions;
 
 bool FOQuit = false;
 int  ServerGameSleep = 10;
-int  MemoryDebugLevel = 10;
+int  MemoryDebugLevel = 0;
 uint VarsGarbageTime = 3600000;
 bool WorldSaveManager = true;
 bool LogicMT = false;
