@@ -3024,40 +3024,40 @@ void FOServer::Process_Property(Player* player, uint data_size)
     switch (type) {
     case NetProperty::Game:
         is_public = true;
-        prop = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = this;
         }
         break;
     case NetProperty::Player:
-        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = player;
         }
         break;
     case NetProperty::Critter:
         is_public = true;
-        prop = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = CrMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        prop = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = cr;
         }
         break;
     case NetProperty::MapItem:
         is_public = true;
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = ItemMngr.GetItem(item_id);
         }
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             auto* cr = CrMngr.GetCritter(cr_id);
             if (cr != nullptr) {
@@ -3066,21 +3066,21 @@ void FOServer::Process_Property(Player* player, uint data_size)
         }
         break;
     case NetProperty::ChosenItem:
-        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = cr->GetItem(item_id, true);
         }
         break;
     case NetProperty::Map:
         is_public = true;
-        prop = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = MapMngr.GetMap(cr->GetMapId());
         }
         break;
     case NetProperty::Location:
         is_public = true;
-        prop = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME)->Get(property_index);
+        prop = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             auto* map = MapMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
@@ -3393,6 +3393,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
         }
 
         const auto index = demand.ParamId;
+
         switch (demand.Type) {
         case DR_PROP_GLOBAL:
         case DR_PROP_CRITTER:
@@ -3431,8 +3432,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
                 break;
             }
 
-            const auto prop_index = static_cast<uint>(index);
-            auto* prop = prop_registrator->Get(prop_index);
+            const auto* prop = prop_registrator->GetByIndex(index);
             auto val = 0;
             if (demand.Type == DR_PROP_CRITTER_DICT) {
                 if (slave == nullptr) {
@@ -3644,8 +3644,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
                 break;
             }
 
-            /*uint prop_index = (uint)index;
-            Property* prop = prop_registrator->Get(prop_index);
+            /*const auto* prop = prop_registrator->GetByIndex(index);
             int val = 0;
             CScriptDict* dict = nullptr;
             if (result.Type == DR_PROP_CRITTER_DICT)

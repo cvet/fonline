@@ -117,7 +117,7 @@ static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, 
     }
 
     is_hash = prop->IsHash();
-    return prop->GetRegIndex();
+    return static_cast<int>(prop->GetRegIndex());
 }
 
 DialogManager::DialogManager(FOServer* engine) : _engine {engine}

@@ -111,10 +111,20 @@
 #if COMPILER_MODE
 DECLARE_EXCEPTION(ScriptInitException);
 DECLARE_EXCEPTION(ScriptCompilerException);
+DECLARE_EXCEPTION(ScriptException);
 
 struct FOServer;
 struct FOClient;
 struct FOMapper;
+
+struct PropertiesHolder : public PropertyRegistratorsHolder
+{
+#if SERVER_SCRIPTING
+    PropertiesHolder() : PropertyRegistratorsHolder(true) { }
+#else
+    PropertiesHolder() : PropertyRegistratorsHolder(false) { }
+#endif
+};
 
 struct BaseEntity
 {
@@ -313,6 +323,18 @@ static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, 
     return as_dict;
 }
 
+static auto Entity_IsDestroyed(Entity* self) -> bool
+{
+    // May call on destroyed entity
+    return self->IsDestroyed();
+}
+
+static auto Entity_IsDestroying(Entity* self) -> bool
+{
+    // May call on destroyed entity
+    return self->IsDestroying();
+}
+
 static auto Entity_Id(BaseEntity* self) -> uint
 {
     ENTITY_VERIFY(self);
@@ -323,18 +345,6 @@ static auto Entity_ProtoId(BaseEntity* self) -> hash
 {
     ENTITY_VERIFY(self);
     return self->GetProtoId();
-}
-
-static auto Entity_IsDestroyed(BaseEntity* self) -> bool
-{
-    // May call on destroyed entity
-    return self->IsDestroyed();
-}
-
-static auto Entity_IsDestroying(BaseEntity* self) -> bool
-{
-    // May call on destroyed entity
-    return self->IsDestroying();
 }
 
 template<typename T>
@@ -357,18 +367,112 @@ static void Property_SetValue(asIScriptGeneric* gen)
     // ((Property*)gen->GetAuxiliary())->SetValue<T>((Entity*)gen->GetObject(), *(T*)gen->GetAddressOfArg(0));
 }
 
-template<typename T>
-static void RegisterProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* decl_get, const char* decl_set)
+static void Property_GetValueAsInt(asIScriptGeneric* gen)
 {
-#if !COMPILER_MODE
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
+    ENTITY_VERIFY(entity);
+
+    if (prop_index == -1) {
+        throw ScriptException("Property invalid enum");
+    }
+
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(prop_index);
+    RUNTIME_ASSERT(prop);
+
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property in not plain data type");
+    }
+    if (!prop->IsReadable()) {
+        throw ScriptException("Property is not readable");
+    }
+
+    new (gen->GetAddressOfReturnLocation()) int(entity->GetValueAsInt(prop));
+}
+
+static void Property_SetValueAsInt(asIScriptGeneric* gen)
+{
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
+    ENTITY_VERIFY(entity);
+
+    if (prop_index == -1) {
+        throw ScriptException("Property invalid enum");
+    }
+
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(prop_index);
+    RUNTIME_ASSERT(prop);
+
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property in not plain data type");
+    }
+    if (!prop->IsWritable()) {
+        throw ScriptException("Property is not writeble");
+    }
+
+    entity->SetValueAsInt(prop, *static_cast<int*>(gen->GetAddressOfArg(1)));
+}
+
+static void Property_GetValueAsFloat(asIScriptGeneric* gen)
+{
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
+    ENTITY_VERIFY(entity);
+
+    if (prop_index == -1) {
+        throw ScriptException("Property invalid enum");
+    }
+
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(prop_index);
+    RUNTIME_ASSERT(prop);
+
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property in not plain data type");
+    }
+    if (!prop->IsReadable()) {
+        throw ScriptException("Property is not readable");
+    }
+
+    new (gen->GetAddressOfReturnLocation()) float(entity->GetValueAsFloat(prop));
+}
+
+static void Property_SetValueAsFloat(asIScriptGeneric* gen)
+{
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
+    ENTITY_VERIFY(entity);
+
+    if (prop_index == -1) {
+        throw ScriptException("Property invalid enum");
+    }
+
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(prop_index);
+    RUNTIME_ASSERT(prop);
+
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property in not plain data type");
+    }
+    if (!prop->IsWritable()) {
+        throw ScriptException("Property is not writeble");
+    }
+
+    entity->SetValueAsFloat(prop, *static_cast<float*>(gen->GetAddressOfArg(1)));
+}
+
+template<typename T>
+static const Property* RegisterProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* decl_get, const char* decl_set)
+{
     const auto* prop = registrator->Register(access, typeid(T), name);
-#else
-    void* prop = nullptr;
-#endif
 
     int as_result;
-    AS_VERIFY(engine->RegisterObjectMethod(entity, decl_get, asFUNCTION((Property_GetValue<T>)), asCALL_GENERIC, (void*)prop));
-    AS_VERIFY(engine->RegisterObjectMethod(entity, decl_set, asFUNCTION((Property_SetValue<T>)), asCALL_GENERIC, (void*)prop));
+    if (prop->IsReadable()) {
+        AS_VERIFY(engine->RegisterObjectMethod(entity, decl_get, asFUNCTION((Property_GetValue<T>)), asCALL_GENERIC, (void*)prop));
+    }
+    if (prop->IsWritable()) {
+        AS_VERIFY(engine->RegisterObjectMethod(entity, decl_set, asFUNCTION((Property_SetValue<T>)), asCALL_GENERIC, (void*)prop));
+    }
+
+    return prop;
 }
 
 ///@ CodeGen Global
@@ -447,6 +551,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     as_global->self = game_engine;
 #endif
 
+#if COMPILER_MODE
+    auto properties_holder = PropertiesHolder();
+#endif
+
     int as_result;
     AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
 
@@ -478,90 +586,51 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
     AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
 
-#define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
+#define REGISTER_BASE_ENTITY(class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(BaseEntity, AddRef), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(BaseEntity, Release), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV));
-
-#define REGISTER_ENTITY(class_name, real_class) \
-    AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(BaseEntity, AddRef), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(BaseEntity, Release), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hash get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsInt(" class_name "Property) const", asFUNCTION(Property_GetValueAsInt), asCALL_GENERIC)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsInt(" class_name "Property, int)", asFUNCTION(Property_SetValueAsInt), asCALL_GENERIC)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsFloat(" class_name "Property) const", asFUNCTION(Property_GetValueAsFloat), asCALL_GENERIC)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsFloat(" class_name "Property, float)", asFUNCTION(Property_SetValueAsFloat), asCALL_GENERIC))
+
+#define REGISTER_GLOBAL_ENTITY(class_name, real_class) REGISTER_BASE_ENTITY(class_name, real_class)
+
+#define REGISTER_ENTITY(class_name, real_class) \
+    REGISTER_BASE_ENTITY(class_name, real_class); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hash get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", "const " class_name "@ opCast() const", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
-    AS_VERIFY(engine->RegisterObjectType("Entity", 0, asOBJ_REF));
-    AS_VERIFY(engine->RegisterObjectBehaviour("Entity", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(BaseEntity, AddRef), SCRIPT_METHOD_CONV));
-    AS_VERIFY(engine->RegisterObjectBehaviour("Entity", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(BaseEntity, Release), SCRIPT_METHOD_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("Entity", "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("Entity", "hash get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("Entity", "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV));
-    AS_VERIFY(engine->RegisterObjectMethod("Entity", "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV));
+    REGISTER_BASE_ENTITY("Entity", Entity);
 
     ///@ CodeGen Register
 
-    /*
-    #define FO_API_GLOBAL_COMMON_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
-    #if SERVER_SCRIPTING
-    #define FO_API_GLOBAL_SERVER_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
-    #elif CLIENT_SCRIPTING
-    #define FO_API_GLOBAL_CLIENT_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
-    #elif MAPPER_SCRIPTING
-    #define FO_API_GLOBAL_MAPPER_FUNC(name, ret, ...) AS_VERIFY(engine->RegisterGlobalFunction(MakeMethodDecl(#name, ret, MergeASTypes({__VA_ARGS__})).c_str(), SCRIPT_FUNC(AS_##name), SCRIPT_FUNC_CONV));
-    #endif
-    */
-    /*
-    #define CHECK_GETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask)) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
-    #define CHECK_SETTER(access) (IS_SERVER && !(Property::AccessType::access & Property::AccessType::ClientOnlyMask)) || (IS_CLIENT && !(Property::AccessType::access & Property::AccessType::ServerOnlyMask) && ((Property::AccessType::access & Property::AccessType::ClientOnlyMask) || (Property::AccessType::access & Property::AccessType::ModifiableMask))) || (IS_MAPPER && !(Property::AccessType::access & Property::AccessType::VirtualMask))
-
-    #define FO_API_PLAYER_READONLY_PROPERTY(access, type, name, ...) \
-        if (CHECK_GETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Player", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASPlayer, Get_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_PLAYER_PROPERTY(access, type, name, ...) \
-        FO_API_PLAYER_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-        if (CHECK_SETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Player", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASPlayer, Set_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_ITEM_READONLY_PROPERTY(access, type, name, ...) \
-        if (CHECK_GETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASItem, Get_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_ITEM_PROPERTY(access, type, name, ...) \
-        FO_API_ITEM_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-        if (CHECK_SETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Item", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASItem, Set_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_CRITTER_READONLY_PROPERTY(access, type, name, ...) \
-        if (CHECK_GETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASCritter, Get_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_CRITTER_PROPERTY(access, type, name, ...) \
-        FO_API_CRITTER_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-        if (CHECK_SETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Critter", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASCritter, Set_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_MAP_READONLY_PROPERTY(access, type, name, ...) \
-        if (CHECK_GETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASMap, Get_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_MAP_PROPERTY(access, type, name, ...) \
-        FO_API_MAP_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-        if (CHECK_SETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Map", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASMap, Set_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_LOCATION_READONLY_PROPERTY(access, type, name, ...) \
-        if (CHECK_GETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("get_" #name, type, "").c_str(), SCRIPT_METHOD(ASLocation, Get_##name), SCRIPT_METHOD_CONV));
-    #define FO_API_LOCATION_PROPERTY(access, type, name, ...) \
-        FO_API_LOCATION_READONLY_PROPERTY(access, type, name, __VA_ARGS__) \
-        if (CHECK_SETTER(access)) \
-            AS_VERIFY(engine->RegisterObjectMethod("Location", MakeMethodDecl("set_" #name, "void", type).c_str(), SCRIPT_METHOD(ASLocation, Set_##name), SCRIPT_METHOD_CONV));
-    #include "ScriptApi.h"
-    */
-
 #if CLIENT_SCRIPTING && !COMPILER_MODE
-    (void)_restoreInfo;
+    // Restore enums
+    for (const auto& info : _restoreInfo["Enums"]) {
+        auto tokens = _str(info).split(' ');
+        AS_VERIFY(engine->RegisterEnum(tokens[0].c_str()));
+        for (size_t i = 2; i < tokens.size() - 2; i += 2) {
+            AS_VERIFY(engine->RegisterEnumValue(tokens[0].c_str(), tokens[i].c_str(), _str(tokens[i + 1]).toInt()));
+        }
+    }
+
+    // Restore properties
+    for (const auto& info : _restoreInfo["Properties"]) {
+        const auto tokens = _str(info).split(' ');
+
+        // const auto* prop_registrator = game_engine->GetPropertyRegistrator(tokens[0]);
+        // prop_registrator->Find(tokens[3]);
+        // const aproperty_index
+        // AS_VERIFY(engine->RegisterEnumValue((tokens[0] + "Property").c_str(), tokens[3].c_str(), property_index));
+    }
 #endif
 
 #if CLIENT_SCRIPTING

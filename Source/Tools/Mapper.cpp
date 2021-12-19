@@ -1806,7 +1806,7 @@ void FOMapper::ObjDraw()
     for (auto* prop : ShowProps) {
         if (prop != nullptr) {
             auto value = entity->GetProperties().SavePropertyToText(prop);
-            DrawLine(prop->GetName(), prop->GetTypeName(), value, prop->IsConst(), r);
+            DrawLine(prop->GetName(), prop->GetTypeName(), value, prop->IsReadOnly(), r);
         }
         else {
             r.Top += DRAW_NEXT_HEIGHT;
@@ -1923,7 +1923,7 @@ void FOMapper::SelectEntityProp(int line)
         }
         if (ObjCurLine >= start_line && ObjCurLine - start_line < static_cast<int>(ShowProps.size()) && (ShowProps[ObjCurLine - start_line] != nullptr)) {
             ObjCurLineInitValue = ObjCurLineValue = entity->GetProperties().SavePropertyToText(ShowProps[ObjCurLine - start_line]);
-            ObjCurLineIsConst = ShowProps[ObjCurLine - start_line]->IsConst();
+            ObjCurLineIsConst = ShowProps[ObjCurLine - start_line]->IsReadOnly();
         }
     }
 }
@@ -1942,7 +1942,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
         vector<int> enum_values;
         InspectorPropertiesEvent.Raise(entity, enum_values);
         for (auto enum_value : enum_values) {
-            ShowProps.push_back(enum_value != 0 ? entity->GetProperties().FindByEnum(enum_value) : nullptr);
+            ShowProps.push_back(enum_value != 0 ? entity->GetProperties().GetByIndex(enum_value) : nullptr);
         }
     }
 

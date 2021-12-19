@@ -488,9 +488,6 @@ def parseTags():
                 
                 assert name + 'Property' not in validTypes
                 validTypes.add(name + 'Property')
-                assert name + 'Property' not in scriptEnums
-                scriptEnums.add(name + 'Property')
-                codeGenTags['Enum'].append([name + 'Property', 'int', [], [], []])
                 
             except Exception as ex:
                 showError('Invalid tag ExportEntity', absPath + ' (' + str(lineIndex + 1) + ')', ex)
@@ -506,9 +503,10 @@ def parseTags():
                 
                 entity = tagContext[:tagContext.find(' ')]
                 assert entity in gameEntities, entity
-                access = tagContext[tagContext.find('(') + 1:tagContext.find(',')].strip()
-                ptype = engineTypeToMetaType(tagContext[tagContext.find(',') + 1:tagContext.rfind(',')].strip())
-                name = tagContext[tagContext.rfind(',') + 1:tagContext.find(')')].strip()
+                toks = [t.strip() for t in tagContext[tagContext.find('(') + 1:tagContext.find(')')].split(',')]
+                access = toks[0]
+                ptype = engineTypeToMetaType(toks[1])
+                name = toks[2]
                 
                 codeGenTags['ExportProperty'].append((entity, access, ptype, name, exportFlags, comment))
                 
@@ -967,16 +965,20 @@ def genCode(lang, target, isASCompiler=False):
         
         # Enums
         globalLines.append('// Script enums')
-        for e in codeGenTags['Enum']:
-            gname, utype, keyValues, _, _ = e
-            globalLines.append('enum class AS_' + gname + ' : ' + metaTypeToEngineType(utype))
-            globalLines.append('{')
-            for kv in keyValues:
-                globalLines.append('    ' + kv[0] + ' = ' + kv[1] + ',')
-            globalLines.append('};')
-            globalLines.append('')
+        if target != 'Client' or isASCompiler:
+            for e in codeGenTags['Enum']:
+                gname, utype, keyValues, _, _ = e
+                globalLines.append('enum class AS_' + gname + ' : ' + metaTypeToEngineType(utype) + ' { };')
+        else:
+            globalLines.append('// Will be restored later')
+        globalLines.append('')
+        
+        globalLines.append('// Entity property enums')
+        for e in gameEntities:
+            globalLines.append('enum class ' + e + 'Property : ushort { };')
+        globalLines.append('')
 
-        # User scriptable objects
+        # Scriptable objects and entity stubs
         if isASCompiler:
             globalLines.append('// Compiler entity stubs')
             for entity in gameEntities:
@@ -1099,6 +1101,29 @@ def genCode(lang, target, isASCompiler=False):
                 registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", ' + kv[1] + '));')
         registerLines.append('')
         
+        registerLines.append('// Entity property enums')
+        if target != 'Client' or isASCompiler:
+            for entity in gameEntities:
+                propertyIndex = 0
+                groupStrName = 'enum_group_name_' + entity.lower() + 'property'
+                registerLines.append('const char* ' + groupStrName + ' = "' + entity + 'Property";')
+                registerLines.append('AS_VERIFY(engine->RegisterEnum(' + groupStrName + '));')
+                registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "Invalid", -1));')
+                for methodTag in codeGenTags['ExportProperty']:
+                    ent, _, _, name, _, _ = methodTag
+                    if ent == entity:
+                        registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + name + '", ' + str(propertyIndex) + '));')
+                        propertyIndex += 1
+                for methodTag in codeGenTags['Property']:
+                    ent, _, _, name, _, _ = methodTag
+                    if ent == entity:
+                        registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + name + '", ' + str(propertyIndex) + '));')
+                        propertyIndex += 1
+            registerLines.append('')
+            
+        else:
+            registerLines.append('// Will be restored later')
+        
         registerLines.append('// Script enums')
         if target != 'Client' or isASCompiler:
             for e in codeGenTags['Enum']:
@@ -1107,7 +1132,7 @@ def genCode(lang, target, isASCompiler=False):
                 registerLines.append('const char* ' + groupStrName + ' = "' + gname + '";')
                 registerLines.append('AS_VERIFY(engine->RegisterEnum(' + groupStrName + '));')
                 for kv in keyValues:
-                    registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", static_cast<int>(AS_' + gname + '::' + kv[0] + ')));')
+                    registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", ' + kv[1] + '));')
             registerLines.append('')
         
         else:
@@ -1168,6 +1193,8 @@ def genCode(lang, target, isASCompiler=False):
             for entity in gameEntities:
                 if not isASCompiler:
                     registerLines.append('registrator = game_engine->GetPropertyRegistratorForEdit("' + entity + '");')
+                else:
+                    registerLines.append('registrator = properties_holder.GetPropertyRegistratorForEdit("' + entity + '");')
                 for methodTag in codeGenTags['Property']:
                     ent, access, type, name, exportFlags, comment = methodTag
                     if ent == entity:
@@ -1205,6 +1232,13 @@ def genRestoreInfo():
         restoreLines.append('')
         
         # Properties
+        restoreLines.append('AddRestoreInfo("Properties",')
+        restoreLines.append('{')
+        for e in codeGenTags['Property']:
+            entity, access, type, name, _, _ = e
+            restoreLines.append('    "' + entity + ' ' + access + ' ' + type + ' ' + name + '",')
+        restoreLines.append('});')
+        restoreLines.append('')
         
         # RemoteCalls
         

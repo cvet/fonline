@@ -346,7 +346,7 @@ static auto ValidateProtoResourcesExt(const map<hash, T*>& protos, set<hash>& ha
         T* proto = kv.second;
         const auto* registrator = proto->GetProperties().GetRegistrator();
         for (uint i = 0; i < registrator->GetCount(); i++) {
-            auto* prop = registrator->Get(i);
+            auto* prop = registrator->GetByIndex(i);
             if (prop->IsResource()) {
                 hash h = proto->GetProperties().template GetValue<hash>(prop);
                 if (h && !hashes.count(h)) {

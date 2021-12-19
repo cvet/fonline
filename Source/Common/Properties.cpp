@@ -377,14 +377,9 @@ auto Property::GetTypeName() const -> string
     return _typeName;
 }
 
-auto Property::GetRegIndex() const -> uint
+auto Property::GetRegIndex() const -> ushort
 {
     return _regIndex;
-}
-
-auto Property::GetEnumValue() const -> int
-{
-    return _enumValue;
 }
 
 auto Property::GetAccess() const -> AccessType
@@ -432,9 +427,9 @@ auto Property::IsWritable() const -> bool
     return _isWritable;
 }
 
-auto Property::IsConst() const -> bool
+auto Property::IsReadOnly() const -> bool
 {
-    return _isConst;
+    return _isReadOnly;
 }
 
 auto Property::IsTemporary() const -> bool
@@ -516,9 +511,9 @@ auto Properties::operator=(const Properties& other) -> Properties&
     return *this;
 }
 
-auto Properties::FindByEnum(int enum_value) const -> const Property*
+auto Properties::GetByIndex(int property_index) const -> const Property*
 {
-    return _registrator->FindByEnum(enum_value);
+    return _registrator->GetByIndex(property_index);
 }
 
 auto Properties::FindData(string_view property_name) -> void*
@@ -1273,6 +1268,53 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
     throw UnreachablePlaceException(LINE_STR);
 }
 
+auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
+{
+    RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
+
+    if (prop->_isBoolDataType) {
+        return GetValue<bool>(prop) ? 1.0f : 0.0f;
+    }
+    if (prop->_isFloatDataType) {
+        if (prop->_baseSize == 4) {
+            return GetValue<float>(prop);
+        }
+        if (prop->_baseSize == 8) {
+            return static_cast<float>(GetValue<double>(prop));
+        }
+    }
+    else if (prop->_isSignedIntDataType) {
+        if (prop->_baseSize == 1) {
+            return static_cast<float>(GetValue<char>(prop));
+        }
+        if (prop->_baseSize == 2) {
+            return static_cast<float>(GetValue<short>(prop));
+        }
+        if (prop->_baseSize == 4) {
+            return static_cast<float>(GetValue<int>(prop));
+        }
+        if (prop->_baseSize == 8) {
+            return static_cast<float>(GetValue<int64>(prop));
+        }
+    }
+    else {
+        if (prop->_baseSize == 1) {
+            return static_cast<float>(GetValue<uchar>(prop));
+        }
+        if (prop->_baseSize == 2) {
+            return static_cast<float>(GetValue<ushort>(prop));
+        }
+        if (prop->_baseSize == 4) {
+            return static_cast<float>(GetValue<uint>(prop));
+        }
+        if (prop->_baseSize == 8) {
+            return static_cast<float>(GetValue<uint64>(prop));
+        }
+    }
+
+    throw UnreachablePlaceException(LINE_STR);
+}
+
 void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
 {
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
@@ -1318,11 +1360,57 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
     }
 }
 
-auto Properties::GetValueAsInt(int enum_value) const -> int
+void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
 {
-    auto* prop = _registrator->FindByEnum(enum_value);
+    RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
+
+    if (prop->_isBoolDataType) {
+        SetValue<bool>(prop, value != 0.0f);
+    }
+    else if (prop->_isFloatDataType) {
+        if (prop->_baseSize == 4) {
+            SetValue<float>(prop, value);
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<double>(prop, static_cast<double>(value));
+        }
+    }
+    else if (prop->_isSignedIntDataType) {
+        if (prop->_baseSize == 1) {
+            SetValue<char>(prop, static_cast<char>(value));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<short>(prop, static_cast<short>(value));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<int>(prop, static_cast<int>(value));
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<int64>(prop, static_cast<int64>(value));
+        }
+    }
+    else {
+        if (prop->_baseSize == 1) {
+            SetValue<uchar>(prop, static_cast<uchar>(value));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<ushort>(prop, static_cast<ushort>(value));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<uint>(prop, static_cast<uint>(value));
+        }
+        else if (prop->_baseSize == 8) {
+            SetValue<uint64>(prop, static_cast<uint64>(value));
+        }
+    }
+}
+
+auto Properties::GetValueAsInt(int property_index) const -> int
+{
+    const auto* prop = _registrator->GetByIndex(property_index);
+
     if (prop == nullptr) {
-        throw PropertiesException("Enum not found", enum_value);
+        throw PropertiesException("Enum not found", property_index);
     }
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
@@ -1334,11 +1422,12 @@ auto Properties::GetValueAsInt(int enum_value) const -> int
     return GetPlainDataValueAsInt(prop);
 }
 
-void Properties::SetValueAsInt(int enum_value, int value)
+void Properties::SetValueAsInt(int property_index, int value)
 {
-    auto* prop = _registrator->FindByEnum(enum_value);
+    const auto* prop = _registrator->GetByIndex(property_index);
+
     if (prop == nullptr) {
-        throw PropertiesException("Enum not found", enum_value);
+        throw PropertiesException("Enum not found", property_index);
     }
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
@@ -1350,11 +1439,12 @@ void Properties::SetValueAsInt(int enum_value, int value)
     SetPlainDataValueAsInt(prop, value);
 }
 
-void Properties::SetValueAsIntByName(string_view enum_name, int value)
+void Properties::SetValueAsIntByName(string_view property_name, int value)
 {
-    auto* prop = _registrator->Find(enum_name);
+    const auto* prop = _registrator->Find(property_name);
+
     if (prop == nullptr) {
-        throw PropertiesException("Enum not found", enum_name);
+        throw PropertiesException("Enum not found", property_name);
     }
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set by name integer value from non PlainData property", prop->GetName());
@@ -1366,11 +1456,12 @@ void Properties::SetValueAsIntByName(string_view enum_name, int value)
     SetPlainDataValueAsInt(prop, value);
 }
 
-void Properties::SetValueAsIntProps(int enum_value, int value)
+void Properties::SetValueAsIntProps(int property_index, int value)
 {
-    auto* prop = _registrator->FindByEnum(enum_value);
+    const auto* prop = _registrator->GetByIndex(property_index);
+
     if (prop == nullptr) {
-        throw PropertiesException("Enum not found", enum_value);
+        throw PropertiesException("Enum not found", property_index);
     }
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
@@ -1429,10 +1520,10 @@ PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server)
 
 PropertyRegistrator::~PropertyRegistrator()
 {
-    for (auto& prop : _registeredProperties) {
+    for (auto* prop : _registeredProperties) {
         delete prop;
     }
-    for (auto& data : _podDataPool) {
+    for (auto* data : _podDataPool) {
         delete[] data;
     }
 }
@@ -1534,7 +1625,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
 
     // Allocate property
     auto* prop = new Property(this);
-    const auto reg_index = static_cast<uint>(_registeredProperties.size());
+    const auto reg_index = static_cast<ushort>(_registeredProperties.size());
 
     // Disallow set or get accessors
     auto disable_get = false;
@@ -1605,15 +1696,15 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     if (data_type != Property::DataType::PlainData && (!disable_get || !disable_set) && !IsEnumSet(access, Property::AccessType::VirtualMask)) {
         complex_data_index = _complexPropertiesCount++;
         if (IsEnumSet(access, Property::AccessType::PublicMask)) {
-            _publicComplexDataProps.push_back(static_cast<ushort>(reg_index));
-            _publicProtectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
+            _publicComplexDataProps.push_back(reg_index);
+            _publicProtectedComplexDataProps.push_back(reg_index);
         }
         else if (IsEnumSet(access, Property::AccessType::ProtectedMask)) {
-            _protectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
-            _publicProtectedComplexDataProps.push_back(static_cast<ushort>(reg_index));
+            _protectedComplexDataProps.push_back(reg_index);
+            _publicProtectedComplexDataProps.push_back(reg_index);
         }
         else if (IsEnumSet(access, Property::AccessType::PrivateMask)) {
-            _privateComplexDataProps.push_back(static_cast<ushort>(reg_index));
+            _privateComplexDataProps.push_back(reg_index);
         }
         else {
             throw UnreachablePlaceException(LINE_STR);
@@ -1623,7 +1714,6 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     // Make entry
     prop->_regIndex = reg_index;
     prop->_getIndex = !disable_get ? _getPropertiesCount++ : static_cast<uint>(-1);
-    // prop->enumValue = enum_value;
     prop->_complexDataIndex = complex_data_index;
     prop->_podDataOffset = data_base_offset;
     prop->_baseSize = data_size;
@@ -1698,9 +1788,9 @@ auto PropertyRegistrator::GetCount() const -> uint
     return static_cast<uint>(_registeredProperties.size());
 }
 
-auto PropertyRegistrator::Get(uint property_index) const -> const Property*
+auto PropertyRegistrator::GetByIndex(int property_index) const -> const Property*
 {
-    if (property_index < static_cast<uint>(_registeredProperties.size())) {
+    if (property_index >= 0 && property_index < static_cast<int>(_registeredProperties.size())) {
         return _registeredProperties[property_index];
     }
     return nullptr;
@@ -1717,25 +1807,6 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
         return it->second;
     }
 
-    return nullptr;
-}
-
-auto PropertyRegistrator::FindNoComponentCheck(string_view property_name) const -> const Property*
-{
-    if (const auto it = _registeredPropertiesLookup.find(string(property_name)); it != _registeredPropertiesLookup.end()) {
-        return it->second;
-    }
-
-    return nullptr;
-}
-
-auto PropertyRegistrator::FindByEnum(int enum_value) const -> const Property*
-{
-    for (auto& prop : _registeredProperties) {
-        if (prop->_enumValue == enum_value) {
-            return prop;
-        }
-    }
     return nullptr;
 }
 

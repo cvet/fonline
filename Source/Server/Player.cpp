@@ -265,11 +265,11 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
     }
 
     if (is_pod) {
-        Connection->Bout << static_cast<ushort>(prop->GetRegIndex());
+        Connection->Bout << prop->GetRegIndex();
         Connection->Bout.Push(data, data_size);
     }
     else {
-        Connection->Bout << static_cast<ushort>(prop->GetRegIndex());
+        Connection->Bout << prop->GetRegIndex();
         if (data_size != 0u) {
             Connection->Bout.Push(data, data_size);
         }

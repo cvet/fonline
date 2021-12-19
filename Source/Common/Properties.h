@@ -89,8 +89,7 @@ public:
 
     [[nodiscard]] auto GetName() const -> string;
     [[nodiscard]] auto GetTypeName() const -> string;
-    [[nodiscard]] auto GetRegIndex() const -> uint;
-    [[nodiscard]] auto GetEnumValue() const -> int;
+    [[nodiscard]] auto GetRegIndex() const -> ushort;
     [[nodiscard]] auto GetAccess() const -> AccessType;
     [[nodiscard]] auto GetBaseSize() const -> uint;
     [[nodiscard]] auto IsPlainData() const -> bool;
@@ -100,7 +99,7 @@ public:
     [[nodiscard]] auto IsEnum() const -> bool;
     [[nodiscard]] auto IsReadable() const -> bool;
     [[nodiscard]] auto IsWritable() const -> bool;
-    [[nodiscard]] auto IsConst() const -> bool;
+    [[nodiscard]] auto IsReadOnly() const -> bool;
     [[nodiscard]] auto IsTemporary() const -> bool;
     [[nodiscard]] auto IsNoHistory() const -> bool;
 
@@ -138,7 +137,7 @@ private:
     bool _isDictOfArray {};
     bool _isDictOfArrayOfString {};
     AccessType _accessType {};
-    bool _isConst {};
+    bool _isReadOnly {};
     bool _isReadable {};
     bool _isWritable {};
     bool _checkMinValue {};
@@ -147,9 +146,8 @@ private:
     int64 _maxValue {};
     bool _isTemporary {};
     bool _isNoHistory {};
-    uint _regIndex {};
+    ushort _regIndex {};
     uint _getIndex {};
-    int _enumValue {};
     uint _podDataOffset {};
     uint _complexDataIndex {};
     uint _baseSize {};
@@ -175,8 +173,9 @@ public:
     [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) const -> const uchar*;
     [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) -> uchar*;
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
-    [[nodiscard]] auto GetValueAsInt(int enum_value) const -> int;
-    [[nodiscard]] auto FindByEnum(int enum_value) const -> const Property*;
+    [[nodiscard]] auto GetPlainDataValueAsFloat(const Property* prop) const -> float;
+    [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
+    [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
     [[nodiscard]] auto FindData(string_view property_name) -> void*;
 
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
@@ -191,9 +190,10 @@ public:
     void SetRawData(const Property* prop, const uchar* data, uint data_size);
     void SetValueFromData(const Property* prop, const uchar* data, uint data_size);
     void SetPlainDataValueAsInt(const Property* prop, int value);
-    void SetValueAsInt(int enum_value, int value);
-    void SetValueAsIntByName(string_view enum_name, int value);
-    void SetValueAsIntProps(int enum_value, int value);
+    void SetPlainDataValueAsFloat(const Property* prop, float value);
+    void SetValueAsInt(int property_index, int value);
+    void SetValueAsIntByName(string_view property_name, int value);
+    void SetValueAsIntProps(int property_index, int value);
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
@@ -312,9 +312,7 @@ public:
     [[nodiscard]] auto GetClassName() const -> string_view;
     [[nodiscard]] auto GetCount() const -> uint;
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
-    [[nodiscard]] auto FindNoComponentCheck(string_view property_name) const -> const Property*;
-    [[nodiscard]] auto FindByEnum(int enum_value) const -> const Property*;
-    [[nodiscard]] auto Get(uint property_index) const -> const Property*;
+    [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
     [[nodiscard]] auto IsComponentRegistered(hash component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
 

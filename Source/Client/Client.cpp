@@ -1842,11 +1842,11 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
     }
 
     if (is_pod) {
-        _netOut << static_cast<ushort>(prop->GetRegIndex());
+        _netOut << prop->GetRegIndex();
         _netOut.Push(data, data_size);
     }
     else {
-        _netOut << static_cast<ushort>(prop->GetRegIndex());
+        _netOut << prop->GetRegIndex();
         if (data_size != 0u) {
             _netOut.Push(data, data_size);
         }
@@ -3210,7 +3210,7 @@ void FOClient::Net_OnProperty(uint data_size)
         return;
     }
 
-    const auto* prop = entity->GetProperties().GetRegistrator()->Get(property_index);
+    const auto* prop = entity->GetProperties().GetRegistrator()->GetByIndex(property_index);
     if (prop == nullptr) {
         return;
     }

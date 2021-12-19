@@ -130,9 +130,24 @@ void Entity::SetValueFromData(const Property* prop, const vector<uchar>& data, b
     }
 }
 
+auto Entity::GetValueAsInt(const Property* prop) const -> int
+{
+    return _props.GetPlainDataValueAsInt(prop);
+}
+
+auto Entity::GetValueAsFloat(const Property* prop) const -> float
+{
+    return _props.GetPlainDataValueAsFloat(prop);
+}
+
 void Entity::SetValueAsInt(const Property* prop, int value)
 {
     _props.SetPlainDataValueAsInt(prop, value);
+}
+
+void Entity::SetValueAsFloat(const Property* prop, float value)
+{
+    _props.SetPlainDataValueAsFloat(prop, value);
 }
 
 EntityWithProto::EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator), Proto {proto}

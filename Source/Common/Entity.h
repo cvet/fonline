@@ -45,15 +45,18 @@
 ///@ ExportEntity Map Map MapView
 ///@ ExportEntity Location Location LocationView
 
-#define ENTITY_PROPERTY(access_type, prop_type, prop) \
+#define ENTITY_PROPERTY(access_type, prop_type, prop, prop_index) \
+    static constexpr ushort prop##_RegIndex = prop_index; \
     static constexpr Property::AccessType prop##_AccessType = Property::AccessType::access_type; \
     static constexpr const std::type_info& prop##_TypeId = typeid(prop_type); \
-    inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->FindNoComponentCheck(#prop); } \
+    inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
     inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
     inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0; }
 
-#define REGISTER_ENTITY_PROPERTY(name) registrator->Register(name##_AccessType, name##_TypeId, #name)
+#define REGISTER_ENTITY_PROPERTY(prop) \
+    const auto* prop_##prop = registrator->Register(prop##_AccessType, prop##_TypeId, #prop); \
+    RUNTIME_ASSERT(prop_##prop->GetRegIndex() == prop##_RegIndex)
 
 class EntityProperties
 {
@@ -77,6 +80,8 @@ public:
     [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
     [[nodiscard]] auto IsDestroying() const -> bool;
     [[nodiscard]] auto IsDestroyed() const -> bool;
+    [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;
+    [[nodiscard]] auto GetValueAsFloat(const Property* prop) const -> float;
 
     void SetProperties(const Properties& props);
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
@@ -85,6 +90,7 @@ public:
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     void SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send);
     void SetValueAsInt(const Property* prop, int value);
+    void SetValueAsFloat(const Property* prop, float value);
 
     void AddRef() const;
     void Release() const;
