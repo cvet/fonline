@@ -2631,7 +2631,10 @@ string Script::GetTraceback( )
 		const asIScriptFunction* func;
 		int                      stack_size = ctx->GetCallstackSize( );
 
-		result += Str::FormatBuf( "Context<%s>, state<%s>, call stack<%d>:\n", ctx->GetUserData( ), ContextStatesStr[ ( int )ctx->GetState( ) ], stack_size );
+		if( ctx->GetState( ) == asEXECUTION_UNINITIALIZED )
+			continue;
+
+		result += Str::FormatBuf( "    Context<%s>, state<%s>, call stack<%d>:\n", ctx->GetUserData( ), ContextStatesStr[ ( int )ctx->GetState( ) ], stack_size );
 
 		// Print current function
 		if( ctx->GetState( ) == asEXECUTION_EXCEPTION )
@@ -2645,7 +2648,7 @@ string Script::GetTraceback( )
 			func = ctx->GetFunction( 0 );
 		}
 		if( func )
-			result += Str::FormatBuf( "  %d) %s : %s : %d, %d.\n", stack_size - 1, func->GetModuleName( ), func->GetDeclaration( ), line, column );
+			result += Str::FormatBuf( "      %d) %s : %s : %d, %d.\n", stack_size - 1, func->GetModuleName( ), func->GetDeclaration( ), line, column );
 
 		// Print call stack
 		for( int i = 1; i < stack_size; i++ )
@@ -2653,12 +2656,12 @@ string Script::GetTraceback( )
 			func = ctx->GetFunction( i );
 			line = ctx->GetLineNumber( i, &column );
 			if( func )
-				result += Str::FormatBuf( "  %d) %s : %s : %d, %d.\n", stack_size - i - 1, func->GetModuleName( ), func->GetDeclaration( ), line, column );
+				result += Str::FormatBuf( "      %d) %s : %s : %d, %d.\n", stack_size - i - 1, func->GetModuleName( ), func->GetDeclaration( ), line, column );
 		}
 		result += "\n";
 	}
 	if( result.empty( ) )
-		result = "-----------\n\n";
+		result = "    -----------\n\n";
 	return result;
 }
 

@@ -677,7 +677,7 @@ static void DumpAngelScript( FILE* f )
 {
 	string tb = Script::GetTraceback( );
 	if( !tb.empty( ) )
-		fprintf( f, "AngelScript\n%s\n\n", tb.c_str() );
+		fprintf( f, "AngelScript\n%s", tb.c_str() );
 }
 
 bool RaiseAssert( const string& message, const string& file, int line )

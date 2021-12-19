@@ -530,6 +530,9 @@
     <ClInclude Include="..\Source\AngelScript\scriptgrid.h">
       <Filter>AngelScript</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\ScriptWindow.h">
+      <Filter>Client</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -822,6 +825,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\scriptgrid.cpp">
       <Filter>AngelScript</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ScriptWindow.cpp">
+      <Filter>Client</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
