@@ -527,6 +527,9 @@
     <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h">
       <Filter>AngelScript\Preprocessor</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\AngelScript\scriptgrid.h">
+      <Filter>AngelScript</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -816,6 +819,9 @@
     </ClCompile>
     <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp">
       <Filter>AngelScript\Preprocessor</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\AngelScript\scriptgrid.cpp">
+      <Filter>AngelScript</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

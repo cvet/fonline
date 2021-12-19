@@ -16,3 +16,11 @@ Server/Server.vcxproj.user
 Server/.vs/Server/v15/ipch/8b5d72043fc1761a.ipch
 Server/.vs/Server/v15/Browse.VC.db
 Server/.vs/Server/v15/.suo
+Server/Release/*
+Server/Release_MSVC/*
+Server/.vs/*
+Client/.vs/*
+Client/ReleaseD3D/*
+Client/Release/*
+Client/Debug/*
+ASCompiler/.vs/*

@@ -197,6 +197,7 @@
     <ClCompile Include="..\API\API_AngelScript.cpp" />
     <ClCompile Include="..\API\API_Server.cpp" />
     <ClCompile Include="..\Source\AngelScript\Preprocessor\expressions.cpp" />
+    <ClCompile Include="..\Source\AngelScript\scriptgrid.cpp" />
     <ClCompile Include="..\Source\AngelScript\scriptstring.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -584,6 +585,7 @@
     <ClInclude Include="..\API\API_Common.h" />
     <ClInclude Include="..\API\API_Server.h" />
     <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h" />
+    <ClInclude Include="..\Source\AngelScript\scriptgrid.h" />
     <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\Zlib\crc32.h" />
