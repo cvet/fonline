@@ -1186,8 +1186,8 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
                 logcb("Property not found.");
                 return;
             }
-            if (!prop->IsPlainData() || prop->GetBaseSize() != 4) {
-                logcb("For now you can modify only int/uint properties.");
+            if (!prop->IsPlainData()) {
+                logcb("Property is not plain data type.");
                 return;
             }
 
@@ -2024,7 +2024,7 @@ void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_
 
         DataBase::Document doc;
         doc["Time"] = static_cast<int64>(time.count());
-        doc["EntityId"] = static_cast<int>(e);
+        doc["EntityId"] = static_cast<int>(entry_id);
         doc["Property"] = prop->GetName();
         doc["Value"] = value;
 

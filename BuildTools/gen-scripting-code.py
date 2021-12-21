@@ -391,12 +391,7 @@ def parseTags():
                             minValue = v if v < minValue else minValue
                             maxValue = v if v > maxValue else maxValue
                         if minValue < 0:
-                            if maxValue <= 0xFF / 2 and -minValue <= 0xFF / 2:
-                                return 'int8'
-                            if maxValue <= 0xFFFF / 2 and -minValue <= 0xFFFF / 2:
-                                return 'int16'
-                            if maxValue <= 0xFFFFFFFF / 2 and -minValue <= 0xFFFFFFFF / 2:
-                                return 'int'
+                            return 'int'
                         else:
                             assert maxValue <= 0xFFFFFFFF
                             if maxValue <= 0xFF:

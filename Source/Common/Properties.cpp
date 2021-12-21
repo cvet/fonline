@@ -374,7 +374,7 @@ auto Property::GetName() const -> string
 
 auto Property::GetTypeName() const -> string
 {
-    return _typeName;
+    return _fullTypeName;
 }
 
 auto Property::GetRegIndex() const -> ushort
@@ -409,12 +409,12 @@ auto Property::IsHash() const -> bool
 
 auto Property::IsResource() const -> bool
 {
-    return _isResource;
+    return _isResourceHash;
 }
 
 auto Property::IsEnum() const -> bool
 {
-    return _isEnumDataType;
+    return _isEnum;
 }
 
 auto Property::IsReadable() const -> bool
@@ -1219,10 +1219,10 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
 {
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
-    if (prop->_isBoolDataType) {
+    if (prop->_isBool) {
         return GetValue<bool>(prop) ? 1 : 0;
     }
-    if (prop->_isFloatDataType) {
+    if (prop->_isFloat) {
         if (prop->_baseSize == 4) {
             return static_cast<int>(GetValue<float>(prop));
         }
@@ -1230,7 +1230,7 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
             return static_cast<int>(GetValue<double>(prop));
         }
     }
-    else if (prop->_isSignedIntDataType) {
+    else if (prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             return static_cast<int>(GetValue<char>(prop));
         }
@@ -1266,10 +1266,10 @@ auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
 {
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
-    if (prop->_isBoolDataType) {
+    if (prop->_isBool) {
         return GetValue<bool>(prop) ? 1.0f : 0.0f;
     }
-    if (prop->_isFloatDataType) {
+    if (prop->_isFloat) {
         if (prop->_baseSize == 4) {
             return GetValue<float>(prop);
         }
@@ -1277,7 +1277,7 @@ auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
             return static_cast<float>(GetValue<double>(prop));
         }
     }
-    else if (prop->_isSignedIntDataType) {
+    else if (prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             return static_cast<float>(GetValue<char>(prop));
         }
@@ -1313,10 +1313,10 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
 {
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
-    if (prop->_isBoolDataType) {
+    if (prop->_isBool) {
         SetValue<bool>(prop, value != 0);
     }
-    else if (prop->_isFloatDataType) {
+    else if (prop->_isFloat) {
         if (prop->_baseSize == 4) {
             SetValue<float>(prop, static_cast<float>(value));
         }
@@ -1324,7 +1324,7 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
             SetValue<double>(prop, static_cast<double>(value));
         }
     }
-    else if (prop->_isSignedIntDataType) {
+    else if (prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<char>(prop, static_cast<char>(value));
         }
@@ -1358,10 +1358,10 @@ void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
 {
     RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
 
-    if (prop->_isBoolDataType) {
+    if (prop->_isBool) {
         SetValue<bool>(prop, value != 0.0f);
     }
-    else if (prop->_isFloatDataType) {
+    else if (prop->_isFloat) {
         if (prop->_baseSize == 4) {
             SetValue<float>(prop, value);
         }
@@ -1369,7 +1369,7 @@ void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
             SetValue<double>(prop, static_cast<double>(value));
         }
     }
-    else if (prop->_isSignedIntDataType) {
+    else if (prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<char>(prop, static_cast<char>(value));
         }
@@ -1467,10 +1467,10 @@ void Properties::SetValueAsIntProps(int property_index, int value)
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
 
-    if (prop->_isBoolDataType) {
+    if (prop->_isBool) {
         SetValue<bool>(prop, value != 0);
     }
-    else if (prop->_isFloatDataType) {
+    else if (prop->_isFloat) {
         if (prop->_baseSize == 4) {
             SetValue<float>(prop, static_cast<float>(value));
         }
@@ -1478,7 +1478,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
             SetValue<double>(prop, static_cast<double>(value));
         }
     }
-    else if (prop->_isSignedIntDataType) {
+    else if (prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<char>(prop, static_cast<char>(value));
         }
@@ -1721,15 +1721,22 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
     // prop->asObjTypeId = type_id;
     // prop->asObjType = as_obj_type;
     // prop->isHash = type_name == "hash";
-    prop->_isHashSubType0 = is_hash_sub0;
-    prop->_isHashSubType1 = is_hash_sub1;
-    prop->_isHashSubType2 = is_hash_sub2;
     // prop->isResource = type_name == "resource";
-    prop->_isIntDataType = is_int_data_type;
-    prop->_isSignedIntDataType = is_signed_int_data_type;
-    prop->_isFloatDataType = is_float_data_type;
-    prop->_isEnumDataType = is_enum_data_type;
-    prop->_isBoolDataType = is_bool_data_type;
+    prop->_isInt = is_int_data_type;
+    prop->_isSignedInt = is_signed_int_data_type;
+    prop->_isFloat = is_float_data_type;
+    prop->_isEnum = is_enum_data_type;
+    prop->_isBool = is_bool_data_type;
+    prop->_isInt8 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 1u);
+    prop->_isInt16 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 2u);
+    prop->_isInt32 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 4u);
+    prop->_isInt64 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 8u);
+    prop->_isUInt8 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 1u);
+    prop->_isUInt16 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 2u);
+    prop->_isUInt32 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 4u);
+    prop->_isUInt64 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 8u);
+    prop->_isSingleFloat = (prop->_isFloat && prop->_baseSize == 4u);
+    prop->_isDoubleFloat = (prop->_isFloat && prop->_baseSize == 8u);
     prop->_isArrayOfString = is_array_of_string;
     prop->_isDictOfString = is_dict_of_string;
     prop->_isDictOfArray = is_dict_of_array;

@@ -1803,7 +1803,7 @@ void FOMapper::ObjDraw()
         throw UnreachablePlaceException(LINE_STR);
     }
 
-    for (auto* prop : ShowProps) {
+    for (const auto* prop : ShowProps) {
         if (prop != nullptr) {
             auto value = entity->GetProperties().SavePropertyToText(prop);
             DrawLine(prop->GetName(), prop->GetTypeName(), value, prop->IsReadOnly(), r);

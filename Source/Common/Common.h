@@ -172,6 +172,7 @@ static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
 static_assert(sizeof(void*) == 4 || sizeof(void*) == 8);
 static_assert(sizeof(void*) == sizeof(size_t));
+static_assert(CHAR_BIT == 8);
 
 // Bind to global scope frequently used types
 using std::array;

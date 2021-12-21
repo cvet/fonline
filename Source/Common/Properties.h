@@ -91,12 +91,14 @@ public:
     [[nodiscard]] auto GetTypeName() const -> string;
     [[nodiscard]] auto GetRegIndex() const -> ushort;
     [[nodiscard]] auto GetAccess() const -> AccessType;
+
     [[nodiscard]] auto GetBaseSize() const -> uint;
     [[nodiscard]] auto IsPlainData() const -> bool;
     [[nodiscard]] auto IsDict() const -> bool;
     [[nodiscard]] auto IsHash() const -> bool;
     [[nodiscard]] auto IsResource() const -> bool;
     [[nodiscard]] auto IsEnum() const -> bool;
+
     [[nodiscard]] auto IsReadable() const -> bool;
     [[nodiscard]] auto IsWritable() const -> bool;
     [[nodiscard]] auto IsReadOnly() const -> bool;
@@ -117,27 +119,42 @@ private:
     static auto ExpandComplexValueData(void* pvalue, uint& data_size, bool& need_delete) -> uchar*;
 
     const PropertyRegistrator* _registrator;
-    size_t _typeHash {};
+
     string _propName {};
-    string _typeName {};
+    string _fullTypeName {};
     string _componentName {};
     DataType _dataType {};
 
     bool _isHash {};
-    bool _isHashSubType0 {};
-    bool _isHashSubType1 {};
-    bool _isHashSubType2 {};
-    bool _isResource {};
-    bool _isIntDataType {};
-    bool _isSignedIntDataType {};
-    bool _isFloatDataType {};
-    bool _isBoolDataType {};
-    bool _isEnumDataType {};
+    bool _isResourceHash {};
+    bool _isInt {};
+    bool _isSignedInt {};
+    bool _isFloat {};
+    bool _isBool {};
+    bool _isEnum {};
+    uint _baseSize {};
+    string _baseTypeName {};
+
+    bool _isInt8 {};
+    bool _isInt16 {};
+    bool _isInt32 {};
+    bool _isInt64 {};
+    bool _isUInt8 {};
+    bool _isUInt16 {};
+    bool _isUInt32 {};
+    bool _isUInt64 {};
+    bool _isSingleFloat {};
+    bool _isDoubleFloat {};
 
     bool _isArrayOfString {};
+
     bool _isDictOfString {};
     bool _isDictOfArray {};
     bool _isDictOfArrayOfString {};
+    bool _isDictKeyHash {};
+    bool _isDictKeyEnum {};
+    uint _dictKeySize {};
+    string _dictKeyTypeName {};
 
     AccessType _accessType {};
     bool _isReadOnly {};
@@ -153,7 +170,6 @@ private:
     uint _getIndex {};
     uint _podDataOffset {};
     uint _complexDataIndex {};
-    uint _baseSize {};
 };
 
 class Properties final
@@ -219,7 +235,7 @@ public:
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
-        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         const auto data_size = _complexDataSizes[prop->_complexDataIndex];
         return data_size ? string(reinterpret_cast<char*>(_complexData[prop->_complexDataIndex]), data_size) : string();
     }
@@ -228,14 +244,14 @@ public:
     void SetValue(const Property* prop, T /*new_value*/)
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
-        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, vector>::value, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         return {};
     }
 
@@ -243,14 +259,14 @@ public:
     void SetValue(const Property* prop, T /*new_value*/)
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         return {};
     }
 
@@ -258,7 +274,7 @@ public:
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->_complexDataIndex != uint(-1));
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
     }
 
 private:

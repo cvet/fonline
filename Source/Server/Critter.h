@@ -152,7 +152,7 @@ public:
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
 
-    void Broadcast_Property(NetProperty type, Property* prop, ServerEntity* entity);
+    void Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity);
     void Broadcast_Move(uint move_params);
     void Broadcast_Position();
     void Broadcast_Action(int action, int action_ext, Item* item);
