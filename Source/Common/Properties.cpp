@@ -437,9 +437,9 @@ auto Property::IsTemporary() const -> bool
     return _isTemporary;
 }
 
-auto Property::IsNoHistory() const -> bool
+auto Property::IsHistorical() const -> bool
 {
-    return _isNoHistory;
+    return _isHistorical;
 }
 
 Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
@@ -449,7 +449,7 @@ Properties::Properties(const PropertyRegistrator* registrator) : _registrator {r
     _sendIgnoreEntity = nullptr;
     _sendIgnoreProperty = nullptr;
 
-    // Allocate PlainData data
+    // Allocate plain data
     if (!_registrator->_podDataPool.empty()) {
         _podData = _registrator->_podDataPool.back();
         _registrator->_podDataPool.pop_back();
@@ -483,9 +483,14 @@ Properties::Properties(const Properties& other) : Properties(other._registrator)
 
 Properties::~Properties()
 {
-    _registrator->_podDataPool.push_back(_podData);
+    // Hide warning about throwing desctructor
+    try {
+        _registrator->_podDataPool.push_back(_podData);
+    }
+    catch (...) {
+    }
 
-    for (auto& cd : _complexData) {
+    for (const auto* cd : _complexData) {
         delete[] cd;
     }
 }
@@ -502,7 +507,7 @@ auto Properties::operator=(const Properties& other) -> Properties&
     std::memcpy(&_podData[0], &other._podData[0], _registrator->_wholePodDataSize);
 
     // Copy complex data
-    for (auto* prop : _registrator->_registeredProperties) {
+    for (const auto* prop : _registrator->_registeredProperties) {
         if (prop->_complexDataIndex != static_cast<uint>(-1)) {
             SetRawData(prop, other._complexData[prop->_complexDataIndex], other._complexDataSizes[prop->_complexDataIndex]);
         }
@@ -511,31 +516,19 @@ auto Properties::operator=(const Properties& other) -> Properties&
     return *this;
 }
 
-auto Properties::GetByIndex(int property_index) const -> const Property*
-{
-    return _registrator->GetByIndex(property_index);
-}
-
-auto Properties::FindData(string_view property_name) -> void*
-{
-    NON_CONST_METHOD_HINT();
-
-    const auto* prop = _registrator->Find(property_name);
-    RUNTIME_ASSERT(prop);
-    RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
-
-    return prop != nullptr ? &_podData[prop->_podDataOffset] : nullptr;
-}
-
 auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
 {
-    uint whole_size = 0;
+    uint whole_size = 0u;
     *all_data = &_storeData;
     *all_data_sizes = &_storeDataSizes;
-    _storeData.resize(0);
-    _storeDataSizes.resize(0);
+    _storeData.resize(0u);
+    _storeDataSizes.resize(0u);
 
-    // Store PlainData properties data
+    const auto preserve_size = 1u + (!_storeDataComplexIndicies.empty() ? 1u + _storeDataComplexIndicies.size() : 0u);
+    _storeData.reserve(preserve_size);
+    _storeDataSizes.reserve(preserve_size);
+
+    // Store plain properties data
     _storeData.push_back(_podData);
     _storeDataSizes.push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
     whole_size += _storeDataSizes.back();
@@ -543,10 +536,10 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     // Calculate complex data to send
     _storeDataComplexIndicies = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
     for (size_t i = 0; i < _storeDataComplexIndicies.size();) {
-        auto* prop = _registrator->_registeredProperties[_storeDataComplexIndicies[i]];
+        const auto* prop = _registrator->_registeredProperties[_storeDataComplexIndicies[i]];
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         if (_complexDataSizes[prop->_complexDataIndex] == 0u) {
-            _storeDataComplexIndicies.erase(_storeDataComplexIndicies.begin() + i);
+            _storeDataComplexIndicies.erase(_storeDataComplexIndicies.begin() + static_cast<int>(i));
         }
         else {
             i++;
@@ -559,8 +552,8 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
         _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndicies.size()) * sizeof(short));
         whole_size += _storeDataSizes.back();
 
-        for (auto index : _storeDataComplexIndicies) {
-            auto* prop = _registrator->_registeredProperties[index];
+        for (const auto index : xrange(_storeDataComplexIndicies)) {
+            const auto* prop = _registrator->_registeredProperties[index];
             _storeData.push_back(_complexData[prop->_complexDataIndex]);
             _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
             whole_size += _storeDataSizes.back();
@@ -570,7 +563,7 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     return whole_size;
 }
 
-void Properties::RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes)
+void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
 {
     // Restore PlainData data
     const auto public_size = static_cast<uint>(_registrator->_publicPodDataSpace.size());
@@ -589,18 +582,18 @@ void Properties::RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_si
 
         for (size_t i = 0; i < complex_indicies.size(); i++) {
             RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
-            auto* prop = _registrator->_registeredProperties[complex_indicies[i]];
+            const auto* prop = _registrator->_registeredProperties[complex_indicies[i]];
             RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
             const auto data_size = all_data_sizes[2 + i];
-            auto* data = all_data[2 + i];
+            const auto* data = all_data[2 + i];
             SetRawData(prop, data, data_size);
         }
     }
 }
 
-void Properties::RestoreData(vector<vector<uchar>>& all_data)
+void Properties::RestoreData(const vector<vector<uchar>>& all_data)
 {
-    vector<uchar*> all_data_ext(all_data.size());
+    vector<const uchar*> all_data_ext(all_data.size());
     vector<uint> all_data_sizes(all_data.size());
     for (size_t i = 0; i < all_data.size(); i++) {
         all_data_ext[i] = !all_data[i].empty() ? &all_data[i][0] : nullptr;
@@ -976,37 +969,37 @@ void* ReadValue(
     return nullptr;
 }*/
 
-auto Properties::LoadFromText(const map<string, string>& /*key_values*/) -> bool
+auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
 {
-    /*bool is_error = false;
-    for (const auto& kv : key_values)
-    {
-        string_view key = kv.first;
-        string_view value = kv.second;
+    bool is_error = false;
 
+    for (const auto& [key, value] : key_values) {
         // Skip technical fields
-        if (key.empty() || key[0] == '$' || key[0] == '_')
+        if (key.empty() || key[0] == '$' || key[0] == '_') {
             continue;
+        }
 
         // Find property
-        const Property* prop = registrator->Find(key);
-        if (!prop || (prop->podDataOffset == uint(-1) && prop->complexDataIndex == uint(-1)))
-        {
-            if (!prop)
+        const auto* prop = _registrator->Find(key);
+        if (prop == nullptr || (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1))) {
+            if (prop == nullptr) {
                 WriteLog("Unknown property '{}'.\n", key);
-            else
+            }
+            else {
                 WriteLog("Invalid property '{}' for reading.\n", prop->GetName());
+            }
 
             is_error = true;
             continue;
         }
 
         // Parse
-        if (!LoadPropertyFromText(prop, value))
+        if (!LoadPropertyFromText(prop, value)) {
             is_error = true;
+        }
     }
-    return !is_error;*/
-    return false;
+
+    return !is_error;
 }
 
 auto Properties::SaveToText(Properties* base) const -> map<string, string>
@@ -1063,38 +1056,39 @@ auto Properties::SaveToText(Properties* base) const -> map<string, string>
     return key_values;
 }
 
-auto Properties::LoadPropertyFromText(const Property* /*prop*/, string_view /*text*/) -> bool
+auto Properties::LoadPropertyFromText(const Property* prop, string_view text) -> bool
 {
-    /*RUNTIME_ASSERT(prop);
-    RUNTIME_ASSERT(registrator == prop->registrator);
-    RUNTIME_ASSERT(prop->podDataOffset != uint(-1) || prop->complexDataIndex != uint(-1));
+    RUNTIME_ASSERT(prop);
+    RUNTIME_ASSERT(_registrator == prop->_registrator);
+    RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
+
     bool is_error = false;
 
-    // Parse
+    /*// Parse
     uchar pod_buf[8];
-    bool is_hashes[] = {
-        prop->isHash || prop->isResource, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2};
-    void* value = ReadValue(text.c_str(), prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error);
+    bool is_hashes[] = { prop->_isHash || prop->_isResource, prop->_isHashSubType0, prop->_isHashSubType1, prop->_isHashSubType2};
+    void* value = ReadValue(text, prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error);
 
     // Assign
-    if (prop->podDataOffset != uint(-1))
+    if (prop->_podDataOffset != static_cast<uint>(-1))
     {
         RUNTIME_ASSERT(value == pod_buf);
-        prop->SetPropRawData(this, pod_buf, prop->baseSize);
+        SetRawData(prop, pod_buf, prop->_baseSize);
     }
-    else if (prop->complexDataIndex != uint(-1))
+    else if (prop->_complexDataIndex != static_cast<uint>(-1))
     {
         bool need_delete;
         uint data_size;
         uchar* data = prop->ExpandComplexValueData(value, data_size, need_delete);
-        prop->SetPropRawData(this, data, data_size);
-        if (need_delete)
-            SAFEDELA(data);
-        // Script::GetEngine()->ReleaseScriptObject(value, prop->asObjType);
-    }
+        SetRawData(prop, data, data_size);
 
-    return !is_error;*/
-    return false;
+        if (need_delete) {
+            delete[] data;
+        }
+        // Script::GetEngine()->ReleaseScriptObject(value, prop->asObjType);
+    }*/
+
+    return !is_error;
 }
 
 auto Properties::SavePropertyToText(const Property* prop) const -> string
@@ -1520,10 +1514,10 @@ PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server)
 
 PropertyRegistrator::~PropertyRegistrator()
 {
-    for (auto* prop : _registeredProperties) {
+    for (const auto* prop : _registeredProperties) {
         delete prop;
     }
-    for (auto* data : _podDataPool) {
+    for (const auto* data : _podDataPool) {
         delete[] data;
     }
 }

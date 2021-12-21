@@ -1992,32 +1992,43 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
     WriteData(_updateFilesList, static_cast<short>(-1));
 }
 
-void FOServer::EntitySetValue(Entity* entity, Property* prop, void* /*cur_value*/, void* /*old_value*/)
+void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
 {
     NON_CONST_METHOD_HINT();
 
+    if (prop->IsTemporary()) {
+        return;
+    }
+
+    uint entry_id;
+
     if (auto* server_entity = dynamic_cast<ServerEntity*>(entity); server_entity != nullptr) {
-        if (server_entity->GetId() == 0u || prop->IsTemporary()) {
+        if (server_entity->GetId() == 0u) {
             return;
         }
 
-        const auto value = PropertiesSerializator::SavePropertyToDbValue(&server_entity->GetProperties(), prop, *ScriptSys);
-        DbStorage.Update(_str("{}s", server_entity->GetClassName()), server_entity->GetId(), prop->GetName(), value);
+        entry_id = server_entity->GetId();
+    }
+    else {
+        entry_id = 1u;
+    }
 
-        if (DbHistory && !prop->IsNoHistory()) {
-            const auto id = GetHistoryRecordsId();
-            SetHistoryRecordsId(id + 1);
+    const auto value = PropertiesSerializator::SavePropertyToDbValue(&entity->GetProperties(), prop, *ScriptSys);
+    DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
 
-            const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+    if (DbHistory && prop->IsHistorical()) {
+        const auto history_id = GetHistoryRecordsId();
+        SetHistoryRecordsId(history_id + 1u);
 
-            DataBase::Document doc;
-            doc["Time"] = static_cast<int64>(time.count());
-            doc["EntityId"] = static_cast<int>(server_entity->GetId());
-            doc["Property"] = prop->GetName();
-            doc["Value"] = value;
+        const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
-            DbHistory.Insert(_str("{}sHistory", server_entity->GetClassName()), id, doc);
-        }
+        DataBase::Document doc;
+        doc["Time"] = static_cast<int64>(time.count());
+        doc["EntityId"] = static_cast<int>(e);
+        doc["Property"] = prop->GetName();
+        doc["Value"] = value;
+
+        DbHistory.Insert(_str("{}sHistory", entity->GetClassName()), history_id, doc);
     }
 }
 
@@ -3119,7 +3130,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
     entity->SetValueFromData(prop, data, false);
 }
 
-void FOServer::OnSendGlobalValue(Entity* entity, Property* prop)
+void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto* player : EntityMngr.GetPlayers()) {
@@ -3128,14 +3139,14 @@ void FOServer::OnSendGlobalValue(Entity* entity, Property* prop)
     }
 }
 
-void FOServer::OnSendPlayerValue(Entity* entity, Property* prop)
+void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     auto* player = dynamic_cast<Player*>(entity);
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
 
-void FOServer::OnSendCritterValue(Entity* entity, Property* prop)
+void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     auto* cr = dynamic_cast<Critter*>(entity);
 
@@ -3150,7 +3161,7 @@ void FOServer::OnSendCritterValue(Entity* entity, Property* prop)
     }
 }
 
-void FOServer::OnSendMapValue(Entity* entity, Property* prop)
+void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
@@ -3158,7 +3169,7 @@ void FOServer::OnSendMapValue(Entity* entity, Property* prop)
     }
 }
 
-void FOServer::OnSendLocationValue(Entity* entity, Property* prop)
+void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
@@ -4223,7 +4234,7 @@ auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint co
     return item;
 }
 
-void FOServer::OnSendItemValue(Entity* entity, Property* prop)
+void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
     if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
@@ -4256,7 +4267,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
     }
 }
 
-void FOServer::OnSetItemCount(Entity* entity, Property* /*prop*/, void* cur_value, void* old_value)
+void FOServer::OnSetItemCount(Entity* entity, const Property* /*prop*/, void* cur_value, void* old_value)
 {
     NON_CONST_METHOD_HINT();
 
@@ -4277,7 +4288,7 @@ void FOServer::OnSetItemCount(Entity* entity, Property* /*prop*/, void* cur_valu
     }
 }
 
-void FOServer::OnSetItemChangeView(Entity* entity, Property* prop, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* /*old_value*/)
 {
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
@@ -4306,7 +4317,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, Property* prop, void* cur_val
     }
 }
 
-void FOServer::OnSetItemRecacheHex(Entity* entity, Property* /*prop*/, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
 {
     // IsNoBlock, IsShootThru, IsGag, IsTrigger
     auto* item = dynamic_cast<Item*>(entity);
@@ -4320,7 +4331,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, Property* /*prop*/, void* cur
     }
 }
 
-void FOServer::OnSetItemBlockLines(Entity* entity, Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
+void FOServer::OnSetItemBlockLines(Entity* entity, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
 {
     // BlockLines
     auto* item = dynamic_cast<Item*>(entity);
@@ -4332,7 +4343,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, Property* /*prop*/, void* /*c
     }
 }
 
-void FOServer::OnSetItemIsGeck(Entity* entity, Property* /*prop*/, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemIsGeck(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto value = *static_cast<bool*>(cur_value);
@@ -4345,7 +4356,7 @@ void FOServer::OnSetItemIsGeck(Entity* entity, Property* /*prop*/, void* cur_val
     }
 }
 
-void FOServer::OnSetItemIsRadio(Entity* entity, Property* /*prop*/, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemIsRadio(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto value = *static_cast<bool*>(cur_value);
@@ -4358,7 +4369,7 @@ void FOServer::OnSetItemIsRadio(Entity* entity, Property* /*prop*/, void* cur_va
     }
 }
 
-void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_value, void* old_value)
+void FOServer::OnSetItemOpened(Entity* entity, const Property* /*prop*/, void* cur_value, void* old_value)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto cur = *static_cast<bool*>(cur_value);

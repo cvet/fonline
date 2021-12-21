@@ -40,7 +40,8 @@ auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Pro
     RUNTIME_ASSERT(!base || props->_registrator == base->_registrator);
 
     DataBase::Document doc;
-    for (auto& prop : props->_registrator->_registeredProperties) {
+
+    for (const auto* prop : props->_registrator->_registeredProperties) {
         // Skip pure virtual properties
         if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
             continue;

@@ -78,17 +78,17 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ushort, Day, 2)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, Hour, 3)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, Minute, 4)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, Second, 5)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, TimeMultiplier, 6)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LastEntityId, 7)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, LastDeferredCallId, 8)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, HistoryRecordsId, 9)
 };
 
@@ -290,11 +290,11 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, RefLocationId, 7)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, hash, RefLocationPid, 8)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexX, 9)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexY, 10)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uchar, Dir, 11)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, string, Password, 12)
@@ -302,9 +302,9 @@ public:
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond, 13)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, bool, ClientToDelete, 14)
-    ///@ ExportProperty NoHistory
+    ///@ ExportProperty
     ENTITY_PROPERTY(Protected, ushort, WorldX, 15)
-    ///@ ExportProperty NoHistory
+    ///@ ExportProperty
     ENTITY_PROPERTY(Protected, ushort, WorldY, 16)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Protected, uint, GlobalMapLeaderId, 17)
@@ -314,31 +314,31 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, RefGlobalMapTripId, 19)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, RefGlobalMapLeaderId, 20)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexX, 21)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexY, 22)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Life, 23)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Knockout, 24)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Dead, 25)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Life, 26)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Knockout, 27)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Dead, 28)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uchar>, GlobalMapFog, 29)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hash>, TE_FuncNum, 30)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate, 31)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_NextTime, 32)
-    ///@ ExportProperty ReadOnly NoHistory
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<int>, TE_Identifier, 33)
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient, 34)

@@ -1939,10 +1939,10 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
     ShowProps.clear();
 
     if (entity != nullptr) {
-        vector<int> enum_values;
-        InspectorPropertiesEvent.Raise(entity, enum_values);
-        for (auto enum_value : enum_values) {
-            ShowProps.push_back(enum_value != 0 ? entity->GetProperties().GetByIndex(enum_value) : nullptr);
+        vector<int> prop_indices;
+        InspectorPropertiesEvent.Raise(entity, prop_indices);
+        for (const auto prop_index : prop_indices) {
+            ShowProps.push_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetByIndex(prop_index) : nullptr);
         }
     }
 

@@ -52,7 +52,7 @@
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
     inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
-    inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0; }
+    inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; }
 
 #define REGISTER_ENTITY_PROPERTY(prop) \
     const auto* prop_##prop = registrator->Register(prop##_AccessType, prop##_TypeId, #prop); \
@@ -85,8 +85,8 @@ public:
 
     void SetProperties(const Properties& props);
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
-    void RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes);
-    void RestoreData(vector<vector<uchar>>& properties_data);
+    void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
+    void RestoreData(const vector<vector<uchar>>& properties_data);
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     void SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send);
     void SetValueAsInt(const Property* prop, int value);

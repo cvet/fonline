@@ -101,12 +101,12 @@ auto Entity::StoreData(bool with_protected, vector<uchar*>** all_data, vector<ui
     return _props.StoreData(with_protected, all_data, all_data_sizes);
 }
 
-void Entity::RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes)
+void Entity::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
 {
     _props.RestoreData(all_data, all_data_sizes);
 }
 
-void Entity::RestoreData(vector<vector<uchar>>& properties_data)
+void Entity::RestoreData(const vector<vector<uchar>>& properties_data)
 {
     _props.RestoreData(properties_data);
 }

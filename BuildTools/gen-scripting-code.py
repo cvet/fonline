@@ -1089,7 +1089,18 @@ def genCode(lang, target, isASCompiler=False):
                 ent, access, type, name, exportFlags, comment = methodTag
                 if ent == entity:
                     writeMarshalingProperty(entity, type, name)
-        
+
+        # Meta type to engine helper
+        """
+        globalLines.append('// Meta type to engine helper')
+        globalLines.append('static unordered_map<string_view, const std::type_info&> MetaTypeToEngineTypeId =')
+        globalLines.append('{')
+        for t in metaTypes:
+            globalLines.append('    {"' + t + '", typeid(' + metaTypeToEngineType(t, True) + ')},')
+        globalLines.append('};')
+        globalLines.append('')
+        """
+
         # Register enums
         registerLines.append('// Engine enums')
         for e in codeGenTags['ExportEnum']:

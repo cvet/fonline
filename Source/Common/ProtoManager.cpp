@@ -66,7 +66,7 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hash, T*>& protos
 template<class T>
 static void ReadProtosFromBinary(const PropertyRegistrator* property_registrator, const vector<uchar>& data, uint& pos, map<hash, T*>& protos)
 {
-    vector<uchar*> props_data;
+    vector<const uchar*> props_data;
     vector<uint> props_data_sizes;
     const auto protos_count = ReadData<uint>(data, pos);
     for (uint i = 0; i < protos_count; i++) {
@@ -94,23 +94,23 @@ static void ReadProtosFromBinary(const PropertyRegistrator* property_registrator
 
 static void InsertMapValues(const map<string, string>& from_kv, map<string, string>& to_kv, bool overwrite)
 {
-    for (const auto& [fst, snd] : from_kv) {
-        RUNTIME_ASSERT(!fst.empty());
+    for (const auto& [key, value] : from_kv) {
+        RUNTIME_ASSERT(!key.empty());
 
-        if (fst[0] != '$') {
+        if (key[0] != '$') {
             if (overwrite) {
-                to_kv[fst] = snd;
+                to_kv[key] = value;
             }
             else {
-                to_kv.insert(std::make_pair(fst, snd));
+                to_kv.insert(std::make_pair(key, value));
             }
         }
-        else if (fst == "$Components" && !snd.empty()) {
+        else if (key == "$Components" && !value.empty()) {
             if (to_kv.count("$Components") == 0u) {
-                to_kv["$Components"] = snd;
+                to_kv["$Components"] = value;
             }
             else {
-                to_kv["$Components"] += " " + snd;
+                to_kv["$Components"] += " " + value;
             }
         }
     }
@@ -128,7 +128,7 @@ static void ParseProtos(FileManager& file_mngr, const PropertyRegistrator* prope
         ConfigFile fopro(file.GetCStr());
 
         auto protos_data = fopro.GetApps(app_name);
-        if (std::is_same<T, ProtoMap>::value && protos_data.empty()) {
+        if (std::is_same_v<T, ProtoMap> && protos_data.empty()) {
             protos_data = fopro.GetApps("Header");
         }
 
@@ -143,7 +143,7 @@ static void ParseProtos(FileManager& file_mngr, const PropertyRegistrator* prope
             files_protos.insert(std::make_pair(pid, kv));
 
             for (const auto& app : fopro.GetAppNames()) {
-                if (app.size() == 9 && _str(app).startsWith("Text_")) {
+                if (app.size() == "Text_xxxx"_len && _str(app).startsWith("Text_")) {
                     if (!files_texts.count(pid)) {
                         map<string, map<string, string>> texts;
                         files_texts.insert(std::make_pair(pid, texts));
@@ -250,31 +250,31 @@ static void ParseProtos(FileManager& file_mngr, const PropertyRegistrator* prope
             auto* msg = new FOMsg();
             uint str_num = 0;
             while ((str_num = temp_msg.GetStrNumUpper(str_num))) {
-                auto count = temp_msg.Count(str_num);
+                const auto count = temp_msg.Count(str_num);
                 auto new_str_num = str_num;
 
-                if constexpr (std::is_same<T, ProtoItem>::value) {
+                if constexpr (std::is_same_v<T, ProtoItem>) {
                     new_str_num = ITEM_STR_ID(proto->ProtoId, str_num);
                 }
-                else if constexpr (std::is_same<T, ProtoCritter>::value) {
+                else if constexpr (std::is_same_v<T, ProtoCritter>) {
                     new_str_num = CR_STR_ID(proto->ProtoId, str_num);
                 }
-                else if constexpr (std::is_same<T, ProtoLocation>::value) {
+                else if constexpr (std::is_same_v<T, ProtoLocation>) {
                     new_str_num = LOC_STR_ID(proto->ProtoId, str_num);
                 }
 
-                for (uint n = 0; n < count; n++) {
+                for (const auto n : xrange(count)) {
                     msg->AddStr(new_str_num, temp_msg.GetStr(str_num, n));
                 }
             }
 
-            proto->TextsLang.push_back(*reinterpret_cast<const uint*>(lang.substr(5).c_str()));
+            proto->TextsLang.push_back(*reinterpret_cast<const uint*>(lang.substr("Text_"_len).c_str()));
             proto->Texts.push_back(msg);
         }
     }
 }
 
-ProtoManager::ProtoManager(FileManager& file_mngr, PropertyRegistratorsHolder& property_registrators)
+ProtoManager::ProtoManager(FileManager& file_mngr, const PropertyRegistratorsHolder& property_registrators)
 {
     ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
     ParseProtos(file_mngr, property_registrators.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
@@ -310,7 +310,7 @@ ProtoManager::ProtoManager(FileManager& file_mngr, PropertyRegistratorsHolder& p
     }
 }
 
-ProtoManager::ProtoManager(const vector<uchar>& data, PropertyRegistratorsHolder& property_registrators)
+ProtoManager::ProtoManager(const vector<uchar>& data, const PropertyRegistratorsHolder& property_registrators)
 {
     if (data.empty()) {
         return;

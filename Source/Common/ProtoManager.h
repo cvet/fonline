@@ -45,8 +45,8 @@ class ProtoManager final
 {
 public:
     ProtoManager() = delete;
-    ProtoManager(FileManager& file_mngr, PropertyRegistratorsHolder& property_registrators); // Load from text
-    ProtoManager(const vector<uchar>& data, PropertyRegistratorsHolder& property_registrators); // Restore from binary
+    ProtoManager(FileManager& file_mngr, const PropertyRegistratorsHolder& property_registrators); // Load from text
+    ProtoManager(const vector<uchar>& data, const PropertyRegistratorsHolder& property_registrators); // Restore from binary
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;

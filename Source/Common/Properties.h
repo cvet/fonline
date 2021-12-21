@@ -101,7 +101,7 @@ public:
     [[nodiscard]] auto IsWritable() const -> bool;
     [[nodiscard]] auto IsReadOnly() const -> bool;
     [[nodiscard]] auto IsTemporary() const -> bool;
-    [[nodiscard]] auto IsNoHistory() const -> bool;
+    [[nodiscard]] auto IsHistorical() const -> bool;
 
 private:
     enum class DataType
@@ -122,6 +122,7 @@ private:
     string _typeName {};
     string _componentName {};
     DataType _dataType {};
+
     bool _isHash {};
     bool _isHashSubType0 {};
     bool _isHashSubType1 {};
@@ -132,10 +133,12 @@ private:
     bool _isFloatDataType {};
     bool _isBoolDataType {};
     bool _isEnumDataType {};
+
     bool _isArrayOfString {};
     bool _isDictOfString {};
     bool _isDictOfArray {};
     bool _isDictOfArrayOfString {};
+
     AccessType _accessType {};
     bool _isReadOnly {};
     bool _isReadable {};
@@ -145,7 +148,7 @@ private:
     int64 _minValue {};
     int64 _maxValue {};
     bool _isTemporary {};
-    bool _isNoHistory {};
+    bool _isHistorical {};
     ushort _regIndex {};
     uint _getIndex {};
     uint _podDataOffset {};
@@ -175,17 +178,14 @@ public:
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetPlainDataValueAsFloat(const Property* prop) const -> float;
     [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
-    [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
-    [[nodiscard]] auto FindData(string_view property_name) -> void*;
-
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(Properties* base) const -> map<string, string>;
 
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     auto LoadPropertyFromText(const Property* prop, string_view text) -> bool;
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
-    void RestoreData(vector<uchar*>& all_data, vector<uint>& all_data_sizes);
-    void RestoreData(vector<vector<uchar>>& all_data);
+    void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
+    void RestoreData(const vector<vector<uchar>>& all_data);
     void SetSendIgnore(const Property* prop, const Entity* entity);
     void SetRawData(const Property* prop, const uchar* data, uint data_size);
     void SetValueFromData(const Property* prop, const uchar* data, uint data_size);
@@ -195,7 +195,7 @@ public:
     void SetValueAsIntByName(string_view property_name, int value);
     void SetValueAsIntProps(int property_index, int value);
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
@@ -203,32 +203,12 @@ public:
         return *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
         T old_value = *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
-        if (new_value != old_value) {
-            *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
-            // setCallback(enumValue, old_value)
-        }
-    }
-
-    template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
-    [[nodiscard]] auto GetValue(const Property* prop) const -> T
-    {
-        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
-        return *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
-    }
-
-    template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
-    void SetValue(const Property* prop, T new_value)
-    {
-        RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
-        T old_value = *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
         if (new_value != old_value) {
             *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
             // setCallback(enumValue, old_value)
