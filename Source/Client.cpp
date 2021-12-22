@@ -4,6 +4,17 @@
 #include "Defence.h"
 #include "Version.h"
 
+#include "imgui.h"
+
+#ifdef FO_D3D
+#include "backends/imgui_impl_dx9.h"
+#endif
+#ifndef FO_D3D
+#include "backends/imgui_impl_opengl2.h"
+#endif
+#ifdef FO_WINDOWS
+#include "backends/imgui_impl_win32.h"
+#endif
 // Check buffer for error
 #define CHECK_IN_BUFF_ERROR                          \
     if( Bin.IsError() )                              \
@@ -946,6 +957,9 @@ int FOClient::MainLoop()
             }
        }*/
     DrawIfaceLayer( 4 );
+
+	FoImgui.Render( );
+
     LMenuDraw();
     CurDraw();
     DrawIfaceLayer( 5 );
@@ -1742,6 +1756,8 @@ void FOClient::ParseMouse()
         old_cur_x = GameOpt.MouseX;
         old_cur_y = GameOpt.MouseY;
 
+		FoImgui.MouseMoveEvent( GameOpt.MouseX, GameOpt.MouseY );
+
         if( GetActiveScreen() )
         {
             switch( GetActiveScreen() )
@@ -1980,11 +1996,16 @@ void FOClient::ParseMouse()
                 script_result = Script::GetReturnedBool();
         }
 
-        if( script_result || GameOpt.DisableMouseEvents )
+		if( script_result )
+			continue;
+
+		FoImgui.MouseEvent( event, event_button, event_dy );
+
+        if( GameOpt.DisableMouseEvents )
             continue;
         if( IsCurMode( CUR_WAIT ) )
             continue;
-
+		
         // Wheel
         if( event == FL_MOUSEWHEEL )
         {

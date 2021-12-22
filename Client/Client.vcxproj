@@ -138,6 +138,9 @@
     <TargetName Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">FOnline</TargetName>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">FOnlineDbg</TargetName>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">
+    <IncludePath>$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -519,12 +522,24 @@
     <ClInclude Include="..\Source\AngelScript\Preprocessor\expressions.h" />
     <ClInclude Include="..\Source\AngelScript\scriptgrid.h" />
     <ClInclude Include="..\Source\AngelScript\scriptstring.h" />
+    <ClInclude Include="..\Source\backends\imgui_impl_opengl2.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\Source\backends\imgui_impl_opengl3.h" />
+    <ClInclude Include="..\Source\backends\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
+    <ClInclude Include="..\Source\FonlineImgui.h" />
     <ClInclude Include="..\Source\GL\glew.h" />
     <ClInclude Include="..\Source\GL\glxew.h" />
     <ClInclude Include="..\Source\GL\wglew.h" />
     <ClInclude Include="..\Source\GraphicLoader.h" />
     <ClInclude Include="..\Source\GraphicStructures.h" />
+    <ClInclude Include="..\Source\imconfig.h" />
+    <ClInclude Include="..\Source\imgui.h" />
+    <ClInclude Include="..\Source\imgui_internal.h" />
+    <ClInclude Include="..\Source\imstb_rectpack.h" />
+    <ClInclude Include="..\Source\imstb_textedit.h" />
+    <ClInclude Include="..\Source\imstb_truetype.h" />
     <ClInclude Include="..\Source\ResourceClient.h" />
     <ClInclude Include="..\Source\ScriptWindow.h" />
     <ClInclude Include="..\Source\Sprites.h" />
@@ -684,13 +699,27 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\Source\backends\imgui_impl_dx9.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\Source\backends\imgui_impl_opengl2.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\Source\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="..\Source\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="..\Source\FileSystem.cpp" />
+    <ClCompile Include="..\Source\FonlineImgui.cpp" />
     <ClCompile Include="..\Source\GL\glew.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\Source\GraphicLoader.cpp" />
+    <ClCompile Include="..\Source\imgui.cpp" />
+    <ClCompile Include="..\Source\imgui_demo.cpp" />
+    <ClCompile Include="..\Source\imgui_draw.cpp" />
+    <ClCompile Include="..\Source\imgui_tables.cpp" />
+    <ClCompile Include="..\Source\imgui_widgets.cpp" />
     <ClCompile Include="..\Source\ScriptWindow.cpp" />
     <ClCompile Include="..\Source\SpriteManagerFont.cpp" />
     <ClCompile Include="..\Source\Sprites.cpp" />

@@ -325,6 +325,8 @@ bool SpriteManager::Init( SpriteMngrParams& params )
         }
     }
 
+	FoImgui.Init( MainWindow, GetDevice( ) );
+
     WriteLog( "Sprite manager initialization complete.\n" );
     return true;
 }
@@ -533,6 +535,8 @@ void SpriteManager::Finish()
 {
     WriteLog( "Sprite manager finish...\n" );
 
+	FoImgui.Finish( );
+
     for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
         SAFEDEL( *it );
     surfList.clear();
@@ -585,6 +589,8 @@ bool SpriteManager::BeginScene( uint clear_color )
     if( clear_color )
         ClearCurrentRenderTarget( clear_color );
     #endif
+
+	FoImgui.PrepareFrame( );
 
     Animation3d::BeginScene();
     sceneBeginned = true;
