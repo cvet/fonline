@@ -26,6 +26,8 @@
 void* zlib_alloc_( void* opaque, unsigned int items, unsigned int size ) { return calloc( items, size ); }
 void  zlib_free_( void* opaque, void* address )                          { free( address ); }
 
+using namespace FOnline;
+
 FOClient*    FOClient::Self = NULL;
 bool         FOClient::SpritesCanDraw = false;
 static uint* UID4 = NULL;
@@ -958,7 +960,7 @@ int FOClient::MainLoop()
        }*/
     DrawIfaceLayer( 4 );
 
-	FoImgui.Render( );
+	FonlineImgui::RenderAll( );
 
     LMenuDraw();
     CurDraw();
@@ -1756,7 +1758,7 @@ void FOClient::ParseMouse()
         old_cur_x = GameOpt.MouseX;
         old_cur_y = GameOpt.MouseY;
 
-		FoImgui.MouseMoveEvent( GameOpt.MouseX, GameOpt.MouseY );
+		GetMainImgui( )->MouseMoveEvent( GameOpt.MouseX, GameOpt.MouseY );
 
         if( GetActiveScreen() )
         {
@@ -1999,7 +2001,7 @@ void FOClient::ParseMouse()
 		if( script_result )
 			continue;
 
-		FoImgui.MouseEvent( event, event_button, event_dy );
+		GetMainImgui( )->MouseEvent( event, event_button, event_dy );
 
         if( GameOpt.DisableMouseEvents )
             continue;

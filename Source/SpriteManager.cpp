@@ -4,6 +4,8 @@
 #include "Crypt.h"
 #include "F2Palette.h"
 
+using namespace FOnline;
+
 SpriteManager SprMngr;
 AnyFrames*    SpriteManager::DummyAnimation = NULL;
 
@@ -325,7 +327,7 @@ bool SpriteManager::Init( SpriteMngrParams& params )
         }
     }
 
-	FoImgui.Init( MainWindow, GetDevice( ) );
+	GetMainImgui( )->Init( MainWindow, GetDevice( ) );
 
     WriteLog( "Sprite manager initialization complete.\n" );
     return true;
@@ -535,7 +537,7 @@ void SpriteManager::Finish()
 {
     WriteLog( "Sprite manager finish...\n" );
 
-	FoImgui.Finish( );
+	GetMainImgui( )->Finish( );
 
     for( auto it = surfList.begin(), end = surfList.end(); it != end; ++it )
         SAFEDEL( *it );
@@ -590,7 +592,7 @@ bool SpriteManager::BeginScene( uint clear_color )
         ClearCurrentRenderTarget( clear_color );
     #endif
 
-	FoImgui.PrepareFrame( );
+	GetMainImgui( )->PrepareFrame( );
 
     Animation3d::BeginScene();
     sceneBeginned = true;

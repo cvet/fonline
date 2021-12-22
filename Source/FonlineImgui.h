@@ -3,40 +3,51 @@
 #include "StdAfx.h"
 #include "imgui.h"
 
-#ifdef FO_D3D
-#include "backends/imgui_impl_dx9.h"
-#endif
-#ifndef FO_D3D
-#include "backends/imgui_impl_opengl3.h"
-#endif
-#ifdef FO_WINDOWS
-#include "backends/imgui_impl_win32.h"
-#endif
-
-class FonlineImgui
+namespace FOnline
 {
+	class FonlineImgui;
+	extern FonlineImgui* GetMainImgui( );
 
-	ImGuiContext* Context;
+	class FonlineImgui
+	{
+		ImGuiContext* Context;
+		FOWindow* Window;
 
-	void ScriptFrame( );
-	bool show_demo_window;
-public:
-	FonlineImgui( );
+		bool IsDemoWindow;
 
-	void ShowDemo( );
-	void Init( FOWindow* window, Device_ device );
-	void Finish( );
-	void PrepareFrame( );
-	void Render( );
+		void ScriptFrame( );
 
-	void MouseEvent( int event, int button, int dy );
-	void MouseMoveEvent( int x, int y );
+		virtual void InitOS( FOWindow* window ) = 0;
+		virtual void InitGraphics( Device_ device ) = 0;
 
-	inline ImGuiIO& GetIO( )
-	{ 
-		return ImGui::GetIO( );
+		virtual void FinishOS( ) = 0;
+		virtual void FinishGraphics( ) = 0;
+
+		virtual void NewFrameOS( ) = 0;
+		virtual void NewFrameGraphics( ) = 0;
+
+		virtual void RenderGraphics( ) = 0;
+
+	protected:
+		inline ImDrawData *GetDrawData( ) { return ImGui::GetDrawData( ); }
+
+	public:
+		FonlineImgui( );
+
+		void ShowDemo( );
+		void Init( FOWindow* window, Device_ device );
+		void Finish( );
+		void PrepareFrame( );
+		void RenderIface( );
+
+		inline ImGuiIO& GetIO( ) { return ImGui::GetIO( ); }
+
+		static void RenderAll( );
+
+		inline FOWindow* GetWindow( ) { return Window; }
+
+		virtual void MouseEvent( int event, int button, int dy ) = 0;
+		virtual void MouseMoveEvent( int x, int y ) = 0;
 	};
-};
-
-extern FonlineImgui FoImgui;
 #endif // FONLINE_IMGUI_H
+}

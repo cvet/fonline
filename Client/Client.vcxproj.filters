@@ -566,6 +566,15 @@
     <ClInclude Include="..\Source\backends\imgui_impl_opengl3_loader.h">
       <Filter>imgui</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\FonlineImguiWindows.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FonlineImguiWindowsD3D.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\FonlineImguiWindowsOGL.h">
+      <Filter>Client</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -891,6 +900,15 @@
     </ClCompile>
     <ClCompile Include="..\Source\backends\imgui_impl_opengl3.cpp">
       <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FonlineImguiWindows.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FonlineImguiWindowsOGL.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\FonlineImguiWindowsD3D.cpp">
+      <Filter>Client</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

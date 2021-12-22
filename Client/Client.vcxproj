@@ -529,6 +529,13 @@
     <ClInclude Include="..\Source\backends\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="..\Source\FileSystem.h" />
     <ClInclude Include="..\Source\FonlineImgui.h" />
+    <ClInclude Include="..\Source\FonlineImguiWindows.h" />
+    <ClInclude Include="..\Source\FonlineImguiWindowsD3D.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="..\Source\FonlineImguiWindowsOGL.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\Source\GL\glew.h" />
     <ClInclude Include="..\Source\GL\glxew.h" />
     <ClInclude Include="..\Source\GL\wglew.h" />
@@ -709,6 +716,13 @@
     <ClCompile Include="..\Source\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="..\Source\FileSystem.cpp" />
     <ClCompile Include="..\Source\FonlineImgui.cpp" />
+    <ClCompile Include="..\Source\FonlineImguiWindows.cpp" />
+    <ClCompile Include="..\Source\FonlineImguiWindowsD3D.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\Source\FonlineImguiWindowsOGL.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseD3D|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\Source\GL\glew.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
