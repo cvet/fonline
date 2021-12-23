@@ -117,7 +117,7 @@ struct ModelCutData
 
     vector<Shape> Shapes {};
     vector<int> Layers {};
-    uint UnskinBone {};
+    hash UnskinBone {};
     Shape UnskinShape {};
     bool RevertUnskinShape {};
 };
@@ -127,7 +127,7 @@ struct ModelAnimationData
     uint Id {};
     int Layer {};
     int LayerValue {};
-    uint LinkBoneHash {};
+    hash LinkBoneHash {};
     string ChildName {};
     float RotX {};
     float RotY {};
@@ -140,9 +140,9 @@ struct ModelAnimationData
     float ScaleZ {};
     float SpeedAjust {};
     vector<int> DisabledLayer {};
-    vector<uint> DisabledMesh {};
-    vector<tuple<string, uint, int>> TextureInfo {}; // Name, mesh, num
-    vector<tuple<string, uint>> EffectInfo {}; // Name, mesh
+    vector<hash> DisabledMesh {};
+    vector<tuple<string, hash, int>> TextureInfo {}; // Name, mesh, num
+    vector<tuple<string, hash>> EffectInfo {}; // Name, mesh
     vector<ModelCutData*> CutInfo {};
 };
 
@@ -164,7 +164,7 @@ public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator);
+    ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -194,6 +194,7 @@ private:
     FileManager& _fileMngr;
     EffectManager& _effectMngr;
     GameTimer& _gameTime;
+    NameResolver& _nameResolver;
     AnimationResolver& _animNameResolver;
     MeshTextureCreator _meshTexCreator {};
     set<hash> _processedFiles {};

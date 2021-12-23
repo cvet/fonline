@@ -46,8 +46,8 @@ void Location::BindScript()
 {
     EntranceScriptBindId = 0;
 
-    if (GetEntranceScript() != 0u) {
-        string func_name = _str().parseHash(GetEntranceScript());
+    if (GetEntranceScript()) {
+        const auto func_name = _engine->HashToString(GetEntranceScript());
         /*EntranceScriptBindId =
             scriptSys.BindByFuncName(func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
     }
@@ -55,7 +55,7 @@ void Location::BindScript()
 
 auto Location::GetProtoLoc() const -> const ProtoLocation*
 {
-    return dynamic_cast<const ProtoLocation*>(Proto);
+    return static_cast<const ProtoLocation*>(_proto);
 }
 
 auto Location::IsLocVisible() const -> bool
@@ -68,9 +68,16 @@ auto Location::GetMapsRaw() -> vector<Map*>&
     return _locMaps;
 };
 
-auto Location::GetMaps() const -> vector<Map*>
+auto Location::GetMaps() -> vector<Map*>
 {
     return _locMaps;
+}
+
+auto Location::GetMaps() const -> vector<const Map*>
+{
+    vector<const Map*> maps;
+    maps.insert(maps.begin(), _locMaps.begin(), _locMaps.end());
+    return maps;
 }
 
 auto Location::GetMapsCount() const -> uint

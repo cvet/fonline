@@ -295,7 +295,7 @@ void CritterView::Move(uchar dir)
     _animStartTick = _engine->GameTime.GameTick();
 
     if (_model == nullptr) {
-        if (_str().parseHash(GetModelName()).startsWith("art/critters/")) {
+        if (_str(_engine->HashToString(GetModelName())).startsWith("art/critters/")) {
             const auto anim1 = IsRunning ? ANIM1_UNARMED : GetAnim1();
             const uint anim2 = IsRunning ? ANIM2_RUN : ANIM2_WALK;
             auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
@@ -741,7 +741,7 @@ void CritterView::RefreshModel()
     }
 
     // Check 3d availability
-    const string model_name = _str().parseHash(GetModelName());
+    const auto model_name = _engine->HashToString(GetModelName());
     const string ext = _str(model_name).getFileExtension();
     if (ext != "fo3d") {
         return;

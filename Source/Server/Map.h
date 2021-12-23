@@ -48,8 +48,8 @@ class Location;
 struct StaticMap
 {
     vector<uchar> SceneryData {};
-    hash HashTiles {};
-    hash HashScen {};
+    uint HashTiles {};
+    uint HashScen {};
     vector<Critter*> CrittersVec {};
     vector<Item*> AllItemsVec {};
     vector<Item*> HexItemsVec {};
@@ -83,7 +83,7 @@ public:
     [[nodiscard]] auto GetItems() -> vector<Item*>;
     [[nodiscard]] auto GetItemsHex(ushort hx, ushort hy) -> vector<Item*>;
     [[nodiscard]] auto GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>;
-    [[nodiscard]] auto GetItemsPid(hash pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItemsByProto(hash pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>;
     [[nodiscard]] auto IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<ushort, ushort>>;

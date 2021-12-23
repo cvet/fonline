@@ -35,7 +35,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Properties* base, const EnumResolver& name_resolver) -> DataBase::Document
+auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Properties* base, NameResolver& name_resolver) -> DataBase::Document
 {
     RUNTIME_ASSERT(!base || props->_registrator == base->_registrator);
 
@@ -89,7 +89,7 @@ auto PropertiesSerializator::SaveToDbDocument(const Properties* props, const Pro
     return doc;
 }
 
-auto PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBase::Document& doc, const EnumResolver& name_resolver) -> bool
+auto PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBase::Document& doc, NameResolver& name_resolver) -> bool
 {
     bool is_error = false;
 
@@ -122,7 +122,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                     continue;
                 }
 
-                hash h = _str(std::get<string>(value)).toHash();
+                const auto h = name_resolver.StringToHash(std::get<string>(value));
                 props->SetRawData(prop, reinterpret_cast<const uchar*>(&h), prop->_baseSize);
             }
             else if (prop->_isEnum) {
@@ -245,7 +245,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                 for (size_t i = 0; i < arr.size(); i++) {
                     RUNTIME_ASSERT(arr[i].index() == DataBase::STRING_VALUE);
 
-                    hash h = _str(std::get<string>(arr[i])).toHash();
+                    const auto h = name_resolver.StringToHash(std::get<string>(arr[i]));
                     *reinterpret_cast<hash*>(data + i * sizeof(hash)) = h;
                 }
 
@@ -516,7 +516,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
             for (const auto& [key2, value2] : dict) {
                 // Key
                 if (prop->_isDictKeyHash) {
-                    *reinterpret_cast<hash*>(data + data_pos) = _str(key2).toHash();
+                    *reinterpret_cast<hash*>(data + data_pos) = name_resolver.StringToHash(key2);
                 }
                 else if (prop->_isDictKeyEnum) {
                     int enum_value = name_resolver.ResolveEnumValue(prop->_dictKeyTypeName, key2, is_error);
@@ -556,7 +556,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                     }
                     else if (prop->_isHash) {
                         for (const auto& e : arr) {
-                            *reinterpret_cast<hash*>(data + data_pos) = _str(std::get<string>(e)).toHash();
+                            *reinterpret_cast<hash*>(data + data_pos) = name_resolver.StringToHash(std::get<string>(e));
                             data_pos += sizeof(hash);
                         }
                     }
@@ -649,7 +649,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
                 }
                 else {
                     if (prop->_isHash) {
-                        *reinterpret_cast<hash*>(data + data_pos) = _str(std::get<string>(value2)).toHash();
+                        *reinterpret_cast<hash*>(data + data_pos) = name_resolver.StringToHash(std::get<string>(value2));
                     }
                     else if (prop->_isEnum) {
                         const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value2), is_error);
@@ -737,7 +737,7 @@ auto PropertiesSerializator::LoadFromDbDocument(Properties* props, const DataBas
     return !is_error;
 }
 
-auto PropertiesSerializator::SavePropertyToDbValue(const Properties* props, const Property* prop, const EnumResolver& name_resolver) -> DataBase::Value
+auto PropertiesSerializator::SavePropertyToDbValue(const Properties* props, const Property* prop, NameResolver& name_resolver) -> DataBase::Value
 {
     RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
     RUNTIME_ASSERT(!prop->_isTemporary);
@@ -749,7 +749,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* props, cons
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
 
         if (prop->_isHash) {
-            return _str().parseHash(*reinterpret_cast<hash*>(&props->_podData[prop->_podDataOffset])).str();
+            return string(name_resolver.HashToString(*reinterpret_cast<hash*>(&props->_podData[prop->_podDataOffset])));
         }
         else if (prop->_isEnum) {
             int enum_value = 0;
@@ -819,7 +819,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* props, cons
 
             for (uint i = 0; i < arr_size; i++) {
                 if (prop->_isHash) {
-                    arr.push_back(_str().parseHash(*reinterpret_cast<const hash*>(data + i * prop->_baseSize)).str());
+                    arr.push_back(string(name_resolver.HashToString(*reinterpret_cast<const hash*>(data + i * prop->_baseSize))));
                 }
                 else if (prop->_isEnum) {
                     int enum_value = 0;
@@ -881,7 +881,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* props, cons
         if (data_size > 0u) {
             const auto get_key_string = [prop, &name_resolver](const uchar* p) -> string {
                 if (prop->_isDictKeyHash) {
-                    return _str().parseHash(*reinterpret_cast<const hash*>(p)).str();
+                    return string(name_resolver.HashToString(*reinterpret_cast<const hash*>(p)));
                 }
                 else if (prop->_isDictKeyEnum) {
                     int enum_value = 0;
@@ -931,7 +931,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* props, cons
                         else {
                             for (uint i = 0; i < arr_size; i++) {
                                 if (prop->_isHash) {
-                                    arr.push_back(_str().parseHash(*reinterpret_cast<const hash*>(data + i * sizeof(hash))).str());
+                                    arr.push_back(string(name_resolver.HashToString(*reinterpret_cast<const hash*>(data + i * sizeof(hash)))));
                                 }
                                 else if (prop->_isEnum) {
                                     int enum_value = 0;
@@ -1021,7 +1021,7 @@ auto PropertiesSerializator::SavePropertyToDbValue(const Properties* props, cons
                     string key_str = get_key_string(pkey);
 
                     if (prop->_isHash) {
-                        dict.insert(std::make_pair(std::move(key_str), _str().parseHash(*reinterpret_cast<const hash*>(pvalue)).str()));
+                        dict.insert(std::make_pair(std::move(key_str), string(name_resolver.HashToString(*reinterpret_cast<const hash*>(pvalue)))));
                     }
                     else if (prop->_isEnum) {
                         int enum_value = 0;

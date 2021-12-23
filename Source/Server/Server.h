@@ -40,6 +40,7 @@
 #include "CritterManager.h"
 #include "DataBase.h"
 #include "Dialogs.h"
+#include "EngineBase.h"
 #include "EntityManager.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
@@ -65,7 +66,7 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer final : public PropertyRegistratorsHolder, public Entity, public GameProperties
+class FOServer final : public FOEngineBase
 {
 public:
     FOServer() = delete;
@@ -81,6 +82,10 @@ public:
 #endif
 
     [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
+
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int override { return 0; }
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override { return 0; }
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value) const -> string override { return ""; }
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
     [[nodiscard]] auto GetIngamePlayersStatistics() const -> string;

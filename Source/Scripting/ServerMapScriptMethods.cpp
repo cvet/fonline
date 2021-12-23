@@ -60,7 +60,7 @@
         }
     }
     else {
-        self->SetScriptId(0);
+        self->SetScriptId(hash());
     }
 }
 
@@ -80,10 +80,14 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
     if (!proto) {
-        throw ScriptException("Invalid proto '{}' arg.", _str().parseHash(protoId));
+        throw ScriptException("Invalid proto '{}' arg.", self->GetEngine()->HashToString(protoId));
     }
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
         throw ScriptException("No place for item");
+    }
+
+    if (count == 0u) {
+        return nullptr;
     }
 
     if (!props.empty()) {
@@ -94,10 +98,10 @@
             props_.SetValueAsIntProps(key, value);
         }
 
-        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count > 0 ? count : 1, &props_, true);
+        return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_, true);
     }
 
-    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count > 0 ? count : 1, nullptr, true);
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, true);
 }
 
 ///# ...
@@ -105,7 +109,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self)
 {
-    return self->GetItemsPid(0);
+    return self->GetItemsByProto(hash());
 }
 
 ///# ...
@@ -144,7 +148,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Map_GetItemsByPid(Map* self, hash pid)
 {
-    return self->GetItemsPid(pid);
+    return self->GetItemsByProto(pid);
 }
 
 ///# ...
@@ -201,7 +205,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto map_items = self->GetItemsHexEx(hx, hy, radius, 0);
+    const auto map_items = self->GetItemsHexEx(hx, hy, radius, hash());
     vector<Item*> items;
     items.reserve(map_items.size());
 
@@ -373,8 +377,8 @@
 [[maybe_unused]] vector<Critter*> Server_Map_GetCrittersByPids(Map* self, hash pid, uchar findType)
 {
     vector<Critter*> critters;
-    if (pid == 0u) {
-        auto map_critters = self->GetCritters();
+    if (!pid) {
+        const auto map_critters = self->GetCritters();
         critters.reserve(map_critters.size());
         for (auto* cr : map_critters) {
             if (cr->CheckFind(findType)) {
@@ -383,7 +387,7 @@
         }
     }
     else {
-        auto map_npcs = self->GetNpcs();
+        const auto map_npcs = self->GetNpcs();
         critters.reserve(map_npcs.size());
         for (auto* npc : map_npcs) {
             if (npc->GetProtoId() == pid && npc->CheckFind(findType)) {
@@ -651,7 +655,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
     if (!proto) {
-        throw ScriptException("Proto '{}' not found.", _str().parseHash(protoId));
+        throw ScriptException("Proto '{}' not found.", self->GetEngine()->HashToString(protoId));
     }
 
     Critter* npc;
@@ -681,7 +685,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, int npcRole, uchar findType)
+[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, hash npcRole, uchar findType)
 {
     return self->GetNpcCount(npcRole, findType);
 }
@@ -692,7 +696,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, int npcRole, uchar findType, uint skipCount)
+[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, hash npcRole, uchar findType, uint skipCount)
 {
     return self->GetNpc(npcRole, findType, skipCount);
 }
@@ -795,7 +799,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Map_RunEffect(Map* self, hash effPid, ushort hx, ushort hy, uint radius)
 {
-    if (effPid == 0u) {
+    if (!effPid) {
         throw ScriptException("Effect pid invalid arg");
     }
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
@@ -816,7 +820,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Map_RunFlyEffect(Map* self, hash effPid, Critter* fromCr, Critter* toCr, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
 {
-    if (effPid == 0u) {
+    if (!effPid) {
         throw ScriptException("Effect pid invalid arg");
     }
     if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {

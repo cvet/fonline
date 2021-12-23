@@ -246,10 +246,10 @@ void ItemHexView::RefreshAnim()
 {
     Anim = nullptr;
     const auto name_hash = GetPicMap();
-    if (name_hash != 0u) {
+    if (name_hash) {
         Anim = _engine->ResMngr.GetItemAnim(name_hash);
     }
-    if (name_hash != 0u && Anim == nullptr) {
+    if (name_hash && Anim == nullptr) {
         WriteLog("PicMap for item '{}' not found.\n", GetName());
     }
     if (Anim != nullptr && _isEffect) {

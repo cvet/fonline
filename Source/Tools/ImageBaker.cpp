@@ -236,7 +236,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
     FrameCollection collection;
 
     // Load ini parser
-    ConfigFile fofrm(file.GetCStr());
+    ConfigFile fofrm(file.GetCStr(), nullptr);
 
     auto frm_fps = fofrm.GetInt("", "fps", 0);
     if (frm_fps <= 0) {

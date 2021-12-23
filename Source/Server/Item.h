@@ -63,7 +63,7 @@ public:
     [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
     [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
     [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
-    [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return dynamic_cast<const ProtoItem*>(Proto); }
+    [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
     [[nodiscard]] auto ContGetItem(uint item_id, bool skip_hidden) -> Item*;
     [[nodiscard]] auto ContGetAllItems(bool skip_hidden) -> vector<Item*>;
     [[nodiscard]] auto ContGetItemByPid(hash pid, uint stack_id) -> Item*;

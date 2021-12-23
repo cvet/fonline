@@ -213,7 +213,7 @@ auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, 
         buf << cmd;
         buf << hex_x;
         buf << hex_y;
-        buf << pid;
+        buf << static_cast<hash>(pid);
         buf << count;
     } break;
     case CMD_ADDITEM_SELF: {
@@ -229,7 +229,7 @@ auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, 
         buf << msg;
         buf << msg_len;
         buf << cmd;
-        buf << pid;
+        buf << static_cast<hash>(pid);
         buf << count;
     } break;
     case CMD_ADDNPC: {
@@ -250,7 +250,7 @@ auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, 
         buf << hex_x;
         buf << hex_y;
         buf << dir;
-        buf << pid;
+        buf << static_cast<hash>(pid);
     } break;
     case CMD_ADDLOCATION: {
         ushort wx = 0;
@@ -268,7 +268,7 @@ auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, 
         buf << cmd;
         buf << wx;
         buf << wy;
-        buf << pid;
+        buf << static_cast<hash>(pid);
     } break;
     case CMD_RUNSCRIPT: {
         string func_name;

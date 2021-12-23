@@ -83,7 +83,7 @@ static void MapperEntry(void*)
 
         try {
             App->BeginFrame();
-            Data->Mapper->MainLoop();
+            Data->Mapper->MapperMainLoop();
             App->EndFrame();
         }
         catch (const GenericException& ex) {

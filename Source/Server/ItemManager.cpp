@@ -221,7 +221,7 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
 {
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     if (proto == nullptr) {
-        WriteLog("Proto item '{}' not found.\n", _str().parseHash(pid));
+        WriteLog("Proto item '{}' not found.\n", _engine->HashToString(pid));
         return nullptr;
     }
 
@@ -251,7 +251,7 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
 
     // Verify destroying
     if (item->IsDestroyed()) {
-        WriteLog("Item destroyed after prototype '{}' initialization.\n", _str().parseHash(pid));
+        WriteLog("Item destroyed after prototype '{}' initialization.\n", _engine->HashToString(pid));
         return nullptr;
     }
 

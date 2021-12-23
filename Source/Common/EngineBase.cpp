@@ -31,64 +31,64 @@
 // SOFTWARE.
 //
 
-#include "ItemView.h"
-#include "Client.h"
-#include "Timer.h"
+#include "EngineBase.h"
+#include "GenericUtils.h"
+#include "Log.h"
+#include "StringUtils.h"
 
-ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
+FOEngineBase::FOEngineBase(bool is_server) : PropertyRegistratorsHolder(is_server), Entity(GetPropertyRegistrator(ENTITY_CLASS_NAME)), GameProperties(GetInitRef())
 {
-    RUNTIME_ASSERT(proto);
-    RUNTIME_ASSERT(GetCount() > 0);
 }
 
-auto ItemView::Clone() const -> ItemView*
+auto FOEngineBase::HashToString(hash h) const -> string_view
 {
-    auto* clone = new ItemView(_engine, GetId(), static_cast<const ProtoItem*>(_proto));
-    clone->SetProperties(GetProperties());
-    return clone;
+    if (const auto it = _hashesLookup.find(h.Value); it != _hashesLookup.end()) {
+        return it->second;
+    }
+
+    WriteLog("Can't resolve hash {}.\n", h.Value);
+    return "";
 }
 
-auto ItemView::IsStatic() const -> bool
+auto FOEngineBase::StringToHash(string_view s) const -> hash
 {
-    return GetIsStatic();
+    if (const auto it = _hashesLookupRev.find(s); it != _hashesLookupRev.end()) {
+        return hash {it->second};
+    }
+
+    const auto value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(s.data()), static_cast<uint>(s.length()));
+    RUNTIME_ASSERT(value);
+
+    if (const auto it = _hashesLookup.find(value); it != _hashesLookup.end()) {
+        throw HashCollisionException("Hash collision", s, it->second, value);
+    }
+
+    _hashesLookup.emplace(value, s);
+    _hashesLookupRev.emplace(s, value);
+
+    return hash {value};
 }
 
-auto ItemView::IsAnyScenery() const -> bool
+auto FOEngineBase::ResolveGenericValue(string_view str, bool& failed) -> int
 {
-    return IsScenery() || IsWall();
-}
+    if (str.empty()) {
+        failed = true;
+        return 0;
+    }
 
-auto ItemView::IsScenery() const -> bool
-{
-    return GetIsScenery();
-}
+    if (str[0] == '@' && str[1] != 0) {
+        static_assert(sizeof(hash::Value) == sizeof(int));
+        return static_cast<int>(StringToHash(str.substr(1)).Value);
+    }
+    else if (_str(str).isNumber()) {
+        return _str(str).toInt();
+    }
+    else if (_str(str).compareIgnoreCase("true")) {
+        return 1;
+    }
+    else if (_str(str).compareIgnoreCase("false")) {
+        return 0;
+    }
 
-auto ItemView::IsWall() const -> bool
-{
-    return GetIsWall();
-}
-
-auto ItemView::IsColorize() const -> bool
-{
-    return GetIsColorize();
-}
-
-auto ItemView::GetColor() const -> uint
-{
-    return GetLightColor() & 0xFFFFFF;
-}
-
-auto ItemView::GetAlpha() const -> uchar
-{
-    return GetLightColor() >> 24;
-}
-
-auto ItemView::GetInvColor() const -> uint
-{
-    return GetIsColorizeInv() ? GetLightColor() : 0;
-}
-
-auto ItemView::LightGetHash() const -> uint
-{
-    return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
+    return ResolveEnumValue(str, failed);
 }

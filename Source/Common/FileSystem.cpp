@@ -608,13 +608,12 @@ auto FileManager::ReadFileHeader(string_view path) -> FileHeader
     return FileHeader(name, path, 0, 0, nullptr);
 }
 
-auto FileManager::ReadConfigFile(string_view path) -> ConfigFile
+auto FileManager::ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile
 {
-    const auto file = ReadFile(path);
-    if (file) {
-        return ConfigFile(file.GetCStr());
+    if (const auto file = ReadFile(path)) {
+        return ConfigFile(file.GetCStr(), name_resolver);
     }
-    return ConfigFile("");
+    return ConfigFile("", name_resolver);
 }
 
 auto FileManager::WriteFile(string_view path, bool apply) -> OutputFile

@@ -41,6 +41,7 @@ class PropertyRegistratorsHolder
 {
 public:
     explicit PropertyRegistratorsHolder(bool is_server);
+    virtual ~PropertyRegistratorsHolder() = default;
 
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
     [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view class_name) -> PropertyRegistrator*;

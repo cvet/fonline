@@ -41,7 +41,7 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(true), Entity(GetPropertyRegistrator(ENTITY_CLASS_NAME)), GameProperties(GetInitRef()), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys}, ProtoMngr(FileMngr, *this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this), GameTime(Settings)
+FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(true), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys}, ProtoMngr(FileMngr, *this, *this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this), GameTime(Settings)
 {
     WriteLog("***   Starting initialization   ***\n");
 
@@ -99,7 +99,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : Propert
         DbStorage.Insert("Game", 1, {{"_Proto", string("")}});
     }
     else {
-        if (!PropertiesSerializator::LoadFromDbDocument(&GetPropertiesForEdit(), globals_doc, *ScriptSys)) {
+        if (!PropertiesSerializator::LoadFromDbDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
             throw ServerInitException("Failed to load globals document");
         }
 
@@ -532,7 +532,7 @@ auto FOServer::GetIngamePlayersStatistics() const -> string
         const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
         const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : 0, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : 0);
-        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->Name, player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
+        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
     }
     return result;
 }
@@ -946,9 +946,9 @@ void FOServer::Process_Text(Player* player)
         }
         else {
             auto* map = MapMngr.GetMap(cr->GetMapId());
-            const auto pid = (map != nullptr ? map->GetProtoId() : 0);
+            const auto pid = (map != nullptr ? map->GetProtoId() : hash());
             for (auto& tl : _textListeners) {
-                if (tl.SayType == how_say && tl.Parameter == pid && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
+                if (tl.SayType == how_say && tl.Parameter == pid.Value && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
                     listen_func[listen_count] = tl.Func;
                     listen_str[listen_count] = str;
                     if (++listen_count >= 100) {
@@ -1080,7 +1080,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
         CHECK_ALLOW_COMMAND();
 
-        auto player_id = MAKE_PLAYER_ID(name);
+        const auto player_id = MAKE_PLAYER_ID(name);
         if (DbStorage.Valid("Players", player_id)) {
             logcb(_str("Player id is {}.", player_id));
         }
@@ -1245,7 +1245,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     case CMD_ADDITEM: {
         ushort hex_x = 0;
         ushort hex_y = 0;
-        hash pid = 0;
+        hash pid;
         uint count = 0;
         buf >> hex_x;
         buf >> hex_y;
@@ -1269,7 +1269,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         }
     } break;
     case CMD_ADDITEM_SELF: {
-        hash pid = 0;
+        hash pid;
         uint count = 0;
         buf >> pid;
         buf >> count;
@@ -1288,7 +1288,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         ushort hex_x = 0;
         ushort hex_y = 0;
         uchar dir = 0;
-        hash pid = 0;
+        hash pid;
         buf >> hex_x;
         buf >> hex_y;
         buf >> dir;
@@ -1309,7 +1309,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     case CMD_ADDLOCATION: {
         ushort wx = 0;
         ushort wy = 0;
-        hash pid = 0;
+        hash pid;
         buf >> wx;
         buf >> wy;
         buf >> pid;
@@ -1441,7 +1441,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
                 return;
             }
 
-            auto player_id = MAKE_PLAYER_ID(name);
+            const auto player_id = MAKE_PLAYER_ID(name);
             auto* ban_player = EntityMngr.GetPlayer(player_id);
             ClientBanned ban;
             ban.ClientName = name;
@@ -1668,7 +1668,7 @@ auto FOServer::InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool
                 }
 
                 if (lang.Msg[TEXTMSG_LOCATIONS].IsIntersects(*ploc->Texts[i])) {
-                    WriteLog("Warning! Location '{}' text intersection detected, send notification about this to developers.\n", _str().parseHash(ploc->ProtoId));
+                    WriteLog("Warning! Location '{}' text intersection detected, send notification about this to developers.\n", ploc->GetName());
                 }
 
                 lang.Msg[TEXTMSG_LOCATIONS] += *ploc->Texts[i];
@@ -1848,7 +1848,7 @@ void FOServer::LoadBans()
 
     _banned.clear();
 
-    auto bans = FileMngr.ReadConfigFile(BANS_FNAME_ACTIVE);
+    auto bans = FileMngr.ReadConfigFile(BANS_FNAME_ACTIVE, *this);
     if (!bans) {
         return;
     }
@@ -2013,7 +2013,7 @@ void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_
         entry_id = 1u;
     }
 
-    const auto value = PropertiesSerializator::SavePropertyToDbValue(&entity->GetProperties(), prop, *ScriptSys);
+    const auto value = PropertiesSerializator::SavePropertyToDbValue(&entity->GetProperties(), prop, *this);
     DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
 
     if (DbHistory && prop->IsHistorical()) {
@@ -2610,12 +2610,13 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Create new
-    const auto* player_proto = ProtoMngr.GetProtoCritter(_str("Player").toHash());
+    const auto player_proto_id = StringToHash("Player");
+    const auto* player_proto = ProtoMngr.GetProtoCritter(player_proto_id);
     RUNTIME_ASSERT(player_proto);
 
-    auto* player = new Player(this, player_id, connection, player_proto);
+    auto* player = new Player(this, player_id, name, connection, player_proto);
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->GetPropertiesForEdit(), doc, *ScriptSys)) {
+    if (!PropertiesSerializator::LoadFromDbDocument(&player->GetPropertiesForEdit(), doc, *this)) {
         player->Release();
         connection->Send_TextMsg(STR_NET_WRONG_DATA);
         connection->GracefulDisconnect();
@@ -2762,8 +2763,8 @@ void FOServer::Process_PlaceToGame(Player* player)
         }
 
         // Send current items on map
-        auto items = cr->VisItem;
-        for (auto item_id : items) {
+        const auto items = cr->VisItem;
+        for (const auto item_id : items) {
             auto* item = ItemMngr.GetItem(item_id);
             if (item != nullptr) {
                 cr->Send_AddItemOnMap(item);
@@ -2786,10 +2787,10 @@ void FOServer::Process_GiveMap(Player* player)
     Critter* cr = player->GetOwnedCritter();
 
     bool automap = 0;
-    hash map_pid = 0;
+    hash map_pid;
     uint loc_id = 0;
-    hash hash_tiles = 0;
-    hash hash_scen = 0;
+    uint hash_tiles = 0;
+    uint hash_scen = 0;
 
     player->Connection->Bin >> automap;
     player->Connection->Bin >> map_pid;
@@ -2856,10 +2857,10 @@ void FOServer::Process_GiveMap(Player* player)
 
 void FOServer::Send_MapData(Player* player, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery)
 {
-    auto msg = NETMSG_MAP;
-    auto map_pid = pmap->ProtoId;
-    auto maxhx = pmap->GetWidth();
-    auto maxhy = pmap->GetHeight();
+    constexpr auto msg = NETMSG_MAP;
+    const auto map_pid = pmap->GetProtoId();
+    const auto maxhx = pmap->GetWidth();
+    const auto maxhy = pmap->GetHeight();
     uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(map_pid) + sizeof(maxhx) + sizeof(maxhy) + sizeof(bool) * 2;
 
     if (send_tiles) {
@@ -3523,7 +3524,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
             }
         } break;
         case DR_ITEM: {
-            const auto pid = static_cast<hash>(index);
+            const auto pid = hash {static_cast<uint>(index)};
             switch (demand.Op) {
             case '>':
                 if (static_cast<int>(master->CountItemPid(pid)) > demand.Value) {
@@ -3763,7 +3764,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
         }
             continue;
         case DR_ITEM: {
-            const auto pid = static_cast<hash>(index);
+            const auto pid = hash {static_cast<uint>(index)};
             const int cur_count = master->CountItemPid(pid);
             auto need_count = cur_count;
 
@@ -3820,8 +3821,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hash dlg_pack_id, ushort h
         CrMngr.CloseTalk(cl);
     }
 
-    DialogPack* dialog_pack = nullptr;
-    DialogsVec* dialogs = nullptr;
+    DialogPack* dialog_pack;
+    DialogsVec* dialogs;
 
     // Talk with npc
     if (npc != nullptr) {
@@ -3829,11 +3830,12 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hash dlg_pack_id, ushort h
             return;
         }
 
-        if (dlg_pack_id == 0u) {
+        if (dlg_pack_id) {
             const auto npc_dlg_id = npc->GetDialogId();
-            if (npc_dlg_id == 0u) {
+            if (npc_dlg_id) {
                 return;
             }
+
             dlg_pack_id = npc_dlg_id;
         }
 
@@ -3950,14 +3952,14 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hash dlg_pack_id, ushort h
     it_d = std::find_if(dialogs->begin(), dialogs->end(), [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
     if (it_d == dialogs->end()) {
         cl->Send_TextMsg(cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", go_dialog, cl->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", go_dialog, cl->GetName(), HashToString(dialog_pack->PackId));
         return;
     }
 
     // Compile
     if (!Dialog_Compile(npc, cl, *it_d, cl->Talk.CurDialog)) {
         cl->Send_TextMsg(cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetName(), HashToString(dialog_pack->PackId));
         return;
     }
 
@@ -4021,7 +4023,7 @@ void FOServer::Process_Dialog(Player* player)
     player->Connection->Bin >> talk_id;
     player->Connection->Bin >> num_answer;
 
-    if ((is_npc != 0u && (cr->Talk.Type != TalkType::Critter || cr->Talk.CritterId != talk_id)) || (is_npc == 0u && (cr->Talk.Type != TalkType::Hex || cr->Talk.DialogPackId != talk_id))) {
+    if ((is_npc != 0u && (cr->Talk.Type != TalkType::Critter || cr->Talk.CritterId != talk_id)) || (is_npc == 0u && (cr->Talk.Type != TalkType::Hex || cr->Talk.DialogPackId.Value != talk_id))) {
         CrMngr.CloseTalk(cr);
         WriteLog("Invalid talk id {}, client '{}'.\n", is_npc, talk_id, cr->GetName());
         return;
@@ -4033,8 +4035,6 @@ void FOServer::Process_Dialog(Player* player)
     CrMngr.ProcessTalk(cr, true);
 
     Critter* npc = nullptr;
-    DialogPack* dialog_pack = nullptr;
-    DialogsVec* dialogs = nullptr;
 
     // Find npc
     if (is_npc != 0u) {
@@ -4048,8 +4048,8 @@ void FOServer::Process_Dialog(Player* player)
     }
 
     // Set dialogs
-    dialog_pack = DlgMngr.GetDialog(cr->Talk.DialogPackId);
-    dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
+    auto* dialog_pack = DlgMngr.GetDialog(cr->Talk.DialogPackId);
+    auto* dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
     if ((dialogs == nullptr) || dialogs->empty()) {
         CrMngr.CloseTalk(cr);
         WriteLog("No dialogs, npc '{}', client '{}'.\n", npc->GetName(), cr->GetName());
@@ -4059,7 +4059,7 @@ void FOServer::Process_Dialog(Player* player)
     // Continue dialog
     auto* cur_dialog = &cr->Talk.CurDialog;
     const auto last_dialog = cur_dialog->Id;
-    uint dlg_id = 0;
+    uint dlg_id;
     uint force_dialog = 0;
     DialogAnswer* answer = nullptr;
 
@@ -4154,7 +4154,7 @@ void FOServer::Process_Dialog(Player* player)
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", dlg_id, cr->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", dlg_id, cr->GetName(), HashToString(dialog_pack->PackId));
         return;
     }
 
@@ -4162,7 +4162,7 @@ void FOServer::Process_Dialog(Player* player)
     if (!Dialog_Compile(npc, cr, *it_d, cr->Talk.CurDialog)) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cr->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cr->GetName(), HashToString(dialog_pack->PackId));
         return;
     }
 

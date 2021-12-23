@@ -41,6 +41,7 @@
 #include "CacheStorage.h"
 #include "CritterView.h"
 #include "EffectManager.h"
+#include "EngineBase.h"
 #include "Entity.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
@@ -59,6 +60,7 @@
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
+#include "StringUtils.h"
 #include "Timer.h"
 #include "TwoBitMask.h"
 #include "WinApi-Include.h"
@@ -108,7 +110,7 @@ constexpr auto INIT_NET_REASON_REG = 2;
 constexpr auto INIT_NET_REASON_LOAD = 3;
 constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : public PropertyRegistratorsHolder, public Entity, public GameProperties, public AnimationResolver
+class FOClient : public FOEngineBase, public AnimationResolver
 {
 public:
     struct MapText
@@ -134,6 +136,10 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int override { return 0; }
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override { return 0; }
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value) const -> string override { return ""; }
+
     [[nodiscard]] auto ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3, hash& arg4, uint& arg5, uint& arg6) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationFallout(hash arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
@@ -158,7 +164,7 @@ public:
     void ProcessInputEvent(const InputEvent& event);
     void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
 
-    auto AnimLoad(uint name_hash, AtlasType res_type) -> uint;
+    auto AnimLoad(hash name_hash, AtlasType res_type) -> uint;
     auto AnimLoad(string_view fname, AtlasType res_type) -> uint;
     auto AnimGetCurSpr(uint anim_id) -> uint;
     auto AnimGetCurSprCnt(uint anim_id) -> uint;
@@ -285,7 +291,7 @@ public:
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
     vector<ModelInstance*> DrawCritterModel {};
-    vector<uint> DrawCritterModelCrType {};
+    vector<hash> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
     int DrawCritterModelLayers[LAYERS3D_COUNT] {};
 
@@ -392,7 +398,7 @@ private:
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
     void Net_SendGetGameInfo();
-    void Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash);
+    void Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, uint tiles_hash, uint scen_hash);
     void Net_SendLoadMapOk();
     void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir();

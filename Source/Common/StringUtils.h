@@ -137,8 +137,7 @@ public:
     [[nodiscard]] auto toWideChar() const -> std::wstring;
 #endif
 
-    auto parseHash(hash h) -> _str&;
-    [[nodiscard]] auto toHash() -> hash;
+    [[nodiscard]] auto toHash() -> hstring;
 
 private:
     string _s {};
@@ -172,6 +171,22 @@ namespace fmt
         auto format(const _str& s, FormatContext& ctx)
         {
             return format_to(ctx.out(), "{}", s.strv());
+        }
+    };
+
+    template<>
+    struct formatter<hstring>
+    {
+        template<typename ParseContext>
+        constexpr auto parse(ParseContext& ctx)
+        {
+            return ctx.begin();
+        }
+
+        template<typename FormatContext>
+        auto format(const hstring& s, FormatContext& ctx)
+        {
+            return format_to(ctx.out(), "{}", s.Text ? s.Text : "");
         }
     };
 

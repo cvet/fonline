@@ -31,64 +31,32 @@
 // SOFTWARE.
 //
 
-#include "ItemView.h"
-#include "Client.h"
-#include "Timer.h"
+#pragma once
 
-ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
-{
-    RUNTIME_ASSERT(proto);
-    RUNTIME_ASSERT(GetCount() > 0);
-}
+#include "Common.h"
 
-auto ItemView::Clone() const -> ItemView*
-{
-    auto* clone = new ItemView(_engine, GetId(), static_cast<const ProtoItem*>(_proto));
-    clone->SetProperties(GetProperties());
-    return clone;
-}
+#include "EntityProperties.h"
 
-auto ItemView::IsStatic() const -> bool
-{
-    return GetIsStatic();
-}
+DECLARE_EXCEPTION(HashCollisionException);
 
-auto ItemView::IsAnyScenery() const -> bool
+class FOEngineBase : public NameResolver, public PropertyRegistratorsHolder, public Entity, public GameProperties
 {
-    return IsScenery() || IsWall();
-}
+public:
+    FOEngineBase(const FOEngineBase&) = delete;
+    FOEngineBase(FOEngineBase&&) noexcept = delete;
+    auto operator=(const FOEngineBase&) = delete;
+    auto operator=(FOEngineBase&&) noexcept = delete;
 
-auto ItemView::IsScenery() const -> bool
-{
-    return GetIsScenery();
-}
+    [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
+    [[nodiscard]] auto HashToString(hash h) const -> string_view override;
+    [[nodiscard]] auto StringToHash(string_view s) const -> hash override;
+    [[nodiscard]] auto ResolveGenericValue(string_view str, bool& failed) -> int override;
 
-auto ItemView::IsWall() const -> bool
-{
-    return GetIsWall();
-}
+protected:
+    explicit FOEngineBase(bool is_server);
+    ~FOEngineBase() override = default;
 
-auto ItemView::IsColorize() const -> bool
-{
-    return GetIsColorize();
-}
-
-auto ItemView::GetColor() const -> uint
-{
-    return GetLightColor() & 0xFFFFFF;
-}
-
-auto ItemView::GetAlpha() const -> uchar
-{
-    return GetLightColor() >> 24;
-}
-
-auto ItemView::GetInvColor() const -> uint
-{
-    return GetIsColorizeInv() ? GetLightColor() : 0;
-}
-
-auto ItemView::LightGetHash() const -> uint
-{
-    return GetIsLight() ? GetLightIntensity() + GetLightDistance() + GetLightFlags() + GetLightColor() : 0;
-}
+private:
+    mutable unordered_map<decltype(hash::Value), string_view> _hashesLookup {};
+    mutable unordered_map<string_view, decltype(hash::Value)> _hashesLookupRev {};
+};

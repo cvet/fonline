@@ -274,24 +274,23 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersByPids(FOClient* client, hash pid, uchar findType)
 {
-    auto& crits = client->HexMngr.GetCritters();
     vector<CritterView*> critters;
-    if (pid == 0u) {
-        for (auto it = crits.begin(), end = crits.end(); it != end; ++it) {
-            auto* cr = it->second;
+
+    if (!pid) {
+        for (const auto& [id, cr] : client->HexMngr.GetCritters()) {
             if (cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }
         }
     }
     else {
-        for (auto it = crits.begin(), end = crits.end(); it != end; ++it) {
-            auto* cr = it->second;
+        for (const auto& [id, cr] : client->HexMngr.GetCritters()) {
             if (cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }
         }
     }
+
     return critters;
 }
 
@@ -539,7 +538,7 @@
 [[maybe_unused]] hash Client_Game_GetCurMapPid(FOClient* client)
 {
     if (!client->HexMngr.IsMapLoaded()) {
-        return 0;
+        return hash();
     }
     return client->CurMapPid;
 }
@@ -1003,13 +1002,13 @@
     }
 
     const auto* simply_tile = client->HexMngr.GetField(hx, hy).SimplyTile[roof ? 1 : 0];
-    if (simply_tile && !layer) {
+    if (simply_tile != nullptr && layer == 0) {
         return simply_tile->NameHash;
     }
 
     const auto* tiles = client->HexMngr.GetField(hx, hy).Tiles[roof ? 1 : 0];
     if (tiles == nullptr || tiles->empty()) {
-        return 0;
+        return hash();
     }
 
     for (const auto& tile : *tiles) {
@@ -1017,7 +1016,7 @@
             return tile.Anim->NameHash;
         }
     }
-    return 0;
+    return hash();
 }
 
 ///# ...
@@ -1681,7 +1680,7 @@
     auto disable_egg = mapSpr->DisableEgg;
     auto contour_color = mapSpr->ContourColor;
 
-    if (mapSpr->ProtoId != 0u) {
+    if (mapSpr->ProtoId) {
         const auto* const proto_item = client->ProtoMngr->GetProtoItem(mapSpr->ProtoId);
         if (!proto_item) {
             return;
@@ -1793,7 +1792,7 @@
         }
 
         client->SprMngr.PushAtlasType(AtlasType::Dynamic);
-        model = client->SprMngr.LoadModel(_str().parseHash(modelName), false);
+        model = client->SprMngr.LoadModel(client->HashToString(modelName), false);
         client->SprMngr.PopAtlasType();
         client->DrawCritterModelCrType[instance] = modelName;
         client->DrawCritterModelFailedToLoad[instance] = false;

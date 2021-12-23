@@ -1005,7 +1005,7 @@ def genCode(lang, target, isASCompiler=False):
                     engineEntityType = 'FOMapper'
                 
                 if targ == 'Common':
-                    engineEntityTypeExtern = 'void'
+                    engineEntityTypeExtern = 'FOEngineBase'
                 elif targ == 'Mapper':
                     engineEntityTypeExtern = 'FOMapper'
             

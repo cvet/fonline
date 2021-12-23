@@ -165,7 +165,7 @@ public:
     auto operator=(HexManager&&) noexcept = delete;
     ~HexManager();
 
-    [[nodiscard]] auto IsMapLoaded() const -> bool { return _curPidMap != 0; }
+    [[nodiscard]] auto IsMapLoaded() const -> bool { return !!_curPidMap; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
     [[nodiscard]] auto GetField(ushort hx, ushort hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _maxHexX + hx]; }
     [[nodiscard]] auto IsHexToDraw(ushort hx, ushort hy) const -> bool { return _hexField[hy * _maxHexX + hx].IsView; }
@@ -187,7 +187,7 @@ public:
 
     auto LoadMap(CacheStorage& cache, hash map_pid) -> bool;
     void UnloadMap();
-    void GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles, hash& hash_scen) const;
+    void GetMapHash(CacheStorage& cache, hash map_pid, uint& hash_tiles, uint& hash_scen) const;
     void GenerateItem(uint id, hash proto_id, Properties& props);
     void ResizeField(ushort w, ushort h);
     void ClearHexTrack();
@@ -259,7 +259,7 @@ public:
     [[nodiscard]] auto IsIgnorePid(hash pid) const -> bool;
     [[nodiscard]] auto GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushort>>;
 
-    auto SetProtoMap(ProtoMap& pmap) -> bool;
+    auto SetProtoMap(const ProtoMap& pmap) -> bool;
     void GetProtoMap(ProtoMap& pmap);
     void ClearSelTiles();
     void ParseSelTiles();
@@ -333,8 +333,8 @@ private:
     int _curMapTime {-1};
     int _dayTime[4] {};
     uchar _dayColor[12] {};
-    hash _curHashTiles {};
-    hash _curHashScen {};
+    uint _curHashTiles {};
+    uint _curHashScen {};
     bool _mapperMode {};
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};

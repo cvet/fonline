@@ -95,14 +95,14 @@ public:
 
     ScriptFunc() = default;
     explicit ScriptFunc(Func f) : _func {f} { }
-    explicit operator bool() { return !!_func; }
+    explicit operator bool() const { return !!_func; }
     auto operator()(Args... args) -> bool { return _func(std::forward<Args>(args)...); }
 
 private:
     Func _func {};
 };
 
-class ScriptSystem : public EnumResolver
+class ScriptSystem
 {
 public:
     ScriptSystem() = delete;
@@ -112,10 +112,6 @@ public:
     auto operator=(const ScriptSystem&) = delete;
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
-
-    [[nodiscard]] auto ResolveEnumValue(string_view /*enum_value_name*/, bool& /*fail*/) const -> int override { return 0; }
-    [[nodiscard]] auto ResolveEnumValue(string_view /*enum_name*/, string_view /*value_name*/, bool& /*fail*/) const -> int override { return 0; }
-    [[nodiscard]] auto ResolveEnumValueName(string_view /*enum_name*/, int /*value*/) const -> string override { return ""; }
 
     void RemoveEntity(Entity* entity) { }
 

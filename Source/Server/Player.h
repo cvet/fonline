@@ -50,12 +50,14 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, uint id, ClientConnection* connection, const ProtoCritter* proto);
+    Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto);
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
+
+    [[nodiscard]] auto GetName() const -> string_view override;
 
     [[nodiscard]] auto IsSendDisabled() const -> bool { return DisableSend > 0; }
     [[nodiscard]] auto GetIp() const -> uint;
@@ -110,7 +112,6 @@ public:
     void Send_AllAutomapsInfo(MapManager& map_mngr);
     void Send_SomeItems(const vector<Item*>* items, int param);
 
-    string Name {};
     ClientConnection* Connection {};
     int DisableSend {};
     uchar Access {ACCESS_CLIENT};
@@ -120,6 +121,7 @@ public:
     uint LastSayEqualCount {};
 
 private:
+    string _name {};
     Critter* _ownedCr {}; // Todo: allow attach many critters to sigle player
     uint _talkNextTick {};
 };

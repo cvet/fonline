@@ -49,7 +49,7 @@
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : PropertyRegistratorsHolder(false), Entity(GetPropertyRegistrator(ENTITY_CLASS_NAME)), GameProperties(GetInitRef()), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this), ResMngr(FileMngr, SprMngr, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this, *this), ResMngr(FileMngr, SprMngr, *this, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
     _netSock = INVALID_SOCKET;
@@ -286,7 +286,7 @@ void FOClient::UpdateFilesLoop()
         _updateData->Progress = "";
         if (!_updateData->FileList.empty()) {
             _updateData->Progress += "\n";
-            for (auto& update_file : _updateData->FileList) {
+            for (const auto& update_file : _updateData->FileList) {
                 const auto cur = static_cast<float>(update_file.Size - update_file.RemaningSize) / (1024.0f * 1024.0f);
                 const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
                 const string name = _str(update_file.Name).formatPath();
@@ -297,7 +297,7 @@ void FOClient::UpdateFilesLoop()
 
         if (_updateData->FileListReceived && !_updateData->FileDownloading) {
             if (!_updateData->FileList.empty()) {
-                auto& update_file = _updateData->FileList.front();
+                const auto& update_file = _updateData->FileList.front();
 
                 if (_updateData->TempFile) {
                     _updateData->TempFile = nullptr;
@@ -1866,7 +1866,7 @@ void FOClient::Net_SendGetGameInfo()
     _netOut << NETMSG_SEND_GET_INFO;
 }
 
-void FOClient::Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, hash tiles_hash, hash scen_hash)
+void FOClient::Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, uint tiles_hash, uint scen_hash)
 {
     _netOut << NETMSG_SEND_GIVE_MAP;
     _netOut << automap;
@@ -1976,9 +1976,6 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     if (is_npc) {
         _netIn >> npc_pid;
     }
-    else {
-        npc_pid = 0u;
-    }
 
     // Player
     string cl_name;
@@ -1998,7 +1995,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         WriteLog("Invalid positions hx {}, hy {}, dir {}.\n", hx, hy, dir);
     }
     else {
-        const auto* proto = ProtoMngr->GetProtoCritter(is_npc ? npc_pid : _str("Player").toHash());
+        const auto* proto = ProtoMngr->GetProtoCritter(is_npc ? npc_pid : StringToHash("Player"));
         RUNTIME_ASSERT(proto);
 
         auto* cr = new CritterView(this, crid, proto, false);
@@ -2016,14 +2013,14 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         cr->Flags = flags;
 
         if (is_npc) {
-            if (cr->GetDialogId() != 0u && (_curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(cr->GetDialogId())) != 0u)) {
-                cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(cr->GetDialogId()));
+            if (cr->GetDialogId() && (_curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(cr->GetDialogId().Value)) != 0u)) {
+                cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(cr->GetDialogId().Value));
             }
             else {
-                cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(npc_pid));
+                cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(npc_pid.Value));
             }
-            if (_curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_AVATAR(cr->GetDialogId())) != 0u) {
-                cr->Avatar = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_AVATAR(cr->GetDialogId()));
+            if (_curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_AVATAR(cr->GetDialogId().Value))) {
+                cr->Avatar = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_AVATAR(cr->GetDialogId().Value));
             }
         }
         else {
@@ -3052,7 +3049,7 @@ void FOClient::Net_OnFlyEffect()
     }
 
     if (!HexMngr.RunEffect(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
-        WriteLog("Run effect '{}' failed.\n", _str().parseHash(eff_pid));
+        WriteLog("Run effect '{}' failed.\n", HashToString(eff_pid));
     }
 }
 
@@ -3101,7 +3098,7 @@ void FOClient::Net_OnEndParseToGame()
     FlashGameWindow();
     ScreenFadeOut();
 
-    if (CurMapPid != 0u) {
+    if (CurMapPid) {
         HexMngr.SkipItemsFade();
         HexMngr.FindSetCenter(_chosen->GetHexX(), _chosen->GetHexY());
         _chosen->AnimateStay();
@@ -3357,8 +3354,8 @@ void FOClient::Net_OnLoadMap()
     uchar map_index_in_loc;
     int map_time;
     uchar map_rain;
-    hash hash_tiles;
-    hash hash_scen;
+    uint hash_tiles;
+    uint hash_scen;
     _netIn >> msg_len;
     _netIn >> map_pid;
     _netIn >> loc_pid;
@@ -3370,7 +3367,7 @@ void FOClient::Net_OnLoadMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (map_pid != 0u) {
+    if (map_pid) {
         NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
         NET_READ_PROPERTIES(_netIn, _tempPropertiesDataExt);
     }
@@ -3389,7 +3386,7 @@ void FOClient::Net_OnLoadMap()
         _curLocation = nullptr;
     }
 
-    if (map_pid != 0u) {
+    if (map_pid) {
         _curLocation = new LocationView(this, 0, ProtoMngr->GetProtoLocation(loc_pid));
         _curLocation->RestoreData(_tempPropertiesDataExt);
         _curMap = new MapView(this, 0, ProtoMngr->GetProtoMap(map_pid));
@@ -3408,9 +3405,9 @@ void FOClient::Net_OnLoadMap()
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
 
-    if (map_pid != 0u) {
-        hash hash_tiles_cl;
-        hash hash_scen_cl;
+    if (map_pid) {
+        uint hash_tiles_cl;
+        uint hash_scen_cl;
         HexMngr.GetMapHash(Cache, map_pid, hash_tiles_cl, hash_scen_cl);
 
         if (hash_tiles != hash_tiles_cl || hash_scen != hash_scen_cl) {
@@ -3458,9 +3455,9 @@ void FOClient::Net_OnMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    WriteLog("Map {} received...\n", map_pid);
+    WriteLog("Map {} received...\n", HashToString(map_pid));
 
-    const string map_name = _str("{}.map", map_pid);
+    const string map_name = _str("{}.map", HashToString(map_pid));
     auto tiles = false;
     char* tiles_data = nullptr;
     uint tiles_len = 0;
@@ -3873,7 +3870,7 @@ void FOClient::Net_OnAutomapsInfo()
             Automap amap;
             amap.LocId = loc_id;
             amap.LocPid = loc_pid;
-            amap.LocName = _curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_NAME(loc_pid));
+            amap.LocName = _curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_NAME(loc_pid.Value));
 
             for (ushort j = 0; j < maps_count; j++) {
                 hash map_pid;
@@ -3882,7 +3879,7 @@ void FOClient::Net_OnAutomapsInfo()
                 _netIn >> map_index_in_loc;
 
                 amap.MapPids.push_back(map_pid);
-                amap.MapNames.push_back(_curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_MAP_NAME(loc_pid, map_index_in_loc)));
+                amap.MapNames.push_back(_curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_MAP_NAME(loc_pid.Value, map_index_in_loc)));
             }
 
             if (it != _automaps.end()) {
@@ -4037,11 +4034,11 @@ void FOClient::FlashGameWindow()
 #endif
 }
 
-auto FOClient::AnimLoad(uint name_hash, AtlasType res_type) -> uint
+auto FOClient::AnimLoad(hash name_hash, AtlasType res_type) -> uint
 {
     auto* anim = ResMngr.GetAnim(name_hash, res_type);
     if (anim == nullptr) {
-        return 0;
+        return 0u;
     }
 
     auto* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
@@ -4065,7 +4062,7 @@ auto FOClient::AnimLoad(uint name_hash, AtlasType res_type) -> uint
 
 auto FOClient::AnimLoad(string_view fname, AtlasType res_type) -> uint
 {
-    auto* anim = ResMngr.GetAnim(_str(fname).toHash(), res_type);
+    auto* anim = ResMngr.GetAnim(StringToHash(fname), res_type);
     if (anim == nullptr) {
         return 0;
     }

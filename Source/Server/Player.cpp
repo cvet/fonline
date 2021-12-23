@@ -41,7 +41,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, uint id, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef())
+Player::Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef()), _name {name}
 {
     Connection = connection;
     _talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
@@ -51,6 +51,11 @@ Player::~Player()
 {
     Connection->HardDisconnect();
     delete Connection;
+}
+
+auto Player::GetName() const -> string_view
+{
+    return _name;
 }
 
 auto Player::GetIp() const -> uint
@@ -144,13 +149,13 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     }
 
     Location* loc = nullptr;
-    hash pid_map = 0;
-    hash pid_loc = 0;
+    hash pid_map;
+    hash pid_loc;
     uchar map_index_in_loc = 0;
     auto map_time = -1;
     uchar map_rain = 0;
-    hash hash_tiles = 0;
-    hash hash_scen = 0;
+    uint hash_tiles = 0;
+    uint hash_scen = 0;
 
     if (map == nullptr) {
         RUNTIME_ASSERT(_ownedCr);
@@ -720,7 +725,8 @@ void Player::Send_Talk()
 
     const auto close = _ownedCr->_talk.Type == TalkType::None;
     auto is_npc = static_cast<uchar>(_ownedCr->_talk.Type == TalkType::Critter);
-    auto talk_id = (is_npc != 0u ? _ownedCr->_talk.CritterId : _ownedCr->_talk.DialogPackId);
+    static_assert(sizeof(_ownedCr->_talk.DialogPackId.Value) == sizeof(uint));
+    auto talk_id = (is_npc != 0u ? _ownedCr->_talk.CritterId : _ownedCr->_talk.DialogPackId.Value);
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(is_npc) + sizeof(talk_id) + sizeof(uchar);
 
     CONNECTION_OUTPUT_BEGIN(Connection);

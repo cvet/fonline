@@ -499,7 +499,7 @@
     // Create and generate location
     auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
     if (!loc) {
-        throw ScriptException("Unable to create location '{}'.", _str().parseHash(locPid));
+        throw ScriptException("Unable to create location '{}'.", server->HashToString(locPid));
     }
 
     // Add known locations to critters
@@ -588,13 +588,13 @@
     }
 
     // Load from db
-    const auto* player_proto = server->ProtoMngr.GetProtoCritter(_str("Player").toHash());
+    const auto player_proto_id = server->StringToHash("Player");
+    const auto* player_proto = server->ProtoMngr.GetProtoCritter(player_proto_id);
     RUNTIME_ASSERT(player_proto);
 
-    player = new Player(server, id, nullptr, player_proto);
-    player->Name = name;
+    player = new Player(server, id, name, nullptr, player_proto);
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->GetPropertiesForEdit(), doc, *server->ScriptSys)) {
+    if (!PropertiesSerializator::LoadFromDbDocument(&player->GetPropertiesForEdit(), doc, *server)) {
         throw ScriptException("Player data db read failed");
     }
 
@@ -633,7 +633,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Map* Server_Game_GetMapByPid(FOServer* server, hash mapPid, uint skipCount)
 {
-    if (mapPid == 0u) {
+    if (!mapPid) {
         throw ScriptException("Invalid zero map proto id arg");
     }
 
@@ -660,7 +660,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Location* Server_Game_GetLocationByPid(FOServer* server, hash locPid, uint skipCount)
 {
-    if (locPid == 0u) {
+    if (!locPid) {
         throw ScriptException("Invalid zero location proto id arg");
     }
 
@@ -748,7 +748,7 @@
         throw ScriptException("Can't open new dialog from demand, result or dialog functions");
     }
 
-    server->BeginDialog(cr, npc, 0, 0, 0, ignoreDistance);
+    server->BeginDialog(cr, npc, hash(), 0, 0, ignoreDistance);
 
     return cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == npc->GetId();
 }
@@ -760,7 +760,7 @@
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunCustomNpcDialog(FOServer* server, Critter* cr, Critter* npc, uint dlgPack, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunCustomNpcDialog(FOServer* server, Critter* cr, Critter* npc, hash dlgPack, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
@@ -792,7 +792,7 @@
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunCustomDialogOnHex(FOServer* server, Critter* cr, uint dlgPack, ushort hx, ushort hy, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunCustomDialogOnHex(FOServer* server, Critter* cr, hash dlgPack, ushort hx, ushort hy, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
@@ -881,7 +881,7 @@
 {
     vector<Item*> items;
     for (auto* item : server->ItemMngr.GetItems()) {
-        if (!item->IsDestroyed() && (pid == 0u || pid == item->GetProtoId())) {
+        if (!item->IsDestroyed() && (!pid || pid == item->GetProtoId())) {
             items.push_back(item);
         }
     }
@@ -914,7 +914,7 @@
     vector<Critter*> npcs;
 
     for (auto* npc_ : server->CrMngr.GetAllNpc()) {
-        if (!npc_->IsDestroyed() && (pid == 0u || pid == npc_->GetProtoId())) {
+        if (!npc_->IsDestroyed() && (!pid || pid == npc_->GetProtoId())) {
             npcs.push_back(npc_);
         }
     }
@@ -931,7 +931,7 @@
     vector<Map*> maps;
 
     for (auto* map : server->MapMngr.GetMaps()) {
-        if (pid == 0u || pid == map->GetProtoId()) {
+        if (!pid || pid == map->GetProtoId()) {
             maps.push_back(map);
         }
     }
@@ -948,7 +948,7 @@
     vector<Location*> locations;
 
     for (auto* loc : server->MapMngr.GetLocations()) {
-        if (pid == 0u || pid == loc->GetProtoId()) {
+        if (!pid || pid == loc->GetProtoId()) {
             locations.push_back(loc);
         }
     }

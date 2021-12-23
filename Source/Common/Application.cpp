@@ -1500,7 +1500,7 @@ auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*de
         uint passes = 1;
         for (size_t i = 0; i < commands.size(); i++)
             if (commands[i].size() >= 2 && commands[i][0] == "Passes")
-                passes = GenericUtils::ConvertParamValue(commands[i][1], fail);
+                passes = GenericUtils::ResolveGenericValue(commands[i][1], fail);
 
         // New effect
         auto effect = std::make_unique<Effect>();
@@ -1622,7 +1622,7 @@ auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*de
             StrVec& tokens = commands[i];
             if (tokens[0] == "Pass" && tokens.size() >= 3)
             {
-                uint pass = GenericUtils::ConvertParamValue(tokens[1], fail);
+                uint pass = GenericUtils::ResolveGenericValue(tokens[1], fail);
                 if (pass < passes)
                 {
                     EffectPass& effect_pass = effect->Passes[pass];

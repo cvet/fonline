@@ -157,7 +157,6 @@ using ushort = unsigned short;
 using uint = unsigned int;
 using uint64 = uint64_t;
 using int64 = int64_t;
-using hash = uint;
 using max_t = uint; // Todo: remove max_t
 
 // Check the sizes of base types
@@ -698,7 +697,7 @@ template<class T>
 auto ReadDataArr(const vector<uchar>& vec, uint size, uint& pos) -> const T*
 {
     pos += size;
-    return size ? &vec[pos - size] : nullptr;
+    return size ? reinterpret_cast<const T*>(&vec[pos - size]) : nullptr;
 }
 
 // Flex rect
@@ -836,6 +835,35 @@ struct TPoint
 using IPoint = TPoint<int>;
 using FPoint = TPoint<float>;
 
+// Hashing
+// ReSharper disable once CppInconsistentNaming
+struct hash
+{
+    explicit operator bool() const { return Value != 0u; }
+    auto operator==(const hash& other) const { return Value == other.Value; }
+    auto operator!=(const hash& other) const { return Value != other.Value; }
+    auto operator<(const hash& other) const { return Value < other.Value; }
+
+    uint Value {};
+};
+static_assert(sizeof(hash) == 4);
+static_assert(std::is_standard_layout_v<hash>);
+
+// ReSharper disable once CppInconsistentNaming
+struct hstring : hash
+{
+    explicit operator bool() const { return Value != 0u; }
+    auto operator==(const hstring& other) const { return Value == other.Value; }
+    auto operator!=(const hstring& other) const { return Value != other.Value; }
+    auto operator<(const hstring& other) const { return Value < other.Value; }
+    auto operator==(const hash& other) const { return Value == other.Value; }
+    auto operator!=(const hash& other) const { return Value != other.Value; }
+    auto operator<(const hash& other) const { return Value < other.Value; }
+
+    const char* Text {};
+};
+static_assert(offsetof(hstring, Value) == 0);
+
 // Generic constants
 // Todo: eliminate as much defines as possible
 // Todo: convert all defines to constants and enums
@@ -854,7 +882,7 @@ static constexpr float MAX_ZOOM = 20.0f;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes
-#define MAKE_PLAYER_ID(name) static_cast<uint>((1 << 31) | _str(name).toHash())
+#define MAKE_PLAYER_ID(name) static_cast<uint>((1 << 31) | _str(name).toHash().Value)
 #define DLGID_MASK (0xFFFFC000)
 #define DLG_STR_ID(dlg_id, idx) (((dlg_id)&DLGID_MASK) | ((idx) & ~DLGID_MASK))
 #define LOCPID_MASK (0xFFFFF000)
@@ -1230,12 +1258,15 @@ constexpr auto xrange(T value)
 
 // ReSharper restore CppInconsistentNaming
 
-class EnumResolver
+class NameResolver
 {
 public:
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool& fail) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& fail) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value) const -> string = 0;
+    [[nodiscard]] virtual auto HashToString(hash h) const -> string_view = 0;
+    [[nodiscard]] virtual auto StringToHash(string_view s) const -> hash = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool& failed) -> int = 0;
 };
 
 class AnimationResolver

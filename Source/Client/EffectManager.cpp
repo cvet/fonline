@@ -48,7 +48,7 @@ EffectManager::EffectManager(EffectSettings& settings, FileManager& file_mngr, G
 auto EffectManager::LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*
 {
     // Try find already loaded effect
-    for (auto& effect : _loadedEffects) {
+    for (const auto& effect : _loadedEffects) {
         if (effect->IsSame(name, defines)) {
             return effect.get();
         }

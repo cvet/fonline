@@ -199,7 +199,7 @@ public:
     [[nodiscard]] auto FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection;
     [[nodiscard]] auto ReadFile(string_view path) -> File;
     [[nodiscard]] auto ReadFileHeader(string_view path) -> FileHeader;
-    [[nodiscard]] auto ReadConfigFile(string_view path) -> ConfigFile;
+    [[nodiscard]] auto ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile;
     [[nodiscard]] auto WriteFile(string_view path, bool apply) -> OutputFile;
 
     void AddDataSource(string_view path, bool cache_dirs);

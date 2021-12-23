@@ -430,7 +430,7 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
                     }
                 }
 
-                vector<uint> hierarchy;
+                vector<hash> hierarchy;
                 auto* fbx_node = fbx_all_node;
                 while (fbx_node != nullptr) {
                     hierarchy.insert(hierarchy.begin(), Bone::GetHash(fbx_node->GetName()));
@@ -691,7 +691,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
 
             mesh->SkinBones.resize(1);
             mesh->SkinBoneOffsets.resize(1);
-            mesh->SkinBones[0] = 0;
+            mesh->SkinBones[0] = hash();
             mesh->SkinBoneOffsets[0] = mt * mr * ms;
             for (auto& v : mesh->Vertices) {
                 v.BlendIndices[0] = 0.0f;

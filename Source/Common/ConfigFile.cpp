@@ -34,7 +34,12 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-ConfigFile::ConfigFile(string_view str)
+ConfigFile::ConfigFile(string_view str, NameResolver& name_resolver) : _nameResolver {&name_resolver}
+{
+    ParseStr(str);
+}
+
+ConfigFile::ConfigFile(string_view str, std::nullptr_t) : _nameResolver {nullptr}
 {
     ParseStr(str);
 }
@@ -141,10 +146,12 @@ void ConfigFile::ParseStr(string_view str)
                     offset = last + 1;
 
                     if (i == 0 && num == 0u) {
-                        num = _str(str2).isNumber() ? _str(str2).toInt() : _str(str2).toHash();
+                        static_assert(sizeof(hash) == sizeof(num));
+                        num = _str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->StringToHash(str2).Value;
                     }
                     else if (i == 1 && num != 0u) {
-                        num += !str2.empty() ? (_str(str2).isNumber() ? _str(str2).toInt() : _str(str2).toHash()) : 0;
+                        static_assert(sizeof(hash) == sizeof(num));
+                        num += !str2.empty() ? (_str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->StringToHash(str2).Value) : 0;
                     }
                     else if (i == 2 && num != 0u) {
                         (*cur_app)[_str("{}", num)] = str2;

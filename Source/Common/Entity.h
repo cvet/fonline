@@ -75,6 +75,7 @@ public:
     auto operator=(const Entity&) = delete;
     auto operator=(Entity&&) noexcept = delete;
 
+    [[nodiscard]] virtual auto GetName() const -> string_view = 0;
     [[nodiscard]] auto GetClassName() const -> string_view;
     [[nodiscard]] auto GetProperties() const -> const Properties&;
     [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
@@ -116,18 +117,22 @@ private:
 class ProtoEntity : public Entity
 {
 public:
+    [[nodiscard]] auto GetName() const -> string_view override;
     [[nodiscard]] auto GetProtoId() const -> hash;
-    [[nodiscard]] auto GetName() const -> string;
-    [[nodiscard]] auto HaveComponent(hash name) const -> bool;
+    [[nodiscard]] auto HaveComponent(string_view name) const -> bool;
+    [[nodiscard]] auto GetComponents() -> unordered_set<string_view>& { return _components; }
+    [[nodiscard]] auto GetComponents() const -> unordered_set<string_view> { return _components; }
 
-    const hash ProtoId;
     vector<uint> TextsLang {};
     vector<FOMsg*> Texts {};
-    set<hash> Components {};
     string CollectionName {};
 
 protected:
-    ProtoEntity(hash proto_id, const PropertyRegistrator* registrator);
+    ProtoEntity(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator);
+
+    const hash _protoId;
+    const string _protoName;
+    unordered_set<string_view> _components {};
 };
 
 class EntityWithProto : public Entity
@@ -139,12 +144,13 @@ public:
     auto operator=(const EntityWithProto&) = delete;
     auto operator=(EntityWithProto&&) noexcept = delete;
 
+    [[nodiscard]] auto GetName() const -> string_view override;
     [[nodiscard]] auto GetProtoId() const -> hash;
-    [[nodiscard]] auto GetName() const -> string;
-
-    const ProtoEntity* Proto;
+    [[nodiscard]] auto GetProto() const -> const ProtoEntity*;
 
 protected:
     EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto);
     ~EntityWithProto() override;
+
+    const ProtoEntity* _proto;
 };

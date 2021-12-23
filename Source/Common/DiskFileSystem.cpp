@@ -54,7 +54,7 @@ struct DiskFileSystemData
 {
     DiskFileSystemData()
     {
-        const auto buf_len = 16384 * 2;
+        constexpr auto buf_len = 16384 * 2;
 #if FO_WINDOWS
         const auto dir_buf = std::make_unique<wchar_t[]>(buf_len);
         ::GetCurrentDirectoryW(buf_len, dir_buf.get());
@@ -521,7 +521,7 @@ auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
 
 auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
 {
-    const DWORD flags = MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH;
+    constexpr DWORD flags = MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH;
     return !(::MoveFileExW(WinMultiByteToWideChar(fname).c_str(), WinMultiByteToWideChar(new_fname).c_str(), flags) == 0);
 }
 
@@ -808,7 +808,7 @@ void DiskFileSystem::ResolvePath(string& path)
 
 void DiskFileSystem::MakeDirTree(string_view path)
 {
-    string work = _str(path).normalizePathSlashes();
+    const string work = _str(path).normalizePathSlashes();
     for (size_t i = 0; i < work.length(); i++) {
         if (work[i] == '/') {
             auto path_part = work.substr(0, i);
@@ -870,7 +870,7 @@ void DiskFileSystem::ResetCurDir()
 auto DiskFileSystem::GetExePath() -> string
 {
 #if FO_WINDOWS
-    const DWORD buf_len = 4096;
+    constexpr DWORD buf_len = 4096;
     wchar_t buf[buf_len] {};
     const auto r = ::GetModuleFileNameW(nullptr, buf, buf_len);
     return r != 0u ? _str().parseWideChar(buf).str() : string();

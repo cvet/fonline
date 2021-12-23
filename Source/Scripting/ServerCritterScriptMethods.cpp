@@ -492,7 +492,7 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Critter_DeleteItem(Critter* self, hash pid, uint count)
 {
-    if (pid == 0u) {
+    if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
 
@@ -511,14 +511,18 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Critter_AddItem(Critter* self, hash pid, uint count)
 {
-    if (pid == 0u) {
+    if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
     if (!self->GetEngine()->ProtoMngr.GetProtoItem(pid)) {
-        throw ScriptException("Invalid proto", _str().parseHash(pid));
+        throw ScriptException("Invalid proto", self->GetEngine()->HashToString(pid));
     }
 
-    return self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count > 0 ? count : 1);
+    if (count == 0u) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->ItemMngr.AddItemCritter(self, pid, count);
 }
 
 ///# ...
@@ -540,7 +544,8 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Critter_GetItemByPredicate(Critter* self, const std::function<bool(Item*)>& predicate)
 {
-    auto inv_items_copy = self->GetInventory(); // Make copy cuz predicate call can change inventory
+    const auto inv_items_copy = self->GetInventory(); // Make copy cuz predicate call can change inventory
+
     for (auto* item : inv_items_copy) {
         if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             return item;
@@ -743,26 +748,42 @@
 }
 
 ///# ...
-///# param byId ...
-///# param locNum ...
+///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsKnownLocation(Critter* self, bool byId, uint locNum)
+[[maybe_unused]] bool Server_Critter_IsKnownLocationId(Critter* self, uint locId)
 {
-    if (byId) {
-        return self->GetEngine()->MapMngr.CheckKnownLocById(self, locNum);
+    if (locId == 0u) {
+        throw ScriptException("Invalid location id");
     }
-    return self->GetEngine()->MapMngr.CheckKnownLocByPid(self, locNum);
+
+    return self->GetEngine()->MapMngr.CheckKnownLocById(self, locId);
 }
 
 ///# ...
-///# param byId ...
-///# param locNum ...
+///# param locPid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetKnownLocation(Critter* self, bool byId, uint locNum)
+[[maybe_unused]] bool Server_Critter_IsKnownLocationProto(Critter* self, hash locPid)
 {
-    auto* loc = (byId ? self->GetEngine()->MapMngr.GetLocation(locNum) : self->GetEngine()->MapMngr.GetLocationByPid(locNum, 0));
+    if (!locPid) {
+        throw ScriptException("Invalid location pid");
+    }
+
+    return self->GetEngine()->MapMngr.CheckKnownLocByPid(self, locPid);
+}
+
+///# ...
+///# param locId ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_SetKnownLocation(Critter* self, uint locId)
+{
+    if (locId == 0u) {
+        throw ScriptException("Invalid location id");
+    }
+
+    auto* loc = self->GetEngine()->MapMngr.GetLocation(locId);
     if (!loc) {
         throw ScriptException("Location not found");
     }
@@ -799,13 +820,16 @@
 }
 
 ///# ...
-///# param byId ...
-///# param locNum ...
+///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, bool byId, uint locNum)
+[[maybe_unused]] void Server_Critter_UnsetKnownLocation(Critter* self, uint locId)
 {
-    auto* loc = (byId ? self->GetEngine()->MapMngr.GetLocation(locNum) : self->GetEngine()->MapMngr.GetLocationByPid(locNum, 0));
+    if (locId == 0u) {
+        throw ScriptException("Invalid location id");
+    }
+
+    auto* loc = self->GetEngine()->MapMngr.GetLocation(locId);
     if (!loc) {
         throw ScriptException("Location not found");
     }
@@ -925,7 +949,7 @@
         }
     }
     else {
-        self->SetScriptId(0);
+        self->SetScriptId(hash());
     }
 }
 

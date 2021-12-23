@@ -96,7 +96,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     StaticMap static_map {};
 
     MapLoader::Load(
-        pmap->GetName(), file_mngr, _engine->ProtoMngr, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME),
+        pmap->GetName(), file_mngr, _engine->ProtoMngr, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME),
         [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
             auto* cr = new Critter(_engine, id, nullptr, proto);
             if (!cr->LoadFromText(kv)) {
@@ -117,18 +117,18 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
             static_map.AllItemsVec.push_back(item);
             return true;
         },
-        [&static_map](MapTile&& tile) { static_map.Tiles.emplace_back(tile); });
+        [&static_map](MapTile&& tile) { static_map.Tiles.emplace_back(std::move(tile)); });
 
     // Bind scripts
     auto errors = 0;
 
-    if (pmap->GetScriptId() != 0u) {
+    if (pmap->GetScriptId()) {
         /*hash func_num =
-            scriptSys.BindScriptFuncNumByFuncName(_str().parseHash(pmap->GetScriptId()), "void %s(Map, bool)");
+            scriptSys.BindScriptFuncNumByFuncName(_engine->HashToString(pmap->GetScriptId()), "void %s(Map, bool)");
         if (!func_num)
         {
             WriteLog(
-                "Map '{}', can't bind map function '{}'.\n", pmap->GetName(), _str().parseHash(pmap->GetScriptId()));
+                "Map '{}', can't bind map function '{}'.\n", pmap->GetName(), _engine->HashToString(pmap->GetScriptId()));
             errors++;
         }*/
     }
@@ -136,7 +136,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     /*for (auto& cr : static_map.CrittersVec) {
         if (cr->GetScriptId())
         {
-            string func_name = _str().parseHash(cr->GetScriptId());
+            string func_name = _engine->HashToString(cr->GetScriptId());
             hash func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Critter, bool)");
             if (!func_num)
             {
@@ -147,16 +147,16 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     }*/
 
     for (auto& item : static_map.AllItemsVec) {
-        if (!item->IsStatic() && item->GetScriptId() != 0u) {
-            string func_name = _str().parseHash(item->GetScriptId());
-            auto func = _engine->ScriptSys->FindFunc<void, Item*, bool>(func_name);
+        if (!item->IsStatic() && item->GetScriptId()) {
+            const auto func_name = _engine->HashToString(item->GetScriptId());
+            const auto func = _engine->ScriptSys->FindFunc<void, Item*, bool>(func_name);
             if (!func) {
                 WriteLog("Map '{}', can't bind item function '{}'.\n", pmap->GetName(), func_name);
                 errors++;
             }
         }
-        else if (item->IsStatic() && item->GetScriptId() != 0u) {
-            string func_name = _str().parseHash(item->GetScriptId());
+        else if (item->IsStatic() && item->GetScriptId()) {
+            const auto func_name = _engine->HashToString(item->GetScriptId());
             ScriptFunc<bool, Critter*, Item*, bool, int> scenery_func;
             ScriptFunc<void, Critter*, Item*, bool, uchar> trigger_func;
             if (item->GetIsTrigger() || item->GetIsTrap()) {
@@ -309,7 +309,7 @@ void MapManager::GenerateMapContent(Map* map)
     std::map<uint, uint> id_map;
 
     // Generate npc
-    for (auto* base_cr : map->GetStaticMap()->CrittersVec) {
+    for (const auto* base_cr : map->GetStaticMap()->CrittersVec) {
         auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
         if (npc == nullptr) {
             WriteLog("Create npc '{}' on map '{}' fail, continue generate.\n", base_cr->GetName(), map->GetName());
@@ -434,19 +434,19 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
     result += _str("Maps count: {}\n", static_cast<uint>(maps.size()));
     result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain Script\n";
-    for (auto* loc_entity : locations) {
-        auto* loc = dynamic_cast<Location*>(loc_entity);
 
+    for (const auto* loc : locations) {
         result += _str("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
 
         uint map_index = 0;
-        for (auto* map : loc->GetMaps()) {
+        for (const auto* map : loc->GetMaps()) {
             result += _str("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity());
-            result += map->GetScriptId() != 0u ? _str().parseHash(map->GetScriptId()).str() : "";
+            result += map->GetScriptId() ? _engine->HashToString(map->GetScriptId()) : "";
             result += "\n";
             map_index++;
         }
     }
+
     return result;
 }
 
@@ -454,12 +454,12 @@ auto MapManager::CreateLocation(hash proto_id, ushort wx, ushort wy) -> Location
 {
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
     if (proto == nullptr) {
-        WriteLog("Location proto '{}' is not loaded.\n", _str().parseHash(proto_id));
+        WriteLog("Location proto '{}' is not loaded.\n", _engine->HashToString(proto_id));
         return nullptr;
     }
 
     if (wx >= GM_MAXZONEX * _engine->Settings.GlobalMapZoneLength || wy >= GM_MAXZONEY * _engine->Settings.GlobalMapZoneLength) {
-        WriteLog("Invalid location '{}' coordinates.\n", _str().parseHash(proto_id));
+        WriteLog("Invalid location '{}' coordinates.\n", _engine->HashToString(proto_id));
         return nullptr;
     }
 
@@ -467,11 +467,11 @@ auto MapManager::CreateLocation(hash proto_id, ushort wx, ushort wy) -> Location
     loc->SetWorldX(wx);
     loc->SetWorldY(wy);
 
-    for (auto map_pid : loc->GetMapProtos()) {
+    for (const auto map_pid : loc->GetMapProtos()) {
         auto* map = CreateMap(map_pid, loc);
         if (map == nullptr) {
-            WriteLog("Create map '{}' for location '{}' failed.\n", _str().parseHash(map_pid), _str().parseHash(proto_id));
-            for (auto* map2 : loc->GetMapsRaw()) {
+            WriteLog("Create map '{}' for location '{}' failed.\n", _engine->HashToString(map_pid), _engine->HashToString(proto_id));
+            for (const auto* map2 : loc->GetMapsRaw()) {
                 map2->Release();
             }
             loc->Release();
@@ -484,7 +484,8 @@ auto MapManager::CreateLocation(hash proto_id, ushort wx, ushort wy) -> Location
     _engine->EntityMngr.RegisterEntity(loc);
 
     // Generate location maps
-    auto maps = loc->GetMaps();
+    const auto maps = loc->GetMaps();
+
     for (auto* map : maps) {
         map->SetLocId(loc->GetId());
         GenerateMapContent(map);
@@ -506,13 +507,13 @@ auto MapManager::CreateMap(hash proto_id, Location* loc) -> Map*
 {
     const auto* proto_map = _engine->ProtoMngr.GetProtoMap(proto_id);
     if (proto_map == nullptr) {
-        WriteLog("Proto map '{}' is not loaded.\n", _str().parseHash(proto_id));
+        WriteLog("Proto map '{}' is not loaded.\n", _engine->HashToString(proto_id));
         return nullptr;
     }
 
-    auto it = _staticMaps.find(proto_map);
+    const auto it = _staticMaps.find(proto_map);
     if (it == _staticMaps.end()) {
-        throw MapManagerException("Static map not found", proto_id);
+        throw MapManagerException("Static map not found", _engine->HashToString(proto_id));
     }
 
     auto* map = new Map(_engine, 0, proto_map, loc, &it->second);
@@ -560,7 +561,7 @@ auto MapManager::GetMapByPid(hash map_pid, uint skip_count) -> Map*
 {
     NON_CONST_METHOD_HINT();
 
-    if (map_pid == 0u) {
+    if (!map_pid) {
         return nullptr;
     }
 
@@ -608,7 +609,7 @@ auto MapManager::GetLocationByPid(hash loc_pid, uint skip_count) -> Location*
 {
     NON_CONST_METHOD_HINT();
 
-    if (loc_pid == 0u) {
+    if (!loc_pid) {
         return nullptr;
     }
     return _engine->EntityMngr.GetLocationByPid(loc_pid, skip_count);
@@ -1679,8 +1680,8 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
         cr->SetMapId(map->GetId());
         cr->SetRefMapId(map->GetId());
         cr->SetRefMapPid(map->GetProtoId());
-        cr->SetRefLocationId(map->GetLocation() != nullptr ? map->GetLocation()->GetId() : 0);
-        cr->SetRefLocationPid(map->GetLocation() != nullptr ? map->GetLocation()->GetProtoId() : 0);
+        cr->SetRefLocationId(map->GetLocation() != nullptr ? map->GetLocation()->GetId() : 0u);
+        cr->SetRefLocationPid(map->GetLocation() != nullptr ? map->GetLocation()->GetProtoId() : hash());
         cr->SetHexX(hx);
         cr->SetHexY(hy);
         cr->SetDir(dir);

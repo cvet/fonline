@@ -41,18 +41,18 @@
 static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
-ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) : _fileMngr {file_mngr}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}
+ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileMngr {file_mngr}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
 {
     _eventUnsubscriber += _fileMngr.OnDataSourceAdded += [this](DataSource* ds) {
         // Hash all files
         for (const auto& name : ds->GetFileNames("", true, "")) {
-            const auto h1 = _str(name).toHash();
+            const auto h1 = _nameResolver.StringToHash(name);
             UNUSED_VARIABLE(h1);
-            const auto h2 = _str(name).lower().toHash();
+            const auto h2 = _nameResolver.StringToHash(_str(name).lower());
             UNUSED_VARIABLE(h2);
-            const auto h3 = _str(name).extractFileName().toHash();
+            const auto h3 = _nameResolver.StringToHash(_str(name).extractFileName());
             UNUSED_VARIABLE(h3);
-            const auto h4 = _str(name).extractFileName().lower().toHash();
+            const auto h4 = _nameResolver.StringToHash(_str(name).extractFileName().lower());
             UNUSED_VARIABLE(h4);
         }
 
@@ -135,7 +135,7 @@ auto ResourceManager::GetAnim(hash name_hash, AtlasType atlas_type) -> AnyFrames
     }
 
     // Load new animation
-    const string fname = _str().parseHash(name_hash);
+    const auto fname = _nameResolver.HashToString(name_hash);
     if (fname.empty()) {
         return nullptr;
     }
@@ -152,7 +152,8 @@ auto ResourceManager::GetAnim(hash name_hash, AtlasType atlas_type) -> AnyFrames
 
 static auto AnimMapId(hash model_name, uint anim1, uint anim2, bool is_fallout) -> uint
 {
-    uint dw[4] = {model_name, anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
+    static_assert(sizeof(model_name.Value) == sizeof(uint));
+    uint dw[4] = {model_name.Value, anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
     return Hashing::MurmurHash2(reinterpret_cast<uchar*>(&dw[0]), sizeof(dw));
 }
 
@@ -162,8 +163,7 @@ auto ResourceManager::GetCritterAnim(hash model_name, uint anim1, uint anim2, uc
     auto id = AnimMapId(model_name, anim1, anim2, false);
 
     // Check already loaded
-    auto it = _critterFrames.find(id);
-    if (it != _critterFrames.end()) {
+    if (const auto it = _critterFrames.find(id); it != _critterFrames.end()) {
         return it->second != nullptr ? it->second->GetDir(dir) : nullptr;
     }
 
@@ -173,7 +173,7 @@ auto ResourceManager::GetCritterAnim(hash model_name, uint anim1, uint anim2, uc
     AnyFrames* anim = nullptr;
     while (true) {
         // Load
-        if (model_name != 0u && _str().parseHash(model_name).startsWith("art/critters/")) {
+        if (!!model_name && _str(_nameResolver.HashToString(model_name)).startsWith("art/critters/")) {
             // Hardcoded
             anim = LoadFalloutAnim(model_name, anim1, anim2);
         }
@@ -306,8 +306,8 @@ auto ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint anim2) -
                 }
 
                 auto* anim_merge = anim_merge_base->GetDir(d);
-                auto* anim_ = anim->GetDir(d);
-                auto* animex_ = animex->GetDir(d);
+                const auto* anim_ = anim->GetDir(d);
+                const auto* animex_ = animex->GetDir(d);
 
                 std::memcpy(anim_merge->Ind, anim_->Ind, anim_->CntFrm * sizeof(uint));
                 std::memcpy(anim_merge->NextX, anim_->NextX, anim_->CntFrm * sizeof(short));
@@ -338,7 +338,7 @@ auto ResourceManager::LoadFalloutAnim(hash model_name, uint anim1, uint anim2) -
                 }
 
                 auto* anim_clone = anim_clone_base->GetDir(d);
-                auto* anim_ = anim->GetDir(d);
+                const auto* anim_ = anim->GetDir(d);
 
                 if (!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME)) {
                     std::memcpy(anim_clone->Ind, anim_->Ind, anim_->CntFrm * sizeof(uint));
@@ -375,8 +375,8 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
     }
 
     for (auto d = 0; d < stay_frm_base->DirCount; d++) {
-        auto* frames = frames_base->GetDir(d);
-        auto* stay_frm = stay_frm_base->GetDir(d);
+        const auto* frames = frames_base->GetDir(d);
+        const auto* stay_frm = stay_frm_base->GetDir(d);
 
         const auto* stay_si = _sprMngr.GetSpriteInfo(stay_frm->Ind[0]);
         if (stay_si == nullptr) {
@@ -471,7 +471,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hash model_name, uint anim1, uint anim2
     _sprMngr.PushAtlasType(AtlasType::Dynamic);
 
     // Try load fofrm
-    const string name = _str().parseHash(model_name);
+    const auto name = _nameResolver.HashToString(model_name);
     string spr_name = _str("{}{}{}.fofrm", name, frm_ind[anim1], frm_ind[anim2]);
     auto* frames = _sprMngr.LoadAnimation(spr_name, false, false);
 
@@ -570,7 +570,7 @@ auto ResourceManager::GetCritterModel(hash model_name, uint anim1, uint anim2, u
     }
 
     _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    auto* model = _sprMngr.LoadModel(_str().parseHash(model_name), true);
+    auto* model = _sprMngr.LoadModel(_nameResolver.HashToString(model_name), true);
     _sprMngr.PopAtlasType();
 
     if (model == nullptr) {
@@ -587,7 +587,12 @@ auto ResourceManager::GetCritterModel(hash model_name, uint anim1, uint anim2, u
 
 auto ResourceManager::GetCritterSprId(hash model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = NULL */) -> uint
 {
-    const string ext = _str(_str().parseHash(model_name)).getFileExtension();
+    const auto fname = _nameResolver.HashToString(model_name);
+    if (fname.empty()) {
+        return 0;
+    }
+
+    const string ext = _str().getFileExtension();
     if (ext != "fo3d") {
         auto* anim = GetCritterAnim(model_name, anim1, anim2, dir);
         return anim != nullptr ? anim->GetSprId(0) : 0;

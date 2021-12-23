@@ -57,7 +57,8 @@ public:
     auto GetProtoLoc() const -> const ProtoLocation*;
     auto IsLocVisible() const -> bool;
     auto GetMapsRaw() -> vector<Map*>&;
-    auto GetMaps() const -> vector<Map*>;
+    auto GetMaps() -> vector<Map*>;
+    auto GetMaps() const -> vector<const Map*>;
     auto GetMapsCount() const -> uint;
     auto GetMapByIndex(uint index) -> Map*;
     auto GetMapByPid(hash map_pid) -> Map*;

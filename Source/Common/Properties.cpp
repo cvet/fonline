@@ -1774,9 +1774,8 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
 
 void PropertyRegistrator::RegisterComponent(string_view name)
 {
-    const auto name_hash = _str(name).toHash();
-    RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
-    _registeredComponents.insert(name_hash);
+    RUNTIME_ASSERT(!_registeredComponents.count(name));
+    _registeredComponents.insert(name);
 }
 
 auto PropertyRegistrator::GetClassName() const -> string_view
@@ -1811,9 +1810,9 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
     return nullptr;
 }
 
-auto PropertyRegistrator::IsComponentRegistered(hash component_name) const -> bool
+auto PropertyRegistrator::IsComponentRegistered(string_view component_name) const -> bool
 {
-    return _registeredComponents.count(component_name) > 0;
+    return _registeredComponents.count(component_name) > 0u;
 }
 
 void PropertyRegistrator::SetNativeSetCallback(string_view property_name, const NativeCallback& /*callback*/)

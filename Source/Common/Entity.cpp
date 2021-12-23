@@ -150,45 +150,52 @@ void Entity::SetValueAsFloat(const Property* prop, float value)
     _props.SetPlainDataValueAsFloat(prop, value);
 }
 
-EntityWithProto::EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator), Proto {proto}
+ProtoEntity::ProtoEntity(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator) : Entity(registrator), _protoId {proto_id}, _protoName {proto_name}
 {
-    RUNTIME_ASSERT(Proto);
-
-    Proto->AddRef();
-    SetProperties(Proto->GetProperties());
+    RUNTIME_ASSERT(_protoId);
+    RUNTIME_ASSERT(!_protoName.empty());
 }
 
-ProtoEntity::ProtoEntity(hash proto_id, const PropertyRegistrator* registrator) : Entity(registrator), ProtoId {proto_id}
+auto ProtoEntity::GetName() const -> string_view
 {
-    RUNTIME_ASSERT(ProtoId);
+    return _protoName;
 }
 
 auto ProtoEntity::GetProtoId() const -> hash
 {
-    return ProtoId;
+    return _protoId;
 }
 
-auto ProtoEntity::GetName() const -> string
+auto ProtoEntity::HaveComponent(string_view name) const -> bool
 {
-    return _str().parseHash(ProtoId).str();
+    return _components.count(name) > 0u;
 }
 
-auto ProtoEntity::HaveComponent(hash name) const -> bool
+EntityWithProto::EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator), _proto {proto}
 {
-    return Components.count(name) > 0;
+    RUNTIME_ASSERT(_proto);
+
+    _proto->AddRef();
+
+    SetProperties(_proto->GetProperties());
 }
 
 EntityWithProto::~EntityWithProto()
 {
-    Proto->Release();
+    _proto->Release();
+}
+
+auto EntityWithProto::GetName() const -> string_view
+{
+    return _proto->GetName();
 }
 
 auto EntityWithProto::GetProtoId() const -> hash
 {
-    return Proto->ProtoId;
+    return _proto->GetProtoId();
 }
 
-auto EntityWithProto::GetName() const -> string
+auto EntityWithProto::GetProto() const -> const ProtoEntity*
 {
-    return Proto->GetName();
+    return _proto;
 }

@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "EngineBase.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "ScriptSystem.h"
@@ -47,7 +48,7 @@
 ///# ...
 ///# param condition ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] void* dummy, bool condition)
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition)
 {
     if (!condition) {
         throw ScriptException("Assertion failed");
@@ -57,7 +58,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] void* dummy, string_view message)
+[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message)
 {
     throw ScriptException(message);
 }
@@ -65,7 +66,7 @@
 ///# ...
 ///# param time ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_Yield([[maybe_unused]] void* dummy, uint time)
+[[maybe_unused]] void Common_Game_Yield([[maybe_unused]] FOEngineBase* engine, uint time)
 {
     // Todo: fix script system
     // Script::SuspendCurrentContext(time);
@@ -76,7 +77,7 @@
 ///# param result ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Common_Game_StrToInt([[maybe_unused]] void* dummy, string_view text, int& result)
+[[maybe_unused]] bool Common_Game_StrToInt([[maybe_unused]] FOEngineBase* engine, string_view text, int& result)
 {
     if (!_str(text).isNumber()) {
         return false;
@@ -90,7 +91,7 @@
 ///# param result ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Common_Game_StrToFloat([[maybe_unused]] void* dummy, string_view text, float& result)
+[[maybe_unused]] bool Common_Game_StrToFloat([[maybe_unused]] FOEngineBase* engine, string_view text, float& result)
 {
     if (!_str(text).isNumber()) {
         return false;
@@ -228,7 +229,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param command ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Common_Game_SystemCall([[maybe_unused]] void* dummy, string_view command)
+[[maybe_unused]] int Common_Game_SystemCall([[maybe_unused]] FOEngineBase* engine, string_view command)
 {
     auto prefix = command.substr(0, command.find(' '));
     return SystemCall(command, [&prefix](string_view line) { WriteLog("{} : {}\n", prefix, line); });
@@ -239,7 +240,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param output ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Common_Game_SystemCallExt([[maybe_unused]] void* dummy, string_view command, string& output)
+[[maybe_unused]] int Common_Game_SystemCallExt([[maybe_unused]] FOEngineBase* engine, string_view command, string& output)
 {
     output = "";
 
@@ -256,7 +257,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param maxValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Common_Game_Random([[maybe_unused]] void* dummy, int minValue, int maxValue)
+[[maybe_unused]] int Common_Game_Random([[maybe_unused]] FOEngineBase* engine, int minValue, int maxValue)
 {
     return GenericUtils::Random(minValue, maxValue);
 }
@@ -264,7 +265,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# ...
 ///# param text ...
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_Log([[maybe_unused]] void* dummy, string_view text)
+[[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     WriteLog("{}\n", text);
 }
@@ -273,21 +274,21 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hash Common_Game_GetStrHash([[maybe_unused]] void* dummy, string_view text)
+[[maybe_unused]] hash Common_Game_GetStrHash([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     if (text.empty()) {
-        return 0;
+        return hash();
     }
-    return _str(text).toHash();
+    return engine->StringToHash(text);
 }
 
 ///# ...
 ///# param value ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_GetHashStr([[maybe_unused]] void* dummy, hash value)
+[[maybe_unused]] string Common_Game_GetHashStr([[maybe_unused]] FOEngineBase* engine, hash value)
 {
-    return _str().parseHash(value).str();
+    return string(engine->HashToString(value));
 }
 
 ///# ...
@@ -295,7 +296,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param length ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] void* dummy, string_view text, uint& length)
+[[maybe_unused]] uint Common_Game_DecodeUTF8([[maybe_unused]] FOEngineBase* engine, string_view text, uint& length)
 {
     const auto str = string(text);
     return utf8::Decode(str.c_str(), &length);
@@ -305,7 +306,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param ucs ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_EncodeUTF8([[maybe_unused]] void* dummy, uint ucs)
+[[maybe_unused]] string Common_Game_EncodeUTF8([[maybe_unused]] FOEngineBase* engine, uint ucs)
 {
     char buf[4];
     const auto len = utf8::Encode(ucs, buf);
@@ -316,7 +317,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_SHA1([[maybe_unused]] void* dummy, string_view text)
+[[maybe_unused]] string Common_Game_SHA1([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     SHA1_CTX ctx;
     _SHA1_Init(&ctx);
@@ -337,7 +338,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param text ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Common_Game_SHA2([[maybe_unused]] void* dummy, string_view text)
+[[maybe_unused]] string Common_Game_SHA2([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
     const uint digest_size = 32;
     uchar digest[digest_size];
@@ -354,7 +355,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# ...
 ///# param link ...
 ///@ ExportMethod
-[[maybe_unused]] void Common_Game_OpenLink([[maybe_unused]] void* dummy, string_view link)
+[[maybe_unused]] void Common_Game_OpenLink([[maybe_unused]] FOEngineBase* engine, string_view link)
 {
 #if FO_WINDOWS
 #if !FO_UWP
@@ -369,7 +370,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Common_Game_GetUnixTime([[maybe_unused]] void* dummy)
+[[maybe_unused]] uint Common_Game_GetUnixTime([[maybe_unused]] FOEngineBase* engine)
 {
     return static_cast<uint>(time(nullptr));
 }

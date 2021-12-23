@@ -211,7 +211,7 @@ public:
     void SetValueAsIntByName(string_view property_name, int value);
     void SetValueAsIntProps(int property_index, int value);
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, hash>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
@@ -219,7 +219,7 @@ public:
         return *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, hash>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
@@ -237,7 +237,7 @@ public:
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         const auto data_size = _complexDataSizes[prop->_complexDataIndex];
-        return data_size ? string(reinterpret_cast<char*>(_complexData[prop->_complexDataIndex]), data_size) : string();
+        return data_size > 0u ? string(reinterpret_cast<char*>(_complexData[prop->_complexDataIndex]), data_size) : string();
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
@@ -309,7 +309,7 @@ public:
     [[nodiscard]] auto GetCount() const -> uint;
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
-    [[nodiscard]] auto IsComponentRegistered(hash component_name) const -> bool;
+    [[nodiscard]] auto IsComponentRegistered(string_view component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
 
     auto Register(Property::AccessType access, const type_info& type, string_view name) -> const Property*;
@@ -321,7 +321,7 @@ private:
     bool _isServer;
     vector<Property*> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
-    set<hash> _registeredComponents {};
+    unordered_set<string_view> _registeredComponents {};
     uint _getPropertiesCount {};
 
     // PlainData info

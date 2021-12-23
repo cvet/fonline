@@ -293,38 +293,12 @@ auto GenericUtils::IntersectCircleLine(int cx, int cy, int radius, int x1, int y
     return a + b + c < 0;
 }
 
-auto GenericUtils::ConvertParamValue(string_view str, bool& fail) -> int
-{
-    if (str.empty()) {
-        WriteLog("Empty parameter value.\n");
-        fail = true;
-        return 0;
-    }
-
-    if (str[0] == '@' && str[1] != 0) {
-        return _str(str.substr(1)).toHash();
-    }
-    if (_str(str).isNumber()) {
-        return _str(str).toInt();
-    }
-    if (_str(str).compareIgnoreCase("true")) {
-        return 1;
-    }
-    if (_str(str).compareIgnoreCase("false")) {
-        return 0;
-    }
-
-    // Todo: script handling in ConvertParamValue
-    // return Script::ResolveEnumValue(str, fail);
-    throw UnreachablePlaceException(LINE_STR);
-}
-
 auto GenericUtils::GetColorDay(const int* day_time, const uchar* colors, int game_time, int* light) -> uint
 {
     uchar result[3];
-    int color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
-    int color_g[4] = {colors[4], colors[5], colors[6], colors[7]};
-    int color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
+    const int color_r[4] = {colors[0], colors[1], colors[2], colors[3]};
+    const int color_g[4] = {colors[4], colors[5], colors[6], colors[7]};
+    const int color_b[4] = {colors[8], colors[9], colors[10], colors[11]};
 
     game_time %= 1440;
     int time;

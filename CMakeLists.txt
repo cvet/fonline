@@ -1199,6 +1199,8 @@ set( FO_COMMON_SOURCE
 	"Source/Common/DataSource.h"
 	"Source/Common/DiskFileSystem.cpp"
 	"Source/Common/DiskFileSystem.h"
+	"Source/Common/EngineBase.cpp"
+	"Source/Common/EngineBase.h"
 	"Source/Common/Entity.cpp"
 	"Source/Common/Entity.h"
 	"Source/Common/EntityProtos.cpp"

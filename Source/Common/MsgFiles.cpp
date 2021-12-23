@@ -330,10 +330,10 @@ auto FOMsg::LoadFromString(string_view str) -> bool
             auto substr = line.substr(first + 1, last - first - 1);
             offset = last + 1;
             if (i == 0 && num == 0u) {
-                num = _str(substr).isNumber() ? _str(substr).toInt() : _str(substr).toHash();
+                num = _str(substr).isNumber() ? _str(substr).toInt() : _str(substr).toHash().Value;
             }
             else if (i == 1 && num != 0u) {
-                num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : _str(substr).toHash()) : 0;
+                num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : _str(substr).toHash().Value) : 0;
             }
             else if (i == 2 && num != 0u) {
                 AddStr(num, substr);

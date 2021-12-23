@@ -134,7 +134,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Mapper_Game_GetItemByHex(FOMapper* mapper, ushort hx, ushort hy)
 {
-    return mapper->HexMngr.GetItem(hx, hy, 0);
+    return mapper->HexMngr.GetItem(hx, hy, hash());
 }
 
 ///# ...
@@ -162,7 +162,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Game_GetCritterByHex(FOMapper* mapper, ushort hx, ushort hy, int findType)
+[[maybe_unused]] CritterView* Mapper_Game_GetCritterByHex(FOMapper* mapper, ushort hx, ushort hy, uchar findType)
 {
     vector<CritterView*> critters_;
     mapper->HexMngr.GetCritters(hx, hy, critters_, findType);
@@ -175,7 +175,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<CritterView*> Mapper_Game_GetCrittersByHex(FOMapper* mapper, ushort hx, ushort hy, int findType)
+[[maybe_unused]] vector<CritterView*> Mapper_Game_GetCrittersByHex(FOMapper* mapper, ushort hx, ushort hy, uchar findType)
 {
     vector<CritterView*> critters;
     mapper->HexMngr.GetCritters(hx, hy, critters, findType);
@@ -374,11 +374,11 @@
     const auto& tiles = mapper->HexMngr.GetTiles(hx, hy, roof);
     for (const auto i : xrange(tiles)) {
         if (tiles[i].Layer == layer) {
-            return tiles[i].Name;
+            return tiles[i].NameHash;
         }
     }
 
-    return 0;
+    return hash();
 }
 
 ///# ...
@@ -402,7 +402,7 @@
         throw ScriptException("Invalid hex y arg");
     }
 
-    if (picHash == 0u) {
+    if (!picHash) {
         return;
     }
 
@@ -434,11 +434,11 @@
     const auto& tiles = mapper->HexMngr.GetTiles(hx, hy, roof);
     for (const auto i : xrange(tiles)) {
         if (tiles[i].Layer == layer) {
-            return _str().parseHash(tiles[i].Name).str();
+            return tiles[i].Name;
         }
     }
 
-    return string("");
+    return string();
 }
 
 ///# ...
@@ -469,7 +469,7 @@
     auto layer_ = layer;
     layer_ = std::clamp(layer_, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
-    const auto pic_hash = _str(picName).toHash();
+    const auto pic_hash = mapper->StringToHash(picName);
     mapper->HexMngr.SetTile(pic_hash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
 }
 
@@ -479,7 +479,7 @@
 ///@ ExportMethod
 [[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
-    auto* pmap = new ProtoMap(_str(fileName).toHash(), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+    auto* pmap = new ProtoMap(mapper->StringToHash(fileName), fileName, mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
     // Todo: need attention!
     // if (!pmap->EditorLoad(mapper->ServerFileMngr, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
     //     return nullptr;
@@ -512,7 +512,7 @@
         mapper->ActiveMap = nullptr;
     }
 
-    map->Proto->Release();
+    map->GetProto()->Release();
     map->Release();
 }
 
@@ -548,7 +548,7 @@
     }
 
     mapper->SelectClear();
-    if (!mapper->HexMngr.SetProtoMap(*(ProtoMap*)map->Proto)) {
+    if (!mapper->HexMngr.SetProtoMap(*static_cast<const ProtoMap*>(map->GetProto()))) {
         return false;
     }
 
@@ -602,7 +602,7 @@
     }
 
     RUNTIME_ASSERT(mapper->ActiveMap);
-    auto* pmap = (ProtoMap*)mapper->ActiveMap->Proto;
+    auto* pmap = const_cast<ProtoMap*>(static_cast<const ProtoMap*>(mapper->ActiveMap->GetProto()));
 
     // Unload current
     mapper->HexMngr.GetProtoMap(*pmap);
@@ -1474,7 +1474,7 @@
 ///# param nameHash ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Game_LoadSpriteHash(FOMapper* mapper, uint nameHash)
+[[maybe_unused]] uint Mapper_Game_LoadSpriteHash(FOMapper* mapper, hash nameHash)
 {
     return mapper->AnimLoad(nameHash, AtlasType::Static);
 }
@@ -1797,7 +1797,7 @@
     auto disable_egg = mapSpr->DisableEgg;
     auto contour_color = mapSpr->ContourColor;
 
-    if (mapSpr->ProtoId != 0u) {
+    if (mapSpr->ProtoId) {
         const auto* proto_item = mapper->ProtoMngr->GetProtoItem(mapSpr->ProtoId);
         if (!proto_item) {
             return;
@@ -1909,7 +1909,7 @@
             mapper->SprMngr.FreeModel(model);
         }
 
-        model = mapper->SprMngr.LoadModel(_str().parseHash(modelName), false);
+        model = mapper->SprMngr.LoadModel(mapper->HashToString(modelName), false);
 
         mapper->DrawCritterModelCrType[instance] = modelName;
         mapper->DrawCritterModelFailedToLoad[instance] = false;

@@ -458,18 +458,16 @@ void HexManager::AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added,
 
 void HexManager::FinishItem(uint id, bool is_deleted)
 {
-    if (id == 0u) {
-        WriteLog("Item zero id.\n");
-        return;
-    }
+    RUNTIME_ASSERT(id != 0u);
 
     auto* item = GetItemById(id);
     if (item == nullptr) {
-        WriteLog("Item '{}' not found.\n", _str().parseHash(id));
+        WriteLog("Item '{}' not found.\n", id);
         return;
     }
 
     item->Finish();
+
     if (is_deleted) {
         item->SetHideAnim();
     }
@@ -688,16 +686,10 @@ auto HexManager::RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort 
         return false;
     }
 
-    if (from_hx >= _maxHexX || from_hy >= _maxHexY || to_hx >= _maxHexX || to_hy >= _maxHexY) {
-        WriteLog("Incorrect value of from_x {} or from_y {} or to_x {} or to_y {}.\n", from_hx, from_hy, to_hx, to_hy);
-        return false;
-    }
+    RUNTIME_ASSERT(!(from_hx >= _maxHexX || from_hy >= _maxHexY || to_hx >= _maxHexX || to_hy >= _maxHexY));
 
     const auto* proto = _engine->ProtoMngr->GetProtoItem(eff_pid);
-    if (proto == nullptr) {
-        WriteLog("Proto '{}' not found.\n", _str().parseHash(eff_pid));
-        return false;
-    }
+    RUNTIME_ASSERT(proto);
 
     auto& field = GetField(from_hx, from_hy);
     auto* item = new ItemHexView(_engine, 0, proto, nullptr, from_hx, from_hy, &field.ScrX, &field.ScrY);
@@ -3954,7 +3946,7 @@ auto HexManager::LoadMap(CacheStorage& cache, hash map_pid) -> bool
     }
 
     // Make name
-    string map_name = _str("{}.map", map_pid);
+    string map_name = _str("{}.map", _engine->HashToString(map_pid));
 
     // Find in cache
     uint data_len = 0;
@@ -3979,7 +3971,8 @@ auto HexManager::LoadMap(CacheStorage& cache, hash map_pid) -> bool
         return false;
     }
 
-    if (map_file.GetBEUInt() != map_pid) {
+    static_assert(sizeof(map_pid.Value) == 4);
+    if (map_file.GetBEUInt() != map_pid.Value) {
         WriteLog("Data truncated.\n");
         return false;
     }
@@ -4003,7 +3996,7 @@ auto HexManager::LoadMap(CacheStorage& cache, hash map_pid) -> bool
         }
 
         auto& field = GetField(tile.HexX, tile.HexY);
-        auto* anim = _engine->ResMngr.GetItemAnim(tile.Name);
+        auto* anim = _engine->ResMngr.GetItemAnim(tile.NameHash);
         if (anim != nullptr) {
             auto& ftile = field.AddTile(anim, tile.OffsX, tile.OffsY, tile.Layer, tile.IsRoof);
             ProcessTileBorder(ftile, tile.IsRoof);
@@ -4025,15 +4018,18 @@ auto HexManager::LoadMap(CacheStorage& cache, hash map_pid) -> bool
     _curHashScen = (scen_len != 0u ? Hashing::MurmurHash2(map_file.GetCurBuf(), scen_len) : maxhx * maxhy);
     auto scen_count = map_file.GetLEUInt();
     for (uint i = 0; i < scen_count; i++) {
-        auto id = map_file.GetLEUInt();
-        auto proto_id = map_file.GetLEUInt();
+        const auto id = map_file.GetLEUInt();
+
+        static_assert(sizeof(hash::Value) == 4);
+        const auto proto_id = hash {map_file.GetLEUInt()};
+
         auto datas_size = map_file.GetLEUInt();
         vector<vector<uchar>> props_data(datas_size);
-        for (uint i = 0; i < datas_size; i++) {
+        for (uint i2 = 0; i2 < datas_size; i2++) {
             auto data_size = map_file.GetLEUInt();
             if (data_size != 0u) {
-                props_data[i].resize(data_size);
-                map_file.CopyMem(&props_data[i][0], data_size);
+                props_data[i2].resize(data_size);
+                map_file.CopyMem(&props_data[i2][0], data_size);
             }
         }
 
@@ -4090,10 +4086,10 @@ void HexManager::UnloadMap()
 
     _engine->MapUnloadEvent.Raise();
 
-    _curPidMap = 0;
+    _curPidMap = hash();
     _curMapTime = -1;
-    _curHashTiles = 0;
-    _curHashScen = 0;
+    _curHashTiles = 0u;
+    _curHashScen = 0u;
 
     _crittersContour = 0;
     _critterContour = 0;
@@ -4141,7 +4137,7 @@ void HexManager::UnloadMap()
     }
 }
 
-void HexManager::GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles, hash& hash_scen) const
+void HexManager::GetMapHash(CacheStorage& cache, hash map_pid, uint& hash_tiles, uint& hash_scen) const
 {
     WriteLog("Get map info...");
 
@@ -4156,7 +4152,7 @@ void HexManager::GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles,
         return;
     }
 
-    const string map_name = _str("{}.map", map_pid);
+    const string map_name = _str("{}.map", _engine->HashToString(map_pid));
 
     uint data_len = 0;
     auto* data = cache.GetRawData(map_name, data_len);
@@ -4179,7 +4175,8 @@ void HexManager::GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles,
         return;
     }
 
-    if (map_file.GetBEUInt() != map_pid) {
+    static_assert(sizeof(map_pid.Value) == 4);
+    if (map_file.GetBEUInt() != map_pid.Value) {
         WriteLog("Invalid proto number.\n");
         return;
     }
@@ -4251,7 +4248,7 @@ void HexManager::OnResolutionChanged()
     RefreshMap();
 }
 
-auto HexManager::SetProtoMap(ProtoMap& /*pmap*/) -> bool
+auto HexManager::SetProtoMap(const ProtoMap& /*pmap*/) -> bool
 {
     // Todo: need attention!
     /*WriteLog("Create map from prototype.\n");
@@ -4510,7 +4507,7 @@ void HexManager::SetTile(hash name, ushort hx, ushort hy, short ox, short oy, uc
     auto& field = GetField(hx, hy);
     auto& ftile = field.AddTile(anim, 0, 0, layer, is_roof);
     auto& tiles = GetTiles(hx, hy, is_roof);
-    tiles.push_back({name, hx, hy, ox, oy, layer, is_roof});
+    tiles.push_back({string(_engine->HashToString(name)), name, hx, hy, ox, oy, layer, is_roof});
     tiles.back().IsSelected = select;
 
     if (ProcessTileBorder(ftile, is_roof)) {

@@ -107,7 +107,7 @@ public:
 
     struct TileBuf
     {
-        hash Name {};
+        hash NameHash {};
         ushort HexX {};
         ushort HexY {};
         short OffsX {};
@@ -179,14 +179,14 @@ public:
 
     auto InitIface() -> int;
     auto IfaceLoadRect(IRect& comp, string_view name) -> bool;
-    void MainLoop();
+    void MapperMainLoop();
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ChangeGameTime();
     void ProcessInputEvents();
     void ProcessInputEvent(const InputEvent& event);
 
-    auto AnimLoad(uint name_hash, AtlasType res_type) -> uint;
+    auto AnimLoad(hash name_hash, AtlasType res_type) -> uint;
     auto AnimLoad(string_view fname, AtlasType res_type) -> uint;
     auto AnimGetCurSpr(uint anim_id) -> uint;
     auto AnimGetCurSprCnt(uint anim_id) -> uint;

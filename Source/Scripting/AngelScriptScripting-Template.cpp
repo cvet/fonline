@@ -131,7 +131,7 @@ struct BaseEntity
     void AddRef() { }
     void Release() { }
     uint GetId() { return 0u; }
-    hash GetProtoId() { return 0u; }
+    hash GetProtoId() { return hash(); }
     FOEngine* GetEngine() { return nullptr; }
     auto IsDestroyed() -> bool { return false; }
     auto IsDestroying() -> bool { return false; }

@@ -165,9 +165,9 @@ auto DialogManager::AddDialog(DialogPack* pack) -> bool
         return false;
     }
 
-    const auto pack_id = static_cast<hash>(pack->PackId & DLGID_MASK);
+    const auto pack_id = (pack->PackId.Value & DLGID_MASK);
     for (auto& [fst, snd] : _dialogPacks) {
-        const auto check_pack_id = static_cast<hash>(fst & DLGID_MASK);
+        const auto check_pack_id = (fst.Value & DLGID_MASK);
         if (pack_id == check_pack_id) {
             WriteLog("Name hash collision for dialogs '{}' and '{}'.\n", pack->PackName, snd->PackName);
             return false;
@@ -203,7 +203,7 @@ void DialogManager::EraseDialog(hash pack_id)
 
 auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> DialogPack*
 {
-    ConfigFile fodlg {""};
+    auto fodlg = ConfigFile("", *_engine);
     fodlg.CollectContent();
     fodlg.AppendData(data);
 
@@ -219,7 +219,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     auto dlg_buf = fodlg.GetAppContent("dialog");
     istringstream input(dlg_buf);
     string lang_buf;
-    pack->PackId = _str(pack_name).toHash();
+    pack->PackId = _engine->StringToHash(pack_name);
     pack->PackName = pack_name;
     vector<string> lang_apps;
 
@@ -232,7 +232,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         LOAD_FAIL("Lang app not found.")
 
     // Check dialog pack
-    if (pack->PackId <= 0xFFFF)
+    if (pack->PackId.Value <= 0xFFFF)
         LOAD_FAIL("Invalid hash for dialog name.")
 
     lang_apps = _str(lang_key).split(' ');
@@ -261,7 +261,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         uint str_num = 0;
         while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0u) {
             const auto count = temp_msg.Count(str_num);
-            const auto new_str_num = DLG_STR_ID(pack->PackId, (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
+            const auto new_str_num = DLG_STR_ID(pack->PackId.Value, (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
             for (uint n = 0; n < count; n++) {
                 pack->Texts[i]->AddStr(new_str_num, _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n["));
             }
@@ -312,7 +312,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
         Dialog current_dialog;
         current_dialog.Id = dlg_id;
-        current_dialog.TextId = DLG_STR_ID(pack->PackId, text_id / 10);
+        current_dialog.TextId = DLG_STR_ID(pack->PackId.Value, text_id / 10);
         current_dialog.DlgScriptFunc = script;
         current_dialog.NoShuffle = ((flags & 1) == 1);
 
@@ -344,7 +344,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
                 LOAD_FAIL("Invalid text link value in answer.")
             DialogAnswer current_answer;
             current_answer.Link = link;
-            current_answer.TextId = DLG_STR_ID(pack->PackId, text_id / 10);
+            current_answer.TextId = DLG_STR_ID(pack->PackId.Value, text_id / 10);
 
             while (true) {
                 input >> ch;
@@ -457,10 +457,11 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         // Value
         input >> svalue;
         if (is_hash) {
-            ivalue = static_cast<int>(_str(svalue).toHash());
+            static_assert(sizeof(hash) == sizeof(int));
+            ivalue = static_cast<int>(_engine->StringToHash(svalue).Value);
         }
         else {
-            ivalue = GenericUtils::ConvertParamValue(svalue, fail);
+            ivalue = _engine->ResolveGenericValue(svalue, fail);
         }
     } break;
     case DR_ITEM: {
@@ -474,7 +475,8 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
 
         // Name
         input >> name;
-        id = _str(name).toHash();
+        static_assert(sizeof(hash) == sizeof(id));
+        id = _engine->StringToHash(name).Value;
         // Todo: check item name on DR_ITEM
 
         // Operator
@@ -486,7 +488,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
 
         // Value
         input >> svalue;
-        ivalue = GenericUtils::ConvertParamValue(svalue, fail);
+        ivalue = _engine->ResolveGenericValue(svalue, fail);
     } break;
     case DR_SCRIPT: {
         // Script name
@@ -499,7 +501,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
 #define READ_SCRIPT_VALUE_(val) \
     { \
         input >> value_str; \
-        (val) = GenericUtils::ConvertParamValue(value_str, fail); \
+        (val) = _engine->ResolveGenericValue(value_str, fail); \
     }
         char value_str[1024];
         if (values_count > 0)

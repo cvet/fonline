@@ -108,6 +108,10 @@ public:
         return *this;
     }
 
+    // Deleted specialization
+    auto operator<<(hstring i) -> NetBuffer& = delete;
+    auto operator>>(hstring& i) -> NetBuffer& = delete;
+
 private:
     auto EncryptKey(int move) -> uchar;
     void CopyBuf(const void* from, void* to, uchar crypt_key, uint len);
