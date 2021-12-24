@@ -27,6 +27,7 @@ void FOnline::FonlineImguiWindows::NewFrameOS( )
 
 void FOnline::FonlineImguiWindows::MouseEvent( int event, int button, int dy )
 {
+	// WriteLog( "MouseIMGUI\n" );
 	struct
 	{
 		union
@@ -62,10 +63,14 @@ void FOnline::FonlineImguiWindows::MouseEvent( int event, int button, int dy )
 		param.hi = dy * WHEEL_DELTA;
 	}
 
+	WorkContext( );
 	ImGui_ImplWin32_WndProcHandler( fl_xid( GetWindow() ), event, param.w, 0 );
+	DropContext( );
 }
 
 void FOnline::FonlineImguiWindows::MouseMoveEvent( int x, int y )
 {
+	WorkContext( );
 	ImGui_ImplWin32_WndProcHandler( fl_xid( GetWindow( ) ), WM_MOUSEMOVE, 0, 0 );
+	DropContext( );
 }

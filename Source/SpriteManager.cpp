@@ -592,7 +592,7 @@ bool SpriteManager::BeginScene( uint clear_color )
         ClearCurrentRenderTarget( clear_color );
     #endif
 
-	GetMainImgui( )->PrepareFrame( );
+	GetMainImgui( )->Frame( );
 
     Animation3d::BeginScene();
     sceneBeginned = true;

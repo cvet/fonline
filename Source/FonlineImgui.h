@@ -13,6 +13,8 @@ namespace FOnline
 		ImGuiContext* Context;
 		FOWindow* Window;
 
+		uint WorkCounter;
+
 		bool IsDemoWindow;
 
 		void ScriptFrame( );
@@ -28,8 +30,13 @@ namespace FOnline
 
 		virtual void RenderGraphics( ) = 0;
 
+		static ImFontAtlas FontAtlas;
+
 	protected:
 		inline ImDrawData *GetDrawData( ) { return ImGui::GetDrawData( ); }
+
+		void WorkContext( );
+		void DropContext( );
 
 	public:
 		FonlineImgui( );
@@ -37,17 +44,22 @@ namespace FOnline
 		void ShowDemo( );
 		void Init( FOWindow* window, Device_ device );
 		void Finish( );
-		void PrepareFrame( );
+		void Frame( );
 		void RenderIface( );
+
+
+		void NewFrame( );
+		void EndFrame( );
 
 		inline ImGuiIO& GetIO( ) { return ImGui::GetIO( ); }
 
 		static void RenderAll( );
 
+		inline bool IsMain( ) { return this == GetMainImgui( ); }
 		inline FOWindow* GetWindow( ) { return Window; }
 
 		virtual void MouseEvent( int event, int button, int dy ) = 0;
 		virtual void MouseMoveEvent( int x, int y ) = 0;
 	};
-#endif // FONLINE_IMGUI_H
 }
+#endif // FONLINE_IMGUI_H
