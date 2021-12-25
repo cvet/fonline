@@ -203,7 +203,7 @@ auto EntityManager::GetMap(uint id) -> Map*
     return nullptr;
 }
 
-auto EntityManager::GetMapByPid(hash pid, uint skip_count) -> Map*
+auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
 {
     for (auto [id, entity] : _allEntities) {
         if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
@@ -242,7 +242,7 @@ auto EntityManager::GetLocation(uint id) -> Location*
     return nullptr;
 }
 
-auto EntityManager::GetLocationByPid(hash pid, uint skip_count) -> Location*
+auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
 {
     for (auto [id, entity] : _allEntities) {
         if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
@@ -307,7 +307,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 throw EntitiesLoadException("'_Proto' section is empty", collection_name, id);
             }
 
-            const auto proto_id = _engine->StringToHash(std::get<string>(proto_it->second));
+            const auto proto_id = _engine->ToHashedString(std::get<string>(proto_it->second));
 
             if (q == 0) {
                 const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);

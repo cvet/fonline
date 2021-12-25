@@ -46,10 +46,9 @@ void Location::BindScript()
 {
     EntranceScriptBindId = 0;
 
-    if (GetEntranceScript()) {
-        const auto func_name = _engine->HashToString(GetEntranceScript());
+    if (const auto func_name = GetEntranceScript()) {
         /*EntranceScriptBindId =
-            scriptSys.BindByFuncName(func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
+            scriptSys.BindByFuncName(GetEntranceScript(), "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
     }
 }
 
@@ -93,7 +92,7 @@ auto Location::GetMapByIndex(uint index) -> Map*
     return _locMaps[index];
 }
 
-auto Location::GetMapByPid(hash map_pid) -> Map*
+auto Location::GetMapByPid(hstring map_pid) -> Map*
 {
     for (auto* map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
@@ -103,7 +102,7 @@ auto Location::GetMapByPid(hash map_pid) -> Map*
     return nullptr;
 }
 
-auto Location::GetMapIndex(hash map_pid) -> uint
+auto Location::GetMapIndex(hstring map_pid) -> uint
 {
     uint index = 0;
     for (auto* map : _locMaps) {

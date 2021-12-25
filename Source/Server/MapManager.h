@@ -143,24 +143,24 @@ public:
     [[nodiscard]] auto GetLocation(uint loc_id) -> Location*;
     [[nodiscard]] auto GetLocation(uint loc_id) const -> const Location*;
     [[nodiscard]] auto GetLocationByMap(uint map_id) -> Location*;
-    [[nodiscard]] auto GetLocationByPid(hash loc_pid, uint skip_count) -> Location*;
+    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*;
     [[nodiscard]] auto GetLocations() -> vector<Location*>;
     [[nodiscard]] auto GetLocationsCount() const -> uint;
     [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
     [[nodiscard]] auto GetMap(uint map_id) -> Map*;
     [[nodiscard]] auto GetMap(uint map_id) const -> const Map*;
-    [[nodiscard]] auto GetMapByPid(hash map_pid, uint skip_count) -> Map*;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
     [[nodiscard]] auto GetMaps() -> vector<Map*>;
     [[nodiscard]] auto GetMapsCount() const -> uint;
     [[nodiscard]] auto CheckKnownLocById(Critter* cr, uint loc_id) const -> bool;
-    [[nodiscard]] auto CheckKnownLocByPid(Critter* cr, hash loc_pid) const -> bool;
+    [[nodiscard]] auto CheckKnownLocByPid(Critter* cr, hstring loc_pid) const -> bool;
     [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& pfd) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
-    [[nodiscard]] auto CreateLocation(hash proto_id, ushort wx, ushort wy) -> Location*;
-    [[nodiscard]] auto CreateMap(hash proto_id, Location* loc) -> Map*;
+    [[nodiscard]] auto CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*;
+    [[nodiscard]] auto CreateMap(hstring proto_id, Location* loc) -> Map*;
 
     void LinkMaps();
     void LoadStaticMaps(FileManager& file_mngr);

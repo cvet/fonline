@@ -160,7 +160,7 @@ auto CritterView::GetItem(uint item_id) -> ItemView*
     return nullptr;
 }
 
-auto CritterView::GetItemByPid(hash item_pid) -> ItemView*
+auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
 {
     for (auto* item : InvItems) {
         if (item->GetProtoId() == item_pid) {
@@ -194,7 +194,7 @@ auto CritterView::GetItemsSlot(int slot) -> vector<ItemView*>
     return items;
 }
 
-auto CritterView::CountItemPid(hash item_pid) const -> uint
+auto CritterView::CountItemPid(hstring item_pid) const -> uint
 {
     uint result = 0;
     for (auto* item : InvItems) {
@@ -295,7 +295,7 @@ void CritterView::Move(uchar dir)
     _animStartTick = _engine->GameTime.GameTick();
 
     if (_model == nullptr) {
-        if (_str(_engine->HashToString(GetModelName())).startsWith("art/critters/")) {
+        if (_str(GetModelName()).startsWith("art/critters/")) {
             const auto anim1 = IsRunning ? ANIM1_UNARMED : GetAnim1();
             const uint anim2 = IsRunning ? ANIM2_RUN : ANIM2_WALK;
             auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
@@ -741,8 +741,7 @@ void CritterView::RefreshModel()
     }
 
     // Check 3d availability
-    const auto model_name = _engine->HashToString(GetModelName());
-    const string ext = _str(model_name).getFileExtension();
+    const string ext = _str(GetModelName()).getFileExtension();
     if (ext != "fo3d") {
         return;
     }
@@ -750,10 +749,10 @@ void CritterView::RefreshModel()
     // Try load
     _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
 
-    auto* model = _engine->SprMngr.LoadModel(model_name, true);
+    auto* model = _engine->SprMngr.LoadModel(GetModelName(), true);
     if (model != nullptr) {
         _model = model;
-        _modelStay = _engine->SprMngr.LoadModel(model_name, false);
+        _modelStay = _engine->SprMngr.LoadModel(GetModelName(), false);
 
         _model->SetDir(GetDir());
         SprId = _model->SprId;

@@ -46,7 +46,7 @@ auto Item::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
 {
     /*if (func)
     {
-        hash func_num = scriptSys.BindScriptFuncNumByFunc(func);
+        hstring func_num = scriptSys.BindScriptFuncNumByFunc(func);
         if (!func_num)
         {
             WriteLog("Script bind fail, item '{}'.\n", GetName());
@@ -126,7 +126,7 @@ auto Item::ContGetAllItems(bool skip_hidden) -> vector<Item*>
     return items;
 }
 
-auto Item::ContGetItemByPid(hash pid, uint stack_id) -> Item*
+auto Item::ContGetItemByPid(hstring pid, uint stack_id) -> Item*
 {
     NON_CONST_METHOD_HINT();
 

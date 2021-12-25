@@ -60,7 +60,7 @@
         }
     }
     else {
-        self->SetScriptId(hash());
+        self->SetScriptId(hstring());
     }
 }
 
@@ -72,7 +72,7 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_AddItem(Map* self, ushort hx, ushort hy, hash protoId, uint count, const map<int, int>& props)
+[[maybe_unused]] Item* Server_Map_AddItem(Map* self, ushort hx, ushort hy, hstring protoId, uint count, const map<int, int>& props)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -80,7 +80,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
     if (!proto) {
-        throw ScriptException("Invalid proto '{}' arg.", self->GetEngine()->HashToString(protoId));
+        throw ScriptException("Invalid proto '{}' arg.", protoId);
     }
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
         throw ScriptException("No place for item");
@@ -109,7 +109,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self)
 {
-    return self->GetItemsByProto(hash());
+    return self->GetItemsByProto(hstring());
 }
 
 ///# ...
@@ -133,7 +133,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hash pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hstring pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -146,7 +146,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsByPid(Map* self, hash pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetItemsByPid(Map* self, hstring pid)
 {
     return self->GetItemsByProto(pid);
 }
@@ -205,7 +205,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    const auto map_items = self->GetItemsHexEx(hx, hy, radius, hash());
+    const auto map_items = self->GetItemsHexEx(hx, hy, radius, hstring());
     vector<Item*> items;
     items.reserve(map_items.size());
 
@@ -236,7 +236,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItemOnHex(Map* self, ushort hx, ushort hy, hash pid)
+[[maybe_unused]] Item* Server_Map_GetItemOnHex(Map* self, ushort hx, ushort hy, hstring pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -269,7 +269,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetStaticItemOnHex(Map* self, ushort hx, ushort hy, hash pid)
+[[maybe_unused]] Item* Server_Map_GetStaticItemOnHex(Map* self, ushort hx, ushort hy, hstring pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -299,7 +299,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hash pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hstring pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -312,7 +312,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsByPid(Map* self, hash pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsByPid(Map* self, hstring pid)
 {
     return self->GetStaticItemsByPid(pid);
 }
@@ -374,7 +374,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersByPids(Map* self, hash pid, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersByPids(Map* self, hstring pid, uchar findType)
 {
     vector<Critter*> critters;
     if (!pid) {
@@ -647,7 +647,7 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hash protoId, ushort hx, ushort hy, uchar dir, const map<int, int>& props)
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, ushort hx, ushort hy, uchar dir, const map<int, int>& props)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -655,7 +655,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
     if (!proto) {
-        throw ScriptException("Proto '{}' not found.", self->GetEngine()->HashToString(protoId));
+        throw ScriptException("Proto '{}' not found.", protoId);
     }
 
     Critter* npc;
@@ -685,7 +685,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, hash npcRole, uchar findType)
+[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, hstring npcRole, uchar findType)
 {
     return self->GetNpcCount(npcRole, findType);
 }
@@ -696,7 +696,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, hash npcRole, uchar findType, uint skipCount)
+[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, hstring npcRole, uchar findType, uint skipCount)
 {
     return self->GetNpc(npcRole, findType, skipCount);
 }
@@ -797,7 +797,7 @@
 ///# param hy ...
 ///# param radius ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_RunEffect(Map* self, hash effPid, ushort hx, ushort hy, uint radius)
+[[maybe_unused]] void Server_Map_RunEffect(Map* self, hstring effPid, ushort hx, ushort hy, uint radius)
 {
     if (!effPid) {
         throw ScriptException("Effect pid invalid arg");
@@ -818,7 +818,7 @@
 ///# param toHx ...
 ///# param toHy ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_RunFlyEffect(Map* self, hash effPid, Critter* fromCr, Critter* toCr, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] void Server_Map_RunFlyEffect(Map* self, hstring effPid, Critter* fromCr, Critter* toCr, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
 {
     if (!effPid) {
         throw ScriptException("Effect pid invalid arg");
@@ -841,7 +841,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Map_CheckPlaceForItem(Map* self, ushort hx, ushort hy, hash pid)
+[[maybe_unused]] bool Server_Map_CheckPlaceForItem(Map* self, ushort hx, ushort hy, hstring pid)
 {
     const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(pid);
     if (!proto_item) {

@@ -51,16 +51,16 @@ public:
     [[nodiscard]] auto GetName() const -> string_view;
     [[nodiscard]] auto GetBoneOutputCount() const -> uint;
     [[nodiscard]] auto GetDuration() const -> float;
-    [[nodiscard]] auto GetBonesHierarchy() const -> const vector<vector<hash>>&;
+    [[nodiscard]] auto GetBonesHierarchy() const -> const vector<vector<hstring>>&;
 
-    void Load(DataReader& reader);
+    void Load(DataReader& reader, NameResolver& name_resolver);
     void SetData(string_view fname, string_view name, float ticks, float tps);
-    void AddBoneOutput(vector<hash> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv);
+    void AddBoneOutput(vector<hstring> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv);
 
 private:
     struct BoneOutput
     {
-        hash NameHash {};
+        hstring BoneName {};
         vector<float> ScaleTime {};
         vector<vec3> ScaleValue {};
         vector<float> RotationTime {};
@@ -74,7 +74,7 @@ private:
     float _durationTicks {};
     float _ticksPerSecond {};
     vector<BoneOutput> _boneOutputs {};
-    vector<vector<hash>> _bonesHierarchy {};
+    vector<vector<hstring>> _bonesHierarchy {};
 };
 
 class ModelAnimationController final
@@ -88,17 +88,17 @@ public:
     ~ModelAnimationController();
 
     [[nodiscard]] auto Clone() const -> ModelAnimationController*;
-    [[nodiscard]] auto GetAnimationSet(uint index) const -> ModelAnimation*;
-    [[nodiscard]] auto GetAnimationSetByName(string_view name) const -> ModelAnimation*;
+    [[nodiscard]] auto GetAnimationSet(uint index) const -> const ModelAnimation*;
+    [[nodiscard]] auto GetAnimationSetByName(string_view name) const -> const ModelAnimation*;
     [[nodiscard]] auto GetTrackPosition(uint track) const -> float;
     [[nodiscard]] auto GetNumAnimationSets() const -> uint;
     [[nodiscard]] auto GetTime() const -> float;
 
     void Reset();
-    void RegisterAnimationOutput(hash bone_name_hash, mat44& output_matrix);
+    void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
     void RegisterAnimationSet(ModelAnimation* animation);
-    void SetTrackAnimationSet(uint track, ModelAnimation* anim);
-    void ResetBonesTransition(uint skip_track, const vector<hash>& bone_name_hashes);
+    void SetTrackAnimationSet(uint track, const ModelAnimation* anim);
+    void ResetBonesTransition(uint skip_track, const vector<hstring>& bone_names);
     void AddEventEnable(uint track, bool enable, float start_time);
     void AddEventSpeed(uint track, float speed, float start_time, float smooth_time);
     void AddEventWeight(uint track, float weight, float start_time, float smooth_time);
@@ -110,7 +110,7 @@ public:
 private:
     struct Output
     {
-        hash NameHash {};
+        hstring BoneName {};
         mat44* Matrix {};
         vector<bool> Valid {};
         vector<float> Factor {};
@@ -141,7 +141,7 @@ private:
         float Speed {};
         float Weight {};
         float Position {};
-        ModelAnimation* Anim {};
+        const ModelAnimation* Anim {};
         vector<Output*> AnimOutput {};
         vector<Event> Events {};
     };
@@ -150,14 +150,14 @@ private:
     void Interpolate(vec3& v1, const vec3& v2, float factor) const;
 
     template<class T>
-    void FindSrtValue(float time, vector<float>& times, vector<T>& values, T& result)
+    void FindSrtValue(float time, const vector<float>& times, const vector<T>& values, T& result)
     {
         for (size_t n = 0; n < times.size(); n++) {
             if (n + 1 < times.size()) {
                 if (time >= times[n] && time < times[n + 1]) {
                     result = values[n];
-                    T& value = values[n + 1];
-                    auto factor = (time - times[n]) / (times[n + 1] - times[n]);
+                    const T& value = values[n + 1];
+                    const auto factor = (time - times[n]) / (times[n + 1] - times[n]);
                     Interpolate(result, value, factor);
                     return;
                 }

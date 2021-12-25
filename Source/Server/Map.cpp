@@ -413,7 +413,7 @@ auto Map::GetItem(uint item_id) -> Item*
     return it != _mapItemsById.end() ? it->second : nullptr;
 }
 
-auto Map::GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker) -> Item*
+auto Map::GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) -> Item*
 {
     const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
     if (it_hex_all != _mapItemsByHex.end()) {
@@ -461,7 +461,7 @@ auto Map::GetItemsHex(ushort hx, ushort hy) -> vector<Item*>
     return items;
 }
 
-auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>
+auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>
 {
     NON_CONST_METHOD_HINT();
 
@@ -474,7 +474,7 @@ auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<I
     return items;
 }
 
-auto Map::GetItemsByProto(hash pid) -> vector<Item*>
+auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
 {
     NON_CONST_METHOD_HINT();
 
@@ -815,7 +815,7 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
     }
 }
 
-auto Map::GetNpcCount(hash npc_role, uchar find_type) const -> uint
+auto Map::GetNpcCount(hstring npc_role, uchar find_type) const -> uint
 {
     uint result = 0;
     for (const auto* npc : _mapNonPlayerCritters) {
@@ -838,7 +838,7 @@ auto Map::GetCritter(uint crid) -> Critter*
     return nullptr;
 }
 
-auto Map::GetNpc(hash npc_role, uchar find_type, uint skip_count) -> Critter*
+auto Map::GetNpc(hstring npc_role, uchar find_type, uint skip_count) -> Critter*
 {
     NON_CONST_METHOD_HINT();
 
@@ -947,7 +947,7 @@ auto Map::GetNpcsCount() const -> uint
     return static_cast<uint>(_mapNonPlayerCritters.size());
 }
 
-void Map::SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius)
+void Map::SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
     NON_CONST_METHOD_HINT();
 
@@ -958,7 +958,7 @@ void Map::SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius)
     }
 }
 
-void Map::SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Map::SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
     NON_CONST_METHOD_HINT();
 
@@ -973,7 +973,7 @@ auto Map::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
 {
     /*if (func)
     {
-        hash func_num = scriptSys.BindScriptFuncNumByFunc(func);
+        hstring func_num = scriptSys.BindScriptFuncNumByFunc(func);
         if (!func_num)
         {
             WriteLog("Script bind fail, map '{}'.\n", GetName());
@@ -1050,7 +1050,7 @@ auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>
     return triggers;
 }
 
-auto Map::GetStaticItem(ushort hx, ushort hy, hash pid) -> Item*
+auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> Item*
 {
     NON_CONST_METHOD_HINT();
 
@@ -1075,7 +1075,7 @@ auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>
     return items;
 }
 
-auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>
+auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>
 {
     NON_CONST_METHOD_HINT();
 
@@ -1088,7 +1088,7 @@ auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> ve
     return items;
 }
 
-auto Map::GetStaticItemsByPid(hash pid) -> vector<Item*>
+auto Map::GetStaticItemsByPid(hstring pid) -> vector<Item*>
 {
     NON_CONST_METHOD_HINT();
 

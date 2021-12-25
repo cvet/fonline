@@ -78,7 +78,7 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
 
         const auto id = _str(kv["$Id"]).toUInt();
         const auto& proto_name = kv["$Proto"];
-        const auto* proto = proto_mngr.GetProtoCritter(name_resolver.StringToHash(proto_name));
+        const auto* proto = proto_mngr.GetProtoCritter(name_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto critter '{}' not found", proto_name));
         }
@@ -97,7 +97,7 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
 
         const auto id = _str(kv["$Id"]).toUInt();
         const auto& proto_name = kv["$Proto"];
-        const auto* proto = proto_mngr.GetProtoItem(name_resolver.StringToHash(proto_name));
+        const auto* proto = proto_mngr.GetProtoItem(name_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
             errors.emplace_back(_str("Proto item '{}' not found", proto_name));
         }
@@ -131,7 +131,9 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
             continue;
         }
 
-        tile_load({tname, name_resolver.StringToHash(tname), static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof});
+        const auto htname = name_resolver.ToHashedString(tname);
+
+        tile_load({htname.as_hash(), static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof});
     }
 
     if (!errors.empty()) {

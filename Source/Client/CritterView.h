@@ -66,7 +66,7 @@ public:
     [[nodiscard]] auto IsCombatMode() const -> bool;
     [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
     [[nodiscard]] auto IsLastHexes() const -> bool;
-    [[nodiscard]] auto CountItemPid(hash item_pid) const -> uint;
+    [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
     [[nodiscard]] auto IsHaveLightSources() const -> bool;
     [[nodiscard]] auto IsNeedMove() const -> bool { return !MoveSteps.empty() && !IsWalkAnim(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
@@ -84,7 +84,7 @@ public:
     [[nodiscard]] auto GetTextRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
     [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
-    [[nodiscard]] auto GetItemByPid(hash item_pid) -> ItemView*;
+    [[nodiscard]] auto GetItemByPid(hstring item_pid) -> ItemView*;
     [[nodiscard]] auto GetItemSlot(int slot) -> ItemView*;
     [[nodiscard]] auto GetItemsSlot(int slot) -> vector<ItemView*>;
 

@@ -75,8 +75,7 @@ public:
     {
         vector<const ProtoItem*> ItemProtos {};
         vector<const ProtoCritter*> NpcProtos {};
-        vector<string> TileNames {};
-        vector<hash> TileHashes {};
+        vector<hstring> TileNames {};
         int Index {};
         int Scroll {};
     };
@@ -107,7 +106,7 @@ public:
 
     struct TileBuf
     {
-        hash NameHash {};
+        hstring Name {};
         ushort HexX {};
         ushort HexY {};
         short OffsX {};
@@ -186,8 +185,7 @@ public:
     void ProcessInputEvents();
     void ProcessInputEvent(const InputEvent& event);
 
-    auto AnimLoad(hash name_hash, AtlasType res_type) -> uint;
-    auto AnimLoad(string_view fname, AtlasType res_type) -> uint;
+    auto AnimLoad(hstring name, AtlasType res_type) -> uint;
     auto AnimGetCurSpr(uint anim_id) -> uint;
     auto AnimGetCurSprCnt(uint anim_id) -> uint;
     auto AnimGetSprCount(uint anim_id) -> uint;
@@ -216,7 +214,7 @@ public:
     void SetTabIndex(uint index);
     void RefreshCurProtos();
     auto IsObjectMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
-    auto IsTileMode() const -> bool { return CurTileHashes != nullptr && CurTileNames != nullptr && CurProtoScroll != nullptr; }
+    auto IsTileMode() const -> bool { return CurTileNames != nullptr && CurProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
 
     void MoveEntity(ClientEntity* entity, ushort hx, ushort hy);
@@ -231,9 +229,9 @@ public:
     auto SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool;
     void SelectDelete();
 
-    auto AddCritter(hash pid, ushort hx, ushort hy) -> CritterView*;
-    auto AddItem(hash pid, ushort hx, ushort hy, Entity* owner) -> ItemView*;
-    void AddTile(hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof);
+    auto AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*;
+    auto AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> ItemView*;
+    void AddTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof);
     auto CloneEntity(Entity* entity) -> Entity*;
 
     void BufferCopy();
@@ -349,8 +347,7 @@ public:
     int SubTabsX {};
     int SubTabsY {};
     vector<const ProtoItem*>* CurItemProtos {};
-    vector<hash>* CurTileHashes {};
-    vector<string>* CurTileNames {};
+    vector<hstring>* CurTileNames {};
     vector<const ProtoCritter*>* CurNpcProtos {};
     int NpcDir {};
     int* CurProtoScroll {};

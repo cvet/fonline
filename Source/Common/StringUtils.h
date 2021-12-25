@@ -137,8 +137,6 @@ public:
     [[nodiscard]] auto toWideChar() const -> std::wstring;
 #endif
 
-    [[nodiscard]] auto toHash() -> hstring;
-
 private:
     string _s {};
 
@@ -152,7 +150,7 @@ namespace utf8
     auto Encode(uint ucs, char (&buf)[4]) -> uint;
     auto Lower(uint ucs) -> uint;
     auto Upper(uint ucs) -> uint;
-} // namespace utf8
+}
 
 namespace fmt
 {
@@ -174,21 +172,5 @@ namespace fmt
         }
     };
 
-    template<>
-    struct formatter<hstring>
-    {
-        template<typename ParseContext>
-        constexpr auto parse(ParseContext& ctx)
-        {
-            return ctx.begin();
-        }
-
-        template<typename FormatContext>
-        auto format(const hstring& s, FormatContext& ctx)
-        {
-            return format_to(ctx.out(), "{}", s.Text ? s.Text : "");
-        }
-    };
-
     // ReSharper restore CppInconsistentNaming
-} // namespace fmt
+}

@@ -200,7 +200,7 @@ auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
-    if (_nameHash != other->_nameHash) {
+    if (_name != other->_name) {
         return false;
     }
     if (MainTex != other->MainTex) {

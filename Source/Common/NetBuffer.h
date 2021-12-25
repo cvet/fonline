@@ -75,14 +75,14 @@ public:
     void SkipMsg(uint msg);
 
     // Generic specification
-    template<typename T>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     auto operator<<(const T& i) -> NetBuffer&
     {
         Push(&i, sizeof(T));
         return *this;
     }
 
-    template<typename T>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     auto operator>>(T& i) -> NetBuffer&
     {
         Pop(&i, sizeof(T));
@@ -93,7 +93,7 @@ public:
     auto operator<<(string_view i) -> NetBuffer&
     {
         RUNTIME_ASSERT(i.length() <= 65535);
-        auto len = static_cast<ushort>(i.length());
+        const auto len = static_cast<ushort>(i.length());
         Push(&len, sizeof(len), false);
         Push(i.data(), len, false);
         return *this;
@@ -108,9 +108,21 @@ public:
         return *this;
     }
 
-    // Deleted specialization
-    auto operator<<(hstring i) -> NetBuffer& = delete;
-    auto operator>>(hstring& i) -> NetBuffer& = delete;
+    // Hashed string specialization
+    auto operator<<(hstring i) -> NetBuffer&
+    {
+        *this << i.as_hash();
+        return *this;
+    }
+
+    auto operator>>(hstring& i) -> NetBuffer&
+    {
+        hstring::hash_t h;
+        *this >> h;
+        // i = _nameResolver.ResolveHash(h);
+        // Todo: ResolveHash
+        return *this;
+    }
 
 private:
     auto EncryptKey(int move) -> uchar;

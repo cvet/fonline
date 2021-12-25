@@ -285,7 +285,7 @@ auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemByPid(hash item_pid) -> Item*
+auto Critter::GetItemByPid(hstring item_pid) -> Item*
 {
     NON_CONST_METHOD_HINT();
 
@@ -297,7 +297,7 @@ auto Critter::GetItemByPid(hash item_pid) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemByPidSlot(hash item_pid, int slot) -> Item*
+auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
 {
     NON_CONST_METHOD_HINT();
 
@@ -336,7 +336,7 @@ auto Critter::GetItemsSlot(int slot) -> vector<Item*>
     return items;
 }
 
-auto Critter::CountItemPid(hash pid) const -> uint
+auto Critter::CountItemPid(hstring pid) const -> uint
 {
     uint res = 0;
     for (const auto* item : _invItems) {
@@ -373,7 +373,7 @@ auto Critter::IsHaveGeckItem() const -> bool
 
 auto Critter::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
 {
-    /*hash func_num = 0;
+    /*hstring func_num = 0;
     if (func)
     {
         func_num = scriptSys.BindScriptFuncNumByFunc(func);
@@ -710,7 +710,7 @@ auto Critter::IsFreeToTalk() const -> bool
     return GetTalkedPlayers() < max_talkers;
 }
 
-void Critter::AddCrTimeEvent(hash /*func_num*/, uint /*rate*/, uint duration, int /*identifier*/) const
+void Critter::AddCrTimeEvent(hstring /*func_num*/, uint /*rate*/, uint duration, int /*identifier*/) const
 {
     // if (duration != 0u) {
     //    duration += _gameTime.GetFullSecond();
@@ -1066,7 +1066,7 @@ void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
     }
 }
 
-void Critter::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
+void Critter::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1075,7 +1075,7 @@ void Critter::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
     }
 }
 
-void Critter::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Critter::Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
     NON_CONST_METHOD_HINT();
 

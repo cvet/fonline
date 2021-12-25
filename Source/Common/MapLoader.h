@@ -42,8 +42,7 @@ DECLARE_EXCEPTION(MapLoaderException);
 
 struct MapTile
 {
-    string Name {};
-    hash NameHash {};
+    hstring::hash_t NameHash {};
     ushort HexX {};
     ushort HexY {};
     short OffsX {};

@@ -140,9 +140,9 @@ public:
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override { return 0; }
     [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value) const -> string override { return ""; }
 
-    [[nodiscard]] auto ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3, hash& arg4, uint& arg5, uint& arg6) -> bool override;
-    [[nodiscard]] auto ResolveCritterAnimationFallout(hash arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool override;
+    [[nodiscard]] auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
 
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
@@ -164,8 +164,7 @@ public:
     void ProcessInputEvent(const InputEvent& event);
     void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
 
-    auto AnimLoad(hash name_hash, AtlasType res_type) -> uint;
-    auto AnimLoad(string_view fname, AtlasType res_type) -> uint;
+    auto AnimLoad(hstring name, AtlasType res_type) -> uint;
     auto AnimGetCurSpr(uint anim_id) -> uint;
     auto AnimGetCurSprCnt(uint anim_id) -> uint;
     auto AnimGetSprCount(uint anim_id) -> uint;
@@ -254,11 +253,11 @@ public:
     ///@ ExportEvent
     ScriptEvent<bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/> Animation3dProcessEvent {};
     ///@ ExportEvent
-    ScriptEvent<hash /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/> CritterAnimationEvent {};
+    ScriptEvent<hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/> CritterAnimationEvent {};
     ///@ ExportEvent
-    ScriptEvent<hash /*arg1*/, uint /*arg2*/, uint /*arg3*/, hash& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationSubstituteEvent {};
+    ScriptEvent<hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationSubstituteEvent {};
     ///@ ExportEvent
-    ScriptEvent<hash /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationFalloutEvent {};
+    ScriptEvent<hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationFalloutEvent {};
     ///@ ExportEvent
     ScriptEvent<CritterView* /*critter*/, ItemView* /*item*/, char /*toSlot*/> CritterCheckMoveItemEvent {};
     ///@ ExportEvent
@@ -279,7 +278,7 @@ public:
     CacheStorage Cache;
 
     unique_ptr<ProtoManager> ProtoMngr {};
-    hash CurMapPid {};
+    hstring CurMapPid {};
     vector<MapText> GameMapTexts {};
     bool CanDrawInScripts {};
     vector<string> Preload3dFiles {};
@@ -291,7 +290,7 @@ public:
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
     vector<ModelInstance*> DrawCritterModel {};
-    vector<hash> DrawCritterModelCrType {};
+    vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
     int DrawCritterModelLayers[LAYERS3D_COUNT] {};
 
@@ -344,7 +343,7 @@ private:
     struct GmapLocation
     {
         uint LocId {};
-        hash LocPid {};
+        hstring LocPid {};
         ushort LocWx {};
         ushort LocWy {};
         ushort Radius {};
@@ -355,9 +354,9 @@ private:
     struct Automap
     {
         uint LocId {};
-        hash LocPid {};
+        hstring LocPid {};
         string LocName {};
-        vector<hash> MapPids {};
+        vector<hstring> MapPids {};
         vector<string> MapNames {};
         uint CurMap {};
     };
@@ -398,7 +397,7 @@ private:
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
     void Net_SendGetGameInfo();
-    void Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, uint tiles_hash, uint scen_hash);
+    void Net_SendGiveMap(bool automap, hstring map_pid, uint loc_id, uint tiles_hash, uint scen_hash);
     void Net_SendLoadMapOk();
     void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir();
@@ -477,7 +476,7 @@ private:
     void DeleteCritter(uint crid);
 
     int _initCalls {};
-    hash _curMapLocPid {};
+    hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
     int _windowResolutionDiffX {};
     int _windowResolutionDiffY {};
@@ -536,7 +535,7 @@ private:
     AnyFrames* _waitPic {};
     uchar _pupTransferType {};
     uint _pupContId {};
-    hash _pupContPid {};
+    hstring _pupContPid {};
     uint _holoInfo[MAX_HOLO_INFO] {};
     vector<Automap> _automaps {};
     TwoBitMask _worldmapFog {};

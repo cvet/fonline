@@ -269,7 +269,7 @@ gameEntitiesInfo = {'Entity': {'Server': 'ServerEntity', 'Client': 'ClientEntity
 def parseTags():
     validTypes = set()
     validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64',
-            'float', 'double', 'hash', 'string', 'bool', 'Entity', 'void'])
+            'float', 'double', 'hstring', 'string', 'bool', 'Entity', 'void'])
     
     def unifiedTypeToMetaType(t):
         if t.endswith('&'):
@@ -293,7 +293,7 @@ def parseTags():
                     'char&': 'int8&', 'uchar&': 'uint8&', 'short&': 'int16&', 'ushort&': 'uint16&',
                     'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
                     'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
-                    'bool': 'bool', 'bool&': 'bool&', 'hash': 'hash', 'hash&': 'hash&', 'void': 'void',
+                    'bool': 'bool', 'bool&': 'bool&', 'hstring': 'hstring', 'hstring&': 'hstring&', 'void': 'void',
                     'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string':  'string'}
             assert t in typeMap, 'Invalid engine type ' + t
             return typeMap[t]

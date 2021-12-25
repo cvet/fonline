@@ -49,14 +49,14 @@ public:
     auto operator=(ResourceManager&&) noexcept = delete;
     ~ResourceManager() = default;
 
-    [[nodiscard]] auto GetAnim(hash name_hash, AtlasType atlas_type) -> AnyFrames*;
-    [[nodiscard]] auto GetIfaceAnim(hash name_hash) -> AnyFrames* { return GetAnim(name_hash, AtlasType::Static); }
-    [[nodiscard]] auto GetInvAnim(hash name_hash) -> AnyFrames* { return GetAnim(name_hash, AtlasType::Static); }
-    [[nodiscard]] auto GetSkDxAnim(hash name_hash) -> AnyFrames* { return GetAnim(name_hash, AtlasType::Static); }
-    [[nodiscard]] auto GetItemAnim(hash name_hash) -> AnyFrames* { return GetAnim(name_hash, AtlasType::Dynamic); }
-    [[nodiscard]] auto GetCritterAnim(hash model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*;
-    [[nodiscard]] auto GetCritterModel(hash model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*;
-    [[nodiscard]] auto GetCritterSprId(hash model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> uint;
+    [[nodiscard]] auto GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*;
+    [[nodiscard]] auto GetIfaceAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
+    [[nodiscard]] auto GetInvAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
+    [[nodiscard]] auto GetSkDxAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
+    [[nodiscard]] auto GetItemAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Dynamic); }
+    [[nodiscard]] auto GetCritterAnim(hstring model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*;
+    [[nodiscard]] auto GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*;
+    [[nodiscard]] auto GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> uint;
     [[nodiscard]] auto GetRandomSplash() -> AnyFrames*;
     [[nodiscard]] auto GetSoundNames() -> map<string, string>& { return _soundNames; }
 
@@ -73,8 +73,8 @@ private:
         AnyFrames* Anim {};
     };
 
-    [[nodiscard]] auto LoadFalloutAnim(hash model_name, uint anim1, uint anim2) -> AnyFrames*;
-    [[nodiscard]] auto LoadFalloutAnimSpr(hash model_name, uint anim1, uint anim2) -> AnyFrames*;
+    [[nodiscard]] auto LoadFalloutAnim(hstring model_name, uint anim1, uint anim2) -> AnyFrames*;
+    [[nodiscard]] auto LoadFalloutAnimSpr(hstring model_name, uint anim1, uint anim2) -> AnyFrames*;
 
     void FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base);
     void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
@@ -85,9 +85,9 @@ private:
     NameResolver& _nameResolver;
     EventUnsubscriber _eventUnsubscriber {};
     map<uint, string> _namesHash {};
-    map<hash, LoadedAnim> _loadedAnims {};
+    map<hstring, LoadedAnim> _loadedAnims {};
     map<uint, AnyFrames*> _critterFrames {};
-    map<hash, ModelInstance*> _critterModels {};
+    map<hstring, ModelInstance*> _critterModels {};
     vector<string> _splashNames {};
     map<string, string> _soundNames {};
     AnyFrames* _splash {};

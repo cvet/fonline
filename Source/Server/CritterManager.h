@@ -69,12 +69,12 @@ public:
     [[nodiscard]] auto GetCritter(uint cr_id) const -> const Critter*;
     [[nodiscard]] auto GetPlayerById(uint id) -> Player*;
     [[nodiscard]] auto GetPlayerByName(string_view name) -> Player*;
-    [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*;
+    [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
     [[nodiscard]] auto PlayersInGame() const -> uint;
     [[nodiscard]] auto NpcInGame() const -> uint;
     [[nodiscard]] auto CrittersInGame() const -> uint;
 
-    [[nodiscard]] auto CreateNpc(hash proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
+    [[nodiscard]] auto CreateNpc(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
 
     void LinkCritters();
     void InitAfterLoad();

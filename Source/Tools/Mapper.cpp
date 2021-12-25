@@ -88,7 +88,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     RUNTIME_ASSERT(init_face_ok);
 
     // Language Packs
-    CurLang.LoadFromFiles(FileMngr, SettingsExt.Language);
+    CurLang.LoadFromFiles(FileMngr, *this, SettingsExt.Language);
 
     // Prototypes
     // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileMngr);
@@ -141,7 +141,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
 
     if (!SettingsExt.StartMap.empty()) {
         const auto map_name = SettingsExt.StartMap;
-        auto* pmap = new ProtoMap(StringToHash(map_name), map_name, GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+        auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
         const bool initialized = 0;
         // pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
 
@@ -338,35 +338,9 @@ void FOMapper::ChangeGameTime()
     }
 }
 
-auto FOMapper::AnimLoad(hash name_hash, AtlasType res_type) -> uint
+auto FOMapper::AnimLoad(hstring name, AtlasType res_type) -> uint
 {
-    auto* anim = ResMngr.GetAnim(name_hash, res_type);
-    if (anim == nullptr) {
-        return 0;
-    }
-    auto* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
-    if (ianim == nullptr) {
-        return 0;
-    }
-
-    uint index = 1;
-    for (const auto j = static_cast<uint>(Animations.size()); index < j; index++) {
-        if (Animations[index] == nullptr) {
-            break;
-        }
-    }
-    if (index < static_cast<uint>(Animations.size())) {
-        Animations[index] = ianim;
-    }
-    else {
-        Animations.push_back(ianim);
-    }
-    return index;
-}
-
-auto FOMapper::AnimLoad(string_view fname, AtlasType res_type) -> uint
-{
-    auto* anim = ResMngr.GetAnim(StringToHash(fname), res_type);
+    auto* anim = ResMngr.GetAnim(name, res_type);
     if (anim == nullptr) {
         return 0;
     }
@@ -1198,7 +1172,7 @@ void FOMapper::MapperMainLoop()
             for (auto [id, cr] : HexMngr.GetCritters()) {
                 if (cr->SprDrawValid) {
                     if (DrawCrExtInfo == 1) {
-                        cr->SetText(_str("|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), HashToString(cr->GetDialogId())), COLOR_TEXT_WHITE, 60000000);
+                        cr->SetText(_str("|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId()), COLOR_TEXT_WHITE, 60000000);
                     }
                     else {
                         cr->SetText("", COLOR_TEXT_WHITE, 60000000);
@@ -1376,13 +1350,10 @@ void FOMapper::RefreshTiles(int tab)
                 }
 
                 // Write tile
-                auto hash = StringToHash(fname);
-                Tabs[tab][DEFAULT_SUB_TAB].TileHashes.push_back(hash);
-                Tabs[tab][DEFAULT_SUB_TAB].TileNames.push_back(fname);
-                Tabs[tab][collection_name].TileHashes.push_back(hash);
-                Tabs[tab][collection_name].TileNames.push_back(fname);
-                Tabs[tab][collection_name_ex].TileHashes.push_back(hash);
-                Tabs[tab][collection_name_ex].TileNames.push_back(fname);
+                const auto hash = ToHashedString(fname);
+                Tabs[tab][DEFAULT_SUB_TAB].TileNames.push_back(hash);
+                Tabs[tab][collection_name].TileNames.push_back(hash);
+                Tabs[tab][collection_name_ex].TileNames.push_back(hash);
             }
         }
     }
@@ -1575,9 +1546,9 @@ void FOMapper::IntDraw()
             auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.NameCode);
             if (it != proto_item->TextsLang.end()) {
                 auto index = static_cast<uint>(std::distance(proto_item->TextsLang.begin(), it));
-                auto info = proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().Value, 1));
+                auto info = proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
                 info += " - ";
-                info += proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().Value, 2));
+                info += proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
                 SprMngr.DrawStr(IRect(IntWHint, IntX, IntY), info, 0, FONT_DEFAULT, FONT_DEFAULT);
             }
         }
@@ -1585,12 +1556,12 @@ void FOMapper::IntDraw()
     else if (IsTileMode()) {
         auto i = *CurProtoScroll;
         int j = i + ProtosOnScreen;
-        if (j > static_cast<int>(CurTileHashes->size())) {
-            j = static_cast<int>(CurTileHashes->size());
+        if (j > static_cast<int>(CurTileNames->size())) {
+            j = static_cast<int>(CurTileNames->size());
         }
 
         for (; i < j; i++, x += w) {
-            auto* anim = ResMngr.GetItemAnim((*CurTileHashes)[i]);
+            auto* anim = ResMngr.GetItemAnim((*CurTileNames)[i]);
             if (anim == nullptr) {
                 anim = ResMngr.ItemHexDefaultAnim;
             }
@@ -1599,9 +1570,9 @@ void FOMapper::IntDraw()
             SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y, w, h / 2, false, true, col);
 
             auto& name = (*CurTileNames)[i];
-            auto pos = name.find_last_of('/');
+            auto pos = _str(name).str().find_last_of('/');
             if (pos != string::npos) {
-                SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), name.substr(pos + 1), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
+                SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), _str(name).str().substr(pos + 1), FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
             }
             else {
                 SprMngr.DrawStr(IRect(x, y + h - 15, x + w, y + h), name, FT_NOBREAK, COLOR_TEXT_WHITE, FONT_DEFAULT);
@@ -2020,7 +1991,7 @@ void FOMapper::IntLMouseDown()
                         auto hy = cr->GetHexY();
                         vector<uchar> steps;
                         if (HexMngr.FindPath(nullptr, hx, hy, SelectHX1, SelectHY1, steps, -1)) {
-                            for (auto step : steps) {
+                            for (const auto step : steps) {
                                 if (GeomHelper.MoveHexByDir(hx, hy, step, HexMngr.GetWidth(), HexMngr.GetHeight())) {
                                     cr->MoveSteps.push_back(pair<ushort, ushort>(hx, hy));
                                 }
@@ -2048,8 +2019,8 @@ void FOMapper::IntLMouseDown()
             if (IsObjectMode() && !(*CurItemProtos).empty() != 0u) {
                 AddItem((*CurItemProtos)[GetTabIndex()]->GetProtoId(), SelectHX1, SelectHY1, nullptr);
             }
-            else if (IsTileMode() && !CurTileHashes->empty()) {
-                AddTile((*CurTileHashes)[GetTabIndex()], SelectHX1, SelectHY1, 0, 0, TileLayer, DrawRoof);
+            else if (IsTileMode() && !CurTileNames->empty()) {
+                AddTile((*CurTileNames)[GetTabIndex()], SelectHX1, SelectHY1, 0, 0, TileLayer, DrawRoof);
             }
             else if (IsCritMode() && !CurNpcProtos->empty()) {
                 AddCritter((*CurNpcProtos)[GetTabIndex()]->GetProtoId(), SelectHX1, SelectHY1);
@@ -2136,10 +2107,10 @@ void FOMapper::IntLMouseDown()
                 }
             }
         }
-        else if (IsTileMode() && !CurTileHashes->empty()) {
+        else if (IsTileMode() && !CurTileNames->empty()) {
             ind += *CurProtoScroll;
-            if (ind >= static_cast<int>(CurTileHashes->size())) {
-                ind = static_cast<int>(CurTileHashes->size()) - 1;
+            if (ind >= static_cast<int>(CurTileNames->size())) {
+                ind = static_cast<int>(CurTileNames->size()) - 1;
             }
             SetTabIndex(ind);
         }
@@ -2326,10 +2297,10 @@ void FOMapper::IntLMouseDown()
                 *CurProtoScroll = static_cast<int>((*CurItemProtos).size()) - 1;
             }
         }
-        else if (IsTileMode() && !CurTileHashes->empty()) {
+        else if (IsTileMode() && !CurTileNames->empty()) {
             (*CurProtoScroll)++;
-            if (*CurProtoScroll >= static_cast<int>(CurTileHashes->size())) {
-                *CurProtoScroll = static_cast<int>(CurTileHashes->size()) - 1;
+            if (*CurProtoScroll >= static_cast<int>(CurTileNames->size())) {
+                *CurProtoScroll = static_cast<int>(CurTileNames->size()) - 1;
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -2352,10 +2323,10 @@ void FOMapper::IntLMouseDown()
                 *CurProtoScroll = static_cast<int>((*CurItemProtos).size()) - 1;
             }
         }
-        else if (IsTileMode() && !CurTileHashes->empty()) {
+        else if (IsTileMode() && !CurTileNames->empty()) {
             (*CurProtoScroll) += ProtosOnScreen;
-            if (*CurProtoScroll >= static_cast<int>(CurTileHashes->size())) {
-                *CurProtoScroll = static_cast<int>(CurTileHashes->size()) - 1;
+            if (*CurProtoScroll >= static_cast<int>(CurTileNames->size())) {
+                *CurProtoScroll = static_cast<int>(CurTileNames->size()) - 1;
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -2606,7 +2577,6 @@ void FOMapper::RefreshCurProtos()
     // Select protos and scroll
     CurItemProtos = nullptr;
     CurProtoScroll = nullptr;
-    CurTileHashes = nullptr;
     CurTileNames = nullptr;
     CurNpcProtos = nullptr;
     InContItem = nullptr;
@@ -2615,7 +2585,6 @@ void FOMapper::RefreshCurProtos()
         auto* stab = TabsActive[IntMode];
         if (!stab->TileNames.empty()) {
             CurTileNames = &stab->TileNames;
-            CurTileHashes = &stab->TileHashes;
         }
         else if (!stab->NpcProtos.empty()) {
             CurNpcProtos = &stab->NpcProtos;
@@ -3173,7 +3142,7 @@ void FOMapper::SelectDelete()
     CurMode = CUR_MODE_DEFAULT;
 }
 
-auto FOMapper::AddCritter(hash pid, ushort hx, ushort hy) -> CritterView*
+auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 {
     RUNTIME_ASSERT(ActiveMap);
 
@@ -3207,7 +3176,7 @@ auto FOMapper::AddCritter(hash pid, ushort hx, ushort hy) -> CritterView*
     return cr;
 }
 
-auto FOMapper::AddItem(hash pid, ushort hx, ushort hy, Entity* owner) -> ItemView*
+auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> ItemView*
 {
     RUNTIME_ASSERT(ActiveMap);
 
@@ -3257,7 +3226,7 @@ auto FOMapper::AddItem(hash pid, ushort hx, ushort hy, Entity* owner) -> ItemVie
     return item;
 }
 
-void FOMapper::AddTile(hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof)
+void FOMapper::AddTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof)
 {
     RUNTIME_ASSERT(ActiveMap);
 
@@ -3411,7 +3380,7 @@ void FOMapper::BufferCopy()
         for (const auto& hex_tile : hex_tiles) {
             if (hex_tile.IsSelected) {
                 TileBuf tb;
-                tb.NameHash = hex_tile.NameHash;
+                tb.Name = ResolveHash(hex_tile.NameHash);
                 tb.HexX = tile.HexX;
                 tb.HexY = tile.HexY;
                 tb.OffsX = hex_tile.OffsX;
@@ -3439,7 +3408,7 @@ void FOMapper::BufferPaste(int, int)
     SelectClear();
 
     // Paste map objects
-    for (auto& entity_buf : EntitiesBuffer) {
+    for (const auto& entity_buf : EntitiesBuffer) {
         if (entity_buf.HexX >= HexMngr.GetWidth() || entity_buf.HexY >= HexMngr.GetHeight()) {
             continue;
         }
@@ -3447,7 +3416,7 @@ void FOMapper::BufferPaste(int, int)
         auto hx = entity_buf.HexX;
         auto hy = entity_buf.HexY;
 
-        Entity* owner = nullptr;
+        const Entity* owner;
         if (entity_buf.IsCritter) {
             if (HexMngr.GetField(hx, hy).Crit != nullptr) {
                 auto place_founded = false;
@@ -3509,7 +3478,7 @@ void FOMapper::BufferPaste(int, int)
     for (auto& tile_buf : TilesBuffer) {
         if (tile_buf.HexX < HexMngr.GetWidth() && tile_buf.HexY < HexMngr.GetHeight()) {
             // Create
-            HexMngr.SetTile(tile_buf.NameHash, tile_buf.HexX, tile_buf.HexY, tile_buf.OffsX, tile_buf.OffsY, tile_buf.Layer, tile_buf.IsRoof, true);
+            HexMngr.SetTile(tile_buf.Name, tile_buf.HexX, tile_buf.HexY, tile_buf.OffsX, tile_buf.OffsY, tile_buf.Layer, tile_buf.IsRoof, true);
 
             // Select helper
             bool sel_added = false;
@@ -3557,8 +3526,8 @@ void FOMapper::CurDraw()
                 SprMngr.DrawSpriteSize(spr_id, static_cast<int>(x / SettingsExt.SpritesZoom), static_cast<int>(y / SettingsExt.SpritesZoom), static_cast<int>(si->Width / SettingsExt.SpritesZoom), static_cast<int>(si->Height / SettingsExt.SpritesZoom), true, false, 0);
             }
         }
-        else if (IsTileMode() && !CurTileHashes->empty()) {
-            auto* anim = ResMngr.GetItemAnim((*CurTileHashes)[GetTabIndex()]);
+        else if (IsTileMode() && !CurTileNames->empty()) {
+            auto* anim = ResMngr.GetItemAnim((*CurTileNames)[GetTabIndex()]);
             if (anim == nullptr) {
                 anim = ResMngr.ItemHexDefaultAnim;
             }
@@ -3821,7 +3790,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        auto* pmap = new ProtoMap(StringToHash(map_name), map_name, GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+        auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
         // Todo: need attention!
         /*if (!pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr))
         {
@@ -3946,7 +3915,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         if (command_ext == "new") {
-            auto* pmap = new ProtoMap(StringToHash("new"), "new", GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+            auto* pmap = new ProtoMap(ToHashedString("new"), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
 
             pmap->SetWidth(MAXHEX_DEFAULT);
             pmap->SetHeight(MAXHEX_DEFAULT);

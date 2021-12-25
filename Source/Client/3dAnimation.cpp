@@ -34,7 +34,7 @@
 #include "3dAnimation.h"
 #include "GenericUtils.h"
 
-void ModelAnimation::Load(DataReader& reader)
+void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
 {
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
@@ -48,10 +48,16 @@ void ModelAnimation::Load(DataReader& reader)
     reader.ReadPtr(&len, sizeof(len));
 
     _bonesHierarchy.resize(len);
+    string tmp;
     for (uint i = 0, j = len; i < j; i++) {
         reader.ReadPtr(&len, sizeof(len));
         _bonesHierarchy[i].resize(len);
-        reader.ReadPtr(&_bonesHierarchy[i][0], len * sizeof(_bonesHierarchy[0][0]));
+        for (uint k = 0, l = len; k < l; k++) {
+            reader.ReadPtr(&len, sizeof(len));
+            tmp.resize(len);
+            reader.ReadPtr(tmp.data(), len);
+            _bonesHierarchy[i][k] = name_resolver.ToHashedString(tmp);
+        }
     }
 
     reader.ReadPtr(&len, sizeof(len));
@@ -59,7 +65,7 @@ void ModelAnimation::Load(DataReader& reader)
 
     for (uint i = 0, j = len; i < j; i++) {
         auto& o = _boneOutputs[i];
-        reader.ReadPtr(&o.NameHash, sizeof(o.NameHash));
+        reader.ReadPtr(&o.BoneName, sizeof(o.BoneName));
         reader.ReadPtr(&len, sizeof(len));
         o.ScaleTime.resize(len);
         o.ScaleValue.resize(len);
@@ -86,17 +92,17 @@ void ModelAnimation::SetData(string_view fname, string_view name, float ticks, f
     _ticksPerSecond = tps;
 }
 
-void ModelAnimation::AddBoneOutput(vector<hash> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv)
+void ModelAnimation::AddBoneOutput(vector<hstring> hierarchy, const vector<float>& st, const vector<vec3>& sv, const vector<float>& rt, const vector<quaternion>& rv, const vector<float>& tt, const vector<vec3>& tv)
 {
     auto& o = _boneOutputs.emplace_back();
-    o.NameHash = hierarchy.back();
+    o.BoneName = hierarchy.back();
     o.ScaleTime = st;
     o.ScaleValue = sv;
     o.RotationTime = rt;
     o.RotationValue = rv;
     o.TranslationTime = tt;
     o.TranslationValue = tv;
-    _bonesHierarchy.push_back(hierarchy);
+    _bonesHierarchy.emplace_back(std::move(hierarchy));
 }
 
 auto ModelAnimation::GetFileName() const -> string_view
@@ -119,7 +125,7 @@ auto ModelAnimation::GetDuration() const -> float
     return _durationTicks / _ticksPerSecond;
 }
 
-auto ModelAnimation::GetBonesHierarchy() const -> const vector<vector<hash>>&
+auto ModelAnimation::GetBonesHierarchy() const -> const vector<vector<hstring>>&
 {
     return _bonesHierarchy;
 }
@@ -153,12 +159,12 @@ auto ModelAnimationController::Clone() const -> ModelAnimationController*
     return clone;
 }
 
-void ModelAnimationController::RegisterAnimationOutput(hash bone_name_hash, mat44& output_matrix)
+void ModelAnimationController::RegisterAnimationOutput(hstring bone_name, mat44& output_matrix)
 {
     NON_CONST_METHOD_HINT();
 
     auto& o = _outputs->emplace_back();
-    o.NameHash = bone_name_hash;
+    o.BoneName = bone_name;
     o.Matrix = &output_matrix;
     o.Valid.resize(_tracks.size());
     o.Factor.resize(_tracks.size());
@@ -174,7 +180,7 @@ void ModelAnimationController::RegisterAnimationSet(ModelAnimation* animation)
     _sets->push_back(animation);
 }
 
-auto ModelAnimationController::GetAnimationSet(uint index) const -> ModelAnimation*
+auto ModelAnimationController::GetAnimationSet(uint index) const -> const ModelAnimation*
 {
     if (index >= _sets->size()) {
         return nullptr;
@@ -182,9 +188,9 @@ auto ModelAnimationController::GetAnimationSet(uint index) const -> ModelAnimati
     return (*_sets)[index];
 }
 
-auto ModelAnimationController::GetAnimationSetByName(string_view name) const -> ModelAnimation*
+auto ModelAnimationController::GetAnimationSetByName(string_view name) const -> const ModelAnimation*
 {
-    for (auto& s : *_sets) {
+    for (const auto* s : *_sets) {
         if (s->_animName == name) {
             return s;
         }
@@ -202,16 +208,16 @@ auto ModelAnimationController::GetNumAnimationSets() const -> uint
     return static_cast<uint>(_sets->size());
 }
 
-void ModelAnimationController::SetTrackAnimationSet(uint track, ModelAnimation* anim)
+void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim)
 {
     _tracks[track].Anim = anim;
     const auto count = anim->GetBoneOutputCount();
     _tracks[track].AnimOutput.resize(count);
     for (uint i = 0; i < count; i++) {
-        const auto link_name_hash = anim->_boneOutputs[i].NameHash;
+        const auto link_name = anim->_boneOutputs[i].BoneName;
         Output* output = nullptr;
         for (auto& o : *_outputs) {
-            if (o.NameHash == link_name_hash) {
+            if (o.BoneName == link_name) {
                 output = &o;
                 break;
             }
@@ -220,17 +226,17 @@ void ModelAnimationController::SetTrackAnimationSet(uint track, ModelAnimation* 
     }
 }
 
-void ModelAnimationController::ResetBonesTransition(uint skip_track, const vector<hash>& bone_name_hashes)
+void ModelAnimationController::ResetBonesTransition(uint skip_track, const vector<hstring>& bone_names)
 {
     // Turn off fast transition bones on other tracks
-    for (auto bone_name_hash : bone_name_hashes) {
+    for (auto bone_name : bone_names) {
         for (uint i = 0, j = static_cast<uint>(_tracks.size()); i < j; i++) {
             if (i == skip_track) {
                 continue;
             }
 
             for (uint k = 0, l = static_cast<uint>(_tracks[i].AnimOutput.size()); k < l; k++) {
-                if (_tracks[i].AnimOutput[k] != nullptr && _tracks[i].AnimOutput[k]->NameHash == bone_name_hash) {
+                if (_tracks[i].AnimOutput[k] != nullptr && _tracks[i].AnimOutput[k]->BoneName == bone_name) {
                     _tracks[i].AnimOutput[k]->Valid[i] = false;
                     _tracks[i].AnimOutput[k] = nullptr;
                 }

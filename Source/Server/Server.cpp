@@ -106,9 +106,6 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngin
         GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
     }
 
-    // Todo: restore hashes loading
-    // _str::loadHashes();
-
     // Deferred calls
     // if (!ScriptSys.LoadDeferredCalls())
     //    return false;
@@ -946,9 +943,9 @@ void FOServer::Process_Text(Player* player)
         }
         else {
             auto* map = MapMngr.GetMap(cr->GetMapId());
-            const auto pid = (map != nullptr ? map->GetProtoId() : hash());
+            const auto pid = (map != nullptr ? map->GetProtoId() : hstring());
             for (auto& tl : _textListeners) {
-                if (tl.SayType == how_say && tl.Parameter == pid.Value && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
+                if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
                     listen_func[listen_count] = tl.Func;
                     listen_str[listen_count] = str;
                     if (++listen_count >= 100) {
@@ -1080,7 +1077,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
         CHECK_ALLOW_COMMAND();
 
-        const auto player_id = MAKE_PLAYER_ID(name);
+        const auto player_id = MakePlayerId(name);
         if (DbStorage.Valid("Players", player_id)) {
             logcb(_str("Player id is {}.", player_id));
         }
@@ -1245,7 +1242,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     case CMD_ADDITEM: {
         ushort hex_x = 0;
         ushort hex_y = 0;
-        hash pid;
+        hstring pid;
         uint count = 0;
         buf >> hex_x;
         buf >> hex_y;
@@ -1269,7 +1266,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         }
     } break;
     case CMD_ADDITEM_SELF: {
-        hash pid;
+        hstring pid;
         uint count = 0;
         buf >> pid;
         buf >> count;
@@ -1288,7 +1285,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         ushort hex_x = 0;
         ushort hex_y = 0;
         uchar dir = 0;
-        hash pid;
+        hstring pid;
         buf >> hex_x;
         buf >> hex_y;
         buf >> dir;
@@ -1309,7 +1306,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     case CMD_ADDLOCATION: {
         ushort wx = 0;
         ushort wy = 0;
-        hash pid;
+        hstring pid;
         buf >> wx;
         buf >> wy;
         buf >> pid;
@@ -1441,7 +1438,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
                 return;
             }
 
-            const auto player_id = MAKE_PLAYER_ID(name);
+            const auto player_id = MakePlayerId(name);
             auto* ban_player = EntityMngr.GetPlayer(player_id);
             ClientBanned ban;
             ban.ClientName = name;
@@ -1597,7 +1594,7 @@ auto FOServer::InitLangPacks(vector<LanguagePack>& lang_packs) -> bool
         }
 
         LanguagePack lang;
-        lang.LoadFromFiles(FileMngr, lang_name);
+        lang.LoadFromFiles(FileMngr, *this, lang_name);
 
         lang_packs.push_back(lang);
         cur_lang++;
@@ -1857,7 +1854,6 @@ void FOServer::LoadBans()
         ClientBanned ban;
 
         DateTimeStamp time;
-        std::memset(&time, 0, sizeof(time));
 
         string s;
         if (!(s = bans.GetStr("Ban", "User")).empty()) {
@@ -2414,7 +2410,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     }
 
     // Check for exist
-    const auto player_id = MAKE_PLAYER_ID(name);
+    const auto player_id = MakePlayerId(name);
     if (DbStorage.Valid("Players", player_id)) {
         connection->Send_TextMsg(STR_NET_PLAYER_ALREADY);
         connection->GracefulDisconnect();
@@ -2555,7 +2551,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Check password
-    const auto player_id = MAKE_PLAYER_ID(name);
+    const auto player_id = MakePlayerId(name);
     auto doc = DbStorage.Get("Players", player_id);
     if (doc.count("Password") == 0u || doc["Password"].index() != DataBase::STRING_VALUE || std::get<string>(doc["Password"]).length() != password.length() || std::get<string>(doc["Password"]) != password) {
         connection->Send_TextMsg(STR_NET_LOGINPASS_WRONG);
@@ -2610,7 +2606,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Create new
-    const auto player_proto_id = StringToHash("Player");
+    const auto player_proto_id = ToHashedString("Player");
     const auto* player_proto = ProtoMngr.GetProtoCritter(player_proto_id);
     RUNTIME_ASSERT(player_proto);
 
@@ -2787,7 +2783,7 @@ void FOServer::Process_GiveMap(Player* player)
     Critter* cr = player->GetOwnedCritter();
 
     bool automap = 0;
-    hash map_pid;
+    hstring map_pid;
     uint loc_id = 0;
     uint hash_tiles = 0;
     uint hash_scen = 0;
@@ -2820,7 +2816,7 @@ void FOServer::Process_GiveMap(Player* player)
         }
 
         auto found = false;
-        auto automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : vector<hash>());
+        auto automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : vector<hstring>());
         if (!automaps.empty()) {
             for (size_t i = 0; i < automaps.size() && !found; i++) {
                 if (automaps[i] == map_pid) {
@@ -3524,7 +3520,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
             }
         } break;
         case DR_ITEM: {
-            const auto pid = hash {static_cast<uint>(index)};
+            const auto pid = ResolveHash(index);
             switch (demand.Op) {
             case '>':
                 if (static_cast<int>(master->CountItemPid(pid)) > demand.Value) {
@@ -3764,7 +3760,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
         }
             continue;
         case DR_ITEM: {
-            const auto pid = hash {static_cast<uint>(index)};
+            const auto pid = ResolveHash(index);
             const int cur_count = master->CountItemPid(pid);
             auto need_count = cur_count;
 
@@ -3811,7 +3807,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
     return force_dialog;
 }
 
-void FOServer::BeginDialog(Critter* cl, Critter* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance)
+void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance)
 {
     if (cl->Talk.Locked) {
         WriteLog("Dialog locked, client '{}'.\n", cl->GetName());
@@ -3952,14 +3948,14 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hash dlg_pack_id, ushort h
     it_d = std::find_if(dialogs->begin(), dialogs->end(), [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
     if (it_d == dialogs->end()) {
         cl->Send_TextMsg(cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", go_dialog, cl->GetName(), HashToString(dialog_pack->PackId));
+        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", go_dialog, cl->GetName(), dialog_pack->PackId);
         return;
     }
 
     // Compile
     if (!Dialog_Compile(npc, cl, *it_d, cl->Talk.CurDialog)) {
         cl->Send_TextMsg(cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetName(), HashToString(dialog_pack->PackId));
+        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetName(), dialog_pack->PackId);
         return;
     }
 
@@ -4023,7 +4019,7 @@ void FOServer::Process_Dialog(Player* player)
     player->Connection->Bin >> talk_id;
     player->Connection->Bin >> num_answer;
 
-    if ((is_npc != 0u && (cr->Talk.Type != TalkType::Critter || cr->Talk.CritterId != talk_id)) || (is_npc == 0u && (cr->Talk.Type != TalkType::Hex || cr->Talk.DialogPackId.Value != talk_id))) {
+    if ((is_npc != 0u && (cr->Talk.Type != TalkType::Critter || cr->Talk.CritterId != talk_id)) || (is_npc == 0u && (cr->Talk.Type != TalkType::Hex || cr->Talk.DialogPackId.as_uint() != talk_id))) {
         CrMngr.CloseTalk(cr);
         WriteLog("Invalid talk id {}, client '{}'.\n", is_npc, talk_id, cr->GetName());
         return;
@@ -4154,7 +4150,7 @@ void FOServer::Process_Dialog(Player* player)
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", dlg_id, cr->GetName(), HashToString(dialog_pack->PackId));
+        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", dlg_id, cr->GetName(), dialog_pack->PackId);
         return;
     }
 
@@ -4162,7 +4158,7 @@ void FOServer::Process_Dialog(Player* player)
     if (!Dialog_Compile(npc, cr, *it_d, cr->Talk.CurDialog)) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cr->GetName(), HashToString(dialog_pack->PackId));
+        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cr->GetName(), dialog_pack->PackId);
         return;
     }
 
@@ -4201,7 +4197,7 @@ void FOServer::Process_Dialog(Player* player)
     cr->Send_Talk();
 }
 
-auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks) -> Item*
+auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*
 {
     // Checks
     const auto* proto_item = ProtoMngr.GetProtoItem(pid);
@@ -4425,4 +4421,12 @@ auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/,
     if (ScriptSys.RunPrepared() && result.RetValue)
         return ScriptSys.GetReturnedUInt();*/
     return 0;
+}
+
+auto FOServer::MakePlayerId(string_view player_name) const -> uint
+{
+    RUNTIME_ASSERT(!player_name.empty());
+    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(player_name.data()), static_cast<uint>(player_name.length()));
+    RUNTIME_ASSERT(hash_value);
+    return (1u << 31u) | hash_value;
 }

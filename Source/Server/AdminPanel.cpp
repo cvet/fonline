@@ -324,7 +324,7 @@ static void AdminWork(FOServer* server, Session* session)
                 };
 
                 NetBuffer buf;
-                PackNetCommand(cmd.substr(1), &buf, func, "");
+                PackNetCommand(cmd.substr(1), &buf, func, "", *server);
                 if (!buf.IsEmpty()) {
                     uint msg = 0;
                     buf >> msg;

@@ -99,8 +99,8 @@ public:
     void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
-    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
+    void Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     void Send_PlaySound(uint crid_synchronize, string_view sound_name);
     void Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);

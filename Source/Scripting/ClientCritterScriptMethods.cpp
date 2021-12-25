@@ -181,7 +181,7 @@
 ///# param protoId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Critter_CountItem(CritterView* self, hash protoId)
+[[maybe_unused]] uint Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
     return self->CountItemPid(protoId);
 }
@@ -201,13 +201,15 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItemByPredicate(CritterView* self, const std::function<bool(ItemView*)>& predicate)
 {
-    auto inv_items = self->InvItems;
+    const auto inv_items = self->InvItems;
+
     for (auto* item : inv_items) {
         if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             return item;
         }
     }
-    return static_cast<ItemView*>(nullptr);
+
+    return nullptr;
 }
 
 ///# ...
@@ -223,7 +225,7 @@
 ///# param protoId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItemByPid(CritterView* self, hash protoId)
+[[maybe_unused]] ItemView* Client_Critter_GetItemByPid(CritterView* self, hstring protoId)
 {
     const auto* proto_item = self->GetEngine()->ProtoMngr->GetProtoItem(protoId);
     if (!proto_item) {
@@ -365,7 +367,7 @@
 ///# param boneY ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Critter_GetBonePos(CritterView* self, hash boneName, int& boneX, int& boneY)
+[[maybe_unused]] bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, int& boneX, int& boneY)
 {
     if (!self->IsModel()) {
         throw ScriptException("Critter is not 3d");

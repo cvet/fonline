@@ -150,23 +150,22 @@ void Entity::SetValueAsFloat(const Property* prop, float value)
     _props.SetPlainDataValueAsFloat(prop, value);
 }
 
-ProtoEntity::ProtoEntity(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator) : Entity(registrator), _protoId {proto_id}, _protoName {proto_name}
+ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator) : Entity(registrator), _protoId {proto_id}
 {
     RUNTIME_ASSERT(_protoId);
-    RUNTIME_ASSERT(!_protoName.empty());
 }
 
 auto ProtoEntity::GetName() const -> string_view
 {
-    return _protoName;
+    return _protoId;
 }
 
-auto ProtoEntity::GetProtoId() const -> hash
+auto ProtoEntity::GetProtoId() const -> hstring
 {
     return _protoId;
 }
 
-auto ProtoEntity::HaveComponent(string_view name) const -> bool
+auto ProtoEntity::HaveComponent(hstring name) const -> bool
 {
     return _components.count(name) > 0u;
 }
@@ -190,7 +189,7 @@ auto EntityWithProto::GetName() const -> string_view
     return _proto->GetName();
 }
 
-auto EntityWithProto::GetProtoId() const -> hash
+auto EntityWithProto::GetProtoId() const -> hstring
 {
     return _proto->GetProtoId();
 }

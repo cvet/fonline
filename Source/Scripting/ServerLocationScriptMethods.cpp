@@ -49,7 +49,7 @@
 ///# param mapPid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Location_GetMap(Location* self, hash mapPid)
+[[maybe_unused]] Map* Server_Location_GetMap(Location* self, hstring mapPid)
 {
     for (auto* map : self->GetMaps()) {
         if (map->GetProtoId() == mapPid) {
@@ -87,7 +87,7 @@
 ///# param entrance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Location_GetEntrance(Location* self, uint entranceIndex, uint& mapIndex, hash& entrance)
+[[maybe_unused]] void Server_Location_GetEntrance(Location* self, uint entranceIndex, uint& mapIndex, hstring& entrance)
 {
     const auto map_entrances = self->GetMapEntrances();
     const auto count = static_cast<uint>(map_entrances.size()) / 2u;
@@ -104,9 +104,9 @@
 ///# param entrances ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Location_GetEntrances(Location* self, vector<int>& mapsIndex, vector<hash>& entrances)
+[[maybe_unused]] uint Server_Location_GetEntrances(Location* self, vector<int>& mapsIndex, vector<hstring>& entrances)
 {
-    auto map_entrances = self->GetMapEntrances();
+    const auto map_entrances = self->GetMapEntrances();
     const auto count = static_cast<uint>(map_entrances.size()) / 2u;
 
     for (const auto i : xrange(count)) {

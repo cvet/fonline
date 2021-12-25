@@ -185,10 +185,10 @@ public:
     auto CutPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
     auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, uchar find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
-    auto LoadMap(CacheStorage& cache, hash map_pid) -> bool;
+    auto LoadMap(CacheStorage& cache, hstring map_pid) -> bool;
     void UnloadMap();
-    void GetMapHash(CacheStorage& cache, hash map_pid, uint& hash_tiles, uint& hash_scen) const;
-    void GenerateItem(uint id, hash proto_id, Properties& props);
+    void GetMapHash(CacheStorage& cache, hstring map_pid, uint& hash_tiles, uint& hash_scen) const;
+    void GenerateItem(uint id, hstring proto_id, Properties& props);
     void ResizeField(ushort w, ushort h);
     void ClearHexTrack();
     void SwitchShowTrack();
@@ -224,11 +224,11 @@ public:
     void SetCritterContour(uint crid, int contour);
     void SetCrittersContour(int contour);
     void SetMultihex(ushort hx, ushort hy, uint multihex, bool set);
-    void AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data);
+    void AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data);
     void FinishItem(uint id, bool is_deleted);
     void DeleteItem(ItemHexView* item, bool destroy_item, vector<ItemHexView*>::iterator* it_hex_items);
     void PushItem(ItemHexView* item);
-    auto GetItem(ushort hx, ushort hy, hash pid) -> ItemHexView*;
+    auto GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*;
     auto GetItemById(ushort hx, ushort hy, uint id) -> ItemHexView*;
     auto GetItemById(uint id) -> ItemHexView*;
     void GetItems(ushort hx, ushort hy, vector<ItemHexView*>& items);
@@ -247,7 +247,7 @@ public:
     auto GetItemPixel(int x, int y, bool& item_egg) -> ItemHexView*; // With transparent egg
     auto GetCritterPixel(int x, int y, bool ignore_dead_and_chosen) -> CritterView*;
     void GetSmthPixel(int x, int y, ItemHexView*& item, CritterView*& cr);
-    auto RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
+    auto RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
     void ProcessRain();
     void SetRainAnimation(string_view fall_anim_name, string_view drop_anim_name);
     void SetCursorPos(int x, int y, bool show_steps, bool refresh);
@@ -255,20 +255,20 @@ public:
     void DrawCursor(string_view text);
 
     [[nodiscard]] auto GetTiles(ushort hx, ushort hy, bool is_roof) -> vector<MapTile>&;
-    [[nodiscard]] auto IsFastPid(hash pid) const -> bool;
-    [[nodiscard]] auto IsIgnorePid(hash pid) const -> bool;
+    [[nodiscard]] auto IsFastPid(hstring pid) const -> bool;
+    [[nodiscard]] auto IsIgnorePid(hstring pid) const -> bool;
     [[nodiscard]] auto GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushort>>;
 
     auto SetProtoMap(const ProtoMap& pmap) -> bool;
     void GetProtoMap(ProtoMap& pmap);
     void ClearSelTiles();
     void ParseSelTiles();
-    void SetTile(hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select);
+    void SetTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select);
     void EraseTile(ushort hx, ushort hy, uchar layer, bool is_roof, uint skip_index);
-    void AddFastPid(hash pid);
+    void AddFastPid(hstring pid);
     void ClearFastPids();
-    void AddIgnorePid(hash pid);
-    void SwitchIgnorePid(hash pid);
+    void AddIgnorePid(hstring pid);
+    void SwitchIgnorePid(hstring pid);
     void ClearIgnorePids();
     void MarkPassedHexes();
 
@@ -329,7 +329,7 @@ private:
     AnyFrames* _picHex[3] {};
     string _curDataPrefix {};
     short* _findPathGrid {};
-    hash _curPidMap {};
+    hstring _curPidMap {};
     int _curMapTime {-1};
     int _dayTime[4] {};
     uchar _dayColor[12] {};
@@ -393,7 +393,7 @@ private:
     AnyFrames* _cursorXPic {};
     int _cursorX {};
     int _cursorY {};
-    set<hash> _fastPids {};
-    set<hash> _ignorePids {};
+    set<hstring> _fastPids {};
+    set<hstring> _ignorePids {};
     bool _nonConstHelper {};
 };

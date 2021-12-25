@@ -217,11 +217,11 @@ auto ItemManager::GetItemsCount() const -> uint
     return static_cast<uint>(_engine->EntityMngr.GetItems().size());
 }
 
-auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> Item*
+auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -> Item*
 {
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     if (proto == nullptr) {
-        WriteLog("Proto item '{}' not found.\n", _engine->HashToString(pid));
+        WriteLog("Proto item '{}' not found.\n", pid);
         return nullptr;
     }
 
@@ -251,7 +251,7 @@ auto ItemManager::CreateItem(hash pid, uint count, const Properties* props) -> I
 
     // Verify destroying
     if (item->IsDestroyed()) {
-        WriteLog("Item destroyed after prototype '{}' initialization.\n", _engine->HashToString(pid));
+        WriteLog("Item destroyed after prototype '{}' initialization.\n", pid);
         return nullptr;
     }
 
@@ -419,7 +419,7 @@ void ItemManager::MoveItem(Item* item, uint count, Item* to_cont, uint stack_id,
     }
 }
 
-auto ItemManager::AddItemContainer(Item* cont, hash pid, uint count, uint stack_id) -> Item*
+auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint stack_id) -> Item*
 {
     RUNTIME_ASSERT(cont);
 
@@ -478,7 +478,7 @@ auto ItemManager::AddItemContainer(Item* cont, hash pid, uint count, uint stack_
     return result;
 }
 
-auto ItemManager::AddItemCritter(Critter* cr, hash pid, uint count) -> Item*
+auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
 {
     if (count == 0u) {
         return nullptr;
@@ -523,7 +523,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hash pid, uint count) -> Item*
     return result;
 }
 
-auto ItemManager::SubItemCritter(Critter* cr, hash pid, uint count, vector<Item*>* erased_items) -> bool
+auto ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count, vector<Item*>* erased_items) -> bool
 {
     if (count == 0u) {
         return true;
@@ -575,7 +575,7 @@ auto ItemManager::SubItemCritter(Critter* cr, hash pid, uint count, vector<Item*
     return true;
 }
 
-auto ItemManager::SetItemCritter(Critter* cr, hash pid, uint count) -> bool
+auto ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count) -> bool
 {
     const auto cur_count = cr->CountItemPid(pid);
     if (cur_count > count) {
@@ -759,7 +759,7 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
     }
 }
 
-void ItemManager::ChangeItemStatistics(hash pid, int val) const
+void ItemManager::ChangeItemStatistics(hstring pid, int val) const
 {
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     if (proto != nullptr) {
@@ -767,7 +767,7 @@ void ItemManager::ChangeItemStatistics(hash pid, int val) const
     }
 }
 
-auto ItemManager::GetItemStatistics(hash pid) const -> int64
+auto ItemManager::GetItemStatistics(hstring pid) const -> int64
 {
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     return proto != nullptr ? proto->InstanceCount : 0;

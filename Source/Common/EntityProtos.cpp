@@ -33,22 +33,22 @@
 
 #include "EntityProtos.h"
 
-ProtoPlayer::ProtoPlayer(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, proto_name, registrator), PlayerProperties(GetInitRef())
+ProtoPlayer::ProtoPlayer(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), PlayerProperties(GetInitRef())
 {
 }
 
-ProtoItem::ProtoItem(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, proto_name, registrator), ItemProperties(GetInitRef())
+ProtoItem::ProtoItem(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), ItemProperties(GetInitRef())
 {
 }
 
-ProtoCritter::ProtoCritter(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, proto_name, registrator), CritterProperties(GetInitRef())
+ProtoCritter::ProtoCritter(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), CritterProperties(GetInitRef())
 {
 }
 
-ProtoMap::ProtoMap(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, proto_name, registrator), MapProperties(GetInitRef())
+ProtoMap::ProtoMap(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), MapProperties(GetInitRef())
 {
 }
 
-ProtoLocation::ProtoLocation(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, proto_name, registrator), LocationProperties(GetInitRef())
+ProtoLocation::ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator) : ProtoEntity(proto_id, registrator), LocationProperties(GetInitRef())
 {
 }

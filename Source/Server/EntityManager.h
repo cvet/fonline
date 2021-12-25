@@ -76,10 +76,10 @@ public:
     [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
     [[nodiscard]] auto GetCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetMap(uint id) -> Map*;
-    [[nodiscard]] auto GetMapByPid(hash pid, uint skip_count) -> Map*;
+    [[nodiscard]] auto GetMapByPid(hstring pid, uint skip_count) -> Map*;
     [[nodiscard]] auto GetMaps() -> vector<Map*>;
     [[nodiscard]] auto GetLocation(uint id) -> Location*;
-    [[nodiscard]] auto GetLocationByPid(hash pid, uint skip_count) -> Location*;
+    [[nodiscard]] auto GetLocationByPid(hstring pid, uint skip_count) -> Location*;
     [[nodiscard]] auto GetLocations() -> vector<Location*>;
 
     void LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric);

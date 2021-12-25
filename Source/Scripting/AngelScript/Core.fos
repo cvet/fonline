@@ -1,7 +1,7 @@
 // FOS Common Sort -10
 
 #define EXPORT
-#define HASH                             # (name) GetStrHash( name )
+#define HASH                             # (name) hstring( name )
 
 // Say types
 #define SAY_NORM                         ( 1 )

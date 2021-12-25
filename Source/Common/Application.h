@@ -243,7 +243,7 @@ private:
     unique_ptr<Impl> _pImpl {};
     string _effectName {};
     string _effectDefines {};
-    hash _nameHash {};
+    hstring _name {};
     uint _passCount {};
     bool _isShadow[EFFECT_MAX_PASSES] {};
     BlendFuncType _blendFuncParam1[EFFECT_MAX_PASSES] {};

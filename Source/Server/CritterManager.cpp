@@ -150,7 +150,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     _engine->CritterMoveItemEvent.Raise(cr, item, item->GetCritSlot());
 }
 
-auto CritterManager::CreateNpc(hash proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
+auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
 {
     NON_CONST_METHOD_HINT();
 
@@ -393,7 +393,7 @@ auto CritterManager::GetPlayerByName(string_view name) -> Player*
     return nullptr;
 }
 
-auto CritterManager::GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*
+auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
 {
     NON_CONST_METHOD_HINT();
 

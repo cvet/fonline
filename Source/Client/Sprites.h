@@ -53,7 +53,7 @@ struct MapSprite
     uint SprId {};
     ushort HexX {};
     ushort HexY {};
-    hash ProtoId {};
+    hstring ProtoId {};
     int FrameIndex {};
     int OffsX {};
     int OffsY {};

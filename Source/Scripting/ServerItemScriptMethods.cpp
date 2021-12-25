@@ -44,10 +44,10 @@
 ///# param stackId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Item_AddItem(Item* self, hash pid, uint count, uint stackId)
+[[maybe_unused]] Item* Server_Item_AddItem(Item* self, hstring pid, uint count, uint stackId)
 {
     if (!self->GetEngine()->ProtoMngr.GetProtoItem(pid)) {
-        throw ScriptException("Invalid proto '{}' arg.", self->GetEngine()->HashToString(pid));
+        throw ScriptException("Invalid proto '{}' arg.", pid);
     }
 
     return self->GetEngine()->ItemMngr.AddItemContainer(self, pid, count > 0 ? count : 1, stackId);
@@ -73,7 +73,7 @@
         //    throw ScriptException("Script function not found");
     }
     else {
-        self->SetScriptId(hash());
+        self->SetScriptId(hstring());
     }
 }
 

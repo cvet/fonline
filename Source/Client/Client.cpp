@@ -131,17 +131,17 @@ FOClient::~FOClient()
     delete ScriptSys;
 }
 
-auto FOClient::ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool
+auto FOClient::ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool
 {
     return CritterAnimationEvent.Raise(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
-auto FOClient::ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3, hash& arg4, uint& arg5, uint& arg6) -> bool
+auto FOClient::ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool
 {
     return CritterAnimationSubstituteEvent.Raise(arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
-auto FOClient::ResolveCritterAnimationFallout(hash arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool
+auto FOClient::ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool
 {
     return CritterAnimationFalloutEvent.Raise(arg1, arg2, arg3, arg4, arg5, arg6);
 }
@@ -352,7 +352,7 @@ void FOClient::UpdateFilesLoop()
                 }
 
                 if (_updateData->CacheChanged) {
-                    _curLang.LoadFromCache(Cache, _curLang.Name);
+                    _curLang.LoadFromCache(Cache, *this, _curLang.Name);
                 }
 
                 // if (Update->FilesChanged)
@@ -1866,7 +1866,7 @@ void FOClient::Net_SendGetGameInfo()
     _netOut << NETMSG_SEND_GET_INFO;
 }
 
-void FOClient::Net_SendGiveMap(bool automap, hash map_pid, uint loc_id, uint tiles_hash, uint scen_hash)
+void FOClient::Net_SendGiveMap(bool automap, hstring map_pid, uint loc_id, uint tiles_hash, uint scen_hash)
 {
     _netOut << NETMSG_SEND_GIVE_MAP;
     _netOut << automap;
@@ -1972,7 +1972,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     _netIn >> flags;
 
     // Npc
-    hash npc_pid;
+    hstring npc_pid;
     if (is_npc) {
         _netIn >> npc_pid;
     }
@@ -1995,7 +1995,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         WriteLog("Invalid positions hx {}, hy {}, dir {}.\n", hx, hy, dir);
     }
     else {
-        const auto* proto = ProtoMngr->GetProtoCritter(is_npc ? npc_pid : StringToHash("Player"));
+        const auto* proto = ProtoMngr->GetProtoCritter(is_npc ? npc_pid : ToHashedString("Player"));
         RUNTIME_ASSERT(proto);
 
         auto* cr = new CritterView(this, crid, proto, false);
@@ -2013,14 +2013,14 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         cr->Flags = flags;
 
         if (is_npc) {
-            if (cr->GetDialogId() && (_curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(cr->GetDialogId().Value)) != 0u)) {
-                cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(cr->GetDialogId().Value));
+            if (cr->GetDialogId() && (_curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(cr->GetDialogId().as_uint())) != 0u)) {
+                cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(cr->GetDialogId().as_uint()));
             }
             else {
-                cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(npc_pid.Value));
+                cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(npc_pid.as_uint()));
             }
-            if (_curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_AVATAR(cr->GetDialogId().Value))) {
-                cr->Avatar = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_AVATAR(cr->GetDialogId().Value));
+            if (_curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_AVATAR(cr->GetDialogId().as_uint()))) {
+                cr->Avatar = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_AVATAR(cr->GetDialogId().as_uint()));
             }
         }
         else {
@@ -2420,7 +2420,7 @@ void FOClient::Net_OnSomeItem()
 {
     uint msg_len;
     uint item_id;
-    hash item_pid;
+    hstring item_pid;
     _netIn >> msg_len;
     _netIn >> item_id;
     _netIn >> item_pid;
@@ -2482,12 +2482,12 @@ void FOClient::Net_OnCritterMoveItem()
 
     vector<uchar> slots_data_slot;
     vector<uint> slots_data_id;
-    vector<hash> slots_data_pid;
+    vector<hstring> slots_data_pid;
     vector<vector<vector<uchar>>> slots_data_data;
     for ([[maybe_unused]] const auto i : xrange(slots_data_count)) {
         uchar slot;
         uint id;
-        hash pid;
+        hstring pid;
         _netIn >> slot;
         _netIn >> id;
         _netIn >> pid;
@@ -2507,7 +2507,7 @@ void FOClient::Net_OnCritterMoveItem()
 
     if (cr != _chosen) {
         int64 prev_hash_sum = 0;
-        for (auto* item : cr->InvItems) {
+        for (const auto* item : cr->InvItems) {
             prev_hash_sum += item->LightGetHash();
         }
 
@@ -2524,7 +2524,7 @@ void FOClient::Net_OnCritterMoveItem()
         }
 
         int64 hash_sum = 0;
-        for (auto* item : cr->InvItems) {
+        for (const auto* item : cr->InvItems) {
             hash_sum += item->LightGetHash();
         }
         if (hash_sum != prev_hash_sum) {
@@ -2788,7 +2788,7 @@ void FOClient::Net_OnChosenAddItem()
 {
     uint msg_len;
     uint item_id;
-    hash pid;
+    hstring pid;
     uchar slot;
     _netIn >> msg_len;
     _netIn >> item_id;
@@ -2889,7 +2889,7 @@ void FOClient::Net_OnAddItemOnMap()
 {
     uint msg_len;
     uint item_id;
-    hash item_pid;
+    hstring item_pid;
     ushort item_hx;
     ushort item_hy;
     bool is_added;
@@ -2983,7 +2983,7 @@ void FOClient::Net_OnCombatResult()
 
 void FOClient::Net_OnEffect()
 {
-    hash eff_pid;
+    hstring eff_pid;
     ushort hx;
     ushort hy;
     ushort radius;
@@ -3019,7 +3019,7 @@ void FOClient::Net_OnEffect()
 // Todo: synchronize effects showing (for example shot and kill)
 void FOClient::Net_OnFlyEffect()
 {
-    hash eff_pid;
+    hstring eff_pid;
     uint eff_cr1_id;
     uint eff_cr2_id;
     ushort eff_cr1_hx;
@@ -3049,7 +3049,7 @@ void FOClient::Net_OnFlyEffect()
     }
 
     if (!HexMngr.RunEffect(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
-        WriteLog("Run effect '{}' failed.\n", HashToString(eff_pid));
+        WriteLog("Run effect '{}' failed.\n", eff_pid);
     }
 }
 
@@ -3349,8 +3349,8 @@ void FOClient::Net_OnLoadMap()
     WriteLog("Change map...\n");
 
     uint msg_len;
-    hash map_pid;
-    hash loc_pid;
+    hstring map_pid;
+    hstring loc_pid;
     uchar map_index_in_loc;
     int map_time;
     uchar map_rain;
@@ -3441,7 +3441,7 @@ void FOClient::Net_OnLoadMap()
 void FOClient::Net_OnMap()
 {
     uint msg_len;
-    hash map_pid;
+    hstring map_pid;
     ushort maxhx;
     ushort maxhy;
     bool send_tiles;
@@ -3455,9 +3455,9 @@ void FOClient::Net_OnMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    WriteLog("Map {} received...\n", HashToString(map_pid));
+    WriteLog("Map {} received...\n", map_pid);
 
-    const string map_name = _str("{}.map", HashToString(map_pid));
+    const string map_name = _str("{}.map", map_pid);
     auto tiles = false;
     char* tiles_data = nullptr;
     uint tiles_len = 0;
@@ -3661,7 +3661,7 @@ void FOClient::Net_OnSomeItems()
     vector<ItemView*> item_container;
     for (uint i = 0; i < items_count; i++) {
         uint item_id;
-        hash item_pid;
+        hstring item_pid;
         _netIn >> item_id;
         _netIn >> item_pid;
         NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
@@ -3851,7 +3851,7 @@ void FOClient::Net_OnAutomapsInfo()
 
     for (ushort i = 0; i < locs_count; i++) {
         uint loc_id;
-        hash loc_pid;
+        hstring loc_pid;
         ushort maps_count;
         _netIn >> loc_id;
         _netIn >> loc_pid;
@@ -3870,16 +3870,16 @@ void FOClient::Net_OnAutomapsInfo()
             Automap amap;
             amap.LocId = loc_id;
             amap.LocPid = loc_pid;
-            amap.LocName = _curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_NAME(loc_pid.Value));
+            amap.LocName = _curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_NAME(loc_pid.as_uint()));
 
             for (ushort j = 0; j < maps_count; j++) {
-                hash map_pid;
+                hstring map_pid;
                 uchar map_index_in_loc;
                 _netIn >> map_pid;
                 _netIn >> map_index_in_loc;
 
                 amap.MapPids.push_back(map_pid);
-                amap.MapNames.push_back(_curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_MAP_NAME(loc_pid.Value, map_index_in_loc)));
+                amap.MapNames.push_back(_curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_MAP_NAME(loc_pid.as_uint(), map_index_in_loc)));
             }
 
             if (it != _automaps.end()) {
@@ -4034,37 +4034,11 @@ void FOClient::FlashGameWindow()
 #endif
 }
 
-auto FOClient::AnimLoad(hash name_hash, AtlasType res_type) -> uint
+auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
 {
-    auto* anim = ResMngr.GetAnim(name_hash, res_type);
+    auto* anim = ResMngr.GetAnim(name, res_type);
     if (anim == nullptr) {
         return 0u;
-    }
-
-    auto* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
-
-    size_t index = 1;
-    for (; index < _ifaceAnimations.size(); index++) {
-        if (_ifaceAnimations[index] == nullptr) {
-            break;
-        }
-    }
-
-    if (index < _ifaceAnimations.size()) {
-        _ifaceAnimations[index] = ianim;
-    }
-    else {
-        _ifaceAnimations.push_back(ianim);
-    }
-
-    return static_cast<uint>(index);
-}
-
-auto FOClient::AnimLoad(string_view fname, AtlasType res_type) -> uint
-{
-    auto* anim = ResMngr.GetAnim(StringToHash(fname), res_type);
-    if (anim == nullptr) {
-        return 0;
     }
 
     auto* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
@@ -4903,7 +4877,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SetLanguage" && args.size() >= 2) {
         if (args[1].length() == 4) {
-            _curLang.LoadFromCache(Cache, args[1]);
+            _curLang.LoadFromCache(Cache, *this, args[1]);
         }
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {
@@ -4947,7 +4921,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
                     buf += s;
                     buf += separator;
                 },
-                GetChosen()->AlternateName)) {
+                GetChosen()->AlternateName, *this)) {
             return "UNKNOWN";
         }
 

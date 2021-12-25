@@ -40,33 +40,43 @@ FOEngineBase::FOEngineBase(bool is_server) : PropertyRegistratorsHolder(is_serve
 {
 }
 
-auto FOEngineBase::HashToString(hash h) const -> string_view
+auto FOEngineBase::ToHashedString(string_view s) const -> hstring
 {
-    if (const auto it = _hashesLookup.find(h.Value); it != _hashesLookup.end()) {
-        return it->second;
+    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2(nullptr, 0))>);
+
+    if (s.empty()) {
+        return hstring();
     }
 
-    WriteLog("Can't resolve hash {}.\n", h.Value);
-    return "";
+    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(s.data()), static_cast<uint>(s.length()));
+    RUNTIME_ASSERT(hash_value != 0u);
+
+    if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
+#if FO_DEBUG
+        const auto collision_detected = (s != it->second.Str);
+#else
+        const auto collision_detected = (s.length() != it->second.Str.length() && s != it->second.Str);
+#endif
+        if (collision_detected) {
+            throw HashCollisionException("Hash collision", s, it->second.Str, hash_value);
+        }
+
+        return hstring(&it->second);
+    }
+
+    const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});
+    RUNTIME_ASSERT(inserted);
+
+    return hstring(&it->second);
 }
 
-auto FOEngineBase::StringToHash(string_view s) const -> hash
+auto FOEngineBase::ResolveHash(hstring::hash_t h) const -> hstring
 {
-    if (const auto it = _hashesLookupRev.find(s); it != _hashesLookupRev.end()) {
-        return hash {it->second};
+    if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        return hstring(&it->second);
     }
 
-    const auto value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(s.data()), static_cast<uint>(s.length()));
-    RUNTIME_ASSERT(value);
-
-    if (const auto it = _hashesLookup.find(value); it != _hashesLookup.end()) {
-        throw HashCollisionException("Hash collision", s, it->second, value);
-    }
-
-    _hashesLookup.emplace(value, s);
-    _hashesLookupRev.emplace(s, value);
-
-    return hash {value};
+    throw HashResolveException("Can't resolve hash", h);
 }
 
 auto FOEngineBase::ResolveGenericValue(string_view str, bool& failed) -> int
@@ -77,8 +87,7 @@ auto FOEngineBase::ResolveGenericValue(string_view str, bool& failed) -> int
     }
 
     if (str[0] == '@' && str[1] != 0) {
-        static_assert(sizeof(hash::Value) == sizeof(int));
-        return static_cast<int>(StringToHash(str.substr(1)).Value);
+        return ToHashedString(str.substr(1)).as_int();
     }
     else if (_str(str).isNumber()) {
         return _str(str).toInt();

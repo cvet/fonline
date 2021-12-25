@@ -118,21 +118,20 @@ class ProtoEntity : public Entity
 {
 public:
     [[nodiscard]] auto GetName() const -> string_view override;
-    [[nodiscard]] auto GetProtoId() const -> hash;
-    [[nodiscard]] auto HaveComponent(string_view name) const -> bool;
-    [[nodiscard]] auto GetComponents() -> unordered_set<string_view>& { return _components; }
-    [[nodiscard]] auto GetComponents() const -> unordered_set<string_view> { return _components; }
+    [[nodiscard]] auto GetProtoId() const -> hstring;
+    [[nodiscard]] auto HaveComponent(hstring name) const -> bool;
+    [[nodiscard]] auto GetComponents() -> unordered_set<hstring>& { return _components; }
+    [[nodiscard]] auto GetComponents() const -> unordered_set<hstring> { return _components; }
 
     vector<uint> TextsLang {};
     vector<FOMsg*> Texts {};
     string CollectionName {};
 
 protected:
-    ProtoEntity(hash proto_id, string_view proto_name, const PropertyRegistrator* registrator);
+    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator);
 
-    const hash _protoId;
-    const string _protoName;
-    unordered_set<string_view> _components {};
+    const hstring _protoId;
+    unordered_set<hstring> _components {};
 };
 
 class EntityWithProto : public Entity
@@ -145,7 +144,7 @@ public:
     auto operator=(EntityWithProto&&) noexcept = delete;
 
     [[nodiscard]] auto GetName() const -> string_view override;
-    [[nodiscard]] auto GetProtoId() const -> hash;
+    [[nodiscard]] auto GetProtoId() const -> hstring;
     [[nodiscard]] auto GetProto() const -> const ProtoEntity*;
 
 protected:

@@ -33,6 +33,7 @@
 
 #include "ModelBaker.h"
 #include "Application.h"
+#include "GenericUtils.h"
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
@@ -62,8 +63,11 @@ struct MeshData
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(&DiffuseTexture[0], len);
         len = static_cast<uint>(SkinBones.size());
-        writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&SkinBones[0], len * sizeof(SkinBones[0]));
+        for (const auto& bone_name : SkinBones) {
+            len = static_cast<uint>(bone_name.length());
+            writer.WritePtr(&len, sizeof(len));
+            writer.WritePtr(bone_name.data(), len);
+        }
         len = static_cast<uint>(SkinBoneOffsets.size());
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
@@ -72,23 +76,21 @@ struct MeshData
     Vertex3DVec Vertices {};
     vector<ushort> Indices {};
     string DiffuseTexture {};
-    vector<hash> SkinBones {};
+    vector<string> SkinBones {};
     vector<mat44> SkinBoneOffsets {};
     string EffectName {};
 };
 
 struct Bone
 {
-    static auto GetHash(string_view name) -> hash { return _str(name).toHash(); }
-
-    auto Find(hash name_hash) -> Bone*
+    auto Find(string name) -> Bone*
     {
-        if (NameHash == name_hash) {
+        if (Name == name) {
             return this;
         }
 
-        for (auto& child : Children) {
-            Bone* bone = child->Find(name_hash);
+        for (auto&& child : Children) {
+            Bone* bone = child->Find(name);
             if (bone != nullptr) {
                 return bone;
             }
@@ -98,7 +100,8 @@ struct Bone
 
     void Save(DataWriter& writer)
     {
-        writer.WritePtr(&NameHash, sizeof(NameHash));
+        writer.Write<ushort>(static_cast<ushort>(Name.length()));
+        writer.WritePtr(Name.data(), Name.length());
         writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
         writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
         writer.Write<uchar>(AttachedMesh != nullptr ? 1 : 0);
@@ -107,12 +110,12 @@ struct Bone
         }
         auto len = static_cast<uint>(Children.size());
         writer.WritePtr(&len, sizeof(len));
-        for (auto& child : Children) {
+        for (auto&& child : Children) {
             child->Save(writer);
         }
     }
 
-    hash NameHash {};
+    string Name {};
     mat44 TransformationMatrix {};
     mat44 GlobalTransformationMatrix {};
     unique_ptr<MeshData> AttachedMesh {};
@@ -124,7 +127,7 @@ struct AnimSet
 {
     struct BoneOutput
     {
-        hash NameHash {};
+        string Name {};
         vector<float> ScaleTime {};
         vector<vec3> ScaleValue {};
         vector<float> RotationTime {};
@@ -145,15 +148,21 @@ struct AnimSet
         writer.WritePtr(&TicksPerSecond, sizeof(TicksPerSecond));
         len = static_cast<uint>(BonesHierarchy.size());
         writer.WritePtr(&len, sizeof(len));
-        for (auto& i : BonesHierarchy) {
+        for (const auto& i : BonesHierarchy) {
             len = static_cast<uint>(i.size());
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&i[0], len * sizeof(BonesHierarchy[0][0]));
+            for (const auto& bone_name : i) {
+                len = static_cast<uint>(bone_name.length());
+                writer.WritePtr(&len, sizeof(len));
+                writer.WritePtr(bone_name.data(), len);
+            }
         }
         len = static_cast<uint>(BoneOutputs.size());
         writer.WritePtr(&len, sizeof(len));
-        for (auto& o : BoneOutputs) {
-            writer.WritePtr(&o.NameHash, sizeof(o.NameHash));
+        for (const auto& o : BoneOutputs) {
+            len = static_cast<uint>(o.Name.length());
+            writer.WritePtr(&len, sizeof(len));
+            writer.WritePtr(o.Name.data(), len);
             len = static_cast<uint>(o.ScaleTime.size());
             writer.WritePtr(&len, sizeof(len));
             writer.WritePtr(&o.ScaleTime[0], len * sizeof(o.ScaleTime[0]));
@@ -174,7 +183,7 @@ struct AnimSet
     float DurationTicks {};
     float TicksPerSecond {};
     vector<BoneOutput> BoneOutputs {};
-    vector<vector<hash>> BonesHierarchy {};
+    vector<vector<string>> BonesHierarchy {};
 };
 
 ModelBaker::ModelBaker(FileCollection& all_files) : _allFiles {all_files}
@@ -430,16 +439,16 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
                     }
                 }
 
-                vector<hash> hierarchy;
+                vector<string> hierarchy;
                 auto* fbx_node = fbx_all_node;
                 while (fbx_node != nullptr) {
-                    hierarchy.insert(hierarchy.begin(), Bone::GetHash(fbx_node->GetName()));
+                    hierarchy.insert(hierarchy.begin(), fbx_node->GetName());
                     fbx_node = fbx_node->GetParent();
                 }
 
                 anim_set->BoneOutputs.push_back(AnimSet::BoneOutput());
                 AnimSet::BoneOutput& o = anim_set->BoneOutputs.back();
-                o.NameHash = hierarchy.back();
+                o.Name = hierarchy.back();
                 o.ScaleTime = st;
                 o.ScaleValue = sv;
                 o.RotationTime = rt;
@@ -499,7 +508,7 @@ static auto ConvertFbxPass1(FbxNode* fbx_node, vector<FbxNode*>& fbx_all_nodes) 
     fbx_all_nodes.push_back(fbx_node);
 
     Bone* bone = new Bone();
-    bone->NameHash = Bone::GetHash(fbx_node->GetName());
+    bone->Name = fbx_node->GetName();
     bone->TransformationMatrix = ConvertFbxMatrix(fbx_node->EvaluateLocalTransform());
     bone->GlobalTransformationMatrix = ConvertFbxMatrix(fbx_node->EvaluateGlobalTransform());
     bone->CombinedTransformationMatrix = mat44();
@@ -635,12 +644,12 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
                 fbx_cluster->GetTransformLinkMatrix(link_matrix);
                 FbxAMatrix cur_matrix;
                 fbx_cluster->GetTransformMatrix(cur_matrix);
-                Bone* skin_bone = root_bone->Find(Bone::GetHash(fbx_cluster->GetLink()->GetName()));
+                Bone* skin_bone = root_bone->Find(fbx_cluster->GetLink()->GetName());
                 if (skin_bone == nullptr) {
                     WriteLog("Skin bone '{}' for mesh '{}' not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName());
                     skin_bone = bone;
                 }
-                mesh->SkinBones[i] = skin_bone->NameHash;
+                mesh->SkinBones[i] = skin_bone->Name;
                 mesh->SkinBoneOffsets[i] = ConvertFbxMatrix(link_matrix).Inverse() * ConvertFbxMatrix(cur_matrix) * mt * mr * ms;
 
                 // Blend data
@@ -691,7 +700,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
 
             mesh->SkinBones.resize(1);
             mesh->SkinBoneOffsets.resize(1);
-            mesh->SkinBones[0] = hash();
+            mesh->SkinBones[0] = string();
             mesh->SkinBoneOffsets[0] = mt * mr * ms;
             for (auto& v : mesh->Vertices) {
                 v.BlendIndices[0] = 0.0f;

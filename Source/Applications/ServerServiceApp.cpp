@@ -161,8 +161,7 @@ int main(int argc, char** argv)
 
             // Change executable path, if changed
             if (service != nullptr) {
-                uchar service_cfg_buf[8192];
-                std::memset(service_cfg_buf, 0, sizeof(service_cfg_buf));
+                uchar service_cfg_buf[8192] = {};
                 auto* service_cfg = reinterpret_cast<LPQUERY_SERVICE_CONFIG>(service_cfg_buf);
 
                 DWORD dw = 0;

@@ -131,7 +131,7 @@ struct BaseEntity
     void AddRef() { }
     void Release() { }
     uint GetId() { return 0u; }
-    hash GetProtoId() { return hash(); }
+    hstring GetProtoId() { return hstring(); }
     FOEngine* GetEngine() { return nullptr; }
     auto IsDestroyed() -> bool { return false; }
     auto IsDestroying() -> bool { return false; }
@@ -341,7 +341,7 @@ static auto Entity_Id(BaseEntity* self) -> uint
     return self->GetId();
 }
 
-static auto Entity_ProtoId(BaseEntity* self) -> hash
+static auto Entity_ProtoId(BaseEntity* self) -> hstring
 {
     ENTITY_VERIFY(self);
     return self->GetProtoId();
@@ -505,6 +505,56 @@ static T* EntityUpCast(BaseEntity* a)
     return b;
 }
 
+static void HashedString_Construct(hstring* mem)
+{
+    new (mem) hstring();
+}
+
+static void HashedString_ConstructFromString(asIScriptGeneric* gen)
+{
+    //new (mem) hstring();
+}
+
+static void HashedString_ConstructCopy(const hstring& self, hstring* mem)
+{
+    new (mem) hstring(self);
+}
+
+static void HashedString_Assign(hstring& self, const hstring& other)
+{
+    self = other;
+}
+
+static void HashedString_AssignFromString(asIScriptGeneric* gen)
+{
+    // new (mem) hstring();
+}
+
+static bool HashedString_Equals(const hstring& self, const hstring& other)
+{
+    return self == other;
+}
+
+static bool HashedString_EqualsString(const hstring& self, const string& other)
+{
+    return self.as_str() == other;
+}
+
+static string HashedString_StringCast(const hstring& self)
+{
+    return string(self.as_str());
+}
+
+static string HashedString_GetString(const hstring& self)
+{
+    return string(self.as_str());
+}
+
+static uint HashedString_GetHash(const hstring& self)
+{
+    return self.as_uint();
+}
+
 static const string ContextStatesStr[] = {
     "Finished",
     "Suspended",
@@ -567,6 +617,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->SetEngineProperty(asEP_REQUIRE_ENUM_SCOPE, true));
     AS_VERIFY(engine->SetEngineProperty(asEP_DISALLOW_VALUE_ASSIGN_FOR_REF_TYPE, true));
     AS_VERIFY(engine->SetEngineProperty(asEP_ALLOW_IMPLICIT_HANDLE_TYPES, true));
+#if COMPILER_MODE
+    AS_VERIFY(engine->SetEngineProperty(asEP_INIT_GLOBAL_VARS_AFTER_BUILD, false));
+#endif
 
     RegisterScriptArray(engine, true);
     ScriptExtensions::RegisterScriptArrayExtensions(engine);
@@ -583,8 +636,17 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RegisterScriptWeakRef(engine);
     RegisterScriptReflection(engine);
 
-    AS_VERIFY(engine->RegisterTypedef("hash", "uint"));
-    AS_VERIFY(engine->RegisterTypedef("resource", "uint"));
+    AS_VERIFY(engine->RegisterObjectType("hstring", sizeof(hstring), asOBJ_VALUE | asOBJ_POD));
+    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", asFUNCTION(HashedString_ConstructFromString), asCALL_GENERIC, game_engine));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const string &in)", asFUNCTION(HashedString_AssignFromString), asCALL_GENERIC, game_engine));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "string opImplCast() const", SCRIPT_FUNC_THIS(HashedString_StringCast), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "string get_str() const", SCRIPT_FUNC_THIS(HashedString_GetString), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "uint get_hash() const", SCRIPT_FUNC_THIS(HashedString_GetHash), SCRIPT_FUNC_THIS_CONV));
 
 #define REGISTER_BASE_ENTITY(class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
@@ -602,7 +664,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define REGISTER_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name, real_class); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hash get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", "const " class_name "@ opCast() const", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \

@@ -165,9 +165,9 @@ auto DialogManager::AddDialog(DialogPack* pack) -> bool
         return false;
     }
 
-    const auto pack_id = (pack->PackId.Value & DLGID_MASK);
+    const auto pack_id = (pack->PackId.as_uint() & DLGID_MASK);
     for (auto& [fst, snd] : _dialogPacks) {
-        const auto check_pack_id = (fst.Value & DLGID_MASK);
+        const auto check_pack_id = (fst.as_uint() & DLGID_MASK);
         if (pack_id == check_pack_id) {
             WriteLog("Name hash collision for dialogs '{}' and '{}'.\n", pack->PackName, snd->PackName);
             return false;
@@ -178,7 +178,7 @@ auto DialogManager::AddDialog(DialogPack* pack) -> bool
     return true;
 }
 
-auto DialogManager::GetDialog(hash pack_id) -> DialogPack*
+auto DialogManager::GetDialog(hstring pack_id) -> DialogPack*
 {
     const auto it = _dialogPacks.find(pack_id);
     return it != _dialogPacks.end() ? it->second.get() : nullptr;
@@ -193,7 +193,7 @@ auto DialogManager::GetDialogByIndex(uint index) -> DialogPack*
     return it != _dialogPacks.end() ? it->second.get() : nullptr;
 }
 
-void DialogManager::EraseDialog(hash pack_id)
+void DialogManager::EraseDialog(hstring pack_id)
 {
     const auto it = _dialogPacks.find(pack_id);
     if (it != _dialogPacks.end()) {
@@ -208,18 +208,16 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     fodlg.AppendData(data);
 
 #define LOAD_FAIL(err) \
-    { \
         WriteLog("Dialog '{}' - {}\n", pack_name, err); \
         delete pack; \
-        return nullptr; \
-    }
+        return nullptr
 #define VERIFY_STR_ID(str_id) (uint(str_id) <= ~DLGID_MASK)
 
     auto* pack = new DialogPack();
     auto dlg_buf = fodlg.GetAppContent("dialog");
     istringstream input(dlg_buf);
     string lang_buf;
-    pack->PackId = _engine->StringToHash(pack_name);
+    pack->PackId = _engine->ToHashedString(pack_name);
     pack->PackName = pack_name;
     vector<string> lang_apps;
 
@@ -228,32 +226,39 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 
     // Texts
     auto lang_key = fodlg.GetStr("data", "lang", "");
-    if (lang_key.empty())
-        LOAD_FAIL("Lang app not found.")
+    if (lang_key.empty()) {
+        LOAD_FAIL("Lang app not found.");
+    }
 
     // Check dialog pack
-    if (pack->PackId.Value <= 0xFFFF)
-        LOAD_FAIL("Invalid hash for dialog name.")
+    if (pack->PackId.as_uint() <= 0xFFFF) {
+        LOAD_FAIL("Invalid hash for dialog name.");
+    }
 
     lang_apps = _str(lang_key).split(' ');
-    if (lang_apps.empty())
-        LOAD_FAIL("Lang app is empty.")
+    if (lang_apps.empty()) {
+        LOAD_FAIL("Lang app is empty.");
+    }
 
     for (size_t i = 0; i < lang_apps.size(); i++) {
         auto& lang_app = lang_apps[i];
-        if (lang_app.size() != 4)
-            LOAD_FAIL("Language length not equal 4.")
+        if (lang_app.size() != 4) {
+            LOAD_FAIL("Language length not equal 4.");
+        }
 
         lang_buf = fodlg.GetAppContent(lang_app);
-        if (lang_buf.empty())
-            LOAD_FAIL("One of the lang section not found.")
+        if (lang_buf.empty()) {
+            LOAD_FAIL("One of the lang section not found.");
+        }
 
         FOMsg temp_msg;
-        if (!temp_msg.LoadFromString(lang_buf))
-            LOAD_FAIL("Load MSG fail.")
+        if (!temp_msg.LoadFromString(lang_buf, *_engine)) {
+            LOAD_FAIL("Load MSG fail.");
+        }
 
-        if (temp_msg.GetStrNumUpper(100000000 + ~DLGID_MASK) != 0u)
-            LOAD_FAIL("Text have any text with index greather than 4000.")
+        if (temp_msg.GetStrNumUpper(100000000 + ~DLGID_MASK) != 0u) {
+            LOAD_FAIL("Text have any text with index greather than 4000.");
+        }
 
         pack->TextsLang.push_back(*reinterpret_cast<const uint*>(lang_app.c_str()));
         pack->Texts.push_back(new FOMsg());
@@ -261,7 +266,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         uint str_num = 0;
         while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0u) {
             const auto count = temp_msg.Count(str_num);
-            const auto new_str_num = DLG_STR_ID(pack->PackId.Value, (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
+            const auto new_str_num = DLG_STR_ID(pack->PackId.as_uint(), (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
             for (uint n = 0; n < count; n++) {
                 pack->Texts[i]->AddStr(new_str_num, _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n["));
             }
@@ -269,8 +274,9 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     }
 
     // Dialog
-    if (dlg_buf.empty())
-        LOAD_FAIL("Dialog section not found.")
+    if (dlg_buf.empty()) {
+        LOAD_FAIL("Dialog section not found.");
+    }
 
     char ch = 0;
     input >> ch;
@@ -291,35 +297,46 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         if (input.eof()) {
             break;
         }
-        if (input.fail())
-            LOAD_FAIL("Bad dialog id number.")
+        if (input.fail()) {
+            LOAD_FAIL("Bad dialog id number.");
+        }
+
         input >> text_id;
-        if (input.fail())
-            LOAD_FAIL("Bad text link.")
-        if (!VERIFY_STR_ID(text_id / 10))
-            LOAD_FAIL("Invalid text link value.")
+        if (input.fail()) {
+            LOAD_FAIL("Bad text link.");
+        }
+        if (!VERIFY_STR_ID(text_id / 10)) {
+            LOAD_FAIL("Invalid text link value.");
+        }
+
         input >> read_str;
-        if (input.fail())
-            LOAD_FAIL("Bad not answer action.")
+        if (input.fail()) {
+            LOAD_FAIL("Bad not answer action.");
+        }
+
         script = GetNotAnswerAction(read_str);
         if (!script) {
             WriteLog("Unable to parse '{}'.\n", read_str);
-            LOAD_FAIL("Invalid not answer action.")
+            LOAD_FAIL("Invalid not answer action.");
         }
+
         input >> flags;
-        if (input.fail())
-            LOAD_FAIL("Bad flags.")
+        if (input.fail()) {
+            LOAD_FAIL("Bad flags.");
+        }
 
         Dialog current_dialog;
         current_dialog.Id = dlg_id;
-        current_dialog.TextId = DLG_STR_ID(pack->PackId.Value, text_id / 10);
+        current_dialog.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
         current_dialog.DlgScriptFunc = script;
         current_dialog.NoShuffle = ((flags & 1) == 1);
 
         // Read answers
         input >> ch;
-        if (input.fail())
-            LOAD_FAIL("Dialog corrupted.")
+        if (input.fail()) {
+            LOAD_FAIL("Dialog corrupted.");
+        }
+
         if (ch == '@') // End of current dialog node
         {
             pack->Dialogs.push_back(current_dialog);
@@ -330,45 +347,55 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             pack->Dialogs.push_back(current_dialog);
             break;
         }
-        if (ch != '#')
-            LOAD_FAIL("Parse error 0.")
+        if (ch != '#') {
+            LOAD_FAIL("Parse error 0.");
+        }
 
         while (!input.eof()) {
             input >> link;
-            if (input.fail())
-                LOAD_FAIL("Bad link in answer.")
+            if (input.fail()) {
+                LOAD_FAIL("Bad link in answer.");
+            }
+
             input >> text_id;
-            if (input.fail())
-                LOAD_FAIL("Bad text link in answer.")
-            if (!VERIFY_STR_ID(text_id / 10))
-                LOAD_FAIL("Invalid text link value in answer.")
+            if (input.fail()) {
+                LOAD_FAIL("Bad text link in answer.");
+            }
+
+            if (!VERIFY_STR_ID(text_id / 10)) {
+                LOAD_FAIL("Invalid text link value in answer.");
+            }
+
             DialogAnswer current_answer;
             current_answer.Link = link;
-            current_answer.TextId = DLG_STR_ID(pack->PackId.Value, text_id / 10);
+            current_answer.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
 
             while (true) {
                 input >> ch;
-                if (input.fail())
-                    LOAD_FAIL("Parse answer character fail.")
+                if (input.fail()) {
+                    LOAD_FAIL("Parse answer character fail.");
+                }
 
                 // Demands
                 if (ch == 'D') {
                     auto* d = LoadDemandResult(input, true);
-                    if (d == nullptr)
-                        LOAD_FAIL("Demand not loaded.")
+                    if (d == nullptr) {
+                        LOAD_FAIL("Demand not loaded.");
+                    }
 
                     current_answer.Demands.push_back(*d);
                 }
                 // Results
                 else if (ch == 'R') {
                     auto* r = LoadDemandResult(input, false);
-                    if (r == nullptr)
-                        LOAD_FAIL("Result not loaded.")
+                    if (r == nullptr) {
+                        LOAD_FAIL("Result not loaded.");
+                    }
 
                     current_answer.Results.push_back(*r);
                 }
                 else if (ch == '*' || ch == 'd' || ch == 'r') {
-                    LOAD_FAIL("Found old token, update dialog file to actual format (resave in version 2.22).")
+                    LOAD_FAIL("Found old token, update dialog file to actual format (resave in version 2.22).");
                 }
                 else {
                     break;
@@ -392,6 +419,9 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     }
 
     return pack;
+
+#undef LOAD_FAIL
+#undef VERIFY_STR_ID
 }
 
 auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*
@@ -457,8 +487,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         // Value
         input >> svalue;
         if (is_hash) {
-            static_assert(sizeof(hash) == sizeof(int));
-            ivalue = static_cast<int>(_engine->StringToHash(svalue).Value);
+            ivalue = _engine->ToHashedString(svalue).as_int();
         }
         else {
             ivalue = _engine->ResolveGenericValue(svalue, fail);
@@ -475,8 +504,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
 
         // Name
         input >> name;
-        static_assert(sizeof(hash) == sizeof(id));
-        id = _engine->StringToHash(name).Value;
+        id = _engine->ToHashedString(name).as_uint();
         // Todo: check item name on DR_ITEM
 
         // Operator

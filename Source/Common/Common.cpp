@@ -33,6 +33,8 @@
 
 #include "Common.h"
 
+hstring::entry hstring::_zeroEntry;
+
 static const char* AppName;
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];

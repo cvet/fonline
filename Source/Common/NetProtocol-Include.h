@@ -503,7 +503,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_EFFECT MAKE_NETMSG_HEADER(98)
-#define NETMSG_EFFECT_SIZE (sizeof(uint) + sizeof(hash) + sizeof(ushort) * 3)
+#define NETMSG_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) * 3)
 // ////////////////////////////////////////////////////////////////////////
 // explode
 // Params:
@@ -514,7 +514,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_FLY_EFFECT MAKE_NETMSG_HEADER(99)
-#define NETMSG_FLY_EFFECT_SIZE (sizeof(uint) + sizeof(hash) + sizeof(uint) * 2 + sizeof(ushort) * 4)
+#define NETMSG_FLY_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint) * 2 + sizeof(ushort) * 4)
 // ////////////////////////////////////////////////////////////////////////
 // shoot
 // Params:
@@ -631,7 +631,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_GIVE_MAP MAKE_NETMSG_HEADER(123)
-#define NETMSG_SEND_GIVE_MAP_SIZE (sizeof(uint) + sizeof(bool) + sizeof(hash) + sizeof(uint) + sizeof(hash) * 2)
+#define NETMSG_SEND_GIVE_MAP_SIZE (sizeof(uint) + sizeof(bool) + sizeof(hstring::hash_t) + sizeof(uint) + sizeof(hstring::hash_t) * 2)
 // ////////////////////////////////////////////////////////////////////////
 // Request on map data, on map loading or for automap
 // bool automap

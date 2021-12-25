@@ -48,7 +48,7 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ClientEntity* Client_Game_GetProtoItem(FOClient* client, hash pid, const map<int, int>& props)
+[[maybe_unused]] ClientEntity* Client_Game_GetProtoItem(FOClient* client, hstring pid, const map<int, int>& props)
 {
     const auto* proto = client->ProtoMngr->GetProtoItem(pid);
     if (!proto) {
@@ -272,7 +272,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersByPids(FOClient* client, hash pid, uchar findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersByPids(FOClient* client, hstring pid, uchar findType)
 {
     vector<CritterView*> critters;
 
@@ -535,10 +535,10 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hash Client_Game_GetCurMapPid(FOClient* client)
+[[maybe_unused]] hstring Client_Game_GetCurMapPid(FOClient* client)
 {
     if (!client->HexMngr.IsMapLoaded()) {
-        return hash();
+        return hstring();
     }
     return client->CurMapPid;
 }
@@ -989,7 +989,7 @@
 ///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] hash Client_Game_GetTileName(FOClient* client, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] hstring Client_Game_GetTileName(FOClient* client, ushort hx, ushort hy, bool roof, int layer)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -1003,20 +1003,20 @@
 
     const auto* simply_tile = client->HexMngr.GetField(hx, hy).SimplyTile[roof ? 1 : 0];
     if (simply_tile != nullptr && layer == 0) {
-        return simply_tile->NameHash;
+        return simply_tile->Name;
     }
 
     const auto* tiles = client->HexMngr.GetField(hx, hy).Tiles[roof ? 1 : 0];
     if (tiles == nullptr || tiles->empty()) {
-        return hash();
+        return hstring();
     }
 
     for (const auto& tile : *tiles) {
         if (tile.Layer == layer) {
-            return tile.Anim->NameHash;
+            return tile.Anim->Name;
         }
     }
-    return hash();
+    return hstring();
 }
 
 ///# ...
@@ -1335,14 +1335,14 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, string_view sprName)
 {
-    return client->AnimLoad(sprName, AtlasType::Static);
+    return client->AnimLoad(client->ToHashedString(sprName), AtlasType::Static);
 }
 
 ///# ...
 ///# param nameHash ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_LoadSpriteByHash(FOClient* client, hash nameHash)
+[[maybe_unused]] uint Client_Game_LoadSpriteByHash(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::Static);
 }
@@ -1751,7 +1751,7 @@
 ///# param center ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hash modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
+[[maybe_unused]] void Client_Game_DrawCritter2d(FOClient* client, hstring modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
     auto* anim = client->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
     if (anim) {
@@ -1768,7 +1768,7 @@
 ///# param position ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawCritter3d(FOClient* client, uint instance, hash modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
+[[maybe_unused]] void Client_Game_DrawCritter3d(FOClient* client, uint instance, hstring modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
 {
     // x y
     // rx ry rz
@@ -1792,7 +1792,7 @@
         }
 
         client->SprMngr.PushAtlasType(AtlasType::Dynamic);
-        model = client->SprMngr.LoadModel(client->HashToString(modelName), false);
+        model = client->SprMngr.LoadModel(modelName, false);
         client->SprMngr.PopAtlasType();
         client->DrawCritterModelCrType[instance] = modelName;
         client->DrawCritterModelFailedToLoad[instance] = false;

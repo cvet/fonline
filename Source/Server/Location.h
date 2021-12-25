@@ -61,8 +61,8 @@ public:
     auto GetMaps() const -> vector<const Map*>;
     auto GetMapsCount() const -> uint;
     auto GetMapByIndex(uint index) -> Map*;
-    auto GetMapByPid(hash map_pid) -> Map*;
-    auto GetMapIndex(hash map_pid) -> uint;
+    auto GetMapByPid(hstring map_pid) -> Map*;
+    auto GetMapIndex(hstring map_pid) -> uint;
     auto IsCanEnter(uint players_count) -> bool;
     auto IsNoCrit() -> bool;
     auto IsNoPlayer() -> bool;

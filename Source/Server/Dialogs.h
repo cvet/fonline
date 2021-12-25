@@ -107,7 +107,7 @@ using DialogsVec = vector<Dialog>;
 
 struct DialogPack
 {
-    hash PackId {};
+    hstring PackId {};
     string PackName {};
     DialogsVec Dialogs {};
     vector<uint> TextsLang {};
@@ -122,7 +122,7 @@ struct TalkData
     uint TalkHexMap {};
     ushort TalkHexX {};
     ushort TalkHexY {};
-    hash DialogPackId {};
+    hstring DialogPackId {};
     Dialog CurDialog {};
     uint LastDialogId {};
     uint StartTick {};
@@ -144,14 +144,14 @@ public:
     auto operator=(DialogManager&&) noexcept = delete;
     ~DialogManager() = default;
 
-    [[nodiscard]] auto GetDialog(hash pack_id) -> DialogPack*;
+    [[nodiscard]] auto GetDialog(hstring pack_id) -> DialogPack*;
     [[nodiscard]] auto GetDialogByIndex(uint index) -> DialogPack*;
 
     [[nodiscard]] auto LoadDialogs() -> bool;
     [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
     [[nodiscard]] auto AddDialog(DialogPack* pack) -> bool;
 
-    void EraseDialog(hash pack_id);
+    void EraseDialog(hstring pack_id);
 
 private:
     [[nodiscard]] auto GetNotAnswerAction(string_view str) -> ScriptFunc<string, Critter*, Critter*>;
@@ -162,6 +162,6 @@ private:
     [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*;
 
     FOServer* _engine;
-    map<hash, unique_ptr<DialogPack>> _dialogPacks {};
+    map<hstring, unique_ptr<DialogPack>> _dialogPacks {};
     bool _nonConstHelper {};
 };

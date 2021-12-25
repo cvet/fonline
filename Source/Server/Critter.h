@@ -111,11 +111,11 @@ public:
     [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
     [[nodiscard]] auto GetItem(uint item_id, bool skip_hide) -> Item*;
     [[nodiscard]] auto GetRawItems() -> vector<Item*>& { return _invItems; }
-    [[nodiscard]] auto GetItemByPid(hash item_pid) -> Item*;
-    [[nodiscard]] auto GetItemByPidSlot(hash item_pid, int slot) -> Item*;
+    [[nodiscard]] auto GetItemByPid(hstring item_pid) -> Item*;
+    [[nodiscard]] auto GetItemByPidSlot(hstring item_pid, int slot) -> Item*;
     [[nodiscard]] auto GetItemSlot(int slot) -> Item*;
     [[nodiscard]] auto GetItemsSlot(int slot) -> vector<Item*>;
-    [[nodiscard]] auto CountItemPid(hash item_pid) const -> uint;
+    [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
     [[nodiscard]] auto RealCountItems() const -> uint { return static_cast<uint>(_invItems.size()); }
     [[nodiscard]] auto CountItems() const -> uint;
     [[nodiscard]] auto GetInventory() -> vector<Item*>&;
@@ -148,7 +148,7 @@ public:
     void SetItem(Item* item);
     auto SetScript(string_view func, bool first_time) -> bool;
     void SendMessage(int num, int val, int to, MapManager& map_mngr);
-    void AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier) const;
+    void AddCrTimeEvent(hstring func_num, uint rate, uint duration, int identifier) const;
     void EraseCrTimeEvent(int index);
     void ContinueTimeEvents(int offs_time);
 
@@ -198,8 +198,8 @@ public:
     void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
-    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
+    void Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     void Send_PlaySound(uint crid_synchronize, string_view sound_name);
     void Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
@@ -225,7 +225,7 @@ public:
     set<uint> VisCr3 {};
     set<uint> VisItem {};
     uint ViewMapId {};
-    hash ViewMapPid {};
+    hstring ViewMapPid {};
     ushort ViewMapLook {};
     ushort ViewMapHx {};
     ushort ViewMapHy {};

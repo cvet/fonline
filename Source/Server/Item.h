@@ -66,7 +66,7 @@ public:
     [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
     [[nodiscard]] auto ContGetItem(uint item_id, bool skip_hidden) -> Item*;
     [[nodiscard]] auto ContGetAllItems(bool skip_hidden) -> vector<Item*>;
-    [[nodiscard]] auto ContGetItemByPid(hash pid, uint stack_id) -> Item*;
+    [[nodiscard]] auto ContGetItemByPid(hstring pid, uint stack_id) -> Item*;
     [[nodiscard]] auto ContGetItems(uint stack_id) -> vector<Item*>;
     [[nodiscard]] auto ContIsItems() const -> bool;
 

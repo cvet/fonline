@@ -836,33 +836,61 @@ using IPoint = TPoint<int>;
 using FPoint = TPoint<float>;
 
 // Hashing
-// ReSharper disable once CppInconsistentNaming
-struct hash
+// ReSharper disable CppInconsistentNaming
+struct hstring
 {
-    explicit operator bool() const { return Value != 0u; }
-    auto operator==(const hash& other) const { return Value == other.Value; }
-    auto operator!=(const hash& other) const { return Value != other.Value; }
-    auto operator<(const hash& other) const { return Value < other.Value; }
+    using hash_t = uint;
 
-    uint Value {};
+    struct entry
+    {
+        hash_t Hash {};
+        string Str {};
+    };
+
+    hstring() = default;
+    explicit hstring(entry* static_storage_entry) : _entry {static_storage_entry} { }
+    // ReSharper disable once CppNonExplicitConversionOperator
+    operator string_view() const { return _entry->Str; }
+    explicit operator bool() const { return !(_entry->Hash == 0u); }
+    auto operator==(const hstring& other) const { return _entry->Hash == other._entry->Hash; }
+    auto operator!=(const hstring& other) const { return _entry->Hash != other._entry->Hash; }
+    auto operator<(const hstring& other) const { return _entry->Hash < other._entry->Hash; }
+    [[nodiscard]] auto as_hash() const -> hash_t { return _entry->Hash; }
+    [[nodiscard]] auto as_int() const -> int { return static_cast<int>(_entry->Hash); }
+    [[nodiscard]] auto as_uint() const -> uint { return _entry->Hash; }
+    [[nodiscard]] auto as_str() const -> string_view { return _entry->Str; }
+
+private:
+    static entry _zeroEntry;
+
+    entry* _entry {&_zeroEntry};
 };
-static_assert(sizeof(hash) == 4);
-static_assert(std::is_standard_layout_v<hash>);
+static_assert(sizeof(hstring::hash_t) == 4);
+static_assert(std::is_standard_layout_v<hstring>);
 
-// ReSharper disable once CppInconsistentNaming
-struct hstring : hash
+template<>
+struct std::hash<hstring>
 {
-    explicit operator bool() const { return Value != 0u; }
-    auto operator==(const hstring& other) const { return Value == other.Value; }
-    auto operator!=(const hstring& other) const { return Value != other.Value; }
-    auto operator<(const hstring& other) const { return Value < other.Value; }
-    auto operator==(const hash& other) const { return Value == other.Value; }
-    auto operator!=(const hash& other) const { return Value != other.Value; }
-    auto operator<(const hash& other) const { return Value < other.Value; }
-
-    const char* Text {};
+    size_t operator()(const hstring& s) const noexcept { return s.as_hash(); }
 };
-static_assert(offsetof(hstring, Value) == 0);
+
+template<>
+struct fmt::formatter<hstring>
+{
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const hstring& s, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "{}", s.as_str());
+    }
+};
+
+// ReSharper restore CppInconsistentNaming
 
 // Generic constants
 // Todo: eliminate as much defines as possible
@@ -882,7 +910,6 @@ static constexpr float MAX_ZOOM = 20.0f;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes
-#define MAKE_PLAYER_ID(name) static_cast<uint>((1 << 31) | _str(name).toHash().Value)
 #define DLGID_MASK (0xFFFFC000)
 #define DLG_STR_ID(dlg_id, idx) (((dlg_id)&DLGID_MASK) | ((idx) & ~DLGID_MASK))
 #define LOCPID_MASK (0xFFFFF000)
@@ -1264,17 +1291,17 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value) const -> string = 0;
-    [[nodiscard]] virtual auto HashToString(hash h) const -> string_view = 0;
-    [[nodiscard]] virtual auto StringToHash(string_view s) const -> hash = 0;
+    [[nodiscard]] virtual auto ToHashedString(string_view s) const -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool& failed) -> int = 0;
 };
 
 class AnimationResolver
 {
 public:
-    [[nodiscard]] virtual auto ResolveCritterAnimation(hash arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hash arg1, uint arg2, uint arg3, hash& arg4, uint& arg5, uint& arg6) -> bool = 0;
-    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hash arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
 
 extern void SetAppName(const char* name);

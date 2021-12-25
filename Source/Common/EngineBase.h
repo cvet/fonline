@@ -37,6 +37,7 @@
 
 #include "EntityProperties.h"
 
+DECLARE_EXCEPTION(HashResolveException);
 DECLARE_EXCEPTION(HashCollisionException);
 
 class FOEngineBase : public NameResolver, public PropertyRegistratorsHolder, public Entity, public GameProperties
@@ -48,8 +49,8 @@ public:
     auto operator=(FOEngineBase&&) noexcept = delete;
 
     [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
-    [[nodiscard]] auto HashToString(hash h) const -> string_view override;
-    [[nodiscard]] auto StringToHash(string_view s) const -> hash override;
+    [[nodiscard]] auto ToHashedString(string_view s) const -> hstring override;
+    [[nodiscard]] auto ResolveHash(hstring::hash_t h) const -> hstring override;
     [[nodiscard]] auto ResolveGenericValue(string_view str, bool& failed) -> int override;
 
 protected:
@@ -57,6 +58,5 @@ protected:
     ~FOEngineBase() override = default;
 
 private:
-    mutable unordered_map<decltype(hash::Value), string_view> _hashesLookup {};
-    mutable unordered_map<string_view, decltype(hash::Value)> _hashesLookupRev {};
+    mutable unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
 };

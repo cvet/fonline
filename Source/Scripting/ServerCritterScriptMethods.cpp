@@ -480,7 +480,7 @@
 ///# param protoId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_CountItem(Critter* self, hash protoId)
+[[maybe_unused]] uint Server_Critter_CountItem(Critter* self, hstring protoId)
 {
     return self->CountItemPid(protoId);
 }
@@ -490,7 +490,7 @@
 ///# param count ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_DeleteItem(Critter* self, hash pid, uint count)
+[[maybe_unused]] bool Server_Critter_DeleteItem(Critter* self, hstring pid, uint count)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
@@ -509,13 +509,13 @@
 ///# param count ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Critter_AddItem(Critter* self, hash pid, uint count)
+[[maybe_unused]] Item* Server_Critter_AddItem(Critter* self, hstring pid, uint count)
 {
     if (!pid) {
         throw ScriptException("Proto id arg is zero");
     }
     if (!self->GetEngine()->ProtoMngr.GetProtoItem(pid)) {
-        throw ScriptException("Invalid proto", self->GetEngine()->HashToString(pid));
+        throw ScriptException("Invalid proto", pid);
     }
 
     if (count == 0u) {
@@ -568,7 +568,7 @@
 ///# param protoId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Critter_GetItemByPid(Critter* self, hash protoId)
+[[maybe_unused]] Item* Server_Critter_GetItemByPid(Critter* self, hstring protoId)
 {
     return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
 }
@@ -764,7 +764,7 @@
 ///# param locPid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsKnownLocationProto(Critter* self, hash locPid)
+[[maybe_unused]] bool Server_Critter_IsKnownLocationProto(Critter* self, hstring locPid)
 {
     if (!locPid) {
         throw ScriptException("Invalid location pid");
@@ -949,7 +949,7 @@
         }
     }
     else {
-        self->SetScriptId(hash());
+        self->SetScriptId(hstring());
     }
 }
 
@@ -961,7 +961,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_AddTimeEvent(Critter* self, const std::function<void(Critter*)>& func, uint duration, int identifier)
 {
-    /*hash func_num = self->GetEngine()->ScriptSys.BindScriptFuncNumByFunc(func);
+    /*hstring func_num = self->GetEngine()->ScriptSys.BindScriptFuncNumByFunc(func);
     if (!func_num)
         throw ScriptException("Function not found");
 
@@ -977,7 +977,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_AddTimeEventWithRate(Critter* self, const std::function<void(Critter*)>& func, uint duration, int identifier, uint rate)
 {
-    /*hash func_num = self->GetEngine()->ScriptSys.BindScriptFuncNumByFunc(func);
+    /*hstring func_num = self->GetEngine()->ScriptSys.BindScriptFuncNumByFunc(func);
     if (!func_num)
         throw ScriptException("Function not found");
 
@@ -1163,7 +1163,7 @@
         throw ScriptException("Index arg is greater than maximum time events");
     }
 
-    hash func_num = *(hash*)te_func_num->At(index);
+    hstring func_num = *(hash*)te_func_num->At(index);
     int identifier = *(int*)te_identifier->At(index);
     te_func_num->Release();
     te_identifier->Release();

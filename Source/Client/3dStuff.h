@@ -67,13 +67,13 @@ struct MeshTexture
 
 struct MeshData
 {
-    void Load(DataReader& reader);
+    void Load(DataReader& reader, NameResolver& name_resolver);
 
     ModelBone* Owner {};
     Vertex3DVec Vertices {};
     vector<ushort> Indices {};
     string DiffuseTexture {};
-    vector<hash> SkinBoneNameHashes {};
+    vector<hstring> SkinBoneNames {};
     vector<mat44> SkinBoneOffsets {};
     vector<ModelBone*> SkinBones {};
     string EffectName {};
@@ -94,12 +94,11 @@ static_assert(std::is_standard_layout_v<MeshInstance>);
 
 struct ModelBone
 {
-    void Load(DataReader& reader);
+    void Load(DataReader& reader, NameResolver& name_resolver);
     void FixAfterLoad(ModelBone* root_bone);
-    auto Find(hash name_hash) -> ModelBone*;
-    static auto GetHash(string_view name) -> hash;
+    auto Find(hstring bone_name) -> ModelBone*;
 
-    hash NameHash {};
+    hstring Name {};
     mat44 TransformationMatrix {};
     mat44 GlobalTransformationMatrix {};
     unique_ptr<MeshData> AttachedMesh {};
@@ -117,7 +116,7 @@ struct ModelCutData
 
     vector<Shape> Shapes {};
     vector<int> Layers {};
-    hash UnskinBone {};
+    hstring UnskinBone {};
     Shape UnskinShape {};
     bool RevertUnskinShape {};
 };
@@ -127,7 +126,7 @@ struct ModelAnimationData
     uint Id {};
     int Layer {};
     int LayerValue {};
-    hash LinkBoneHash {};
+    hstring LinkBone {};
     string ChildName {};
     float RotX {};
     float RotY {};
@@ -140,9 +139,9 @@ struct ModelAnimationData
     float ScaleZ {};
     float SpeedAjust {};
     vector<int> DisabledLayer {};
-    vector<hash> DisabledMesh {};
-    vector<tuple<string, hash, int>> TextureInfo {}; // Name, mesh, num
-    vector<tuple<string, hash>> EffectInfo {}; // Name, mesh
+    vector<hstring> DisabledMesh {};
+    vector<tuple<string, hstring, int>> TextureInfo {}; // Name, mesh, num
+    vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ModelCutData*> CutInfo {};
 };
 
@@ -171,6 +170,7 @@ public:
     auto operator=(ModelManager&&) noexcept = delete;
     ~ModelManager() = default;
 
+    [[nodiscard]] auto GetBoneHashedString(string_view name) const -> hstring;
     [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
     [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
 
@@ -197,7 +197,7 @@ private:
     NameResolver& _nameResolver;
     AnimationResolver& _animNameResolver;
     MeshTextureCreator _meshTexCreator {};
-    set<hash> _processedFiles {};
+    set<hstring> _processedFiles {};
     vector<unique_ptr<ModelBone, std::function<void(ModelBone*)>>> _loadedModels {};
     vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
     vector<unique_ptr<MeshTexture>> _loadedMeshTextures {};
@@ -240,7 +240,7 @@ public:
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
     [[nodiscard]] auto GetDrawSize() const -> tuple<uint, uint>;
-    [[nodiscard]] auto GetBonePos(hash name_hash) const -> optional<tuple<int, int>>;
+    [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
 
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;
@@ -368,7 +368,7 @@ private:
     map<int, int> _animIndexes {};
     map<int, float> _animSpeed {};
     map<uint, vector<pair<int, int>>> _animLayerValues {};
-    set<hash> _fastTransitionBones {};
+    set<hstring> _fastTransitionBones {};
     ModelAnimationData _animDataDefault {};
     vector<ModelAnimationData> _animData {};
     int _renderAnim {};

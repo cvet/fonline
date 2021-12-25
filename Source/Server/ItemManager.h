@@ -61,15 +61,15 @@ public:
     [[nodiscard]] auto GetItem(uint item_id) const -> const Item*;
     [[nodiscard]] auto GetItems() -> vector<Item*>;
     [[nodiscard]] auto GetItemsCount() const -> uint;
-    [[nodiscard]] auto GetItemStatistics(hash pid) const -> int64;
+    [[nodiscard]] auto GetItemStatistics(hstring pid) const -> int64;
     [[nodiscard]] auto GetItemsStatistics() const -> string;
 
-    auto CreateItem(hash pid, uint count, const Properties* props) -> Item*;
+    auto CreateItem(hstring pid, uint count, const Properties* props) -> Item*;
     auto SplitItem(Item* item, uint count) -> Item*;
-    auto AddItemContainer(Item* cont, hash pid, uint count, uint stack_id) -> Item*;
-    auto AddItemCritter(Critter* cr, hash pid, uint count) -> Item*;
-    auto SubItemCritter(Critter* cr, hash pid, uint count, vector<Item*>* erased_items) -> bool;
-    auto SetItemCritter(Critter* cr, hash pid, uint count) -> bool;
+    auto AddItemContainer(Item* cont, hstring pid, uint count, uint stack_id) -> Item*;
+    auto AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*;
+    auto SubItemCritter(Critter* cr, hstring pid, uint count, vector<Item*>* erased_items) -> bool;
+    auto SetItemCritter(Critter* cr, hstring pid, uint count) -> bool;
 
     void LinkItems();
     void InitAfterLoad();
@@ -84,7 +84,7 @@ public:
     void UnregisterRadio(Item* radio);
     void RadioSendText(Critter* cr, string_view text, bool unsafe_text, ushort text_msg, uint num_str, vector<ushort>& channels);
     void RadioSendTextEx(ushort channel, uchar broadcast_type, uint from_map_id, ushort from_wx, ushort from_wy, string_view text, bool unsafe_text, ushort text_msg, uint num_str, string_view lexems);
-    void ChangeItemStatistics(hash pid, int val) const;
+    void ChangeItemStatistics(hstring pid, int val) const;
 
 private:
     [[nodiscard]] auto ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool;

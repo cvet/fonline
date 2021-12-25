@@ -1576,7 +1576,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
 
         auto is_array_of_pod = ISTYPE(vector<int>);
         is_array_of_string = ISTYPE(vector<string>);
-        is_hash_sub0 = ISTYPE(vector<hash>);
+        is_hash_sub0 = ISTYPE(vector<hstring>);
     }
     else if (ISTYPE(vector<int>)) {
         data_type = Property::DataType::Dict;
@@ -1772,7 +1772,7 @@ auto PropertyRegistrator::Register(Property::AccessType access, const type_info&
 #undef ISTYPE
 }
 
-void PropertyRegistrator::RegisterComponent(string_view name)
+void PropertyRegistrator::RegisterComponent(hstring name)
 {
     RUNTIME_ASSERT(!_registeredComponents.count(name));
     _registeredComponents.insert(name);
@@ -1810,7 +1810,7 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
     return nullptr;
 }
 
-auto PropertyRegistrator::IsComponentRegistered(string_view component_name) const -> bool
+auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const -> bool
 {
     return _registeredComponents.count(component_name) > 0u;
 }

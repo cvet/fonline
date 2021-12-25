@@ -581,41 +581,6 @@ auto _str::toWideChar() const -> std::wstring
 }
 #endif
 
-struct StringHashData
-{
-    unordered_map<decltype(hash::Value), string> Storage {};
-};
-GLOBAL_DATA(StringHashData, HashData);
-
-auto _str::toHash() -> hstring
-{
-    if (_s.empty()) {
-        return {};
-    }
-
-    normalizePathSlashes();
-    trim();
-
-    if (_s.empty()) {
-        return {};
-    }
-
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(_s.c_str()), static_cast<uint>(_s.length()));
-    if (hash_value == 0u) {
-        return {};
-    }
-
-    if (const auto it = HashData->Storage.find(hash_value); it != HashData->Storage.end()) {
-        return hstring {{hash_value}, it->second.c_str()};
-    }
-
-    if (const auto [it, inserted] = HashData->Storage.emplace(hash_value, _s); inserted) {
-        return hstring {{hash_value}, it->second.c_str()};
-    }
-
-    throw UnreachablePlaceException(LINE_STR);
-}
-
 // ReSharper restore CppInconsistentNaming
 
 void Str::Copy(char* to, size_t size, string_view from)

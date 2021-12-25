@@ -205,7 +205,7 @@ struct AnyFrames
     uint Ticks {}; // Time of playing animation
     uint Anim1 {};
     uint Anim2 {};
-    hash NameHash {};
+    hstring Name {};
     int DirCount {1};
     AnyFrames* Dirs[7] {}; // 7 additional for square hexes, 5 for hexagonal
 };

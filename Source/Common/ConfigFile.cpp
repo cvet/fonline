@@ -146,12 +146,10 @@ void ConfigFile::ParseStr(string_view str)
                     offset = last + 1;
 
                     if (i == 0 && num == 0u) {
-                        static_assert(sizeof(hash) == sizeof(num));
-                        num = _str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->StringToHash(str2).Value;
+                        num = _str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->ToHashedString(str2).as_int();
                     }
                     else if (i == 1 && num != 0u) {
-                        static_assert(sizeof(hash) == sizeof(num));
-                        num += !str2.empty() ? (_str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->StringToHash(str2).Value) : 0;
+                        num += !str2.empty() ? (_str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->ToHashedString(str2).as_int()) : 0;
                     }
                     else if (i == 2 && num != 0u) {
                         (*cur_app)[_str("{}", num)] = str2;

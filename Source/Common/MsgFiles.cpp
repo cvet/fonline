@@ -297,7 +297,7 @@ auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
     return true;
 }
 
-auto FOMsg::LoadFromString(string_view str) -> bool
+auto FOMsg::LoadFromString(string_view str, NameResolver& name_resolver) -> bool
 {
     auto fail = false;
 
@@ -330,10 +330,10 @@ auto FOMsg::LoadFromString(string_view str) -> bool
             auto substr = line.substr(first + 1, last - first - 1);
             offset = last + 1;
             if (i == 0 && num == 0u) {
-                num = _str(substr).isNumber() ? _str(substr).toInt() : _str(substr).toHash().Value;
+                num = _str(substr).isNumber() ? _str(substr).toInt() : name_resolver.ToHashedString(substr).as_int();
             }
             else if (i == 1 && num != 0u) {
-                num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : _str(substr).toHash().Value) : 0;
+                num += !substr.empty() ? (_str(substr).isNumber() ? _str(substr).toInt() : name_resolver.ToHashedString(substr).as_int()) : 0;
             }
             else if (i == 2 && num != 0u) {
                 AddStr(num, substr);
@@ -397,7 +397,7 @@ auto FOMsg::GetMsgType(string_view type_name) -> int
     return -1;
 }
 
-void LanguagePack::LoadFromFiles(FileManager& file_mngr, string_view lang_name)
+void LanguagePack::LoadFromFiles(FileManager& file_mngr, NameResolver& name_resolver, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
@@ -414,7 +414,7 @@ void LanguagePack::LoadFromFiles(FileManager& file_mngr, string_view lang_name)
         if (dirs.size() >= 3 && dirs[dirs.size() - 3] == "Texts" && dirs[dirs.size() - 2] == lang_name) {
             for (auto i = 0; i < TEXTMSG_COUNT; i++) {
                 if (_str(Data->TextMsgFileName[i]).compareIgnoreCase(msg_file.GetName())) {
-                    if (!Msg[i].LoadFromString(msg_file.GetCStr())) {
+                    if (!Msg[i].LoadFromString(msg_file.GetCStr(), name_resolver)) {
                         WriteLog("Invalid MSG file '{}'.\n", msg_file.GetPath());
                         fail = true;
                     }
@@ -431,7 +431,7 @@ void LanguagePack::LoadFromFiles(FileManager& file_mngr, string_view lang_name)
     IsAllMsgLoaded = Msg[TEXTMSG_GAME].GetSize() > 0 && !fail;
 }
 
-void LanguagePack::LoadFromCache(CacheStorage& cache, string_view lang_name)
+void LanguagePack::LoadFromCache(const CacheStorage& cache, NameResolver& name_resolver, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;

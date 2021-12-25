@@ -78,12 +78,12 @@ public:
     [[nodiscard]] auto GetLocation() -> Location*;
     [[nodiscard]] auto GetLocation() const -> const Location*;
     [[nodiscard]] auto GetItem(uint item_id) -> Item*;
-    [[nodiscard]] auto GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker) -> Item*;
+    [[nodiscard]] auto GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(ushort hx, ushort hy) -> Item*;
     [[nodiscard]] auto GetItems() -> vector<Item*>;
     [[nodiscard]] auto GetItemsHex(ushort hx, ushort hy) -> vector<Item*>;
-    [[nodiscard]] auto GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>;
-    [[nodiscard]] auto GetItemsByProto(hash pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>;
     [[nodiscard]] auto IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<ushort, ushort>>;
@@ -98,9 +98,9 @@ public:
     [[nodiscard]] auto IsHexGag(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexStaticTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool;
-    [[nodiscard]] auto GetNpcCount(hash npc_role, uchar find_type) const -> uint;
+    [[nodiscard]] auto GetNpcCount(hstring npc_role, uchar find_type) const -> uint;
     [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
-    [[nodiscard]] auto GetNpc(hash npc_role, uchar find_type, uint skip_count) -> Critter*;
+    [[nodiscard]] auto GetNpc(hstring npc_role, uchar find_type, uint skip_count) -> Critter*;
     [[nodiscard]] auto GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*;
     [[nodiscard]] auto GetCrittersHex(ushort hx, ushort hy, uint radius, uchar find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() -> vector<Critter*>;
@@ -113,10 +113,10 @@ public:
     [[nodiscard]] auto GetPlayersCount() const -> uint;
     [[nodiscard]] auto GetNpcsCount() const -> uint;
     [[nodiscard]] auto GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItem(ushort hx, ushort hy, hash pid) -> Item*;
+    [[nodiscard]] auto GetStaticItem(ushort hx, ushort hy, hstring pid) -> Item*;
     [[nodiscard]] auto GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItemsByPid(hash pid) -> vector<Item*>;
+    [[nodiscard]] auto GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>;
+    [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<Item*>;
 
     void SetLocation(Location* loc);
     void Process();
@@ -134,8 +134,8 @@ public:
     void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
     void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
-    void SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
+    void SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     auto SetScript(string_view func, bool first_time) -> bool;
     void SetHexFlag(ushort hx, ushort hy, uchar flag);
     void UnsetHexFlag(ushort hx, ushort hy, uchar flag);

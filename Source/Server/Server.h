@@ -89,15 +89,16 @@ public:
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
     [[nodiscard]] auto GetIngamePlayersStatistics() const -> string;
+    [[nodiscard]] auto MakePlayerId(string_view player_name) const -> uint;
 
     void Shutdown();
     void MainLoop();
     void DrawGui();
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
-    auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks) -> Item*;
+    auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
     void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
-    void BeginDialog(Critter* cl, Critter* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
+    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
     void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
     ///@ ExportEvent

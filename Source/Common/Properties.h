@@ -211,7 +211,7 @@ public:
     void SetValueAsIntByName(string_view property_name, int value);
     void SetValueAsIntProps(int property_index, int value);
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, hash>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
@@ -219,7 +219,7 @@ public:
         return *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
     }
 
-    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T> || std::is_same_v<T, hash>, int> = 0>
+    template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
@@ -227,6 +227,30 @@ public:
         T old_value = *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
         if (new_value != old_value) {
             *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
+            // setCallback(enumValue, old_value)
+        }
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    [[nodiscard]] auto GetValue(const Property* prop) const -> T
+    {
+        RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
+        RUNTIME_ASSERT(prop->_isHash);
+        const auto h = *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]);
+        // Todo: ResolveHash
+        return hstring();
+    }
+
+    template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
+    void SetValue(const Property* prop, T new_value)
+    {
+        RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
+        RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
+        RUNTIME_ASSERT(prop->_isHash);
+        const auto old_value = *reinterpret_cast<hstring::hash_t*>(_podData[prop->_podDataOffset]);
+        if (new_value.as_uint() != old_value) {
+            *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = new_value.as_uint();
             // setCallback(enumValue, old_value)
         }
     }
@@ -309,11 +333,11 @@ public:
     [[nodiscard]] auto GetCount() const -> uint;
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
-    [[nodiscard]] auto IsComponentRegistered(string_view component_name) const -> bool;
+    [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
 
     auto Register(Property::AccessType access, const type_info& type, string_view name) -> const Property*;
-    void RegisterComponent(string_view name);
+    void RegisterComponent(hstring name);
     void SetNativeSetCallback(string_view property_name, const NativeCallback& callback);
 
 private:
@@ -321,7 +345,7 @@ private:
     bool _isServer;
     vector<Property*> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
-    unordered_set<string_view> _registeredComponents {};
+    unordered_set<hstring> _registeredComponents {};
     uint _getPropertiesCount {};
 
     // PlainData info

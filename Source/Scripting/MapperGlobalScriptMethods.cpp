@@ -93,7 +93,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Game_AddItem(FOMapper* mapper, hash pid, ushort hx, ushort hy)
+[[maybe_unused]] ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, ushort hx, ushort hy)
 {
     if (hx >= mapper->HexMngr.GetWidth() || hy >= mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -113,7 +113,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hash pid, ushort hx, ushort hy)
+[[maybe_unused]] CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid, ushort hx, ushort hy)
 {
     if (hx >= mapper->HexMngr.GetWidth() || hy >= mapper->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hex args");
@@ -134,7 +134,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Mapper_Game_GetItemByHex(FOMapper* mapper, ushort hx, ushort hy)
 {
-    return mapper->HexMngr.GetItem(hx, hy, hash());
+    return mapper->HexMngr.GetItem(hx, hy, hstring());
 }
 
 ///# ...
@@ -355,42 +355,13 @@
 ///# ...
 ///# param hx ...
 ///# param hy ...
-///# param roof ...
-///# param layer ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] hash Mapper_Game_GetTileHash(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
-{
-    if (!mapper->HexMngr.IsMapLoaded()) {
-        throw ScriptException("Map not loaded");
-    }
-    if (hx >= mapper->HexMngr.GetWidth()) {
-        throw ScriptException("Invalid hex x arg");
-    }
-    if (hy >= mapper->HexMngr.GetHeight()) {
-        throw ScriptException("Invalid hex y arg");
-    }
-
-    const auto& tiles = mapper->HexMngr.GetTiles(hx, hy, roof);
-    for (const auto i : xrange(tiles)) {
-        if (tiles[i].Layer == layer) {
-            return tiles[i].NameHash;
-        }
-    }
-
-    return hash();
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
 ///# param ox ...
 ///# param oy ...
 ///# param layer ...
 ///# param roof ...
 ///# param picHash ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_AddTileHash(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hash picHash)
+[[maybe_unused]] void Mapper_Game_AddTileHash(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hstring picHash)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -419,7 +390,7 @@
 ///# param layer ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Mapper_Game_GetTileName(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
+[[maybe_unused]] hstring Mapper_Game_GetTileName(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
 {
     if (!mapper->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map not loaded");
@@ -434,11 +405,11 @@
     const auto& tiles = mapper->HexMngr.GetTiles(hx, hy, roof);
     for (const auto i : xrange(tiles)) {
         if (tiles[i].Layer == layer) {
-            return tiles[i].Name;
+            return mapper->ResolveHash(tiles[i].NameHash);
         }
     }
 
-    return string();
+    return hstring();
 }
 
 ///# ...
@@ -469,7 +440,7 @@
     auto layer_ = layer;
     layer_ = std::clamp(layer_, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
-    const auto pic_hash = mapper->StringToHash(picName);
+    const auto pic_hash = mapper->ToHashedString(picName);
     mapper->HexMngr.SetTile(pic_hash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
 }
 
@@ -479,7 +450,7 @@
 ///@ ExportMethod
 [[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
-    auto* pmap = new ProtoMap(mapper->StringToHash(fileName), fileName, mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+    auto* pmap = new ProtoMap(mapper->ToHashedString(fileName), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
     // Todo: need attention!
     // if (!pmap->EditorLoad(mapper->ServerFileMngr, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
     //     return nullptr;
@@ -688,18 +659,18 @@
 ///# param subTab ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<hash> Mapper_Game_TabGetItemPids(FOMapper* mapper, int tab, string_view subTab)
+[[maybe_unused]] vector<hstring> Mapper_Game_TabGetItemPids(FOMapper* mapper, int tab, string_view subTab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
     if (!subTab.empty() && !mapper->Tabs[tab].count(string(subTab))) {
-        return vector<hash>();
+        return vector<hstring>();
     }
 
     auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
     // return stab.ItemProtos;
-    return vector<hash>();
+    return vector<hstring>();
 }
 
 ///# ...
@@ -707,18 +678,18 @@
 ///# param subTab ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<hash> Mapper_Game_TabGetCritterPids(FOMapper* mapper, int tab, string_view subTab)
+[[maybe_unused]] vector<hstring> Mapper_Game_TabGetCritterPids(FOMapper* mapper, int tab, string_view subTab)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
     }
     if (!subTab.empty() && !mapper->Tabs[tab].count(string(subTab))) {
-        return vector<hash>();
+        return vector<hstring>();
     }
 
     auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
     // return stab.NpcProtos;
-    return vector<hash>();
+    return vector<hstring>();
 }
 
 ///# ...
@@ -759,7 +730,7 @@
 ///# param subTab ...
 ///# param itemPids ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_TabSetItemPids(FOMapper* mapper, int tab, string_view subTab, const vector<hash>& itemPids)
+[[maybe_unused]] void Mapper_Game_TabSetItemPids(FOMapper* mapper, int tab, string_view subTab, const vector<hstring>& itemPids)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -820,7 +791,7 @@
 ///# param subTab ...
 ///# param critterPids ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int tab, string_view subTab, const vector<hash>& critterPids)
+[[maybe_unused]] void Mapper_Game_TabSetCritterPids(FOMapper* mapper, int tab, string_view subTab, const vector<hstring>& critterPids)
 {
     if (tab < 0 || tab >= FOMapper::TAB_COUNT) {
         throw ScriptException("Wrong tab arg");
@@ -1467,14 +1438,14 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Mapper_Game_LoadSprite(FOMapper* mapper, string_view sprName)
 {
-    return mapper->AnimLoad(sprName, AtlasType::Static);
+    return mapper->AnimLoad(mapper->ToHashedString(sprName), AtlasType::Static);
 }
 
 ///# ...
 ///# param nameHash ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Mapper_Game_LoadSpriteHash(FOMapper* mapper, hash nameHash)
+[[maybe_unused]] uint Mapper_Game_LoadSpriteHash(FOMapper* mapper, hstring nameHash)
 {
     return mapper->AnimLoad(nameHash, AtlasType::Static);
 }
@@ -1868,7 +1839,7 @@
 ///# param center ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_DrawCritter2d(FOMapper* mapper, hash modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
+[[maybe_unused]] void Mapper_Game_DrawCritter2d(FOMapper* mapper, hstring modelName, uint anim1, uint anim2, uchar dir, int l, int t, int r, int b, bool scratch, bool center, uint color)
 {
     auto* anim = mapper->ResMngr.GetCritterAnim(modelName, anim1, anim2, dir);
     if (anim) {
@@ -1885,7 +1856,7 @@
 ///# param position ...
 ///# param color ...
 ///@ ExportMethod
-[[maybe_unused]] void Mapper_Game_DrawCritter3d(FOMapper* mapper, uint instance, hash modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
+[[maybe_unused]] void Mapper_Game_DrawCritter3d(FOMapper* mapper, uint instance, hstring modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
 {
     // x y
     // rx ry rz
@@ -1909,7 +1880,7 @@
             mapper->SprMngr.FreeModel(model);
         }
 
-        model = mapper->SprMngr.LoadModel(mapper->HashToString(modelName), false);
+        model = mapper->SprMngr.LoadModel(modelName, false);
 
         mapper->DrawCritterModelCrType[instance] = modelName;
         mapper->DrawCritterModelFailedToLoad[instance] = false;

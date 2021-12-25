@@ -245,13 +245,15 @@ void ItemHexView::SkipFade()
 void ItemHexView::RefreshAnim()
 {
     Anim = nullptr;
-    const auto name_hash = GetPicMap();
-    if (name_hash) {
-        Anim = _engine->ResMngr.GetItemAnim(name_hash);
+
+    const auto pic_name = GetPicMap();
+    if (pic_name) {
+        Anim = _engine->ResMngr.GetItemAnim(pic_name);
     }
-    if (name_hash && Anim == nullptr) {
+    if (pic_name && Anim == nullptr) {
         WriteLog("PicMap for item '{}' not found.\n", GetName());
     }
+
     if (Anim != nullptr && _isEffect) {
         Anim = Anim->GetDir(_effDir);
     }

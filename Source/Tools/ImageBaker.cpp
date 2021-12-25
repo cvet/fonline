@@ -2258,4 +2258,6 @@ static auto TgaLoad(const uchar* data, uint data_size, uint& result_width, uint&
     result_width = width;
     result_height = height;
     return result;
+
+#undef READ_TGA
 }

@@ -134,9 +134,9 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, float, FlyEffectSpeed, 8)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hash, PicMap, 9)
+    ENTITY_PROPERTY(Public, hstring, PicMap, 9)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hash, PicInv, 10)
+    ENTITY_PROPERTY(Public, hstring, PicInv, 10)
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, short, OffsetX, 11)
     ///@ ExportProperty
@@ -250,7 +250,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, LightColor, 66)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hash, ScriptId, 67)
+    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId, 67)
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, Count, 68)
     ///@ ExportProperty
@@ -274,7 +274,7 @@ public:
     static void FillProperties(PropertyRegistrator* registrator);
 
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hash, ModelName, 0)
+    ENTITY_PROPERTY(Public, hstring, ModelName, 0)
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, uint, WalkTime, 1)
     ///@ ExportProperty
@@ -286,11 +286,11 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, RefMapId, 5)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hash, RefMapPid, 6)
+    ENTITY_PROPERTY(PrivateServer, hstring, RefMapPid, 6)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, RefLocationId, 7)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hash, RefLocationPid, 8)
+    ENTITY_PROPERTY(PrivateServer, hstring, RefLocationPid, 8)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexX, 9)
     ///@ ExportProperty ReadOnly
@@ -334,7 +334,7 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uchar>, GlobalMapFog, 29)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hash>, TE_FuncNum, 30)
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncNum, 30)
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate, 31)
     ///@ ExportProperty ReadOnly
@@ -348,7 +348,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, char, Gender, 36)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, hash, NpcRole, 37)
+    ENTITY_PROPERTY(Protected, hstring, NpcRole, 37)
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, int, ReplicationTime, 38)
     ///@ ExportProperty
@@ -360,7 +360,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, MaxTalkers, 42)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hash, DialogId, 43)
+    ENTITY_PROPERTY(Public, hstring, DialogId, 43)
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, string, Lexems, 44)
     ///@ ExportProperty
@@ -380,9 +380,9 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3, 52)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hash, ScriptId, 53)
+    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId, 53)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, vector<hash>, KnownLocProtoId, 54)
+    ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId, 54)
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers, 55)
     ///@ ExportProperty
@@ -448,7 +448,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, int, CurDayTime, 13)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hash, ScriptId, 14)
+    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId, 14)
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<int>, DayTime, 15)
     ///@ ExportProperty
@@ -466,11 +466,11 @@ public:
     static void FillProperties(PropertyRegistrator* registrator);
 
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hash>, MapProtos, 0)
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos, 0)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hash>, MapEntrances, 1)
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapEntrances, 1)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hash>, Automaps, 2)
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, Automaps, 2)
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, MaxPlayers, 3)
     ///@ ExportProperty
@@ -478,7 +478,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, GeckVisible, 5)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hash, EntranceScript, 6)
+    ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript, 6)
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, ushort, WorldX, 7)
     ///@ ExportProperty

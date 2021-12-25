@@ -47,7 +47,7 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ServerEntity* Server_Game_GetProtoItem(FOServer* server, hash pid, const map<int, int>& props)
+[[maybe_unused]] ServerEntity* Server_Game_GetProtoItem(FOServer* server, hstring pid, const map<int, int>& props)
 {
     const auto* proto = server->ProtoMngr.GetProtoItem(pid);
     if (!proto) {
@@ -494,12 +494,12 @@
 ///# param critters ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hash locPid, ushort wx, ushort wy, const vector<Critter*>& critters)
+[[maybe_unused]] Location* Server_Game_CreateLocation(FOServer* server, hstring locPid, ushort wx, ushort wy, const vector<Critter*>& critters)
 {
     // Create and generate location
     auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
     if (!loc) {
-        throw ScriptException("Unable to create location '{}'.", server->HashToString(locPid));
+        throw ScriptException("Unable to create location '{}'.", locPid);
     }
 
     // Add known locations to critters
@@ -574,7 +574,7 @@
 [[maybe_unused]] Player* Server_Game_GetPlayer(FOServer* server, string_view name)
 {
     // Check existence
-    const auto id = MAKE_PLAYER_ID(name);
+    const auto id = server->MakePlayerId(name);
     const auto doc = server->DbStorage.Get("Players", id);
     if (doc.empty()) {
         return static_cast<Player*>(nullptr);
@@ -588,7 +588,7 @@
     }
 
     // Load from db
-    const auto player_proto_id = server->StringToHash("Player");
+    const auto player_proto_id = server->ToHashedString("Player");
     const auto* player_proto = server->ProtoMngr.GetProtoCritter(player_proto_id);
     RUNTIME_ASSERT(player_proto);
 
@@ -631,7 +631,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Game_GetMapByPid(FOServer* server, hash mapPid, uint skipCount)
+[[maybe_unused]] Map* Server_Game_GetMapByPid(FOServer* server, hstring mapPid, uint skipCount)
 {
     if (!mapPid) {
         throw ScriptException("Invalid zero map proto id arg");
@@ -658,7 +658,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Location* Server_Game_GetLocationByPid(FOServer* server, hash locPid, uint skipCount)
+[[maybe_unused]] Location* Server_Game_GetLocationByPid(FOServer* server, hstring locPid, uint skipCount)
 {
     if (!locPid) {
         throw ScriptException("Invalid zero location proto id arg");
@@ -748,7 +748,7 @@
         throw ScriptException("Can't open new dialog from demand, result or dialog functions");
     }
 
-    server->BeginDialog(cr, npc, hash(), 0, 0, ignoreDistance);
+    server->BeginDialog(cr, npc, hstring(), 0, 0, ignoreDistance);
 
     return cr->Talk.Type == TalkType::Critter && cr->Talk.CritterId == npc->GetId();
 }
@@ -760,7 +760,7 @@
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunCustomNpcDialog(FOServer* server, Critter* cr, Critter* npc, hash dlgPack, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunCustomNpcDialog(FOServer* server, Critter* cr, Critter* npc, hstring dlgPack, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
@@ -792,7 +792,7 @@
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunCustomDialogOnHex(FOServer* server, Critter* cr, hash dlgPack, ushort hx, ushort hy, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunCustomDialogOnHex(FOServer* server, Critter* cr, hstring dlgPack, ushort hx, ushort hy, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
@@ -817,7 +817,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int64 Server_Game_GetWorldItemCount(FOServer* server, hash pid)
+[[maybe_unused]] int64 Server_Game_GetWorldItemCount(FOServer* server, hstring pid)
 {
     if (!server->ProtoMngr.GetProtoItem(pid)) {
         throw ScriptException("Invalid protoId arg");
@@ -877,7 +877,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Game_GetAllItems(FOServer* server, hash pid)
+[[maybe_unused]] vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pid)
 {
     vector<Item*> items;
     for (auto* item : server->ItemMngr.GetItems()) {
@@ -909,7 +909,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Game_GetAllNpc(FOServer* server, hash pid)
+[[maybe_unused]] vector<Critter*> Server_Game_GetAllNpc(FOServer* server, hstring pid)
 {
     vector<Critter*> npcs;
 
@@ -926,7 +926,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Map*> Server_Game_GetAllMaps(FOServer* server, hash pid)
+[[maybe_unused]] vector<Map*> Server_Game_GetAllMaps(FOServer* server, hstring pid)
 {
     vector<Map*> maps;
 
@@ -943,7 +943,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetAllLocations(FOServer* server, hash pid)
+[[maybe_unused]] vector<Location*> Server_Game_GetAllLocations(FOServer* server, hstring pid)
 {
     vector<Location*> locations;
 
