@@ -310,8 +310,8 @@ private:
     void Process_Move(Player* player);
     void Process_Dir(Player* player);
     void Process_Text(Player* player);
-    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
-    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
+    void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
+    void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_Dialog(Player* player);
     void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);

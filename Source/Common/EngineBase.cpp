@@ -70,13 +70,23 @@ auto FOEngineBase::ToHashedString(string_view s) const -> hstring
     return hstring(&it->second);
 }
 
-auto FOEngineBase::ResolveHash(hstring::hash_t h) const -> hstring
+auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 {
     if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
+        if (failed != nullptr) {
+            *failed = false;
+        }
+
         return hstring(&it->second);
     }
 
-    throw HashResolveException("Can't resolve hash", h);
+    if (failed != nullptr) {
+        *failed = true;
+        return hstring();
+    }
+    else {
+        throw HashResolveException("Can't resolve hash", h);
+    }
 }
 
 auto FOEngineBase::ResolveGenericValue(string_view str, bool& failed) -> int

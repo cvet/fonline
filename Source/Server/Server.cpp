@@ -570,7 +570,7 @@ void FOServer::ProcessFreeConnection(ClientConnection* connection)
     std::lock_guard locker(connection->BinLocker);
 
     if (connection->IsGracefulDisconnected()) {
-        connection->Bin.Reset();
+        connection->Bin.ResetBuf();
         return;
     }
 
@@ -663,7 +663,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
 
     if (player->Connection->IsGracefulDisconnected()) {
         std::lock_guard locker(player->Connection->BinLocker);
-        player->Connection->Bin.Reset();
+        player->Connection->Bin.ResetBuf();
         return;
     }
 
@@ -961,14 +961,14 @@ void FOServer::Process_Text(Player* player)
     }
 }
 
-void FOServer::Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
+void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
     LogToFunc("Process_Command", logcb, true);
     Process_CommandReal(buf, logcb, player, admin_panel);
     LogToFunc("Process_Command", logcb, false);
 }
 
-void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
+void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
     auto* cl_ = player->GetOwnedCritter();
 
@@ -1246,7 +1246,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         uint count = 0;
         buf >> hex_x;
         buf >> hex_y;
-        buf >> pid;
+        pid = buf.ReadHashedString(*this);
         buf >> count;
 
         CHECK_ALLOW_COMMAND();
@@ -1268,7 +1268,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     case CMD_ADDITEM_SELF: {
         hstring pid;
         uint count = 0;
-        buf >> pid;
+        pid = buf.ReadHashedString(*this);
         buf >> count;
 
         CHECK_ALLOW_COMMAND();
@@ -1289,7 +1289,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         buf >> hex_x;
         buf >> hex_y;
         buf >> dir;
-        buf >> pid;
+        pid = buf.ReadHashedString(*this);
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1309,7 +1309,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         hstring pid;
         buf >> wx;
         buf >> wy;
-        buf >> pid;
+        pid = buf.ReadHashedString(*this);
 
         CHECK_ALLOW_COMMAND();
 
@@ -2753,16 +2753,15 @@ void FOServer::Process_PlaceToGame(Player* player)
         cr->Send_AllAutomapsInfo(MapMngr);
 
         // Send current critters
-        auto critters = cr->VisCrSelf;
-        for (auto& critter : critters) {
-            cr->Send_AddCritter(critter);
+        const auto critters = cr->VisCrSelf;
+        for (auto& cr_ : critters) {
+            cr->Send_AddCritter(cr_);
         }
 
         // Send current items on map
         const auto items = cr->VisItem;
         for (const auto item_id : items) {
-            auto* item = ItemMngr.GetItem(item_id);
-            if (item != nullptr) {
+            if (auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
                 cr->Send_AddItemOnMap(item);
             }
         }
@@ -2783,13 +2782,12 @@ void FOServer::Process_GiveMap(Player* player)
     Critter* cr = player->GetOwnedCritter();
 
     bool automap = 0;
-    hstring map_pid;
     uint loc_id = 0;
     uint hash_tiles = 0;
     uint hash_scen = 0;
 
     player->Connection->Bin >> automap;
-    player->Connection->Bin >> map_pid;
+    const auto map_pid = player->Connection->Bin.ReadHashedString(*this);
     player->Connection->Bin >> loc_id;
     player->Connection->Bin >> hash_tiles;
     player->Connection->Bin >> hash_scen;

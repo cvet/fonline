@@ -1086,8 +1086,8 @@ auto FOClient::NetConnect(string_view host, ushort port) -> bool
 
         uchar b1 = 0;
         uchar b2 = 0;
-        _netIn.Reset();
-        _netOut.Reset();
+        _netIn.ResetBuf();
+        _netOut.ResetBuf();
 
         // Authentication
         if (Settings.ProxyType == PROXY_SOCKS4) {
@@ -1214,7 +1214,7 @@ auto FOClient::NetConnect(string_view host, ushort port) -> bool
                 return false;
             }
 
-            buf = reinterpret_cast<const char*>(_netIn.GetCurData());
+            buf = reinterpret_cast<const char*>(_netIn.GetData() + _netIn.GetReadPos());
             if (buf.find(" 200 ") == string::npos) {
                 WriteLog("Proxy connection error, receive message '{}'.\n", buf);
                 return false;
@@ -1225,8 +1225,8 @@ auto FOClient::NetConnect(string_view host, ushort port) -> bool
             return false;
         }
 
-        _netIn.Reset();
-        _netOut.Reset();
+        _netIn.ResetBuf();
+        _netOut.ResetBuf();
 
         _isConnected = true;
 
@@ -1276,8 +1276,8 @@ void FOClient::NetDisconnect()
 
         HexMngr.UnloadMap();
         DeleteCritters();
-        _netIn.Reset();
-        _netOut.Reset();
+        _netIn.ResetBuf();
+        _netOut.ResetBuf();
         _netIn.SetEncryptKey(0);
         _netOut.SetEncryptKey(0);
         _netIn.SetError(false);
@@ -1349,7 +1349,7 @@ auto FOClient::NetOutput() -> bool
         _bytesSend += len;
     }
 
-    _netOut.Reset();
+    _netOut.ResetBuf();
     return true;
 }
 
@@ -1420,7 +1420,7 @@ auto FOClient::NetInput(bool unpack) -> int
         _zStream->next_in = _incomeBuf.data();
         _zStream->avail_in = whole_len;
         _zStream->next_out = _netIn.GetData() + _netIn.GetEndPos();
-        _zStream->avail_out = _netIn.GetLen() - _netIn.GetEndPos();
+        _zStream->avail_out = _netIn.GetAvailLen();
 
         const auto first_inflate = ::inflate(_zStream, Z_SYNC_FLUSH);
         RUNTIME_ASSERT(first_inflate == Z_OK);
@@ -1432,7 +1432,7 @@ auto FOClient::NetInput(bool unpack) -> int
             _netIn.GrowBuf(NetBuffer::DEFAULT_BUF_SIZE);
 
             _zStream->next_out = _netIn.GetData() + _netIn.GetEndPos();
-            _zStream->avail_out = _netIn.GetLen() - _netIn.GetEndPos();
+            _zStream->avail_out = _netIn.GetAvailLen();
 
             const auto next_inflate = ::inflate(_zStream, Z_SYNC_FLUSH);
             RUNTIME_ASSERT(next_inflate == Z_OK);
@@ -1442,7 +1442,7 @@ auto FOClient::NetInput(bool unpack) -> int
         }
     }
     else {
-        _netIn.Push(_incomeBuf.data(), whole_len, true);
+        _netIn.AddData(_incomeBuf.data(), whole_len);
     }
 
     _bytesReceive += whole_len;
@@ -1974,7 +1974,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     // Npc
     hstring npc_pid;
     if (is_npc) {
-        _netIn >> npc_pid;
+        npc_pid = _netIn.ReadHashedString(*this);
     }
 
     // Player
@@ -2423,7 +2423,7 @@ void FOClient::Net_OnSomeItem()
     hstring item_pid;
     _netIn >> msg_len;
     _netIn >> item_id;
-    _netIn >> item_pid;
+    item_pid = _netIn.ReadHashedString(*this);
 
     NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
 
@@ -2490,7 +2490,7 @@ void FOClient::Net_OnCritterMoveItem()
         hstring pid;
         _netIn >> slot;
         _netIn >> id;
-        _netIn >> pid;
+        pid = _netIn.ReadHashedString(*this);
         NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
         slots_data_slot.push_back(slot);
         slots_data_id.push_back(id);
@@ -2792,7 +2792,7 @@ void FOClient::Net_OnChosenAddItem()
     uchar slot;
     _netIn >> msg_len;
     _netIn >> item_id;
-    _netIn >> pid;
+    pid = _netIn.ReadHashedString(*this);
     _netIn >> slot;
 
     NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
@@ -2895,7 +2895,7 @@ void FOClient::Net_OnAddItemOnMap()
     bool is_added;
     _netIn >> msg_len;
     _netIn >> item_id;
-    _netIn >> item_pid;
+    item_pid = _netIn.ReadHashedString(*this);
     _netIn >> item_hx;
     _netIn >> item_hy;
     _netIn >> is_added;
@@ -2967,13 +2967,8 @@ void FOClient::Net_OnCombatResult()
     _netIn >> data_count;
 
     if (data_count != 0u) {
-        if (data_count > Settings.FloodSize / sizeof(uint)) {
-            _netIn.SetError(true);
-        }
-        else {
-            data_vec.resize(data_count);
-            _netIn.Pop(data_vec.data(), data_count * sizeof(uint));
-        }
+        data_vec.resize(data_count);
+        _netIn.Pop(data_vec.data(), data_count * sizeof(uint));
     }
 
     CHECK_IN_BUFF_ERROR();
@@ -2987,7 +2982,7 @@ void FOClient::Net_OnEffect()
     ushort hx;
     ushort hy;
     ushort radius;
-    _netIn >> eff_pid;
+    eff_pid = _netIn.ReadHashedString(*this);
     _netIn >> hx;
     _netIn >> hy;
     _netIn >> radius;
@@ -3026,7 +3021,7 @@ void FOClient::Net_OnFlyEffect()
     ushort eff_cr1_hy;
     ushort eff_cr2_hx;
     ushort eff_cr2_hy;
-    _netIn >> eff_pid;
+    eff_pid = _netIn.ReadHashedString(*this);
     _netIn >> eff_cr1_id;
     _netIn >> eff_cr2_id;
     _netIn >> eff_cr1_hx;
@@ -3349,16 +3344,14 @@ void FOClient::Net_OnLoadMap()
     WriteLog("Change map...\n");
 
     uint msg_len;
-    hstring map_pid;
-    hstring loc_pid;
     uchar map_index_in_loc;
     int map_time;
     uchar map_rain;
     uint hash_tiles;
     uint hash_scen;
     _netIn >> msg_len;
-    _netIn >> map_pid;
-    _netIn >> loc_pid;
+    const auto map_pid = _netIn.ReadHashedString(*this);
+    const auto loc_pid = _netIn.ReadHashedString(*this);
     _netIn >> map_index_in_loc;
     _netIn >> map_time;
     _netIn >> map_rain;
@@ -3441,13 +3434,12 @@ void FOClient::Net_OnLoadMap()
 void FOClient::Net_OnMap()
 {
     uint msg_len;
-    hstring map_pid;
     ushort maxhx;
     ushort maxhy;
     bool send_tiles;
     bool send_scenery;
     _netIn >> msg_len;
-    _netIn >> map_pid;
+    const auto map_pid = _netIn.ReadHashedString(*this);
     _netIn >> maxhx;
     _netIn >> maxhy;
     _netIn >> send_tiles;
@@ -3580,7 +3572,7 @@ void FOClient::Net_OnGlobalInfo()
         for (auto i = 0; i < count_loc; i++) {
             GmapLocation loc;
             _netIn >> loc.LocId;
-            _netIn >> loc.LocPid;
+            loc.LocPid = _netIn.ReadHashedString(*this);
             _netIn >> loc.LocWx;
             _netIn >> loc.LocWy;
             _netIn >> loc.Radius;
@@ -3598,7 +3590,7 @@ void FOClient::Net_OnGlobalInfo()
         GmapLocation loc;
         _netIn >> add;
         _netIn >> loc.LocId;
-        _netIn >> loc.LocPid;
+        loc.LocPid = _netIn.ReadHashedString(*this);
         _netIn >> loc.LocWx;
         _netIn >> loc.LocWy;
         _netIn >> loc.Radius;
@@ -3663,7 +3655,7 @@ void FOClient::Net_OnSomeItems()
         uint item_id;
         hstring item_pid;
         _netIn >> item_id;
-        _netIn >> item_pid;
+        item_pid = _netIn.ReadHashedString(*this);
         NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
 
         const auto* proto_item = ProtoMngr->GetProtoItem(item_pid);
@@ -3854,7 +3846,7 @@ void FOClient::Net_OnAutomapsInfo()
         hstring loc_pid;
         ushort maps_count;
         _netIn >> loc_id;
-        _netIn >> loc_pid;
+        loc_pid = _netIn.ReadHashedString(*this);
         _netIn >> maps_count;
 
         auto it = std::find_if(_automaps.begin(), _automaps.end(), [&loc_id](const Automap& m) { return loc_id == m.LocId; });
@@ -3875,7 +3867,7 @@ void FOClient::Net_OnAutomapsInfo()
             for (ushort j = 0; j < maps_count; j++) {
                 hstring map_pid;
                 uchar map_index_in_loc;
-                _netIn >> map_pid;
+                map_pid = _netIn.ReadHashedString(*this);
                 _netIn >> map_index_in_loc;
 
                 amap.MapPids.push_back(map_pid);

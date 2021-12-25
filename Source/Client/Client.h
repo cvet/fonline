@@ -491,8 +491,8 @@ private:
     optional<ClientUpdate> _updateData {};
     int _screenModeMain {};
     vector<uchar> _incomeBuf {};
-    NetBuffer _netIn {};
-    NetBuffer _netOut {};
+    NetInBuffer _netIn {};
+    NetOutBuffer _netOut {};
     z_stream* _zStream {};
     uint _bytesReceive {};
     uint _bytesRealReceive {};

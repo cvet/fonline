@@ -39,4 +39,4 @@
 
 using LogCallback = std::function<void(string_view)>;
 
-extern auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, string_view name, NameResolver& name_resolver) -> bool;
+extern auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, string_view name, NameResolver& name_resolver) -> bool;

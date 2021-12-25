@@ -50,7 +50,7 @@ public:
 
     [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
     [[nodiscard]] auto ToHashedString(string_view s) const -> hstring override;
-    [[nodiscard]] auto ResolveHash(hstring::hash_t h) const -> hstring override;
+    [[nodiscard]] auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
     [[nodiscard]] auto ResolveGenericValue(string_view str, bool& failed) -> int override;
 
 protected:

@@ -242,7 +242,7 @@ protected:
                 to_compr = sizeof(_outBuf) - 32;
             }
 
-            _zStream->next_in = Bout.GetCurData();
+            _zStream->next_in = Bout.GetData();
             _zStream->avail_in = to_compr;
             _zStream->next_out = _outBuf;
             _zStream->avail_out = sizeof(_outBuf);
@@ -251,7 +251,7 @@ protected:
             RUNTIME_ASSERT(result == Z_OK);
 
             const auto compr = static_cast<uint>(_zStream->next_out - _outBuf);
-            const auto real = static_cast<uint>(_zStream->next_in - Bout.GetCurData());
+            const auto real = static_cast<uint>(_zStream->next_in - Bout.GetData());
             out_len = compr;
 
             Bout.Cut(real);
@@ -262,14 +262,16 @@ protected:
             if (len > sizeof(_outBuf)) {
                 len = sizeof(_outBuf);
             }
-            std::memcpy(_outBuf, Bout.GetCurData(), len);
+
+            std::memcpy(_outBuf, Bout.GetData(), len);
             out_len = len;
+
             Bout.Cut(len);
         }
 
         // Normalize buffer size
         if (Bout.IsEmpty()) {
-            Bout.Reset();
+            Bout.ResetBuf();
         }
 
         RUNTIME_ASSERT(out_len > 0);
@@ -280,11 +282,11 @@ protected:
     {
         std::lock_guard locker(BinLocker);
 
-        if (Bin.GetCurPos() + len < _settings.FloodSize) {
-            Bin.Push(buf, len, true);
+        if (Bin.GetReadPos() + len < _settings.FloodSize) {
+            Bin.AddData(buf, len);
         }
         else {
-            Bin.Reset();
+            Bin.ResetBuf();
             Disconnect();
         }
     }

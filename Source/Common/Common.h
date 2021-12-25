@@ -1292,7 +1292,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value) const -> string = 0;
     [[nodiscard]] virtual auto ToHashedString(string_view s) const -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h) const -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool& failed) -> int = 0;
 };
 
