@@ -38,6 +38,7 @@
 
 #include "Common.h"
 
+DECLARE_EXCEPTION(PropertyRegistrationException);
 DECLARE_EXCEPTION(PropertiesException);
 
 class Entity;
@@ -64,6 +65,7 @@ public:
         Public = 0x0100,
         PublicModifiable = 0x0200,
         PublicFullModifiable = 0x0400,
+        PublicStatic = 0x0800,
         Protected = 0x1000,
         ProtectedModifiable = 0x2000,
         VirtualPrivateCommon = 0x0011,
@@ -167,7 +169,6 @@ private:
     bool _isTemporary {};
     bool _isHistorical {};
     ushort _regIndex {};
-    uint _getIndex {};
     uint _podDataOffset {};
     uint _complexDataIndex {};
 };
@@ -336,7 +337,6 @@ public:
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
 
-    auto Register(Property::AccessType access, const type_info& type, string_view name) -> const Property*;
     void RegisterComponent(hstring name);
     void SetNativeSetCallback(string_view property_name, const NativeCallback& callback);
 
@@ -346,7 +346,6 @@ private:
     vector<Property*> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
-    uint _getPropertiesCount {};
 
     // PlainData info
     uint _wholePodDataSize {};
@@ -361,4 +360,134 @@ private:
     vector<ushort> _protectedComplexDataProps {};
     vector<ushort> _publicProtectedComplexDataProps {};
     vector<ushort> _privateComplexDataProps {};
+
+public:
+    template<typename T>
+    auto Register(Property::AccessType access, string_view name, string_view flags) -> const Property*
+    {
+        auto* prop = new Property(this);
+
+        prop->_propName = name;
+        prop->_accessType = access;
+        prop->_dataType = TypeInfo<T>::DATA_TYPE;
+
+        using base_type = typename TypeInfo<T>::BaseType::Type;
+
+        if constexpr (!std::is_same_v<base_type, string>) {
+            static_assert(sizeof(base_type) == 1 || sizeof(base_type) == 2 || sizeof(base_type) == 4 || sizeof(base_type) == 8);
+            prop->_baseSize = sizeof(base_type);
+            prop->_isHash = TypeInfo<T>::BaseType::IS_HASH;
+            prop->_isEnum = TypeInfo<T>::BaseType::IS_ENUM;
+
+            prop->_isInt = std::is_integral_v<base_type> && !std::is_same_v<base_type, bool>;
+            prop->_isSignedInt = (prop->_isInt && std::is_signed_v<base_type>);
+            prop->_isFloat = std::is_floating_point_v<base_type>;
+            prop->_isBool = std::is_same_v<base_type, bool>;
+
+            prop->_isInt8 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 1u);
+            prop->_isInt16 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 2u);
+            prop->_isInt32 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 4u);
+            prop->_isInt64 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 8u);
+            prop->_isUInt8 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 1u);
+            prop->_isUInt16 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 2u);
+            prop->_isUInt32 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 4u);
+            prop->_isUInt64 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 8u);
+
+            prop->_isSingleFloat = (prop->_isFloat && prop->_baseSize == 4u);
+            prop->_isDoubleFloat = (prop->_isFloat && prop->_baseSize == 8u);
+        }
+
+        if constexpr (is_specialization<T, vector>::value) {
+            prop->_isArrayOfString = std::is_same_v<base_type, string>;
+        }
+
+        if constexpr (is_specialization<T, map>::value) {
+            using key_type = typename TypeInfo<T>::KeyType::Type;
+            static_assert(std::is_integral_v<key_type>);
+            static_assert(!std::is_same_v<key_type, bool>);
+            static_assert(sizeof(key_type) == 1 || sizeof(key_type) == 2 || sizeof(key_type) == 4 || sizeof(key_type) == 8);
+            prop->_isDictOfArray = TypeInfo<T>::IS_DICT_OF_ARRAY;
+            prop->_isDictOfString = (!prop->_isDictOfArray && std::is_same_v<base_type, string>);
+            prop->_isDictOfArrayOfString = (prop->_isDictOfArray && std::is_same_v<base_type, string>);
+            prop->_dictKeySize = sizeof(key_type);
+            prop->_isDictKeyHash = TypeInfo<T>::KeyType::IS_HASH;
+            prop->_isDictKeyEnum = TypeInfo<T>::KeyType::IS_ENUM;
+            // _dictKeyTypeName
+        }
+
+        AppendProperty(prop, flags);
+        return prop;
+    }
+
+private:
+    template<typename T, typename Enable = void>
+    struct BaseTypeInfo;
+
+    template<typename T>
+    struct BaseTypeInfo<T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_same_v<T, string>>>
+    {
+        using Type = T;
+        static constexpr auto IS_HASH = false;
+        static constexpr auto IS_ENUM = false;
+    };
+
+    template<typename T>
+    struct BaseTypeInfo<T, std::enable_if_t<std::is_same_v<T, hstring>>>
+    {
+        using Type = hstring::hash_t;
+        static constexpr auto IS_HASH = true;
+        static constexpr auto IS_ENUM = false;
+    };
+
+    template<typename T>
+    struct BaseTypeInfo<T, std::enable_if_t<std::is_enum_v<T>>>
+    {
+        using Type = std::underlying_type_t<T>;
+        static constexpr auto IS_HASH = false;
+        static constexpr auto IS_ENUM = true;
+    };
+
+    template<typename T, typename Enable = void>
+    struct TypeInfo;
+
+    template<typename T>
+    struct TypeInfo<T, std::enable_if_t<!std::is_same_v<T, string> && !is_specialization<T, vector>::value && !is_specialization<T, map>::value>>
+    {
+        using BaseType = BaseTypeInfo<T>;
+        static constexpr auto DATA_TYPE = Property::DataType::PlainData;
+    };
+
+    template<typename T>
+    struct TypeInfo<T, std::enable_if_t<std::is_same_v<T, string>>>
+    {
+        using BaseType = BaseTypeInfo<T>;
+        static constexpr auto DATA_TYPE = Property::DataType::String;
+    };
+
+    template<typename T>
+    struct TypeInfo<T, std::enable_if_t<is_specialization<T, vector>::value>>
+    {
+        using BaseType = BaseTypeInfo<typename T::value_type>;
+        static constexpr auto DATA_TYPE = Property::DataType::Array;
+    };
+
+    template<typename T>
+    struct TypeInfo<T, std::enable_if_t<is_specialization<T, map>::value && is_specialization<typename T::mapped_type, vector>::value>>
+    {
+        using BaseType = BaseTypeInfo<typename T::mapped_type::value_type>;
+        using KeyType = BaseTypeInfo<typename T::key_type>;
+        static constexpr auto DATA_TYPE = Property::DataType::Dict;
+        static constexpr auto IS_DICT_OF_ARRAY = true;
+    };
+
+    template<typename T>
+    struct TypeInfo<T, std::enable_if_t<is_specialization<T, map>::value && !is_specialization<typename T::mapped_type, vector>::value>>
+    {
+        using BaseType = BaseTypeInfo<typename T::mapped_type>;
+        using KeyType = BaseTypeInfo<typename T::key_type>;
+        static constexpr auto DATA_TYPE = Property::DataType::Dict;
+        static constexpr auto IS_DICT_OF_ARRAY = false;
+    };
+
+    void AppendProperty(Property* prop, string_view flags);
 };

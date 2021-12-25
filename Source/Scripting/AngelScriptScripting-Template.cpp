@@ -460,9 +460,9 @@ static void Property_SetValueAsFloat(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static const Property* RegisterProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* decl_get, const char* decl_set)
+static const Property* RegisterProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* decl_get, const char* decl_set, const char* flags)
 {
-    const auto* prop = registrator->Register(access, typeid(T), name);
+    const auto* prop = registrator->Register<T>(access, name, flags);
 
     int as_result;
     if (prop->IsReadable()) {

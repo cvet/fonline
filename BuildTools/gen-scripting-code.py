@@ -1202,12 +1202,13 @@ def genCode(lang, target, isASCompiler=False):
                 else:
                     registerLines.append('registrator = properties_holder.GetPropertyRegistratorForEdit("' + entity + '");')
                 for methodTag in codeGenTags['Property']:
-                    ent, access, type, name, exportFlags, comment = methodTag
+                    ent, access, type, name, flags, comment = methodTag
                     if ent == entity:
                         registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, True) + '>(engine, registrator, "' + entity +
                                 '", Property::AccessType::' + access + ', "' + name + '", ' +
                                 '"const ' + metaTypeToASType(type) + ('@' if False else '') + ' get_' + name + '() const", ' +
-                                '"void set_' + name + '(' + ('const ' if False else '') + metaTypeToASType(type) + ('@' if False else '') + ')");')
+                                '"void set_' + name + '(' + ('const ' if False else '') + metaTypeToASType(type) + ('@' if False else '') + ')", ' +
+                                '"' + ' '.join(flags) + '");')
         else:
             registerLines.append('// Will be restored later')
         registerLines.append('')

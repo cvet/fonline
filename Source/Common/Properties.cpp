@@ -1522,256 +1522,6 @@ PropertyRegistrator::~PropertyRegistrator()
     }
 }
 
-auto PropertyRegistrator::Register(Property::AccessType access, const type_info& type, string_view name) -> const Property*
-{
-#define ISTYPE(t) (type.hash_code() == typeid(t).hash_code())
-
-    auto data_type = Property::DataType::PlainData;
-    uint data_size = 0;
-    auto is_int_data_type = false;
-    auto is_signed_int_data_type = false;
-    auto is_float_data_type = false;
-    auto is_bool_data_type = false;
-    const auto is_enum_data_type = false;
-    auto is_array_of_string = false;
-    const auto is_dict_of_string = false;
-    const auto is_dict_of_array = false;
-    const auto is_dict_of_array_of_string = false;
-    auto is_hash_sub0 = false;
-    const auto is_hash_sub1 = false;
-    const auto is_hash_sub2 = false;
-
-    if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) || ISTYPE(ushort) || ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(float) || ISTYPE(double) || ISTYPE(bool)) {
-        data_type = Property::DataType::PlainData;
-
-        if (ISTYPE(char) || ISTYPE(uchar) || ISTYPE(bool)) {
-            data_size = 1;
-        }
-        else if (ISTYPE(short) || ISTYPE(ushort)) {
-            data_size = 2;
-        }
-        else if (ISTYPE(int) || ISTYPE(uint) || ISTYPE(float)) {
-            data_size = 4;
-        }
-        else if (ISTYPE(int64) || ISTYPE(uint64) || ISTYPE(double)) {
-            data_size = 8;
-        }
-        else {
-            throw UnreachablePlaceException(LINE_STR);
-        }
-
-        is_int_data_type = ISTYPE(int) || ISTYPE(uint) || ISTYPE(char) || ISTYPE(uchar) || ISTYPE(short) || ISTYPE(ushort) || ISTYPE(int64) || ISTYPE(uint64);
-        is_signed_int_data_type = ISTYPE(int) || ISTYPE(char) || ISTYPE(short) || ISTYPE(int64);
-        is_float_data_type = ISTYPE(float) || ISTYPE(double);
-        is_bool_data_type = ISTYPE(bool);
-        // is_enum_data_type = (type_id > asTYPEID_DOUBLE);
-    }
-    else if (ISTYPE(string)) {
-        data_type = Property::DataType::String;
-        data_size = sizeof(string);
-    }
-    else if (ISTYPE(vector<int>)) {
-        data_type = Property::DataType::Array;
-        data_size = sizeof(void*);
-
-        auto is_array_of_pod = ISTYPE(vector<int>);
-        is_array_of_string = ISTYPE(vector<string>);
-        is_hash_sub0 = ISTYPE(vector<hstring>);
-    }
-    else if (ISTYPE(vector<int>)) {
-        data_type = Property::DataType::Dict;
-        data_size = sizeof(void*);
-
-        /*int value_sub_type_id = as_obj_type->GetSubTypeId(1);
-        asITypeInfo* value_sub_type = as_obj_type->GetSubType(1);
-        if (value_sub_type_id & asTYPEID_MASK_OBJECT)
-        {
-            is_dict_of_string = Str::Compare(value_sub_type->GetName(), "string");
-            is_dict_of_array = Str::Compare(value_sub_type->GetName(), "array");
-            is_dict_of_array_of_string = (is_dict_of_array && value_sub_type->GetSubType() &&
-                Str::Compare(value_sub_type->GetSubType()->GetName(), "string"));
-            bool is_dict_array_of_pod = !(value_sub_type->GetSubTypeId() & asTYPEID_MASK_OBJECT);
-            if (!is_dict_of_string && !is_dict_array_of_pod && !is_dict_of_array_of_string)
-            {
-                WriteLog(
-                    "Invalid property type '{}', dict value must have PlainData/string type or array of PlainData/string type.\n",
-                    type_name);
-                return nullptr;
-            }
-        }
-        if (_str(type_name).str().find("resource") != string::npos)
-        {
-            WriteLog("Invalid property type '{}', dict elements can't be resource type.\n", type_name);
-            return nullptr;
-        }
-
-        string t = _str(type_name).str();
-        is_hash_sub0 = (t.find("hash") != string::npos && t.find(",", t.find("hash")) != string::npos);
-        is_hash_sub1 =
-            (t.find("hash") != string::npos && t.find(",", t.find("hash")) == string::npos && !is_dict_of_array);
-        is_hash_sub2 =
-            (t.find("hash") != string::npos && t.find(",", t.find("hash")) == string::npos && is_dict_of_array);*/
-    }
-    else {
-        // WriteLog("Invalid property type '{}'.\n", type_name);
-        // return nullptr;
-    }
-
-    // Allocate property
-    auto* prop = new Property(this);
-    const auto reg_index = static_cast<ushort>(_registeredProperties.size());
-
-    // Disallow set or get accessors
-    auto disable_get = false;
-    auto disable_set = false;
-    if (_isServer && IsEnumSet(access, Property::AccessType::ClientOnlyMask)) {
-        disable_get = disable_set = true;
-    }
-    if (!_isServer && IsEnumSet(access, Property::AccessType::ServerOnlyMask)) {
-        disable_get = disable_set = true;
-    }
-    if (!_isServer && (IsEnumSet(access, Property::AccessType::PublicMask) || IsEnumSet(access, Property::AccessType::ProtectedMask)) && !IsEnumSet(access, Property::AccessType::ModifiableMask)) {
-        disable_set = true;
-    }
-    // if (is_const) {
-    //    disable_set = true;
-    //}
-
-    // Register default getter
-    if (disable_get) {
-        return nullptr;
-    }
-
-    // Register setter
-    if (!disable_set) {
-    }
-
-    // PlainData property data offset
-    auto data_base_offset = static_cast<uint>(-1);
-    if (data_type == Property::DataType::PlainData && !disable_get && !IsEnumSet(access, Property::AccessType::VirtualMask)) {
-        const auto is_public = IsEnumSet(access, Property::AccessType::PublicMask);
-        const auto is_protected = IsEnumSet(access, Property::AccessType::ProtectedMask);
-        auto& space = (is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace));
-
-        const auto space_size = static_cast<uint>(space.size());
-        uint space_pos = 0;
-        while (space_pos + data_size <= space_size) {
-            auto fail = false;
-            for (uint i = 0; i < data_size; i++) {
-                if (space[space_pos + i]) {
-                    fail = true;
-                    break;
-                }
-            }
-            if (!fail) {
-                break;
-            }
-            space_pos += data_size;
-        }
-
-        auto new_size = space_pos + data_size;
-        new_size += 8 - new_size % 8;
-        if (new_size > static_cast<uint>(space.size())) {
-            space.resize(new_size);
-        }
-
-        for (uint i = 0; i < data_size; i++) {
-            space[space_pos + i] = true;
-        }
-
-        data_base_offset = space_pos;
-
-        _wholePodDataSize = static_cast<uint>(_publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size());
-        // RUNTIME_ASSERT((wholePodDataSize % 8) == 0);
-    }
-
-    // Complex property data index
-    auto complex_data_index = static_cast<uint>(-1);
-    if (data_type != Property::DataType::PlainData && (!disable_get || !disable_set) && !IsEnumSet(access, Property::AccessType::VirtualMask)) {
-        complex_data_index = _complexPropertiesCount++;
-        if (IsEnumSet(access, Property::AccessType::PublicMask)) {
-            _publicComplexDataProps.push_back(reg_index);
-            _publicProtectedComplexDataProps.push_back(reg_index);
-        }
-        else if (IsEnumSet(access, Property::AccessType::ProtectedMask)) {
-            _protectedComplexDataProps.push_back(reg_index);
-            _publicProtectedComplexDataProps.push_back(reg_index);
-        }
-        else if (IsEnumSet(access, Property::AccessType::PrivateMask)) {
-            _privateComplexDataProps.push_back(reg_index);
-        }
-        else {
-            throw UnreachablePlaceException(LINE_STR);
-        }
-    }
-
-    // Make entry
-    prop->_regIndex = reg_index;
-    prop->_getIndex = !disable_get ? _getPropertiesCount++ : static_cast<uint>(-1);
-    prop->_complexDataIndex = complex_data_index;
-    prop->_podDataOffset = data_base_offset;
-    prop->_baseSize = data_size;
-
-    prop->_propName = _str(name).replace('.', '_');
-    // prop->typeName = type_name;
-    // prop->componentName = component_name;
-    prop->_dataType = data_type;
-    prop->_accessType = access;
-    // prop->isConst = is_const;
-    // prop->asObjTypeId = type_id;
-    // prop->asObjType = as_obj_type;
-    // prop->isHash = type_name == "hash";
-    // prop->isResource = type_name == "resource";
-    prop->_isInt = is_int_data_type;
-    prop->_isSignedInt = is_signed_int_data_type;
-    prop->_isFloat = is_float_data_type;
-    prop->_isEnum = is_enum_data_type;
-    prop->_isBool = is_bool_data_type;
-    prop->_isInt8 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 1u);
-    prop->_isInt16 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 2u);
-    prop->_isInt32 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 4u);
-    prop->_isInt64 = (prop->_isInt && prop->_isSignedInt && prop->_baseSize == 8u);
-    prop->_isUInt8 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 1u);
-    prop->_isUInt16 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 2u);
-    prop->_isUInt32 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 4u);
-    prop->_isUInt64 = (prop->_isInt && !prop->_isSignedInt && prop->_baseSize == 8u);
-    prop->_isSingleFloat = (prop->_isFloat && prop->_baseSize == 4u);
-    prop->_isDoubleFloat = (prop->_isFloat && prop->_baseSize == 8u);
-    prop->_isArrayOfString = is_array_of_string;
-    prop->_isDictOfString = is_dict_of_string;
-    prop->_isDictOfArray = is_dict_of_array;
-    prop->_isDictOfArrayOfString = is_dict_of_array_of_string;
-    prop->_isReadable = !disable_get;
-    prop->_isWritable = !disable_set;
-    // prop->isTemporary = (defaultTemporary || is_temporary);
-    // prop->isNoHistory = (defaultNoHistory || is_no_history);
-    // prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
-    // prop->checkMaxValue = (max_value != nullptr && (is_int_data_type || is_float_data_type));
-    // prop->minValue = (min_value ? *min_value : 0);
-    // prop->maxValue = (max_value ? *max_value : 0);
-
-    _registeredProperties.push_back(prop);
-    _registeredPropertiesLookup.emplace(prop->GetName(), prop);
-
-    // Fix PlainData data offsets
-    for (auto* prop : _registeredProperties) {
-        if (prop->_podDataOffset == static_cast<uint>(-1)) {
-            continue;
-        }
-
-        if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
-            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
-        }
-        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
-        }
-    }
-
-    return prop;
-
-#undef ISTYPE
-}
-
 void PropertyRegistrator::RegisterComponent(hstring name)
 {
     RUNTIME_ASSERT(!_registeredComponents.count(name));
@@ -1824,4 +1574,135 @@ void PropertyRegistrator::SetNativeSetCallback(string_view property_name, const 
 auto PropertyRegistrator::GetWholeDataSize() const -> uint
 {
     return _wholePodDataSize;
+}
+
+void PropertyRegistrator::AppendProperty(Property* prop, string_view flags)
+{
+    const auto flags_tok = _str(flags).split(' ');
+
+    // string _propName {};
+
+    // bool _isTemporary {};
+    // bool _isHistorical {};
+    // ushort _regIndex {};
+    // uint _getIndex {};
+    // uint _podDataOffset {};
+    // uint _complexDataIndex {};
+
+    const auto reg_index = static_cast<ushort>(_registeredProperties.size());
+
+    // Disallow set or get accessors
+    auto disable_get = false;
+    auto disable_set = false;
+    if (_isServer && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
+        disable_get = true;
+        disable_set = true;
+    }
+    if (!_isServer && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
+        disable_get = true;
+        disable_set = true;
+    }
+    if (!_isServer && (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
+        disable_set = true;
+    }
+    if (prop->_accessType == Property::AccessType::PublicStatic) {
+        disable_set = true;
+    }
+
+    // PlainData property data offset
+    auto data_base_offset = static_cast<uint>(-1);
+    if (prop->_dataType == Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+        const auto is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
+        const auto is_protected = IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask);
+        auto& space = (is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace));
+
+        const auto space_size = static_cast<uint>(space.size());
+        uint space_pos = 0;
+        while (space_pos + prop->_baseSize <= space_size) {
+            auto fail = false;
+            for (uint i = 0; i < prop->_baseSize; i++) {
+                if (space[space_pos + i]) {
+                    fail = true;
+                    break;
+                }
+            }
+            if (!fail) {
+                break;
+            }
+            space_pos += prop->_baseSize;
+        }
+
+        auto new_size = space_pos + prop->_baseSize;
+        new_size += 8u - new_size % 8u;
+        if (new_size > static_cast<uint>(space.size())) {
+            space.resize(new_size);
+        }
+
+        for (uint i = 0; i < prop->_baseSize; i++) {
+            space[space_pos + i] = true;
+        }
+
+        data_base_offset = space_pos;
+
+        _wholePodDataSize = static_cast<uint>(_publicPodDataSpace.size() + _protectedPodDataSpace.size() + _privatePodDataSpace.size());
+        RUNTIME_ASSERT((_wholePodDataSize % 8u) == 0u);
+    }
+
+    // Complex property data index
+    auto complex_data_index = static_cast<uint>(-1);
+    if (prop->_dataType != Property::DataType::PlainData && (!disable_get || !disable_set) && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+        complex_data_index = _complexPropertiesCount++;
+        if (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask)) {
+            _publicComplexDataProps.push_back(reg_index);
+            _publicProtectedComplexDataProps.push_back(reg_index);
+        }
+        else if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
+            _protectedComplexDataProps.push_back(reg_index);
+            _publicProtectedComplexDataProps.push_back(reg_index);
+        }
+        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
+            _privateComplexDataProps.push_back(reg_index);
+        }
+        else {
+            throw UnreachablePlaceException(LINE_STR);
+        }
+    }
+
+    // Other flags
+    prop->_regIndex = reg_index;
+    prop->_complexDataIndex = complex_data_index;
+    prop->_podDataOffset = data_base_offset;
+    prop->_propName = _str(prop->_propName).replace('.', '_');
+    prop->_isReadable = !disable_get;
+    prop->_isWritable = !disable_set;
+
+    // string _fullTypeName {};
+    // string _componentName {};
+    // string _baseTypeName {};
+    //_isReadOnly
+    // prop->typeName = type_name;
+    // prop->componentName = component_name;
+    // prop->isTemporary = (defaultTemporary || is_temporary);
+    // prop->_isHistorical = (defaultNoHistory || is_no_history);
+    // prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
+    // prop->checkMaxValue = (max_value != nullptr && (is_int_data_type || is_float_data_type));
+    // prop->minValue = (min_value ? *min_value : 0);
+    // prop->maxValue = (max_value ? *max_value : 0);
+
+    _registeredProperties.push_back(prop);
+    _registeredPropertiesLookup.emplace(prop->GetName(), prop);
+
+    // Fix plain data data offsets
+    for (auto* prop : _registeredProperties) {
+        if (prop->_podDataOffset == static_cast<uint>(-1)) {
+            continue;
+        }
+
+        if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
+            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+        }
+        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
+            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+        }
+    }
 }

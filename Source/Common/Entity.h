@@ -48,14 +48,14 @@
 #define ENTITY_PROPERTY(access_type, prop_type, prop, prop_index) \
     static constexpr ushort prop##_RegIndex = prop_index; \
     static constexpr Property::AccessType prop##_AccessType = Property::AccessType::access_type; \
-    static constexpr const std::type_info& prop##_TypeId = typeid(prop_type); \
+    using prop##_TypeId = prop_type; \
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
     inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
     inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; }
 
 #define REGISTER_ENTITY_PROPERTY(prop) \
-    const auto* prop_##prop = registrator->Register(prop##_AccessType, prop##_TypeId, #prop); \
+    const auto* prop_##prop = registrator->Register<prop##_TypeId>(prop##_AccessType, #prop, "Engine"); \
     RUNTIME_ASSERT(prop_##prop->GetRegIndex() == prop##_RegIndex)
 
 class EntityProperties
