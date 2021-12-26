@@ -950,6 +950,7 @@ def genCode(lang, target, isASCompiler=False):
         allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
         
         defineLines = []
+        propertyMapLines = []
         globalLines = []
         registerLines = []
         
@@ -1085,17 +1086,6 @@ def genCode(lang, target, isASCompiler=False):
                 if ent == entity:
                     writeMarshalingProperty(entity, type, name)
 
-        # Meta type to engine helper
-        """
-        globalLines.append('// Meta type to engine helper')
-        globalLines.append('static unordered_map<string_view, const std::type_info&> MetaTypeToEngineTypeId =')
-        globalLines.append('{')
-        for t in metaTypes:
-            globalLines.append('    {"' + t + '", typeid(' + metaTypeToEngineType(t, True) + ')},')
-        globalLines.append('};')
-        globalLines.append('')
-        """
-
         # Register enums
         registerLines.append('// Engine enums')
         for e in codeGenTags['ExportEnum']:
@@ -1205,16 +1195,26 @@ def genCode(lang, target, isASCompiler=False):
                     ent, access, type, name, flags, comment = methodTag
                     if ent == entity:
                         registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, True) + '>(engine, registrator, "' + entity +
-                                '", Property::AccessType::' + access + ', "' + name + '", ' +
-                                '"const ' + metaTypeToASType(type) + ('@' if False else '') + ' get_' + name + '() const", ' +
-                                '"void set_' + name + '(' + ('const ' if False else '') + metaTypeToASType(type) + ('@' if False else '') + ')", ' +
-                                '"' + ' '.join(flags) + '");')
+                                '", Property::AccessType::' + access + ', "' + name + '", "' + ' '.join(flags) + '");')
         else:
             registerLines.append('// Will be restored later')
         registerLines.append('')
         
+        # Restore properties type map
+        if target == 'Client' and not isASCompiler:
+            def addPropMapEntry(e):
+                propertyMapLines.append('{ "' + metaTypeToASType(e) + '", [](RESTORE_ARGS) { RegisterProperty<' + metaTypeToEngineType(e, True) + '>(RESTORE_ARGS_PASS); } },')
+            for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring']:
+                addPropMapEntry(t)
+                addPropMapEntry('arr.' + t)
+            for tKey in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'hstring']:
+                for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'hstring', 'string']:
+                    addPropMapEntry('dict.' + tKey + '.' + t)
+                    addPropMapEntry('dict.' + tKey + '.arr.' + t)
+        
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')
+        insertCodeGenLines(propertyMapLines, 'PropertyMap')
         insertCodeGenLines(globalLines, 'Global')
         insertCodeGenLines(defineLines, 'Defines')
 

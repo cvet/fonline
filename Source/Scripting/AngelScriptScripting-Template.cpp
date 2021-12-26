@@ -347,6 +347,8 @@ static auto Entity_ProtoId(BaseEntity* self) -> hstring
     return self->GetProtoId();
 }
 
+///@ CodeGen Global
+
 template<typename T>
 static void Property_GetValue(asIScriptGeneric* gen)
 {
@@ -460,22 +462,56 @@ static void Property_SetValueAsFloat(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static const Property* RegisterProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* decl_get, const char* decl_set, const char* flags)
+static void RegisterProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* flags)
 {
     const auto* prop = registrator->Register<T>(access, name, flags);
 
     int as_result;
     if (prop->IsReadable()) {
+        const char* decl_get = 0;
+        //'"const ' + metaTypeToASType(type) + ('@' if False else '') + ' get_' + name + '() const",
         AS_VERIFY(engine->RegisterObjectMethod(entity, decl_get, asFUNCTION((Property_GetValue<T>)), asCALL_GENERIC, (void*)prop));
     }
     if (prop->IsWritable()) {
+        const char* decl_set = 0;
+        //'"void set_' + name + '(' + ('const ' if False else '') + metaTypeToASType(type) + ('@' if False else '') + ')", ' +
         AS_VERIFY(engine->RegisterObjectMethod(entity, decl_set, asFUNCTION((Property_SetValue<T>)), asCALL_GENERIC, (void*)prop));
     }
-
-    return prop;
 }
 
-///@ CodeGen Global
+static void RestoreProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const string& entity, string_view access, string_view type, const string& name, const string& flags)
+{
+#define RESTORE_ARGS asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* flags
+#define RESTORE_ARGS_PASS engine, registrator, entity, access, name, flags
+
+    static unordered_map<string_view, std::function<void(asIScriptEngine*, PropertyRegistrator*, const char*, Property::AccessType, const char*, const char*)>> call_map = {
+        ///@ CodeGen PropertyMap
+    };
+
+    static unordered_map<string_view, Property::AccessType> access_map = {
+        {"PrivateCommon", Property::AccessType::PrivateCommon},
+        {"PrivateClient", Property::AccessType::PrivateClient},
+        {"PrivateServer", Property::AccessType::PrivateServer},
+        {"Public", Property::AccessType::Public},
+        {"PublicModifiable", Property::AccessType::PublicModifiable},
+        {"PublicFullModifiable", Property::AccessType::PublicFullModifiable},
+        {"PublicStatic", Property::AccessType::PublicStatic},
+        {"Protected", Property::AccessType::Protected},
+        {"ProtectedModifiable", Property::AccessType::ProtectedModifiable},
+        {"VirtualPrivateCommon", Property::AccessType::VirtualPrivateCommon},
+        {"VirtualPrivateClient", Property::AccessType::VirtualPrivateClient},
+        {"VirtualPrivateServer", Property::AccessType::VirtualPrivateServer},
+        {"VirtualPublic", Property::AccessType::VirtualPublic},
+        {"VirtualProtected", Property::AccessType::VirtualProtected},
+    };
+
+    const auto it = call_map.find(type);
+    if (it == call_map.end()) {
+        throw ScriptInitException("Invalid property for restoring", type);
+    }
+
+    it->second(engine, registrator, entity.c_str(), access_map[access], name.c_str(), flags.c_str());
+}
 
 template<class T>
 static BaseEntity* EntityDownCast(T* a)
@@ -512,7 +548,7 @@ static void HashedString_Construct(hstring* mem)
 
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
-    //new (mem) hstring();
+    // new (mem) hstring();
 }
 
 static void HashedString_ConstructCopy(const hstring& self, hstring* mem)
@@ -687,9 +723,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     // Restore properties
     for (const auto& info : _restoreInfo["Properties"]) {
         const auto tokens = _str(info).split(' ');
-
-        // const auto* prop_registrator = game_engine->GetPropertyRegistrator(tokens[0]);
-        // prop_registrator->Find(tokens[3]);
+        auto* prop_registrator = game_engine->GetPropertyRegistratorForEdit(tokens[0]);
+        RestoreProperty(engine, prop_registrator, tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]);
         // const aproperty_index
         // AS_VERIFY(engine->RegisterEnumValue((tokens[0] + "Property").c_str(), tokens[3].c_str(), property_index));
     }
