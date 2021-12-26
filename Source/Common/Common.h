@@ -1288,6 +1288,7 @@ constexpr auto xrange(T value)
 class NameResolver
 {
 public:
+    virtual ~NameResolver() = default;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value) const -> string = 0;
@@ -1299,6 +1300,7 @@ public:
 class AnimationResolver
 {
 public:
+    virtual ~AnimationResolver() = default;
     [[nodiscard]] virtual auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;

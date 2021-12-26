@@ -5,7 +5,7 @@ source $CUR_DIR/setup-env.sh
 
 TARGET="CompileAllScripts"
 if [ "$1" = "gen-code" ]; then
-    TARGET="GenerateScriptingCode"
+    TARGET="CodeGeneration"
 elif [ "$1" = "native" ]; then
     TARGET="CompileNativeScripts"
 elif [ "$1" = "angelscript" ]; then

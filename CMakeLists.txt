@@ -1362,7 +1362,7 @@ set( FO_SERVER_SCRIPTING_SOURCE
 	"Source/Scripting/ServerScripting.h" )
 	
 set( FO_CLIENT_SCRIPTING_SOURCE
-"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
@@ -1403,185 +1403,140 @@ set( FO_ADDITIONAL_META_FILES
 set( FO_TESTS_SOURCE
 	"Source/Tests/UnitTest1.cpp" )
 
-# Scripting code generation
-if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
-	include( FindPython3 )
-	find_package( Python3 REQUIRED COMPONENTS Interpreter )
-	
-	list( APPEND FO_CODEGEN_COMMAND_ARGS -output "${FO_SCRIPTS_OUTPUT}" )
-	list( APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_BINARY_DIR}/GeneratedSource" )
+# Code generation
+include( FindPython3 )
+find_package( Python3 REQUIRED COMPONENTS Interpreter )
 
-	list( APPEND FO_CODEGEN_COMMAND_ARGS -markdown )
-	if( FONLINE_INFO_MARKDOWN_OUTPUT )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -mdpath "${FONLINE_INFO_MARKDOWN_OUTPUT}" )
-	endif()
+list( APPEND FO_CODEGEN_COMMAND_ARGS -output "${FO_SCRIPTS_OUTPUT}" )
+list( APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_BINARY_DIR}/GeneratedSource" )
 
-	if( FO_NATIVE_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -native )
-	endif()
-	if( FO_ANGELSCRIPT_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -angelscript )
-	endif()
-	if( FO_MONO_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -csharp )
-	endif()
-	if( FO_MULTIPLAYER_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -multiplayer )
-	endif()
-	if( FO_SINGLEPLAYER_SCRIPTING )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -singleplayer )
-	endif()
-	list( APPEND FO_CODEGEN_COMMAND_ARGS -mapper )
-
-	foreach( src ${FO_ANGELSCRIPT_SOURCE} )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -assource ${src} )
-	endforeach()
-
-	foreach( entry ${FO_MONO_ASSEMBLIES} )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoassembly ${entry} )
-		foreach( ref ${MonoAssembly_${entry}_CommonRefs} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}" )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}" )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monosingleref "${entry},${ref}" )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}" )
-		endforeach()
-		foreach( ref ${MonoAssembly_${entry}_ServerRefs} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}" )
-		endforeach()
-		foreach( ref ${MonoAssembly_${entry}_ClientRefs} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}" )
-		endforeach()
-		foreach( ref ${MonoAssembly_${entry}_SingleRefs} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monosingleref "${entry},${ref}" )
-		endforeach()
-		foreach( ref ${MonoAssembly_${entry}_MapperRefs} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}" )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_CommonSource} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}" )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}" )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monosinglesource "${entry},${src}" )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}" )
-			list( APPEND FO_MONO_SOURCE ${src} )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_ServerSource} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}" )
-			list( APPEND FO_MONO_SOURCE ${src} )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_ClientSource} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}" )
-			list( APPEND FO_MONO_SOURCE ${src} )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_SingleSource} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monosinglesource "${entry},${src}" )
-			list( APPEND FO_MONO_SOURCE ${src} )
-		endforeach()
-		foreach( src ${MonoAssembly_${entry}_MapperSource} )
-			list( APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}" )
-			list( APPEND FO_MONO_SOURCE ${src} )
-		endforeach()
-	endforeach()
-	
-	foreach( entry ${FO_CONTENT} )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -content ${entry} )
-	endforeach()
-
-	list( APPEND FO_CODEGEN_META_SOURCE
-		${FO_ADDITIONAL_META_FILES}
-		${FO_COMMON_SOURCE}
-		${FO_SERVER_SOURCE}
-		${FO_CLIENT_SOURCE}
-		${FO_TOOLS_SOURCE}
-		${FO_ANGELSCRIPT_SOURCE}
-		${FO_MONO_SOURCE} )
-
-	foreach( entry ${FO_CODEGEN_META_SOURCE} )
-		list( APPEND FO_CODEGEN_COMMAND_ARGS -meta ${entry} )
-	endforeach()
-	
-	list( APPEND FO_CODEGEN_OUTPUT
-		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" )
-	
-	file( WRITE "${CMAKE_BINARY_DIR}/gen-scripting-code-args.txt" "" )
-	foreach( entry ${FO_CODEGEN_COMMAND_ARGS} )
-		file( APPEND "${CMAKE_BINARY_DIR}/gen-scripting-code-args.txt" "${entry}\n" )
-	endforeach()
-	
-	set( FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/gen-scripting-code.py" "@${CMAKE_BINARY_DIR}/gen-scripting-code-args.txt" )
-	
-	add_custom_command( OUTPUT ${FO_CODEGEN_OUTPUT}
-		COMMAND ${FO_CODEGEN_COMMAND}
-		DEPENDS ${FO_CODEGEN_META_SOURCE}
-		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-		COMMENT "Scripting code generation" )
-		
-	add_custom_target( GenerateScriptingCode
-		COMMAND ${FO_CODEGEN_COMMAND}
-		SOURCES ${FO_CODEGEN_META_SOURCE}
-		WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-		COMMENT "Run scripting code generation" )
-	list( APPEND FO_COMMANDS_GROUP "GenerateScriptingCode" )
-
-else()
-	# Generate scripting stubs
-	function( MakeStub target1 target2 )
-		set( fileName "${target1}-${target2}" )
-		GenerateSourceFile( ${fileName} )
-		AddGeneratedSourceLine( ${fileName} "#include \"${target2}Scripting.h\"" )
-		AddGeneratedSourceLine( ${fileName} "void ${target2}ScriptSystem::Init${target1}() { }" )
-		FinalizeGeneratedSource( ${fileName} "cpp" )
-	endfunction()
-	function( MakeStubCompiler target )
-		set( fileName "AngelScriptScripting-${target}Compiler" )
-		GenerateSourceFile( ${fileName} )
-		AddGeneratedSourceLine( ${fileName} "struct ${target}ScriptSystem { void InitAngelScriptScripting(const char*); };" )
-		AddGeneratedSourceLine( ${fileName} "void ${target}ScriptSystem::InitAngelScriptScripting(const char*) { }" )
-		FinalizeGeneratedSource( ${fileName} "cpp" )
-	endfunction()
-	
-	MakeStub( "AngelScriptScripting" "Server" )
-	MakeStub( "AngelScriptScripting" "Client" )
-	MakeStub( "AngelScriptScripting" "Mapper" )
-	MakeStub( "AngelScriptScripting" "Single" )
-	MakeStub( "MonoScripting" "Server" )
-	MakeStub( "MonoScripting" "Client" )
-	MakeStub( "MonoScripting" "Mapper" )
-	MakeStub( "MonoScripting" "Single" )
-	MakeStub( "NativeScripting" "Server" )
-	MakeStub( "NativeScripting" "Client" )
-	MakeStub( "NativeScripting" "Mapper" )
-	MakeStub( "NativeScripting" "Single" )
-	MakeStubCompiler( "Server" )
-	MakeStubCompiler( "Client" )
-	MakeStubCompiler( "Mapper" )
-	MakeStubCompiler( "Single" )
-	
-	set( SERVER_REGISTRATION 1 )
-	set( CLIENT_REGISTRATION 0 )
-	configure_file( "Source/Common/DataRegistration-Template.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" )
-	set( SERVER_REGISTRATION 0 )
-	set( CLIENT_REGISTRATION 1 )
-	configure_file( "Source/Common/DataRegistration-Template.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp" )
-	unset( SERVER_REGISTRATION )
-	unset( CLIENT_REGISTRATION )
+list( APPEND FO_CODEGEN_COMMAND_ARGS -markdown )
+if( FONLINE_INFO_MARKDOWN_OUTPUT )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -mdpath "${FONLINE_INFO_MARKDOWN_OUTPUT}" )
 endif()
+
+if( FO_NATIVE_SCRIPTING )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -native )
+endif()
+if( FO_ANGELSCRIPT_SCRIPTING )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -angelscript )
+endif()
+if( FO_MONO_SCRIPTING )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -csharp )
+endif()
+if( FO_MULTIPLAYER_SCRIPTING )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -multiplayer )
+endif()
+if( FO_SINGLEPLAYER_SCRIPTING )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -singleplayer )
+endif()
+list( APPEND FO_CODEGEN_COMMAND_ARGS -mapper )
+
+foreach( src ${FO_ANGELSCRIPT_SOURCE} )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -assource ${src} )
+endforeach()
+
+foreach( entry ${FO_MONO_ASSEMBLIES} )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -monoassembly ${entry} )
+	foreach( ref ${MonoAssembly_${entry}_CommonRefs} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}" )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}" )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monosingleref "${entry},${ref}" )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}" )
+	endforeach()
+	foreach( ref ${MonoAssembly_${entry}_ServerRefs} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserverref "${entry},${ref}" )
+	endforeach()
+	foreach( ref ${MonoAssembly_${entry}_ClientRefs} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientref "${entry},${ref}" )
+	endforeach()
+	foreach( ref ${MonoAssembly_${entry}_SingleRefs} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monosingleref "${entry},${ref}" )
+	endforeach()
+	foreach( ref ${MonoAssembly_${entry}_MapperRefs} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monomapperref "${entry},${ref}" )
+	endforeach()
+	foreach( src ${MonoAssembly_${entry}_CommonSource} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}" )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}" )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monosinglesource "${entry},${src}" )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}" )
+		list( APPEND FO_MONO_SOURCE ${src} )
+	endforeach()
+	foreach( src ${MonoAssembly_${entry}_ServerSource} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoserversource "${entry},${src}" )
+		list( APPEND FO_MONO_SOURCE ${src} )
+	endforeach()
+	foreach( src ${MonoAssembly_${entry}_ClientSource} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monoclientsource "${entry},${src}" )
+		list( APPEND FO_MONO_SOURCE ${src} )
+	endforeach()
+	foreach( src ${MonoAssembly_${entry}_SingleSource} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monosinglesource "${entry},${src}" )
+		list( APPEND FO_MONO_SOURCE ${src} )
+	endforeach()
+	foreach( src ${MonoAssembly_${entry}_MapperSource} )
+		list( APPEND FO_CODEGEN_COMMAND_ARGS -monomappersource "${entry},${src}" )
+		list( APPEND FO_MONO_SOURCE ${src} )
+	endforeach()
+endforeach()
+
+foreach( entry ${FO_CONTENT} )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -content ${entry} )
+endforeach()
+
+list( APPEND FO_CODEGEN_META_SOURCE
+	${FO_ADDITIONAL_META_FILES}
+	${FO_COMMON_SOURCE}
+	${FO_SERVER_SOURCE}
+	${FO_CLIENT_SOURCE}
+	${FO_TOOLS_SOURCE}
+	${FO_ANGELSCRIPT_SOURCE}
+	${FO_MONO_SOURCE} )
+
+foreach( entry ${FO_CODEGEN_META_SOURCE} )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -meta ${entry} )
+endforeach()
+
+list( APPEND FO_CODEGEN_OUTPUT
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" )
+
+file( WRITE "${CMAKE_BINARY_DIR}/codegen-args.txt" "" )
+foreach( entry ${FO_CODEGEN_COMMAND_ARGS} )
+	file( APPEND "${CMAKE_BINARY_DIR}/codegen-args.txt" "${entry}\n" )
+endforeach()
+
+set( FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/codegen.py" "@${CMAKE_BINARY_DIR}/codegen-args.txt" )
+
+add_custom_command( OUTPUT ${FO_CODEGEN_OUTPUT}
+	COMMAND ${FO_CODEGEN_COMMAND}
+	DEPENDS ${FO_CODEGEN_META_SOURCE}
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+	COMMENT "Code generation" )
+
+add_custom_target( CodeGeneration
+	COMMAND ${FO_CODEGEN_COMMAND}
+	SOURCES ${FO_CODEGEN_META_SOURCE}
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+	COMMENT "Run code generation" )
+list( APPEND FO_COMMANDS_GROUP "CodeGeneration" )
 
 # Applications
 StatusMessage( "Applications:" )
