@@ -1691,6 +1691,7 @@ void CritterCl::SetText( const char* str, uint color, uint text_delay )
     textOnHeadColor = color;
 }
 
+#ifndef DRAW_TEXT_ON_HEAD_IMGUI
 void CritterCl::DrawTextOnHead()
 {
     if( strTextOnHead.empty() )
@@ -1753,3 +1754,148 @@ void CritterCl::DrawTextOnHead()
     if( Timer::GameTick() - tickStartText >= tickTextDelay && !strTextOnHead.empty() )
         strTextOnHead = "";
 }
+#else // DRAW_TEXT_ON_HEAD_IMGUI
+void CritterCl::DrawTextOnHead( )
+{
+	if( strTextOnHead.empty( ) )
+	{
+		if( IsPlayer( ) && !GameOpt.ShowPlayerNames )
+			return;
+		if( IsNpc( ) && !GameOpt.ShowNpcNames )
+			return;
+	}
+
+	if( SprDrawValid )
+	{
+		Rect tr = GetTextRect( );
+		int  x = ( int )( ( float )( tr.L + tr.W( ) / 2 + GameOpt.ScrOx ) / GameOpt.SpritesZoom - 100.0f );
+		int  y = ( int )( ( float )( tr.T + GameOpt.ScrOy ) / GameOpt.SpritesZoom - 70.0f );
+		Rect r( x, y, x + 200, y + 70 );
+
+		static char str[ MAX_FOTEXT ];
+		static char name[ MAX_FOTEXT ];
+		uint color;
+
+		{
+			if( NameOnHead.length( ) )
+			{
+				Str::Copy( str, NameOnHead.c_str( ) );
+			}
+			else
+			{
+				Str::Copy( str, Name.c_str( ) );
+			}
+			if( GameOpt.ShowCritId )
+			{
+				Str::Append( str, Str::FormatBuf( " <%u>", GetId( ) ) );
+			}
+			if( FLAG( Flags, FCRIT_DISCONNECT ) )
+				Str::Append( str, GameOpt.PlayerOffAppendix.c_str( ) );
+			color = ( NameColor ? NameColor : COLOR_CRITTER_NAME );
+
+			Str::Copy( name, str );
+		}
+
+		if( !strTextOnHead.empty( ) )
+		{
+			Str::Copy( str, strTextOnHead.c_str( ) );
+			color = textOnHeadColor;
+
+			if( tickTextDelay > 500 )
+			{
+				uint dt = Timer::GameTick( ) - tickStartText;
+				uint hide = tickTextDelay - 200;
+				if( dt >= hide )
+				{
+					uint alpha = 0xFF * ( 100 - Procent( tickTextDelay - hide, dt - hide ) ) / 100;
+					color = ( alpha << 24 ) | ( color & 0xFFFFFF );
+				}
+			}
+		}
+
+		if( !IsFinishing( ) )
+		{
+
+			FOnline::colorize namecolor, color_;
+			namecolor.color = ( NameColor ? NameColor : COLOR_TEXT_DGREEN );
+			namecolor.r = 255;
+
+			color_.color = color;
+
+			FOnline::FormatTextFlag flag = { 0 };
+			const char* textOnHead = FOnline::FormatText( str, flag, color_.color );
+			flag.OnlyLastLine = 1;
+			char* nameWin = FOnline::FormatText( name, flag, namecolor.color );
+			namecolor.a = 255;
+			color_.a = 255;
+
+			if( !Str::Length( nameWin ) )
+			{
+				Str::Copy( name, "<Unknown>" );
+				nameWin = name;
+			}
+
+			{
+				ImVec2 txtVec2 = ImGui::CalcTextSize( strTextOnHead.empty( ) ? nameWin : textOnHead );
+
+				r[ 2 ] -= r[ 0 ];
+				r[ 3 ] -= r[ 1 ];
+
+				static ImGuiWindowFlags window_flags = 0;
+
+				if( window_flags == 0 )
+				{
+					//window_flags |= ImGuiWindowFlags_NoTitleBar;
+					window_flags |= ImGuiWindowFlags_NoResize;
+					window_flags |= ImGuiWindowFlags_NoMove;
+					window_flags |= ImGuiWindowFlags_NoScrollbar;
+					//window_flags |= ImGuiWindowFlags_NoCollapse;
+					window_flags |= ImGuiWindowFlags_NoNav;
+					window_flags |= ImGuiWindowFlags_NoInputs;
+					//window_flags |= ImGuiWindowFlags_NoBackground;
+					window_flags |= ImGuiWindowFlags_AlwaysAutoResize;
+					window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+					window_flags |= ImGuiWindowFlags_NoSavedSettings;
+					window_flags |= ImGuiWindowFlags_NoScrollWithMouse;
+				}
+
+				{
+					txtVec2.x += 40;
+					if( !strTextOnHead.empty( ) )
+					{
+						txtVec2.y += 40;
+						if( FLAG( window_flags, ImGuiWindowFlags_NoBackground ) )
+							UNSETFLAG( window_flags, ImGuiWindowFlags_NoBackground );
+					}
+					else
+					{
+						if( !FLAG( window_flags, ImGuiWindowFlags_NoBackground ) )
+							SETFLAG( window_flags, ImGuiWindowFlags_NoBackground );
+					}
+				}
+
+				ImVec2 minsizeVec2 = ImGui::CalcTextSize( nameWin );
+				minsizeVec2.x += 40;
+				ImGui::SetNextWindowPos( ImVec2( r[ 0 ] + ( r[ 2 ] - txtVec2.x ) * 0.5, r[ 1 ] + ( r[ 3 ] - txtVec2.y ) * 0.5 ) );
+				ImGui::SetNextWindowSizeConstraints( minsizeVec2, ImVec2( 200, 200 ) );
+
+				ImGui::PushStyleColor( ImGuiCol_Text, namecolor.color );
+				ImGui::PushStyleVar( ImGuiStyleVar_WindowRounding, 1.0f );
+				ImGui::Begin( nameWin, NULL, window_flags );
+
+				if( !strTextOnHead.empty( ) )
+				{
+					ImGui::PushStyleColor( ImGuiCol_Text, color_.color );
+					ImGui::Text( "%s", textOnHead );
+					ImGui::PopStyleColor( );
+				}
+				ImGui::End( );
+				ImGui::PopStyleColor( );
+			}
+		}
+	}
+
+	if( Timer::GameTick( ) - tickStartText >= tickTextDelay && !strTextOnHead.empty( ) )
+		strTextOnHead = "";
+}
+#endif // DRAW_TEXT_ON_HEAD_IMGUI

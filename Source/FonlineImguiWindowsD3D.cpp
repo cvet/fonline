@@ -6,6 +6,20 @@ using namespace FOnline;
 
 FonlineImguiWindowsD3D MainImgui;
 
+FonlineImgui* FOnline::CreateImgui( )
+{
+	return new FonlineImguiWindowsD3D( );
+}
+
+void FOnline::DestroyImgui( FonlineImgui* imgui )
+{
+	if( imgui )
+	{
+		imgui->Finish( );
+		delete imgui;
+	}
+}
+
 FonlineImgui* FOnline::GetMainImgui( )
 {
 	return &MainImgui;

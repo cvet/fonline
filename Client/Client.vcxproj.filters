@@ -575,6 +575,15 @@
     <ClInclude Include="..\Source\FonlineImguiWindowsOGL.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="..\Source\ImGuiOverlay.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\OverlayWindows.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\OverlayWindowsD3D.h">
+      <Filter>Client</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Source\Zlib\adler32.c">
@@ -908,6 +917,15 @@
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="..\Source\FonlineImguiWindowsD3D.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\ImGuiOverlay.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\OverlayWindows.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\OverlayWindowsD3D.cpp">
       <Filter>Client</Filter>
     </ClCompile>
   </ItemGroup>

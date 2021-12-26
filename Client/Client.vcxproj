@@ -543,10 +543,15 @@
     <ClInclude Include="..\Source\GraphicStructures.h" />
     <ClInclude Include="..\Source\imconfig.h" />
     <ClInclude Include="..\Source\imgui.h" />
+    <ClInclude Include="..\Source\ImGuiOverlay.h" />
     <ClInclude Include="..\Source\imgui_internal.h" />
     <ClInclude Include="..\Source\imstb_rectpack.h" />
     <ClInclude Include="..\Source\imstb_textedit.h" />
     <ClInclude Include="..\Source\imstb_truetype.h" />
+    <ClInclude Include="..\Source\OverlayWindows.h" />
+    <ClInclude Include="..\Source\OverlayWindowsD3D.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="..\Source\ResourceClient.h" />
     <ClInclude Include="..\Source\ScriptWindow.h" />
     <ClInclude Include="..\Source\Sprites.h" />
@@ -730,10 +735,15 @@
     </ClCompile>
     <ClCompile Include="..\Source\GraphicLoader.cpp" />
     <ClCompile Include="..\Source\imgui.cpp" />
+    <ClCompile Include="..\Source\ImGuiOverlay.cpp" />
     <ClCompile Include="..\Source\imgui_demo.cpp" />
     <ClCompile Include="..\Source\imgui_draw.cpp" />
     <ClCompile Include="..\Source\imgui_tables.cpp" />
     <ClCompile Include="..\Source\imgui_widgets.cpp" />
+    <ClCompile Include="..\Source\OverlayWindows.cpp" />
+    <ClCompile Include="..\Source\OverlayWindowsD3D.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\Source\ScriptWindow.cpp" />
     <ClCompile Include="..\Source\SpriteManagerFont.cpp" />
     <ClCompile Include="..\Source\Sprites.cpp" />

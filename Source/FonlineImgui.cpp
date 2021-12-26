@@ -1,4 +1,5 @@
 #include "FonlineImgui.h"
+#include "ImGuiOverlay.h"
 
 using namespace FOnline;
 
@@ -45,12 +46,10 @@ void FOnline::FonlineImgui::DropContext( )
 	{
 		WriteLog( "Error imgui <drop context counter>, current context invalid\n" );
 	}
-	else
+	else if( !--WorkCounter )
 	{
-		WorkCounter -= 1;
-		return;
+		ImGui::SetCurrentContext( nullptr );
 	}
-	ImGui::SetCurrentContext( nullptr );
 }
 
 FonlineImgui::FonlineImgui( ) : Context( nullptr ), IsDemoWindow( false ), Window( nullptr ), WorkCounter( 0 )
@@ -71,49 +70,42 @@ void FonlineImgui::Init( FOWindow* window, Device_ device )
 		IMGUI_CHECKVERSION( );
 		WriteLog( "Init imgui. Version: %s\n", IMGUI_VERSION );
 	}
+
 	Context = ImGui::CreateContext( &FontAtlas );
 	WorkCounter = 1;
 
-	ImGuiIO& io = GetIO( );
-	io.IniFilename = "FOnlineImgui.ini";
-	io.LogFilename = "FOnlineImgui.log";
-
 	if( isMain )
 	{
+		ImGuiIO& io = GetIO( );
+		io.IniFilename = "FOnlineImgui.ini";
+		io.LogFilename = "FOnlineImgui.log";
+
 		IsDemoWindow = Str::Substring( CommandLine, "-ImguiDemo" ) != nullptr;
-
-		ImFontConfig font_config;
-		font_config.OversampleH = 1; //or 2 is the same
-		font_config.OversampleV = 1;
-		font_config.PixelSnapH = 1;
-
-		static const ImWchar ranges[] =
-		{
-			0x0020, 0x00FF, // Basic Latin + Latin Supplement
-			0x0400, 0x044F, // Cyrillic
-			0,
-		};
-
-		io.Fonts->AddFontFromFileTTF( "C:\\Windows\\Fonts\\Courier new.ttf", 12.0f/*, &font_config, ranges*/ );
-
+		io.Fonts->AddFontFromFileTTF( "C:\\Windows\\Fonts\\Tahoma.ttf", 12.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic( ) );
 	}
 
 	InitOS( window );
 	InitGraphics( device );
 	Window = window;
 
-	// ImGui::LogToFile( );
 	DropContext( );
+	if( isMain )
+	{
+		// GetOverlay( )->Init();
+	}
 }
 
 void FonlineImgui::Finish( )
 {
+	if( IsMain( ) )
+	{
+		// FinishOverlay( );
+	}
 	WorkContext( );
 	FinishGraphics( );
 	FinishOS( );
 	ImGui::SetCurrentContext( nullptr );
 	ImGui::DestroyContext( Context );
-	DropContext( );
 }
 
 void FonlineImgui::Frame( )
@@ -158,3 +150,63 @@ void FonlineImgui::RenderAll( )
 	}
 }
 
+char * FOnline::FormatText( char * text, FormatTextFlag flag, uint & color )
+{
+	char* result = &text[ 0 ];
+	char* big_buf = Str::GetBigBuf( );
+	big_buf[ 0 ] = 0;
+	while( *result )
+	{
+		const char* s0 = result;
+		Str::GoTo( result, '|' );
+		char* s1 = result;
+		Str::GoTo( result, ' ' );
+		char* s2 = result;
+
+		uint d_len = ( uint )s2 - ( uint )s1 + 1;
+		if( d_len )
+		{
+			color = strtoul( s1 + 1, NULL, 0 );
+		}
+
+		*s1 = 0;
+		Str::Append( big_buf, 0x10000, s0 );
+
+		if( !*result )
+			break;
+		result++;
+	}
+
+	unsigned char* buffer = ( unsigned char* )&result[ 0 ];
+	const unsigned char* c = ( const unsigned char* )&big_buf[ 0 ];
+	while( *c )
+	{
+		if( *c == '\n' && flag.OnlyLastLine )
+		{
+			buffer = ( unsigned char* )&result[ 0 ];
+		}
+		else
+		{
+			if( *c < 0x0080 )
+			{
+				*buffer++ = *c;
+			}
+			else
+			{
+				if( *c < 240 )
+				{
+					*buffer++ = 208;
+					*buffer++ = *c - 48;
+				}
+				else
+				{
+					*buffer++ = 209;
+					*buffer++ = *c - 112;
+				}
+			}
+		}
+		c++;
+	}
+	buffer[ 0 ] = 0;
+	return result;
+}

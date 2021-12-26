@@ -1,7 +1,9 @@
 #include "StdAfx.h"
 #include "Client.h"
 #include "Version.h"
+#include "FonlineImgui.h"
 
+using namespace FOnline;
 
 #define SK_LAST_LEGACY (217) // SK_OUTDOORSMAN
 #define SK_SPACING (4)
@@ -2262,6 +2264,7 @@ void FOClient::GameDraw()
     LookBordersDraw();
 
     // Critters
+	GetMainImgui( )->NewFrame( );
     for( auto it = HexMngr.GetCritters().begin(); it != HexMngr.GetCritters().end(); it++ )
     {
         CritterCl* cr = ( *it ).second;
@@ -2292,6 +2295,7 @@ void FOClient::GameDraw()
         // Text on head
         cr->DrawTextOnHead();
     }
+	GetMainImgui( )->EndFrame( );
 
     // Texts on map
     uint tick = Timer::GameTick();

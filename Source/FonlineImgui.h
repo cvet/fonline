@@ -7,6 +7,37 @@ namespace FOnline
 {
 	class FonlineImgui;
 	extern FonlineImgui* GetMainImgui( );
+	extern FonlineImgui* CreateImgui( );
+	extern void DestroyImgui( FonlineImgui* imgui );
+
+	struct FormatTextFlag
+	{
+		union
+		{
+			uint flag;
+			struct
+			{
+				uint OnlyLastLine : 1;
+			};
+		};
+	};
+
+	extern char* FormatText( char* text, FormatTextFlag flag, uint& color );
+
+	struct colorize
+	{
+		union
+		{
+			struct
+			{
+				UINT8 r;
+				UINT8 g;
+				UINT8 b;
+				UINT8 a;
+			};
+			uint color;
+		};
+	};
 
 	class FonlineImgui
 	{
@@ -46,7 +77,6 @@ namespace FOnline
 		void Finish( );
 		void Frame( );
 		void RenderIface( );
-
 
 		void NewFrame( );
 		void EndFrame( );
