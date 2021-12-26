@@ -37,39 +37,12 @@
 
 #include "Entity.h"
 
-class PropertyRegistratorsHolder
-{
-public:
-    explicit PropertyRegistratorsHolder(bool is_server);
-    virtual ~PropertyRegistratorsHolder() = default;
-
-    [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
-    [[nodiscard]] auto GetPropertyRegistratorForEdit(string_view class_name) -> PropertyRegistrator*;
-
-    void ResetPropertyRegistrators();
-
-    template<typename T, std::enable_if_t<std::is_convertible_v<T, EntityProperties>, int> = 0>
-    void CreatePropertyRegistrator()
-    {
-        auto* registrator = new PropertyRegistrator(T::ENTITY_CLASS_NAME, _isServer);
-        T::FillProperties(registrator);
-    }
-
-    void FinalizePropertyRegistration();
-
-private:
-    bool _isServer;
-    unordered_map<string_view, PropertyRegistrator*> _registrators {};
-    bool _finalized {};
-};
-
 class GameProperties : public EntityProperties
 {
 public:
-    explicit GameProperties(Properties& props) : EntityProperties(props) { }
-
     static constexpr string_view ENTITY_CLASS_NAME = "Game";
-    static void FillProperties(PropertyRegistrator* registrator);
+
+    explicit GameProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, Year, 0)
@@ -96,10 +69,9 @@ public:
 class PlayerProperties : public EntityProperties
 {
 public:
-    explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
-
     static constexpr string_view ENTITY_CLASS_NAME = "Player";
-    static void FillProperties(PropertyRegistrator* registrator);
+
+    explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp, 0)
@@ -110,10 +82,9 @@ public:
 class ItemProperties : public EntityProperties
 {
 public:
-    explicit ItemProperties(Properties& props) : EntityProperties(props) { }
-
     static constexpr string_view ENTITY_CLASS_NAME = "Item";
-    static void FillProperties(PropertyRegistrator* registrator);
+
+    explicit ItemProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Public, ItemOwnership, Ownership, 0)
@@ -268,10 +239,9 @@ public:
 class CritterProperties : public EntityProperties
 {
 public:
-    explicit CritterProperties(Properties& props) : EntityProperties(props) { }
-
     static constexpr string_view ENTITY_CLASS_NAME = "Critter";
-    static void FillProperties(PropertyRegistrator* registrator);
+
+    explicit CritterProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, ModelName, 0)
@@ -414,10 +384,9 @@ public:
 class MapProperties : public EntityProperties
 {
 public:
-    explicit MapProperties(Properties& props) : EntityProperties(props) { }
-
     static constexpr string_view ENTITY_CLASS_NAME = "Map";
-    static void FillProperties(PropertyRegistrator* registrator);
+
+    explicit MapProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime1, 0)
@@ -460,10 +429,9 @@ public:
 class LocationProperties : public EntityProperties
 {
 public:
-    explicit LocationProperties(Properties& props) : EntityProperties(props) { }
-
     static constexpr string_view ENTITY_CLASS_NAME = "Location";
-    static void FillProperties(PropertyRegistrator* registrator);
+
+    explicit LocationProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos, 0)

@@ -41,11 +41,12 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(true), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys}, ProtoMngr(FileMngr, *this, *this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this), GameTime(Settings)
+FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(true), Settings {settings}, GeomHelper(Settings), ProtoMngr(FileMngr, *this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this), GameTime(Settings)
 {
     WriteLog("***   Starting initialization   ***\n");
 
-    FinalizePropertyRegistration();
+    RegisterData();
+    ScriptSys = (script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys);
 
     GameTime.FrameAdvance();
 

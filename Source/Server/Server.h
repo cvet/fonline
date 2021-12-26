@@ -83,10 +83,6 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
 
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int override { return 0; }
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override { return 0; }
-    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value) const -> string override { return ""; }
-
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
     [[nodiscard]] auto GetIngamePlayersStatistics() const -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> uint;
@@ -281,6 +277,8 @@ private:
     static constexpr auto BANS_FNAME_ACTIVE = "Save/Bans/Active.txt";
     static constexpr auto BANS_FNAME_EXPIRED = "Save/Bans/Expired.txt";
 
+    void RegisterData();
+
     auto InitLangPacks(vector<LanguagePack>& lang_packs) -> bool;
     auto InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool;
     auto InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool;
@@ -352,6 +350,7 @@ private:
     void LoadBans();
 
     std::atomic_bool _started {};
+    vector<uchar> _restoreInfoBin {};
     ServerStats _stats {};
     ServerGui _gui {};
     map<uint, uint> _regIp {};

@@ -136,10 +136,6 @@ public:
 
     [[nodiscard]] auto GetEngine() -> FOClient* { return this; }
 
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int override { return 0; }
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override { return 0; }
-    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value) const -> string override { return ""; }
-
     [[nodiscard]] auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
@@ -364,6 +360,8 @@ private:
     static constexpr auto FONT_DEFAULT = 5;
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
+    void RegisterData(const vector<uchar>& restore_info_bin);
+
     void ProcessAutoLogin();
     void CrittersProcess();
     void ProcessInputEvents();
@@ -476,6 +474,7 @@ private:
     void DeleteCritter(uint crid);
 
     int _initCalls {};
+    vector<uchar> _restoreInfoBin {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
     int _windowResolutionDiffX {};

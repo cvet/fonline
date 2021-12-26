@@ -117,15 +117,6 @@ struct FOServer;
 struct FOClient;
 struct FOMapper;
 
-struct PropertiesHolder : public PropertyRegistratorsHolder
-{
-#if SERVER_SCRIPTING
-    PropertiesHolder() : PropertyRegistratorsHolder(true) { }
-#else
-    PropertiesHolder() : PropertyRegistratorsHolder(false) { }
-#endif
-};
-
 struct BaseEntity
 {
     void AddRef() { }
@@ -193,6 +184,25 @@ static void DummyFunc(asIScriptGeneric* gen)
 {
 }
 #endif
+
+enum class ScriptEnum_int8 : char
+{
+};
+enum class ScriptEnum_uint8 : uchar
+{
+};
+enum class ScriptEnum_int16 : short
+{
+};
+enum class ScriptEnum_uint16 : ushort
+{
+};
+enum class ScriptEnum_int : int
+{
+};
+enum class ScriptEnum_uint : uint
+{
+};
 
 #if !COMPILER_MODE
 struct ASGlobal;
@@ -462,47 +472,31 @@ static void Property_SetValueAsFloat(asIScriptGeneric* gen)
 }
 
 template<typename T>
-static void RegisterProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* flags)
+static void RegisterAngelScriptProperty(asIScriptEngine* engine, const PropertyRegistrator* registrator, const char* name)
 {
-    const auto* prop = registrator->Register<T>(access, name, flags);
+    const auto* prop = registrator->Find(name);
+    RUNTIME_ASSERT(prop);
 
     int as_result;
     if (prop->IsReadable()) {
         const char* decl_get = 0;
         //'"const ' + metaTypeToASType(type) + ('@' if False else '') + ' get_' + name + '() const",
-        AS_VERIFY(engine->RegisterObjectMethod(entity, decl_get, asFUNCTION((Property_GetValue<T>)), asCALL_GENERIC, (void*)prop));
+        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_get, asFUNCTION((Property_GetValue<T>)), asCALL_GENERIC, (void*)prop));
     }
     if (prop->IsWritable()) {
         const char* decl_set = 0;
         //'"void set_' + name + '(' + ('const ' if False else '') + metaTypeToASType(type) + ('@' if False else '') + ')", ' +
-        AS_VERIFY(engine->RegisterObjectMethod(entity, decl_set, asFUNCTION((Property_SetValue<T>)), asCALL_GENERIC, (void*)prop));
+        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_set, asFUNCTION((Property_SetValue<T>)), asCALL_GENERIC, (void*)prop));
     }
 }
 
-static void RestoreProperty(asIScriptEngine* engine, PropertyRegistrator* registrator, const string& entity, string_view access, string_view type, const string& name, const string& flags)
+static void RestoreAngelScriptProperty(asIScriptEngine* engine, const PropertyRegistrator* registrator, string_view type, const string& name)
 {
-#define RESTORE_ARGS asIScriptEngine* engine, PropertyRegistrator* registrator, const char* entity, Property::AccessType access, const char* name, const char* flags
-#define RESTORE_ARGS_PASS engine, registrator, entity, access, name, flags
+#define RESTORE_ARGS asIScriptEngine *engine, const PropertyRegistrator *registrator, const char *name
+#define RESTORE_ARGS_PASS engine, registrator, name
 
-    static unordered_map<string_view, std::function<void(asIScriptEngine*, PropertyRegistrator*, const char*, Property::AccessType, const char*, const char*)>> call_map = {
+    static unordered_map<string_view, std::function<void(asIScriptEngine*, const PropertyRegistrator*, const char*)>> call_map = {
         ///@ CodeGen PropertyMap
-    };
-
-    static unordered_map<string_view, Property::AccessType> access_map = {
-        {"PrivateCommon", Property::AccessType::PrivateCommon},
-        {"PrivateClient", Property::AccessType::PrivateClient},
-        {"PrivateServer", Property::AccessType::PrivateServer},
-        {"Public", Property::AccessType::Public},
-        {"PublicModifiable", Property::AccessType::PublicModifiable},
-        {"PublicFullModifiable", Property::AccessType::PublicFullModifiable},
-        {"PublicStatic", Property::AccessType::PublicStatic},
-        {"Protected", Property::AccessType::Protected},
-        {"ProtectedModifiable", Property::AccessType::ProtectedModifiable},
-        {"VirtualPrivateCommon", Property::AccessType::VirtualPrivateCommon},
-        {"VirtualPrivateClient", Property::AccessType::VirtualPrivateClient},
-        {"VirtualPrivateServer", Property::AccessType::VirtualPrivateServer},
-        {"VirtualPublic", Property::AccessType::VirtualPublic},
-        {"VirtualProtected", Property::AccessType::VirtualProtected},
     };
 
     const auto it = call_map.find(type);
@@ -510,7 +504,7 @@ static void RestoreProperty(asIScriptEngine* engine, PropertyRegistrator* regist
         throw ScriptInitException("Invalid property for restoring", type);
     }
 
-    it->second(engine, registrator, entity.c_str(), access_map[access], name.c_str(), flags.c_str());
+    it->second(engine, registrator, name.c_str());
 }
 
 template<class T>
@@ -637,10 +631,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     as_global->self = game_engine;
 #endif
 
-#if COMPILER_MODE
-    auto properties_holder = PropertiesHolder();
-#endif
-
     int as_result;
     AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
 
@@ -712,7 +702,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if CLIENT_SCRIPTING && !COMPILER_MODE
     // Restore enums
-    for (const auto& info : _restoreInfo["Enums"]) {
+    /*for (const auto& info : _restoreInfo["Enums"]) {
         auto tokens = _str(info).split(' ');
         AS_VERIFY(engine->RegisterEnum(tokens[0].c_str()));
         for (size_t i = 2; i < tokens.size() - 2; i += 2) {
@@ -724,10 +714,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     for (const auto& info : _restoreInfo["Properties"]) {
         const auto tokens = _str(info).split(' ');
         auto* prop_registrator = game_engine->GetPropertyRegistratorForEdit(tokens[0]);
-        RestoreProperty(engine, prop_registrator, tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]);
+        RestoreAngelScriptProperty(engine, prop_registrator, tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]);
         // const aproperty_index
         // AS_VERIFY(engine->RegisterEnumValue((tokens[0] + "Property").c_str(), tokens[3].c_str(), property_index));
-    }
+    }*/
 #endif
 
 #if CLIENT_SCRIPTING

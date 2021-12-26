@@ -330,7 +330,7 @@ public:
     auto operator=(PropertyRegistrator&&) noexcept = delete;
     ~PropertyRegistrator();
 
-    [[nodiscard]] auto GetClassName() const -> string_view;
+    [[nodiscard]] auto GetClassName() const -> const string&;
     [[nodiscard]] auto GetCount() const -> uint;
     [[nodiscard]] auto Find(string_view property_name) const -> const Property*;
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
@@ -363,7 +363,7 @@ private:
 
 public:
     template<typename T>
-    auto Register(Property::AccessType access, string_view name, string_view flags) -> const Property*
+    void Register(Property::AccessType access, string_view name, const vector<string>& flags)
     {
         auto* prop = new Property(this);
 
@@ -416,7 +416,6 @@ public:
         }
 
         AppendProperty(prop, flags);
-        return prop;
     }
 
 private:
@@ -489,5 +488,5 @@ private:
         static constexpr auto IS_DICT_OF_ARRAY = false;
     };
 
-    void AppendProperty(Property* prop, string_view flags);
+    void AppendProperty(Property* prop, const vector<string>& flags);
 };

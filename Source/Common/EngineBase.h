@@ -36,11 +36,14 @@
 #include "Common.h"
 
 #include "EntityProperties.h"
+#include "Properties.h"
 
+DECLARE_EXCEPTION(DataRegistrationException);
+DECLARE_EXCEPTION(EnumResolveException);
 DECLARE_EXCEPTION(HashResolveException);
 DECLARE_EXCEPTION(HashCollisionException);
 
-class FOEngineBase : public NameResolver, public PropertyRegistratorsHolder, public Entity, public GameProperties
+class FOEngineBase : public NameResolver, public Entity, public GameProperties
 {
 public:
     FOEngineBase(const FOEngineBase&) = delete;
@@ -49,14 +52,31 @@ public:
     auto operator=(FOEngineBase&&) noexcept = delete;
 
     [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
+    [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override;
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value) const -> string override;
     [[nodiscard]] auto ToHashedString(string_view s) const -> hstring override;
     [[nodiscard]] auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
     [[nodiscard]] auto ResolveGenericValue(string_view str, bool& failed) -> int override;
+
+    void ResetRegisteredData();
+    void FinalizeDataRegistration();
 
 protected:
     explicit FOEngineBase(bool is_server);
     ~FOEngineBase() override = default;
 
+    [[nodiscard]] auto CreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
+    void AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
+
 private:
+    bool _isServer;
+    unordered_map<string, const PropertyRegistrator*> _registrators {};
+    unordered_map<string, unordered_map<string, int>> _enums {};
+    unordered_map<string, unordered_map<int, string>> _enumsRev {};
+    unordered_map<string, int> _enumsFull {};
+    unordered_map<string, const type_info*> _enumTypes {};
+    bool _registrationFinalized {};
     mutable unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
 };

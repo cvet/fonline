@@ -80,7 +80,7 @@ void ServerScriptSystem::InitAngelScriptScripting()
 void ServerScriptSystem::InitMonoScripting()
 {
 }
-void ServerScriptSystem::WriteRestoreInfo()
+void FOServer::RegisterData()
 {
 }
 #endif

@@ -288,12 +288,12 @@ static void ParseProtos(FileManager& file_mngr, NameResolver& name_resolver, con
     }
 }
 
-ProtoManager::ProtoManager(FileManager& file_mngr, NameResolver& name_resolver, const PropertyRegistratorsHolder& property_registrators) : _nameResolver {name_resolver}
+ProtoManager::ProtoManager(FileManager& file_mngr, FOEngineBase& engine) : _nameResolver {engine}
 {
-    ParseProtos(file_mngr, _nameResolver, property_registrators.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
-    ParseProtos(file_mngr, _nameResolver, property_registrators.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
-    ParseProtos(file_mngr, _nameResolver, property_registrators.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
-    ParseProtos(file_mngr, _nameResolver, property_registrators.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
+    ParseProtos(file_mngr, _nameResolver, engine.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
+    ParseProtos(file_mngr, _nameResolver, engine.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
+    ParseProtos(file_mngr, _nameResolver, engine.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
+    ParseProtos(file_mngr, _nameResolver, engine.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
 
     // Mapper collections
     for (auto [pid, proto] : _itemProtos) {
@@ -324,7 +324,7 @@ ProtoManager::ProtoManager(FileManager& file_mngr, NameResolver& name_resolver, 
     }
 }
 
-ProtoManager::ProtoManager(const vector<uchar>& data, NameResolver& name_resolver, const PropertyRegistratorsHolder& property_registrators) : _nameResolver {name_resolver}
+ProtoManager::ProtoManager(const vector<uchar>& data, FOEngineBase& engine) : _nameResolver {engine}
 {
     if (data.empty()) {
         return;
@@ -336,10 +336,10 @@ ProtoManager::ProtoManager(const vector<uchar>& data, NameResolver& name_resolve
     }
 
     uint pos = 0;
-    ReadProtosFromBinary(_nameResolver, property_registrators.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _itemProtos);
-    ReadProtosFromBinary(_nameResolver, property_registrators.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _crProtos);
-    ReadProtosFromBinary(_nameResolver, property_registrators.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _mapProtos);
-    ReadProtosFromBinary(_nameResolver, property_registrators.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _locProtos);
+    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _itemProtos);
+    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _crProtos);
+    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _mapProtos);
+    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _locProtos);
 }
 
 auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>

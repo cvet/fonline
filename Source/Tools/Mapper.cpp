@@ -48,7 +48,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
 {
     HexMngr.EnableMapperMode();
 
-    ProtoMngr = std::make_unique<ProtoManager>(ServerFileMngr, *this, *this);
+    ProtoMngr = std::make_unique<ProtoManager>(ServerFileMngr, *this);
 
     Animations.resize(10000);
 

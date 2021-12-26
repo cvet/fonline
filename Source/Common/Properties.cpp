@@ -1528,7 +1528,7 @@ void PropertyRegistrator::RegisterComponent(hstring name)
     _registeredComponents.insert(name);
 }
 
-auto PropertyRegistrator::GetClassName() const -> string_view
+auto PropertyRegistrator::GetClassName() const -> const string&
 {
     return _className;
 }
@@ -1576,10 +1576,8 @@ auto PropertyRegistrator::GetWholeDataSize() const -> uint
     return _wholePodDataSize;
 }
 
-void PropertyRegistrator::AppendProperty(Property* prop, string_view flags)
+void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& flags)
 {
-    const auto flags_tok = _str(flags).split(' ');
-
     // string _propName {};
 
     // bool _isTemporary {};

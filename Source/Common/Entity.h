@@ -54,10 +54,6 @@
     inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
     inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; }
 
-#define REGISTER_ENTITY_PROPERTY(prop) \
-    const auto* prop_##prop = registrator->Register<prop##_TypeId>(prop##_AccessType, #prop, "Engine"); \
-    RUNTIME_ASSERT(prop_##prop->GetRegIndex() == prop##_RegIndex)
-
 class EntityProperties
 {
 protected:

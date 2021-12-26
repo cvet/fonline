@@ -36,8 +36,117 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FOEngineBase::FOEngineBase(bool is_server) : PropertyRegistratorsHolder(is_server), Entity(GetPropertyRegistrator(ENTITY_CLASS_NAME)), GameProperties(GetInitRef())
+FOEngineBase::FOEngineBase(bool is_server) : Entity(GetPropertyRegistrator(ENTITY_CLASS_NAME)), GameProperties(GetInitRef()), _isServer {is_server}
 {
+}
+
+auto FOEngineBase::CreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
+{
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    if (_registrationFinalized) {
+        return nullptr;
+    }
+
+    const auto it = _registrators.find(string(class_name));
+    RUNTIME_ASSERT(it == _registrators.end());
+
+    auto* registrator = new PropertyRegistrator(class_name, _isServer);
+    _registrators.emplace(class_name, registrator);
+    return registrator;
+}
+
+void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values)
+{
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    if (_registrationFinalized) {
+        return;
+    }
+
+    RUNTIME_ASSERT(_enums.count(string(name)) == 0u);
+
+    unordered_map<int, string> key_values_rev;
+    for (const auto& [key, value] : key_values) {
+        RUNTIME_ASSERT(key_values_rev.count(value) == 0u);
+        key_values_rev[value] = key;
+    }
+
+    _enums[string(name)] = std::move(key_values);
+    _enumsRev[string(name)] = std::move(key_values_rev);
+    _enumTypes[string(name)] = &underlying_type;
+}
+
+auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*
+{
+    const auto it = _registrators.find(string(class_name));
+    RUNTIME_ASSERT(it != _registrators.end());
+    return it->second;
+}
+
+void FOEngineBase::ResetRegisteredData()
+{
+    _registrationFinalized = false;
+
+    for (auto [name, registrator] : _registrators) {
+        delete registrator;
+    }
+    _registrators.clear();
+}
+
+void FOEngineBase::FinalizeDataRegistration()
+{
+    RUNTIME_ASSERT(!_registrationFinalized);
+
+    _registrationFinalized = true;
+}
+
+auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int
+{
+    const auto it = _enumsFull.find(string(enum_value_name));
+    if (it == _enumsFull.end()) {
+        failed = true;
+        // EnumResolveException
+        return 0;
+    }
+
+    return it->second;
+}
+
+auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int
+{
+    const auto enum_it = _enums.find(string(enum_name));
+    if (enum_it == _enums.end()) {
+        failed = true;
+        // EnumResolveException
+        return 0;
+    }
+
+    const auto value_it = enum_it->second.find(string(value_name));
+    if (value_it == enum_it->second.end()) {
+        failed = true;
+        // EnumResolveException
+        return 0;
+    }
+
+    return value_it->second;
+}
+
+auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value) const -> string
+{
+    const auto enum_it = _enumsRev.find(string(enum_name));
+    if (enum_it == _enumsRev.end()) {
+        // EnumResolveException
+        return string();
+    }
+
+    const auto value_it = enum_it->second.find(value);
+    if (value_it == enum_it->second.end()) {
+        // EnumResolveException
+        return string();
+    }
+
+    return value_it->second;
 }
 
 auto FOEngineBase::ToHashedString(string_view s) const -> hstring

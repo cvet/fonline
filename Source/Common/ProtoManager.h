@@ -35,9 +35,9 @@
 
 #include "Common.h"
 
+#include "EngineBase.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
-#include "Properties.h"
 
 DECLARE_EXCEPTION(ProtoManagerException);
 
@@ -45,8 +45,8 @@ class ProtoManager final
 {
 public:
     ProtoManager() = delete;
-    ProtoManager(FileManager& file_mngr, NameResolver& name_resolver, const PropertyRegistratorsHolder& property_registrators); // Load from text
-    ProtoManager(const vector<uchar>& data, NameResolver& name_resolver, const PropertyRegistratorsHolder& property_registrators); // Restore from binary
+    ProtoManager(FileManager& file_mngr, FOEngineBase& engine); // Load from text
+    ProtoManager(const vector<uchar>& data, FOEngineBase& engine); // Restore from binary
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;

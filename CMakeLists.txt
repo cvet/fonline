@@ -131,7 +131,7 @@ set( FO_SERVER_SCRIPTING_SOURCE "" )
 set( FO_CLIENT_SCRIPTING_SOURCE "" )
 set( FO_MAPPER_SCRIPTING_SOURCE "" )
 set( FO_SINGLE_SCRIPTING_SOURCE "" )
-set( FO_SCRIPTING_SOURCE "" )
+set( FO_ADDITIONAL_META_FILES "" )
 set( FO_SINGLE_SOURCE "" )
 set( FO_TESTS_SOURCE "" )
 set( FO_CORE_LIBS_GROUP "" )
@@ -505,7 +505,7 @@ macro( AddNativeSource )
 		# FO_CLIENT_SCRIPTING_SOURCE
 		# FO_MAPPER_SCRIPTING_SOURCE
 		# FO_SINGLE_SCRIPTING_SOURCE
-		# FO_SCRIPTING_SOURCE
+		# FO_ADDITIONAL_META_FILES
 	endif()
 endmacro()
 macro( AddNativeEntry funcName )
@@ -1355,17 +1355,17 @@ set( FO_TOOLS_SOURCE
 	"Source/Tools/ModelBaker.cpp" )
 
 set( FO_SERVER_SCRIPTING_SOURCE
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
-	"${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Server.cpp"
 	"Source/Scripting/ServerScripting.h" )
 	
 set( FO_CLIENT_SCRIPTING_SOURCE
+"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
-	"${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Client.cpp"
 	"Source/Scripting/ClientScripting.h" )
 
 set( FO_MAPPER_SCRIPTING_SOURCE
@@ -1380,11 +1380,11 @@ set( FO_SINGLE_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp"
 	"Source/Scripting/SingleScripting.h" )
 	
-set( FO_SCRIPTING_SOURCE
+set( FO_ADDITIONAL_META_FILES
+	"Source/Common/DataRegistration-Template.cpp"
 	"Source/Scripting/AngelScriptScripting-Template.cpp"
 	"Source/Scripting/MonoScripting-Template.cpp"
 	"Source/Scripting/NativeScripting-Template.cpp"
-	"Source/Scripting/RestoreScriptingInfo-Template.cpp"
 	"Source/Scripting/ServerGlobalScriptMethods.cpp"
 	"Source/Scripting/ServerPlayerScriptMethods.cpp"
 	"Source/Scripting/ServerItemScriptMethods.cpp"
@@ -1487,7 +1487,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	endforeach()
 
 	list( APPEND FO_CODEGEN_META_SOURCE
-		${FO_SCRIPTING_SOURCE}
+		${FO_ADDITIONAL_META_FILES}
 		${FO_COMMON_SOURCE}
 		${FO_SERVER_SOURCE}
 		${FO_CLIENT_SOURCE}
@@ -1500,6 +1500,8 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	endforeach()
 	
 	list( APPEND FO_CODEGEN_OUTPUT
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
@@ -1515,9 +1517,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Server.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Client.cpp" )
+		"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp" )
 	
 	file( WRITE "${CMAKE_BINARY_DIR}/gen-scripting-code-args.txt" "" )
 	foreach( entry ${FO_CODEGEN_COMMAND_ARGS} )
@@ -1573,14 +1573,14 @@ else()
 	MakeStubCompiler( "Mapper" )
 	MakeStubCompiler( "Single" )
 	
-	set( SERVER_SCRIPTING 1 )
-	set( CLIENT_SCRIPTING 0 )
-	configure_file( "Source/Scripting/RestoreScriptingInfo-Template.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Server.cpp" )
-	set( SERVER_SCRIPTING 0 )
-	set( CLIENT_SCRIPTING 1 )
-	configure_file( "Source/Scripting/RestoreScriptingInfo-Template.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/RestoreScriptingInfo-Client.cpp" )
-	unset( SERVER_SCRIPTING )
-	unset( CLIENT_SCRIPTING )
+	set( SERVER_REGISTRATION 1 )
+	set( CLIENT_REGISTRATION 0 )
+	configure_file( "Source/Common/DataRegistration-Template.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" )
+	set( SERVER_REGISTRATION 0 )
+	set( CLIENT_REGISTRATION 1 )
+	configure_file( "Source/Common/DataRegistration-Template.cpp" "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp" )
+	unset( SERVER_REGISTRATION )
+	unset( CLIENT_REGISTRATION )
 endif()
 
 # Applications
