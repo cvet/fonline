@@ -252,7 +252,7 @@ def parseMetaFile(absPath):
 metaFiles = []
 for path in args.meta:
     absPath = os.path.abspath(path)
-    if absPath not in metaFiles:
+    if absPath not in metaFiles and 'GeneratedSource' not in absPath:
         metaFiles.append(absPath)
 metaFiles.sort()
 
@@ -704,6 +704,8 @@ def parseTags():
                     templateType = 'Native'
                 elif fname == 'DataRegistration-Template.cpp':
                     templateType = 'DataRegistration'
+                elif fname == 'EntityProperties-Template.cpp':
+                    templateType = 'EntityProperties'
                 else:
                     assert False, fname
                 
@@ -893,7 +895,30 @@ def metaTypeToEngineType(t, target, passIn):
         elif tt[0] in ['arr', 'dict', 'predicate', 'callback']:
             r = 'const ' + r + '&'
     return r
-            
+
+def genEntityProperties():
+    globalLines = []
+
+    globalLines.append('// Engine property indices')
+    for entity in gameEntities:
+        index = 0
+        for propTag in codeGenTags['ExportProperty']:
+            ent, _, _, name, _, _ = propTag
+            if ent == entity:
+                globalLines.append('ushort ' + entity + 'Properties::' + name + '_RegIndex = ' + str(index) + ';')
+                index += 1
+    globalLines.append('')
+
+    createFile('EntityProperties-Common.cpp', args.genoutput)
+    writeCodeGenTemplate('EntityProperties')
+    insertCodeGenLines(globalLines, 'Body')
+
+try:
+    genEntityProperties()
+except Exception as ex:
+    showError('Code generation for data registration failed', ex)
+checkErrors()
+    
 def genDataRegistration():
     if args.multiplayer:
         for target in ['Server', 'Client']:
@@ -901,14 +926,7 @@ def genDataRegistration():
             registerLines = []
             restoreLines = []
             propertyMapLines = []
-            
-            # Enums scope
-            globalLines.append('// Enums')
-            globalLines.append('namespace ScriptEnums')
-            globalLines.append('{')
-            globalLines.append('};')
-            globalLines.append('')
-            
+
             # Enums
             registerLines.append('// Enums')
             for e in codeGenTags['ExportEnum']:
@@ -942,14 +960,14 @@ def genDataRegistration():
                 return []
             for entity in gameEntities:
                 registerLines.append('registrator = registrators["' + entity + '"];')
-                for methodTag in codeGenTags['ExportProperty']:
-                    ent, access, type, name, flags, _ = methodTag
+                for propTag in codeGenTags['ExportProperty']:
+                    ent, access, type, name, flags, _ = propTag
                     if ent == entity:
                         registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
                                 access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
                 if target == 'Server':
-                    for methodTag in codeGenTags['Property']:
-                        ent, access, type, name, flags, _ = methodTag
+                    for propTag in codeGenTags['Property']:
+                        ent, access, type, name, flags, _ = propTag
                         if ent == entity:
                             registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
                                     access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
@@ -1005,17 +1023,19 @@ def genDataRegistration():
             if target == 'Server':
                 insertCodeGenLines(restoreLines, 'WriteRestoreInfo')
                 insertCodeGenLines(registerLines, 'ServerRegister')
+                insertCodeGenLines(globalLines, 'Global')
                 insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0'], 'Defines')
             elif target == 'Client':
                 insertCodeGenLines(registerLines, 'ClientRegister')
                 insertCodeGenLines(propertyMapLines, 'PropertyMap')
+                insertCodeGenLines(globalLines, 'Global')
                 insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1'], 'Defines')
 
 try:
     genDataRegistration()
-    
 except Exception as ex:
     showError('Code generation for data registration failed', ex)
+checkErrors()
 
 def genCode(lang, target, isASCompiler=False):
     createFile(lang + 'Scripting' + '-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)

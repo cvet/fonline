@@ -80,9 +80,6 @@ void ServerScriptSystem::InitAngelScriptScripting()
 void ServerScriptSystem::InitMonoScripting()
 {
 }
-void FOServer::RegisterData()
-{
-}
 #endif
 
 static void ClientEntry(void*)

@@ -45,25 +45,25 @@ public:
     explicit GameProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, Year, 0)
+    ENTITY_PROPERTY(PrivateCommon, ushort, Year)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, Month, 1)
+    ENTITY_PROPERTY(PrivateCommon, ushort, Month)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, Day, 2)
+    ENTITY_PROPERTY(PrivateCommon, ushort, Day)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, Hour, 3)
+    ENTITY_PROPERTY(PrivateCommon, ushort, Hour)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, Minute, 4)
+    ENTITY_PROPERTY(PrivateCommon, ushort, Minute)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, Second, 5)
+    ENTITY_PROPERTY(PrivateCommon, ushort, Second)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, TimeMultiplier, 6)
+    ENTITY_PROPERTY(PrivateCommon, ushort, TimeMultiplier)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LastEntityId, 7)
+    ENTITY_PROPERTY(PrivateServer, uint, LastEntityId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, LastDeferredCallId, 8)
+    ENTITY_PROPERTY(PrivateCommon, uint, LastDeferredCallId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, HistoryRecordsId, 9)
+    ENTITY_PROPERTY(PrivateCommon, uint, HistoryRecordsId)
 };
 
 class PlayerProperties : public EntityProperties
@@ -74,9 +74,9 @@ public:
     explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp, 0)
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<ushort>, ConnectionPort, 1)
+    ENTITY_PROPERTY(PrivateServer, vector<ushort>, ConnectionPort)
 };
 
 class ItemProperties : public EntityProperties
@@ -87,153 +87,153 @@ public:
     explicit ItemProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ItemOwnership, Ownership, 0)
+    ENTITY_PROPERTY(Public, ItemOwnership, Ownership)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, MapId, 1)
+    ENTITY_PROPERTY(Public, uint, MapId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, HexX, 2)
+    ENTITY_PROPERTY(Public, ushort, HexX)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, HexY, 3)
+    ENTITY_PROPERTY(Public, ushort, HexY)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, CritId, 4)
+    ENTITY_PROPERTY(Public, uint, CritId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, CritSlot, 5)
+    ENTITY_PROPERTY(Public, uchar, CritSlot)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, ContainerId, 6)
+    ENTITY_PROPERTY(Public, uint, ContainerId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, ContainerStack, 7)
+    ENTITY_PROPERTY(Public, uint, ContainerStack)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, float, FlyEffectSpeed, 8)
+    ENTITY_PROPERTY(Public, float, FlyEffectSpeed)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hstring, PicMap, 9)
+    ENTITY_PROPERTY(Public, hstring, PicMap)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hstring, PicInv, 10)
+    ENTITY_PROPERTY(Public, hstring, PicInv)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, short, OffsetX, 11)
+    ENTITY_PROPERTY(Public, short, OffsetX)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, short, OffsetY, 12)
+    ENTITY_PROPERTY(Public, short, OffsetY)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, Stackable, 13)
+    ENTITY_PROPERTY(Public, bool, Stackable)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, GroundLevel, 14)
+    ENTITY_PROPERTY(Public, bool, GroundLevel)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, Opened, 15)
+    ENTITY_PROPERTY(Public, bool, Opened)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, CornerType, Corner, 16)
+    ENTITY_PROPERTY(Public, CornerType, Corner)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, Slot, 17)
+    ENTITY_PROPERTY(Public, uchar, Slot)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, Weight, 18)
+    ENTITY_PROPERTY(Public, uint, Weight)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, Volume, 19)
+    ENTITY_PROPERTY(Public, uint, Volume)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, DisableEgg, 20)
+    ENTITY_PROPERTY(Public, bool, DisableEgg)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitBase, 21)
+    ENTITY_PROPERTY(Public, ushort, AnimWaitBase)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitRndMin, 22)
+    ENTITY_PROPERTY(Public, ushort, AnimWaitRndMin)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitRndMax, 23)
+    ENTITY_PROPERTY(Public, ushort, AnimWaitRndMax)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimStay0, 24)
+    ENTITY_PROPERTY(Public, uchar, AnimStay0)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimStay1, 25)
+    ENTITY_PROPERTY(Public, uchar, AnimStay1)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimShow0, 26)
+    ENTITY_PROPERTY(Public, uchar, AnimShow0)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimShow1, 27)
+    ENTITY_PROPERTY(Public, uchar, AnimShow1)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimHide0, 28)
+    ENTITY_PROPERTY(Public, uchar, AnimHide0)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimHide1, 29)
+    ENTITY_PROPERTY(Public, uchar, AnimHide1)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, char, DrawOrderOffsetHexY, 30)
+    ENTITY_PROPERTY(Public, char, DrawOrderOffsetHexY)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, vector<uchar>, BlockLines, 31)
+    ENTITY_PROPERTY(Public, vector<uchar>, BlockLines)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, IsStatic, 32)
+    ENTITY_PROPERTY(Public, bool, IsStatic)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsScenery, 33)
+    ENTITY_PROPERTY(Public, bool, IsScenery)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsWall, 34)
+    ENTITY_PROPERTY(Public, bool, IsWall)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsCanOpen, 35)
+    ENTITY_PROPERTY(Public, bool, IsCanOpen)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsScrollBlock, 36)
+    ENTITY_PROPERTY(Public, bool, IsScrollBlock)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsHidden, 37)
+    ENTITY_PROPERTY(Public, bool, IsHidden)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsHiddenPicture, 38)
+    ENTITY_PROPERTY(Public, bool, IsHiddenPicture)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsHiddenInStatic, 39)
+    ENTITY_PROPERTY(Public, bool, IsHiddenInStatic)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsFlat, 40)
+    ENTITY_PROPERTY(Public, bool, IsFlat)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoBlock, 41)
+    ENTITY_PROPERTY(Public, bool, IsNoBlock)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsShootThru, 42)
+    ENTITY_PROPERTY(Public, bool, IsShootThru)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsLightThru, 43)
+    ENTITY_PROPERTY(Public, bool, IsLightThru)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsAlwaysView, 44)
+    ENTITY_PROPERTY(Public, bool, IsAlwaysView)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsBadItem, 45)
+    ENTITY_PROPERTY(Public, bool, IsBadItem)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoHighlight, 46)
+    ENTITY_PROPERTY(Public, bool, IsNoHighlight)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsShowAnim, 47)
+    ENTITY_PROPERTY(Public, bool, IsShowAnim)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsShowAnimExt, 48)
+    ENTITY_PROPERTY(Public, bool, IsShowAnimExt)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsLight, 49)
+    ENTITY_PROPERTY(Public, bool, IsLight)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsGeck, 50)
+    ENTITY_PROPERTY(Public, bool, IsGeck)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsTrap, 51)
+    ENTITY_PROPERTY(Public, bool, IsTrap)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsTrigger, 52)
+    ENTITY_PROPERTY(Public, bool, IsTrigger)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoLightInfluence, 53)
+    ENTITY_PROPERTY(Public, bool, IsNoLightInfluence)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsGag, 54)
+    ENTITY_PROPERTY(Public, bool, IsGag)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsColorize, 55)
+    ENTITY_PROPERTY(Public, bool, IsColorize)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsColorizeInv, 56)
+    ENTITY_PROPERTY(Public, bool, IsColorizeInv)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsCanTalk, 57)
+    ENTITY_PROPERTY(Public, bool, IsCanTalk)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsRadio, 58)
+    ENTITY_PROPERTY(Public, bool, IsRadio)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, string, Lexems, 59)
+    ENTITY_PROPERTY(Public, string, Lexems)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PublicModifiable, short, SortValue, 60)
+    ENTITY_PROPERTY(PublicModifiable, short, SortValue)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uchar, Info, 61)
+    ENTITY_PROPERTY(Public, uchar, Info)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PublicModifiable, uchar, Mode, 62)
+    ENTITY_PROPERTY(PublicModifiable, uchar, Mode)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, char, LightIntensity, 63)
+    ENTITY_PROPERTY(Public, char, LightIntensity)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uchar, LightDistance, 64)
+    ENTITY_PROPERTY(Public, uchar, LightDistance)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uchar, LightFlags, 65)
+    ENTITY_PROPERTY(Public, uchar, LightFlags)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, LightColor, 66)
+    ENTITY_PROPERTY(Public, uint, LightColor)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId, 67)
+    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, Count, 68)
+    ENTITY_PROPERTY(Public, uint, Count)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, short, TrapValue, 69)
+    ENTITY_PROPERTY(Protected, short, TrapValue)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, ushort, RadioChannel, 70)
+    ENTITY_PROPERTY(Protected, ushort, RadioChannel)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, ushort, RadioFlags, 71)
+    ENTITY_PROPERTY(Protected, ushort, RadioFlags)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uchar, RadioBroadcastSend, 72)
+    ENTITY_PROPERTY(Protected, uchar, RadioBroadcastSend)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uchar, RadioBroadcastRecv, 73)
+    ENTITY_PROPERTY(Protected, uchar, RadioBroadcastRecv)
 };
 
 class CritterProperties : public EntityProperties
@@ -244,141 +244,141 @@ public:
     explicit CritterProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hstring, ModelName, 0)
+    ENTITY_PROPERTY(Public, hstring, ModelName)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint, WalkTime, 1)
+    ENTITY_PROPERTY(Protected, uint, WalkTime)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint, RunTime, 2)
+    ENTITY_PROPERTY(Protected, uint, RunTime)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Protected, uint, Multihex, 3)
+    ENTITY_PROPERTY(Protected, uint, Multihex)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, MapId, 4)
+    ENTITY_PROPERTY(PrivateServer, uint, MapId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, RefMapId, 5)
+    ENTITY_PROPERTY(PrivateServer, uint, RefMapId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, RefMapPid, 6)
+    ENTITY_PROPERTY(PrivateServer, hstring, RefMapPid)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, RefLocationId, 7)
+    ENTITY_PROPERTY(PrivateServer, uint, RefLocationId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, hstring, RefLocationPid, 8)
+    ENTITY_PROPERTY(PrivateServer, hstring, RefLocationPid)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, HexX, 9)
+    ENTITY_PROPERTY(PrivateCommon, ushort, HexX)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, ushort, HexY, 10)
+    ENTITY_PROPERTY(PrivateCommon, ushort, HexY)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uchar, Dir, 11)
+    ENTITY_PROPERTY(PrivateCommon, uchar, Dir)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, string, Password, 12)
+    ENTITY_PROPERTY(PrivateServer, string, Password)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond, 13)
+    ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, bool, ClientToDelete, 14)
+    ENTITY_PROPERTY(PrivateServer, bool, ClientToDelete)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, ushort, WorldX, 15)
+    ENTITY_PROPERTY(Protected, ushort, WorldX)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, ushort, WorldY, 16)
+    ENTITY_PROPERTY(Protected, ushort, WorldY)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Protected, uint, GlobalMapLeaderId, 17)
+    ENTITY_PROPERTY(Protected, uint, GlobalMapLeaderId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId, 18)
+    ENTITY_PROPERTY(PrivateServer, uint, GlobalMapTripId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, RefGlobalMapTripId, 19)
+    ENTITY_PROPERTY(PrivateServer, uint, RefGlobalMapTripId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, RefGlobalMapLeaderId, 20)
+    ENTITY_PROPERTY(PrivateServer, uint, RefGlobalMapLeaderId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexX, 21)
+    ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexX)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexY, 22)
+    ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexY)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Life, 23)
+    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Life)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Knockout, 24)
+    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Knockout)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Dead, 25)
+    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Dead)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Life, 26)
+    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Life)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Knockout, 27)
+    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Knockout)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Dead, 28)
+    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Dead)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uchar>, GlobalMapFog, 29)
+    ENTITY_PROPERTY(PrivateServer, vector<uchar>, GlobalMapFog)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncNum, 30)
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncNum)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate, 31)
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_NextTime, 32)
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_NextTime)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<int>, TE_Identifier, 33)
+    ENTITY_PROPERTY(PrivateServer, vector<int>, TE_Identifier)
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient, 34)
+    ENTITY_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient)
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, uint, LookDistance, 35)
+    ENTITY_PROPERTY(VirtualProtected, uint, LookDistance)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, char, Gender, 36)
+    ENTITY_PROPERTY(Public, char, Gender)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, hstring, NpcRole, 37)
+    ENTITY_PROPERTY(Protected, hstring, NpcRole)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, int, ReplicationTime, 38)
+    ENTITY_PROPERTY(Protected, int, ReplicationTime)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, TalkDistance, 39)
+    ENTITY_PROPERTY(Public, uint, TalkDistance)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int, ScaleFactor, 40)
+    ENTITY_PROPERTY(Public, int, ScaleFactor)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, int, CurrentHp, 41)
+    ENTITY_PROPERTY(Public, int, CurrentHp)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, MaxTalkers, 42)
+    ENTITY_PROPERTY(PrivateServer, uint, MaxTalkers)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, hstring, DialogId, 43)
+    ENTITY_PROPERTY(Public, hstring, DialogId)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, string, Lexems, 44)
+    ENTITY_PROPERTY(Public, string, Lexems)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, HomeMapId, 45)
+    ENTITY_PROPERTY(PrivateServer, uint, HomeMapId)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ushort, HomeHexX, 46)
+    ENTITY_PROPERTY(PrivateServer, ushort, HomeHexX)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ushort, HomeHexY, 47)
+    ENTITY_PROPERTY(PrivateServer, ushort, HomeHexY)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uchar, HomeDir, 48)
+    ENTITY_PROPERTY(PrivateServer, uchar, HomeDir)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, KnownLocations, 49)
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, KnownLocations)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist1, 50)
+    ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist1)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist2, 51)
+    ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist2)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3, 52)
+    ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId, 53)
+    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId, 54)
+    ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers, 55)
+    ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsHide, 56)
+    ENTITY_PROPERTY(Protected, bool, IsHide)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoHome, 57)
+    ENTITY_PROPERTY(Protected, bool, IsNoHome)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsGeck, 58)
+    ENTITY_PROPERTY(Protected, bool, IsGeck)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoUnarmed, 59)
+    ENTITY_PROPERTY(Protected, bool, IsNoUnarmed)
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, bool, IsNoWalk, 60)
+    ENTITY_PROPERTY(VirtualProtected, bool, IsNoWalk)
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, bool, IsNoRun, 61)
+    ENTITY_PROPERTY(VirtualProtected, bool, IsNoRun)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoRotate, 62)
+    ENTITY_PROPERTY(Protected, bool, IsNoRotate)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoTalk, 63)
+    ENTITY_PROPERTY(Public, bool, IsNoTalk)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsNoFlatten, 64)
+    ENTITY_PROPERTY(Public, bool, IsNoFlatten)
     ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, TimeoutBattle, 65)
+    ENTITY_PROPERTY(Public, uint, TimeoutBattle)
     ///@ ExportProperty Temporary
-    ENTITY_PROPERTY(Protected, uint, TimeoutTransfer, 66)
+    ENTITY_PROPERTY(Protected, uint, TimeoutTransfer)
     ///@ ExportProperty Temporary
-    ENTITY_PROPERTY(Protected, uint, TimeoutRemoveFromGame, 67)
+    ENTITY_PROPERTY(Protected, uint, TimeoutRemoveFromGame)
 };
 
 class MapProperties : public EntityProperties
@@ -389,41 +389,41 @@ public:
     explicit MapProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime1, 0)
+    ENTITY_PROPERTY(PrivateServer, uint, LoopTime1)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime2, 1)
+    ENTITY_PROPERTY(PrivateServer, uint, LoopTime2)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime3, 2)
+    ENTITY_PROPERTY(PrivateServer, uint, LoopTime3)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime4, 3)
+    ENTITY_PROPERTY(PrivateServer, uint, LoopTime4)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, LoopTime5, 4)
+    ENTITY_PROPERTY(PrivateServer, uint, LoopTime5)
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateServer, string, FileDir, 5)
+    ENTITY_PROPERTY(PrivateServer, string, FileDir)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, Width, 6)
+    ENTITY_PROPERTY(PrivateServer, ushort, Width)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, Height, 7)
+    ENTITY_PROPERTY(PrivateServer, ushort, Height)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, WorkHexX, 8)
+    ENTITY_PROPERTY(PrivateServer, ushort, WorkHexX)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, WorkHexY, 9)
+    ENTITY_PROPERTY(PrivateServer, ushort, WorkHexY)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LocId, 10)
+    ENTITY_PROPERTY(PrivateServer, uint, LocId)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, uint, LocMapIndex, 11)
+    ENTITY_PROPERTY(PrivateServer, uint, LocMapIndex)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uchar, RainCapacity, 12)
+    ENTITY_PROPERTY(PrivateServer, uchar, RainCapacity)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, int, CurDayTime, 13)
+    ENTITY_PROPERTY(PrivateServer, int, CurDayTime)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId, 14)
+    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<int>, DayTime, 15)
+    ENTITY_PROPERTY(PrivateServer, vector<int>, DayTime)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<uchar>, DayColor, 16)
+    ENTITY_PROPERTY(PrivateServer, vector<uchar>, DayColor)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, IsNoLogOut, 17)
+    ENTITY_PROPERTY(PrivateServer, bool, IsNoLogOut)
 };
 
 class LocationProperties : public EntityProperties
@@ -434,31 +434,31 @@ public:
     explicit LocationProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos, 0)
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapEntrances, 1)
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapEntrances)
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, Automaps, 2)
+    ENTITY_PROPERTY(PrivateServer, vector<hstring>, Automaps)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, MaxPlayers, 3)
+    ENTITY_PROPERTY(PrivateServer, uint, MaxPlayers)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, AutoGarbage, 4)
+    ENTITY_PROPERTY(PrivateServer, bool, AutoGarbage)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, GeckVisible, 5)
+    ENTITY_PROPERTY(PrivateServer, bool, GeckVisible)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript, 6)
+    ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ushort, WorldX, 7)
+    ENTITY_PROPERTY(PrivateServer, ushort, WorldX)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ushort, WorldY, 8)
+    ENTITY_PROPERTY(PrivateServer, ushort, WorldY)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, ushort, Radius, 9)
+    ENTITY_PROPERTY(PrivateServer, ushort, Radius)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, Hidden, 10)
+    ENTITY_PROPERTY(PrivateServer, bool, Hidden)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, ToGarbage, 11)
+    ENTITY_PROPERTY(PrivateServer, bool, ToGarbage)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uint, Color, 12)
+    ENTITY_PROPERTY(PrivateServer, uint, Color)
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, bool, IsEncounter, 13)
+    ENTITY_PROPERTY(PrivateServer, bool, IsEncounter)
 };

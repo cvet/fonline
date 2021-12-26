@@ -1205,7 +1205,6 @@ set( FO_COMMON_SOURCE
 	"Source/Common/Entity.h"
 	"Source/Common/EntityProtos.cpp"
 	"Source/Common/EntityProtos.h"
-	"Source/Common/EntityProperties.cpp"
 	"Source/Common/EntityProperties.h"
 	"Source/Common/FileSystem.cpp"
 	"Source/Common/FileSystem.h"
@@ -1246,7 +1245,8 @@ set( FO_COMMON_SOURCE
 	"Source/Common/TwoBitMask.h"
 	"Source/Common/UcsTables-Include.h"
 	"Source/Common/WinApi-Include.h"
-	"Source/Scripting/CommonGlobalScriptMethods.cpp" )
+	"Source/Scripting/CommonGlobalScriptMethods.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
 
 list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/Application.cpp" )
 list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/ApplicationHeadless.cpp" )
@@ -1295,7 +1295,8 @@ set( FO_SERVER_SOURCE
 	"Source/Scripting/ServerItemScriptMethods.cpp"
 	"Source/Scripting/ServerCritterScriptMethods.cpp"
 	"Source/Scripting/ServerMapScriptMethods.cpp"
-	"Source/Scripting/ServerLocationScriptMethods.cpp" )
+	"Source/Scripting/ServerLocationScriptMethods.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" )
 
 list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGui.cpp" )
 list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGuiDX.cpp" )
@@ -1341,7 +1342,8 @@ set( FO_CLIENT_SOURCE
 	"Source/Scripting/ClientItemScriptMethods.cpp"
 	"Source/Scripting/ClientCritterScriptMethods.cpp"
 	"Source/Scripting/ClientMapScriptMethods.cpp"
-	"Source/Scripting/ClientLocationScriptMethods.cpp" )
+	"Source/Scripting/ClientLocationScriptMethods.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp" )
 
 set( FO_TOOLS_SOURCE
 	"Source/Tools/EffectBaker.h"
@@ -1355,14 +1357,12 @@ set( FO_TOOLS_SOURCE
 	"Source/Tools/ModelBaker.cpp" )
 
 set( FO_SERVER_SCRIPTING_SOURCE
-	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
 	"Source/Scripting/ServerScripting.h" )
 	
 set( FO_CLIENT_SCRIPTING_SOURCE
-	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
@@ -1382,6 +1382,7 @@ set( FO_SINGLE_SCRIPTING_SOURCE
 	
 set( FO_ADDITIONAL_META_FILES
 	"Source/Common/DataRegistration-Template.cpp"
+	"Source/Common/EntityProperties-Template.cpp"
 	"Source/Scripting/AngelScriptScripting-Template.cpp"
 	"Source/Scripting/MonoScripting-Template.cpp"
 	"Source/Scripting/NativeScripting-Template.cpp"
@@ -1501,6 +1502,7 @@ endforeach()
 list( APPEND FO_CODEGEN_OUTPUT
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"

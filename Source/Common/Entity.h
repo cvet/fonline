@@ -45,10 +45,8 @@
 ///@ ExportEntity Map Map MapView
 ///@ ExportEntity Location Location LocationView
 
-#define ENTITY_PROPERTY(access_type, prop_type, prop, prop_index) \
-    static constexpr ushort prop##_RegIndex = prop_index; \
-    static constexpr Property::AccessType prop##_AccessType = Property::AccessType::access_type; \
-    using prop##_TypeId = prop_type; \
+#define ENTITY_PROPERTY(access_type, prop_type, prop) \
+    static ushort prop##_RegIndex; \
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
     inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
