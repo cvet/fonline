@@ -91,21 +91,25 @@ void FonlineImgui::Init( FOWindow* window, Device_ device )
 	DropContext( );
 	if( isMain )
 	{
-		// GetOverlay( )->Init();
+	#ifndef OVERLAY_OFF
+		 GetOverlay( )->Init();
+	#endif
 	}
 }
 
 void FonlineImgui::Finish( )
 {
-	if( IsMain( ) )
-	{
-		// FinishOverlay( );
-	}
 	WorkContext( );
 	FinishGraphics( );
 	FinishOS( );
 	ImGui::SetCurrentContext( nullptr );
 	ImGui::DestroyContext( Context );
+	if( IsMain( ) )
+	{
+	#ifndef OVERLAY_OFF
+		FinishOverlay( );
+	#endif
+	}
 }
 
 void FonlineImgui::Frame( )

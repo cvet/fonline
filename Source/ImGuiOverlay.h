@@ -1,6 +1,6 @@
 #ifndef IM_GUI_OVERLAY_H
 #define IM_GUI_OVERLAY_H
-
+#define OVERLAY_OFF
 #include "StdAfx.h"
 #include "FonlineImgui.h"
 
