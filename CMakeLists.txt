@@ -1536,6 +1536,7 @@ add_custom_command( OUTPUT ${FO_CODEGEN_OUTPUT}
 add_custom_target( CodeGeneration
 	COMMAND ${FO_CODEGEN_COMMAND}
 	SOURCES ${FO_CODEGEN_META_SOURCE}
+	DEPENDS ${FO_CODEGEN_OUTPUT}
 	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 	COMMENT "Run code generation" )
 list( APPEND FO_COMMANDS_GROUP "CodeGeneration" )
@@ -1545,18 +1546,21 @@ StatusMessage( "Applications:" )
 
 if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER )
 	add_library( CommonLib STATIC ${FO_COMMON_SOURCE} )
+	add_dependencies( CommonLib CodeGeneration )
 	set_target_properties( CommonLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( CommonLib ${FO_COMMON_SYSTEM_LIBS} ${FO_COMMON_LIBS} )
 	list( APPEND FO_CORE_LIBS_GROUP "CommonLib" )
 endif()
 if( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_MAPPER )
 	add_library( ClientLib STATIC ${FO_CLIENT_SOURCE} )
+	add_dependencies( ClientLib CodeGeneration )
 	set_target_properties( ClientLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( ClientLib ${FO_CLIENT_SYSTEM_LIBS} ${FO_CLIENT_LIBS} )
 	list( APPEND FO_CORE_LIBS_GROUP "ClientLib" )
 endif()
 if( FONLINE_BUILD_SERVER )
 	add_library( ServerLib STATIC ${FO_SERVER_SOURCE} )
+	add_dependencies( ServerLib CodeGeneration )
 	set_target_properties( ServerLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( ServerLib ${FO_SERVER_SYSTEM_LIBS} ${FO_SERVER_LIBS} )
 	list( APPEND FO_CORE_LIBS_GROUP "ServerLib" )
@@ -1564,21 +1568,25 @@ endif()
 
 if( FONLINE_BUILD_CLIENT )
 	add_library( ClientScriptingLib STATIC "${FO_CLIENT_SCRIPTING_SOURCE}" )
+	add_dependencies( ClientScriptingLib CodeGeneration )
 	set_target_properties( ClientScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	list( APPEND FO_CORE_LIBS_GROUP "ClientScriptingLib" )
 endif()
 if( FONLINE_BUILD_SERVER )
 	add_library( ServerScriptingLib STATIC "${FO_SERVER_SCRIPTING_SOURCE}" )
+	add_dependencies( ServerScriptingLib CodeGeneration )
 	set_target_properties( ServerScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	list( APPEND FO_CORE_LIBS_GROUP "ServerScriptingLib" )
 endif()
 if( FONLINE_BUILD_MAPPER )
 	add_library( MapperScriptingLib STATIC "${FO_MAPPER_SCRIPTING_SOURCE}" )
+	add_dependencies( MapperScriptingLib CodeGeneration )
 	set_target_properties( MapperScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	list( APPEND FO_CORE_LIBS_GROUP "MapperScriptingLib" )
 endif()
 if( FONLINE_BUILD_SINGLE )
 	add_library( SingleScriptingLib STATIC "${FO_SINGLE_SCRIPTING_SOURCE}" )
+	add_dependencies( SingleScriptingLib CodeGeneration )
 	set_target_properties( SingleScriptingLib PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1" )
 	list( APPEND FO_CORE_LIBS_GROUP "SingleScriptingLib" )
 endif()
@@ -1676,6 +1684,7 @@ if( FONLINE_BUILD_SINGLE )
 		add_library( FOnlineSingle SHARED "Source/Applications/ClientApp.cpp" ${FO_SINGLE_SOURCE} )
 		set_target_properties( FOnlineSingle PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${FO_SINGLE_OUTPUT} )
 	endif()
+	add_dependencies( FOnlineSingle CodeGeneration )
 	set_target_properties( FOnlineSingle PROPERTIES OUTPUT_NAME "FOnlineSingle" )
 	set_target_properties( FOnlineSingle PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=0;FO_SINGLEPLAYER=1" )
 	target_link_libraries( FOnlineSingle "SingleScriptingLib" "bson_static" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
@@ -1719,14 +1728,13 @@ endif()
 if( FONLINE_BUILD_ASCOMPILER AND FO_ANGELSCRIPT_SCRIPTING )
 	StatusMessage( "+ FOnlineASCompiler" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineASCompiler" )
-	
 	add_executable( FOnlineASCompiler
 		"Source/Applications/ASCompilerApp.cpp"
 		"Source/Common/ApplicationHeadless.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp" )
-		
+	add_dependencies( FOnlineASCompiler CodeGeneration )
 	set_target_properties( FOnlineASCompiler PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TOOLS_OUTPUT} )
 	set_target_properties( FOnlineASCompiler PROPERTIES OUTPUT_NAME "FOnlineASCompiler" )
 	if ( FONLINE_BUILD_SINGLE )
@@ -1760,6 +1768,7 @@ if( FONLINE_UNIT_TESTS )
 		"Source/Applications/ClientApp.cpp"
 		"Source/Applications/MapperApp.cpp"
 		"Source/Applications/BakerApp.cpp" )
+	add_dependencies( FOnlineUnitTests CodeGeneration )
 	set_target_properties( FOnlineUnitTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineUnitTests PROPERTIES OUTPUT_NAME "FOnlineUnitTests" )
 	set_target_properties( FOnlineUnitTests PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=1;FO_SINGLEPLAYER=0" )
@@ -1789,6 +1798,7 @@ if( FONLINE_CODE_COVERAGE )
 		"Source/Applications/ClientApp.cpp"
 		"Source/Applications/MapperApp.cpp"
 		"Source/Applications/BakerApp.cpp" )
+	add_dependencies( FOnlineCodeCoverage CodeGeneration )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES OUTPUT_NAME "FOnlineCodeCoverage" )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES COMPILE_DEFINITIONS "${FO_BUILD_DEFINES};FO_TESTING=1;FO_SINGLEPLAYER=0" )
@@ -1822,7 +1832,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		add_custom_target( CompileAngelScripts
 			COMMAND ${FO_CODEGEN_COMMAND}
 			COMMAND ${compileASScripts}
-			DEPENDS ${FO_CODEGEN_OUTPUT}
+			DEPENDS CodeGeneration
 			SOURCES ${FO_ANGELSCRIPT_SOURCE}
 			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 			COMMENT "Compile AngelScript scripts" )
@@ -1841,7 +1851,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		add_custom_target( CompileMonoScripts
 			COMMAND ${FO_CODEGEN_COMMAND}
 			COMMAND ${compileMonoScripts}
-			DEPENDS ${FO_CODEGEN_OUTPUT}
+			DEPENDS CodeGeneration
 			SOURCES ${FO_MONO_SOURCE}
 			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 			COMMENT "Compile Mono scripts" )
@@ -1853,7 +1863,7 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		COMMAND ${FO_CODEGEN_COMMAND}
 		COMMAND ${compileASScripts}
 		COMMAND ${compileMonoScripts}
-		DEPENDS ${FO_CODEGEN_OUTPUT}
+		DEPENDS CodeGeneration
 		SOURCES ${FO_ANGELSCRIPT_SOURCE} ${FO_MONO_SOURCE}
 		WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 		COMMENT "Compile all scripts" )
@@ -1868,6 +1878,7 @@ endforeach()
 
 add_custom_target( BakeContent
 	COMMAND ${bakeContent}
+	DEPENDS CodeGeneration
 	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
 	COMMENT "Bake resources" )
 list( APPEND FO_COMMANDS_GROUP "BakeContent" )
@@ -1879,6 +1890,7 @@ endforeach()
 
 add_custom_target( BakeResources
 	COMMAND ${bakeResources}
+	DEPENDS CodeGeneration
 	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
 	COMMENT "Bake resources" )
 list( APPEND FO_COMMANDS_GROUP "BakeResources" )
@@ -1886,6 +1898,7 @@ list( APPEND FO_COMMANDS_GROUP "BakeResources" )
 add_custom_target( BakeAll
 	COMMAND ${bakeContent}
 	COMMAND ${bakeResources}
+	DEPENDS CodeGeneration
 	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
 	COMMENT "Bake all" )
 list( APPEND FO_COMMANDS_GROUP "BakeAll" )
@@ -1898,7 +1911,7 @@ if( FO_PACKAGES )
 		COMMAND ${compileMonoScripts}
 		COMMAND ${bakeContent}
 		COMMAND ${bakeResources}
-		DEPENDS ${FO_CODEGEN_OUTPUT}
+		DEPENDS CodeGeneration
 		WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
 		COMMENT "Make all packages" )
 	list( APPEND FO_COMMANDS_GROUP "MakeAllPackages" )
@@ -1912,7 +1925,7 @@ if( FO_PACKAGES )
 			COMMAND ${compileMonoScripts}
 			COMMAND ${bakeContent}
 			COMMAND ${bakeResources}
-			DEPENDS ${FO_CODEGEN_OUTPUT}
+			DEPENDS CodeGeneration
 			WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
 			COMMENT "Make package ${package}" )
 		list( APPEND FO_COMMANDS_GROUP "MakePackage-${package}" )
