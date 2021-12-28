@@ -1128,16 +1128,6 @@ def genCode(lang, target, isASCompiler=False):
         defineLines.append('#define MAPPER_SCRIPTING ' + ('1' if target == 'Mapper' else '0'))
         defineLines.append('#define COMPILER_MODE ' + ('1' if isASCompiler else '0'))
         
-        # Enums
-        globalLines.append('// Script enums')
-        if target != 'Client' or isASCompiler:
-            for e in codeGenTags['Enum']:
-                gname, utype, keyValues, _, _ = e
-                globalLines.append('enum class AS_' + gname + ' : ' + metaTypeToEngineType(utype, target, False) + ' { };')
-        else:
-            globalLines.append('// Will be restored later')
-        globalLines.append('')
-        
         # Scriptable objects and entity stubs
         if isASCompiler:
             globalLines.append('// Compiler entity stubs')
@@ -1202,7 +1192,7 @@ def genCode(lang, target, isASCompiler=False):
             globalLines.append(ident + '}')
             globalLines.append('')
             
-        globalLines.append('// Marshalling entity functions')
+        globalLines.append('// Marshalling entity methods')
         for entity in gameEntities:
             if entity != 'Game':
                 for methodTag in codeGenTags['ExportMethod']:
