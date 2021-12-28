@@ -402,6 +402,8 @@ def parseTags():
                                 return 'uint8'
                             if maxValue <= 0xFFFF:
                                 return 'uint16'
+                            if maxValue <= 0x7FFFFFFF:
+                                return 'int'
                             if maxValue <= 0xFFFFFFFF:
                                 return 'uint'
                         assert False, 'Can\'t deduce enum underlying type (' + minValue + ', ' + maxValue + ')'
@@ -720,14 +722,14 @@ def parseTags():
     def postprocessTags():
         # Generate entity properties enums
         for entity in gameEntities:
-            keyValues = [('Invalid', '-1', [])]
+            keyValues = [('Invalid', '0xFFFF', [])]
             index = 0
             for propTag in codeGenTags['ExportProperty'] + codeGenTags['Property']:
                 ent, _, _, name, _, _ = propTag
                 if ent == entity:
                     keyValues.append((name, str(index), []))
                     index += 1
-            codeGenTags['Enum'].append([entity + 'Property', 'int16', keyValues, [], []])
+            codeGenTags['Enum'].append([entity + 'Property', 'uint16', keyValues, [], []])
     
     parseTypeTags()
     parseOtherTags()
@@ -1008,7 +1010,7 @@ def genDataRegistration():
             if target == 'Client':
                 def addPropMapEntry(e):
                     propertyMapLines.append('{ "' + e + '", [](RESTORE_ARGS) { RegisterProperty<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
-                fakedEnums = ['ScriptEnum_int8', 'ScriptEnum_uint8', 'ScriptEnum_int16', 'ScriptEnum_uint16', 'ScriptEnum_int', 'ScriptEnum_uint']
+                fakedEnums = ['ScriptEnum_uint8', 'ScriptEnum_uint16', 'ScriptEnum_int', 'ScriptEnum_uint']
                 for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + fakedEnums:
                     addPropMapEntry(t)
                     addPropMapEntry('arr.' + t)
@@ -1118,7 +1120,6 @@ def genCode(lang, target, isASCompiler=False):
         allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
         
         defineLines = []
-        propertyMapLines = []
         globalLines = []
         registerLines = []
         
@@ -1137,11 +1138,6 @@ def genCode(lang, target, isASCompiler=False):
             globalLines.append('// Will be restored later')
         globalLines.append('')
         
-        globalLines.append('// Entity property enums')
-        for e in gameEntities:
-            globalLines.append('enum class ' + e + 'Property : ushort { };')
-        globalLines.append('')
-
         # Scriptable objects and entity stubs
         if isASCompiler:
             globalLines.append('// Compiler entity stubs')
@@ -1225,35 +1221,6 @@ def genCode(lang, target, isASCompiler=False):
         globalLines.append('};')
         globalLines.append('')
         
-        # Marshalling properties
-        def writeMarshalingProperty(entity, type, name):
-            engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
-            globalLines.append('static ' + metaTypeToASEngineType(type, True) + ' AS_' + entity + '_Get_' + name + '(' + engineEntityType + '* self)')
-            globalLines.append('{')
-            if not isASCompiler:
-                globalLines.append('    ENTITY_VERIFY(self);')
-                globalLines.append('    return ' + marshalBack(type, 'self->Get' + name + '()') + ';')
-            else:
-                globalLines.append('    throw ScriptCompilerException("Stub");')
-            globalLines.append('}')
-            globalLines.append('')
-            globalLines.append('static void AS_' + entity + '_Set_' + name + '(' + engineEntityType + '* self, ' + metaTypeToASEngineType(type, False) + ' value)')
-            globalLines.append('{')
-            if not isASCompiler:
-                globalLines.append('    ENTITY_VERIFY(self);')
-                globalLines.append('    self->Set' + name + '(' + marshalIn(type, 'value') + ');')
-            else:
-                globalLines.append('    throw ScriptCompilerException("Stub");')
-            globalLines.append('};')
-            globalLines.append('')
-        
-        globalLines.append('// Marshalling properties')
-        for entity in gameEntities:
-            for methodTag in codeGenTags['ExportProperty']:
-                ent, access, type, name, exportFlags, comment = methodTag
-                if ent == entity:
-                    writeMarshalingProperty(entity, type, name)
-
         # Register enums
         registerLines.append('// Engine enums')
         for e in codeGenTags['ExportEnum']:
@@ -1278,8 +1245,10 @@ def genCode(lang, target, isASCompiler=False):
         
         else:
             registerLines.append('// Will be restored later')
+            registerLines.append('')
         
         # Register exported objects
+        registerLines.append('// Exported objects')
         for eo in codeGenTags['ExportObject']:
             targ, objName, fields, _, _ = eo
             if targ in allowedTargets:
@@ -1331,32 +1300,21 @@ def genCode(lang, target, isASCompiler=False):
         registerLines.append('// Register entity properties')
         if target != 'Client' or isASCompiler:
             registerLines.append('const PropertyRegistrator* registrator = nullptr;')
+            registerLines.append('')
             for entity in gameEntities:
                 if not isASCompiler:
                     registerLines.append('registrator = game_engine->GetPropertyRegistrator("' + entity + '");')
-                for methodTag in codeGenTags['Property']:
+                for methodTag in codeGenTags['ExportProperty'] + codeGenTags['Property']:
                     ent, _, type, name, _, _ = methodTag
                     if ent == entity:
-                        registerLines.append('RegisterAngelScriptProperty<' + metaTypeToEngineType(type, target, False) + '>(engine, registrator, "' + name + '");')
+                        registerLines.append('RegisterAngelScriptProperty(engine, registrator, "' + name + '");')
+                registerLines.append('')
         else:
             registerLines.append('// Will be restored later')
-        registerLines.append('')
-        
-        # Restore properties type map
-        if target == 'Client' and not isASCompiler:
-            def addPropMapEntry(e):
-                propertyMapLines.append('{ "' + metaTypeToASType(e) + '", [](RESTORE_ARGS) { RegisterAngelScriptProperty<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
-            for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring']:
-                addPropMapEntry(t)
-                addPropMapEntry('arr.' + t)
-            for tKey in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'hstring']:
-                for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'hstring', 'string']:
-                    addPropMapEntry('dict.' + tKey + '.' + t)
-                    addPropMapEntry('dict.' + tKey + '.arr.' + t)
+            registerLines.append('')
         
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')
-        insertCodeGenLines(propertyMapLines, 'PropertyMap')
         insertCodeGenLines(globalLines, 'Global')
         insertCodeGenLines(defineLines, 'Defines')
 

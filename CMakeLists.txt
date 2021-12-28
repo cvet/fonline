@@ -1494,6 +1494,9 @@ list( APPEND FO_CODEGEN_META_SOURCE
 	${FO_TOOLS_SOURCE}
 	${FO_ANGELSCRIPT_SOURCE}
 	${FO_MONO_SOURCE} )
+list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
+list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" )
+list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp" )
 
 foreach( entry ${FO_CODEGEN_META_SOURCE} )
 	list( APPEND FO_CODEGEN_COMMAND_ARGS -meta ${entry} )
@@ -1534,11 +1537,9 @@ add_custom_command( OUTPUT ${FO_CODEGEN_OUTPUT}
 	COMMENT "Code generation" )
 
 add_custom_target( CodeGeneration
-	COMMAND ${FO_CODEGEN_COMMAND}
 	SOURCES ${FO_CODEGEN_META_SOURCE}
 	DEPENDS ${FO_CODEGEN_OUTPUT}
-	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-	COMMENT "Run code generation" )
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" )
 list( APPEND FO_COMMANDS_GROUP "CodeGeneration" )
 
 # Applications
@@ -1830,7 +1831,6 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		endif()
 
 		add_custom_target( CompileAngelScripts
-			COMMAND ${FO_CODEGEN_COMMAND}
 			COMMAND ${compileASScripts}
 			DEPENDS CodeGeneration
 			SOURCES ${FO_ANGELSCRIPT_SOURCE}
@@ -1849,7 +1849,6 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 		set( compileMonoScripts ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/compile-mono-scripts.py" ${monoCompileCommands} )
 
 		add_custom_target( CompileMonoScripts
-			COMMAND ${FO_CODEGEN_COMMAND}
 			COMMAND ${compileMonoScripts}
 			DEPENDS CodeGeneration
 			SOURCES ${FO_MONO_SOURCE}
@@ -1860,7 +1859,6 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 
 	# Compile all scripts
 	add_custom_target( CompileAllScripts
-		COMMAND ${FO_CODEGEN_COMMAND}
 		COMMAND ${compileASScripts}
 		COMMAND ${compileMonoScripts}
 		DEPENDS CodeGeneration
@@ -1906,7 +1904,6 @@ list( APPEND FO_COMMANDS_GROUP "BakeAll" )
 # Packaging
 if( FO_PACKAGES )
 	add_custom_target( MakeAllPackages
-		COMMAND ${FO_CODEGEN_COMMAND}
 		COMMAND ${compileASScripts}
 		COMMAND ${compileMonoScripts}
 		COMMAND ${bakeContent}
@@ -1920,7 +1917,6 @@ if( FO_PACKAGES )
 
 	foreach( package ${FO_PACKAGES} )
 		add_custom_target( MakePackage-${package}
-			COMMAND ${FO_CODEGEN_COMMAND}
 			COMMAND ${compileASScripts}
 			COMMAND ${compileMonoScripts}
 			COMMAND ${bakeContent}

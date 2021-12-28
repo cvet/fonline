@@ -62,13 +62,7 @@
 #include "Client.h"
 #endif
 
-enum class ScriptEnum_int8 : char
-{
-};
 enum class ScriptEnum_uint8 : uchar
-{
-};
-enum class ScriptEnum_int16 : short
 {
 };
 enum class ScriptEnum_uint16 : ushort
@@ -211,11 +205,29 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
 
     // Restore enums
     for (const auto& info : restoreInfo["Enums"]) {
-        auto tokens = _str(info).split(' ');
-        // AS_VERIFY(engine->RegisterEnum(tokens[0].c_str()));
-        // for (size_t i = 2; i < tokens.size() - 2; i += 2) {
-        //    AS_VERIFY(engine->RegisterEnumValue(tokens[0].c_str(), tokens[i].c_str(), _str(tokens[i + 1]).toInt()));
-        //}
+        static unordered_map<string, const type_info*> enum_type_map = {
+            {"int8", &typeid(char)},
+            {"int16", &typeid(short)},
+            {"int", &typeid(int)},
+            {"uint8", &typeid(uchar)},
+            {"uint16", &typeid(ushort)},
+            {"uint", &typeid(uint)},
+        };
+
+        const auto tokens = _str(info).split(' ');
+        const auto& enum_name = tokens[0];
+        const auto* enum_type = enum_type_map[tokens[1]];
+
+        unordered_map<string, int> key_values;
+        for (size_t i = 2; i < tokens.size(); i++) {
+            const auto kv = _str(tokens[i]).split('=');
+            RUNTIME_ASSERT(kv.size() == 2);
+            const auto key = kv[0];
+            const auto value = _str(kv[1]).toInt();
+            key_values.emplace(key, value);
+        }
+
+        AddEnumGroup(enum_name, *enum_type, std::move(key_values));
     }
 
     // Restore properties
@@ -224,6 +236,7 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
         auto* prop_registrator = registrators[tokens[0]];
         auto flags = tokens;
         flags.erase(flags.begin(), flags.begin() + 4);
+
         RestoreProperty(prop_registrator, tokens[1], tokens[2], tokens[3], flags);
     }
 

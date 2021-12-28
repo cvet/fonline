@@ -692,7 +692,7 @@ bool CScriptDict::GetFlag()
     return gcFlag;
 }
 
-void CScriptDict::GetMap(std::vector<std::pair<void*, void*>>& data)
+void CScriptDict::GetMap(std::vector<std::pair<void*, void*>>& data) const
 {
     DictMap* dict = (DictMap*)dictMap;
     data.reserve(data.size() + dict->size());

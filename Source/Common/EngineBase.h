@@ -59,6 +59,8 @@ public:
     [[nodiscard]] auto ToHashedString(string_view s) const -> hstring override;
     [[nodiscard]] auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
     [[nodiscard]] auto ResolveGenericValue(string_view str, bool& failed) -> int override;
+    [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
+    [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
 
     void ResetRegisteredData();
     void FinalizeDataRegistration();

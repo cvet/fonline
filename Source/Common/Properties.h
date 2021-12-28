@@ -54,7 +54,7 @@ class Property final
 {
     friend class PropertyRegistrator;
     friend class Properties;
-    friend class PropertiesSerializator;
+    friend class PropertiesSerializator; // Todo: remove friend from PropertiesSerializator and use public Property interface
 
 public:
     enum class AccessType
@@ -89,23 +89,33 @@ public:
     auto operator=(Property&&) noexcept = delete;
     ~Property() = default;
 
-    [[nodiscard]] auto GetName() const -> string;
-    [[nodiscard]] auto GetTypeName() const -> string;
-    [[nodiscard]] auto GetRegIndex() const -> ushort;
-    [[nodiscard]] auto GetAccess() const -> AccessType;
+    [[nodiscard]] auto GetName() const -> const string& { return _propName; }
+    [[nodiscard]] auto GetFullTypeName() const -> const string& { return _fullTypeName; }
+    [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseTypeName; }
+    [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
+    [[nodiscard]] auto GetDictArrayTypeName() const -> const string& { return _dictArrayTypeName; }
 
-    [[nodiscard]] auto GetBaseSize() const -> uint;
-    [[nodiscard]] auto IsPlainData() const -> bool;
-    [[nodiscard]] auto IsDict() const -> bool;
-    [[nodiscard]] auto IsHash() const -> bool;
-    [[nodiscard]] auto IsResource() const -> bool;
-    [[nodiscard]] auto IsEnum() const -> bool;
+    [[nodiscard]] auto GetRegIndex() const -> ushort { return _regIndex; }
+    [[nodiscard]] auto GetAccess() const -> AccessType { return _accessType; }
+    [[nodiscard]] auto GetBaseSize() const -> uint { return _baseSize; }
+    [[nodiscard]] auto GetDictKeySize() const -> uint { return _dictKeySize; }
+    [[nodiscard]] auto IsPlainData() const -> bool { return _dataType == DataType::PlainData; }
+    [[nodiscard]] auto IsString() const -> bool { return _dataType == DataType::String; }
+    [[nodiscard]] auto IsArray() const -> bool { return _dataType == DataType::Array; }
+    [[nodiscard]] auto IsArrayOfString() const -> bool { return _isArrayOfString; }
+    [[nodiscard]] auto IsDict() const -> bool { return _dataType == DataType::Dict; }
+    [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
+    [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
+    [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
+    [[nodiscard]] auto IsHash() const -> bool { return _isHash; }
+    [[nodiscard]] auto IsResource() const -> bool { return _isResourceHash; }
+    [[nodiscard]] auto IsEnum() const -> bool { return _isEnum; }
 
-    [[nodiscard]] auto IsReadable() const -> bool;
-    [[nodiscard]] auto IsWritable() const -> bool;
-    [[nodiscard]] auto IsReadOnly() const -> bool;
-    [[nodiscard]] auto IsTemporary() const -> bool;
-    [[nodiscard]] auto IsHistorical() const -> bool;
+    [[nodiscard]] auto IsReadable() const -> bool { return _isReadable; }
+    [[nodiscard]] auto IsWritable() const -> bool { return _isWritable; }
+    [[nodiscard]] auto IsReadOnly() const -> bool { return _isReadOnly; }
+    [[nodiscard]] auto IsTemporary() const -> bool { return _isTemporary; }
+    [[nodiscard]] auto IsHistorical() const -> bool { return _isHistorical; }
 
 private:
     enum class DataType
@@ -157,6 +167,7 @@ private:
     bool _isDictKeyEnum {};
     uint _dictKeySize {};
     string _dictKeyTypeName {};
+    string _dictArrayTypeName {};
 
     AccessType _accessType {};
     bool _isReadOnly {};
@@ -444,6 +455,7 @@ private:
         using Type = std::underlying_type_t<T>;
         static constexpr auto IS_HASH = false;
         static constexpr auto IS_ENUM = true;
+        static_assert(std::is_same_v<Type, uchar> || std::is_same_v<Type, ushort> || std::is_same_v<Type, int> || std::is_same_v<Type, uint>);
     };
 
     template<typename T, typename Enable = void>

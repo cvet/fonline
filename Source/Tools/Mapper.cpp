@@ -1778,7 +1778,7 @@ void FOMapper::ObjDraw()
     for (const auto* prop : ShowProps) {
         if (prop != nullptr) {
             auto value = entity->GetProperties().SavePropertyToText(prop);
-            DrawLine(prop->GetName(), prop->GetTypeName(), value, prop->IsReadOnly(), r);
+            DrawLine(prop->GetName(), prop->GetFullTypeName(), value, prop->IsReadOnly(), r);
         }
         else {
             r.Top += DRAW_NEXT_HEIGHT;

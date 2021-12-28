@@ -185,13 +185,7 @@ static void DummyFunc(asIScriptGeneric* gen)
 }
 #endif
 
-enum class ScriptEnum_int8 : char
-{
-};
 enum class ScriptEnum_uint8 : uchar
-{
-};
-enum class ScriptEnum_int16 : short
 {
 };
 enum class ScriptEnum_uint16 : ushort
@@ -233,11 +227,11 @@ static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> CScri
     return as_array;
 }
 
-template<typename Type>
+template<typename T>
 static void VerifyEntityArray(asIScriptEngine* as_engine, CScriptArray* as_array)
 {
     for (const auto i : xrange(as_array->GetSize())) {
-        ENTITY_VERIFY(*reinterpret_cast<Type*>(as_array->At(i)));
+        ENTITY_VERIFY(*reinterpret_cast<T*>(as_array->At(i)));
     }
 }
 
@@ -359,26 +353,6 @@ static auto Entity_ProtoId(BaseEntity* self) -> hstring
 
 ///@ CodeGen Global
 
-template<typename T>
-static void Property_GetValue(asIScriptGeneric* gen)
-{
-    const auto* entity = static_cast<Entity*>(gen->GetObject());
-    const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
-    ENTITY_VERIFY(entity);
-
-    // new (gen->GetAddressOfReturnLocation()) T(((Property*)gen->GetAuxiliary())->GetValue<T>((Entity*)gen->GetObject()));
-}
-
-template<typename T>
-static void Property_SetValue(asIScriptGeneric* gen)
-{
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
-    ENTITY_VERIFY(entity);
-
-    // ((Property*)gen->GetAuxiliary())->SetValue<T>((Entity*)gen->GetObject(), *(T*)gen->GetAddressOfArg(0));
-}
-
 static void Property_GetValueAsInt(asIScriptGeneric* gen)
 {
     auto* entity = static_cast<Entity*>(gen->GetObject());
@@ -471,8 +445,343 @@ static void Property_SetValueAsFloat(asIScriptGeneric* gen)
     entity->SetValueAsFloat(prop, *static_cast<float*>(gen->GetAddressOfArg(1)));
 }
 
-template<typename T>
-static void RegisterAngelScriptProperty(asIScriptEngine* engine, const PropertyRegistrator* registrator, const char* name)
+static void Property_GetValue(asIScriptGeneric* gen)
+{
+    const auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
+    ENTITY_VERIFY(entity);
+
+    uint data_size;
+    const auto* data = entity->GetProperties().GetRawData(prop, data_size);
+
+    if (prop->IsPlainData()) {
+        RUNTIME_ASSERT(data_size);
+        memcpy(gen->GetAddressOfReturnLocation(), data, data_size);
+    }
+    else if (prop->IsString()) {
+        new (gen->GetAddressOfReturnLocation()) string(reinterpret_cast<const char*>(data), data_size);
+    }
+    else if (prop->IsArray()) {
+        auto* arr = CreateASArray(gen->GetEngine(), prop->GetFullTypeName().c_str());
+
+        if (prop->IsArrayOfString()) {
+            if (data_size > 0u) {
+                uint arr_size;
+                std::memcpy(&arr_size, data, sizeof(arr_size));
+                data += sizeof(arr_size);
+
+                arr->Resize(arr_size);
+
+                for (uint i = 0; i < arr_size; i++) {
+                    uint str_size;
+                    std::memcpy(&str_size, data, sizeof(str_size));
+                    data += sizeof(str_size);
+
+                    string str(reinterpret_cast<const char*>(data), str_size);
+                    arr->SetValue(i, &str);
+
+                    data += str_size;
+                }
+            }
+        }
+        else {
+            if (data_size > 0u) {
+                arr->Resize(data_size / prop->GetBaseSize());
+
+                std::memcpy(arr->At(0), data, data_size);
+            }
+        }
+
+        *static_cast<CScriptArray**>(gen->GetAddressOfReturnLocation()) = arr;
+    }
+    else if (prop->IsDict()) {
+        CScriptDict* dict = CreateASDict(gen->GetEngine(), prop->GetFullTypeName().c_str());
+
+        if (data_size > 0u) {
+            if (prop->IsDictOfArray()) {
+                const auto* data_end = data + data_size;
+
+                while (data < data_end) {
+                    const auto* key = data;
+                    data += prop->GetDictKeySize();
+
+                    uint arr_size;
+                    std::memcpy(&arr_size, data, sizeof(arr_size));
+                    data += sizeof(arr_size);
+
+                    auto* arr = CreateASArray(gen->GetEngine(), prop->GetDictArrayTypeName().c_str());
+
+                    if (arr_size > 0u) {
+                        if (prop->IsDictOfArrayOfString()) {
+                            arr->Resize(arr_size);
+
+                            for (uint i = 0; i < arr_size; i++) {
+                                uint str_size;
+                                std::memcpy(&str_size, data, sizeof(str_size));
+                                data += sizeof(str_size);
+
+                                string str(reinterpret_cast<const char*>(data), str_size);
+                                arr->SetValue(i, &str);
+                                data += str_size;
+                            }
+                        }
+                        else {
+                            arr->Resize(arr_size);
+
+                            std::memcpy(arr->At(0), data, arr_size * prop->GetBaseSize());
+                            data += arr_size * prop->GetBaseSize();
+                        }
+                    }
+
+                    dict->Set((void*)key, &arr);
+                    arr->Release();
+                }
+            }
+            else if (prop->IsDictOfString()) {
+                const auto* data_end = data + data_size;
+
+                while (data < data_end) {
+                    const auto* key = data;
+                    data += prop->GetDictKeySize();
+
+                    uint str_size;
+                    std::memcpy(&str_size, data, sizeof(str_size));
+                    data += sizeof(uint);
+
+                    string str(reinterpret_cast<const char*>(data), str_size);
+                    dict->Set((void*)key, &str);
+
+                    data += str_size;
+                }
+            }
+            else {
+                const auto whole_element_size = prop->GetDictKeySize() + prop->GetBaseSize();
+                const auto dict_size = data_size / whole_element_size;
+
+                for (uint i = 0; i < dict_size; i++) {
+                    dict->Set((void*)(data + i * whole_element_size), (void*)(data + i * whole_element_size + prop->GetDictKeySize()));
+                }
+            }
+        }
+
+        *static_cast<CScriptDict**>(gen->GetAddressOfReturnLocation()) = dict;
+    }
+    else {
+        throw UnreachablePlaceException(LINE_STR);
+    }
+}
+
+static void Property_SetValue(asIScriptGeneric* gen)
+{
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
+    ENTITY_VERIFY(entity);
+
+    auto& props = entity->GetPropertiesForEdit();
+    const auto* data = static_cast<const uchar*>(gen->GetAddressOfArg(0));
+
+    if (prop->IsPlainData()) {
+        props.SetRawData(prop, data, prop->GetBaseSize());
+    }
+    else if (prop->IsString()) {
+        const auto& str = *reinterpret_cast<const string*>(data);
+        props.SetRawData(prop, reinterpret_cast<const uchar*>(str.data()), static_cast<uint>(str.length()));
+    }
+    else if (prop->IsArray()) {
+        const auto* arr = reinterpret_cast<const CScriptArray*>(data);
+
+        if (prop->IsArrayOfString()) {
+            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+
+            if (arr_size > 0u) {
+                // Calculate size
+                uint data_size = sizeof(uint);
+                for (uint i = 0; i < arr_size; i++) {
+                    const auto& str = *static_cast<const string*>(arr->At(i));
+                    data_size += sizeof(uint) + static_cast<uint>(str.length());
+                }
+
+                // Make buffer
+                auto* init_buf = new uchar[data_size];
+                auto* buf = init_buf;
+
+                std::memcpy(buf, &arr_size, sizeof(arr_size));
+                buf += sizeof(uint);
+
+                for (uint i = 0; i < arr_size; i++) {
+                    const auto& str = *static_cast<const string*>(arr->At(i));
+
+                    uint str_size = static_cast<uint>(str.length());
+                    std::memcpy(buf, &str_size, sizeof(str_size));
+                    buf += sizeof(str_size);
+
+                    if (str_size > 0u) {
+                        std::memcpy(buf, str.c_str(), str_size);
+                        buf += str_size;
+                    }
+                }
+
+                props.SetRawData(prop, init_buf, data_size);
+                delete[] init_buf;
+            }
+            else {
+                props.SetRawData(prop, nullptr, 0u);
+            }
+        }
+        else {
+            const auto data_size = (arr != nullptr ? arr->GetSize() * prop->GetBaseSize() : 0u);
+
+            if (data_size > 0u) {
+                props.SetRawData(prop, static_cast<const uchar*>(arr->At(0)), data_size);
+            }
+            else {
+                props.SetRawData(prop, nullptr, 0u);
+            }
+        }
+    }
+    else if (prop->IsDict()) {
+        const auto* dict = reinterpret_cast<const CScriptDict*>(data);
+
+        if (prop->IsDictOfArray()) {
+            if (dict != nullptr && dict->GetSize() > 0u) {
+                // Calculate size
+                uint data_size = 0u;
+                vector<pair<void*, void*>> dict_map;
+                dict->GetMap(dict_map);
+
+                for (const auto& [key, value] : dict_map) {
+                    const auto* arr = *static_cast<const CScriptArray**>(value);
+                    uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+                    data_size += prop->GetDictKeySize() + sizeof(arr_size);
+
+                    if (prop->IsDictOfArrayOfString()) {
+                        for (uint i = 0; i < arr_size; i++) {
+                            const auto& str = *static_cast<const string*>(arr->At(i));
+                            data_size += sizeof(uint) + static_cast<uint>(str.length());
+                        }
+                    }
+                    else {
+                        data_size += arr_size * prop->GetBaseSize();
+                    }
+                }
+
+                // Make buffer
+                auto* init_buf = new uchar[data_size];
+                auto* buf = init_buf;
+
+                for (const auto& [key, value] : dict_map) {
+                    const auto* arr = *static_cast<const CScriptArray**>(value);
+                    std::memcpy(buf, key, prop->GetDictKeySize());
+                    buf += prop->GetDictKeySize();
+
+                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+                    std::memcpy(buf, &arr_size, sizeof(uint));
+                    buf += sizeof(arr_size);
+
+                    if (arr_size > 0u) {
+                        if (prop->IsDictOfArrayOfString()) {
+                            for (uint i = 0; i < arr_size; i++) {
+                                const auto& str = *static_cast<const string*>(arr->At(i));
+                                const auto str_size = static_cast<uint>(str.length());
+
+                                std::memcpy(buf, &str_size, sizeof(uint));
+                                buf += sizeof(str_size);
+
+                                if (str_size > 0u) {
+                                    std::memcpy(buf, str.c_str(), str_size);
+                                    buf += arr_size;
+                                }
+                            }
+                        }
+                        else {
+                            std::memcpy(buf, arr->At(0), arr_size * prop->GetBaseSize());
+                            buf += arr_size * prop->GetBaseSize();
+                        }
+                    }
+                }
+
+                props.SetRawData(prop, init_buf, data_size);
+                delete[] init_buf;
+            }
+            else {
+                props.SetRawData(prop, nullptr, 0u);
+            }
+        }
+        else if (prop->IsDictOfString()) {
+            if (dict != nullptr && dict->GetSize() > 0u) {
+                // Calculate size
+                uint data_size = 0u;
+
+                vector<pair<void*, void*>> dict_map;
+                dict->GetMap(dict_map);
+
+                for (const auto& [key, value] : dict_map) {
+                    const auto& str = *static_cast<const string*>(value);
+                    const auto str_size = static_cast<uint>(str.length());
+
+                    data_size += prop->GetDictKeySize() + sizeof(str_size) + str_size;
+                }
+
+                // Make buffer
+                uchar* init_buf = new uchar[data_size];
+                uchar* buf = init_buf;
+
+                for (const auto& [key, value] : dict_map) {
+                    const auto& str = *static_cast<const string*>(value);
+                    std::memcpy(buf, key, prop->GetDictKeySize());
+                    buf += prop->GetDictKeySize();
+
+                    const auto str_size = static_cast<uint>(str.length());
+                    std::memcpy(buf, &str_size, sizeof(uint));
+                    buf += sizeof(str_size);
+
+                    if (str_size > 0u) {
+                        std::memcpy(buf, str.c_str(), str_size);
+                        buf += str_size;
+                    }
+                }
+
+                props.SetRawData(prop, init_buf, data_size);
+                delete[] init_buf;
+            }
+            else {
+                props.SetRawData(prop, nullptr, 0u);
+            }
+        }
+        else {
+            const auto key_element_size = prop->GetDictKeySize();
+            const auto value_element_size = prop->GetBaseSize();
+            const auto whole_element_size = key_element_size + value_element_size;
+            const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0u);
+
+            if (data_size > 0u) {
+                auto* init_buf = new uchar[data_size];
+                auto* buf = init_buf;
+
+                vector<pair<void*, void*>> dict_map;
+                dict->GetMap(dict_map);
+
+                for (const auto& [key, value] : dict_map) {
+                    std::memcpy(buf, key, key_element_size);
+                    buf += key_element_size;
+                    std::memcpy(buf, value, value_element_size);
+                    buf += value_element_size;
+                }
+
+                props.SetRawData(prop, init_buf, data_size);
+                delete[] init_buf;
+            }
+            else {
+                props.SetRawData(prop, nullptr, 0u);
+            }
+        }
+    }
+    else {
+        throw UnreachablePlaceException(LINE_STR);
+    }
+}
+
+static void RegisterAngelScriptProperty(asIScriptEngine* engine, const PropertyRegistrator* registrator, string_view name)
 {
     const auto* prop = registrator->Find(name);
     RUNTIME_ASSERT(prop);
@@ -481,30 +790,13 @@ static void RegisterAngelScriptProperty(asIScriptEngine* engine, const PropertyR
     if (prop->IsReadable()) {
         const char* decl_get = 0;
         //'"const ' + metaTypeToASType(type) + ('@' if False else '') + ' get_' + name + '() const",
-        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_get, asFUNCTION((Property_GetValue<T>)), asCALL_GENERIC, (void*)prop));
+        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_get, asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
     }
     if (prop->IsWritable()) {
         const char* decl_set = 0;
         //'"void set_' + name + '(' + ('const ' if False else '') + metaTypeToASType(type) + ('@' if False else '') + ')", ' +
-        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_set, asFUNCTION((Property_SetValue<T>)), asCALL_GENERIC, (void*)prop));
+        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_set, asFUNCTION(Property_SetValue), asCALL_GENERIC, (void*)prop));
     }
-}
-
-static void RestoreAngelScriptProperty(asIScriptEngine* engine, const PropertyRegistrator* registrator, string_view type, const string& name)
-{
-#define RESTORE_ARGS asIScriptEngine *engine, const PropertyRegistrator *registrator, const char *name
-#define RESTORE_ARGS_PASS engine, registrator, name
-
-    static unordered_map<string_view, std::function<void(asIScriptEngine*, const PropertyRegistrator*, const char*)>> call_map = {
-        ///@ CodeGen PropertyMap
-    };
-
-    const auto it = call_map.find(type);
-    if (it == call_map.end()) {
-        throw ScriptInitException("Invalid property for restoring", type);
-    }
-
-    it->second(engine, registrator, name.c_str());
 }
 
 template<class T>
@@ -702,22 +994,19 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if CLIENT_SCRIPTING && !COMPILER_MODE
     // Restore enums
-    /*for (const auto& info : _restoreInfo["Enums"]) {
-        auto tokens = _str(info).split(' ');
-        AS_VERIFY(engine->RegisterEnum(tokens[0].c_str()));
-        for (size_t i = 2; i < tokens.size() - 2; i += 2) {
-            AS_VERIFY(engine->RegisterEnumValue(tokens[0].c_str(), tokens[i].c_str(), _str(tokens[i + 1]).toInt()));
+    for (const auto& [enum_name, enum_pairs] : game_engine->GetAllEnums()) {
+        AS_VERIFY(engine->RegisterEnum(enum_name.c_str()));
+        for (const auto& [key, value] : enum_pairs) {
+            AS_VERIFY(engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
         }
     }
 
     // Restore properties
-    for (const auto& info : _restoreInfo["Properties"]) {
-        const auto tokens = _str(info).split(' ');
-        auto* prop_registrator = game_engine->GetPropertyRegistratorForEdit(tokens[0]);
-        RestoreAngelScriptProperty(engine, prop_registrator, tokens[0], tokens[1], tokens[2], tokens[3], tokens[4]);
-        // const aproperty_index
-        // AS_VERIFY(engine->RegisterEnumValue((tokens[0] + "Property").c_str(), tokens[3].c_str(), property_index));
-    }*/
+    for (const auto& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
+        for (const auto i : xrange(registrator->GetCount())) {
+            RegisterAngelScriptProperty(engine, registrator, registrator->GetByIndex(i)->GetName());
+        }
+    }
 #endif
 
 #if CLIENT_SCRIPTING
