@@ -19,6 +19,16 @@
 *.fodlg    text
 *.fogui    text
 
+# Syntax highlighting
+*.fos      linguist-language=AngelScript
+*.fopro    linguist-language=INI
+*.foitem   linguist-language=INI
+*.focr     linguist-language=INI
+*.fomap    linguist-language=INI
+*.foloc    linguist-language=INI
+*.fofrm    linguist-language=INI
+*.focfg    linguist-language=INI
+
 # Documents
 *.cmake    text
 *.md       text
