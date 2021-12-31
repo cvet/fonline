@@ -77,11 +77,10 @@
 #define SCRIPTING_CLASS MapperScriptSystem
 #define FOEngine FOMapper
 #define BaseEntity ClientEntity
-#else
-#error Invalid setup
 #endif
 
 #include "Application.h"
+#include "EngineBase.h"
 #include "Entity.h"
 #include "EntityProperties.h"
 #include "FileSystem.h"
@@ -135,6 +134,24 @@ struct SCRIPTING_CLASS
 };
 
 #define ENTITY_VERIFY(e)
+
+#if SERVER_SCRIPTING
+class AngelScriptServerCompilerData : public FOEngineBase
+#elif CLIENT_SCRIPTING
+class AngelScriptClientCompilerData : public FOEngineBase
+#elif MAPPER_SCRIPTING
+class AngelScriptMapperCompilerData : public FOEngineBase
+#endif
+{
+public:
+#if SERVER_SCRIPTING
+    AngelScriptServerCompilerData();
+#elif CLIENT_SCRIPTING
+    AngelScriptClientCompilerData();
+#elif MAPPER_SCRIPTING
+    AngelScriptMapperCompilerData();
+#endif
+};
 #endif
 
 #if !COMPILER_MODE
@@ -184,19 +201,6 @@ static void DummyFunc(asIScriptGeneric* gen)
 {
 }
 #endif
-
-enum class ScriptEnum_uint8 : uchar
-{
-};
-enum class ScriptEnum_uint16 : ushort
-{
-};
-enum class ScriptEnum_int : int
-{
-};
-enum class ScriptEnum_uint : uint
-{
-};
 
 #if !COMPILER_MODE
 struct ASGlobal;
@@ -355,6 +359,7 @@ static auto Entity_ProtoId(BaseEntity* self) -> hstring
 
 static void Property_GetValueAsInt(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
     auto* entity = static_cast<Entity*>(gen->GetObject());
     const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     ENTITY_VERIFY(entity);
@@ -374,10 +379,12 @@ static void Property_GetValueAsInt(asIScriptGeneric* gen)
     }
 
     new (gen->GetAddressOfReturnLocation()) int(entity->GetValueAsInt(prop));
+#endif
 }
 
 static void Property_SetValueAsInt(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
     auto* entity = static_cast<Entity*>(gen->GetObject());
     const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     ENTITY_VERIFY(entity);
@@ -397,10 +404,12 @@ static void Property_SetValueAsInt(asIScriptGeneric* gen)
     }
 
     entity->SetValueAsInt(prop, *static_cast<int*>(gen->GetAddressOfArg(1)));
+#endif
 }
 
 static void Property_GetValueAsFloat(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
     auto* entity = static_cast<Entity*>(gen->GetObject());
     const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     ENTITY_VERIFY(entity);
@@ -420,10 +429,12 @@ static void Property_GetValueAsFloat(asIScriptGeneric* gen)
     }
 
     new (gen->GetAddressOfReturnLocation()) float(entity->GetValueAsFloat(prop));
+#endif
 }
 
 static void Property_SetValueAsFloat(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
     auto* entity = static_cast<Entity*>(gen->GetObject());
     const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     ENTITY_VERIFY(entity);
@@ -443,10 +454,12 @@ static void Property_SetValueAsFloat(asIScriptGeneric* gen)
     }
 
     entity->SetValueAsFloat(prop, *static_cast<float*>(gen->GetAddressOfArg(1)));
+#endif
 }
 
 static void Property_GetValue(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
     const auto* entity = static_cast<Entity*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
     ENTITY_VERIFY(entity);
@@ -509,7 +522,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
                     std::memcpy(&arr_size, data, sizeof(arr_size));
                     data += sizeof(arr_size);
 
-                    auto* arr = CreateASArray(gen->GetEngine(), prop->GetDictArrayTypeName().c_str());
+                    auto* arr = CreateASArray(gen->GetEngine(), _str("{}[]", prop->GetBaseTypeName()).c_str());
 
                     if (arr_size > 0u) {
                         if (prop->IsDictOfArrayOfString()) {
@@ -569,10 +582,12 @@ static void Property_GetValue(asIScriptGeneric* gen)
     else {
         throw UnreachablePlaceException(LINE_STR);
     }
+#endif
 }
 
 static void Property_SetValue(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
     auto* entity = static_cast<Entity*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
     ENTITY_VERIFY(entity);
@@ -779,6 +794,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
     else {
         throw UnreachablePlaceException(LINE_STR);
     }
+#endif
 }
 
 static void RegisterAngelScriptProperty(asIScriptEngine* engine, const PropertyRegistrator* registrator, string_view name)
@@ -786,16 +802,16 @@ static void RegisterAngelScriptProperty(asIScriptEngine* engine, const PropertyR
     const auto* prop = registrator->Find(name);
     RUNTIME_ASSERT(prop);
 
+    const auto is_handle = (prop->IsArray() || prop->IsDict());
+
     int as_result;
     if (prop->IsReadable()) {
-        const char* decl_get = 0;
-        //'"const ' + metaTypeToASType(type) + ('@' if False else '') + ' get_' + name + '() const",
-        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_get, asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
+        const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetName()).str();
+        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_get.c_str(), asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
     }
     if (prop->IsWritable()) {
-        const char* decl_set = 0;
-        //'"void set_' + name + '(' + ('const ' if False else '') + metaTypeToASType(type) + ('@' if False else '') + ')", ' +
-        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_set, asFUNCTION(Property_SetValue), asCALL_GENERIC, (void*)prop));
+        const auto decl_set = _str("void set_{}({}{}{})", prop->GetName(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
+        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_set.c_str(), asFUNCTION(Property_SetValue), asCALL_GENERIC, (void*)prop));
     }
 }
 
@@ -834,7 +850,7 @@ static void HashedString_Construct(hstring* mem)
 
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
-    // new (mem) hstring();
+    new (gen->GetAddressOfReturnLocation()) hstring();
 }
 
 static void HashedString_ConstructCopy(const hstring& self, hstring* mem)
@@ -849,7 +865,7 @@ static void HashedString_Assign(hstring& self, const hstring& other)
 
 static void HashedString_AssignFromString(asIScriptGeneric* gen)
 {
-    // new (mem) hstring();
+    new (gen->GetAddressOfReturnLocation()) hstring();
 }
 
 static bool HashedString_Equals(const hstring& self, const hstring& other)
@@ -909,7 +925,7 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
 
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
-    FOEngine* game_engine = nullptr;
+    FOEngineBase* game_engine = nullptr;
 
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
     RUNTIME_ASSERT(engine);
@@ -920,7 +936,17 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AngelScriptData = std::make_unique<AngelScriptImpl>();
     AngelScriptData->Engine = engine;
     AngelScriptData->ASGlobalInstance = as_global;
-    as_global->self = game_engine;
+    // as_global->self = game_engine;
+#endif
+
+#if COMPILER_MODE
+#if SERVER_SCRIPTING
+    game_engine = new AngelScriptServerCompilerData();
+#elif CLIENT_SCRIPTING
+    game_engine = new AngelScriptClientCompilerData();
+#elif MAPPER_SCRIPTING
+    game_engine = new AngelScriptMapperCompilerData();
+#endif
 #endif
 
     int as_result;
@@ -954,6 +980,14 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RegisterScriptWeakRef(engine);
     RegisterScriptReflection(engine);
 
+    // Register enums
+    for (const auto& [enum_name, enum_pairs] : game_engine->GetAllEnums()) {
+        AS_VERIFY(engine->RegisterEnum(enum_name.c_str()));
+        for (const auto& [key, value] : enum_pairs) {
+            AS_VERIFY(engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
+        }
+    }
+
     AS_VERIFY(engine->RegisterObjectType("hstring", sizeof(hstring), asOBJ_VALUE | asOBJ_POD));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
@@ -971,16 +1005,21 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV)); \
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV));
+
+#define REGISTER_GETSET_ENTITY(class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsInt(" class_name "Property) const", asFUNCTION(Property_GetValueAsInt), asCALL_GENERIC)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsInt(" class_name "Property, int)", asFUNCTION(Property_SetValueAsInt), asCALL_GENERIC)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsFloat(" class_name "Property) const", asFUNCTION(Property_GetValueAsFloat), asCALL_GENERIC)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsFloat(" class_name "Property, float)", asFUNCTION(Property_SetValueAsFloat), asCALL_GENERIC))
 
-#define REGISTER_GLOBAL_ENTITY(class_name, real_class) REGISTER_BASE_ENTITY(class_name, real_class)
+#define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
+    REGISTER_BASE_ENTITY(class_name, real_class); \
+    REGISTER_GETSET_ENTITY(class_name, real_class)
 
 #define REGISTER_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name, real_class); \
+    REGISTER_GETSET_ENTITY(class_name, real_class); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
@@ -992,22 +1031,14 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
     ///@ CodeGen Register
 
-#if CLIENT_SCRIPTING && !COMPILER_MODE
-    // Restore enums
-    for (const auto& [enum_name, enum_pairs] : game_engine->GetAllEnums()) {
-        AS_VERIFY(engine->RegisterEnum(enum_name.c_str()));
-        for (const auto& [key, value] : enum_pairs) {
-            AS_VERIFY(engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
-        }
-    }
-
-    // Restore properties
+    // Register properties
     for (const auto& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
         for (const auto i : xrange(registrator->GetCount())) {
             RegisterAngelScriptProperty(engine, registrator, registrator->GetByIndex(i)->GetName());
         }
     }
-#endif
+
+    AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", game_engine));
 
 #if CLIENT_SCRIPTING
     // AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &BIND_CLASS ClientCurMap));
@@ -1024,6 +1055,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if COMPILER_MODE
     delete as_global;
+    game_engine->Release();
 #endif
 }
 

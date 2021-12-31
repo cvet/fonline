@@ -1187,6 +1187,50 @@ auto PropertyRegistrator::GetWholeDataSize() const -> uint
 void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& flags)
 {
     // string _propName {};
+    // string _componentName {};
+    prop->_propName = _str(prop->_propName).replace('.', '_');
+
+    if (prop->_isEnum) {
+        prop->_baseTypeName = "";
+    }
+    if (prop->_dataType == Property::DataType::Dict && prop->_isDictKeyEnum) {
+        prop->_dictKeyTypeName = "";
+    }
+
+    for (size_t i = 0; i < flags.size(); i++) {
+        if (flags[i] == "Enum") {
+            RUNTIME_ASSERT(prop->_isEnum);
+            RUNTIME_ASSERT(flags[i + 1] == "=");
+            prop->_baseTypeName = flags[i + 2];
+            i += 2;
+        }
+        else if (flags[i] == "KeyEnum") {
+            RUNTIME_ASSERT(prop->_dataType == Property::DataType::Dict);
+            RUNTIME_ASSERT(flags[i + 1] == "=");
+            prop->_dictKeyTypeName = flags[i + 2];
+            i += 2;
+        }
+    }
+
+    if (prop->_dataType == Property::DataType::Array) {
+        prop->_fullTypeName = prop->_baseTypeName + "[]";
+    }
+    else if (prop->_dataType == Property::DataType::Dict) {
+        if (prop->_isDictOfArray) {
+            prop->_fullTypeName = "dict<" + prop->_dictKeyTypeName + ", " + prop->_baseTypeName + "[]>";
+        }
+        else {
+            prop->_fullTypeName = "dict<" + prop->_baseTypeName + ", " + prop->_baseTypeName + ">";
+        }
+    }
+    else {
+        prop->_fullTypeName = prop->_baseTypeName;
+    }
+
+    RUNTIME_ASSERT(prop->_baseTypeName != "");
+    if (prop->_dataType == Property::DataType::Dict) {
+        RUNTIME_ASSERT(prop->_dictKeyTypeName != "");
+    }
 
     // bool _isTemporary {};
     // bool _isHistorical {};
@@ -1194,6 +1238,14 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     // uint _getIndex {};
     // uint _podDataOffset {};
     // uint _complexDataIndex {};
+
+    //_isReadOnly
+    // prop->isTemporary = (defaultTemporary || is_temporary);
+    // prop->_isHistorical = (defaultNoHistory || is_no_history);
+    // prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
+    // prop->checkMaxValue = (max_value != nullptr && (is_int_data_type || is_float_data_type));
+    // prop->minValue = (min_value ? *min_value : 0);
+    // prop->maxValue = (max_value ? *max_value : 0);
 
     const auto reg_index = static_cast<ushort>(_registeredProperties.size());
 
@@ -1278,23 +1330,8 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     prop->_regIndex = reg_index;
     prop->_complexDataIndex = complex_data_index;
     prop->_podDataOffset = data_base_offset;
-    prop->_propName = _str(prop->_propName).replace('.', '_');
     prop->_isReadable = !disable_get;
     prop->_isWritable = !disable_set;
-
-    // string _fullTypeName {};
-    // string _componentName {};
-    // string _baseTypeName {};
-    // _dictArrayTypeName
-    //_isReadOnly
-    // prop->typeName = type_name;
-    // prop->componentName = component_name;
-    // prop->isTemporary = (defaultTemporary || is_temporary);
-    // prop->_isHistorical = (defaultNoHistory || is_no_history);
-    // prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
-    // prop->checkMaxValue = (max_value != nullptr && (is_int_data_type || is_float_data_type));
-    // prop->minValue = (min_value ? *min_value : 0);
-    // prop->maxValue = (max_value ? *max_value : 0);
 
     _registeredProperties.push_back(prop);
     _registeredPropertiesLookup.emplace(prop->GetName(), prop);

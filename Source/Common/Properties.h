@@ -93,7 +93,6 @@ public:
     [[nodiscard]] auto GetFullTypeName() const -> const string& { return _fullTypeName; }
     [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseTypeName; }
     [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
-    [[nodiscard]] auto GetDictArrayTypeName() const -> const string& { return _dictArrayTypeName; }
 
     [[nodiscard]] auto GetRegIndex() const -> ushort { return _regIndex; }
     [[nodiscard]] auto GetAccess() const -> AccessType { return _accessType; }
@@ -167,7 +166,6 @@ private:
     bool _isDictKeyEnum {};
     uint _dictKeySize {};
     string _dictKeyTypeName {};
-    string _dictArrayTypeName {};
 
     AccessType _accessType {};
     bool _isReadOnly {};
@@ -385,12 +383,12 @@ public:
         using base_type = typename TypeInfo<T>::BaseType::Type;
 
         if constexpr (!std::is_same_v<base_type, string>) {
-            static_assert(sizeof(base_type) == 1 || sizeof(base_type) == 2 || sizeof(base_type) == 4 || sizeof(base_type) == 8);
+            static_assert(sizeof(base_type) == 1u || sizeof(base_type) == 2u || sizeof(base_type) == 4u || sizeof(base_type) == 8u);
             prop->_baseSize = sizeof(base_type);
             prop->_isHash = TypeInfo<T>::BaseType::IS_HASH;
             prop->_isEnum = TypeInfo<T>::BaseType::IS_ENUM;
 
-            prop->_isInt = std::is_integral_v<base_type> && !std::is_same_v<base_type, bool>;
+            prop->_isInt = (std::is_integral_v<base_type> && !std::is_same_v<base_type, bool>);
             prop->_isSignedInt = (prop->_isInt && std::is_signed_v<base_type>);
             prop->_isFloat = std::is_floating_point_v<base_type>;
             prop->_isBool = std::is_same_v<base_type, bool>;
@@ -406,6 +404,39 @@ public:
 
             prop->_isSingleFloat = (prop->_isFloat && prop->_baseSize == 4u);
             prop->_isDoubleFloat = (prop->_isFloat && prop->_baseSize == 8u);
+
+            if (prop->_isHash) {
+                prop->_baseTypeName = "hstring";
+            }
+            else if (prop->_isInt) {
+                prop->_baseTypeName = "int";
+                if (prop->_baseSize == 1u) {
+                    prop->_baseTypeName += "8";
+                }
+                else if (prop->_baseSize == 2u) {
+                    prop->_baseTypeName += "16";
+                }
+                else if (prop->_baseSize == 8u) {
+                    prop->_baseTypeName += "64";
+                }
+                if (!prop->_isSignedInt) {
+                    prop->_baseTypeName = "u" + prop->_baseTypeName;
+                }
+            }
+            else if (prop->_isFloat) {
+                if (prop->_isSingleFloat) {
+                    prop->_baseTypeName = "float";
+                }
+                else if (prop->_isDoubleFloat) {
+                    prop->_baseTypeName = "double";
+                }
+            }
+            else if (prop->_isBool) {
+                prop->_baseTypeName = "bool";
+            }
+        }
+        else {
+            prop->_baseTypeName = "string";
         }
 
         if constexpr (is_specialization<T, vector>::value) {
@@ -416,14 +447,32 @@ public:
             using key_type = typename TypeInfo<T>::KeyType::Type;
             static_assert(std::is_integral_v<key_type>);
             static_assert(!std::is_same_v<key_type, bool>);
-            static_assert(sizeof(key_type) == 1 || sizeof(key_type) == 2 || sizeof(key_type) == 4 || sizeof(key_type) == 8);
+            static_assert(sizeof(key_type) == 1u || sizeof(key_type) == 2u || sizeof(key_type) == 4u || sizeof(key_type) == 8u);
             prop->_isDictOfArray = TypeInfo<T>::IS_DICT_OF_ARRAY;
             prop->_isDictOfString = (!prop->_isDictOfArray && std::is_same_v<base_type, string>);
             prop->_isDictOfArrayOfString = (prop->_isDictOfArray && std::is_same_v<base_type, string>);
             prop->_dictKeySize = sizeof(key_type);
             prop->_isDictKeyHash = TypeInfo<T>::KeyType::IS_HASH;
             prop->_isDictKeyEnum = TypeInfo<T>::KeyType::IS_ENUM;
-            // _dictKeyTypeName
+
+            if (prop->_isDictKeyHash) {
+                prop->_dictKeyTypeName = "hstring";
+            }
+            else {
+                prop->_dictKeyTypeName = "int";
+                if (sizeof(key_type) == 1u) {
+                    prop->_dictKeyTypeName += "8";
+                }
+                else if (sizeof(key_type) == 2u) {
+                    prop->_dictKeyTypeName += "16";
+                }
+                else if (sizeof(key_type) == 8u) {
+                    prop->_dictKeyTypeName += "64";
+                }
+                if (std::is_unsigned_v<key_type>) {
+                    prop->_dictKeyTypeName = "u" + prop->_dictKeyTypeName;
+                }
+            }
         }
 
         AppendProperty(prop, flags);

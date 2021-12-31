@@ -74,11 +74,11 @@ protected:
 
 private:
     bool _isServer;
+    bool _registrationFinalized {};
     unordered_map<string, const PropertyRegistrator*> _registrators {};
     unordered_map<string, unordered_map<string, int>> _enums {};
     unordered_map<string, unordered_map<int, string>> _enumsRev {};
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, const type_info*> _enumTypes {};
-    bool _registrationFinalized {};
     mutable unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
 };

@@ -176,6 +176,8 @@ public:
     auto operator=(FOMapper&&) noexcept = delete;
     ~FOMapper() = default;
 
+    void RegisterData();
+
     auto InitIface() -> int;
     auto IfaceLoadRect(IRect& comp, string_view name) -> bool;
     void MapperMainLoop();

@@ -257,11 +257,17 @@ private:
     }
 
 #define RUNTIME_ASSERT(expr) \
-    if (!(expr)) \
-    throw AssertationException(#expr, __FILE__, __LINE__)
+    do { \
+        if (!(expr)) { \
+            throw AssertationException(#expr, __FILE__, __LINE__); \
+        } \
+    } while (false)
 #define RUNTIME_ASSERT_STR(expr, str) \
-    if (!(expr)) \
-    throw AssertationException(str, __FILE__, __LINE__)
+    do { \
+        if (!(expr)) { \
+            throw AssertationException(str, __FILE__, __LINE__); \
+        } \
+    } while (false)
 
 // Common exceptions
 DECLARE_EXCEPTION(AssertationException);

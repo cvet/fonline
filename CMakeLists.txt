@@ -1505,6 +1505,10 @@ endforeach()
 list( APPEND FO_CODEGEN_OUTPUT
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
@@ -1541,6 +1545,11 @@ add_custom_target( CodeGeneration
 	DEPENDS ${FO_CODEGEN_OUTPUT}
 	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" )
 list( APPEND FO_COMMANDS_GROUP "CodeGeneration" )
+
+add_custom_target( ForceCodeGeneration
+	COMMAND ${FO_CODEGEN_COMMAND}
+	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" )
+list( APPEND FO_COMMANDS_GROUP "ForceCodeGeneration" )
 
 # Applications
 StatusMessage( "Applications:" )
@@ -1700,6 +1709,7 @@ if( FONLINE_BUILD_MAPPER )
 		"Source/Tools/Mapper.h"
 		"Source/Tools/Mapper.cpp"
 		"Source/Scripting/MapperGlobalScriptMethods.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
 		"Resources/Default.rc" )
 	set_target_properties( FOnlineMapper PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TOOLS_OUTPUT} )
 	set_target_properties( FOnlineMapper PROPERTIES OUTPUT_NAME "FOnlineMapper" )
@@ -1734,7 +1744,10 @@ if( FONLINE_BUILD_ASCOMPILER AND FO_ANGELSCRIPT_SCRIPTING )
 		"Source/Common/ApplicationHeadless.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
 		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp" )
+		"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp" )
 	add_dependencies( FOnlineASCompiler CodeGeneration )
 	set_target_properties( FOnlineASCompiler PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TOOLS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TOOLS_OUTPUT} )
 	set_target_properties( FOnlineASCompiler PROPERTIES OUTPUT_NAME "FOnlineASCompiler" )
@@ -1768,7 +1781,8 @@ if( FONLINE_UNIT_TESTS )
 		"Source/Applications/ServerHeadlessApp.cpp"
 		"Source/Applications/ClientApp.cpp"
 		"Source/Applications/MapperApp.cpp"
-		"Source/Applications/BakerApp.cpp" )
+		"Source/Applications/BakerApp.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp" )
 	add_dependencies( FOnlineUnitTests CodeGeneration )
 	set_target_properties( FOnlineUnitTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_DEBUG ${FO_TESTS_OUTPUT} RUNTIME_OUTPUT_DIRECTORY_RELEASE ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineUnitTests PROPERTIES OUTPUT_NAME "FOnlineUnitTests" )

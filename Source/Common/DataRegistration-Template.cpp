@@ -46,20 +46,39 @@
 
 ///@ CodeGen Defines
 
-#ifndef SERVER_REGISTRATION
-#cmakedefine01 SERVER_REGISTRATION
-#cmakedefine01 CLIENT_REGISTRATION
-#endif
-
 #include "Common.h"
 
 #include "EngineBase.h"
 #include "Properties.h"
 
+#if !COMPILER_MODE
 #if SERVER_REGISTRATION
 #include "Server.h"
 #elif CLIENT_REGISTRATION
 #include "Client.h"
+#elif MAPPER_REGISTRATION
+#include "Mapper.h"
+#endif
+#endif
+
+#if COMPILER_MODE
+#if SERVER_REGISTRATION
+class AngelScriptServerCompilerData : public FOEngineBase
+#elif CLIENT_REGISTRATION
+class AngelScriptClientCompilerData : public FOEngineBase
+#elif MAPPER_REGISTRATION
+class AngelScriptMapperCompilerData : public FOEngineBase
+#endif
+{
+public:
+#if SERVER_REGISTRATION
+    AngelScriptServerCompilerData();
+#elif CLIENT_REGISTRATION
+    AngelScriptClientCompilerData();
+#elif MAPPER_REGISTRATION
+    AngelScriptMapperCompilerData();
+#endif
+};
 #endif
 
 enum class ScriptEnum_uint8 : uchar
@@ -83,6 +102,7 @@ static void RegisterProperty(PropertyRegistrator* registrator, Property::AccessT
     registrator->Register<T>(access, name, flags);
 }
 
+#if !COMPILER_MODE
 #if SERVER_REGISTRATION
 
 void FOServer::RegisterData()
@@ -126,9 +146,7 @@ void FOServer::RegisterData()
     FinalizeDataRegistration();
 }
 
-#endif
-
-#if CLIENT_REGISTRATION
+#elif CLIENT_REGISTRATION
 
 static void RestoreProperty(PropertyRegistrator* registrator, string_view access, string_view type, const string& name, const vector<string>& flags)
 {
@@ -239,6 +257,43 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
 
         RestoreProperty(prop_registrator, tokens[1], tokens[2], tokens[3], flags);
     }
+
+    FinalizeDataRegistration();
+}
+
+#elif MAPPER_REGISTRATION
+
+void FOMapper::RegisterData()
+{
+    ResetRegisteredData();
+
+    unordered_map<string, PropertyRegistrator*> registrators;
+    PropertyRegistrator* registrator;
+
+    ///@ CodeGen MapperRegister
+
+    FinalizeDataRegistration();
+}
+
+#endif
+#endif
+
+#if COMPILER_MODE
+
+#if SERVER_REGISTRATION
+AngelScriptServerCompilerData::AngelScriptServerCompilerData() : FOEngineBase(true)
+#elif CLIENT_REGISTRATION
+AngelScriptClientCompilerData::AngelScriptClientCompilerData() : FOEngineBase(false)
+#elif MAPPER_REGISTRATION
+AngelScriptMapperCompilerData::AngelScriptMapperCompilerData() : FOEngineBase(true)
+#endif
+{
+    ResetRegisteredData();
+
+    unordered_map<string, PropertyRegistrator*> registrators;
+    PropertyRegistrator* registrator;
+
+    ///@ CodeGen CompilerRegister
 
     FinalizeDataRegistration();
 }

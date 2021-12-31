@@ -391,7 +391,7 @@ def parseTags():
                         minValue = 0xFFFFFFFF
                         maxValue = -0xFFFFFFFF
                         for i in kv:
-                            v = int(i[1])
+                            v = int(i[1], 0)
                             minValue = v if v < minValue else minValue
                             maxValue = v if v > maxValue else maxValue
                         if minValue < 0:
@@ -508,6 +508,9 @@ def parseTags():
                 assert entity in gameEntities, entity
                 toks = [t.strip() for t in tagContext[tagContext.find('(') + 1:tagContext.find(')')].split(',')]
                 access = toks[0]
+                assert access in ['PrivateCommon', 'PrivateClient', 'PrivateServer', 'Public', 'PublicModifiable',
+                        'PublicFullModifiable', 'PublicStatic', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
+                        'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid export property access ' + access
                 ptype = engineTypeToMetaType(toks[1])
                 name = toks[2]
                 
@@ -588,10 +591,13 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
              
             try:
-                tok = [s for s in tagInfo.split(' ') if s]
+                tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
                 entity = tok[0]
                 assert entity in gameEntities, entity
                 access = tok[1]
+                assert access in ['PrivateCommon', 'PrivateClient', 'PrivateServer', 'Public', 'PublicModifiable',
+                        'PublicFullModifiable', 'PublicStatic', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
+                        'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid property access ' + access
                 if tok[2] == 'const':
                     ptype = unifiedTypeToMetaType(tok[3])
                     name = tok[4]
@@ -610,7 +616,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                tok = [s for s in tagInfo.split(' ') if s]
+                tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
                 target = tok[0]
                 assert target in ['Server', 'Client', 'Mapper', 'Common'], target
                 eventName = tok[1] if '(' not in tok[1] else tok[1][:tok[1].find('(')]
@@ -643,7 +649,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                tok = [s for s in tagInfo.split(' ') if s]
+                tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
                 target = tok[0]
                 assert target in ['Server', 'Client'], target
                 funcName = tok[1] if '(' not in tok[1] else tok[1][:tok[1].find('(')]
@@ -682,7 +688,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                tok = [s for s in tagInfo.split(' ') if s]
+                tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
                 stype = unifiedTypeToMetaType(tok[0])
                 name = tok[1]
                 value = tok[3] if len(tok) > 3 and tok[2] == '=' else None
@@ -730,6 +736,19 @@ def parseTags():
                     keyValues.append((name, str(index), []))
                     index += 1
             codeGenTags['Enum'].append([entity + 'Property', 'uint16', keyValues, [], []])
+        
+        # Check uniquiness of enums
+        for e in codeGenTags['ExportEnum'] + codeGenTags['Enum']:
+            gname, _, keyValues, _, _ = e
+            keys = set()
+            values = set()
+            for kv in keyValues:
+                if kv[0] in keys:
+                    showError('Detected collision in enum group ' + gname + ' key ' + kv[0])
+                if int(kv[1], 0) in values:
+                    showError('Detected collision in enum group ' + gname + ' value ' + kv[1] + (' (evaluated to ' + str(int(kv[1], 0)) + ')' if str(int(kv[1], 0)) != kv[1] else ''))
+                keys.add(kv[0])
+                values.add(int(kv[1], 0))
     
     parseTypeTags()
     parseOtherTags()
@@ -921,9 +940,9 @@ except Exception as ex:
     showError('Code generation for data registration failed', ex)
 checkErrors()
     
-def genDataRegistration():
+def genDataRegistration(isASCompiler):
     if args.multiplayer:
-        for target in ['Server', 'Client']:
+        for target in ['Server', 'Client', 'Mapper']:
             globalLines = []
             registerLines = []
             restoreLines = []
@@ -939,7 +958,7 @@ def genDataRegistration():
                     registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
                 registerLines.append('});')
                 registerLines.append('')
-            if target == 'Server':
+            if target != 'Client' or isASCompiler:
                 for e in codeGenTags['Enum']:
                     gname, utype, keyValues, _, _ = e
                     registerLines.append('AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
@@ -956,9 +975,14 @@ def genDataRegistration():
             registerLines.append('')
             
             # Properties
-            def getEnumFlags(t):
-                if t in scriptEnums or t in engineEnums:
-                    return ['Enum', '=', t]
+            def getEnumFlags(t, ename = 'Enum'):
+                tt = t.split('.')
+                if tt[0] == 'dict':
+                    return getEnumFlags(tt[1], 'KeyEnum') + getEnumFlags('.'.join(tt[2:]))
+                if tt[0] == 'arr':
+                    return getEnumFlags(tt[1])
+                if tt[0] in scriptEnums or tt[0] in engineEnums:
+                    return [ename, '=', tt[0]]
                 return []
             for entity in gameEntities:
                 registerLines.append('registrator = registrators["' + entity + '"];')
@@ -967,7 +991,7 @@ def genDataRegistration():
                     if ent == entity:
                         registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
                                 access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
-                if target == 'Server':
+                if target != 'Client' or isASCompiler:
                     for propTag in codeGenTags['Property']:
                         ent, access, type, name, flags, _ = propTag
                         if ent == entity:
@@ -976,7 +1000,7 @@ def genDataRegistration():
                 registerLines.append('')
             
             # Restore enums
-            if target == 'Server':
+            if target == 'Server' and not isASCompiler:
                 restoreLines.append('restoreInfo["Enums"] =')
                 restoreLines.append('{')
                 for e in codeGenTags['Enum']:
@@ -992,7 +1016,7 @@ def genDataRegistration():
                 restoreLines.append('')
             
             # Restore properties
-            if target == 'Server':
+            if target == 'Server' and not isASCompiler:
                 def replaceFakedEnum(t):
                     if t in scriptEnums or t in engineEnums:
                         return metaTypeToEngineType(t, target, False)
@@ -1007,7 +1031,7 @@ def genDataRegistration():
                 restoreLines.append('')
             
             # Property map
-            if target == 'Client':
+            if target == 'Client' and not isASCompiler:
                 def addPropMapEntry(e):
                     propertyMapLines.append('{ "' + e + '", [](RESTORE_ARGS) { RegisterProperty<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
                 fakedEnums = ['ScriptEnum_uint8', 'ScriptEnum_uint16', 'ScriptEnum_int', 'ScriptEnum_uint']
@@ -1019,24 +1043,42 @@ def genDataRegistration():
                         addPropMapEntry('dict.' + tKey + '.' + t)
                         addPropMapEntry('dict.' + tKey + '.arr.' + t)
             
-            createFile('DataRegistration-' + target + '.cpp', args.genoutput)
+            createFile('DataRegistration-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
             writeCodeGenTemplate('DataRegistration')
             
+            if not isASCompiler:
+                if target == 'Server':
+                    insertCodeGenLines(restoreLines, 'WriteRestoreInfo')
+                    insertCodeGenLines(registerLines, 'ServerRegister')
+                    insertCodeGenLines(globalLines, 'Global')
+                elif target == 'Client':
+                    insertCodeGenLines(registerLines, 'ClientRegister')
+                    insertCodeGenLines(propertyMapLines, 'PropertyMap')
+                    insertCodeGenLines(globalLines, 'Global')
+                elif target == 'Mapper':
+                    insertCodeGenLines(registerLines, 'MapperRegister')
+                    insertCodeGenLines(globalLines, 'Global')
+            else:
+                insertCodeGenLines(registerLines, 'CompilerRegister')
+                insertCodeGenLines(globalLines, 'Global')
+            
             if target == 'Server':
-                insertCodeGenLines(restoreLines, 'WriteRestoreInfo')
-                insertCodeGenLines(registerLines, 'ServerRegister')
-                insertCodeGenLines(globalLines, 'Global')
-                insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0'], 'Defines')
+                insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0',
+                        '#define MAPPER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
             elif target == 'Client':
-                insertCodeGenLines(registerLines, 'ClientRegister')
-                insertCodeGenLines(propertyMapLines, 'PropertyMap')
-                insertCodeGenLines(globalLines, 'Global')
-                insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1'], 'Defines')
+                insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1',
+                        '#define MAPPER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
+            elif target == 'Mapper':
+                insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
+                        '#define MAPPER_REGISTRATION 1', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
 
 try:
-    genDataRegistration()
+    genDataRegistration(False)
+    genDataRegistration(True)
+    
 except Exception as ex:
     showError('Code generation for data registration failed', ex)
+    
 checkErrors()
 
 def genCode(lang, target, isASCompiler=False):
@@ -1090,8 +1132,29 @@ def genCode(lang, target, isASCompiler=False):
                 r += '&'
             return r
             
-        def metaTypeToASType(t):
-            return t
+        def metaTypeToASType(t, noHandle = False, isRet = False):
+            def getHandle():
+                return '' if noHandle else ('@' if isRet else '@+')
+            tt = t.split('.')
+            if tt[0] == 'dict':
+                d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
+                return 'dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>' + getHandle()
+            elif tt[0] == 'arr':
+                return metaTypeToASType(tt[1], True) + '[]' + getHandle()
+            elif tt[0] == 'callback':
+                return metaTypeToASType(tt[1], True) + 'Callback' + getHandle()
+            elif tt[0] == 'predicate':
+                return metaTypeToASType(tt[1], True) + 'Predicate' + getHandle()
+            elif tt[0] == 'Entity':
+                return 'Entity' + getHandle()
+            elif tt[0] in gameEntities:
+                return tt[0] + getHandle()
+            elif tt[0] in engineEnums or tt[0] in scriptEnums:
+                return tt[0]
+            elif tt[0] in userObjects:
+                return tt[0] + getHandle()
+            else:
+                return tt[0] if tt[-1] != 'ref' else tt[0] + '&'
     
         def marshalIn(t, v):
             tt = t.split('.')
@@ -1108,8 +1171,8 @@ def genCode(lang, target, isASCompiler=False):
             tt = t.split('.')
             if tt[0] == 'arr':
                 if tt[1] in gameEntities or tt[1] in userObjects:
-                    return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1]) + '[]", ' + v + ')'
-                return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1]) + '[]", ' + v + ')'
+                    return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
+                return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
             elif tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
                 return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>(GET_AS_ENGINE(), ' + v + ')'
@@ -1211,32 +1274,6 @@ def genCode(lang, target, isASCompiler=False):
         globalLines.append('};')
         globalLines.append('')
         
-        # Register enums
-        registerLines.append('// Engine enums')
-        for e in codeGenTags['ExportEnum']:
-            gname, _, keyValues, _, _ = e
-            groupStrName = 'enum_group_name_' + gname.lower()
-            registerLines.append('const char* ' + groupStrName + ' = "' + gname + '";')
-            registerLines.append('AS_VERIFY(engine->RegisterEnum(' + groupStrName + '));')
-            for kv in keyValues:
-                registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", ' + kv[1] + '));')
-        registerLines.append('')
-        
-        registerLines.append('// Script enums')
-        if target != 'Client' or isASCompiler:
-            for e in codeGenTags['Enum']:
-                gname, _, keyValues, _, _ = e
-                groupStrName = 'enum_group_name_' + gname.lower()
-                registerLines.append('const char* ' + groupStrName + ' = "' + gname + '";')
-                registerLines.append('AS_VERIFY(engine->RegisterEnum(' + groupStrName + '));')
-                for kv in keyValues:
-                    registerLines.append('AS_VERIFY(engine->RegisterEnumValue(' + groupStrName + ', "' + kv[0] + '", ' + kv[1] + '));')
-            registerLines.append('')
-        
-        else:
-            registerLines.append('// Will be restored later')
-            registerLines.append('')
-        
         # Register exported objects
         registerLines.append('// Exported objects')
         for eo in codeGenTags['ExportObject']:
@@ -1249,7 +1286,7 @@ def genCode(lang, target, isASCompiler=False):
                 registerLines.append('AS_VERIFY(engine->RegisterObjectBehaviour("' + objName + '", asBEHAVE_FACTORY, "' + objName + '@ f()", SCRIPT_FUNC((ScriptableObject_Factory<' + objName + '>)), SCRIPT_FUNC_CONV));')
                 registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "const int RefCounter", offsetof(' + objName + ', RefCounter)));')
                 for f in fields:
-                    registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "' + metaTypeToASType(f[0]) + ' ' + f[1] + '", offsetof(' + objName + ', ' + f[1] + ')));')
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectProperty("' + objName + '", "' + metaTypeToASType(f[0], True) + ' ' + f[1] + '", offsetof(' + objName + ', ' + f[1] + ')));')
                 registerLines.append('')
         
         # Register entities
@@ -1268,8 +1305,9 @@ def genCode(lang, target, isASCompiler=False):
         registerLines.append('AS_VERIFY(engine->RegisterFuncdef("bool EntityPredicate(Entity@+)"));')
         registerLines.append('AS_VERIFY(engine->RegisterFuncdef("void EntityCallback(Entity@+)"));')
         for entity in gameEntities:
+            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("void ' + entity + 'InitFunc(' + entity + '@+, bool)"));')
             registerLines.append('AS_VERIFY(engine->RegisterFuncdef("bool ' + entity + 'Predicate(' + entity + '@+)"));')
-            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("void ' + entity + 'PlayerCallback(' + entity + '@+)"));')
+            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("void ' + entity + 'Callback(' + entity + '@+)"));')
         registerLines.append('')
         
         # Register entity methods and global functions
@@ -1279,29 +1317,12 @@ def genCode(lang, target, isASCompiler=False):
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
                 if targ in allowedTargets and ent == entity:
                     if entity == 'Game': # Game methods projected as global functions
-                        registerLines.append('AS_VERIFY(engine->RegisterGlobalFunction("' + metaTypeToASType(ret) + ' ' + name + '(' +
+                        registerLines.append('AS_VERIFY(engine->RegisterGlobalFunction("' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
                                 ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_METHOD(ASGlobal, AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_ASGLOBAL_METHOD_CONV, as_global));')
                     else:
-                        registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret) + ' ' + name + '(' +
+                        registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
                                 ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
         registerLines.append('')
-        
-        # Register entity properties
-        registerLines.append('// Register entity properties')
-        if target != 'Client' or isASCompiler:
-            registerLines.append('const PropertyRegistrator* registrator = nullptr;')
-            registerLines.append('')
-            for entity in gameEntities:
-                if not isASCompiler:
-                    registerLines.append('registrator = game_engine->GetPropertyRegistrator("' + entity + '");')
-                for methodTag in codeGenTags['ExportProperty'] + codeGenTags['Property']:
-                    ent, _, type, name, _, _ = methodTag
-                    if ent == entity:
-                        registerLines.append('RegisterAngelScriptProperty(engine, registrator, "' + name + '");')
-                registerLines.append('')
-        else:
-            registerLines.append('// Will be restored later')
-            registerLines.append('')
         
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')
@@ -1342,10 +1363,10 @@ def genAngelScriptRoot(target):
     # Generate content file
     createFile('Content.fos')
     def writeEnums(name, lst):
-        writeFile('enum ' + name)
+        writeFile('namespace ' + name)
         writeFile('{')
         for i in lst:
-            writeFile('    ' + i + ' = ' + getHash(i) + ',')
+            writeFile('    hstring ' + i + ' = hstring("' + i + '");')
         writeFile('}')
         writeFile('')
     writeFile('// FOS Common')
