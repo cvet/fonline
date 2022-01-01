@@ -759,7 +759,7 @@ checkErrors()
 tagsMetas = {}
 
 # Parse content
-content = { 'foacc': [], 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fomsg': [] }
+content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fomsg': [] }
 
 def collectFiles(pathPattern, generator):
     # Todo: recursive search
@@ -1371,7 +1371,7 @@ def genAngelScriptRoot(target):
         writeFile('')
     writeFile('// FOS Common')
     writeFile('')
-    writeEnums('Player', content['foacc'])
+    writeEnums('Dialog', content['fodlg'])
     writeEnums('Item', content['foitem'])
     writeEnums('Critter', content['focr'])
     writeEnums('Map', content['fomap'])
@@ -1380,14 +1380,9 @@ def genAngelScriptRoot(target):
     # Sort files
     asFiles = []
 
-    def addASSource(files, file, sort):
-        for i in range(len(files)):
-            if sort < files[i][0]:
-                files.insert(i, (sort, file))
-                return
-        files.append((sort, file))
-
     for file in args.assource:
+        file = os.path.abspath(file)
+        
         with open(file, 'r', encoding='utf-8') as f:
             line = f.readline()
 
@@ -1399,7 +1394,9 @@ def genAngelScriptRoot(target):
         sort = int(fosParams[fosParams.index('Sort') + 1]) if 'Sort' in fosParams else 0
 
         if target in fosParams or 'Common' in fosParams:
-            addASSource(asFiles, file, sort)
+            asFiles.append((sort, file))
+
+    asFiles.sort()
 
     # Write files
     def writeRootModule(files):
@@ -1695,7 +1692,6 @@ def genApiMarkdown(target):
         for i in lst:
             writeFile('* ' +  i)
         writeFile('')
-    writeEnums('Player', content['foacc'])
     writeEnums('Item', content['foitem'])
     writeEnums('Critter', content['focr'])
     writeEnums('Map', content['fomap'])
@@ -1910,7 +1906,6 @@ def genApi(target):
             for i in lst:
                 writeFile('* ' +  i)
             writeFile('')
-        writeEnums('Player', content['foacc'])
         writeEnums('Item', content['foitem'])
         writeEnums('Critter', content['focr'])
         writeEnums('Map', content['fomap'])
@@ -2230,7 +2225,6 @@ def genApi(target):
                 writeFile('            ' + i + ' = ' + getHash(i) + ',')
             writeFile('        }')
             writeFile('')
-        writeEnums('Player', content['foacc'])
         writeEnums('Item', content['foitem'])
         writeEnums('Critter', content['focr'])
         writeEnums('Map', content['fomap'])

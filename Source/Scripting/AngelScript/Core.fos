@@ -30,10 +30,10 @@
 #define TEXTMSG_HOLO                     ( 7 )
 #define TEXTMSG_INTERNAL                 ( 8 )
 #define TEXTMSG_LOCATIONS                ( 9 )
-#define DLGSTR                           # ( dialogId, strNum )( ( ( dialogId ) & 0xFFFFC000 ) | ( ( 12000 + ( strNum ) ) & ~0xFFFFC000 ) )
-#define LOCSTR                           # ( locPid, strNum )( ( ( locPid ) & 0xFFFFF000 ) | ( ( strNum ) & ~0xFFFFF000 ) )
-#define ITEMSTR                          # ( itemPid, strNum )( ( ( itemPid ) & 0xFFFFFFF0 ) | ( ( strNum ) & ~0xFFFFFFF0 ) )
-#define CRSTR                            # ( crPid, strNum )( ( ( crPid ) & 0xFFFFFFF0 ) | ( ( strNum ) & ~0xFFFFFFF0 ) )
+#define DLGSTR                           # ( dialogId, strNum )( ( uint( dialogId.hash ) & 0xFFFFC000 ) | ( ( 12000 + ( strNum ) ) & ~0xFFFFC000 ) )
+#define LOCSTR                           # ( locPid, strNum )( ( uint( locPid.hash ) & 0xFFFFF000 ) | ( ( strNum ) & ~0xFFFFF000 ) )
+#define ITEMSTR                          # ( itemPid, strNum )( ( uint( itemPid.hash ) & 0xFFFFFFF0 ) | ( ( strNum ) & ~0xFFFFFFF0 ) )
+#define CRSTR                            # ( crPid, strNum )( ( uint( crPid.hash ) & 0xFFFFFFF0 ) | ( ( strNum ) & ~0xFFFFFFF0 ) )
 
 // Critter actions
 // Flags for chosen:
