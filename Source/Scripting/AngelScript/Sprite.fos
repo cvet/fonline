@@ -1,39 +1,39 @@
 // FOS Client Mapper
 
-/*EXPORT*/ class Sprite
+class Sprite
 {
     Sprite()
     {
         // Empty
     }
 
-    Sprite( string name )
+    Sprite(string name)
     {
-        bool ok = Load( name );
-        Assert( ok, name );
+        bool ok = Load(name);
+        Assert(ok, name);
     }
 
-    Sprite( uint nameHash )
+    Sprite(uint nameHash)
     {
-        bool ok = Load( nameHash );
-        Assert( ok, nameHash );
+        bool ok = Load(nameHash);
+        Assert(ok, nameHash);
     }
 
-    bool Load( string name )
+    bool Load(string name)
     {
-        Id = ( name.length() > 0 ? LoadSprite( name ) : 0 );
-        LoadedNameHash = uint( -1 );
+        Id = (name.length() > 0 ? LoadSprite(name) : 0);
+        LoadedNameHash = uint(-1);
         RefreshData();
         return Id != 0;
     }
 
-    bool Load( uint nameHash )
+    bool Load(uint nameHash)
     {
-        if( nameHash == LoadedNameHash )
+        if (nameHash == LoadedNameHash)
             return true;
 
         LoadedNameHash = nameHash;
-        Id = LoadSprite( nameHash );
+        Id = LoadSprite(nameHash);
         RefreshData();
         return Id != 0;
     }
@@ -45,79 +45,73 @@
     }
 
     // cornerX/Y = -1 left / top, 0 center, 1 right / bottom
-    void Draw( int x, int y, int w = 0, int h = 0, int cornerX = -1, int cornerY = -1, int layout = -1, uint color = 0 )
+    void Draw(int x, int y, int w = 0, int h = 0, int cornerX = -1, int cornerY = -1, int layout = -1, uint color = 0)
     {
-        if( Id == 0 || Hidden )
+        if (Id == 0 || Hidden)
             return;
 
-        if( w == 0 )
+        if (w == 0)
             w = Width;
-        if( h == 0 )
+        if (h == 0)
             h = Height;
 
-        if( AnimPlay )
-        {
+        if (AnimPlay) {
             uint ticksPerFrame = Ticks / FrmCount;
-            int  framesPassed = ( GetTick() - AnimStartTick ) / ticksPerFrame;
-            if( framesPassed > 0 )
-            {
+            int framesPassed = (GetTick() - AnimStartTick) / ticksPerFrame;
+            if (framesPassed > 0) {
                 AnimStartTick += framesPassed * ticksPerFrame;
-                Frame += ( AnimReverse ? -framesPassed : framesPassed );
+                Frame += (AnimReverse ? -framesPassed : framesPassed);
 
                 bool endAnim = false;
-                if( Frame <= 0 )
-                {
+                if (Frame <= 0) {
                     endAnim = true;
                     AnimStartTick -= -Frame * ticksPerFrame;
                     Frame = 0;
                 }
-                else if( Frame >= int(FrmCount) - 1 )
-                {
+                else if (Frame >= int(FrmCount) - 1) {
                     endAnim = true;
-                    AnimStartTick -= ( Frame + 1 - FrmCount ) * ticksPerFrame;
+                    AnimStartTick -= (Frame + 1 - FrmCount) * ticksPerFrame;
                     Frame = FrmCount - 1;
                 }
 
-                if( endAnim )
-                {
-                    if( AnimLoop )
-                        Frame = ( AnimReverse ? int(FrmCount) - 1 : 0 );
+                if (endAnim) {
+                    if (AnimLoop)
+                        Frame = (AnimReverse ? int(FrmCount) - 1 : 0);
                     else
                         AnimPlay = false;
                 }
             }
         }
 
-        if( cornerX == 0 )
+        if (cornerX == 0)
             x -= w / 2;
-        else if( cornerX == 1 )
+        else if (cornerX == 1)
             x -= w;
-        if( cornerY == 0 )
+        if (cornerY == 0)
             y -= h / 2;
-        else if( cornerY == 1 )
+        else if (cornerY == 1)
             y -= h;
 
-        switch( layout != -1 ? layout : Layout )
-        {
+        switch (layout != -1 ? layout : Layout) {
         case IMAGE_LAYOUT_TILE:
-            DrawSpritePattern( Id, Frame, x, y, w, h, Width, Height, color );
+            DrawSpritePattern(Id, Frame, x, y, w, h, Width, Height, color);
             break;
         case IMAGE_LAYOUT_CENTER:
-            DrawSprite( Id, Frame, x + w / 2 - Width / 2, y + h / 2 - Height / 2, color );
+            DrawSprite(Id, Frame, x + w / 2 - Width / 2, y + h / 2 - Height / 2, color);
             break;
         case IMAGE_LAYOUT_STRETCH:
-            DrawSprite( Id, Frame, x, y, w, h, false, color );
+            DrawSprite(Id, Frame, x, y, w, h, false, color);
             break;
         case IMAGE_LAYOUT_ZOOM:
-            DrawSprite( Id, Frame, x, y, w, h, true, color );
+            DrawSprite(Id, Frame, x, y, w, h, true, color);
             break;
         default:
-            DrawSprite( Id, Frame, x, y, color );
+            DrawSprite(Id, Frame, x, y, color);
             break;
         }
     }
 
-    void SetFrame( int index )
+    void SetFrame(int index)
     {
         Frame = index;
         AnimPlay = false;
@@ -125,19 +119,19 @@
 
     void SetFirstFrame()
     {
-        SetFrame( 0 );
+        SetFrame(0);
     }
 
     void SetLastFrame()
     {
-        SetFrame( int(FrmCount) - 1 );
+        SetFrame(int(FrmCount) - 1);
     }
 
-    void PlayAnimation( bool loop = true, bool reverse = false )
+    void PlayAnimation(bool loop = true, bool reverse = false)
     {
-        if( Id == 0 )
+        if (Id == 0)
             return;
-        if( AnimPlay && AnimLoop == loop && AnimReverse == reverse )
+        if (AnimPlay && AnimLoop == loop && AnimReverse == reverse)
             return;
 
         AnimPlay = true;
@@ -146,17 +140,16 @@
         AnimStartTick = GetTick();
     }
 
-    private void RefreshData()
+    private
+    void RefreshData()
     {
-        if( Id != 0 )
-        {
-            Width = GetSpriteWidth( Id, 0 );
-            Height = GetSpriteHeight( Id, 0 );
-            FrmCount = GetSpriteCount( Id );
-            Ticks = GetSpriteTicks( Id );
+        if (Id != 0) {
+            Width = GetSpriteWidth(Id, 0);
+            Height = GetSpriteHeight(Id, 0);
+            FrmCount = GetSpriteCount(Id);
+            Ticks = GetSpriteTicks(Id);
         }
-        else
-        {
+        else {
             Width = 0;
             Height = 0;
             FrmCount = 0;
@@ -165,10 +158,10 @@
     }
 
     uint Id;
-    int  Frame = -1;
-    int  Layout = IMAGE_LAYOUT_NONE;
-    int  Width;
-    int  Height;
+    int Frame = -1;
+    int Layout = IMAGE_LAYOUT_NONE;
+    int Width;
+    int Height;
     uint FrmCount;
     uint Ticks;
     bool AnimPlay;
@@ -177,4 +170,4 @@
     uint AnimStartTick;
     bool Hidden;
     uint LoadedNameHash;
-}
+};

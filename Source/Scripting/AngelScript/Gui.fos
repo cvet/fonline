@@ -1,18 +1,17 @@
 // FOS Client
 
-interface IDropMenu
-{
+interface IDropMenu {
     void Draw();
-    void MouseDown( int button );
-    void MouseUp( int button );
-    bool PreMouseMove( int offsetX, int offsetY );
-    void PostMouseMove( int offsetX, int offsetY );
+    void MouseDown(int button);
+    void MouseUp(int button);
+    bool PreMouseMove(int offsetX, int offsetY);
+    void PostMouseMove(int offsetX, int offsetY);
     void InputLost();
     void Loop();
-}
+};
 
-/*EXPORT*/ funcdef Screen CreateScreenFunc();
-/*EXPORT*/ funcdef bool   DragAndDropHandler( Object obj, Object target );
+funcdef Screen CreateScreenFunc();
+funcdef bool DragAndDropHandler(Object obj, Object target);
 
 // Inheritance
 // Object
@@ -233,123 +232,270 @@ interface IDropMenu
 //   void SetUserDataExt( int data )
 //   void SetUseSorting( bool enable )
 
-/*EXPORT*/ class Object
+class Object
 {
-    bool   get_Active() final                { return _ActiveSelf && ( _Parent != null ? _Parent.Active : true ); }
-    bool   get_ActiveSelf() final            { return _ActiveSelf; }
-    string get_Name() final                  { return _Name; }
-    int    get_PosX() final                  { return _Parent != null ? _AbsolutePosX - _Parent._AbsolutePosX : _AbsolutePosX; }
-    int    get_PosY() final                  { return _Parent != null ? _AbsolutePosY - _Parent._AbsolutePosY : _AbsolutePosY; }
-    int    get_AbsolutePosX() final          { return _AbsolutePosX; }
-    int    get_AbsolutePosY() final          { return _AbsolutePosY; }
-    int    get_Width() final                 { return _Width; }
-    int    get_Height() final                { return _Height; }
-    int    get_Anchor() final                { return _Anchor; }
-    int    get_Dock() final                  { return _Dock; }
-    int    get_Color() final                 { return _Color; }
-    bool   get_IsDraggable() final           { return _IsDraggable; }
-    bool   get_IsNotHittable() final         { return _IsNotHittable; }
-    bool   get_IsNotCatchable() final        { return _IsNotCatchable; }
-    bool   get_CheckTransparentOnHit() final { return _CheckTransparentOnHit; }
-    bool   get_IsFocused() final             { return _IsFocused; }
-    bool   get_IsPressed() final             { return _IsPressed; }
-    bool   get_IsHovered() final             { return _IsHovered; }
-    bool   get_IsDragged() final             { return _IsDragged || ( _Parent != null && _Parent.IsDragged ); }
-    uint   get_ChildCount() final            { return _Children.length(); }
-    Object get_Parent() final                { return _Parent; }
-    Screen get_Screen() final                { return _Parent != null ? _Parent.Screen : cast< Screen >( this ); }
-    Grid   get_Grid() final                  { return _Grid; }
-    uint   get_CellIndex() final             { return _CellIndex; }
+    bool get_Active() final
+    {
+        return _ActiveSelf && (_Parent != null ? _Parent.Active : true);
+    }
+    bool get_ActiveSelf() final
+    {
+        return _ActiveSelf;
+    }
+    string get_Name() final
+    {
+        return _Name;
+    }
+    int get_PosX() final
+    {
+        return _Parent != null ? _AbsolutePosX - _Parent._AbsolutePosX : _AbsolutePosX;
+    }
+    int get_PosY() final
+    {
+        return _Parent != null ? _AbsolutePosY - _Parent._AbsolutePosY : _AbsolutePosY;
+    }
+    int get_AbsolutePosX() final
+    {
+        return _AbsolutePosX;
+    }
+    int get_AbsolutePosY() final
+    {
+        return _AbsolutePosY;
+    }
+    int get_Width() final
+    {
+        return _Width;
+    }
+    int get_Height() final
+    {
+        return _Height;
+    }
+    int get_Anchor() final
+    {
+        return _Anchor;
+    }
+    int get_Dock() final
+    {
+        return _Dock;
+    }
+    int get_Color() final
+    {
+        return _Color;
+    }
+    bool get_IsDraggable() final
+    {
+        return _IsDraggable;
+    }
+    bool get_IsNotHittable() final
+    {
+        return _IsNotHittable;
+    }
+    bool get_IsNotCatchable() final
+    {
+        return _IsNotCatchable;
+    }
+    bool get_CheckTransparentOnHit() final
+    {
+        return _CheckTransparentOnHit;
+    }
+    bool get_IsFocused() final
+    {
+        return _IsFocused;
+    }
+    bool get_IsPressed() final
+    {
+        return _IsPressed;
+    }
+    bool get_IsHovered() final
+    {
+        return _IsHovered;
+    }
+    bool get_IsDragged() final
+    {
+        return _IsDragged || (_Parent != null && _Parent.IsDragged);
+    }
+    uint get_ChildCount() final
+    {
+        return _Children.length();
+    }
+    Object get_Parent() final
+    {
+        return _Parent;
+    }
+    Screen get_Screen() final
+    {
+        return _Parent != null ? _Parent.Screen : cast<Screen>(this);
+    }
+    Grid get_Grid() final
+    {
+        return _Grid;
+    }
+    uint get_CellIndex() final
+    {
+        return _CellIndex;
+    }
 
-    bool   _ActiveSelf;
+    bool _ActiveSelf;
     string _Name;
-    int    _BasePosX;
-    int    _BasePosY;
-    int    _BaseWidth;
-    int    _BaseHeight;
-    int    _AbsolutePosX;
-    int    _AbsolutePosY;
-    int    _Width;
-    int    _Height;
-    int    _Anchor;
-    int    _Dock;
-    uint   _Color;
-    bool   _IsDragged;
-    bool   _IsDraggable;
-    bool   _IsNotHittable;
-    bool   _IsNotCatchable;
-    bool   _CheckTransparentOnHit;
-    bool   _DeferredMousePressed;
-    bool   _IsFocused;
-    bool   _IsPressed;
-    bool   _IsHovered;
-    int    _PressedButton;
-    int    _PressedX;
-    int    _PressedY;
+    int _BasePosX;
+    int _BasePosY;
+    int _BaseWidth;
+    int _BaseHeight;
+    int _AbsolutePosX;
+    int _AbsolutePosY;
+    int _Width;
+    int _Height;
+    int _Anchor;
+    int _Dock;
+    uint _Color;
+    bool _IsDragged;
+    bool _IsDraggable;
+    bool _IsNotHittable;
+    bool _IsNotCatchable;
+    bool _CheckTransparentOnHit;
+    bool _DeferredMousePressed;
+    bool _IsFocused;
+    bool _IsPressed;
+    bool _IsHovered;
+    int _PressedButton;
+    int _PressedX;
+    int _PressedY;
     Object _Parent;
     Object[] _Children;
-    Grid   _Grid;
-    uint   _CellIndex;
+    Grid _Grid;
+    uint _CellIndex;
 
     // Callbacks
-    void OnConstruct()                                        {}
-    void OnInit()                                             {}
-    void OnShow()                                             {}
-    void OnShow( dictionary params )                          {}
-    void OnHide()                                             {}
-    void OnAppear()                                           {}
-    void OnDisappear()                                        {}
-    void OnRemove()                                           {}
-    void OnDraw()                                             {}
-    void OnPostDraw()                                         {}
-    void OnMove( int deltaX, int deltaY )                     {}
-    void OnMouseDown( int button )                            {}
-    void OnMouseUp( int button, bool lost )                   {}
-    void OnMousePressed( int button )                         {}
-    void OnLMousePressed()                                    {}
-    void OnRMousePressed()                                    {}
-    void OnMouseClick( int button )                           {}
-    void OnLMouseClick()                                      {}
-    void OnRMouseClick()                                      {}
-    void OnMouseMove()                                        {}
-    void OnGlobalMouseDown( int button )                      {}
-    void OnGlobalMouseUp( int button )                        {}
-    void OnGlobalMousePressed( int button )                   {}
-    void OnGlobalMouseClick( int button )                     {}
-    void OnGlobalMouseMove()                                  {}
-    void OnInput()                                            {}
-    void OnInput( uint8 key )                                 {}
-    void OnInput( string text )                               {}
-    void OnInput( uint8 key, string text )                    {}
-    void OnGlobalInput( uint8 key, string text )              {}
-    void OnActiveChanged()                                    {}
-    void OnFocusChanged()                                     {}
-    void OnHoverChanged()                                     {}
-    void OnDragChanged()                                      {}
-    void OnResizeGrid( Object cell, uint cellIndex )          {}
-    void OnDrawItem( Item item, Object cell, uint cellIndex ) {}
+    void OnConstruct()
+    {
+    }
+    void OnInit()
+    {
+    }
+    void OnShow()
+    {
+    }
+    void OnShow(dictionary params)
+    {
+    }
+    void OnHide()
+    {
+    }
+    void OnAppear()
+    {
+    }
+    void OnDisappear()
+    {
+    }
+    void OnRemove()
+    {
+    }
+    void OnDraw()
+    {
+    }
+    void OnPostDraw()
+    {
+    }
+    void OnMove(int deltaX, int deltaY)
+    {
+    }
+    void OnMouseDown(int button)
+    {
+    }
+    void OnMouseUp(int button, bool lost)
+    {
+    }
+    void OnMousePressed(int button)
+    {
+    }
+    void OnLMousePressed()
+    {
+    }
+    void OnRMousePressed()
+    {
+    }
+    void OnMouseClick(int button)
+    {
+    }
+    void OnLMouseClick()
+    {
+    }
+    void OnRMouseClick()
+    {
+    }
+    void OnMouseMove()
+    {
+    }
+    void OnGlobalMouseDown(int button)
+    {
+    }
+    void OnGlobalMouseUp(int button)
+    {
+    }
+    void OnGlobalMousePressed(int button)
+    {
+    }
+    void OnGlobalMouseClick(int button)
+    {
+    }
+    void OnGlobalMouseMove()
+    {
+    }
+    void OnInput()
+    {
+    }
+    void OnInput(uint8 key)
+    {
+    }
+    void OnInput(string text)
+    {
+    }
+    void OnInput(uint8 key, string text)
+    {
+    }
+    void OnGlobalInput(uint8 key, string text)
+    {
+    }
+    void OnActiveChanged()
+    {
+    }
+    void OnFocusChanged()
+    {
+    }
+    void OnHoverChanged()
+    {
+    }
+    void OnDragChanged()
+    {
+    }
+    void OnResizeGrid(Object cell, uint cellIndex)
+    {
+    }
+    void OnDrawItem(Item item, Object cell, uint cellIndex)
+    {
+    }
 
     Object()
     {
-        _Children = array< Object >();
+        _Children = array<Object>();
     }
 
-    void Init( Object parent )
+    void Init(Object parent)
     {
         _ActiveSelf = true;
-        _Name = reflection::typeof < Object > ( this ).nameWithoutNamespace;
+        _Name = reflection::typeof<Object>(this).nameWithoutNamespace;
 
-        if( _Parent != null )
-            _Parent._Children.removeAt( _Parent._Children.findByRef( this ) );
+        if (_Parent != null)
+            _Parent._Children.removeAt(_Parent._Children.findByRef(this));
         _Parent = parent;
-        if( parent != null )
-            parent._Children.insertLast( this );
+        if (parent != null)
+            parent._Children.insertLast(this);
 
         _Construct();
         OnConstruct();
 
         Screen screen = Screen;
-        if( screen != null && screen._IsRegistered )
+        if (screen != null && screen._IsRegistered)
             _Init();
     }
 
@@ -361,58 +507,57 @@ interface IDropMenu
     void _FixClone()
     {
         _Parent = null;
-        _Children = array< Object >();
+        _Children = array<Object>();
     }
 
     void _Init()
     {
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Init();
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Init();
         OnInit();
         _RefreshPosition();
     }
 
-    void _Show( dictionary params )
+    void _Show(dictionary params)
     {
         OnShow();
-        OnShow( params );
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Show( params );
+        OnShow(params);
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Show(params);
     }
 
     void _Hide()
     {
         OnHide();
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Hide();
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Hide();
     }
 
     void _Appear()
     {
         OnAppear();
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Appear();
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Appear();
     }
 
     void _Disappear()
     {
         OnDisappear();
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Disappear();
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Disappear();
     }
 
     void _DragChanged()
     {
         OnDragChanged();
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._DragChanged();
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._DragChanged();
     }
 
     void Remove()
     {
-        if( _Parent != null )
-        {
-            _Parent._Children.removeAt( _Parent._Children.findByRef( this ) );
+        if (_Parent != null) {
+            _Parent._Children.removeAt(_Parent._Children.findByRef(this));
             _Parent = null;
         }
 
@@ -424,114 +569,110 @@ interface IDropMenu
     void _Remove()
     {
         OnRemove();
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Remove();
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Remove();
     }
 
-    void _Reload( bool reconstruct, bool refreshPosition )
+    void _Reload(bool reconstruct, bool refreshPosition)
     {
-        if( reconstruct )
+        if (reconstruct)
             OnConstruct();
-        if( refreshPosition )
+        if (refreshPosition)
             _RefreshPosition();
 
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Reload( reconstruct, refreshPosition );
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Reload(reconstruct, refreshPosition);
     }
 
     void _DrawCallback()
     {
         // Draw item callback
-        if( _Grid != null )
-        {
-            ItemView itemView = cast< ItemView >( _Grid );
-            if( itemView != null )
-                OnDrawItem( itemView.GetItem( _CellIndex ), this, _CellIndex );
+        if (_Grid != null) {
+            ItemView itemView = cast<ItemView>(_Grid);
+            if (itemView != null)
+                OnDrawItem(itemView.GetItem(_CellIndex), this, _CellIndex);
         }
 
         // Common draw callback
         OnDraw();
     }
 
-    void _Draw( bool callCallback )
+    void _Draw(bool callCallback)
     {
-        if( callCallback )
+        if (callCallback)
             _DrawCallback();
 
         // _Children
-        for( uint i = 0; i < _Children.length(); i++ )
-        {
-            Object child = _Children[ i ];
-            if( child._ActiveSelf && !child._IsDragged )
-                child._Draw( true );
+        for (uint i = 0; i < _Children.length(); i++) {
+            Object child = _Children[i];
+            if (child._ActiveSelf && !child._IsDragged)
+                child._Draw(true);
         }
 
-        if( callCallback )
+        if (callCallback)
             OnPostDraw();
     }
 
-    void Draw( int x, int y )
+    void Draw(int x, int y)
     {
         int dx = x - _AbsolutePosX;
         int dy = y - _AbsolutePosY;
-        _Move( dx, dy, false, false );
-        _Draw( true );
-        _Move( -dx, -dy, false, false );
+        _Move(dx, dy, false, false);
+        _Draw(true);
+        _Move(-dx, -dy, false, false);
     }
 
-    void Move( int deltaX, int deltaY )
+    void Move(int deltaX, int deltaY)
     {
-        _Move( deltaX, deltaY, true, true );
+        _Move(deltaX, deltaY, true, true);
     }
 
-    void _Move( int deltaX, int deltaY, bool callCallback, bool moveBasePos )
+    void _Move(int deltaX, int deltaY, bool callCallback, bool moveBasePos)
     {
         _AbsolutePosX += deltaX;
         _AbsolutePosY += deltaY;
 
-        if( moveBasePos )
-        {
+        if (moveBasePos) {
             _BasePosX += deltaX;
             _BasePosY += deltaY;
         }
 
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Move( deltaX, deltaY, false, false );
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Move(deltaX, deltaY, false, false);
 
-        if( callCallback )
-            _MoveCallback( deltaX, deltaY );
+        if (callCallback)
+            _MoveCallback(deltaX, deltaY);
     }
 
-    void _MoveCallback( int deltaX, int deltaY )
+    void _MoveCallback(int deltaX, int deltaY)
     {
-        OnMove( deltaX, deltaY );
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._MoveCallback( deltaX, deltaY );
+        OnMove(deltaX, deltaY);
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._MoveCallback(deltaX, deltaY);
     }
 
     bool _IsCatchable()
     {
-        bool result = ( !_IsNotCatchable && !_IsDraggable && cast< Panel >( this ) != null && cast< Button >( this ) == null && cast< Grid >( this ) == null );
-        return result && ( Parent != null ? Parent._IsCatchable() : true );
+        bool result = (!_IsNotCatchable && !_IsDraggable && cast<Panel>(this) != null && cast<Button>(this) == null && cast<Grid>(this) == null);
+        return result && (Parent != null ? Parent._IsCatchable() : true);
     }
 
     Object FindMouseHit()
     {
-        return FindHit( __MouseX, __MouseY );
+        return FindHit(__MouseX, __MouseY);
     }
 
-    Object FindHit( int x, int y )
+    Object FindHit(int x, int y)
     {
         // Check children
-        for( int i = int( _Children.length() ) - 1; i >= 0; i-- )
-        {
-            Object obj = _Children[ i ].FindHit( x, y );
-            if( obj != null )
+        for (int i = int(_Children.length()) - 1; i >= 0; i--) {
+            Object obj = _Children[i].FindHit(x, y);
+            if (obj != null)
                 return obj;
         }
 
         // Check own
-        if( IsHit( x, y ) )
+        if (IsHit(x, y))
             return this;
 
         // No collision found
@@ -540,146 +681,136 @@ interface IDropMenu
 
     bool IsMouseHit()
     {
-        return IsHit( __MouseX, __MouseY );
+        return IsHit(__MouseX, __MouseY);
     }
 
-    bool IsHit( int x, int y )
+    bool IsHit(int x, int y)
     {
-        return Active && !_IsNotHittable && _Width > 0 && _Height > 0 &&
-               Math::IsCollision( x, y, _AbsolutePosX, _AbsolutePosY, _Width, _Height ) && !_IsCropped( x, y );
+        return Active && !_IsNotHittable && _Width > 0 && _Height > 0 && Math::IsCollision(x, y, _AbsolutePosX, _AbsolutePosY, _Width, _Height) &&
+               !_IsCropped(x, y);
     }
 
-    bool _IsCropped( int x, int y )
+    bool _IsCropped(int x, int y)
     {
         Object obj = Parent;
-        while( obj != null )
-        {
-            Panel panel = cast< Panel >( obj );
-            if( panel != null && panel._CropContent && !Math::IsCollision( x, y, obj._AbsolutePosX, obj._AbsolutePosY, obj._Width, obj._Height ) )
+        while (obj != null) {
+            Panel panel = cast<Panel>(obj);
+            if (panel != null && panel._CropContent && !Math::IsCollision(x, y, obj._AbsolutePosX, obj._AbsolutePosY, obj._Width, obj._Height))
                 return true;
             obj = obj.Parent;
         }
         return false;
     }
 
-    void _GetWholeSizeRect( int[] rect )
+    void _GetWholeSizeRect(int[] rect)
     {
         int l = _AbsolutePosX;
         int t = _AbsolutePosY;
         int r = l + Width;
         int b = t + Height;
 
-        if( l < rect[ 0 ] )
-            rect[ 0 ] = l;
-        if( t < rect[ 1 ] )
-            rect[ 1 ] = t;
-        if( r > rect[ 2 ] )
-            rect[ 2 ] = r;
-        if( b > rect[ 3 ] )
-            rect[ 3 ] = b;
+        if (l < rect[0])
+            rect[0] = l;
+        if (t < rect[1])
+            rect[1] = t;
+        if (r > rect[2])
+            rect[2] = r;
+        if (b > rect[3])
+            rect[3] = b;
 
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._GetWholeSizeRect( rect );
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._GetWholeSizeRect(rect);
     }
 
-    void GetWholeSize( int& centerX, int& centerY, int& wholeWidth, int& wholeHeight, bool onlyChidren = false )
+    void GetWholeSize(int& centerX, int& centerY, int& wholeWidth, int& wholeHeight, bool onlyChidren = false)
     {
-        int[] rect = { 1000000000, 1000000000, -1000000000, -1000000000 };
-        if( !onlyChidren )
-        {
-            _GetWholeSizeRect( rect );
+        int[] rect = {1000000000, 1000000000, -1000000000, -1000000000};
+        if (!onlyChidren) {
+            _GetWholeSizeRect(rect);
         }
-        else if( _Children.length() > 0 )
-        {
-            for( uint i = 0; i < _Children.length(); i++ )
-                _Children[ i ]._GetWholeSizeRect( rect );
+        else if (_Children.length() > 0) {
+            for (uint i = 0; i < _Children.length(); i++)
+                _Children[i]._GetWholeSizeRect(rect);
         }
-        else
-        {
-            rect[ 0 ] = rect[ 1 ] = rect[ 2 ] = rect[ 3 ] = 0;
+        else {
+            rect[0] = rect[1] = rect[2] = rect[3] = 0;
         }
-        wholeWidth = rect[ 2 ] - rect[ 0 ];
-        wholeHeight = rect[ 3 ] - rect[ 1 ];
-        centerX = rect[ 0 ] + wholeWidth / 2;
-        centerY = rect[ 1 ] + wholeHeight / 2;
+        wholeWidth = rect[2] - rect[0];
+        wholeHeight = rect[3] - rect[1];
+        centerX = rect[0] + wholeWidth / 2;
+        centerY = rect[1] + wholeHeight / 2;
     }
 
-    void _MouseDown( int button )
+    void _MouseDown(int button)
     {
         _IsPressed = true;
         _PressedButton = button;
         _PressedX = __MouseX;
         _PressedY = __MouseY;
-        OnMouseDown( button );
+        OnMouseDown(button);
 
-        if( _IsDraggable && _PressedButton == MOUSE_BUTTON_LEFT )
-        {
-            bool draggableCursor = ( __DraggableCursor != CursorType::Default && __Cursor == __DraggableCursor );
-            if( draggableCursor )
-            {
+        if (_IsDraggable && _PressedButton == MOUSE_BUTTON_LEFT) {
+            bool draggableCursor = (__DraggableCursor != CursorType::Default && __Cursor == __DraggableCursor);
+            if (draggableCursor) {
                 _IsDragged = true;
                 _DragChanged();
             }
         }
 
-        if( !_DeferredMousePressed )
-        {
-            Screen._GlobalMousePressed( button );
-            _MousePressed( button );
+        if (!_DeferredMousePressed) {
+            Screen._GlobalMousePressed(button);
+            _MousePressed(button);
         }
     }
 
     void StartDragging()
     {
-        if( _IsDraggable && !_IsDragged && _IsPressed && _PressedButton == MOUSE_BUTTON_LEFT && !IsDragged )
-        {
+        if (_IsDraggable && !_IsDragged && _IsPressed && _PressedButton == MOUSE_BUTTON_LEFT && !IsDragged) {
             _IsDragged = true;
             _DragChanged();
         }
     }
 
-    void _MousePressed( int button )
+    void _MousePressed(int button)
     {
-        OnMousePressed( button );
-        if( button == MOUSE_BUTTON_LEFT )
+        OnMousePressed(button);
+        if (button == MOUSE_BUTTON_LEFT)
             OnLMousePressed();
-        else if( button == MOUSE_BUTTON_RIGHT )
+        else if (button == MOUSE_BUTTON_RIGHT)
             OnRMousePressed();
 
-        _MousePressedUnder( button );
+        _MousePressedUnder(button);
     }
 
-    void _MousePressedUnder( int button )
+    void _MousePressedUnder(int button)
     {
-        if( Parent != null )
-            Parent._MousePressedUnder( button );
+        if (Parent != null)
+            Parent._MousePressedUnder(button);
     }
 
-    void _MouseUp( bool lost )
+    void _MouseUp(bool lost)
     {
         _IsPressed = false;
 
-        if( _DeferredMousePressed )
-        {
-            Screen._GlobalMousePressed( _PressedButton );
-            _MousePressed( _PressedButton );
+        if (_DeferredMousePressed) {
+            Screen._GlobalMousePressed(_PressedButton);
+            _MousePressed(_PressedButton);
         }
 
-        OnMouseUp( _PressedButton, lost );
+        OnMouseUp(_PressedButton, lost);
 
-        if( _IsDragged )
-        {
+        if (_IsDragged) {
             _IsDragged = false;
             _DragChanged();
         }
     }
 
-    void MouseClick( int button )
+    void MouseClick(int button)
     {
-        OnMouseClick( button );
-        if( button == MOUSE_BUTTON_LEFT )
+        OnMouseClick(button);
+        if (button == MOUSE_BUTTON_LEFT)
             OnLMouseClick();
-        else if( button == MOUSE_BUTTON_RIGHT )
+        else if (button == MOUSE_BUTTON_RIGHT)
             OnRMouseClick();
     }
 
@@ -688,62 +819,61 @@ interface IDropMenu
         OnMouseMove();
     }
 
-    void _GlobalMouseDown( int button )
+    void _GlobalMouseDown(int button)
     {
-        OnGlobalMouseDown( button );
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._GlobalMouseDown( button );
+        OnGlobalMouseDown(button);
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._GlobalMouseDown(button);
     }
 
-    void _GlobalMouseUp( int button )
+    void _GlobalMouseUp(int button)
     {
-        OnGlobalMouseUp( button );
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._GlobalMouseUp( button );
+        OnGlobalMouseUp(button);
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._GlobalMouseUp(button);
     }
 
-    void _GlobalMousePressed( int button )
+    void _GlobalMousePressed(int button)
     {
-        OnGlobalMousePressed( button );
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._GlobalMousePressed( button );
+        OnGlobalMousePressed(button);
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._GlobalMousePressed(button);
     }
 
-    void _GlobalMouseClick( int button )
+    void _GlobalMouseClick(int button)
     {
-        OnGlobalMouseClick( button );
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._GlobalMouseClick( button );
+        OnGlobalMouseClick(button);
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._GlobalMouseClick(button);
     }
 
     void _GlobalMouseMove()
     {
         OnGlobalMouseMove();
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._GlobalMouseMove();
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._GlobalMouseMove();
     }
 
-    void Input( uint8 key, string text )
+    void Input(uint8 key, string text)
     {
         OnInput();
-        if( text.isEmpty() )
-            OnInput( key );
+        if (text.isEmpty())
+            OnInput(key);
         else
-            OnInput( text );
-        OnInput( key, text );
+            OnInput(text);
+        OnInput(key, text);
     }
 
-    void _GlobalInput( uint8 key, string text )
+    void _GlobalInput(uint8 key, string text)
     {
-        OnGlobalInput( key, text );
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._GlobalInput( key, text );
+        OnGlobalInput(key, text);
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._GlobalInput(key, text);
     }
 
     void _Focus()
     {
-        if( !_IsFocused )
-        {
+        if (!_IsFocused) {
             _IsFocused = true;
             OnFocusChanged();
         }
@@ -751,8 +881,7 @@ interface IDropMenu
 
     void _Unfocus()
     {
-        if( _IsFocused )
-        {
+        if (_IsFocused) {
             _IsFocused = false;
             OnFocusChanged();
         }
@@ -760,8 +889,7 @@ interface IDropMenu
 
     void _Hover()
     {
-        if( !_IsHovered )
-        {
+        if (!_IsHovered) {
             _IsHovered = true;
             OnHoverChanged();
         }
@@ -769,68 +897,65 @@ interface IDropMenu
 
     void _Unhover()
     {
-        if( _IsHovered )
-        {
+        if (_IsHovered) {
             _IsHovered = false;
             OnHoverChanged();
         }
     }
 
-    Object _Clone( Object parent )
+    Object _Clone(Object parent)
     {
-        Object               newObject;
-        reflection::typeof < Object > ( this ).instantiate( this, newObject );
+        Object newObject;
+        reflection::typeof<Object>(this).instantiate(this, newObject);
         newObject._FixClone();
         newObject._Parent = parent;
-        if( parent != null )
-            parent._Children.insertLast( newObject );
+        if (parent != null)
+            parent._Children.insertLast(newObject);
         newObject.OnConstruct();
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._Clone( newObject );
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._Clone(newObject);
         return newObject;
     }
 
-    Panel FindPanel( string name )
+    Panel FindPanel(string name)
     {
-        return cast< Panel >( Find( name ) );
+        return cast<Panel>(Find(name));
     }
 
-    Text FindText( string name )
+    Text FindText(string name)
     {
-        return cast< Text >( Find( name ) );
+        return cast<Text>(Find(name));
     }
 
-    TextInput FindTextInput( string name )
+    TextInput FindTextInput(string name)
     {
-        return cast< TextInput >( Find( name ) );
+        return cast<TextInput>(Find(name));
     }
 
-    Button FindButton( string name )
+    Button FindButton(string name)
     {
-        return cast< Button >( Find( name ) );
+        return cast<Button>(Find(name));
     }
 
-    Object Find( string name, bool deepFind = true )
+    Object Find(string name, bool deepFind = true)
     {
-        for( uint i = 0; i < _Children.length(); i++ )
-        {
-            Object child = _Children[ i ];
-            if( !child._Name.isEmpty() && child._Name == name )
+        for (uint i = 0; i < _Children.length(); i++) {
+            Object child = _Children[i];
+            if (!child._Name.isEmpty() && child._Name == name)
                 return child;
 
-            if( deepFind )
-            {
-                Object obj = child.Find( name );
-                if( obj != null )
+            if (deepFind) {
+                Object obj = child.Find(name);
+                if (obj != null)
                     return obj;
             }
         }
         return null;
     }
 
-    Object GetChild( uint index )
+    Object GetChild(uint index)
     {
-        return _Children[ index ];
+        return _Children[index];
     }
 
     void _RefreshPosition()
@@ -838,76 +963,68 @@ interface IDropMenu
         // Base data
         _Width = _BaseWidth;
         _Height = _BaseHeight;
-        int parentAbsolutePosX = ( _Parent != null ? _Parent._AbsolutePosX : 0 );
-        int parentAbsolutePosY = ( _Parent != null ? _Parent._AbsolutePosY : 0 );
-        int parentWidth = ( _Parent != null ? _Parent._Width : __ScreenWidth );
-        int parentHeight = ( _Parent != null ? _Parent._Height : __ScreenHeight );
-        int parentBaseWidth = ( _Parent != null ? _Parent._BaseWidth : _BaseWidth );
-        int parentBaseHeight = ( _Parent != null ? _Parent._BaseHeight : _BaseHeight );
+        int parentAbsolutePosX = (_Parent != null ? _Parent._AbsolutePosX : 0);
+        int parentAbsolutePosY = (_Parent != null ? _Parent._AbsolutePosY : 0);
+        int parentWidth = (_Parent != null ? _Parent._Width : __ScreenWidth);
+        int parentHeight = (_Parent != null ? _Parent._Height : __ScreenHeight);
+        int parentBaseWidth = (_Parent != null ? _Parent._BaseWidth : _BaseWidth);
+        int parentBaseHeight = (_Parent != null ? _Parent._BaseHeight : _BaseHeight);
 
         // Dock
         int newPosX;
         int newPosY;
-        if( _Dock != 0 )
-        {
-            if( _Dock == DOCK_LEFT )
-            {
+        if (_Dock != 0) {
+            if (_Dock == DOCK_LEFT) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Height = parentHeight;
             }
-            else if( _Dock == DOCK_RIGHT )
-            {
+            else if (_Dock == DOCK_RIGHT) {
                 newPosX = parentAbsolutePosX + parentWidth - _Width;
                 newPosY = parentAbsolutePosY;
                 _Height = parentHeight;
             }
-            else if( _Dock == DOCK_TOP )
-            {
+            else if (_Dock == DOCK_TOP) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Width = parentWidth;
             }
-            else if( _Dock == DOCK_BOTTOM )
-            {
+            else if (_Dock == DOCK_BOTTOM) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY + parentHeight - _Height;
                 _Width = parentWidth;
             }
-            else if( _Dock == DOCK_FILL )
-            {
+            else if (_Dock == DOCK_FILL) {
                 newPosX = parentAbsolutePosX;
                 newPosY = parentAbsolutePosY;
                 _Width = parentWidth;
                 _Height = parentHeight;
             }
-            else
-            {
+            else {
                 newPosX = _BasePosX + parentAbsolutePosX;
                 newPosY = _BasePosY + parentAbsolutePosY;
             }
         }
         // Anchor
-        else
-        {
-            if( ( _Anchor & ANCHOR_LEFT ) != 0 )
+        else {
+            if ((_Anchor & ANCHOR_LEFT) != 0)
                 newPosX = parentAbsolutePosX + _BasePosX;
-            else if( ( _Anchor & ANCHOR_RIGHT ) != 0 )
-                newPosX = parentAbsolutePosX + _BasePosX + ( parentWidth - parentBaseWidth );
+            else if ((_Anchor & ANCHOR_RIGHT) != 0)
+                newPosX = parentAbsolutePosX + _BasePosX + (parentWidth - parentBaseWidth);
             else
-                newPosX = parentAbsolutePosX + _BasePosX + ( parentWidth - parentBaseWidth ) / 2;
+                newPosX = parentAbsolutePosX + _BasePosX + (parentWidth - parentBaseWidth) / 2;
 
-            if( ( _Anchor & ANCHOR_TOP ) != 0 )
+            if ((_Anchor & ANCHOR_TOP) != 0)
                 newPosY = parentAbsolutePosY + _BasePosY;
-            else if( ( _Anchor & ANCHOR_BOTTOM ) != 0 )
-                newPosY = parentAbsolutePosY + _BasePosY + ( parentHeight - parentBaseHeight );
+            else if ((_Anchor & ANCHOR_BOTTOM) != 0)
+                newPosY = parentAbsolutePosY + _BasePosY + (parentHeight - parentBaseHeight);
             else
-                newPosY = parentAbsolutePosY + _BasePosY + ( parentHeight - parentBaseHeight ) / 2;
+                newPosY = parentAbsolutePosY + _BasePosY + (parentHeight - parentBaseHeight) / 2;
         }
 
         // Move control
-        if( newPosX != _AbsolutePosX || newPosY != _AbsolutePosY )
-            _Move( newPosX - _AbsolutePosX, newPosY - _AbsolutePosY, false, false );
+        if (newPosX != _AbsolutePosX || newPosY != _AbsolutePosY)
+            _Move(newPosX - _AbsolutePosX, newPosY - _AbsolutePosY, false, false);
     }
 
     void _SizeChanged()
@@ -916,15 +1033,14 @@ interface IDropMenu
     }
 
     // Options
-    void SetName( string name )
+    void SetName(string name)
     {
         _Name = name;
     }
 
-    void SetActive( bool active )
+    void SetActive(bool active)
     {
-        if( _ActiveSelf != active )
-        {
+        if (_ActiveSelf != active) {
             _ActiveSelf = active;
             _ActiveChanged();
         }
@@ -933,13 +1049,13 @@ interface IDropMenu
     void _ActiveChanged()
     {
         OnActiveChanged();
-        for( uint i = 0; i < _Children.length(); i++ )
-            _Children[ i ]._ActiveChanged();
+        for (uint i = 0; i < _Children.length(); i++)
+            _Children[i]._ActiveChanged();
     }
 
-    void SetPosition( int x, int y )
+    void SetPosition(int x, int y)
     {
-        if( _BasePosX == x && _BasePosY == y )
+        if (_BasePosX == x && _BasePosY == y)
             return;
 
         _BasePosX = x;
@@ -947,9 +1063,9 @@ interface IDropMenu
         _RefreshPosition();
     }
 
-    void SetSize( int w, int h )
+    void SetSize(int w, int h)
     {
-        if( _BaseWidth == w && _BaseHeight == h )
+        if (_BaseWidth == w && _BaseHeight == h)
             return;
 
         _BaseWidth = w;
@@ -958,210 +1074,224 @@ interface IDropMenu
         _SizeChanged();
     }
 
-    void SetAnchor( int anchorStyles )
+    void SetAnchor(int anchorStyles)
     {
-        if( _Anchor == anchorStyles )
+        if (_Anchor == anchorStyles)
             return;
 
         _Anchor = anchorStyles;
         _RefreshPosition();
     }
 
-    void SetDock( int dockStyle )
+    void SetDock(int dockStyle)
     {
-        if( _Dock == dockStyle )
+        if (_Dock == dockStyle)
             return;
 
         _Dock = dockStyle;
         _RefreshPosition();
     }
 
-    void SetColor( uint color )
+    void SetColor(uint color)
     {
         _Color = color;
     }
 
-    void SetDraggable( bool enabled )
+    void SetDraggable(bool enabled)
     {
         _IsDraggable = enabled;
     }
 
-    void SetNotHittable( bool enabled )
+    void SetNotHittable(bool enabled)
     {
         _IsNotHittable = enabled;
     }
 
-    void SetNotCatchable( bool enabled )
+    void SetNotCatchable(bool enabled)
     {
         _IsNotCatchable = enabled;
     }
 
-    void SetCheckTransparentOnHit( bool enabled )
+    void SetCheckTransparentOnHit(bool enabled)
     {
         _CheckTransparentOnHit = enabled;
     }
 
-    void SetDeferredMousePressed( bool enabled )
+    void SetDeferredMousePressed(bool enabled)
     {
         _DeferredMousePressed = enabled;
     }
-}
+};
 
-/*EXPORT*/ class Panel : Object
+class Panel : Object
 {
-    Sprite::Sprite get_BackgroundImage() final         { return _BackgroundImage; }
-    int            get_BackgroundImageLayout() final   { return _BackgroundImage != null ? _BackgroundImage.Layout : IMAGE_LAYOUT_NONE; }
-    bool           get_IsVerticalScroll() final        { return _IsVerticalScroll; }
-    bool           get_IsHorizontalScroll() final      { return _IsHorizontalScroll; }
-    int            get_VerticalScrollPercent() final   { return _VerticalScrollPercent; }
-    int            get_HorizontalScrollPercent() final { return _HorizontalScrollPercent; }
+    Sprite::Sprite get_BackgroundImage() final
+    {
+        return _BackgroundImage;
+    }
+    int get_BackgroundImageLayout() final
+    {
+        return _BackgroundImage != null ? _BackgroundImage.Layout : IMAGE_LAYOUT_NONE;
+    }
+    bool get_IsVerticalScroll() final
+    {
+        return _IsVerticalScroll;
+    }
+    bool get_IsHorizontalScroll() final
+    {
+        return _IsHorizontalScroll;
+    }
+    int get_VerticalScrollPercent() final
+    {
+        return _VerticalScrollPercent;
+    }
+    int get_HorizontalScrollPercent() final
+    {
+        return _HorizontalScrollPercent;
+    }
 
     Sprite::Sprite _BackgroundImage;
-    bool           _CropContent;
-    bool           _IsVerticalScroll;
-    bool           _IsHorizontalScroll;
-    int            _VerticalScroll;
-    int            _HorizontalScroll;
-    int            _VerticalScrollPercent;
-    int            _HorizontalScrollPercent;
+    bool _CropContent;
+    bool _IsVerticalScroll;
+    bool _IsHorizontalScroll;
+    int _VerticalScroll;
+    int _HorizontalScroll;
+    int _VerticalScrollPercent;
+    int _HorizontalScrollPercent;
 
-    bool IsHit( int x, int y ) override
+    bool IsHit(int x, int y) override
     {
-        if( Object::IsHit( x, y ) )
-        {
-            if( _CheckTransparentOnHit && _BackgroundImage != null )
-                return ( GetPixelColor( _BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY ) & 0xFF000000 ) != 0;
+        if (Object::IsHit(x, y)) {
+            if (_CheckTransparentOnHit && _BackgroundImage != null)
+                return (GetPixelColor(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY) & 0xFF000000) != 0;
             return true;
         }
         return false;
     }
 
-    void _Draw( bool callCallback ) override
+    void _Draw(bool callCallback) override
     {
-        _ModifyScroll( 0, 0 );
+        _ModifyScroll(0, 0);
 
         bool crop = _CropContent;
-        if( crop )
-            PushDrawScissor( AbsolutePosX, AbsolutePosY, Width, Height );
+        if (crop)
+            PushDrawScissor(AbsolutePosX, AbsolutePosY, Width, Height);
 
-        if( callCallback )
+        if (callCallback)
             _DrawCallback();
 
         // Normal sprite
-        if( _BackgroundImage != null )
-            _DrawImage( _BackgroundImage );
+        if (_BackgroundImage != null)
+            _DrawImage(_BackgroundImage);
 
-        Object::_Draw( false );
+        Object::_Draw(false);
 
-        if( callCallback )
+        if (callCallback)
             OnPostDraw();
 
-        if( crop )
+        if (crop)
             PopDrawScissor();
     }
 
-    void _DrawImage( Sprite::Sprite image )
+    void _DrawImage(Sprite::Sprite image)
     {
-        if( _Width > 0 && _Height > 0 )
-            image.Draw( _AbsolutePosX, _AbsolutePosY, _Width, _Height, -1, -1, -1, _Color );
+        if (_Width > 0 && _Height > 0)
+            image.Draw(_AbsolutePosX, _AbsolutePosY, _Width, _Height, -1, -1, -1, _Color);
     }
 
-    void SetBackgroundImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
+    void SetBackgroundImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage( _BackgroundImage, imageName, imageLayout );
+        _SetImage(_BackgroundImage, imageName, imageLayout);
     }
 
-    void SetBackgroundImage( uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE )
+    void SetBackgroundImage(uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage( _BackgroundImage, imageNameHash, imageLayout );
+        _SetImage(_BackgroundImage, imageNameHash, imageLayout);
     }
 
-    void _SetImage( Sprite::Sprite& curImage, string imageName, int imageLayout )
+    void _SetImage(Sprite::Sprite& curImage, string imageName, int imageLayout)
     {
         curImage = null;
 
-        if( !imageName.isEmpty() )
-        {
+        if (!imageName.isEmpty()) {
             Sprite::Sprite spr = Sprite::Sprite();
-            if( spr.Load( imageName ) )
+            if (spr.Load(imageName))
                 curImage = spr;
         }
 
-        if( curImage != null )
+        if (curImage != null)
             curImage.Layout = imageLayout;
 
-        if( curImage != null && ( imageLayout == IMAGE_LAYOUT_NONE || ( _BaseWidth == 0 && _BaseHeight == 0 ) ) )
-            SetSize( curImage.Width, curImage.Height );
+        if (curImage != null && (imageLayout == IMAGE_LAYOUT_NONE || (_BaseWidth == 0 && _BaseHeight == 0)))
+            SetSize(curImage.Width, curImage.Height);
     }
 
-    void _SetImage( Sprite::Sprite& curImage, uint imageNameHash, int imageLayout )
+    void _SetImage(Sprite::Sprite& curImage, uint imageNameHash, int imageLayout)
     {
-        if( curImage != null && curImage.LoadedNameHash == imageNameHash )
+        if (curImage != null && curImage.LoadedNameHash == imageNameHash)
             return;
 
         curImage = null;
-        if( imageNameHash != 0 )
-        {
+        if (imageNameHash != 0) {
             Sprite::Sprite spr = Sprite::Sprite();
-            if( spr.Load( imageNameHash ) )
+            if (spr.Load(imageNameHash))
                 curImage = spr;
         }
 
-        if( curImage != null )
+        if (curImage != null)
             curImage.Layout = imageLayout;
 
-        if( curImage != null && ( imageLayout == IMAGE_LAYOUT_NONE || ( _BaseWidth == 0 && _BaseHeight == 0 ) ) )
-            SetSize( curImage.Width, curImage.Height );
+        if (curImage != null && (imageLayout == IMAGE_LAYOUT_NONE || (_BaseWidth == 0 && _BaseHeight == 0)))
+            SetSize(curImage.Width, curImage.Height);
     }
 
-    void _MousePressedUnder( int button ) override
+    void _MousePressedUnder(int button) override
     {
-        if( _IsVerticalScroll && ( button == MOUSE_BUTTON_WHEEL_UP || button == MOUSE_BUTTON_WHEEL_DOWN ) )
-        {
+        if (_IsVerticalScroll && (button == MOUSE_BUTTON_WHEEL_UP || button == MOUSE_BUTTON_WHEEL_DOWN)) {
             int dy = 0;
-            if( button == MOUSE_BUTTON_WHEEL_UP )
+            if (button == MOUSE_BUTTON_WHEEL_UP)
                 dy = -1;
-            else if( button == MOUSE_BUTTON_WHEEL_DOWN )
+            else if (button == MOUSE_BUTTON_WHEEL_DOWN)
                 dy = 1;
 
-            if( dy != 0 )
-                _ModifyScroll( dy * 10, 0 );
+            if (dy != 0)
+                _ModifyScroll(dy * 10, 0);
 
             // Stop processing
             return;
         }
 
-        Object::_MousePressedUnder( button );
+        Object::_MousePressedUnder(button);
     }
 
-    void ModifyScroll( int ver, int hor )
+    void ModifyScroll(int ver, int hor)
     {
-        _ModifyScroll( ver, hor );
+        _ModifyScroll(ver, hor);
     }
 
-    bool CanModifyScroll( int ver, int hor )
+    bool CanModifyScroll(int ver, int hor)
     {
-        return _ModifyScroll( ver, hor, true );
+        return _ModifyScroll(ver, hor, true);
     }
 
-    void SetScrollPercent( int verPercent, int horPercent )
+    void SetScrollPercent(int verPercent, int horPercent)
     {
-        if( !_IsVerticalScroll && !_IsHorizontalScroll )
+        if (!_IsVerticalScroll && !_IsHorizontalScroll)
             return;
 
         int maxVerScroll = 0, maxHorScroll = 0;
-        _GetScrollableSize( maxVerScroll, maxHorScroll );
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
 
-        int newVer = ( maxVerScroll > 0 ? maxVerScroll * verPercent / 100 : 0 );
-        int newHor = ( maxHorScroll > 0 ? maxHorScroll * horPercent / 100 : 0 );
+        int newVer = (maxVerScroll > 0 ? maxVerScroll * verPercent / 100 : 0);
+        int newHor = (maxHorScroll > 0 ? maxHorScroll * horPercent / 100 : 0);
 
-        if( newVer != _VerticalScroll || newHor != _HorizontalScroll )
-            _ModifyScroll( newVer - _VerticalScroll, newHor - _HorizontalScroll );
+        if (newVer != _VerticalScroll || newHor != _HorizontalScroll)
+            _ModifyScroll(newVer - _VerticalScroll, newHor - _HorizontalScroll);
     }
 
-    bool _ModifyScroll( int ver, int hor, bool onlyCheck = false )
+    bool _ModifyScroll(int ver, int hor, bool onlyCheck = false)
     {
-        if( !_IsVerticalScroll && !_IsHorizontalScroll )
+        if (!_IsVerticalScroll && !_IsHorizontalScroll)
             return false;
 
         int curVer = _VerticalScroll;
@@ -1169,88 +1299,101 @@ interface IDropMenu
         int oldVer = curVer;
         int oldHor = curHor;
 
-        if( _IsVerticalScroll )
+        if (_IsVerticalScroll)
             curVer += ver;
-        if( _IsHorizontalScroll )
+        if (_IsHorizontalScroll)
             curHor += hor;
 
         int maxVerScroll = 0, maxHorScroll = 0;
-        _GetScrollableSize( maxVerScroll, maxHorScroll );
+        _GetScrollableSize(maxVerScroll, maxHorScroll);
 
-        if( _IsVerticalScroll )
-        {
-            if( curVer > maxVerScroll )
+        if (_IsVerticalScroll) {
+            if (curVer > maxVerScroll)
                 curVer = maxVerScroll;
-            if( curVer < 0 )
+            if (curVer < 0)
                 curVer = 0;
         }
-        if( _IsHorizontalScroll )
-        {
-            if( curHor > maxHorScroll )
+        if (_IsHorizontalScroll) {
+            if (curHor > maxHorScroll)
                 curHor = maxHorScroll;
-            if( curHor < 0 )
+            if (curHor < 0)
                 curHor = 0;
         }
 
-        if( !onlyCheck || ( ver == 0 && hor == 0 ) )
-        {
-            _VerticalScrollPercent = ( maxVerScroll > 0 ? curVer * 100 / maxVerScroll : 0 );
-            _HorizontalScrollPercent = ( maxHorScroll > 0 ? curHor * 100 / maxHorScroll : 0 );
+        if (!onlyCheck || (ver == 0 && hor == 0)) {
+            _VerticalScrollPercent = (maxVerScroll > 0 ? curVer * 100 / maxVerScroll : 0);
+            _HorizontalScrollPercent = (maxHorScroll > 0 ? curHor * 100 / maxHorScroll : 0);
         }
 
-        if( curVer != oldVer || curHor != oldHor )
-        {
-            if( !onlyCheck )
-            {
+        if (curVer != oldVer || curHor != oldHor) {
+            if (!onlyCheck) {
                 _VerticalScroll = curVer;
                 _HorizontalScroll = curHor;
-                for( uint i = 0; i < _Children.length(); i++ )
-                    _Children[ i ]._Move( -( curHor - oldHor ), -( curVer - oldVer ), true, false );
+                for (uint i = 0; i < _Children.length(); i++)
+                    _Children[i]._Move(-(curHor - oldHor), -(curVer - oldVer), true, false);
             }
             return true;
         }
         return false;
     }
 
-    void _GetScrollableSize( int& maxVerScroll, int& maxHorScroll )
+    void _GetScrollableSize(int& maxVerScroll, int& maxHorScroll)
     {
-        if( !_IsVerticalScroll && !_IsHorizontalScroll )
+        if (!_IsVerticalScroll && !_IsHorizontalScroll)
             return;
 
         int centerX = 0, centerY = 0, wholeWidth = 0, wholeHeight = 0;
-        GetWholeSize( centerX, centerY, wholeWidth, wholeHeight, true );
-        if( _IsVerticalScroll )
-            maxVerScroll = wholeHeight - Height + ( ( centerY + _VerticalScroll ) - wholeHeight / 2 - AbsolutePosY );
-        if( _IsHorizontalScroll )
-            maxHorScroll = wholeWidth - Width + ( ( centerX + _HorizontalScroll ) - wholeWidth / 2 - AbsolutePosX );
+        GetWholeSize(centerX, centerY, wholeWidth, wholeHeight, true);
+        if (_IsVerticalScroll)
+            maxVerScroll = wholeHeight - Height + ((centerY + _VerticalScroll) - wholeHeight / 2 - AbsolutePosY);
+        if (_IsHorizontalScroll)
+            maxHorScroll = wholeWidth - Width + ((centerX + _HorizontalScroll) - wholeWidth / 2 - AbsolutePosX);
     }
 
-    void SetCropContent( bool enabled )
+    void SetCropContent(bool enabled)
     {
         _CropContent = enabled;
     }
 
-    void SetAutoScroll( bool ver, bool hor )
+    void SetAutoScroll(bool ver, bool hor)
     {
         _IsVerticalScroll = ver;
         _IsHorizontalScroll = hor;
     }
-}
+};
 
-/*EXPORT*/ class Text : Object
+class Text : Object
 {
-    string get_Text()                   { return _Text; }
-    void   set_Text( string value )     { _Text = value; }
-    int    get_TextFont() final         { return _TextFont; }
-    uint   get_TextColor() final        { return _TextColor; }
-    uint   get_TextColorFocused() final { return _TextColorFocused; }
-    int    get_TextFlags() final        { return _TextFlags; }
+    string get_Text()
+    {
+        return _Text;
+    }
+    void set_Text(string value)
+    {
+        _Text = value;
+    }
+    int get_TextFont() final
+    {
+        return _TextFont;
+    }
+    uint get_TextColor() final
+    {
+        return _TextColor;
+    }
+    uint get_TextColorFocused() final
+    {
+        return _TextColorFocused;
+    }
+    int get_TextFlags() final
+    {
+        return _TextFlags;
+    }
 
     string _Text;
-    int    _TextFont;
-    uint   _TextColor;
-    uint   _TextColorFocused;
-    int    _TextFlags;
+    int _TextFont;
+    uint _TextColor;
+    uint _TextColorFocused;
+    int _TextFlags;
 
     void _Construct() override
     {
@@ -1260,28 +1403,27 @@ interface IDropMenu
         _TextColor = COLOR_TEXT;
     }
 
-    void _Draw( bool callCallback ) override
+    void _Draw(bool callCallback) override
     {
-        if( callCallback )
+        if (callCallback)
             _DrawCallback();
 
         // Text
         string text = Text;
-        if( text.length() > 0 )
-        {
-            uint color = ( _IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor );
-            DrawText( text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags );
+        if (text.length() > 0) {
+            uint color = (_IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor);
+            DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
         }
 
-        Object::_Draw( false );
+        Object::_Draw(false);
 
-        if( callCallback )
+        if (callCallback)
             OnPostDraw();
     }
 
-    void SetText( string text, int font, int flags )
+    void SetText(string text, int font, int flags)
     {
-        if( !text.isEmpty() )
+        if (!text.isEmpty())
             _Text = text;
         else
             _Text = "";
@@ -1290,218 +1432,236 @@ interface IDropMenu
         _TextFlags = flags;
     }
 
-    void SetText( string text )
+    void SetText(string text)
     {
-        if( !text.isEmpty() )
+        if (!text.isEmpty())
             _Text = text;
         else
             _Text = "";
     }
 
-    void SetTextWithResize( string text )
+    void SetTextWithResize(string text)
     {
         int tw = 0, th = 0, lines = 0;
-        GetTextInfo( text, Width, 1000, _TextFont, _TextFlags, tw, th, lines );
-        SetSize( _Width, th + 5 );
-        SetText( text );
+        GetTextInfo(text, Width, 1000, _TextFont, _TextFlags, tw, th, lines);
+        SetSize(_Width, th + 5);
+        SetText(text);
     }
 
-    void SetTextFont( int font )
+    void SetTextFont(int font)
     {
         _TextFont = font;
     }
 
-    void SetTextFlags( int flags )
+    void SetTextFlags(int flags)
     {
         _TextFlags = flags;
     }
 
-    void SetTextColor( uint color )
+    void SetTextColor(uint color)
     {
         _TextColor = color;
     }
 
-    void SetTextFocusedColor( uint color )
+    void SetTextFocusedColor(uint color)
     {
         _TextColorFocused = color;
     }
-}
+};
 
-const int        PasswordShowTime = 1000;
-/*EXPORT*/ class TextInput : Text
+const int PasswordShowTime = 1000;
+class TextInput : Text
 {
-    uint   get_InputLength() final    { return _InputLength; }
-    bool   get_IsTextPassword() final { return _IsTextPassword; }
-    string get_PasswordChar() final   { return _PasswordChar; }
+    uint get_InputLength() final
+    {
+        return _InputLength;
+    }
+    bool get_IsTextPassword() final
+    {
+        return _IsTextPassword;
+    }
+    string get_PasswordChar() final
+    {
+        return _PasswordChar;
+    }
 
-    uint   _InputLength;
-    bool   _IsTextPassword;
+    uint _InputLength;
+    bool _IsTextPassword;
     string _PasswordChar;
-    uint   _PasswordTime;
-    int    _CarriagePos;
+    uint _PasswordTime;
+    int _CarriagePos;
 
     void _Construct() override
     {
         Text::_Construct();
 
-        SetCarriage( false );
+        SetCarriage(false);
         _TextColorFocused = COLOR_TEXT_FOCUSED;
     }
 
     void _Focus() override
     {
-        CustomCall( "SetScreenKeyboard true" );
+        CustomCall("SetScreenKeyboard true");
 
         Text::_Focus();
     }
 
     void _Unfocus() override
     {
-        if( CurConsole == null || !CurConsole.Active )
-            CustomCall( "SetScreenKeyboard false" );
+        if (CurConsole == null || !CurConsole.Active)
+            CustomCall("SetScreenKeyboard false");
 
         Text::_Unfocus();
     }
 
-    void _Draw( bool callCallback ) override
+    void _Draw(bool callCallback) override
     {
-        if( callCallback )
+        if (callCallback)
             _DrawCallback();
 
         // Text
         string text = _Text;
-        if( _IsTextPassword && text.length() > 0 )
-        {
+        if (_IsTextPassword && text.length() > 0) {
             string rawText = text;
             text = "";
-            for( uint i = 0; i < rawText.length(); i++ )
+            for (uint i = 0; i < rawText.length(); i++)
                 text += _PasswordChar;
-            if( GetTick() - _PasswordTime <= PasswordShowTime )
-                text[ text.length() - 1 ] = rawText[ text.length() - 1 ];
+            if (GetTick() - _PasswordTime <= PasswordShowTime)
+                text[text.length() - 1] = rawText[text.length() - 1];
         }
-        if( _CarriagePos != -1 && _IsFocused )
-        {
-            if( _CarriagePos < 0 )
+        if (_CarriagePos != -1 && _IsFocused) {
+            if (_CarriagePos < 0)
                 _CarriagePos = 0;
-            if( _CarriagePos > int( text.length() ) )
+            if (_CarriagePos > int(text.length()))
                 _CarriagePos = text.length();
-            text = text.substr( 0, _CarriagePos ) + ( GetTick() % 800 < 400 ? "!" : "." ) + text.substr( _CarriagePos );
+            text = text.substr(0, _CarriagePos) + (GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
         }
-        if( text.length() > 0 )
-        {
-            uint color = ( _IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor );
-            DrawText( text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags );
+        if (text.length() > 0) {
+            uint color = (_IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor);
+            DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
         }
 
-        Object::_Draw( false );
+        Object::_Draw(false);
 
-        if( callCallback )
+        if (callCallback)
             OnPostDraw();
     }
 
-    void Input( uint8 key, string text ) override
+    void Input(uint8 key, string text) override
     {
         uint oldLen = _Text.length();
-        _ProcessKey( key, text );
-        while( _InputLength != 0 && _Text.length() > _InputLength )
-            _Text = _Text.substr( 0, _Text.length() - 1 );
-        if( _IsTextPassword )
-            _PasswordTime = ( _Text.length() > oldLen ? GetTick() : 0 );
+        _ProcessKey(key, text);
+        while (_InputLength != 0 && _Text.length() > _InputLength)
+            _Text = _Text.substr(0, _Text.length() - 1);
+        if (_IsTextPassword)
+            _PasswordTime = (_Text.length() > oldLen ? GetTick() : 0);
 
-        Text::Input( key, text );
+        Text::Input(key, text);
     }
 
-    void _ProcessKey( uint8 key, string text )
+    void _ProcessKey(uint8 key, string text)
     {
-        if( _CarriagePos != -1 )
-        {
-            if( _CarriagePos < 0 )
+        if (_CarriagePos != -1) {
+            if (_CarriagePos < 0)
                 _CarriagePos = 0;
-            else if( _CarriagePos > int( _Text.length() ) )
+            else if (_CarriagePos > int(_Text.length()))
                 _CarriagePos = _Text.length();
 
-            if( key == DIK_BACK )
-            {
-                if( _CarriagePos > 0 )
-                {
-                    _Text[ _CarriagePos - 1 ] = "";
+            if (key == DIK_BACK) {
+                if (_CarriagePos > 0) {
+                    _Text[_CarriagePos - 1] = "";
                     _CarriagePos--;
                 }
             }
-            else if( key == DIK_DELETE )
-            {
-                if( _CarriagePos < int( _Text.length() ) )
-                    _Text[ _CarriagePos ] = "";
+            else if (key == DIK_DELETE) {
+                if (_CarriagePos < int(_Text.length()))
+                    _Text[_CarriagePos] = "";
             }
-            else if( key == DIK_RIGHT )
-            {
-                if( _CarriagePos < int( _Text.length() ) )
+            else if (key == DIK_RIGHT) {
+                if (_CarriagePos < int(_Text.length()))
                     _CarriagePos++;
             }
-            else if( key == DIK_LEFT )
-            {
-                if( _CarriagePos > 0 )
+            else if (key == DIK_LEFT) {
+                if (_CarriagePos > 0)
                     _CarriagePos--;
             }
-            else if( key == DIK_HOME )
-            {
+            else if (key == DIK_HOME) {
                 _CarriagePos = 0;
             }
-            else if( key == DIK_END )
-            {
+            else if (key == DIK_END) {
                 _CarriagePos = _Text.length();
             }
-            else if( !text.isEmpty() )
-            {
-                _Text = _Text.substr( 0, _CarriagePos ) + text + _Text.substr( _CarriagePos );
+            else if (!text.isEmpty()) {
+                _Text = _Text.substr(0, _CarriagePos) + text + _Text.substr(_CarriagePos);
                 _CarriagePos += text.length();
             }
         }
-        else
-        {
-            if( key == DIK_BACK )
-            {
-                if( _Text.length() > 0 )
-                    _Text[ _Text.length() - 1 ] = "";
+        else {
+            if (key == DIK_BACK) {
+                if (_Text.length() > 0)
+                    _Text[_Text.length() - 1] = "";
             }
-            else if( !text.isEmpty() )
-            {
+            else if (!text.isEmpty()) {
                 _Text += text;
             }
         }
     }
 
-    void SetInputLength( uint length )
+    void SetInputLength(uint length)
     {
         _InputLength = length;
     }
 
-    void SetInputPassword( string passwordChar )
+    void SetInputPassword(string passwordChar)
     {
-        _IsTextPassword = ( passwordChar.length() == 1 );
+        _IsTextPassword = (passwordChar.length() == 1);
         _PasswordChar = passwordChar;
         _PasswordTime = 0;
     }
 
-    void SetCarriage( bool enable )
+    void SetCarriage(bool enable)
     {
-        _CarriagePos = ( enable ? int( _Text.length() ) : -1 );
+        _CarriagePos = (enable ? int(_Text.length()) : -1);
     }
-}
+};
 
-/*EXPORT*/ class Button : Panel
+class Button : Panel
 {
-    bool           get_IsDisabled() final          { return _IsDisabled; }
-    bool           get_IsSwitched() final          { return _IsSwitched; }
-    Sprite::Sprite get_PressedImage() final        { return _PressedImage; }
-    int            get_PressedImageLayout() final  { return _PressedImage != null ? _PressedImage.Layout : IMAGE_LAYOUT_NONE; }
-    Sprite::Sprite get_HoverImage() final          { return _HoverImage; }
-    int            get_HoverImageLayout() final    { return _HoverImage != null ? _HoverImage.Layout : IMAGE_LAYOUT_NONE; }
-    Sprite::Sprite get_DisabledImage() final       { return _DisabledImage; }
-    int            get_DisabledImageLayout() final { return _DisabledImage != null ? _DisabledImage.Layout : IMAGE_LAYOUT_NONE; }
+    bool get_IsDisabled() final
+    {
+        return _IsDisabled;
+    }
+    bool get_IsSwitched() final
+    {
+        return _IsSwitched;
+    }
+    Sprite::Sprite get_PressedImage() final
+    {
+        return _PressedImage;
+    }
+    int get_PressedImageLayout() final
+    {
+        return _PressedImage != null ? _PressedImage.Layout : IMAGE_LAYOUT_NONE;
+    }
+    Sprite::Sprite get_HoverImage() final
+    {
+        return _HoverImage;
+    }
+    int get_HoverImageLayout() final
+    {
+        return _HoverImage != null ? _HoverImage.Layout : IMAGE_LAYOUT_NONE;
+    }
+    Sprite::Sprite get_DisabledImage() final
+    {
+        return _DisabledImage;
+    }
+    int get_DisabledImageLayout() final
+    {
+        return _DisabledImage != null ? _DisabledImage.Layout : IMAGE_LAYOUT_NONE;
+    }
 
-    bool           _IsDisabled;
-    bool           _IsSwitched;
+    bool _IsDisabled;
+    bool _IsSwitched;
     Sprite::Sprite _PressedImage;
     Sprite::Sprite _HoverImage;
     Sprite::Sprite _DisabledImage;
@@ -1513,184 +1673,212 @@ const int        PasswordShowTime = 1000;
         _DeferredMousePressed = true;
     }
 
-    void _Draw( bool callCallback ) override
+    void _Draw(bool callCallback) override
     {
-        if( callCallback )
+        if (callCallback)
             _DrawCallback();
 
-        if( !_IsDisabled )
-        {
+        if (!_IsDisabled) {
             // Pressed image
-            bool isPressed = ( ( _IsPressed && _PressedButton == MOUSE_BUTTON_LEFT ) || _IsSwitched );
-            if( isPressed && _PressedImage != null )
-                _DrawImage( _PressedImage );
+            bool isPressed = ((_IsPressed && _PressedButton == MOUSE_BUTTON_LEFT) || _IsSwitched);
+            if (isPressed && _PressedImage != null)
+                _DrawImage(_PressedImage);
             // Hover image
-            else if( _IsHovered && _HoverImage != null )
-                _DrawImage( _HoverImage );
+            else if (_IsHovered && _HoverImage != null)
+                _DrawImage(_HoverImage);
             // Normal image
-            else if( _BackgroundImage != null )
-                _DrawImage( _BackgroundImage );
+            else if (_BackgroundImage != null)
+                _DrawImage(_BackgroundImage);
         }
-        else
-        {
+        else {
             // Disabled image
-            if( _DisabledImage != null )
-                _DrawImage( _DisabledImage );
+            if (_DisabledImage != null)
+                _DrawImage(_DisabledImage);
             // Normal image
-            else if( _BackgroundImage != null )
-                _DrawImage( _BackgroundImage );
+            else if (_BackgroundImage != null)
+                _DrawImage(_BackgroundImage);
         }
 
-        Object::_Draw( false );
+        Object::_Draw(false);
 
-        if( callCallback )
+        if (callCallback)
             OnPostDraw();
     }
 
-    void MouseClick( int button )
+    void MouseClick(int button)
     {
-        if( _IsDisabled )
+        if (_IsDisabled)
             return;
 
-        Panel::MouseClick( button );
+        Panel::MouseClick(button);
     }
 
-    void _MousePressed( int button )
+    void _MousePressed(int button)
     {
-        if( _IsDisabled )
+        if (_IsDisabled)
             return;
 
-        Panel::_MousePressed( button );
+        Panel::_MousePressed(button);
     }
 
-    void SetPressedImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
+    void SetPressedImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage( _PressedImage, imageName, imageLayout );
+        _SetImage(_PressedImage, imageName, imageLayout);
     }
 
-    void SetPressedImage( uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE )
+    void SetPressedImage(uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage( _PressedImage, imageNameHash, imageLayout );
+        _SetImage(_PressedImage, imageNameHash, imageLayout);
     }
 
-    void SetHoverImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
+    void SetHoverImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage( _HoverImage, imageName, imageLayout );
+        _SetImage(_HoverImage, imageName, imageLayout);
     }
 
-    void SetHoverImage( uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE )
+    void SetHoverImage(uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage( _HoverImage, imageNameHash, imageLayout );
+        _SetImage(_HoverImage, imageNameHash, imageLayout);
     }
 
-    void SetDisabledImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
+    void SetDisabledImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage( _DisabledImage, imageName, imageLayout );
+        _SetImage(_DisabledImage, imageName, imageLayout);
     }
 
-    void SetDisabledImage( uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE )
+    void SetDisabledImage(uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage( _DisabledImage, imageNameHash, imageLayout );
+        _SetImage(_DisabledImage, imageNameHash, imageLayout);
     }
 
-    void SetSwitch( bool enabled )
+    void SetSwitch(bool enabled)
     {
         _IsSwitched = enabled;
     }
 
-    void SetCondition( bool enabled )
+    void SetCondition(bool enabled)
     {
         _IsDisabled = !enabled;
     }
-}
+};
 
-/*EXPORT*/ class CheckBox : Button
+class CheckBox : Button
 {
-    bool get_IsChecked() final { return _IsSwitched; }
-
-    // Callbacks
-    void OnCheckedChanged() {}
-
-    void MouseClick( int button )
+    bool get_IsChecked() final
     {
-        if( _IsDisabled )
-            return;
-
-        if( button == MOUSE_BUTTON_LEFT )
-            SetChecked( !_IsSwitched );
-
-        Panel::MouseClick( button );
+        return _IsSwitched;
     }
 
-    void SetChecked( bool checked )
+    // Callbacks
+    void OnCheckedChanged()
     {
-        if( _IsSwitched != checked )
-        {
+    }
+
+    void MouseClick(int button)
+    {
+        if (_IsDisabled)
+            return;
+
+        if (button == MOUSE_BUTTON_LEFT)
+            SetChecked(!_IsSwitched);
+
+        Panel::MouseClick(button);
+    }
+
+    void SetChecked(bool checked)
+    {
+        if (_IsSwitched != checked) {
             _IsSwitched = checked;
             OnCheckedChanged();
         }
     }
-}
+};
 
-/*EXPORT*/ class RadioButton : CheckBox
+class RadioButton : CheckBox
 {
-    void MouseClick( int button )
+    void MouseClick(int button)
     {
-        if( _IsDisabled || _IsSwitched )
+        if (_IsDisabled || _IsSwitched)
             return;
 
-        if( button == MOUSE_BUTTON_LEFT )
-            SetChecked( true );
+        if (button == MOUSE_BUTTON_LEFT)
+            SetChecked(true);
 
-        Panel::MouseClick( button );
+        Panel::MouseClick(button);
     }
 
-    void SetChecked( bool checked ) override
+    void SetChecked(bool checked) override
     {
-        if( checked && _Parent != null )
-        {
-            for( uint i = 0; i < _Parent._Children.length(); i++ )
-            {
-                RadioButton button = cast< RadioButton >( _Parent._Children[ i ] );
-                if( button != null && button._IsSwitched )
-                {
+        if (checked && _Parent != null) {
+            for (uint i = 0; i < _Parent._Children.length(); i++) {
+                RadioButton button = cast<RadioButton>(_Parent._Children[i]);
+                if (button != null && button._IsSwitched) {
                     button._IsSwitched = false;
                     button.OnCheckedChanged();
                 }
             }
         }
 
-        if( _IsSwitched != checked )
-        {
+        if (_IsSwitched != checked) {
             _IsSwitched = checked;
             OnCheckedChanged();
         }
     }
-}
+};
 
-/*EXPORT*/ class Screen : Panel
+class Screen : Panel
 {
-    int          get_Index() final               { return _Index; }
-    bool         get_IsMain() final              { return IS_CLIENT_MAIN_SCREEN( _Index ); }
-    bool         get_IsModal() final             { return _IsModal; }
-    bool         get_IsMultiinstance() final     { return _IsMultiinstance; }
-    bool         get_IsCloseOnMiss() final       { return _IsCloseOnMiss; }
-    CursorType[] get_AvailableCursors() final    { return _AvailableCursors; }
-    CursorType   get_Cursor() final              { return _Cursor; }
-    bool         get_IsCanMove() final           { return _IsCanMove; }
-    bool         get_IsMoveIgnoreBorders() final { return _IsMoveIgnoreBorders; }
-    bool         get_IsOnTop() final             { return _IsOnTop; }
+    int get_Index() final
+    {
+        return _Index;
+    }
+    bool get_IsMain() final
+    {
+        return IS_CLIENT_MAIN_SCREEN(_Index);
+    }
+    bool get_IsModal() final
+    {
+        return _IsModal;
+    }
+    bool get_IsMultiinstance() final
+    {
+        return _IsMultiinstance;
+    }
+    bool get_IsCloseOnMiss() final
+    {
+        return _IsCloseOnMiss;
+    }
+    CursorType[] get_AvailableCursors() final
+    {
+        return _AvailableCursors;
+    }
+    CursorType get_Cursor() final
+    {
+        return _Cursor;
+    }
+    bool get_IsCanMove() final
+    {
+        return _IsCanMove;
+    }
+    bool get_IsMoveIgnoreBorders() final
+    {
+        return _IsMoveIgnoreBorders;
+    }
+    bool get_IsOnTop() final
+    {
+        return _IsOnTop;
+    }
 
-    int        _Index;
-    bool       _IsRegistered;
-    bool       _IsModal;
-    bool       _IsMultiinstance;
-    bool       _IsCloseOnMiss;
+    int _Index;
+    bool _IsRegistered;
+    bool _IsModal;
+    bool _IsMultiinstance;
+    bool _IsCloseOnMiss;
     CursorType[] _AvailableCursors;
     CursorType _Cursor;
-    bool       _IsCanMove;
-    bool       _IsMoveIgnoreBorders;
-    bool       _IsOnTop;
+    bool _IsCanMove;
+    bool _IsMoveIgnoreBorders;
+    bool _IsOnTop;
 
     // Workaround for input state accessing from shared code
     bool[] _InputKeyPressed;
@@ -1698,30 +1886,30 @@ const int        PasswordShowTime = 1000;
 
     void _Construct() override
     {
-        _AvailableCursors = array< CursorType >();
-        _InputKeyPressed = array< bool >();
-        _InputMousePressed = array< bool >();
+        _AvailableCursors = array<CursorType>();
+        _InputKeyPressed = array<bool>();
+        _InputMousePressed = array<bool>();
 
         Panel::_Construct();
     }
 
     void _FixClone() override
     {
-        _AvailableCursors = array< CursorType >( _AvailableCursors );
+        _AvailableCursors = array<CursorType>(_AvailableCursors);
 
         Panel::_FixClone();
     }
 
-    void _Show( dictionary params ) override
+    void _Show(dictionary params) override
     {
         // Make screen active
         _ActiveSelf = true;
 
         // Set default cursor
-        _Cursor = ( _AvailableCursors.length() > 0 ? AvailableCursors[ 0 ] : CursorType::Default );
+        _Cursor = (_AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default);
 
         // Base behaviour
-        Panel::_Show( params );
+        Panel::_Show(params);
     }
 
     void _Hide() override
@@ -1752,78 +1940,70 @@ const int        PasswordShowTime = 1000;
 
         // Store cursor
         _Cursor = __Cursor;
-        if( _AvailableCursors.find( _Cursor ) == -1 )
-            _Cursor = ( _AvailableCursors.length() > 0 ? AvailableCursors[ 0 ] : CursorType::Default );
+        if (_AvailableCursors.find(_Cursor) == -1)
+            _Cursor = (_AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default);
 
         // Base behaviour
         Panel::_Disappear();
     }
 
-    void _GlobalMouseClick( int button ) override
+    void _GlobalMouseClick(int button) override
     {
-        if( button == MOUSE_BUTTON_RIGHT )
-        {
-            if( _AvailableCursors.length() > 0 )
-            {
+        if (button == MOUSE_BUTTON_RIGHT) {
+            if (_AvailableCursors.length() > 0) {
                 CursorType curCursor = __Cursor;
-                int        curCursorIndex = _AvailableCursors.find( curCursor );
-                if( curCursorIndex != -1 )
-                {
+                int curCursorIndex = _AvailableCursors.find(curCursor);
+                if (curCursorIndex != -1) {
                     curCursorIndex++;
-                    if( curCursorIndex >= int( _AvailableCursors.length() ) )
+                    if (curCursorIndex >= int(_AvailableCursors.length()))
                         curCursorIndex = 0;
-                    __Cursor = _AvailableCursors[ curCursorIndex ];
+                    __Cursor = _AvailableCursors[curCursorIndex];
                 }
             }
         }
-        else
-        {
-            Panel::_GlobalMouseClick( button );
+        else {
+            Panel::_GlobalMouseClick(button);
         }
     }
 
     void _GlobalMouseMove() override
     {
         // Process moving
-        if( _IsCanMove )
-        {
-            Object pressedObj = _FindPressed( this );
-            if( pressedObj != null && pressedObj._PressedButton == MOUSE_BUTTON_LEFT && pressedObj._IsCatchable() )
-            {
+        if (_IsCanMove) {
+            Object pressedObj = _FindPressed(this);
+            if (pressedObj != null && pressedObj._PressedButton == MOUSE_BUTTON_LEFT && pressedObj._IsCatchable()) {
                 int lastPosX = _AbsolutePosX;
                 int lastPosY = _AbsolutePosY;
-                int newPosX = _AbsolutePosX + ( __MouseX - pressedObj._PressedX );
-                int newPosY = _AbsolutePosY + ( __MouseY - pressedObj._PressedY );
+                int newPosX = _AbsolutePosX + (__MouseX - pressedObj._PressedX);
+                int newPosY = _AbsolutePosY + (__MouseY - pressedObj._PressedY);
                 pressedObj._PressedX = __MouseX;
                 pressedObj._PressedY = __MouseY;
 
                 // Check screen borders
-                if( !_IsMoveIgnoreBorders )
-                {
-                    int parentAbsolutePosX = ( _Parent != null ? _Parent._AbsolutePosX : 0 );
-                    int parentAbsolutePosY = ( _Parent != null ? _Parent._AbsolutePosY : 0 );
-                    int parentWidth = ( _Parent != null ? _Parent._Width : __ScreenWidth );
-                    int parentHeight = ( _Parent != null ? _Parent._Height : __ScreenHeight );
+                if (!_IsMoveIgnoreBorders) {
+                    int parentAbsolutePosX = (_Parent != null ? _Parent._AbsolutePosX : 0);
+                    int parentAbsolutePosY = (_Parent != null ? _Parent._AbsolutePosY : 0);
+                    int parentWidth = (_Parent != null ? _Parent._Width : __ScreenWidth);
+                    int parentHeight = (_Parent != null ? _Parent._Height : __ScreenHeight);
                     int px = newPosX;
                     int py = newPosY;
-                    if( newPosX < parentAbsolutePosX )
+                    if (newPosX < parentAbsolutePosX)
                         newPosX = parentAbsolutePosX;
-                    if( newPosY < parentAbsolutePosY )
+                    if (newPosY < parentAbsolutePosY)
                         newPosY = parentAbsolutePosY;
-                    if( newPosX + _Width > parentWidth )
+                    if (newPosX + _Width > parentWidth)
                         newPosX = parentWidth - _Width;
-                    if( newPosY + _Height > parentHeight )
+                    if (newPosY + _Height > parentHeight)
                         newPosY = parentHeight - _Height;
                     pressedObj._PressedX += newPosX - px;
                     pressedObj._PressedY += newPosY - py;
                 }
 
                 // Callback
-                if( lastPosX != newPosX || lastPosY != newPosY )
-                {
+                if (lastPosX != newPosX || lastPosY != newPosY) {
                     int deltaX = newPosX - lastPosX;
                     int deltaY = newPosY - lastPosY;
-                    _Move( deltaX, deltaY, true, true );
+                    _Move(deltaX, deltaY, true, true);
                 }
             }
         }
@@ -1831,73 +2011,90 @@ const int        PasswordShowTime = 1000;
         Panel::_GlobalMouseMove();
     }
 
-    Object _FindPressed( Object obj )
+    Object _FindPressed(Object obj)
     {
-        if( obj._IsPressed )
+        if (obj._IsPressed)
             return obj;
-        for( uint i = 0; i < obj._Children.length(); i++ )
-        {
-            Object pressedObj = _FindPressed( obj._Children[ i ] );
-            if( pressedObj != null )
+        for (uint i = 0; i < obj._Children.length(); i++) {
+            Object pressedObj = _FindPressed(obj._Children[i]);
+            if (pressedObj != null)
                 return pressedObj;
         }
         return null;
     }
 
     // Options
-    void SetModal( bool enabled )
+    void SetModal(bool enabled)
     {
         _IsModal = enabled;
     }
 
-    void SetMultiinstance( bool enabled )
+    void SetMultiinstance(bool enabled)
     {
         _IsMultiinstance = enabled;
     }
 
-    void SetCloseOnMiss( bool enabled )
+    void SetCloseOnMiss(bool enabled)
     {
         _IsCloseOnMiss = enabled;
     }
 
-    void SetAvailableCursors( CursorType[] cursors )
+    void SetAvailableCursors(CursorType[] cursors)
     {
         _AvailableCursors = cursors;
     }
 
-    void SetCanMove( bool enabled, bool ignoreBorders )
+    void SetCanMove(bool enabled, bool ignoreBorders)
     {
         _IsCanMove = enabled;
         _IsMoveIgnoreBorders = ignoreBorders;
     }
-}
+};
 
-/*EXPORT*/ class Grid : Panel
+class Grid : Panel
 {
-    string   get_CellPrototype() final { return _CellPrototype; }
-    uint     get_GridSize() final      { return _GridSize; }
-    int      get_Columns() final       { return _Columns; }
-    int      get_PaddingX() final      { return _PaddingX; }
-    int      get_PaddingY() final      { return _PaddingY; }
-    Object[] get_Cells() final         { return _Cells; }
+    string get_CellPrototype() final
+    {
+        return _CellPrototype;
+    }
+    uint get_GridSize() final
+    {
+        return _GridSize;
+    }
+    int get_Columns() final
+    {
+        return _Columns;
+    }
+    int get_PaddingX() final
+    {
+        return _PaddingX;
+    }
+    int get_PaddingY() final
+    {
+        return _PaddingY;
+    }
+    Object[] get_Cells() final
+    {
+        return _Cells;
+    }
 
     string _CellPrototype;
-    uint   _GridSize;
-    int    _Columns;
-    int    _PaddingX;
-    int    _PaddingY;
+    uint _GridSize;
+    int _Columns;
+    int _PaddingX;
+    int _PaddingY;
     Object[] _Cells;
 
     void _Construct() override
     {
         Panel::_Construct();
 
-        _Cells = array< Object >();
+        _Cells = array<Object>();
     }
 
     void _FixClone() override
     {
-        _Cells = array< Object >( _Cells );
+        _Cells = array<Object>(_Cells);
 
         Panel::_FixClone();
     }
@@ -1906,41 +2103,38 @@ const int        PasswordShowTime = 1000;
     {
         Panel::_Init();
 
-        if( !_CellPrototype.isEmpty() )
-            SetCellPrototype( _CellPrototype );
+        if (!_CellPrototype.isEmpty())
+            SetCellPrototype(_CellPrototype);
 
-        if( _GridSize > 0 )
-            ResizeGrid( _GridSize );
+        if (_GridSize > 0)
+            ResizeGrid(_GridSize);
     }
 
-    void ResizeGrid( uint size )
+    void ResizeGrid(uint size)
     {
         // Refresh grid size
         _GridSize = size;
 
         // Find cell prototype
-        if( _CellPrototype.isEmpty() )
+        if (_CellPrototype.isEmpty())
             return;
-        Object cellPrototype = ( _CellPrototype[ 0 ] != "." ? Find( _CellPrototype ) : Parent.Find( _CellPrototype.substr( 1 ), false ) );
-        if( cellPrototype == null )
+        Object cellPrototype = (_CellPrototype[0] != "." ? Find(_CellPrototype) : Parent.Find(_CellPrototype.substr(1), false));
+        if (cellPrototype == null)
             return;
 
         // Get cell index
         int childIndex = -1;
-        if( cellPrototype._Parent is this )
-            childIndex = cellPrototype._Parent._Children.findByRef( cellPrototype );
+        if (cellPrototype._Parent is this)
+            childIndex = cellPrototype._Parent._Children.findByRef(cellPrototype);
 
         // Remove current instances
-        for( uint i = 0; i < _Children.length();)
-        {
-            if( _Cells.findByRef( _Children[ i ] ) != -1 )
-            {
-                _Children[ i ].SetActive( false );
-                _SetCellIndex( _Children[ i ], null, uint( -1 ) );
-                _Children.removeAt( i );
+        for (uint i = 0; i < _Children.length();) {
+            if (_Cells.findByRef(_Children[i]) != -1) {
+                _Children[i].SetActive(false);
+                _SetCellIndex(_Children[i], null, uint(-1));
+                _Children.removeAt(i);
             }
-            else
-            {
+            else {
                 i++;
             }
         }
@@ -1949,41 +2143,37 @@ const int        PasswordShowTime = 1000;
         // Create new intsances
         cellPrototype._ActiveSelf = true;
         Object[] cellInstances = {};
-        for( uint i = 0; i < _GridSize; i++ )
-        {
-            Object cellInstance = cellPrototype._Clone( this );
+        for (uint i = 0; i < _GridSize; i++) {
+            Object cellInstance = cellPrototype._Clone(this);
             _Children.removeLast();
-            _Children.insertAt( ++childIndex, cellInstance );
-            _Cells.insertLast( cellInstance );
-            _SetCellIndex( cellInstance, this, cellInstances.length() );
-            cellInstances.insertLast( cellInstance );
+            _Children.insertAt(++childIndex, cellInstance);
+            _Cells.insertLast(cellInstance);
+            _SetCellIndex(cellInstance, this, cellInstances.length());
+            cellInstances.insertLast(cellInstance);
         }
         cellPrototype._ActiveSelf = false;
 
         // Callbacks
-        for( uint i = 0; i < cellInstances.length(); i++ )
-        {
-            OnResizeGrid( cellInstances[ i ], i );
-            _ResizeGrid( cellInstances[ i ], cellInstances[ i ], i );
+        for (uint i = 0; i < cellInstances.length(); i++) {
+            OnResizeGrid(cellInstances[i], i);
+            _ResizeGrid(cellInstances[i], cellInstances[i], i);
         }
 
         // Init
-        for( uint i = 0; i < cellInstances.length(); i++ )
-            cellInstances[ i ]._Init();
+        for (uint i = 0; i < cellInstances.length(); i++)
+            cellInstances[i]._Init();
 
         // Move
         int col = 0, row = 0;
         int rowHeight = 0;
         int shiftX = -_HorizontalScroll;
         int shiftY = -_VerticalScroll;
-        for( uint i = 0; i < cellInstances.length(); i++ )
-        {
-            cellInstances[ i ]._Move( shiftX, shiftY, false, true );
-            shiftX += cellInstances[ i ]._Width + _PaddingX;
-            if( rowHeight < cellInstances[ i ]._Height + _PaddingY )
-                rowHeight = cellInstances[ i ]._Height + _PaddingY;
-            if( ++col >= _Columns )
-            {
+        for (uint i = 0; i < cellInstances.length(); i++) {
+            cellInstances[i]._Move(shiftX, shiftY, false, true);
+            shiftX += cellInstances[i]._Width + _PaddingX;
+            if (rowHeight < cellInstances[i]._Height + _PaddingY)
+                rowHeight = cellInstances[i]._Height + _PaddingY;
+            if (++col >= _Columns) {
                 col = 0;
                 row++;
                 shiftX = 0;
@@ -1991,31 +2181,29 @@ const int        PasswordShowTime = 1000;
                 rowHeight = 0;
             }
         }
-        _ModifyScroll( 0, 0 );
+        _ModifyScroll(0, 0);
     }
 
     void RefreshContentPositions()
     {
-        if( _Cells.length() == 0 )
+        if (_Cells.length() == 0)
             return;
 
         int col = 0, row = 0;
         int rowHeight = 0;
         int shiftX = -_HorizontalScroll;
         int shiftY = -_VerticalScroll;
-        int baseX = _Cells[ 0 ]._BasePosX - _HorizontalScroll;
-        int baseY = _Cells[ 0 ]._BasePosY - _VerticalScroll;
-        for( uint i = 0; i < _Cells.length(); i++ )
-        {
-            int ox = shiftX - _Cells[ i ]._BasePosX + baseX;
-            int oy = shiftY - _Cells[ i ]._BasePosY + baseY;
-            if( ox != 0 || oy != 0 )
-                _Cells[ i ]._Move( ox, oy, false, true );
-            shiftX += _Cells[ i ]._Width + _PaddingX;
-            if( rowHeight < _Cells[ i ]._Height + _PaddingY )
-                rowHeight = _Cells[ i ]._Height + _PaddingY;
-            if( ++col >= _Columns )
-            {
+        int baseX = _Cells[0]._BasePosX - _HorizontalScroll;
+        int baseY = _Cells[0]._BasePosY - _VerticalScroll;
+        for (uint i = 0; i < _Cells.length(); i++) {
+            int ox = shiftX - _Cells[i]._BasePosX + baseX;
+            int oy = shiftY - _Cells[i]._BasePosY + baseY;
+            if (ox != 0 || oy != 0)
+                _Cells[i]._Move(ox, oy, false, true);
+            shiftX += _Cells[i]._Width + _PaddingX;
+            if (rowHeight < _Cells[i]._Height + _PaddingY)
+                rowHeight = _Cells[i]._Height + _PaddingY;
+            if (++col >= _Columns) {
                 col = 0;
                 row++;
                 shiftX = 0;
@@ -2023,125 +2211,137 @@ const int        PasswordShowTime = 1000;
                 rowHeight = 0;
             }
         }
-        _ModifyScroll( 0, 0 );
+        _ModifyScroll(0, 0);
     }
 
-    void _SetCellIndex( Object obj, Grid grid, uint cellIndex )
+    void _SetCellIndex(Object obj, Grid grid, uint cellIndex)
     {
         obj._Grid = grid;
         obj._CellIndex = cellIndex;
 
-        for( uint i = 0; i < obj._Children.length(); i++ )
-            _SetCellIndex( obj._Children[ i ], grid, cellIndex );
+        for (uint i = 0; i < obj._Children.length(); i++)
+            _SetCellIndex(obj._Children[i], grid, cellIndex);
     }
 
-    void _ResizeGrid( Object obj, Object cell, uint cellIndex )
+    void _ResizeGrid(Object obj, Object cell, uint cellIndex)
     {
-        obj.OnResizeGrid( cell, cellIndex );
+        obj.OnResizeGrid(cell, cellIndex);
 
-        for( uint i = 0; i < obj._Children.length(); i++ )
-            _ResizeGrid( obj._Children[ i ], cell, cellIndex );
+        for (uint i = 0; i < obj._Children.length(); i++)
+            _ResizeGrid(obj._Children[i], cell, cellIndex);
     }
 
-    void SetCellPrototype( string name )
+    void SetCellPrototype(string name)
     {
         _CellPrototype = name;
-        if( !_CellPrototype.isEmpty() )
-        {
-            Object cellPrototype = ( _CellPrototype[ 0 ] != "." ? Find( _CellPrototype ) : Parent.Find( _CellPrototype.substr( 1 ), false ) );
-            if( cellPrototype != null )
+        if (!_CellPrototype.isEmpty()) {
+            Object cellPrototype = (_CellPrototype[0] != "." ? Find(_CellPrototype) : Parent.Find(_CellPrototype.substr(1), false));
+            if (cellPrototype != null)
                 cellPrototype._ActiveSelf = false;
         }
     }
 
-    void SetGridSize( uint size )
+    void SetGridSize(uint size)
     {
         _GridSize = size;
     }
 
-    void SetColumns( int length )
+    void SetColumns(int length)
     {
         _Columns = length;
     }
 
-    void SetPadding( int x, int y )
+    void SetPadding(int x, int y)
     {
         _PaddingX = x;
         _PaddingY = y;
     }
-}
+};
 
-/*EXPORT*/ class MessageBox : Text
+class MessageBox : Text
 {
-    string[] get_MessageTexts() final      { return _MessageTexts; }
-    int[]    get_MessageTypes() final      { return _MessageTypes; }
-    string[] get_MessageTimes() final      { return _MessageTimes; }
-    bool[]   get_DisplayedMessages() final { return _DisplayedMessages; }
-    bool     get_InvertMessages() final    { return _InvertMessages; }
+    string[] get_MessageTexts() final
+    {
+        return _MessageTexts;
+    }
+    int[] get_MessageTypes() final
+    {
+        return _MessageTypes;
+    }
+    string[] get_MessageTimes() final
+    {
+        return _MessageTimes;
+    }
+    bool[] get_DisplayedMessages() final
+    {
+        return _DisplayedMessages;
+    }
+    bool get_InvertMessages() final
+    {
+        return _InvertMessages;
+    }
 
     string[] _MessageTexts;
     int[] _MessageTypes;
     string[] _MessageTimes;
     bool[] _DisplayedMessages;
-    bool           _InvertMessages;
-    int            _Scroll;
-    int            _MaxScroll;
-    int            _ScrollLines;
+    bool _InvertMessages;
+    int _Scroll;
+    int _MaxScroll;
+    int _ScrollLines;
     Sprite::Sprite _ScrollUp;
     Sprite::Sprite _ScrollDown;
-    bool           _CursorHidden;
+    bool _CursorHidden;
 
     void _Construct() override
     {
         Text::_Construct();
 
-        _MessageTexts = array< string >();
-        _MessageTypes = array< int >();
-        _MessageTimes = array< string >();
-        _DisplayedMessages = array< bool >( FOMB_ALL, true );
+        _MessageTexts = array<string>();
+        _MessageTypes = array<int>();
+        _MessageTimes = array<string>();
+        _DisplayedMessages = array<bool>(FOMB_ALL, true);
 
-        _ScrollUp = Sprite::Sprite( "MiniArrowUp.png" );
-        _ScrollDown = Sprite::Sprite( "MiniArrowDown.png" );
+        _ScrollUp = Sprite::Sprite("MiniArrowUp.png");
+        _ScrollDown = Sprite::Sprite("MiniArrowDown.png");
     }
 
     void _FixClone() override
     {
-        _MessageTexts = array< string >( _MessageTexts );
-        _MessageTypes = array< int >( _MessageTypes );
-        _MessageTimes = array< string >( _MessageTimes );
-        _DisplayedMessages = array< bool >( _DisplayedMessages );
+        _MessageTexts = array<string>(_MessageTexts);
+        _MessageTypes = array<int>(_MessageTypes);
+        _MessageTimes = array<string>(_MessageTimes);
+        _DisplayedMessages = array<bool>(_DisplayedMessages);
 
         Text::_FixClone();
     }
 
-    void _Show( dictionary params ) override
+    void _Show(dictionary params) override
     {
-        Text::_Show( params );
+        Text::_Show(params);
 
         _InvertMessages = __MsgboxInvert;
         _GenerateText();
     }
 
-    void _Draw( bool callCallback ) override
+    void _Draw(bool callCallback) override
     {
-        if( !_InvertMessages )
-            _TextFlags = FT_UPPER | FT_BOTTOM | FT_SKIPLINES_END( _ScrollLines );
+        if (!_InvertMessages)
+            _TextFlags = FT_UPPER | FT_BOTTOM | FT_SKIPLINES_END(_ScrollLines);
         else
-            _TextFlags = FT_SKIPLINES( _ScrollLines );
+            _TextFlags = FT_SKIPLINES(_ScrollLines);
 
-        Text::_Draw( callCallback );
+        Text::_Draw(callCallback);
 
-        if( _IsHovered )
-        {
-            Sprite::Sprite spr = ( __MouseY < _AbsolutePosY + _Height / 2 ? _ScrollUp : _ScrollDown );
-            spr.Draw( __MouseX - spr.Width / 2, __MouseY - spr.Height / 2 );
+        if (_IsHovered) {
+            Sprite::Sprite spr = (__MouseY < _AbsolutePosY + _Height / 2 ? _ScrollUp : _ScrollDown);
+            spr.Draw(__MouseX - spr.Width / 2, __MouseY - spr.Height / 2);
         }
     }
 
     void _Remove() override
     {
-        if( _CursorHidden )
-        {
+        if (_CursorHidden) {
             _CursorHidden = false;
             __HideCursor = false;
         }
@@ -2153,8 +2353,7 @@ const int        PasswordShowTime = 1000;
     {
         Text::_Hover();
 
-        if( !__HideCursor )
-        {
+        if (!__HideCursor) {
             _CursorHidden = true;
             __HideCursor = true;
         }
@@ -2164,8 +2363,7 @@ const int        PasswordShowTime = 1000;
     {
         Text::_Unhover();
 
-        if( _CursorHidden )
-        {
+        if (_CursorHidden) {
             _CursorHidden = false;
             __HideCursor = false;
         }
@@ -2180,58 +2378,53 @@ const int        PasswordShowTime = 1000;
 
     void _ActiveChanged() override
     {
-        if( Active )
+        if (Active)
             _GenerateText();
 
         Text::_ActiveChanged();
     }
 
-    void _MousePressed( int button ) override
+    void _MousePressed(int button) override
     {
-        if( button == MOUSE_BUTTON_LEFT || button == MOUSE_BUTTON_WHEEL_UP || button == MOUSE_BUTTON_WHEEL_DOWN )
-        {
-            if( button == MOUSE_BUTTON_WHEEL_UP || ( button == MOUSE_BUTTON_LEFT && __MouseY < _AbsolutePosY + _Height / 2 ) )
-            {
-                if( _InvertMessages && _Scroll > 0 )
+        if (button == MOUSE_BUTTON_LEFT || button == MOUSE_BUTTON_WHEEL_UP || button == MOUSE_BUTTON_WHEEL_DOWN) {
+            if (button == MOUSE_BUTTON_WHEEL_UP || (button == MOUSE_BUTTON_LEFT && __MouseY < _AbsolutePosY + _Height / 2)) {
+                if (_InvertMessages && _Scroll > 0)
                     _Scroll--;
-                if( !_InvertMessages && _Scroll < _MaxScroll )
+                if (!_InvertMessages && _Scroll < _MaxScroll)
                     _Scroll++;
             }
-            else if( button == MOUSE_BUTTON_WHEEL_DOWN || ( button == MOUSE_BUTTON_LEFT && __MouseY >= _AbsolutePosY + _Height / 2 ) )
-            {
-                if( _InvertMessages && _Scroll < _MaxScroll )
+            else if (button == MOUSE_BUTTON_WHEEL_DOWN || (button == MOUSE_BUTTON_LEFT && __MouseY >= _AbsolutePosY + _Height / 2)) {
+                if (_InvertMessages && _Scroll < _MaxScroll)
                     _Scroll++;
-                if( !_InvertMessages && _Scroll > 0 )
+                if (!_InvertMessages && _Scroll > 0)
                     _Scroll--;
             }
             _GenerateText();
         }
 
-        Text::_MousePressed( button );
+        Text::_MousePressed(button);
     }
 
-    void AddMessage( string text, int type = FOMB_GAME )
+    void AddMessage(string text, int type = FOMB_GAME)
     {
         // Skip error messages
-        if( type == FOMB_GAME && text == "error" )
+        if (type == FOMB_GAME && text == "error")
             return;
 
         // Set text
         string messageText;
-        if( type >= FOMB_GAME && type <= FOMB_VIEW )
-        {
-            uint[] sayColors = { COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN };
-            messageText = "|" + sayColors[ type ] + " " + EncodeUTF8( 0x2022 ) + " |" + COLOR_TEXT + " " + text;
+        if (type >= FOMB_GAME && type <= FOMB_VIEW) {
+            uint[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
+            messageText = "|" + sayColors[type] + " " + EncodeUTF8(0x2022) + " |" + COLOR_TEXT + " " + text;
         }
-        else
-        {
+        else {
             messageText = text;
         }
-        _MessageTexts.insertLast( messageText );
+        _MessageTexts.insertLast(messageText);
 
         // Set type
         int messageType = type;
-        _MessageTypes.insertLast( messageType );
+        _MessageTypes.insertLast(messageType);
 
         // Set time
         uint16 year = 0;
@@ -2242,14 +2435,13 @@ const int        PasswordShowTime = 1000;
         uint16 minute = 0;
         uint16 second = 0;
         uint16 milliseconds;
-        GetTime( year, month, day, dayOfWeek, hour, minute, second, milliseconds );
-        string messageTime = ( hour <= 9 ? "0" : "" ) + hour + ":" + ( minute <= 9 ? "0" : "" ) + minute + ":" + ( second <= 9 ? "0" : "" ) + second + " ";
-        _MessageTimes.insertLast( messageTime );
+        GetTime(year, month, day, dayOfWeek, hour, minute, second, milliseconds);
+        string messageTime = (hour <= 9 ? "0" : "") + hour + ":" + (minute <= 9 ? "0" : "") + minute + ":" + (second <= 9 ? "0" : "") + second + " ";
+        _MessageTimes.insertLast(messageTime);
 
         // Generate mess box
-        if( _DisplayedMessages[ type ] )
-        {
-            if( _Scroll > 0 && _IsHovered )
+        if (_DisplayedMessages[type]) {
+            if (_Scroll > 0 && _IsHovered)
                 _Scroll++;
             else
                 _Scroll = 0;
@@ -2259,18 +2451,17 @@ const int        PasswordShowTime = 1000;
 
     void _GenerateText()
     {
-        if( !Active )
+        if (!Active)
             return;
 
         _Text = "";
-        if( _MessageTexts.length() == 0 )
+        if (_MessageTexts.length() == 0)
             return;
 
         int tw = 0, th = 0;
         int maxLines = 0;
-        GetTextInfo( "", _Width, _Height, _TextFont, 0, tw, th, maxLines );
-        if( maxLines <= 0 )
-        {
+        GetTextInfo("", _Width, _Height, _TextFont, 0, tw, th, maxLines);
+        if (maxLines <= 0) {
             _MaxScroll = 0;
             _ScrollLines = 0;
             return;
@@ -2278,66 +2469,57 @@ const int        PasswordShowTime = 1000;
 
         _ScrollLines = -1;
         int lines = 0;
-        for( int i = _MessageTexts.length() - 1; i >= 0; i-- )
-        {
-            string messageText = _MessageTexts[ i ];
-            int    messageType = _MessageTypes[ i ];
-            string messageTime = _MessageTimes[ i ];
+        for (int i = _MessageTexts.length() - 1; i >= 0; i--) {
+            string messageText = _MessageTexts[i];
+            int messageType = _MessageTypes[i];
+            string messageTime = _MessageTimes[i];
 
             // Skip if not need to display
-            if( !_DisplayedMessages[ messageType ] )
+            if (!_DisplayedMessages[messageType])
                 continue;
 
             // Skip scrolled lines
             int curLines = lines;
             int skipLines = 0;
-            GetTextInfo( messageText, _Width, 1000, _TextFont, 0, tw, th, skipLines );
+            GetTextInfo(messageText, _Width, 1000, _TextFont, 0, tw, th, skipLines);
             lines += skipLines;
 
-            if( _ScrollLines < 0 )
-            {
-                if( lines <= _Scroll )
+            if (_ScrollLines < 0) {
+                if (lines <= _Scroll)
                     continue;
                 _ScrollLines = _Scroll - curLines;
             }
 
-            if( curLines - _Scroll < maxLines )
-            {
+            if (curLines - _Scroll < maxLines) {
                 // Add to message box
-                if( _InvertMessages )
+                if (_InvertMessages)
                     _Text += messageText + "\n";
                 else
                     _Text = messageText + "\n" + _Text;
             }
-            else
-            {
+            else {
                 break;
             }
         }
         _MaxScroll = lines - maxLines;
-        if( _ScrollLines < 0 )
+        if (_ScrollLines < 0)
             _ScrollLines = 0;
     }
 
-    bool _SetDisplayedMessage( int messageType, bool enable )
+    bool _SetDisplayedMessage(int messageType, bool enable)
     {
         bool generateText = false;
 
-        if( messageType != FOMB_ALL )
-        {
-            if( _DisplayedMessages[ messageType ] != enable )
-            {
-                _DisplayedMessages[ messageType ] = enable;
+        if (messageType != FOMB_ALL) {
+            if (_DisplayedMessages[messageType] != enable) {
+                _DisplayedMessages[messageType] = enable;
                 generateText = true;
             }
         }
-        else
-        {
-            for( uint i = 0; i < FOMB_ALL; i++ )
-            {
-                if( _DisplayedMessages[ messageType ] != enable )
-                {
-                    _DisplayedMessages[ messageType ] = enable;
+        else {
+            for (uint i = 0; i < FOMB_ALL; i++) {
+                if (_DisplayedMessages[messageType] != enable) {
+                    _DisplayedMessages[messageType] = enable;
                     generateText = true;
                 }
             }
@@ -2346,24 +2528,24 @@ const int        PasswordShowTime = 1000;
         return generateText;
     }
 
-    void SetDisplayedMessages( int[] messageTypes )
+    void SetDisplayedMessages(int[] messageTypes)
     {
         bool generateText = false;
-        bool displayAll = ( messageTypes.find( FOMB_ALL ) != -1 );
-        for( uint i = 0; i < _DisplayedMessages.length(); i++ )
-            if( _SetDisplayedMessage( i, displayAll || messageTypes.find( i ) != -1 ) )
+        bool displayAll = (messageTypes.find(FOMB_ALL) != -1);
+        for (uint i = 0; i < _DisplayedMessages.length(); i++)
+            if (_SetDisplayedMessage(i, displayAll || messageTypes.find(i) != -1))
                 generateText = true;
-        if( generateText )
+        if (generateText)
             _GenerateText();
     }
 
-    void ChangeDisplayedMessage( int messageType, bool enable )
+    void ChangeDisplayedMessage(int messageType, bool enable)
     {
-        if( _SetDisplayedMessage( messageType, enable ) )
+        if (_SetDisplayedMessage(messageType, enable))
             _GenerateText();
     }
 
-    void SetInvertMessages( bool invert )
+    void SetInvertMessages(bool invert)
     {
         _InvertMessages = invert;
         _GenerateText();
@@ -2376,72 +2558,78 @@ const int        PasswordShowTime = 1000;
         _MessageTimes.clear();
         _GenerateText();
     }
-}
+};
 
-const string     ConsoleDataPrefix = "console_";
-/*EXPORT*/ class Console : TextInput
+const string ConsoleDataPrefix = "console_";
+class Console : TextInput
 {
-    bool     get_DisableDeactivation() final { return _DisableDeactivation; }
-    string   get_HistoryStorageName() final  { return _HistoryStorageName; }
+    bool get_DisableDeactivation() final
+    {
+        return _DisableDeactivation;
+    }
+    string get_HistoryStorageName() final
+    {
+        return _HistoryStorageName;
+    }
     string[] get_History() final
     {
         return _History;
     }
-    uint get_HistoryMaxLength() final { return _HistoryMaxLength; }
+    uint get_HistoryMaxLength() final
+    {
+        return _HistoryMaxLength;
+    }
 
-    bool   _DisableDeactivation;
+    bool _DisableDeactivation;
     string _HistoryStorageName;
     string _HistoryActualStorageName;
     string[] _History;
-    uint   _HistoryMaxLength;
-    uint   _HistoryCur;
+    uint _HistoryMaxLength;
+    uint _HistoryCur;
 
     void _Construct() override
     {
         TextInput::_Construct();
 
-        _History = array< string >();
+        _History = array<string>();
 
-        SetCarriage( true );
+        SetCarriage(true);
         _HistoryStorageName = "";
     }
 
     void _FixClone() override
     {
-        _History = array< string >( _History );
+        _History = array<string>(_History);
 
         TextInput::_FixClone();
     }
 
-    void _Show( dictionary params ) override
+    void _Show(dictionary params) override
     {
         CurConsole = this;
 
-        TextInput::_Show( params );
+        TextInput::_Show(params);
     }
 
     void _ActiveChanged() override
     {
-        CustomCall( "SetScreenKeyboard " + ( Active ? "true" : "false" ) );
+        CustomCall("SetScreenKeyboard " + (Active ? "true" : "false"));
 
         TextInput::_ActiveChanged();
     }
 
     void Toggle()
     {
-        if( !Active )
-        {
+        if (!Active) {
             // Activate console
             Activate();
         }
-        else if( _Text.length() == 0 )
-        {
+        else if (_Text.length() == 0) {
             // Deactivate console
-            if( !_DisableDeactivation )
+            if (!_DisableDeactivation)
                 Deactivate();
         }
-        else
-        {
+        else {
             // Send text
             SendText();
         }
@@ -2450,174 +2638,171 @@ const string     ConsoleDataPrefix = "console_";
     void Activate()
     {
         // Activate console
-        if( Active || !Parent.Active )
+        if (Active || !Parent.Active)
             return;
 
         // Load history
-        string name = ( GetChosen() != null ? GetChosen().Name : "" );
+        string name = (GetChosen() != null ? GetChosen().Name : "");
         string actualStorageName = "";
-        if( !_HistoryStorageName.isEmpty() && !name.isEmpty() )
+        if (!_HistoryStorageName.isEmpty() && !name.isEmpty())
             actualStorageName = ConsoleDataPrefix + name + _HistoryStorageName;
 
-        if( _HistoryActualStorageName != actualStorageName )
-        {
+        if (_HistoryActualStorageName != actualStorageName) {
             _History.clear();
             _HistoryActualStorageName = actualStorageName;
-            if( _HistoryActualStorageName != "" )
-            {
+            if (_HistoryActualStorageName != "") {
                 Serializator::Serializator data;
-                if( data.LoadFromCache( _HistoryActualStorageName ) > 0 )
-                    data.Get( _History );
+                if (data.LoadFromCache(_HistoryActualStorageName) > 0)
+                    data.Get(_History);
             }
         }
 
         _HistoryCur = _History.length();
 
         // Raise callbacks
-        SetActive( true );
+        SetActive(true);
     }
 
     void Deactivate()
     {
         // Deactivate console
-        if( _ActiveSelf )
-            SetActive( false );
+        if (_ActiveSelf)
+            SetActive(false);
     }
 
     void SendText()
     {
-        if( !Active )
+        if (!Active)
             return;
 
         // Modify history
-        _History.insertLast( _Text );
-        for( uint i = 0; i < _History.length() - 1;)
-        {
-            if( _History[ i ] == _History.last() )
-                _History.removeAt( i );
+        _History.insertLast(_Text);
+        for (uint i = 0; i < _History.length() - 1;) {
+            if (_History[i] == _History.last())
+                _History.removeAt(i);
             else
                 i++;
         }
 
         // Trim history length
-        uint historyMaxLength = ( _HistoryMaxLength != 0 ? _HistoryMaxLength : __ConsoleHistorySize );
-        while( _History.length() > historyMaxLength )
-            _History.removeAt( 0 );
+        uint historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : __ConsoleHistorySize);
+        while (_History.length() > historyMaxLength)
+            _History.removeAt(0);
         _HistoryCur = _History.length();
 
         // Save history
-        if( _HistoryActualStorageName != "" )
-        {
+        if (_HistoryActualStorageName != "") {
             Serializator::Serializator data;
-            data.Set( _History );
-            data.SaveToCache( _HistoryActualStorageName );
+            data.Set(_History);
+            data.SaveToCache(_HistoryActualStorageName);
         }
 
         // Send
         bool[] keyPressed = Screen._InputKeyPressed;
-        if( keyPressed[ DIK_LCONTROL ] || keyPressed[ DIK_RCONTROL ] )
-            CustomCall( "ConsoleMessage\n/s" + _Text, "\n" );
-        else if( keyPressed[ DIK_LMENU ] || keyPressed[ DIK_RMENU ] )
-            CustomCall( "ConsoleMessage\n/w" + _Text, "\n" );
-        else if( keyPressed[ DIK_LSHIFT ] || keyPressed[ DIK_RSHIFT ] )
-            CustomCall( "ConsoleMessage\n/r" + _Text, "\n" );
+        if (keyPressed[DIK_LCONTROL] || keyPressed[DIK_RCONTROL])
+            CustomCall("ConsoleMessage\n/s" + _Text, "\n");
+        else if (keyPressed[DIK_LMENU] || keyPressed[DIK_RMENU])
+            CustomCall("ConsoleMessage\n/w" + _Text, "\n");
+        else if (keyPressed[DIK_LSHIFT] || keyPressed[DIK_RSHIFT])
+            CustomCall("ConsoleMessage\n/r" + _Text, "\n");
         else
-            CustomCall( "ConsoleMessage\n" + _Text, "\n" );
+            CustomCall("ConsoleMessage\n" + _Text, "\n");
 
         // Clear text
         _Text = "";
         _CarriagePos = 0;
     }
 
-    void _ConsoleInput( uint8 key, string text )
+    void _ConsoleInput(uint8 key, string text)
     {
-        if( Active )
-        {
-            if( key == DIK_UP && _HistoryCur > 0 )
-            {
+        if (Active) {
+            if (key == DIK_UP && _HistoryCur > 0) {
                 _HistoryCur--;
-                _Text = _History[ _HistoryCur ];
+                _Text = _History[_HistoryCur];
                 _CarriagePos = _Text.length();
             }
-            else if( key == DIK_DOWN )
-            {
-                if( _HistoryCur + 1 < _History.length() )
-                {
+            else if (key == DIK_DOWN) {
+                if (_HistoryCur + 1 < _History.length()) {
                     _HistoryCur++;
-                    _Text = _History[ _HistoryCur ];
+                    _Text = _History[_HistoryCur];
                     _CarriagePos = _Text.length();
                 }
-                else
-                {
+                else {
                     _HistoryCur = _History.length();
                     _Text = "";
                     _CarriagePos = 0;
                 }
-
             }
-            else
-            {
-                TextInput::Input( key, text );
+            else {
+                TextInput::Input(key, text);
             }
         }
 
-        if( key == DIK_RETURN || key == DIK_NUMPADENTER )
-        {
+        if (key == DIK_RETURN || key == DIK_NUMPADENTER) {
             Toggle();
         }
     }
 
-    void Input( uint8 key, string text ) override
+    void Input(uint8 key, string text) override
     {
-        Text::Input( key, text );
+        Text::Input(key, text);
     }
 
-    void _Draw( bool callCallback ) override
+    void _Draw(bool callCallback) override
     {
-        if( callCallback )
+        if (callCallback)
             _DrawCallback();
 
         string text = Text;
 
-        if( _CarriagePos < 0 )
+        if (_CarriagePos < 0)
             _CarriagePos = 0;
-        if( _CarriagePos > int( text.length() ) )
+        if (_CarriagePos > int(text.length()))
             _CarriagePos = text.length();
 
-        text = text.substr( 0, _CarriagePos ) + ( GetTick() % 800 < 400 ? "!" : "." ) + text.substr( _CarriagePos );
-        DrawText( text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, _TextColor, _TextFont, _TextFlags );
+        text = text.substr(0, _CarriagePos) + (GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
+        DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, _TextColor, _TextFont, _TextFlags);
 
-        Object::_Draw( false );
+        Object::_Draw(false);
 
-        if( callCallback )
+        if (callCallback)
             OnPostDraw();
     }
 
-    void SetDisableDeactivation( bool enable )
+    void SetDisableDeactivation(bool enable)
     {
         _DisableDeactivation = enable;
     }
 
-    void SetHistoryStorage( string storageName )
+    void SetHistoryStorage(string storageName)
     {
         // Set storage name
         _HistoryStorageName = storageName;
     }
 
-    void SetHistoryMaxLength( uint length )
+    void SetHistoryMaxLength(uint length)
     {
         _HistoryMaxLength = length;
     }
-}
+};
 
-/*EXPORT*/ class ItemView : Grid
+class ItemView : Grid
 {
-    int  get_UserData() final    { return _UserData; }
-    int  get_UserDataExt() final { return _UserDataExt; }
-    bool get_UseSorting() final  { return _UseSorting; }
+    int get_UserData() final
+    {
+        return _UserData;
+    }
+    int get_UserDataExt() final
+    {
+        return _UserDataExt;
+    }
+    bool get_UseSorting() final
+    {
+        return _UseSorting;
+    }
 
-    int  _UserData;
-    int  _UserDataExt;
+    int _UserData;
+    int _UserDataExt;
     bool _UseSorting;
     Item[] _Items;
     uint _ItemsGridSize;
@@ -2626,19 +2811,25 @@ const string     ConsoleDataPrefix = "console_";
     {
         Grid::_Construct();
 
-        _Items = array< Item >();
+        _Items = array<Item>();
     }
 
     void _FixClone() override
     {
-        _Items = array< Item >( _Items );
+        _Items = array<Item>(_Items);
 
         Grid::_FixClone();
     }
 
     // Callbacks
-    Item[] OnGetItems()             { return null; }
-    int    OnCheckItem( Item item ) { return -1; }
+    Item[] OnGetItems()
+    {
+        return null;
+    }
+    int OnCheckItem(Item item)
+    {
+        return -1;
+    }
 
     void _Init() override
     {
@@ -2647,91 +2838,83 @@ const string     ConsoleDataPrefix = "console_";
         Grid::_Init();
     }
 
-    Item GetItem( uint cellIndex )
+    Item GetItem(uint cellIndex)
     {
-        return _Items[ cellIndex ];
+        return _Items[cellIndex];
     }
 
     void Resort()
     {
-        ResizeGrid( 0 );
+        ResizeGrid(0);
     }
 
-    void ResizeGrid( uint size ) override
+    void ResizeGrid(uint size) override
     {
         _Items.clear();
 
         Item[] items = OnGetItems();
-        if( items == null )
-            items = array< Item >();
+        if (items == null)
+            items = array<Item>();
 
-        if( !_UseSorting )
-        {
-            _Items.resize( _ItemsGridSize );
-            for( uint i = 0; i < items.length(); i++ )
-            {
-                int itemIndex = OnCheckItem( items[ i ] );
-                if( itemIndex >= 0 && itemIndex < int( _Items.length() ) )
-                    _Items[ itemIndex ] = items[ i ];
+        if (!_UseSorting) {
+            _Items.resize(_ItemsGridSize);
+            for (uint i = 0; i < items.length(); i++) {
+                int itemIndex = OnCheckItem(items[i]);
+                if (itemIndex >= 0 && itemIndex < int(_Items.length()))
+                    _Items[itemIndex] = items[i];
             }
         }
-        else
-        {
+        else {
             int[] sortValues = {};
-            for( uint i = 0; i < items.length(); i++ )
-            {
-                int sortValue = OnCheckItem( items[ i ] );
-                if( sortValue >= 0 )
-                {
+            for (uint i = 0; i < items.length(); i++) {
+                int sortValue = OnCheckItem(items[i]);
+                if (sortValue >= 0) {
                     bool added = false;
-                    for( uint j = 0; j < _Items.length(); j++ )
-                    {
-                        if( sortValues[ j ] > sortValue )
-                        {
-                            _Items.insertAt( j, items[ i ] );
-                            sortValues.insertAt( j, sortValue );
+                    for (uint j = 0; j < _Items.length(); j++) {
+                        if (sortValues[j] > sortValue) {
+                            _Items.insertAt(j, items[i]);
+                            sortValues.insertAt(j, sortValue);
                             added = true;
                             break;
                         }
                     }
-                    if( !added )
-                    {
-                        _Items.insertLast( items[ i ] );
-                        sortValues.insertLast( sortValue );
+                    if (!added) {
+                        _Items.insertLast(items[i]);
+                        sortValues.insertLast(sortValue);
                     }
                 }
             }
         }
 
-        Grid::ResizeGrid( _Items.length() );
+        Grid::ResizeGrid(_Items.length());
     }
 
-    void SetUserData( int data )
+    void SetUserData(int data)
     {
         _UserData = data;
     }
 
-    void SetUserDataExt( int data )
+    void SetUserDataExt(int data)
     {
         _UserDataExt = data;
     }
 
-    void SetUseSorting( bool enable )
+    void SetUseSorting(bool enable)
     {
         _UseSorting = enable;
     }
-}
+};
 
 // Implementation
 
-dict< int, CreateScreenFunc > ScreenCreators = {};
+dict<int, CreateScreenFunc> ScreenCreators = {};
 
 Screen[] Screens = {};
 Screen CursorScreen;
 
 Object FocusedObject;
 Object PressedObject;
-uint   PressedObjectRepeatTime;
+uint PressedObjectRepeatTime;
 Object LastPressedObject;
 Object HoveredObject;
 
@@ -2739,39 +2922,36 @@ DragAndDropHandler[] DragAndDropHandlers = {};
 
 IDropMenu DropMenu;
 
-Console   CurConsole;
+Console CurConsole;
 
 //
 // Public API
 //
 
-/*EXPORT*/ void RegisterScreen( int screenIndex, CreateScreenFunc screenFunc )
+void RegisterScreen(int screenIndex, CreateScreenFunc screenFunc)
 {
-    UnregisterScreen( screenIndex );
+    UnregisterScreen(screenIndex);
 
-    if( screenIndex == CLIENT_SCREEN_NONE )
+    if (screenIndex == CLIENT_SCREEN_NONE)
         return;
 
-    @ScreenCreators[ screenIndex ] = screenFunc;
+    @ScreenCreators[screenIndex] = screenFunc;
 
     // Precache
-    Screen screen = CreateScreen( screenIndex );
-    if( screen.IsMultiinstance )
-    {
+    Screen screen = CreateScreen(screenIndex);
+    if (screen.IsMultiinstance) {
         screen._Remove();
-        Screens.removeAt( Screens.findByRef( screen ) );
+        Screens.removeAt(Screens.findByRef(screen));
     }
 }
 
-/*EXPORT*/ Screen GetScreen( int screenIndex )
+Screen GetScreen(int screenIndex)
 {
     Screen lastMultiinstanceScreen = null;
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-    {
-        Screen screen = Screens[ i ];
-        if( screen.Index == screenIndex )
-        {
-            if( !screen.IsMultiinstance )
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+        Screen screen = Screens[i];
+        if (screen.Index == screenIndex) {
+            if (!screen.IsMultiinstance)
                 return screen;
             else
                 lastMultiinstanceScreen = screen;
@@ -2780,33 +2960,32 @@ Console   CurConsole;
     return lastMultiinstanceScreen;
 }
 
-/*EXPORT*/ Screen GetActiveMainScreen()
+Screen GetActiveMainScreen()
 {
-    for( uint i = 0; i < Screens.length(); i++ )
-        if( Screens[ i ].ActiveSelf && Screens[ i ].IsMain )
-            return Screens[ i ];
+    for (uint i = 0; i < Screens.length(); i++)
+        if (Screens[i].ActiveSelf && Screens[i].IsMain)
+            return Screens[i];
     return null; // Should not be reach this point
 }
 
-/*EXPORT*/ Screen GetActiveScreen()
+Screen GetActiveScreen()
 {
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-        if( Screens[ i ].ActiveSelf )
-            return Screens[ i ];
+    for (int i = int(Screens.length()) - 1; i >= 0; i--)
+        if (Screens[i].ActiveSelf)
+            return Screens[i];
     return null; // Should not be reach this point
 }
 
-/*EXPORT*/ void GetActiveScreens( Screen[] result )
+void GetActiveScreens(Screen[] result)
 {
-    for( uint i = 0; i < Screens.length(); i++ )
-        if( Screens[ i ].ActiveSelf )
-            result.insertLast( Screens[ i ] );
+    for (uint i = 0; i < Screens.length(); i++)
+        if (Screens[i].ActiveSelf)
+            result.insertLast(Screens[i]);
 }
 
-/*EXPORT*/ Object GetFocusedObject()
+Object GetFocusedObject()
 {
-    if( FocusedObject != null && !FocusedObject.Active )
-    {
+    if (FocusedObject != null && !FocusedObject.Active) {
         auto obj = FocusedObject;
         FocusedObject = null;
         obj._Unfocus();
@@ -2814,56 +2993,51 @@ Console   CurConsole;
     return FocusedObject;
 }
 
-/*EXPORT*/ void SetFocusedObject( Object obj )
+void SetFocusedObject(Object obj)
 {
-    if( FocusedObject != null )
-    {
+    if (FocusedObject != null) {
         auto fobj = FocusedObject;
         FocusedObject = null;
         fobj._Unfocus();
     }
 
-    if( obj != null && obj.Active )
-    {
+    if (obj != null && obj.Active) {
         FocusedObject = obj;
         FocusedObject._Focus();
     }
 }
 
-/*EXPORT*/ Object GetPressedObject()
+Object GetPressedObject()
 {
-    if( PressedObject != null && !PressedObject.Active )
-    {
+    if (PressedObject != null && !PressedObject.Active) {
         auto obj = PressedObject;
         PressedObject = null;
-        obj._MouseUp( true );
+        obj._MouseUp(true);
         LastPressedObject = null;
     }
     return PressedObject;
 }
 
-/*EXPORT*/ Object GetLastPressedObject()
+Object GetLastPressedObject()
 {
-    if( LastPressedObject != null && !LastPressedObject.Active )
+    if (LastPressedObject != null && !LastPressedObject.Active)
         LastPressedObject = null;
     return LastPressedObject;
 }
 
-/*EXPORT*/ Object GetDraggedObject()
+Object GetDraggedObject()
 {
-    if( PressedObject != null && !PressedObject.Active )
-    {
+    if (PressedObject != null && !PressedObject.Active) {
         auto obj = PressedObject;
         PressedObject = null;
-        obj._MouseUp( true );
+        obj._MouseUp(true);
     }
     return PressedObject != null && PressedObject._IsDragged ? PressedObject : null;
 }
 
-/*EXPORT*/ Object GetHoveredObject()
+Object GetHoveredObject()
 {
-    if( HoveredObject != null && !HoveredObject.Active )
-    {
+    if (HoveredObject != null && !HoveredObject.Active) {
         auto obj = HoveredObject;
         HoveredObject = null;
         obj._Unhover();
@@ -2871,24 +3045,22 @@ Console   CurConsole;
     return HoveredObject;
 }
 
-/*EXPORT*/ void NextTextInput()
+void NextTextInput()
 {
     Screen screen = GetActiveScreen();
-    if( screen == null )
+    if (screen == null)
         return;
 
-    GetFocusedObject();     // Refresh state
-    TextInput curTextInput = cast< TextInput >( FocusedObject );
+    GetFocusedObject(); // Refresh state
+    TextInput curTextInput = cast<TextInput>(FocusedObject);
     FindNextTextInputSkipObj = curTextInput;
-    TextInput textInput = FindNextTextInput( screen );
+    TextInput textInput = FindNextTextInput(screen);
     FindNextTextInputSkipObj = null;
-    if( textInput == null && curTextInput != null )
-        textInput = FindNextTextInput( screen );
+    if (textInput == null && curTextInput != null)
+        textInput = FindNextTextInput(screen);
 
-    if( textInput != null && textInput !is curTextInput )
-    {
-        if( FocusedObject != null )
-        {
+    if (textInput != null && textInput !is curTextInput) {
+        if (FocusedObject != null) {
             auto obj = FocusedObject;
             FocusedObject = null;
             obj._Unfocus();
@@ -2899,87 +3071,83 @@ Console   CurConsole;
 }
 
 Object FindNextTextInputSkipObj = null;
-TextInput FindNextTextInput( Object obj )
+TextInput FindNextTextInput(Object obj)
 {
-    if( FindNextTextInputSkipObj == null )
-    {
-        TextInput textInput = cast< TextInput >( obj );
-        if( textInput != null )
+    if (FindNextTextInputSkipObj == null) {
+        TextInput textInput = cast<TextInput>(obj);
+        if (textInput != null)
             return textInput;
     }
-    else if( obj is FindNextTextInputSkipObj )
-    {
+    else if (obj is FindNextTextInputSkipObj) {
         FindNextTextInputSkipObj = null;
     }
 
-    for( uint i = 0; i < obj._Children.length(); i++ )
-    {
-        if( obj._Children[ i ]._ActiveSelf )
-        {
-            TextInput textInput = FindNextTextInput( obj._Children[ i ] );
-            if( textInput != null )
+    for (uint i = 0; i < obj._Children.length(); i++) {
+        if (obj._Children[i]._ActiveSelf) {
+            TextInput textInput = FindNextTextInput(obj._Children[i]);
+            if (textInput != null)
                 return textInput;
         }
     }
     return null;
 }
 
-/*EXPORT*/ MessageBox[] CollectMessageBoxes()
+MessageBox[] CollectMessageBoxes()
 {
     MessageBox[] messageBoxes = {};
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-        CollectMessageBoxes( Screens[ i ], messageBoxes );
+    for (int i = int(Screens.length()) - 1; i >= 0; i--)
+        CollectMessageBoxes(Screens[i], messageBoxes);
     return messageBoxes;
 }
 
-void CollectMessageBoxes( Object obj, MessageBox[] messageBoxes )
+void CollectMessageBoxes(Object obj, MessageBox[] messageBoxes)
 {
-    MessageBox mb = cast< MessageBox >( obj );
-    if( mb != null )
-        messageBoxes.insertLast( mb );
+    MessageBox mb = cast<MessageBox>(obj);
+    if (mb != null)
+        messageBoxes.insertLast(mb);
 
-    for( uint i = 0; i < obj._Children.length(); i++ )
-        CollectMessageBoxes( obj._Children[ i ], messageBoxes );
+    for (uint i = 0; i < obj._Children.length(); i++)
+        CollectMessageBoxes(obj._Children[i], messageBoxes);
 }
 
-/*EXPORT*/ bool IsConsoleActive()
+bool IsConsoleActive()
 {
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-        if( IsConsoleActive( Screens[ i ] ) )
+    for (int i = int(Screens.length()) - 1; i >= 0; i--)
+        if (IsConsoleActive(Screens[i]))
             return true;
     return false;
 }
 
-bool IsConsoleActive( Object obj )
+bool IsConsoleActive(Object obj)
 {
-    if( !obj.ActiveSelf )
+    if (!obj.ActiveSelf)
         return false;
 
-    Console console = cast< Console >( obj );
-    if( console != null )
+    Console console = cast<Console>(obj);
+    if (console != null)
         return true;
 
-    for( uint i = 0; i < obj._Children.length(); i++ )
-        if( IsConsoleActive( obj._Children[ i ] ) )
+    for (uint i = 0; i < obj._Children.length(); i++)
+        if (IsConsoleActive(obj._Children[i]))
             return true;
 
     return false;
 }
 
-/*EXPORT*/ void AddDragAndDropHandler( DragAndDropHandler handler )
+void AddDragAndDropHandler(DragAndDropHandler handler)
 {
-    DragAndDropHandlers.insertLast( handler );
+    DragAndDropHandlers.insertLast(handler);
 }
 
-/*EXPORT*/ void SetDropMenu( IDropMenu dropMenu )
+void SetDropMenu(IDropMenu dropMenu)
 {
     DropMenu = dropMenu;
 }
 
-/*EXPORT*/ bool CheckHit( int x, int y )
+bool CheckHit(int x, int y)
 {
-    for( uint i = 0; i < Screens.length(); i++ )
-        if( Screens[ i ].ActiveSelf && Screens[ i ].FindHit( x, y ) != null )
+    for (uint i = 0; i < Screens.length(); i++)
+        if (Screens[i].ActiveSelf && Screens[i].FindHit(x, y) != null)
             return true;
     return false;
 }
@@ -2988,22 +3156,22 @@ bool IsConsoleActive( Object obj )
 // Engine callbacks
 //
 
-/*EXPORT*/ void EngineCallback_Start()
+void EngineCallback_Start()
 {
     // Register custom screens
     GuiScreens::InitializeScreens();
 
     // Register hardcoded screens
-    CreateHardcodedScreen( CLIENT_MAIN_SCREEN_LOGIN );
-    CreateHardcodedScreen( CLIENT_MAIN_SCREEN_GAME );
-    CreateHardcodedScreen( CLIENT_MAIN_SCREEN_GLOBAL_MAP );
-    CreateHardcodedScreen( CLIENT_MAIN_SCREEN_WAIT );
-    CreateHardcodedScreen( CLIENT_SCREEN_DIALOG );
-    CreateHardcodedScreen( CLIENT_SCREEN_DIALOGBOX );
-    CreateHardcodedScreen( CLIENT_SCREEN_TOWN_VIEW );
+    CreateHardcodedScreen(CLIENT_MAIN_SCREEN_LOGIN);
+    CreateHardcodedScreen(CLIENT_MAIN_SCREEN_GAME);
+    CreateHardcodedScreen(CLIENT_MAIN_SCREEN_GLOBAL_MAP);
+    CreateHardcodedScreen(CLIENT_MAIN_SCREEN_WAIT);
+    CreateHardcodedScreen(CLIENT_SCREEN_DIALOG);
+    CreateHardcodedScreen(CLIENT_SCREEN_DIALOGBOX);
+    CreateHardcodedScreen(CLIENT_SCREEN_TOWN_VIEW);
 }
 
-/*EXPORT*/ void EngineCallback_ShowScreen( int screenIndex, dictionary params )
+void EngineCallback_ShowScreen(int screenIndex, dictionary params)
 {
     __ScrollMouseUp = false;
     __ScrollMouseRight = false;
@@ -3015,121 +3183,111 @@ bool IsConsoleActive( Object obj )
     __ScrollKeybLeft = false;
 
     // Manage multiinstance
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-    {
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         // Find instance
-        Screen screen = Screens[ i ];
-        if( screen.Index != screenIndex )
+        Screen screen = Screens[i];
+        if (screen.Index != screenIndex)
             continue;
 
         // Move to top created instance
-        if( !screen.IsMultiinstance )
-        {
-            ShowHideScreen( screen, params, true );
+        if (!screen.IsMultiinstance) {
+            ShowHideScreen(screen, params, true);
             return;
         }
     }
 
     // Create new instance
-    Screen screen = CreateScreen( screenIndex );
-    ShowHideScreen( screen, params, true );
+    Screen screen = CreateScreen(screenIndex);
+    ShowHideScreen(screen, params, true);
 }
 
-/*EXPORT*/ void EngineCallback_HideScreen( int screenIndex )
+void EngineCallback_HideScreen(int screenIndex)
 {
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-    {
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
         // Find instance
-        Screen screen = Screens[ i ];
-        if( !screen.ActiveSelf || screen.Index != screenIndex )
+        Screen screen = Screens[i];
+        if (!screen.ActiveSelf || screen.Index != screenIndex)
             continue;
 
         // Hide
-        ShowHideScreen( screen, null, false );
+        ShowHideScreen(screen, null, false);
 
         // Hide only one screen per call
         break;
     }
 }
 
-/*EXPORT*/ void EngineCallback_Draw()
+void EngineCallback_Draw()
 {
-    for( uint i = 0; i < Screens.length(); i++ )
-    {
-        Screen screen = Screens[ i ];
-        if( screen.ActiveSelf )
-        {
-            if( screen.Index == CLIENT_MAIN_SCREEN_WAIT )
-                CustomCall( "DrawWait" );
-            screen._Draw( true );
+    for (uint i = 0; i < Screens.length(); i++) {
+        Screen screen = Screens[i];
+        if (screen.ActiveSelf) {
+            if (screen.Index == CLIENT_MAIN_SCREEN_WAIT)
+                CustomCall("DrawWait");
+            screen._Draw(true);
         }
     }
 }
 
-/*EXPORT*/ void EngineCallback_DrawCursor()
+void EngineCallback_DrawCursor()
 {
     // Dragged object
     Object draggedObject = GetDraggedObject();
-    if( draggedObject != null )
-    {
+    if (draggedObject != null) {
         int x = 0, y = 0, w = 0, h = 0;
-        draggedObject.GetWholeSize( x, y, w, h );
-        draggedObject.Draw( __MouseX - w / 2, __MouseY - h / 2 );
+        draggedObject.GetWholeSize(x, y, w, h);
+        draggedObject.Draw(__MouseX - w / 2, __MouseY - h / 2);
         return;
     }
 
     // Drop menu
-    if( DropMenu != null )
+    if (DropMenu != null)
         DropMenu.Draw();
 
     // Cursor
-    if( CursorScreen != null )
-        CursorScreen._Draw( true );
+    if (CursorScreen != null)
+        CursorScreen._Draw(true);
 }
 
-/*EXPORT*/ void EngineCallback_MouseDown( int button )
+void EngineCallback_MouseDown(int button)
 {
     // Unfocus current object
-    if( button == MOUSE_BUTTON_LEFT && FocusedObject != null )
-    {
+    if (button == MOUSE_BUTTON_LEFT && FocusedObject != null) {
         auto obj = FocusedObject;
         FocusedObject = null;
         obj._Unfocus();
     }
 
     // Release mouse from current object
-    if( PressedObject != null )
-    {
+    if (PressedObject != null) {
         auto obj = PressedObject;
         PressedObject = null;
-        obj._MouseUp( true );
+        obj._MouseUp(true);
     }
 
     // Process mouse down
     Screen screen = GetActiveScreen();
-    if( screen == null )
+    if (screen == null)
         return;
 
     // Global callback
-    screen._GlobalMouseDown( button );
+    screen._GlobalMouseDown(button);
 
     // Drop menu
-    if( DropMenu != null )
-        DropMenu.MouseDown( button );
+    if (DropMenu != null)
+        DropMenu.MouseDown(button);
 
     // Check hit on current screen
     Object hitObj = screen.FindMouseHit();
-    if( hitObj != null )
-    {
+    if (hitObj != null) {
         // Handle pressed object
         PressedObject = hitObj;
         PressedObjectRepeatTime = GetTick() + 500;
         LastPressedObject = hitObj;
-        PressedObject._MouseDown( button );
+        PressedObject._MouseDown(button);
 
         // Handle focused object
-        if( button == MOUSE_BUTTON_LEFT )
-        {
+        if (button == MOUSE_BUTTON_LEFT) {
             FocusedObject = hitObj;
             FocusedObject._Focus();
         }
@@ -3137,238 +3295,220 @@ bool IsConsoleActive( Object obj )
     }
 
     // Close on miss
-    if( button == MOUSE_BUTTON_LEFT && screen.IsCloseOnMiss )
-    {
-        ShowHideScreen( screen, null, false );
+    if (button == MOUSE_BUTTON_LEFT && screen.IsCloseOnMiss) {
+        ShowHideScreen(screen, null, false);
         return;
     }
 
     // Switch to another screen
-    if( button == MOUSE_BUTTON_LEFT && !screen.IsModal )
-    {
-        int screenIndex = Screens.findByRef( screen );
-        for( int i = screenIndex - 1; i >= 0; i-- )
-        {
-            Screen nextScreen = Screens[ i ];
-            if( !nextScreen.ActiveSelf )
+    if (button == MOUSE_BUTTON_LEFT && !screen.IsModal) {
+        int screenIndex = Screens.findByRef(screen);
+        for (int i = screenIndex - 1; i >= 0; i--) {
+            Screen nextScreen = Screens[i];
+            if (!nextScreen.ActiveSelf)
                 continue;
 
-            if( nextScreen.IsModal || nextScreen.FindMouseHit() != null )
-            {
+            if (nextScreen.IsModal || nextScreen.FindMouseHit() != null) {
                 // Show screen to top and click on it
-                ShowHideScreen( nextScreen, null, true, nextScreen );
-                EngineCallback_MouseDown( button );
+                ShowHideScreen(nextScreen, null, true, nextScreen);
+                EngineCallback_MouseDown(button);
                 return;
             }
         }
     }
 }
 
-/*EXPORT*/ void EngineCallback_MouseUp( int button )
+void EngineCallback_MouseUp(int button)
 {
     // Global handler
     Screen screen = GetActiveScreen();
-    if( screen != null )
-        screen._GlobalMouseUp( button );
+    if (screen != null)
+        screen._GlobalMouseUp(button);
 
     // Release mouse from current object
-    GetPressedObject();     // Refresh state
-    if( PressedObject != null && button == PressedObject._PressedButton )
-    {
+    GetPressedObject(); // Refresh state
+    if (PressedObject != null && button == PressedObject._PressedButton) {
         Object obj = PressedObject;
         PressedObject = null;
-        bool   isDragged = obj._IsDragged;
-        obj._MouseUp( false );
+        bool isDragged = obj._IsDragged;
+        obj._MouseUp(false);
 
-        if( obj.IsMouseHit() )
-        {
-            if( screen != null )
-                screen._GlobalMouseClick( button );
-            obj.MouseClick( button );
+        if (obj.IsMouseHit()) {
+            if (screen != null)
+                screen._GlobalMouseClick(button);
+            obj.MouseClick(button);
         }
 
-        if( isDragged && screen != null )
-        {
+        if (isDragged && screen != null) {
             Object target = screen.FindMouseHit();
-            for( uint i = 0; i < DragAndDropHandlers.length(); i++ )
-                if( DragAndDropHandlers[ i ] ( obj, target ) )
+            for (uint i = 0; i < DragAndDropHandlers.length(); i++)
+                if (DragAndDropHandlers[i](obj, target))
                     break;
         }
     }
 
     // Drop menu
-    if( DropMenu != null )
-        DropMenu.MouseUp( button );
+    if (DropMenu != null)
+        DropMenu.MouseUp(button);
 }
 
-/*EXPORT*/ void EngineCallback_MouseMove( int offsetX, int offsetY )
+void EngineCallback_MouseMove(int offsetX, int offsetY)
 {
-    bool realMove = ( offsetX != 0 || offsetY != 0 );
+    bool realMove = (offsetX != 0 || offsetY != 0);
 
     // Drop menu
-    if( DropMenu != null )
-    {
-        if( DropMenu.PreMouseMove( offsetX, offsetY ) )
+    if (DropMenu != null) {
+        if (DropMenu.PreMouseMove(offsetX, offsetY))
             return;
     }
 
     // Move mouse for active screen
     Screen screen = GetActiveScreen();
     Object hoveredObj;
-    if( screen != null )
-    {
-        if( realMove )
+    if (screen != null) {
+        if (realMove)
             screen._GlobalMouseMove();
         hoveredObj = screen.FindMouseHit();
-        if( realMove && hoveredObj != null )
+        if (realMove && hoveredObj != null)
             hoveredObj._MouseMove();
     }
 
     // Change hover object
-    GetHoveredObject();     // Refresh state
-    if( HoveredObject !is hoveredObj )
-    {
-        if( HoveredObject != null )
-        {
+    GetHoveredObject(); // Refresh state
+    if (HoveredObject !is hoveredObj) {
+        if (HoveredObject != null) {
             auto obj = HoveredObject;
             HoveredObject = null;
             obj._Unhover();
         }
         HoveredObject = hoveredObj;
-        if( HoveredObject != null )
+        if (HoveredObject != null)
             HoveredObject._Hover();
     }
 
     // Drop menu
-    if( DropMenu != null )
-        DropMenu.PostMouseMove( offsetX, offsetY );
+    if (DropMenu != null)
+        DropMenu.PostMouseMove(offsetX, offsetY);
 }
 
-/*EXPORT*/ void EngineCallback_KeyDown( uint8 key, string text )
+void EngineCallback_KeyDown(uint8 key, string text)
 {
     // Global input handler
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-        if( Screens[ i ]._ActiveSelf )
-            Screens[ i ]._GlobalInput( key, text );
+    for (int i = int(Screens.length()) - 1; i >= 0; i--)
+        if (Screens[i]._ActiveSelf)
+            Screens[i]._GlobalInput(key, text);
 
     // Console input
-    if( CurConsole != null )
-        CurConsole._ConsoleInput( key, text );
+    if (CurConsole != null)
+        CurConsole._ConsoleInput(key, text);
 
     // Focused object input
-    if( CurConsole == null || !CurConsole.Active )
-    {
+    if (CurConsole == null || !CurConsole.Active) {
         Screen screen = GetActiveScreen();
-        GetFocusedObject();         // Refresh state
-        if( FocusedObject != null && FocusedObject !is screen )
-            FocusedObject.Input( key, text );
+        GetFocusedObject(); // Refresh state
+        if (FocusedObject != null && FocusedObject !is screen)
+            FocusedObject.Input(key, text);
     }
 }
 
-/*EXPORT*/ void EngineCallback_KeyUp( uint8 key )
+void EngineCallback_KeyUp(uint8 key)
 {
     // ...
 }
 
-/*EXPORT*/ void EngineCallback_InputLost()
+void EngineCallback_InputLost()
 {
-    if( HoveredObject != null )
-    {
+    if (HoveredObject != null) {
         auto obj = HoveredObject;
         HoveredObject = null;
         obj._Unhover();
     }
-    if( FocusedObject != null )
-    {
+    if (FocusedObject != null) {
         auto obj = FocusedObject;
         FocusedObject = null;
         obj._Unfocus();
     }
-    if( PressedObject != null )
-    {
+    if (PressedObject != null) {
         auto obj = PressedObject;
         PressedObject = null;
-        obj._MouseUp( true );
+        obj._MouseUp(true);
     }
 
-    if( DropMenu != null )
+    if (DropMenu != null)
         DropMenu.InputLost();
 }
 
-/*EXPORT*/ void EngineCallback_Loop()
+void EngineCallback_Loop()
 {
-    if( __WaitPing || __IsConnecting || __IsUpdating )
+    if (__WaitPing || __IsConnecting || __IsUpdating)
         Input::ReleaseMouse();
 
-    GetPressedObject();     // Refresh state
-    if( PressedObject != null )
-    {
+    GetPressedObject(); // Refresh state
+    if (PressedObject != null) {
         uint tick = GetTick();
-        if( tick >= PressedObjectRepeatTime && PressedObject.IsMouseHit() )
-        {
+        if (tick >= PressedObjectRepeatTime && PressedObject.IsMouseHit()) {
             PressedObjectRepeatTime = tick + 40;
             Screen screen = GetActiveScreen();
-            if( screen != null )
-                screen._GlobalMousePressed( PressedObject._PressedButton );
-            PressedObject._MousePressed( PressedObject._PressedButton );
+            if (screen != null)
+                screen._GlobalMousePressed(PressedObject._PressedButton);
+            PressedObject._MousePressed(PressedObject._PressedButton);
         }
     }
 
-    EngineCallback_MouseMove( 0, 0 );
+    EngineCallback_MouseMove(0, 0);
 
     // Drop menu
-    if( DropMenu != null )
+    if (DropMenu != null)
         DropMenu.Loop();
 }
 
-/*EXPORT*/ void EngineCallback_GetActiveScreens( int[] result )
+void EngineCallback_GetActiveScreens(int[] result)
 {
-    for( uint i = 0; i < Screens.length(); i++ )
-        if( Screens[ i ].ActiveSelf )
-            result.insertLast( Screens[ i ].Index );
+    for (uint i = 0; i < Screens.length(); i++)
+        if (Screens[i].ActiveSelf)
+            result.insertLast(Screens[i].Index);
 }
 
-/*EXPORT*/ void EngineCallback_ItemChanged( bool onMap )
+void EngineCallback_ItemChanged(bool onMap)
 {
-    if( !onMap )
-    {
+    if (!onMap) {
         ItemView[] itemViews = {};
-        CollectItemView( itemViews );
-        for( uint i = 0; i < itemViews.length(); i++ )
-            itemViews[ i ].Resort();
+        CollectItemView(itemViews);
+        for (uint i = 0; i < itemViews.length(); i++)
+            itemViews[i].Resort();
     }
 }
 
-void CollectItemView( ItemView[] itemViews )
+void CollectItemView(ItemView[] itemViews)
 {
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-        CollectItemView( Screens[ i ], itemViews );
+    for (int i = int(Screens.length()) - 1; i >= 0; i--)
+        CollectItemView(Screens[i], itemViews);
 }
 
-void CollectItemView( Object obj, ItemView[] itemViews )
+void CollectItemView(Object obj, ItemView[] itemViews)
 {
-    ItemView itemView = cast< ItemView >( obj );
-    if( itemView != null )
-        itemViews.insertLast( itemView );
+    ItemView itemView = cast<ItemView>(obj);
+    if (itemView != null)
+        itemViews.insertLast(itemView);
 
-    for( uint i = 0; i < obj._Children.length(); i++ )
-        CollectItemView( obj._Children[ i ], itemViews );
+    for (uint i = 0; i < obj._Children.length(); i++)
+        CollectItemView(obj._Children[i], itemViews);
 }
 
 //
 // Custom callbacks
 //
 
-/*EXPORT*/ void Callback_OnResolutionChanged()
+void Callback_OnResolutionChanged()
 {
-    for( uint i = 0; i < Screens.length(); i++ )
-        Screens[ i ]._Reload( false, true );
+    for (uint i = 0; i < Screens.length(); i++)
+        Screens[i]._Reload(false, true);
 }
 
-/*EXPORT*/ void Callback_OnLanguageChanged()
+void Callback_OnLanguageChanged()
 {
-    for( uint i = 0; i < Screens.length(); i++ )
-        Screens[ i ]._Reload( true, true );
+    for (uint i = 0; i < Screens.length(); i++)
+        Screens[i]._Reload(true, true);
 }
 
 //
@@ -3378,32 +3518,31 @@ void CollectItemView( Object obj, ItemView[] itemViews )
 Screen CreateEmptyScreen()
 {
     Screen screen = Screen();
-    screen.Init( null );
+    screen.Init(null);
     return screen;
 }
 
-void CreateHardcodedScreen( int screenIndex )
+void CreateHardcodedScreen(int screenIndex)
 {
-    if( GetScreen( screenIndex ) == null )
-    {
-        RegisterScreen( screenIndex, CreateEmptyScreen );
-        CreateScreen( screenIndex );
+    if (GetScreen(screenIndex) == null) {
+        RegisterScreen(screenIndex, CreateEmptyScreen);
+        CreateScreen(screenIndex);
     }
 }
 
-Screen CreateScreen( int screenIndex )
+Screen CreateScreen(int screenIndex)
 {
-    CreateScreenFunc screenFunc = ScreenCreators[ screenIndex ];
-    Screen           screen = screenFunc();
-    Assert( screen != null, screenIndex );
+    CreateScreenFunc screenFunc = ScreenCreators[screenIndex];
+    Screen screen = screenFunc();
+    Assert(screen != null, screenIndex);
     screen._Index = screenIndex;
     screen._ActiveSelf = false;
     screen._IsRegistered = true;
     screen._InputKeyPressed = Input::GetKeyPressed();
     screen._InputMousePressed = Input::GetMousePressed();
 
-    if( screenIndex != CLIENT_SCREEN_CURSOR )
-        Screens.insertLast( screen );
+    if (screenIndex != CLIENT_SCREEN_CURSOR)
+        Screens.insertLast(screen);
     else
         CursorScreen = screen;
 
@@ -3411,104 +3550,92 @@ Screen CreateScreen( int screenIndex )
     return screen;
 }
 
-void UnregisterScreen( int screenIndex )
+void UnregisterScreen(int screenIndex)
 {
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-    {
-        Screen screen = Screens[ i ];
-        if( screen.Index == screenIndex )
-        {
-            if( screen.ActiveSelf )
-                ShowHideScreen( screen, null, false );
-            if( !screen.IsMultiinstance )
-            {
+    for (int i = int(Screens.length()) - 1; i >= 0; i--) {
+        Screen screen = Screens[i];
+        if (screen.Index == screenIndex) {
+            if (screen.ActiveSelf)
+                ShowHideScreen(screen, null, false);
+            if (!screen.IsMultiinstance) {
                 screen._Remove();
-                Screens.removeAt( i );
+                Screens.removeAt(i);
             }
             screen._IsRegistered = false;
         }
     }
 }
 
-void ShowHideScreen( Screen screen, dictionary params, bool show, Screen appearScreen = null )
+void ShowHideScreen(Screen screen, dictionary params, bool show, Screen appearScreen = null)
 {
     // Clean hovered/focused/pressed objects
-    if( HoveredObject != null )
-    {
+    if (HoveredObject != null) {
         auto obj = HoveredObject;
         HoveredObject = null;
         obj._Unhover();
     }
-    if( FocusedObject != null )
-    {
+    if (FocusedObject != null) {
         auto obj = FocusedObject;
         FocusedObject = null;
         obj._Unfocus();
     }
-    if( PressedObject != null )
-    {
+    if (PressedObject != null) {
         auto obj = PressedObject;
         PressedObject = null;
-        obj._MouseUp( true );
+        obj._MouseUp(true);
     }
 
-    if( show )
-    {
+    if (show) {
         // Hide active screen
         Screen activeScreen = GetActiveScreen();
-        if( activeScreen != null && activeScreen !is screen )
+        if (activeScreen != null && activeScreen !is screen)
             activeScreen._Disappear();
 
         // Focus and hover new elements
-        FocusedObject = FindNextTextInput( screen );
-        if( FocusedObject != null )
+        FocusedObject = FindNextTextInput(screen);
+        if (FocusedObject != null)
             FocusedObject._Focus();
         HoveredObject = screen.FindMouseHit();
-        if( HoveredObject != null )
+        if (HoveredObject != null)
             HoveredObject._Hover();
 
         // Move to top
-        if( Screens.last() !is screen )
-        {
-            Screens.removeAt( Screens.findByRef( screen ) );
-            Screens.insertLast( screen );
+        if (Screens.last() !is screen) {
+            Screens.removeAt(Screens.findByRef(screen));
+            Screens.insertLast(screen);
         }
 
         // Callback
-        if( !screen._ActiveSelf )
-            screen.SetActive( true );
-        if( appearScreen == null )
-            screen._Show( params );
+        if (!screen._ActiveSelf)
+            screen.SetActive(true);
+        if (appearScreen == null)
+            screen._Show(params);
         screen._Appear();
     }
-    else
-    {
+    else {
         // Ignore redundant hide
-        if( !screen._ActiveSelf )
+        if (!screen._ActiveSelf)
             return;
 
         // Callbacks
         screen._Disappear();
         screen._Hide();
-        screen.SetActive( false );
+        screen.SetActive(false);
 
         // Remove multiinstance
-        if( screen.IsMultiinstance )
-        {
+        if (screen.IsMultiinstance) {
             screen._Remove();
-            Screens.removeAt( Screens.findByRef( screen ) );
+            Screens.removeAt(Screens.findByRef(screen));
         }
 
         // Appear active screen
-        if( appearScreen == null )
+        if (appearScreen == null)
             appearScreen = GetActiveScreen();
-        if( appearScreen != null )
-        {
+        if (appearScreen != null) {
             // Move to top
-            if( Screens.last() !is appearScreen )
-            {
-                Screens.removeAt( Screens.findByRef( appearScreen ) );
-                Screens.insertLast( appearScreen );
+            if (Screens.last() !is appearScreen) {
+                Screens.removeAt(Screens.findByRef(appearScreen));
+                Screens.insertLast(appearScreen);
             }
 
             appearScreen._Appear();
@@ -3516,11 +3643,11 @@ void ShowHideScreen( Screen screen, dictionary params, bool show, Screen appearS
     }
 }
 
-uint GetScreenCount( int screenIndex )
+uint GetScreenCount(int screenIndex)
 {
     uint count = 0;
-    for( int i = int( Screens.length() ) - 1; i >= 0; i-- )
-        if( Screens[ i ].Index == screenIndex )
+    for (int i = int(Screens.length()) - 1; i >= 0; i--)
+        if (Screens[i].Index == screenIndex)
             count++;
     return count;
 }
