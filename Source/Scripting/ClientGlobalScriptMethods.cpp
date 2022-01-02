@@ -48,19 +48,9 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ClientEntity* Client_Game_GetProtoItem(FOClient* client, hstring pid, const map<int, int>& props)
+[[maybe_unused]] ItemProto* Client_Game_GetItemProto(FOClient* client, hstring pid)
 {
-    const auto* proto = client->ProtoMngr->GetProtoItem(pid);
-    if (!proto) {
-        return nullptr;
-    }
-
-    auto* item = new ItemView(client, 0, proto);
-    for (const auto& [key, value] : props) {
-        item->GetPropertiesForEdit().SetValueAsIntProps(key, value);
-    }
-
-    return item;
+    return client->ProtoMngr->GetProtoItem(pid);
 }
 
 ///# ...

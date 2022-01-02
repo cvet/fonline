@@ -269,13 +269,14 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetStaticItemOnHex(Map* self, ushort hx, ushort hy, hstring pid)
+[[maybe_unused]] ItemProto* Server_Map_GetStaticItemOnHex(Map* self, ushort hx, ushort hy, hstring pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetStaticItem(hx, hy, pid);
+    const auto* item = self->GetStaticItem(hx, hy, pid);
+    return item != nullptr ? item->GetProtoItem() : nullptr;
 }
 
 ///# ...
@@ -283,13 +284,22 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsInHex(Map* self, ushort hx, ushort hy)
+[[maybe_unused]] vector<ItemProto*> Server_Map_GetStaticItemsInHex(Map* self, ushort hx, ushort hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetStaticItemsHex(hx, hy);
+    const auto static_items = self->GetStaticItemsHex(hx, hy);
+
+    vector<ItemProto*> result;
+    result.reserve(static_items.size());
+
+    for (const auto* item : static_items) {
+        result.push_back(item->GetProtoItem());
+    }
+
+    return result;
 }
 
 ///# ...
@@ -299,47 +309,75 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hstring pid)
+[[maybe_unused]] vector<ItemProto*> Server_Map_GetStaticItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hstring pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    return self->GetStaticItemsHexEx(hx, hy, radius, pid);
+    const auto static_items = self->GetStaticItemsHexEx(hx, hy, radius, pid);
+
+    vector<ItemProto*> result;
+    result.reserve(static_items.size());
+
+    for (const auto* item : static_items) {
+        result.push_back(item->GetProtoItem());
+    }
+
+    return result;
 }
 
 ///# ...
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsByPid(Map* self, hstring pid)
+[[maybe_unused]] vector<ItemProto*> Server_Map_GetStaticItemsByPid(Map* self, hstring pid)
 {
-    return self->GetStaticItemsByPid(pid);
+    const auto static_items = self->GetStaticItemsByPid(pid);
+
+    vector<ItemProto*> result;
+    result.reserve(static_items.size());
+
+    for (const auto* item : static_items) {
+        result.push_back(item->GetProtoItem());
+    }
+
+    return result;
 }
 
 ///# ...
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItemsByPredicate(Map* self, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<ItemProto*> Server_Map_GetStaticItemsByPredicate(Map* self, const std::function<bool(ItemProto*)>& predicate)
 {
-    const auto& map_static_items = self->GetStaticMap()->StaticItemsVec;
-    vector<Item*> items;
-    items.reserve(map_static_items.size());
-    for (auto* item : map_static_items) {
-        if (predicate(item)) {
-            items.push_back(item);
+    const auto map_static_items = self->GetStaticMap()->StaticItemsVec;
+
+    vector<ItemProto*> result;
+    result.reserve(map_static_items.size());
+
+    for (const auto* item : map_static_items) {
+        if (predicate(item->GetProtoItem())) {
+            result.push_back(item->GetProtoItem());
         }
     }
-    return items;
+
+    return result;
 }
 
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetStaticItems(Map* self)
+[[maybe_unused]] vector<ItemProto*> Server_Map_GetStaticItems(Map* self)
 {
-    return self->GetStaticMap()->StaticItemsVec;
+    vector<ItemProto*> result;
+    result.reserve(self->GetStaticMap()->StaticItemsVec.size());
+
+    for (const auto* item : self->GetStaticMap()->StaticItemsVec) {
+        result.push_back(item->GetProtoItem());
+    }
+
+    return result;
 }
 
 ///# ...

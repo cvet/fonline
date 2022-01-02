@@ -74,7 +74,7 @@
 
 // Timeouts in real seconds, generic values
 #define MAXIMUM_TIMEOUT (Time::RealHour(5))
-#define IS_TIMEOUT      #(to)((to)> __FullSecond)
+#define IS_TIMEOUT      #(to)((to)> GetFullSecond())
 
 // Combat modes
 #define COMBAT_MODE_ANY        (0)

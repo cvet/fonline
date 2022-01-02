@@ -64,19 +64,13 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        // !!!
-        ::SetCurrentDirectoryW(L"C:\\Users\\tsvetinskiy-a\\Documents\\Repos\\fonline-tla\\build\\Scripts");
-
         SetAppName("FOnlineASCompiler");
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();
 
-        auto settings = GlobalSettings(argc, argv);
+        const auto settings = GlobalSettings(argc, argv);
         int errors = 0;
-
-        // !!!
-        const_cast<string&>(settings.ASServer) = "C:/Users/tsvetinskiy-a/Documents/Repos/fonline-tla/build/Scripts/ServerRootModule.fos";
 
         if (!settings.ASServer.empty()) {
             try {

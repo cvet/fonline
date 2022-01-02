@@ -83,6 +83,7 @@
 #include "EngineBase.h"
 #include "Entity.h"
 #include "EntityProperties.h"
+#include "EntityProtos.h"
 #include "FileSystem.h"
 #include "Log.h"
 #include "Properties.h"
@@ -120,11 +121,6 @@ struct BaseEntity
 {
     void AddRef() { }
     void Release() { }
-    uint GetId() { return 0u; }
-    hstring GetProtoId() { return hstring(); }
-    FOEngine* GetEngine() { return nullptr; }
-    auto IsDestroyed() -> bool { return false; }
-    auto IsDestroying() -> bool { return false; }
 };
 
 #define INIT_ARGS const char* script_path
@@ -333,26 +329,52 @@ static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, 
 
 static auto Entity_IsDestroyed(Entity* self) -> bool
 {
+#if !COMPILER_MODE
     // May call on destroyed entity
     return self->IsDestroyed();
+#else
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto Entity_IsDestroying(Entity* self) -> bool
 {
+#if !COMPILER_MODE
     // May call on destroyed entity
     return self->IsDestroying();
+#else
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto Entity_Id(BaseEntity* self) -> uint
 {
+#if !COMPILER_MODE
     ENTITY_VERIFY(self);
     return self->GetId();
+#else
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static auto Entity_ProtoId(BaseEntity* self) -> hstring
 {
+#if !COMPILER_MODE
     ENTITY_VERIFY(self);
     return self->GetProtoId();
+#else
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+static auto Entity_Proto(BaseEntity* self) -> const ProtoEntity*
+{
+#if !COMPILER_MODE
+    ENTITY_VERIFY(self);
+    return self->GetProto();
+#else
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 ///@ CodeGen Global
@@ -797,24 +819,6 @@ static void Property_SetValue(asIScriptGeneric* gen)
 #endif
 }
 
-static void RegisterAngelScriptProperty(asIScriptEngine* engine, const PropertyRegistrator* registrator, string_view name)
-{
-    const auto* prop = registrator->Find(name);
-    RUNTIME_ASSERT(prop);
-
-    const auto is_handle = (prop->IsArray() || prop->IsDict());
-
-    int as_result;
-    if (prop->IsReadable()) {
-        const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetName()).str();
-        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_get.c_str(), asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
-    }
-    if (prop->IsWritable()) {
-        const auto decl_set = _str("void set_{}({}{}{})", prop->GetName(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
-        AS_VERIFY(engine->RegisterObjectMethod(registrator->GetClassName().c_str(), decl_set.c_str(), asFUNCTION(Property_SetValue), asCALL_GENERIC, (void*)prop));
-    }
-}
-
 template<class T>
 static BaseEntity* EntityDownCast(T* a)
 {
@@ -1005,7 +1009,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV)); \
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterFuncdef("bool " class_name "Predicate(" class_name "@+)")); \
+    AS_VERIFY(engine->RegisterFuncdef("void " class_name "Callback(" class_name "@+)")); \
+    AS_VERIFY(engine->RegisterFuncdef("void " class_name "InitFunc(" class_name "@+, bool)"))
 
 #define REGISTER_GETSET_ENTITY(class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsInt(" class_name "Property) const", asFUNCTION(Property_GetValueAsInt), asCALL_GENERIC)); \
@@ -1021,20 +1028,49 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY(class_name, real_class); \
     REGISTER_GETSET_ENTITY(class_name, real_class); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", class_name "@ opCast()", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod("Entity", "const " class_name "@ opCast() const", SCRIPT_FUNC_THIS((EntityUpCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Entity@ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "const Entity@ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
+#define REGISTER_ENTITY_WITH_PROTO(class_name, real_class) \
+    REGISTER_ENTITY(class_name, real_class); \
+    AS_VERIFY(engine->RegisterObjectType(class_name "Proto", 0, asOBJ_REF)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name "Proto", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name "Proto", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, class_name "Proto get_Proto() const", SCRIPT_FUNC_THIS(Entity_Proto), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterFuncdef("bool " class_name "ProtoPredicate(" class_name "Proto@+)")); \
+    AS_VERIFY(engine->RegisterFuncdef("void " class_name "ProtoCallback(" class_name "Proto@+)")); \
+    have_protos.insert(class_name)
+
     REGISTER_BASE_ENTITY("Entity", Entity);
+
+    unordered_set<string> have_protos;
 
     ///@ CodeGen Register
 
     // Register properties
     for (const auto& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
+        const auto is_has_proto = have_protos.count(reg_name) != 0u;
+
         for (const auto i : xrange(registrator->GetCount())) {
-            RegisterAngelScriptProperty(engine, registrator, registrator->GetByIndex(i)->GetName());
+            const auto* prop = registrator->GetByIndex(i);
+            const auto is_handle = (prop->IsArray() || prop->IsDict());
+
+            if (prop->IsReadable()) {
+                const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetName()).str();
+                AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_get.c_str(), asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
+
+                if (is_has_proto) {
+                    AS_VERIFY(engine->RegisterObjectMethod(_str("{}Proto", reg_name).c_str(), decl_get.c_str(), asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
+                }
+            }
+
+            if (prop->IsWritable()) {
+                const auto decl_set = _str("void set_{}({}{}{})", prop->GetName(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
+                AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_set.c_str(), asFUNCTION(Property_SetValue), asCALL_GENERIC, (void*)prop));
+            }
         }
     }
 

@@ -39,7 +39,7 @@
 #include "Properties.h"
 
 ///@ ExportEntity Game FOServer FOClient Global
-///@ ExportEntity Player Player PlayerView
+///@ ExportEntity Player Player PlayerView NoProto
 ///@ ExportEntity Item Item ItemView
 ///@ ExportEntity Critter Critter CritterView
 ///@ ExportEntity Map Map MapView

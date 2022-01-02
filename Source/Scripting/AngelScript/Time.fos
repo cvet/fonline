@@ -2,7 +2,7 @@
 // Some stuff for work with time.
 
 // GetNearFullSecond
-// Result is greather than __FullSecond at least on one.
+// Result is greather than GetFullSecond() at least on one.
 
 // For client:
 // GetTimeString
@@ -83,10 +83,10 @@ uint GetNearFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint1
     }
 
     uint fullSecond = GetFullSecond(year, month, day, hour, minute, second);
-    while (fullSecond <= __FullSecond) {
+    while (fullSecond <= GetFullSecond()) {
         switch (jump) {
         case 0:
-            return __FullSecond + 1; // Time expired, call faster
+            return GetFullSecond() + 1; // Time expired, call faster
         case 1:
             year++;
             break;

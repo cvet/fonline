@@ -47,19 +47,9 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ServerEntity* Server_Game_GetProtoItem(FOServer* server, hstring pid, const map<int, int>& props)
+[[maybe_unused]] ItemProto* Server_Game_GetItemProto(FOServer* server, hstring pid)
 {
-    const auto* proto = server->ProtoMngr.GetProtoItem(pid);
-    if (!proto) {
-        return nullptr;
-    }
-
-    auto* item = new Item(server, 0, proto);
-    for (const auto& [key, value] : props) {
-        item->GetPropertiesForEdit().SetValueAsIntProps(key, value);
-    }
-
-    return item;
+    return server->ProtoMngr.GetProtoItem(pid);
 }
 
 ///# ...
