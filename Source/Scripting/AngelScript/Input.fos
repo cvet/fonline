@@ -51,12 +51,12 @@ bool[] GetMousePressed()
 
 void ModuleInit()
 {
-    __EventMouseDown.Subscribe(OnMouseDown);
-    __EventMouseUp.Subscribe(OnMouseUp);
-    __EventMouseMove.Subscribe(OnMouseMove);
-    __EventKeyDown.Subscribe(OnKeyDown);
-    __EventKeyUp.Subscribe(OnKeyUp);
-    __EventInputLost.Subscribe(OnInputLost);
+    GameInstance.OnMouseDown.Subscribe(OnMouseDown);
+    GameInstance.OnMouseUp.Subscribe(OnMouseUp);
+    GameInstance.OnMouseMove.Subscribe(OnMouseMove);
+    GameInstance.OnKeyDown.Subscribe(OnKeyDown);
+    GameInstance.OnKeyUp.Subscribe(OnKeyUp);
+    GameInstance.OnInputLost.Subscribe(OnInputLost);
 
     KeyPressed.resize(0x100);
     MousePressed.resize(MOUSE_BUTTON_EXT4 + 1);

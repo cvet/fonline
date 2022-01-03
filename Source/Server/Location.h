@@ -35,9 +35,10 @@
 
 #include "Common.h"
 
-#include "ServerEntity.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "ScriptSystem.h"
+#include "ServerEntity.h"
 
 class Map;
 class Location;
@@ -68,6 +69,9 @@ public:
     auto IsNoPlayer() -> bool;
     auto IsNoNpc() -> bool;
     auto IsCanDelete() -> bool;
+
+    ///@ ExportEvent
+    ScriptEvent<> FinishEvent {};
 
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};

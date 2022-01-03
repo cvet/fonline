@@ -51,7 +51,7 @@ codeGenTags = {
         'ExportEnum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
         'ExportProperty': [], # (entity, access, type, name, [flags], [comment])
         'ExportMethod': [], # (target, entity, name, ret, [(type, name)], [flags], [comment])
-        'ExportEvent': [], # (target, name, [(type, name)], [flags], [comment])
+        'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
         'ExportObject': [], # (target, name, [(type, name, [comment])], [flags], [comment])
         'ExportEntity': [], # (name, serverClassName, clientClassName, [flags], [comment])
         'Enum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
@@ -229,7 +229,8 @@ def parseMetaFile(absPath):
                     elif tagName == 'ExportEvent':
                         for i in range(lineIndex, 0, -1):
                             if lines[i].startswith('class '):
-                                tagContext = lines[i][8:14] + ' ' + lines[lineIndex + 1].strip()
+                                className = lines[i][6:lines[i].find(' ', 6)]
+                                tagContext = className + ' ' + lines[lineIndex + 1].strip()
                                 break
                     elif tagName == 'ExportObject':
                         for i in range(lineIndex + 1, len(lines)):
@@ -567,10 +568,19 @@ def parseTags():
             try:
                 exportFlags = tagInfo.split(' ') if tagInfo else []
                 
+                target = None
+                entity = None
+                className = tagContext[:tagContext.find(' ')].strip()
+                for ename, einfo in gameEntitiesInfo.items():
+                    if className == einfo['Server'] or className == einfo['Client']:
+                        target, entity = ('Server' if className == einfo['Server'] else 'Client'), ename
+                        break
+                if className == 'FOMapper':
+                    target, entity = 'Mapper', 'Game'
+                assert target in ['Server', 'Client', 'Mapper'], target
+                
                 braceOpenPos = tagContext.find('<')
                 braceClosePos = tagContext.rfind('>')
-                target = tagContext[:tagContext.find(' ')].strip()
-                assert target in ['Server', 'Client', 'Mapper', 'Common'], target
                 eventName = tagContext[braceClosePos + 1:tagContext.rfind('{')].strip()
                 assert eventName.endswith('Event'), eventName
                 eventName = eventName[:-5]
@@ -587,7 +597,7 @@ def parseTags():
                         argName = arg[sep + 2:-2]
                         eventArgs.append((argType, argName))
                 
-                codeGenTags['ExportEvent'].append((target, eventName, eventArgs, exportFlags, comment))
+                codeGenTags['ExportEvent'].append((target, entity, eventName, eventArgs, exportFlags, comment))
             
             except Exception as ex:
                 showError('Invalid tag ExportEvent', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
@@ -1320,6 +1330,9 @@ def genCode(lang, target, isASCompiler=False):
                         registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
                                 ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
         registerLines.append('')
+        
+        # Register events
+        # ...
         
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')

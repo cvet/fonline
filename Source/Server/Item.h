@@ -74,6 +74,13 @@ public:
     void EvaluateSortValue(const vector<Item*>& items);
     void ChangeCount(int val);
 
+    ///@ ExportEvent
+    ScriptEvent<> FinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/> WalkEvent {};
+    ///@ ExportEvent
+    ScriptEvent<uint /*count*/, Entity* /*from*/, Entity* /*to*/> CheckMoveEvent {};
+
     bool ViewPlaceOnMap {};
     ScriptFunc<bool, Critter*, Item*, bool, int> SceneryScriptFunc {};
     ScriptFunc<void, Critter*, Item*, bool, uchar> TriggerScriptFunc {};

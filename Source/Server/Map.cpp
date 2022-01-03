@@ -70,7 +70,15 @@ void Map::ProcessLoop(int index, uint time, uint tick)
 {
     if (time != 0u && tick - _loopLastTick[index] >= time) {
         _loopLastTick[index] = tick;
-        _engine->MapLoopEvent.Raise(this, index + 1);
+
+        if (index == 0) {
+            LoopEvent.Raise();
+            _engine->MapLoopEvent.Raise(this);
+        }
+        else {
+            LoopExEvent.Raise(index);
+            _engine->MapLoopExEvent.Raise(this, index);
+        }
     }
 }
 

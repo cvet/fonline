@@ -897,6 +897,42 @@ static int HashedString_GetHash(const hstring& self)
     return self.as_int();
 }
 
+static void Event_Subscribe(asIScriptGeneric* gen)
+{
+}
+
+static void Event_SubscribeRet(asIScriptGeneric* gen)
+{
+}
+
+static void Event_Unsubscribe(asIScriptGeneric* gen)
+{
+}
+
+static void Event_UnsubscribeAll(asIScriptGeneric* gen)
+{
+}
+
+static void Event_Fire(asIScriptGeneric* gen)
+{
+}
+
+static void RegisterEvent(asIScriptEngine* engine, const string& entity_name, const string& event_name, const string& as_args)
+{
+    int as_result;
+    RUNTIME_ASSERT(_str(event_name).endsWith("Event"));
+    AS_VERIFY(engine->RegisterFuncdef(_str("void {}Func({})", event_name, as_args).c_str()));
+    AS_VERIFY(engine->RegisterFuncdef(_str("bool {}FuncBool({})", event_name, as_args).c_str()));
+    AS_VERIFY(engine->RegisterObjectType(event_name.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("void Subscribe({}Func@+)", event_name).c_str(), asFUNCTION(Event_Subscribe), asCALL_GENERIC));
+    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("void Subscribe({}FuncBool@+)", event_name).c_str(), asFUNCTION(Event_SubscribeRet), asCALL_GENERIC));
+    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("void Unsubscribe({}Func@+)", event_name).c_str(), asFUNCTION(Event_Unsubscribe), asCALL_GENERIC));
+    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("void Unsubscribe({}FuncBool@+)", event_name).c_str(), asFUNCTION(Event_Unsubscribe), asCALL_GENERIC));
+    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), "void UnsubscribeAll()", asFUNCTION(Event_UnsubscribeAll), asCALL_GENERIC));
+    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("bool Fire({})", as_args).c_str(), asFUNCTION(Event_Fire), asCALL_GENERIC));
+    AS_VERIFY(engine->RegisterObjectProperty(entity_name.c_str(), _str("{}@ On{}", event_name, _str(event_name).substringUntil("Event")).c_str(), 0));
+}
+
 static const string ContextStatesStr[] = {
     "Finished",
     "Suspended",
@@ -1035,9 +1071,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #define REGISTER_ENTITY_WITH_PROTO(class_name, real_class) \
     REGISTER_ENTITY(class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectType(class_name "Proto", 0, asOBJ_REF)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name "Proto", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name "Proto", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectType(class_name "Proto", 0, asOBJ_REF | asOBJ_NOCOUNT)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, class_name "Proto get_Proto() const", SCRIPT_FUNC_THIS(Entity_Proto), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterFuncdef("bool " class_name "ProtoPredicate(" class_name "Proto@+)")); \
@@ -1047,6 +1081,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Entity", Entity);
 
     unordered_set<string> have_protos;
+
+#define REGISTER_ENTITY_EVENT(class_name, event_name)
 
     ///@ CodeGen Register
 

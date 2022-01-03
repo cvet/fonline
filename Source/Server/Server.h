@@ -130,7 +130,9 @@ public:
     ///@ ExportEvent
     ScriptEvent<Map* /*map*/> MapFinishEvent {};
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/, uint /*loopIndex*/> MapLoopEvent {};
+    ScriptEvent<Map* /*map*/> MapLoopEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Map* /*map*/, uint /*loopIndex*/> MapLoopExEvent {};
     ///@ ExportEvent
     ScriptEvent<Map* /*map*/, Critter* /*critter*/> MapCritterInEvent {};
     ///@ ExportEvent
@@ -178,7 +180,7 @@ public:
     ///@ ExportEvent
     ScriptEvent<Critter* /*critter*/, Critter* /*who*/, bool /*begin*/, uint /*talkers*/> CritterTalkEvent {};
     ///@ ExportEvent
-    ScriptEvent<Critter* /*cr*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/> CritterBarterEvent {};
+    ScriptEvent<Critter* /*critter*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/> CritterBarterEvent {};
     ///@ ExportEvent
     ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*itemMode*/, uint& /*dist*/> CritterGetAttackDistantionEvent {};
     ///@ ExportEvent

@@ -35,9 +35,10 @@
 
 #include "Common.h"
 
-#include "MapLoader.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "MapLoader.h"
+#include "ScriptSystem.h"
 #include "ServerEntity.h"
 
 class Item;
@@ -142,6 +143,21 @@ public:
     void SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void RecacheHexFlags(ushort hx, ushort hy);
+
+    ///@ ExportEvent
+    ScriptEvent<> FinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> LoopEvent {};
+    ///@ ExportEvent
+    ScriptEvent<int /*loopIndex*/> LoopExEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/> CritterInEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/> CritterOutEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Critter* /*target*/> CheckLookEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*critter*/, Item* /*item*/> CheckTrapLookEvent {};
 
 private:
     const StaticMap* _staticMap {};

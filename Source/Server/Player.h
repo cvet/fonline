@@ -38,6 +38,7 @@
 #include "ClientConnection.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
+#include "ScriptSystem.h"
 #include "ServerEntity.h"
 
 class Item;
@@ -111,6 +112,13 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo(MapManager& map_mngr);
     void Send_SomeItems(const vector<Item*>* items, int param);
+
+    ///@ ExportEvent
+    ScriptEvent<int /*arg1*/, string& /*arg2*/> GetAccessEvent {};
+    ///@ ExportEvent
+    ScriptEvent<string /*arg1*/, uchar /*arg2*/> AllowCommandEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> LogoutEvent {};
 
     ClientConnection* Connection {};
     int DisableSend {};

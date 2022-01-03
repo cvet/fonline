@@ -35,9 +35,9 @@
 
 #include "Common.h"
 
+#include "Dialogs.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
-#include "Dialogs.h"
 #include "ServerEntity.h"
 
 ///@ ExportEnum
@@ -210,6 +210,49 @@ public:
     void Send_AddAllItems();
     void Send_AllAutomapsInfo(MapManager& map_mngr);
     void Send_SomeItems(const vector<Item*>* items, int param);
+
+    ///@ ExportEvent
+    ScriptEvent<> FinishEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> IdleEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/, uchar /*toSlot*/> CheckMoveItemEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/, uchar /*fromSlot*/> ItemMovedEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*showCritter*/> CritterShownEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*showCritter*/> CritterShownDist1Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*showCritter*/> CritterShownDist2Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*showCritter*/> CritterShownDist3Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*hideCritter*/> CritterHiddenEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*hideCritter*/> CritterHiddenDist1Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*hideCritter*/> CritterHiddenDist2Event {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*hideCritter*/> CritterHiddenDist3Event {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/> ItemOnMapShownEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/> ItemOnMapHiddenEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Item* /*item*/> ItemOnMapChangedEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*receiver*/, int /*num*/, int /*value*/> MessageEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*who*/, bool /*begin*/, uint /*talkers*/> TalkEvent {};
+    ///@ ExportEvent
+    ScriptEvent<Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/> BarterEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> GlobalMapIdleEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> GlobalMapInEvent {};
+    ///@ ExportEvent
+    ScriptEvent<> GlobalMapOutEvent {};
 
     uint Flags {};
     string Name {};
