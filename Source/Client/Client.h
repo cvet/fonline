@@ -177,87 +177,87 @@ public:
     void RunScreenScript(bool show, int screen, map<string, int> params);
 
     ///@ ExportEvent
-    ScriptEvent<> StartEvent {};
+    ENTITY_EVENT(Start);
     ///@ ExportEvent
-    ScriptEvent<> FinishEvent {};
+    ENTITY_EVENT(Finish);
     ///@ ExportEvent
-    ScriptEvent<string /*login*/, string /*password*/> AutoLoginEvent {};
+    ENTITY_EVENT(AutoLogin, string /*login*/, string /*password*/);
     ///@ ExportEvent
-    ScriptEvent<> LoopEvent {};
+    ENTITY_EVENT(Loop);
     ///@ ExportEvent
-    ScriptEvent<vector<int>& /*screens*/> GetActiveScreensEvent {};
+    ENTITY_EVENT(GetActiveScreens, vector<int>& /*screens*/);
     ///@ ExportEvent
-    ScriptEvent<bool /*show*/, int /*screen*/, map<string, int> /*data*/> ScreenChangeEvent {};
+    ENTITY_EVENT(ScreenChange, bool /*show*/, int /*screen*/, map<string, int> /*data*/);
     ///@ ExportEvent
-    ScriptEvent<int /*offsetX*/, int /*offsetY*/> ScreenScrollEvent {};
+    ENTITY_EVENT(ScreenScroll, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent
-    ScriptEvent<> RenderIfaceEvent {};
+    ENTITY_EVENT(RenderIface);
     ///@ ExportEvent
-    ScriptEvent<> RenderMapEvent {};
+    ENTITY_EVENT(RenderMap);
     ///@ ExportEvent
-    ScriptEvent<MouseButton /*button*/> MouseDownEvent {};
+    ENTITY_EVENT(MouseDown, MouseButton /*button*/);
     ///@ ExportEvent
-    ScriptEvent<MouseButton /*button*/> MouseUpEvent {};
+    ENTITY_EVENT(MouseUp, MouseButton /*button*/);
     ///@ ExportEvent
-    ScriptEvent<int /*offsetX*/, int /*offsetY*/> MouseMoveEvent {};
+    ENTITY_EVENT(MouseMove, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent
-    ScriptEvent<KeyCode /*key*/, string /*text*/> KeyDownEvent {};
+    ENTITY_EVENT(KeyDown, KeyCode /*key*/, string /*text*/);
     ///@ ExportEvent
-    ScriptEvent<KeyCode /*key*/> KeyUpEvent {};
+    ENTITY_EVENT(KeyUp, KeyCode /*key*/);
     ///@ ExportEvent
-    ScriptEvent<> InputLostEvent {};
+    ENTITY_EVENT(InputLost);
     ///@ ExportEvent
-    ScriptEvent<CritterView* /*critter*/> CritterInEvent {};
+    ENTITY_EVENT(CritterIn, CritterView* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<CritterView* /*critter*/> CritterOutEvent {};
+    ENTITY_EVENT(CritterOut, CritterView* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<ItemView* /*item*/> ItemMapInEvent {};
+    ENTITY_EVENT(ItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
-    ScriptEvent<ItemView* /*item*/, ItemView* /*oldItem*/> ItemMapChangedEvent {};
+    ENTITY_EVENT(ItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ScriptEvent<ItemView* /*item*/> ItemMapOutEvent {};
+    ENTITY_EVENT(ItemMapOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ScriptEvent<> ItemInvAllInEvent {};
+    ENTITY_EVENT(ItemInvAllIn);
     ///@ ExportEvent
-    ScriptEvent<ItemView* /*item*/> ItemInvInEvent {};
+    ENTITY_EVENT(ItemInvIn, ItemView* /*item*/);
     ///@ ExportEvent
-    ScriptEvent<ItemView* /*item*/, ItemView* /*oldItem*/> ItemInvChangedEvent {};
+    ENTITY_EVENT(ItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ScriptEvent<ItemView* /*item*/> ItemInvOutEvent {};
+    ENTITY_EVENT(ItemInvOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ScriptEvent<> MapLoadEvent {};
+    ENTITY_EVENT(MapLoad);
     ///@ ExportEvent
-    ScriptEvent<> MapUnloadEvent {};
+    ENTITY_EVENT(MapUnload);
     ///@ ExportEvent
-    ScriptEvent<vector<ItemView*> /*items*/, int /*param*/> ReceiveItemsEvent {};
+    ENTITY_EVENT(ReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
     ///@ ExportEvent
-    ScriptEvent<string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/> MapMessageEvent {};
+    ENTITY_EVENT(MapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
-    ScriptEvent<string /*text*/, int& /*sayType*/, uint& /*critterId*/, uint& /*delay*/> InMessageEvent {};
+    ENTITY_EVENT(InMessage, string /*text*/, int& /*sayType*/, uint& /*critterId*/, uint& /*delay*/);
     ///@ ExportEvent
-    ScriptEvent<string& /*text*/, int& /*sayType*/> OutMessageEvent {};
+    ENTITY_EVENT(OutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
-    ScriptEvent<string /*text*/, uchar /*type*/, bool /*scriptCall*/> MessageBoxEvent {};
+    ENTITY_EVENT(MessageBox, string /*text*/, uchar /*type*/, bool /*scriptCall*/);
     ///@ ExportEvent
-    ScriptEvent<vector<uint> /*result*/> CombatResultEvent {};
+    ENTITY_EVENT(CombatResult, vector<uint> /*result*/);
     ///@ ExportEvent
-    ScriptEvent<ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/> ItemCheckMoveEvent {};
+    ENTITY_EVENT(ItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ScriptEvent<bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, ItemView* /*actionItem*/> CritterActionEvent {};
+    ENTITY_EVENT(CritterAction, bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, ItemView* /*actionItem*/);
     ///@ ExportEvent
-    ScriptEvent<bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/> Animation2dProcessEvent {};
+    ENTITY_EVENT(Animation2dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/);
     ///@ ExportEvent
-    ScriptEvent<bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/> Animation3dProcessEvent {};
+    ENTITY_EVENT(Animation3dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/);
     ///@ ExportEvent
-    ScriptEvent<hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/> CritterAnimationEvent {};
+    ENTITY_EVENT(CritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
     ///@ ExportEvent
-    ScriptEvent<hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationSubstituteEvent {};
+    ENTITY_EVENT(CritterAnimationSubstitute, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ScriptEvent<hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/> CritterAnimationFalloutEvent {};
+    ENTITY_EVENT(CritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ScriptEvent<CritterView* /*critter*/, ItemView* /*item*/, char /*toSlot*/> CritterCheckMoveItemEvent {};
+    ENTITY_EVENT(CritterCheckMoveItem, CritterView* /*critter*/, ItemView* /*item*/, char /*toSlot*/);
     ///@ ExportEvent
-    ScriptEvent<CritterView* /*critter*/, ItemView* /*item*/, char /*itemMode*/, uint& /*dist*/> CritterGetAttackDistantionEvent {};
+    ENTITY_EVENT(CritterGetAttackDistantion, CritterView* /*critter*/, ItemView* /*item*/, char /*itemMode*/, uint& /*dist*/);
 
     ClientSettings& Settings;
     GeometryHelper GeomHelper;

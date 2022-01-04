@@ -145,19 +145,19 @@ public:
     void RecacheHexFlags(ushort hx, ushort hy);
 
     ///@ ExportEvent
-    ScriptEvent<> FinishEvent {};
+    ENTITY_EVENT(Finish);
     ///@ ExportEvent
-    ScriptEvent<> LoopEvent {};
+    ENTITY_EVENT(Loop);
     ///@ ExportEvent
-    ScriptEvent<int /*loopIndex*/> LoopExEvent {};
+    ENTITY_EVENT(LoopEx, int /*loopIndex*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/> CritterInEvent {};
+    ENTITY_EVENT(CritterIn, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/> CritterOutEvent {};
+    ENTITY_EVENT(CritterOut, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*target*/> CheckLookEvent {};
+    ENTITY_EVENT(CheckLook, Critter* /*critter*/, Critter* /*target*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Item* /*item*/> CheckTrapLookEvent {};
+    ENTITY_EVENT(CheckTrapLook, Critter* /*critter*/, Item* /*item*/);
 
 private:
     const StaticMap* _staticMap {};

@@ -212,47 +212,47 @@ public:
     void Send_SomeItems(const vector<Item*>* items, int param);
 
     ///@ ExportEvent
-    ScriptEvent<> FinishEvent {};
+    ENTITY_EVENT(Finish);
     ///@ ExportEvent
-    ScriptEvent<> IdleEvent {};
+    ENTITY_EVENT(Idle);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/, uchar /*toSlot*/> CheckMoveItemEvent {};
+    ENTITY_EVENT(CheckMoveItem, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/, uchar /*fromSlot*/> ItemMovedEvent {};
+    ENTITY_EVENT(ItemMoved, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*showCritter*/> CritterShownEvent {};
+    ENTITY_EVENT(CritterShown, Critter* /*showCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*showCritter*/> CritterShownDist1Event {};
+    ENTITY_EVENT(CritterShownDist1, Critter* /*showCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*showCritter*/> CritterShownDist2Event {};
+    ENTITY_EVENT(CritterShownDist2, Critter* /*showCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*showCritter*/> CritterShownDist3Event {};
+    ENTITY_EVENT(CritterShownDist3, Critter* /*showCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*hideCritter*/> CritterHiddenEvent {};
+    ENTITY_EVENT(CritterHidden, Critter* /*hideCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*hideCritter*/> CritterHiddenDist1Event {};
+    ENTITY_EVENT(CritterHiddenDist1, Critter* /*hideCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*hideCritter*/> CritterHiddenDist2Event {};
+    ENTITY_EVENT(CritterHiddenDist2, Critter* /*hideCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*hideCritter*/> CritterHiddenDist3Event {};
+    ENTITY_EVENT(CritterHiddenDist3, Critter* /*hideCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/> ItemOnMapShownEvent {};
+    ENTITY_EVENT(ItemOnMapShown, Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/> ItemOnMapHiddenEvent {};
+    ENTITY_EVENT(ItemOnMapHidden, Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/> ItemOnMapChangedEvent {};
+    ENTITY_EVENT(ItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*receiver*/, int /*num*/, int /*value*/> MessageEvent {};
+    ENTITY_EVENT(Message, Critter* /*receiver*/, int /*num*/, int /*value*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*who*/, bool /*begin*/, uint /*talkers*/> TalkEvent {};
+    ENTITY_EVENT(Talk, Critter* /*who*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/> BarterEvent {};
+    ENTITY_EVENT(Barter, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ScriptEvent<> GlobalMapIdleEvent {};
+    ENTITY_EVENT(GlobalMapIdle);
     ///@ ExportEvent
-    ScriptEvent<> GlobalMapInEvent {};
+    ENTITY_EVENT(GlobalMapIn);
     ///@ ExportEvent
-    ScriptEvent<> GlobalMapOutEvent {};
+    ENTITY_EVENT(GlobalMapOut);
 
     uint Flags {};
     string Name {};

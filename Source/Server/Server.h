@@ -98,101 +98,101 @@ public:
     void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
     ///@ ExportEvent
-    ScriptEvent<> InitEvent {};
+    ENTITY_EVENT(Init);
     ///@ ExportEvent
-    ScriptEvent<> GenerateWorldEvent {};
+    ENTITY_EVENT(GenerateWorld);
     ///@ ExportEvent
-    ScriptEvent<> StartEvent {};
+    ENTITY_EVENT(Start);
     ///@ ExportEvent
-    ScriptEvent<> FinishEvent {};
+    ENTITY_EVENT(Finish);
     ///@ ExportEvent
-    ScriptEvent<> LoopEvent {};
+    ENTITY_EVENT(Loop);
     ///@ ExportEvent
-    ScriptEvent<uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/> PlayerRegistrationEvent {};
+    ENTITY_EVENT(PlayerRegistration, uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
-    ScriptEvent<uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/> PlayerLoginEvent {};
+    ENTITY_EVENT(PlayerLogin, uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
-    ScriptEvent<Player* /*player*/, int /*arg1*/, string& /*arg2*/> PlayerGetAccessEvent {};
+    ENTITY_EVENT(PlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    ScriptEvent<Player* /*player*/, string /*arg1*/, uchar /*arg2*/> PlayerAllowCommandEvent {};
+    ENTITY_EVENT(PlayerAllowCommand, Player* /*player*/, string /*arg1*/, uchar /*arg2*/);
     ///@ ExportEvent
-    ScriptEvent<Player* /*player*/> PlayerLogoutEvent {};
+    ENTITY_EVENT(PlayerLogout, Player* /*player*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/> GlobalMapCritterInEvent {};
+    ENTITY_EVENT(GlobalMapCritterIn, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/> GlobalMapCritterOutEvent {};
+    ENTITY_EVENT(GlobalMapCritterOut, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Location* /*location*/, bool /*firstTime*/> LocationInitEvent {};
+    ENTITY_EVENT(LocationInit, Location* /*location*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ScriptEvent<Location* /*location*/> LocationFinishEvent {};
+    ENTITY_EVENT(LocationFinish, Location* /*location*/);
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/, bool /*firstTime*/> MapInitEvent {};
+    ENTITY_EVENT(MapInit, Map* /*map*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/> MapFinishEvent {};
+    ENTITY_EVENT(MapFinish, Map* /*map*/);
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/> MapLoopEvent {};
+    ENTITY_EVENT(MapLoop, Map* /*map*/);
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/, uint /*loopIndex*/> MapLoopExEvent {};
+    ENTITY_EVENT(MapLoopEx, Map* /*map*/, uint /*loopIndex*/);
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/, Critter* /*critter*/> MapCritterInEvent {};
+    ENTITY_EVENT(MapCritterIn, Map* /*map*/, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/, Critter* /*critter*/> MapCritterOutEvent {};
+    ENTITY_EVENT(MapCritterOut, Map* /*map*/, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/, Critter* /*critter*/, Critter* /*target*/> MapCheckLookEvent {};
+    ENTITY_EVENT(MapCheckLook, Map* /*map*/, Critter* /*critter*/, Critter* /*target*/);
     ///@ ExportEvent
-    ScriptEvent<Map* /*map*/, Critter* /*critter*/, Item* /*item*/> MapCheckTrapLookEvent {};
+    ENTITY_EVENT(MapCheckTrapLook, Map* /*map*/, Critter* /*critter*/, Item* /*item*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, bool /*firstTime*/> CritterInitEvent {};
+    ENTITY_EVENT(CritterInit, Critter* /*critter*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/> CritterFinishEvent {};
+    ENTITY_EVENT(CritterFinish, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/> CritterIdleEvent {};
+    ENTITY_EVENT(CritterIdle, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/> CritterGlobalMapIdleEvent {};
+    ENTITY_EVENT(CritterGlobalMapIdle, Critter* /*critter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/> CritterCheckMoveItemEvent {};
+    ENTITY_EVENT(CritterCheckMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/> CritterMoveItemEvent {};
+    ENTITY_EVENT(CritterMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowEvent {};
+    ENTITY_EVENT(CritterShow, Critter* /*critter*/, Critter* /*showCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist1Event {};
+    ENTITY_EVENT(CritterShowDist1, Critter* /*critter*/, Critter* /*showCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist2Event {};
+    ENTITY_EVENT(CritterShowDist2, Critter* /*critter*/, Critter* /*showCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*showCritter*/> CritterShowDist3Event {};
+    ENTITY_EVENT(CritterShowDist3, Critter* /*critter*/, Critter* /*showCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideEvent {};
+    ENTITY_EVENT(CritterHide, Critter* /*critter*/, Critter* /*hideCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist1Event {};
+    ENTITY_EVENT(CritterHideDist1, Critter* /*critter*/, Critter* /*hideCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist2Event {};
+    ENTITY_EVENT(CritterHideDist2, Critter* /*critter*/, Critter* /*hideCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*hideCritter*/> CritterHideDist3Event {};
+    ENTITY_EVENT(CritterHideDist3, Critter* /*critter*/, Critter* /*hideCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/> CritterShowItemOnMapEvent {};
+    ENTITY_EVENT(CritterShowItemOnMap, Critter* /*critter*/, Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/> CritterHideItemOnMapEvent {};
+    ENTITY_EVENT(CritterHideItemOnMap, Critter* /*critter*/, Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Item* /*item*/> CritterChangeItemOnMapEvent {};
+    ENTITY_EVENT(CritterChangeItemOnMap, Critter* /*critter*/, Item* /*item*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*receiver*/, int /*num*/, int /*value*/> CritterMessageEvent {};
+    ENTITY_EVENT(CritterMessage, Critter* /*critter*/, Critter* /*receiver*/, int /*num*/, int /*value*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*who*/, bool /*begin*/, uint /*talkers*/> CritterTalkEvent {};
+    ENTITY_EVENT(CritterTalk, Critter* /*critter*/, Critter* /*who*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/> CritterBarterEvent {};
+    ENTITY_EVENT(CritterBarter, Critter* /*critter*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, Item* /*item*/, uchar /*itemMode*/, uint& /*dist*/> CritterGetAttackDistantionEvent {};
+    ENTITY_EVENT(CritterGetAttackDistantion, Critter* /*critter*/, Item* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/, bool /*firstTime*/> ItemInitEvent {};
+    ENTITY_EVENT(ItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/> ItemFinishEvent {};
+    ENTITY_EVENT(ItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/> ItemWalkEvent {};
+    ENTITY_EVENT(ItemWalk, Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/> ItemCheckMoveEvent {};
+    ENTITY_EVENT(ItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ScriptEvent<Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/> StaticItemWalkEvent {};
+    ENTITY_EVENT(StaticItemWalk, Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};

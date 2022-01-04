@@ -270,13 +270,13 @@ public:
     void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
 
     ///@ ExportEvent
-    ScriptEvent<string& /*text*/> ConsoleMessageEvent {};
+    ENTITY_EVENT(ConsoleMessage, string& /*text*/);
     ///@ ExportEvent
-    ScriptEvent<MapView* /*map*/> EditMapLoadEvent {};
+    ENTITY_EVENT(EditMapLoad, MapView* /*map*/);
     ///@ ExportEvent
-    ScriptEvent<MapView* /*map*/> EditMapSaveEvent {};
+    ENTITY_EVENT(EditMapSave, MapView* /*map*/);
     ///@ ExportEvent
-    ScriptEvent<Entity* /*entity*/, vector<int>& /*properties*/> InspectorPropertiesEvent {};
+    ENTITY_EVENT(InspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
     MapperSettings& SettingsExt;
     FileManager ServerFileMngr;

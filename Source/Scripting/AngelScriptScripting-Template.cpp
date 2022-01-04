@@ -87,6 +87,7 @@
 #include "FileSystem.h"
 #include "Log.h"
 #include "Properties.h"
+#include "ScriptSystem.h"
 #include "StringUtils.h"
 
 #include "AngelScriptExtensions.h"
@@ -109,9 +110,7 @@
 #include "weakref/weakref.h"
 
 #if COMPILER_MODE
-DECLARE_EXCEPTION(ScriptInitException);
 DECLARE_EXCEPTION(ScriptCompilerException);
-DECLARE_EXCEPTION(ScriptException);
 
 struct FOServer;
 struct FOClient;
@@ -899,38 +898,76 @@ static int HashedString_GetHash(const hstring& self)
 
 static void Event_Subscribe(asIScriptGeneric* gen)
 {
-}
+#if !COMPILER_MODE
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    auto* func = *static_cast<asIScriptFunction**>(gen->GetAddressOfArg(0));
+    const auto& event_name = *static_cast<const string*>(gen->GetAuxiliary());
 
-static void Event_SubscribeRet(asIScriptGeneric* gen)
-{
+    auto event_data = Entity::EventCallbackData();
+    event_data.SubscribtionPtr = func;
+    event_data.Callback = [func](const initializer_list<void*>& args) {
+        // prepare and run context
+        return false;
+    };
+    entity->SubscribeEvent(event_name, std::move(event_data));
+#endif
 }
 
 static void Event_Unsubscribe(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    auto* func = *static_cast<asIScriptFunction**>(gen->GetAddressOfArg(0));
+    const auto& event_name = *static_cast<const string*>(gen->GetAuxiliary());
+
+    entity->UnsubscribeEvent(event_name, func);
+#endif
 }
 
 static void Event_UnsubscribeAll(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto& event_name = *static_cast<const string*>(gen->GetAuxiliary());
+
+    entity->UnsubscribeAllEvent(event_name);
+#endif
 }
 
 static void Event_Fire(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
+    auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto& event_name = *static_cast<const string*>(gen->GetAuxiliary());
+
+    int args_count = gen->GetArgCount();
+    RUNTIME_ASSERT(args_count <= 100);
+    void* args_storage[100];
+    initializer_list<void*> args(&args_storage[0], &args_storage[args_count]);
+
+    for (int i = 0; i < args_count; i++) {
+        args_storage[i] = gen->GetAddressOfArg(i);
+    }
+
+    const auto result = entity->FireEvent(event_name, args);
+    gen->SetReturnByte(result ? 1 : 0);
+#endif
 }
 
-static void RegisterEvent(asIScriptEngine* engine, const string& entity_name, const string& event_name, const string& as_args)
+static void RegisterScriptEvent(asIScriptEngine* engine, const string& entity_name, const string& event_name, const string& as_args)
 {
+    const auto event_class_name = _str("{}Event", event_name).str();
     int as_result;
-    RUNTIME_ASSERT(_str(event_name).endsWith("Event"));
-    AS_VERIFY(engine->RegisterFuncdef(_str("void {}Func({})", event_name, as_args).c_str()));
-    AS_VERIFY(engine->RegisterFuncdef(_str("bool {}FuncBool({})", event_name, as_args).c_str()));
-    AS_VERIFY(engine->RegisterObjectType(event_name.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("void Subscribe({}Func@+)", event_name).c_str(), asFUNCTION(Event_Subscribe), asCALL_GENERIC));
-    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("void Subscribe({}FuncBool@+)", event_name).c_str(), asFUNCTION(Event_SubscribeRet), asCALL_GENERIC));
-    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("void Unsubscribe({}Func@+)", event_name).c_str(), asFUNCTION(Event_Unsubscribe), asCALL_GENERIC));
-    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("void Unsubscribe({}FuncBool@+)", event_name).c_str(), asFUNCTION(Event_Unsubscribe), asCALL_GENERIC));
-    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), "void UnsubscribeAll()", asFUNCTION(Event_UnsubscribeAll), asCALL_GENERIC));
-    AS_VERIFY(engine->RegisterObjectMethod(event_name.c_str(), _str("bool Fire({})", as_args).c_str(), asFUNCTION(Event_Fire), asCALL_GENERIC));
-    AS_VERIFY(engine->RegisterObjectProperty(entity_name.c_str(), _str("{}@ On{}", event_name, _str(event_name).substringUntil("Event")).c_str(), 0));
+    AS_VERIFY(engine->RegisterFuncdef(_str("void {}Func({})", event_class_name, as_args).c_str()));
+    AS_VERIFY(engine->RegisterFuncdef(_str("bool {}FuncBool({})", event_class_name, as_args).c_str()));
+    AS_VERIFY(engine->RegisterObjectType(event_class_name.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("void Subscribe({}Func@+)", event_class_name).c_str(), asFUNCTION(Event_Subscribe), asCALL_GENERIC, (void*)&entity_name));
+    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("void Subscribe({}FuncBool@+)", event_class_name).c_str(), asFUNCTION(Event_Subscribe), asCALL_GENERIC, (void*)&entity_name));
+    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("void Unsubscribe({}Func@+)", event_class_name).c_str(), asFUNCTION(Event_Unsubscribe), asCALL_GENERIC, (void*)&entity_name));
+    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("void Unsubscribe({}FuncBool@+)", event_class_name).c_str(), asFUNCTION(Event_Unsubscribe), asCALL_GENERIC, (void*)&entity_name));
+    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), "void UnsubscribeAll()", asFUNCTION(Event_UnsubscribeAll), asCALL_GENERIC, (void*)&entity_name));
+    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("bool Fire({})", as_args).c_str(), asFUNCTION(Event_Fire), asCALL_GENERIC, (void*)&entity_name));
+    AS_VERIFY(engine->RegisterObjectProperty(entity_name.c_str(), _str("{}@ On{}", event_name).c_str(), 0));
 }
 
 static const string ContextStatesStr[] = {

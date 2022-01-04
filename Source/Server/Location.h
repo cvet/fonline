@@ -37,7 +37,6 @@
 
 #include "EntityProperties.h"
 #include "EntityProtos.h"
-#include "ScriptSystem.h"
 #include "ServerEntity.h"
 
 class Map;
@@ -71,7 +70,7 @@ public:
     auto IsCanDelete() -> bool;
 
     ///@ ExportEvent
-    ScriptEvent<> FinishEvent {};
+    ENTITY_EVENT(Finish);
 
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};

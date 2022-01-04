@@ -631,7 +631,7 @@
         throw ScriptException("Slot is not allowed");
     }
 
-    if (!self->GetEngine()->CritterCheckMoveItemEvent.Raise(self, item, slot)) {
+    if (!self->GetEngine()->CritterCheckMoveItemEvent.Fire(self, item, slot)) {
         throw ScriptException("Can't move item");
     }
 
@@ -646,9 +646,9 @@
     self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
 
     if (item_swap) {
-        self->GetEngine()->CritterMoveItemEvent.Raise(self, item_swap, slot);
+        self->GetEngine()->CritterMoveItemEvent.Fire(self, item_swap, slot);
     }
-    self->GetEngine()->CritterMoveItemEvent.Raise(self, item, from_slot);
+    self->GetEngine()->CritterMoveItemEvent.Fire(self, item, from_slot);
 }
 
 ///# ...

@@ -391,24 +391,24 @@ void EntityManager::InitAfterLoad()
         }
 
         if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
-            _engine->LocationInitEvent.Raise(loc, false);
+            _engine->LocationInitEvent.Fire(loc, false);
         }
         else if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
-            _engine->MapInitEvent.Raise(map, false);
+            _engine->MapInitEvent.Fire(map, false);
 
             if (!map->IsDestroyed() && map->GetScriptId()) {
                 map->SetScript("", false);
             }
         }
         else if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
-            _engine->CritterInitEvent.Raise(cr, false);
+            _engine->CritterInitEvent.Fire(cr, false);
 
             if (!cr->IsDestroyed() && cr->GetScriptId()) {
                 cr->SetScript("", false);
             }
         }
         else if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-            _engine->ItemInitEvent.Raise(item, false);
+            _engine->ItemInitEvent.Fire(item, false);
 
             if (!item->IsDestroyed() && item->GetScriptId()) {
                 item->SetScript("", false);

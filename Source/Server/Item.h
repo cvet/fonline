@@ -75,11 +75,11 @@ public:
     void ChangeCount(int val);
 
     ///@ ExportEvent
-    ScriptEvent<> FinishEvent {};
+    ENTITY_EVENT(Finish);
     ///@ ExportEvent
-    ScriptEvent<Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/> WalkEvent {};
+    ENTITY_EVENT(Walk, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
     ///@ ExportEvent
-    ScriptEvent<uint /*count*/, Entity* /*from*/, Entity* /*to*/> CheckMoveEvent {};
+    ENTITY_EVENT(CheckMove, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
 
     bool ViewPlaceOnMap {};
     ScriptFunc<bool, Critter*, Item*, bool, int> SceneryScriptFunc {};

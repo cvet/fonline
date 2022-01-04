@@ -486,7 +486,7 @@ void FOMapper::ProcessInputEvents()
         }
 
         Keyb.Lost();
-        InputLostEvent.Raise();
+        InputLostEvent.Fire();
         return;
     }
 
@@ -532,12 +532,12 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         if (dikdw)
         {
             string event_text_script = event_text;
-            script_result = KeyDownEvent.Raise(dikdw, event_text_script);
+            script_result = KeyDownEvent.Fire(dikdw, event_text_script);
         }
         if (dikup)
         {
             string event_text_script = event_text;
-            script_result = KeyUpEvent.Raise(dikup, event_text_script);
+            script_result = KeyUpEvent.Fire(dikup, event_text_script);
         }
 
         // Disable keyboard events
@@ -841,7 +841,7 @@ void FOMapper::ParseMouse()
     {
         SettingsExt.MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
-        InputLostEvent.Raise();
+        InputLostEvent.Fire();
         return;
     }
 
@@ -853,7 +853,7 @@ void FOMapper::ParseMouse()
         SettingsExt.LastMouseX = SettingsExt.MouseX;
         SettingsExt.LastMouseY = SettingsExt.MouseY;
 
-        MouseMoveEvent.Raise(ox, oy);
+        MouseMoveEvent.Fire(ox, oy);
 
         IntMouseMove();
     }
@@ -898,39 +898,39 @@ void FOMapper::ParseMouse()
         // Scripts
         bool script_result = true;
         if (event == SDL_MOUSEWHEEL)
-            script_result = MouseDownEvent.Raise(event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
+            script_result = MouseDownEvent.Fire(event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT)
-            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_LEFT);
+            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT)
-            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_LEFT);
+            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT)
-            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_RIGHT);
+            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT)
-            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_RIGHT);
+            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE)
-            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_MIDDLE);
+            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE)
-            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_MIDDLE);
+            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(4))
-            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT0);
+            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(4))
-            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT0);
+            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(5))
-            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT1);
+            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(5))
-            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT1);
+            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(6))
-            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT2);
+            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(6))
-            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT2);
+            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(7))
-            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT3);
+            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(7))
-            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT3);
+            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(8))
-            script_result = MouseDownEvent.Raise(MOUSE_BUTTON_EXT4);
+            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT4);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(8))
-            script_result = MouseUpEvent.Raise(MOUSE_BUTTON_EXT4);
+            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT4);
         if (!script_result || SettingsExt.DisableMouseEvents)
             continue;
 
@@ -1127,7 +1127,7 @@ void FOMapper::MapperMainLoop()
     }*/
 
     // Script loop
-    LoopEvent.Raise();
+    LoopEvent.Fire();
 
     // Input
     ConsoleProcess();
@@ -1912,7 +1912,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
 
     if (entity != nullptr) {
         vector<int> prop_indices;
-        InspectorPropertiesEvent.Raise(entity, prop_indices);
+        InspectorPropertiesEvent.Fire(entity, prop_indices);
         for (const auto prop_index : prop_indices) {
             ShowProps.push_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetByIndex(prop_index) : nullptr);
         }
@@ -3708,7 +3708,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
                 Cache.SetString("mapper_console.txt", history_str);
 
                 // Process command
-                const auto process_command = ConsoleMessageEvent.Raise(ConsoleStr);
+                const auto process_command = ConsoleMessageEvent.Fire(ConsoleStr);
                 AddMess(ConsoleStr);
                 if (process_command) {
                     ParseCommand(ConsoleStr);
@@ -4073,25 +4073,25 @@ auto FOMapper::SaveLogFile() -> bool
 
 void FOMapper::RunStartScript()
 {
-    StartEvent.Raise();
+    StartEvent.Fire();
 }
 
 void FOMapper::RunMapLoadScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    EditMapLoadEvent.Raise(map);
+    EditMapLoadEvent.Fire(map);
 }
 
 void FOMapper::RunMapSaveScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    EditMapSaveEvent.Raise(map);
+    EditMapSaveEvent.Fire(map);
 }
 
 void FOMapper::DrawIfaceLayer(uint /*layer*/)
 {
     SpritesCanDraw = true;
-    RenderIfaceEvent.Raise(); // Todo: mapper render iface layer
+    RenderIfaceEvent.Fire(); // Todo: mapper render iface layer
     SpritesCanDraw = false;
 }
 

@@ -38,7 +38,6 @@
 #include "ClientConnection.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
-#include "ScriptSystem.h"
 #include "ServerEntity.h"
 
 class Item;
@@ -114,11 +113,11 @@ public:
     void Send_SomeItems(const vector<Item*>* items, int param);
 
     ///@ ExportEvent
-    ScriptEvent<int /*arg1*/, string& /*arg2*/> GetAccessEvent {};
+    ENTITY_EVENT(GetAccess, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    ScriptEvent<string /*arg1*/, uchar /*arg2*/> AllowCommandEvent {};
+    ENTITY_EVENT(AllowCommand, string /*arg1*/, uchar /*arg2*/);
     ///@ ExportEvent
-    ScriptEvent<> LogoutEvent {};
+    ENTITY_EVENT(Logout);
 
     ClientConnection* Connection {};
     int DisableSend {};

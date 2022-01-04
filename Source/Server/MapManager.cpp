@@ -494,11 +494,11 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
     // Init scripts
     for (auto* map : maps) {
         for (auto* item : map->GetItems()) {
-            _engine->ItemInitEvent.Raise(item, true);
+            _engine->ItemInitEvent.Fire(item, true);
         }
-        _engine->MapInitEvent.Raise(map, true);
+        _engine->MapInitEvent.Fire(map, true);
     }
-    _engine->LocationInitEvent.Raise(loc, true);
+    _engine->LocationInitEvent.Fire(loc, true);
 
     return loc;
 }
@@ -529,16 +529,16 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 
 void MapManager::RegenerateMap(Map* map)
 {
-    _engine->MapFinishEvent.Raise(map);
+    _engine->MapFinishEvent.Fire(map);
 
     DeleteMapContent(map);
     GenerateMapContent(map);
 
     for (auto* item : map->GetItems()) {
-        _engine->ItemInitEvent.Raise(item, true);
+        _engine->ItemInitEvent.Fire(item, true);
     }
 
-    _engine->MapInitEvent.Raise(map, true);
+    _engine->MapInitEvent.Fire(map, true);
 }
 
 auto MapManager::GetMap(uint map_id) -> Map*
@@ -694,9 +694,9 @@ void MapManager::DeleteLocation(Location* loc, vector<Critter*>* gmap_player_cri
     }
 
     // Finish events
-    _engine->LocationFinishEvent.Raise(loc);
+    _engine->LocationFinishEvent.Fire(loc);
     for (auto& map : maps) {
-        _engine->MapFinishEvent.Raise(map);
+        _engine->MapFinishEvent.Fire(map);
     }
 
     // Send players on global map about this
@@ -1688,7 +1688,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
 
         map->AddCritter(cr);
 
-        _engine->MapCritterInEvent.Raise(map, cr);
+        _engine->MapCritterInEvent.Fire(map, cr);
     }
     else {
         RUNTIME_ASSERT(!cr->GlobalMapGroup);
@@ -1721,7 +1721,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
             cr->GlobalMapGroup->push_back(cr);
         }
 
-        _engine->GlobalMapCritterInEvent.Raise(cr);
+        _engine->GlobalMapCritterInEvent.Fire(cr);
     }
 
     cr->LockMapTransfers--;
@@ -1732,11 +1732,11 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
     cr->LockMapTransfers++;
 
     if (map != nullptr) {
-        _engine->MapCritterOutEvent.Raise(map, cr);
+        _engine->MapCritterOutEvent.Fire(map, cr);
 
         auto critters = cr->VisCr;
         for (auto& critter : critters) {
-            _engine->CritterHideEvent.Raise(critter, cr);
+            _engine->CritterHideEvent.Fire(critter, cr);
         }
 
         cr->ClearVisible();
@@ -1750,7 +1750,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
     else {
         RUNTIME_ASSERT(cr->GlobalMapGroup);
 
-        _engine->GlobalMapCritterOutEvent.Raise(cr);
+        _engine->GlobalMapCritterOutEvent.Fire(cr);
 
         const auto it = std::find(cr->GlobalMapGroup->begin(), cr->GlobalMapGroup->end(), cr);
         cr->GlobalMapGroup->erase(it);
@@ -1829,32 +1829,32 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         auto dist = _engine->GeomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), cr->GetHexX(), cr->GetHexY());
 
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SCRIPT)) {
-            const auto allow_self = _engine->MapCheckLookEvent.Raise(map, view_cr, cr);
-            const auto allow_opp = _engine->MapCheckLookEvent.Raise(map, cr, view_cr);
+            const auto allow_self = _engine->MapCheckLookEvent.Fire(map, view_cr, cr);
+            const auto allow_opp = _engine->MapCheckLookEvent.Fire(map, cr, view_cr);
 
             if (allow_self) {
                 if (cr->AddCrIntoVisVec(view_cr)) {
                     view_cr->Send_AddCritter(cr);
-                    _engine->CritterShowEvent.Raise(view_cr, cr);
+                    _engine->CritterShowEvent.Fire(view_cr, cr);
                 }
             }
             else {
                 if (cr->DelCrFromVisVec(view_cr)) {
                     view_cr->Send_RemoveCritter(cr);
-                    _engine->CritterHideEvent.Raise(view_cr, cr);
+                    _engine->CritterHideEvent.Fire(view_cr, cr);
                 }
             }
 
             if (allow_opp) {
                 if (view_cr->AddCrIntoVisVec(cr)) {
                     cr->Send_AddCritter(view_cr);
-                    _engine->CritterShowEvent.Raise(cr, view_cr);
+                    _engine->CritterShowEvent.Fire(cr, view_cr);
                 }
             }
             else {
                 if (view_cr->DelCrFromVisVec(cr)) {
                     cr->Send_RemoveCritter(view_cr);
-                    _engine->CritterHideEvent.Raise(cr, view_cr);
+                    _engine->CritterHideEvent.Fire(cr, view_cr);
                 }
             }
 
@@ -1862,36 +1862,36 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
                 if (show_cr1) {
                     if (show_cr_dist1 >= dist) {
                         if (view_cr->AddCrIntoVisSet1(cr->GetId())) {
-                            _engine->CritterShowDist1Event.Raise(view_cr, cr);
+                            _engine->CritterShowDist1Event.Fire(view_cr, cr);
                         }
                     }
                     else {
                         if (view_cr->DelCrFromVisSet1(cr->GetId())) {
-                            _engine->CritterHideDist1Event.Raise(view_cr, cr);
+                            _engine->CritterHideDist1Event.Fire(view_cr, cr);
                         }
                     }
                 }
                 if (show_cr2) {
                     if (show_cr_dist2 >= dist) {
                         if (view_cr->AddCrIntoVisSet2(cr->GetId())) {
-                            _engine->CritterShowDist2Event.Raise(view_cr, cr);
+                            _engine->CritterShowDist2Event.Fire(view_cr, cr);
                         }
                     }
                     else {
                         if (view_cr->DelCrFromVisSet2(cr->GetId())) {
-                            _engine->CritterHideDist2Event.Raise(view_cr, cr);
+                            _engine->CritterHideDist2Event.Fire(view_cr, cr);
                         }
                     }
                 }
                 if (show_cr3) {
                     if (show_cr_dist3 >= dist) {
                         if (view_cr->AddCrIntoVisSet3(cr->GetId())) {
-                            _engine->CritterShowDist3Event.Raise(view_cr, cr);
+                            _engine->CritterShowDist3Event.Fire(view_cr, cr);
                         }
                     }
                     else {
                         if (view_cr->DelCrFromVisSet3(cr->GetId())) {
-                            _engine->CritterHideDist3Event.Raise(view_cr, cr);
+                            _engine->CritterHideDist3Event.Fire(view_cr, cr);
                         }
                     }
                 }
@@ -1901,12 +1901,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (cr_dist != 0u) {
                 if (cr_dist >= dist) {
                     if (cr->AddCrIntoVisSet1(view_cr->GetId())) {
-                        _engine->CritterShowDist1Event.Raise(cr, view_cr);
+                        _engine->CritterShowDist1Event.Fire(cr, view_cr);
                     }
                 }
                 else {
                     if (cr->DelCrFromVisSet1(view_cr->GetId())) {
-                        _engine->CritterHideDist1Event.Raise(cr, view_cr);
+                        _engine->CritterHideDist1Event.Fire(cr, view_cr);
                     }
                 }
             }
@@ -1914,12 +1914,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (cr_dist != 0u) {
                 if (cr_dist >= dist) {
                     if (cr->AddCrIntoVisSet2(view_cr->GetId())) {
-                        _engine->CritterShowDist2Event.Raise(cr, view_cr);
+                        _engine->CritterShowDist2Event.Fire(cr, view_cr);
                     }
                 }
                 else {
                     if (cr->DelCrFromVisSet2(view_cr->GetId())) {
-                        _engine->CritterHideDist2Event.Raise(cr, view_cr);
+                        _engine->CritterHideDist2Event.Fire(cr, view_cr);
                     }
                 }
             }
@@ -1927,12 +1927,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
             if (cr_dist != 0u) {
                 if (cr_dist >= dist) {
                     if (cr->AddCrIntoVisSet3(view_cr->GetId())) {
-                        _engine->CritterShowDist1Event.Raise(cr, view_cr);
+                        _engine->CritterShowDist1Event.Fire(cr, view_cr);
                     }
                 }
                 else {
                     if (cr->DelCrFromVisSet3(view_cr->GetId())) {
-                        _engine->CritterHideDist3Event.Raise(cr, view_cr);
+                        _engine->CritterHideDist3Event.Fire(cr, view_cr);
                     }
                 }
             }
@@ -2004,49 +2004,49 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (vis >= dist) {
             if (cr->AddCrIntoVisVec(view_cr)) {
                 view_cr->Send_AddCritter(cr);
-                _engine->CritterShowEvent.Raise(view_cr, cr);
+                _engine->CritterShowEvent.Fire(view_cr, cr);
             }
         }
         else {
             if (cr->DelCrFromVisVec(view_cr)) {
                 view_cr->Send_RemoveCritter(cr);
-                _engine->CritterHideEvent.Raise(view_cr, cr);
+                _engine->CritterHideEvent.Fire(view_cr, cr);
             }
         }
 
         if (show_cr1) {
             if (show_cr_dist1 >= dist) {
                 if (view_cr->AddCrIntoVisSet1(cr->GetId())) {
-                    _engine->CritterShowDist1Event.Raise(view_cr, cr);
+                    _engine->CritterShowDist1Event.Fire(view_cr, cr);
                 }
             }
             else {
                 if (view_cr->DelCrFromVisSet1(cr->GetId())) {
-                    _engine->CritterHideDist1Event.Raise(view_cr, cr);
+                    _engine->CritterHideDist1Event.Fire(view_cr, cr);
                 }
             }
         }
         if (show_cr2) {
             if (show_cr_dist2 >= dist) {
                 if (view_cr->AddCrIntoVisSet2(cr->GetId())) {
-                    _engine->CritterShowDist2Event.Raise(view_cr, cr);
+                    _engine->CritterShowDist2Event.Fire(view_cr, cr);
                 }
             }
             else {
                 if (view_cr->DelCrFromVisSet2(cr->GetId())) {
-                    _engine->CritterHideDist2Event.Raise(view_cr, cr);
+                    _engine->CritterHideDist2Event.Fire(view_cr, cr);
                 }
             }
         }
         if (show_cr3) {
             if (show_cr_dist3 >= dist) {
                 if (view_cr->AddCrIntoVisSet3(cr->GetId())) {
-                    _engine->CritterShowDist3Event.Raise(view_cr, cr);
+                    _engine->CritterShowDist3Event.Fire(view_cr, cr);
                 }
             }
             else {
                 if (view_cr->DelCrFromVisSet3(cr->GetId())) {
-                    _engine->CritterHideDist3Event.Raise(view_cr, cr);
+                    _engine->CritterHideDist3Event.Fire(view_cr, cr);
                 }
             }
         }
@@ -2076,13 +2076,13 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (vis >= dist) {
             if (view_cr->AddCrIntoVisVec(cr)) {
                 cr->Send_AddCritter(view_cr);
-                _engine->CritterShowEvent.Raise(cr, view_cr);
+                _engine->CritterShowEvent.Fire(cr, view_cr);
             }
         }
         else {
             if (view_cr->DelCrFromVisVec(cr)) {
                 cr->Send_RemoveCritter(view_cr);
-                _engine->CritterHideEvent.Raise(cr, view_cr);
+                _engine->CritterHideEvent.Fire(cr, view_cr);
             }
         }
 
@@ -2090,12 +2090,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (cr_dist != 0u) {
             if (cr_dist >= dist) {
                 if (cr->AddCrIntoVisSet1(view_cr->GetId())) {
-                    _engine->CritterShowDist1Event.Raise(cr, view_cr);
+                    _engine->CritterShowDist1Event.Fire(cr, view_cr);
                 }
             }
             else {
                 if (cr->DelCrFromVisSet1(view_cr->GetId())) {
-                    _engine->CritterHideDist1Event.Raise(cr, view_cr);
+                    _engine->CritterHideDist1Event.Fire(cr, view_cr);
                 }
             }
         }
@@ -2103,12 +2103,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (cr_dist != 0u) {
             if (cr_dist >= dist) {
                 if (cr->AddCrIntoVisSet2(view_cr->GetId())) {
-                    _engine->CritterShowDist2Event.Raise(cr, view_cr);
+                    _engine->CritterShowDist2Event.Fire(cr, view_cr);
                 }
             }
             else {
                 if (cr->DelCrFromVisSet2(view_cr->GetId())) {
-                    _engine->CritterHideDist2Event.Raise(cr, view_cr);
+                    _engine->CritterHideDist2Event.Fire(cr, view_cr);
                 }
             }
         }
@@ -2116,12 +2116,12 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (cr_dist != 0u) {
             if (cr_dist >= dist) {
                 if (cr->AddCrIntoVisSet3(view_cr->GetId())) {
-                    _engine->CritterShowDist3Event.Raise(cr, view_cr);
+                    _engine->CritterShowDist3Event.Fire(cr, view_cr);
                 }
             }
             else {
                 if (cr->DelCrFromVisSet3(view_cr->GetId())) {
-                    _engine->CritterHideDist3Event.Raise(cr, view_cr);
+                    _engine->CritterHideDist3Event.Fire(cr, view_cr);
                 }
             }
         }
@@ -2152,13 +2152,13 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
         if (item->GetIsAlwaysView()) {
             if (view_cr->AddIdVisItem(item->GetId())) {
                 view_cr->Send_AddItemOnMap(item);
-                _engine->CritterShowItemOnMapEvent.Raise(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+                _engine->CritterShowItemOnMapEvent.Fire(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
             }
         }
         else {
             bool allowed;
             if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                allowed = _engine->MapCheckTrapLookEvent.Raise(map, view_cr, item);
+                allowed = _engine->MapCheckTrapLookEvent.Fire(map, view_cr, item);
             }
             else {
                 int dist = _engine->GeomHelper.DistGame(view_cr->GetHexX(), view_cr->GetHexY(), item->GetHexX(), item->GetHexY());
@@ -2171,13 +2171,13 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
             if (allowed) {
                 if (view_cr->AddIdVisItem(item->GetId())) {
                     view_cr->Send_AddItemOnMap(item);
-                    _engine->CritterShowItemOnMapEvent.Raise(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+                    _engine->CritterShowItemOnMapEvent.Fire(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
                 }
             }
             else {
                 if (view_cr->DelIdVisItem(item->GetId())) {
                     view_cr->Send_EraseItemFromMap(item);
-                    _engine->CritterHideItemOnMapEvent.Raise(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+                    _engine->CritterHideItemOnMapEvent.Fire(view_cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
                 }
             }
         }
@@ -2202,7 +2202,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushor
         }
 
         if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_SCRIPT)) {
-            if (_engine->MapCheckLookEvent.Raise(map, view_cr, cr)) {
+            if (_engine->MapCheckLookEvent.Fire(map, view_cr, cr)) {
                 view_cr->Send_AddCritter(cr);
             }
             continue;
@@ -2277,7 +2277,7 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushor
         else {
             bool allowed;
             if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                allowed = _engine->MapCheckTrapLookEvent.Raise(map, view_cr, item);
+                allowed = _engine->MapCheckTrapLookEvent.Fire(map, view_cr, item);
             }
             else {
                 auto dist = _engine->GeomHelper.DistGame(hx, hy, item->GetHexX(), item->GetHexY());

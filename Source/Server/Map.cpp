@@ -72,12 +72,12 @@ void Map::ProcessLoop(int index, uint time, uint tick)
         _loopLastTick[index] = tick;
 
         if (index == 0) {
-            LoopEvent.Raise();
-            _engine->MapLoopEvent.Raise(this);
+            LoopEvent.Fire();
+            _engine->MapLoopEvent.Fire(this);
         }
         else {
-            LoopExEvent.Raise(index);
-            _engine->MapLoopExEvent.Raise(this, index);
+            LoopExEvent.Fire(index);
+            _engine->MapLoopExEvent.Fire(this, index);
         }
     }
 }
@@ -228,7 +228,7 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
             {
                 bool allowed;
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->MapCheckTrapLookEvent.Raise(this, cr, item);
+                    allowed = _engine->MapCheckTrapLookEvent.Fire(this, cr, item);
                 }
                 else {
                     int dist = _engine->GeomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy);
@@ -244,7 +244,7 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            _engine->CritterShowItemOnMapEvent.Raise(cr, item, false, nullptr);
+            _engine->CritterShowItemOnMapEvent.Fire(cr, item, false, nullptr);
         }
     }
     item->ViewPlaceOnMap = false;
@@ -319,7 +319,7 @@ void Map::EraseItem(uint item_id)
     for (auto* cr : GetCritters()) {
         if (cr->DelIdVisItem(item->GetId())) {
             cr->Send_EraseItemFromMap(item);
-            _engine->CritterHideItemOnMapEvent.Raise(cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+            _engine->CritterHideItemOnMapEvent.Fire(cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
         }
     }
     item->ViewPlaceOnMap = false;
@@ -332,7 +332,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         for (auto* cr : GetCritters()) {
             if (cr->CountIdVisItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
-                _engine->CritterChangeItemOnMapEvent.Raise(cr, item);
+                _engine->CritterChangeItemOnMapEvent.Fire(cr, item);
             }
         }
     }
@@ -356,13 +356,13 @@ void Map::ChangeViewItem(Item* item)
             if (item->GetIsHidden()) {
                 cr->DelIdVisItem(item->GetId());
                 cr->Send_EraseItemFromMap(item);
-                _engine->CritterHideItemOnMapEvent.Raise(cr, item, false, nullptr);
+                _engine->CritterHideItemOnMapEvent.Fire(cr, item, false, nullptr);
             }
             else if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed;
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->MapCheckTrapLookEvent.Raise(this, cr, item);
+                    allowed = _engine->MapCheckTrapLookEvent.Fire(this, cr, item);
                 }
                 else {
                     int dist = _engine->GeomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
@@ -374,7 +374,7 @@ void Map::ChangeViewItem(Item* item)
                 if (!allowed) {
                     cr->DelIdVisItem(item->GetId());
                     cr->Send_EraseItemFromMap(item);
-                    _engine->CritterHideItemOnMapEvent.Raise(cr, item, false, nullptr);
+                    _engine->CritterHideItemOnMapEvent.Fire(cr, item, false, nullptr);
                 }
             }
         }
@@ -383,7 +383,7 @@ void Map::ChangeViewItem(Item* item)
             {
                 bool allowed;
                 if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _engine->MapCheckTrapLookEvent.Raise(this, cr, item);
+                    allowed = _engine->MapCheckTrapLookEvent.Fire(this, cr, item);
                 }
                 else {
                     int dist = _engine->GeomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
@@ -399,7 +399,7 @@ void Map::ChangeViewItem(Item* item)
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            _engine->CritterShowItemOnMapEvent.Raise(cr, item, false, nullptr);
+            _engine->CritterShowItemOnMapEvent.Fire(cr, item, false, nullptr);
         }
     }
 }

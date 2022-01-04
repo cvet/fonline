@@ -46,11 +46,14 @@
 ///@ ExportEntity Location Location LocationView
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
-    static ushort prop##_RegIndex; \
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
     inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
-    inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; }
+    inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; } \
+    static ushort prop##_RegIndex
+
+#define ENTITY_EVENT(event_name, ...) \
+    EntityEvent<##__VA_ARGS__> event_name##Event { this, #event_name }
 
 class EntityProperties
 {
@@ -62,7 +65,40 @@ protected:
 
 class Entity
 {
+    friend class EntityEventBase;
+
 public:
+    using EventCallback = std::function<bool(const initializer_list<void*>&)>;
+
+    ///@ ExportEnum
+    enum class EventExceptionPolicy
+    {
+        IgnoreAndContinueChain,
+        StopChainAndReturnTrue,
+        StopChainAndReturnFalse,
+        PropogateException,
+    };
+
+    ///@ ExportEnum
+    enum class EventPriority
+    {
+        Lowest,
+        Low,
+        Normal,
+        High,
+        Highest,
+    };
+
+    struct EventCallbackData
+    {
+        EventCallback Callback {};
+        const void* SubscribtionPtr {};
+        EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain};
+        EventPriority Priority {EventPriority::Normal};
+        bool OneShot {};
+        bool Deferred {};
+    };
+
     Entity() = delete;
     Entity(const Entity&) = delete;
     Entity(Entity&&) noexcept = delete;
@@ -86,6 +122,10 @@ public:
     void SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send);
     void SetValueAsInt(const Property* prop, int value);
     void SetValueAsFloat(const Property* prop, float value);
+    void SubscribeEvent(const string& event_name, EventCallbackData callback);
+    void UnsubscribeEvent(const string& event_name, const void* subscription_ptr);
+    void UnsubscribeAllEvent(const string& event_name);
+    auto FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool;
 
     void AddRef() const;
     void Release() const;
@@ -102,7 +142,13 @@ protected:
     bool _nonConstHelper {};
 
 private:
+    auto GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>*;
+    void SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData callback);
+    void UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* subscription_ptr);
+    auto FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool;
+
     Properties _props;
+    map<string, vector<EventCallbackData>> _events;
     bool _isDestroying {};
     bool _isDestroyed {};
     mutable int _refCounter {1};
@@ -146,4 +192,35 @@ protected:
     ~EntityWithProto() override;
 
     const ProtoEntity* _proto;
+};
+
+class EntityEventBase
+{
+protected:
+    EntityEventBase(Entity* entity, const char* callback_name);
+
+    void Subscribe(Entity::EventCallbackData callback);
+    void Unsubscribe(const void* subscription_ptr);
+    auto FireEx(const initializer_list<void*>& args) -> bool;
+
+    Entity* _entity;
+    const char* _callbackName;
+    vector<Entity::EventCallbackData>* _callbacks {};
+};
+
+template<typename... Args>
+class EntityEvent final : public EntityEventBase
+{
+public:
+    EntityEvent(Entity* entity, const char* callback_name) : EntityEventBase(entity, callback_name) { }
+
+    auto Fire(Args... args) -> bool
+    {
+        if (_callbacks == nullptr) {
+            return false;
+        }
+
+        const initializer_list<void*> args_list = {&args...};
+        return FireEx(args_list);
+    }
 };

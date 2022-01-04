@@ -38,14 +38,6 @@ def getGuid(name):
     import uuid
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
 
-def getHash(s):
-    # Todo: exclude mmh3 dependency
-    try:
-        import mmh3 as mmh3
-    except ImportError:
-        import pymmh3 as mmh3
-    return str(mmh3.hash(s, seed=0))
-    
 # Parse meta information
 codeGenTags = {
         'ExportEnum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
@@ -56,7 +48,7 @@ codeGenTags = {
         'ExportEntity': [], # (name, serverClassName, clientClassName, [flags], [comment])
         'Enum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
         'Property': [], # (entity, access, type, name, [flags], [comment])
-        'Event': [], # (target, name, [(type, name)], [flags], [comment])
+        'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
         'RemoteCall': [], # (target, name, [(type, name)], [flags], [comment])
         'Setting': [], #(type, name, init value, [flags], [comment])
         'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
@@ -213,7 +205,7 @@ def parseMetaFile(absPath):
                 if tagName.startswith('Export'):
                     if tagName == 'ExportEnum':
                         for i in range(lineIndex + 1, len(lines)):
-                            if lines[i].startswith('};'):
+                            if lines[i].lstrip().startswith('};'):
                                 tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
                                 break
                     elif tagName == 'ExportProperty':
@@ -365,7 +357,7 @@ def parseTags():
                 for l in tagContext[2:]:
                     sep = l.find('=')
                     if sep == -1:
-                        keyValues.append((l.rstrip(','), getHash(l.rstrip(',')), []))
+                        keyValues.append((l.rstrip(','), str(int(keyValues[-1][1], 0) + 1) if len(keyValues) else '0', []))
                     else:
                         keyValues.append((l[:sep].rstrip(), l[sep + 1:].lstrip().rstrip(','), []))
         
@@ -385,7 +377,7 @@ def parseTags():
                 tok = [s for s in tagInfo.split(' ') if s]
                 grname = tok[0]
                 key = tok[1] if len(tok) > 1 else None
-                value = tok[3] if len(tok) > 3 and tok[2] == '=' else getHash(key)
+                value = tok[3] if len(tok) > 3 and tok[2] == '=' else None
                 flags = tok[2 if len(tok) < 3 or tok[2] != '=' else 4:]
                 
                 def calcUnderlyingMetaType(kv):
@@ -414,11 +406,11 @@ def parseTags():
                 
                 for g in codeGenTags['Enum']:
                     if g[0] == grname:
-                        g[2].append((key, value, []))
+                        g[2].append((key, value if value is not None else str(int(g[2][-1][1], 0) + 1), []))
                         g[1] = calcUnderlyingMetaType(g[2])
                         break
                 else:
-                    keyValues = [(key, value, [])]
+                    keyValues = [(key, value if value is not None else '0', [])]
                     codeGenTags['Enum'].append([grname, calcUnderlyingMetaType(keyValues), keyValues, flags, comment])
                 
                     assert grname not in validTypes, 'Enum already in valid types'
@@ -579,23 +571,22 @@ def parseTags():
                     target, entity = 'Mapper', 'Game'
                 assert target in ['Server', 'Client', 'Mapper'], target
                 
-                braceOpenPos = tagContext.find('<')
-                braceClosePos = tagContext.rfind('>')
-                eventName = tagContext[braceClosePos + 1:tagContext.rfind('{')].strip()
-                assert eventName.endswith('Event'), eventName
-                eventName = eventName[:-5]
-                
-                argsStr = tagContext[braceOpenPos + 1:braceClosePos].strip()
-                argsStr = fixTemplateComma(argsStr, 'map')
+                braceOpenPos = tagContext.find('(')
+                braceClosePos = tagContext.rfind(')')
+                firstCommaPos = tagContext.find(',', braceOpenPos)
+                eventName = tagContext[braceOpenPos + 1:firstCommaPos if firstCommaPos != -1 else braceClosePos].strip()
                 
                 eventArgs = []
-                if len(argsStr):
-                    for arg in argsStr.split(','):
-                        arg = arg.strip()
-                        sep = arg.find('/')
-                        argType = engineTypeToMetaType(arg[:sep - 1].rstrip())
-                        argName = arg[sep + 2:-2]
-                        eventArgs.append((argType, argName))
+                if firstCommaPos != -1:
+                    argsStr = tagContext[firstCommaPos + 1:braceClosePos].strip()
+                    argsStr = fixTemplateComma(argsStr, 'map')
+                    if len(argsStr):
+                        for arg in argsStr.split(','):
+                            arg = arg.strip()
+                            sep = arg.find('/')
+                            argType = engineTypeToMetaType(arg[:sep - 1].rstrip())
+                            argName = arg[sep + 2:-2]
+                            eventArgs.append((argType, argName))
                 
                 codeGenTags['ExportEvent'].append((target, entity, eventName, eventArgs, exportFlags, comment))
             
@@ -632,9 +623,11 @@ def parseTags():
             
             try:
                 tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
-                target = tok[0]
+                entity = tok[0]
+                
+                target = tok[1]
                 assert target in ['Server', 'Client', 'Mapper', 'Common'], target
-                eventName = tok[1] if '(' not in tok[1] else tok[1][:tok[1].find('(')]
+                eventName = tok[2] if '(' not in tok[2] else tok[2][:tok[2].find('(')]
                 
                 braceOpenPos = tagInfo.find('(')
                 braceClosePos = tagInfo.rfind(')')
@@ -655,7 +648,7 @@ def parseTags():
                 
                 flags = [s for s in tagInfo[braceClosePos + 1:].split(' ') if s]
 
-                codeGenTags['Event'].append((target, eventName, eventArgs, flags, comment))
+                codeGenTags['Event'].append((target, entity, eventName, eventArgs, flags, comment))
                 
             except Exception as ex:
                 showError('Invalid tag Event', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -1014,7 +1007,7 @@ def genDataRegistration(isASCompiler):
                                     access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
                 registerLines.append('')
             
-            # Restore enums
+            # Restore enums info
             if target == 'Server' and not isASCompiler:
                 restoreLines.append('restoreInfo["Enums"] =')
                 restoreLines.append('{')
@@ -1030,18 +1023,41 @@ def genDataRegistration(isASCompiler):
                 restoreLines.append('};')
                 restoreLines.append('')
             
-            # Restore properties
+            # Restore properties info
             if target == 'Server' and not isASCompiler:
                 def replaceFakedEnum(t):
-                    if t in scriptEnums or t in engineEnums:
-                        return metaTypeToEngineType(t, target, False)
-                    return t
+                    tt = t.split('.')
+                    if tt[0] == 'dict':
+                        return 'dict.' + replaceFakedEnum(tt[1]) + replaceFakedEnum('.'.join(tt[2:]))
+                    if tt[0] == 'arr':
+                        return 'arr.' + replaceFakedEnum(tt[1])
+                    if tt[0] in scriptEnums or tt[0] in engineEnums:
+                        return metaTypeToEngineType(tt[0], target, False)
+                    return tt[0]
+                dummyIndex = 0
                 restoreLines.append('restoreInfo["Properties"] =')
                 restoreLines.append('{')
                 for e in codeGenTags['Property']:
                     entity, access, type, name, flags, _ = e
-                    allFlags = flags + getEnumFlags(type)
-                    restoreLines.append('    "' + entity + ' ' + access + ' ' + replaceFakedEnum(type) + ' ' + name + (' ' if allFlags else '') + ' '.join(allFlags) + '",')
+                    if access not in ['PrivateServer', 'VirtualPrivateServer']:
+                        allFlags = flags + getEnumFlags(type)
+                        restoreLines.append('    "' + entity + ' ' + access + ' ' + replaceFakedEnum(type) + ' ' + name + (' ' if allFlags else '') + ' '.join(allFlags) + '",')
+                    else:
+                        restoreLines.append('    "' + entity + ' ' + access + ' int __dummy' + str(dummyIndex) + '",')
+                        dummyIndex += 1
+                restoreLines.append('};')
+                restoreLines.append('')
+            
+            # Restore events info
+            if target == 'Server' and not isASCompiler:
+                restoreLines.append('restoreInfo["Events"] =')
+                restoreLines.append('{')
+                for entity in gameEntities:
+                    for evTag in codeGenTags['Event']:
+                        targ, ent, evName, evArgs, evFlags, _ = evTag
+                        if targ in ['Client', 'Common'] and ent == entity:
+                            restoreLines.append('    "' + entity + ' ' + evName + ' ' + ' '.join([a[0] + ' ' + (a[1] if a[1] else '_') for a in evArgs]) +
+                                    (' | ' if evFlags else '') + ' '.join(evFlags) + '",')
                 restoreLines.append('};')
                 restoreLines.append('')
             
@@ -1330,9 +1346,6 @@ def genCode(lang, target, isASCompiler=False):
                         registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
                                 ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
         registerLines.append('')
-        
-        # Register events
-        # ...
         
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')
@@ -2232,7 +2245,8 @@ def genApi(target):
             writeFile('        public enum ' + name)
             writeFile('        {')
             for i in lst:
-                writeFile('            ' + i + ' = ' + getHash(i) + ',')
+                #writeFile('            ' + i + ' = ' + getHash(i) + ',')
+                pass
             writeFile('        }')
             writeFile('')
         writeEnums('Item', content['foitem'])

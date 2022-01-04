@@ -32,6 +32,7 @@
 //
 
 #include "Entity.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
@@ -63,6 +64,94 @@ auto Entity::GetProperties() const -> const Properties&
 auto Entity::GetPropertiesForEdit() -> Properties&
 {
     return _props;
+}
+
+auto Entity::GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>*
+{
+    if (const auto it = _events.find(event_name); it != _events.end()) {
+        return &it->second;
+    }
+
+    return &_events.emplace(event_name, vector<EventCallbackData>()).first->second;
+}
+
+void Entity::SubscribeEvent(const string& event_name, EventCallbackData callback)
+{
+    SubscribeEvent(GetEventCallbacks(event_name), std::move(callback));
+}
+
+void Entity::UnsubscribeEvent(const string& event_name, const void* subscription_ptr)
+{
+    if (const auto it = _events.find(event_name); it != _events.end()) {
+        UnsubscribeEvent(&it->second, subscription_ptr);
+    }
+}
+
+void Entity::UnsubscribeAllEvent(const string& event_name)
+{
+    if (const auto it = _events.find(event_name); it != _events.end()) {
+        it->second.clear();
+    }
+}
+
+auto Entity::FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool
+{
+    if (const auto it = _events.find(event_name); it != _events.end()) {
+        return FireEvent(&it->second, args);
+    }
+    return false;
+}
+
+void Entity::SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData callback)
+{
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(callbacks);
+
+    callbacks->push_back(std::move(callback));
+}
+
+void Entity::UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* subscription_ptr)
+{
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(callbacks);
+
+    if (const auto it = std::find_if(callbacks->begin(), callbacks->end(), [subscription_ptr](const auto& cb) { return cb.SubscribtionPtr == subscription_ptr; }); it != callbacks->end()) {
+        callbacks->erase(it);
+    }
+}
+
+auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool
+{
+    RUNTIME_ASSERT(callbacks);
+
+    // Todo: events array may be modified during call, need take it into account here
+    for (size_t i = 0; i < callbacks->size(); i++) {
+        const auto& cb = callbacks->at(i);
+        const auto ex_policy = cb.ExPolicy;
+
+        try {
+            if (cb.Callback(args)) {
+                return true;
+            }
+        }
+        catch (const std::exception& ex) {
+            WriteLog("{}\n", ex.what());
+
+            if (ex_policy == EventExceptionPolicy::StopChainAndReturnTrue) {
+                return true;
+            }
+            if (ex_policy == EventExceptionPolicy::StopChainAndReturnFalse) {
+                return false;
+            }
+            if (ex_policy == EventExceptionPolicy::PropogateException) {
+                throw ex;
+            }
+        }
+    }
+
+    return false;
 }
 
 auto Entity::IsDestroying() const -> bool
@@ -197,4 +286,37 @@ auto EntityWithProto::GetProtoId() const -> hstring
 auto EntityWithProto::GetProto() const -> const ProtoEntity*
 {
     return _proto;
+}
+
+EntityEventBase::EntityEventBase(Entity* entity, const char* callback_name) : _entity {entity}, _callbackName {callback_name}
+{
+}
+
+void EntityEventBase::Subscribe(Entity::EventCallbackData callback)
+{
+    if (_callbacks == nullptr) {
+        _callbacks = _entity->GetEventCallbacks(_callbackName);
+    }
+
+    _entity->SubscribeEvent(_callbacks, std::move(callback));
+}
+
+// ReSharper disable once CppMemberFunctionMayBeConst
+void EntityEventBase::Unsubscribe(const void* subscription_ptr)
+{
+    if (_callbacks == nullptr) {
+        return;
+    }
+
+    _entity->UnsubscribeEvent(_callbacks, subscription_ptr);
+}
+
+// ReSharper disable once CppMemberFunctionMayBeConst
+auto EntityEventBase::FireEx(const initializer_list<void*>& args) -> bool
+{
+    if (_callbacks == nullptr) {
+        return false;
+    }
+
+    return _entity->FireEvent(_callbacks, args);
 }

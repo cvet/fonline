@@ -42,34 +42,6 @@ DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
 
-template<typename... Args>
-class ScriptEvent final
-{
-public:
-    using Callback = std::function<bool(Args...)>;
-
-    ScriptEvent() = default;
-
-    auto operator+=(Callback cb) -> ScriptEvent&
-    {
-        _callbacks.push_back(cb);
-        return *this;
-    }
-
-    auto Raise(Args... args) -> bool
-    {
-        for (auto& cb : _callbacks) {
-            if (cb(std::forward<Args>(args)...)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-private:
-    vector<Callback> _callbacks {};
-};
-
 template<typename TRet, typename... Args>
 class ScriptFunc final
 {
