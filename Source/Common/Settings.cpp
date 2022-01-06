@@ -342,12 +342,12 @@ void GlobalSettings::SetValue(string_view setting_name, string value)
         DiskFileSystem::ResolvePath(value);
     }
 
-#define SETTING(type, name, ...) \
+#define FIXED_SETTING(type, name, ...) \
     if (setting_name == #name) { \
         SetEntry(const_cast<type&>(name), value); \
         return; \
     }
-#define VAR_SETTING(type, name, ...) \
+#define VARIABLE_SETTING(type, name, ...) \
     if (setting_name == #name) { \
         SetEntry(name, value); \
         return; \
@@ -359,12 +359,12 @@ void GlobalSettings::SetValue(string_view setting_name, string value)
 
 void GlobalSettings::Draw(bool editable)
 {
-#define SETTING(type, name, ...) \
+#define FIXED_SETTING(type, name, ...) \
     if (editable) \
         DrawEditableEntry(#name, const_cast<type&>(name)); \
     else \
         DrawEntry(#name, name)
-#define VAR_SETTING(type, name, ...) \
+#define VARIABLE_SETTING(type, name, ...) \
     if (editable) \
         DrawEditableEntry(#name, name); \
     else \

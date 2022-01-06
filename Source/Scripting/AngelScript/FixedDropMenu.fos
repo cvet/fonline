@@ -67,8 +67,8 @@ class FixedDropMenu : Gui::IDropMenu
     void Draw()
     {
         if (ShowButtons.length() > 0) {
-            int x = __MouseX + 20; // Todo: rework to actual cursor size
-            int y = __MouseY + 20;
+            int x = Settings.MouseX + 20; // Todo: rework to actual cursor size
+            int y = Settings.MouseY + 20;
             int activeIndex = PressedOffsetY / ButtonHeight;
             activeIndex = Math::Clamp(activeIndex, 0, int(ShowButtons.length()) - 1);
             for (uint i = 0; i < ShowButtons.length(); i++) {
@@ -82,7 +82,7 @@ class FixedDropMenu : Gui::IDropMenu
 
     void MouseDown(int button)
     {
-        if (MouseButton == button && Cursor == __Cursor && SafeSelectedEntity != null) {
+        if (MouseButton == button && Cursor == Settings.Cursor && SafeSelectedEntity != null) {
             Pressed = true;
             PressedOffsetY = 0;
             MouseStayTick = GetTick();
@@ -119,7 +119,7 @@ class FixedDropMenu : Gui::IDropMenu
         if (Pressed) {
             if (offsetX != 0 || offsetY != 0) {
                 PressedOffsetY += offsetY;
-                CustomCall("SetMousePos " + (__MouseX - offsetX) + " " + (__MouseY - offsetY) + " false");
+                CustomCall("SetMousePos " + (Settings.MouseX - offsetX) + " " + (Settings.MouseY - offsetY) + " false");
             }
             return true;
         }
@@ -128,7 +128,7 @@ class FixedDropMenu : Gui::IDropMenu
 
     void PostMouseMove(int offsetX, int offsetY)
     {
-        if (Cursor == __Cursor) {
+        if (Cursor == Settings.Cursor) {
             Entity prevEntity = SafeSelectedEntity;
             SelectedEntity = null;
 
@@ -139,7 +139,7 @@ class FixedDropMenu : Gui::IDropMenu
                     SelectedEntity = cast<Gui::ItemView>(hoveredObj.Grid).GetItem(hoveredObj.CellIndex);
             }
             else if (screen == null || !screen.IsModal) {
-                Entity entity = GetMonitorEntity(__MouseX, __MouseY);
+                Entity entity = GetMonitorEntity(Settings.MouseX, Settings.MouseY);
                 if (entity != null && (cast<Critter>(entity) != null || cast<Item>(entity) != null))
                     SelectedEntity = entity;
             }
@@ -161,7 +161,7 @@ class FixedDropMenu : Gui::IDropMenu
     void Loop()
     {
         if (SafeSelectedEntity != null) {
-            if (Cursor != __Cursor) {
+            if (Cursor != Settings.Cursor) {
                 Pressed = false;
                 SelectedEntity = null;
                 ShowButtons.clear();

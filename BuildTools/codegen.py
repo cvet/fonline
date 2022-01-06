@@ -46,6 +46,7 @@ codeGenTags = {
         'ExportEvent': [], # (target, entity, name, [(type, name)], [flags], [comment])
         'ExportObject': [], # (target, name, [(type, name, [comment])], [flags], [comment])
         'ExportEntity': [], # (name, serverClassName, clientClassName, [flags], [comment])
+        'ExportSettings': [], #(group name, target, [(fixOrVar, keyType, keyName, [initValues], [comment])], [flags], [comment])
         'Enum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
         'Property': [], # (entity, access, type, name, [flags], [comment])
         'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
@@ -64,60 +65,32 @@ def showError(*messages):
 
 def checkErrors():
     if errors:
-        def writeStub(fname):
-            def getTarg():
-                if 'Server' in fname:
-                    return 'Server'
-                elif 'Client' in fname:
-                    return 'Client'
-                elif 'Mapper' in fname:
-                    return 'Mapper'
-                elif 'Single' in fname:
-                    return 'Single'
-                    
-            def getTarg2():
-                if 'AngelScriptScripting' in fname:
-                    return 'AngelScriptScripting'
-                elif 'MonoScripting' in fname:
-                    return 'MonoScripting'
-                elif 'NativeScripting' in fname:
-                    return 'NativeScripting'
-            
-            lines = []
-            
-            lines.append('/*')
-            lines.append(' *  Stub generated due to code generation error')
-            lines.append('')
-            for messages in errors:
-                lines.append(' *  ' + messages[0])
-                for m in messages:
-                    lines.append(' *  - ' + str(m))
-            lines.append('*/')
-            lines.append('')
-            
-            if 'Compiler' in fname and 'Single' in fname:
-                lines.append('struct ServerScriptSystem { void InitAngelScriptScripting(const char*); };')
-                lines.append('struct ClientScriptSystem { void InitAngelScriptScripting(const char*); };')
-                lines.append('void ServerScriptSystem::InitAngelScriptScripting(const char*) { }')
-                lines.append('void ClientScriptSystem::InitAngelScriptScripting(const char*) { }')
-            elif 'Compiler' in fname:
-                lines.append('struct ' + getTarg() + 'ScriptSystem { void InitAngelScriptScripting(const char*); };')
-                lines.append('void ' + getTarg() + 'ScriptSystem::InitAngelScriptScripting(const char*) { }')
-            elif 'Single' in fname:
-                lines.append('#include "ServerScripting.h"')
-                lines.append('#include "ClientScripting.h"')
-                lines.append('void ServerScriptSystem::Init' + getTarg2() + '() { }')
-                lines.append('void ClientScriptSystem::Init' + getTarg2() + '() { }')
-            else:
-                lines.append('#include "' + getTarg() + 'Scripting.h"')
-                lines.append('void ' + getTarg() + 'ScriptSystem::Init' + getTarg2() + '() { }')
-                
-            lines.append('')
-            
-            with open(args.genoutput.rstrip('/') + '/' + fname, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(lines))
-        
         try:
+            errorLines = []
+            errorLines.append('')
+            errorLines.append('#error Code generation failed')
+            errorLines.append('')
+            errorLines.append('//  Stub generated due to code generation error')
+            errorLines.append('//')
+            for messages in errors:
+                errorLines.append('//  ' + messages[0])
+                for m in messages:
+                    errorLines.append('//  - ' + str(m))
+            errorLines.append('//')
+            
+            def writeStub(fname):
+                with open(args.genoutput.rstrip('/') + '/' + fname, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(errorLines))
+            
+            writeStub('EntityProperties-Common.cpp')
+            writeStub('DataRegistration-Server.cpp')
+            writeStub('DataRegistration-Client.cpp')
+            writeStub('DataRegistration-Mapper.cpp')
+            writeStub('DataRegistration-Single.cpp')
+            writeStub('DataRegistration-ServerCompiler.cpp')
+            writeStub('DataRegistration-ClientCompiler.cpp')
+            writeStub('DataRegistration-MapperCompiler.cpp')
+            writeStub('DataRegistration-SingleCompiler.cpp')
             writeStub('AngelScriptScripting-Server.cpp')
             writeStub('AngelScriptScripting-Client.cpp')
             writeStub('AngelScriptScripting-Mapper.cpp')
@@ -231,7 +204,12 @@ def parseMetaFile(absPath):
                                 break
                     elif tagName == 'ExportEntity':
                         tagContext = True
-                    assert tagContext, absPath
+                    elif tagName == 'ExportSettings':
+                        for i in range(lineIndex + 1, len(lines)):
+                            if lines[i].startswith('SETTING_GROUP_END'):
+                                tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
+                                break
+                    assert 'Invalid tag context', absPath
                 
                 elif tagName == 'CodeGen':
                     tagContext = tagPos
@@ -688,7 +666,35 @@ def parseTags():
             
             except Exception as ex:
                 showError('Invalid tag RemoteCall', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
+        
+        for tagMeta in tagsMetas['ExportSettings']:
+            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
+            
+            try:
+                exportFlags = tagInfo.split(' ') if tagInfo else []
+                assert exportFlags and exportFlags[0] in ['Server', 'Client', 'Mapper', 'Common'], 'Expected target in tag info'
+                target = exportFlags[0]
+                exportFlags = exportFlags[1:]
                 
+                firstLine = tagContext[0]
+                assert firstLine.startswith('SETTING_GROUP'), 'Invalid start macro'
+                grName = firstLine[firstLine.find('(') + 1:firstLine.find(',')]
+                assert grName.endswith('Settings'), 'Invalid group ending ' + grName
+                grName = grName[:-len('Settings')]
+                
+                settings = []
+                for l in tagContext[1:]:
+                    settComment = [l[l.find('//') + 2:].strip()] if l.find('//') != -1 else []
+                    settType = l[:l.find('(')]
+                    assert settType in ['FIXED_SETTING', 'VARIABLE_SETTING'], 'Invalid setting type ' + settType
+                    settArgs = [t.strip().strip('"') for t in l[l.find('(') + 1:l.find(')')].split(',')]
+                    settings.append(('fix' if settType == 'FIXED_SETTING' else 'var', engineTypeToMetaType(settArgs[0]), settArgs[1], settArgs[2:], settComment))
+                
+                codeGenTags['ExportSettings'].append((grName, target, settings, exportFlags, comment))
+                
+            except Exception as ex:
+                showError('Invalid tag ExportSettings', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
+        
         for tagMeta in tagsMetas['Setting']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
@@ -761,7 +767,7 @@ def parseTags():
 
 parseTags()
 checkErrors()
-tagsMetas = {}
+tagsMetas = {} # Cleanup memory
 
 # Parse content
 content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fomsg': [] }
@@ -1061,6 +1067,23 @@ def genDataRegistration(isASCompiler):
             #    restoreLines.append('};')
             #    restoreLines.append('')
             
+            # Todo: make setting values restorable
+            # Restore settings
+            #if target == 'Server' and not isASCompiler:
+            #    restoreLines.append('restoreInfo["Settings"] =')
+            #    restoreLines.append('{')
+            #    for settTag in codeGenTags['ExportSettings']:
+            #        grName, targ, settings, flags, _ = settTag
+            #        if targ in ['Common', 'Client']:
+            #            for sett in settings:
+            #                fixOrVar, keyType, keyName, initValues, _ = sett
+            #                restoreLines.append('    "' + grName + ' ' + fixOrVar + ' ' + keyType + ' ' + keyName + (' ' if flags else '') + ' '.join(flags) + (' |' + ' '.join(initValues) if initValues else '') + '",')
+            #    for settTag in codeGenTags['Setting']:
+            #        type, name, initValue, flags, _ = settTag
+            #        restoreLines.append('    "Script fix ' + type + ' ' + name + (' ' if flags else '') + ' '.join(flags) + (' |' + initValue if initValue is not None else '') + '",')
+            #    restoreLines.append('};')
+            #    restoreLines.append('')
+                
             # Property map
             if target == 'Client' and not isASCompiler:
                 def addPropMapEntry(e):
@@ -1315,7 +1338,7 @@ def genCode(lang, target, isASCompiler=False):
         globalLines.append('};')
         globalLines.append('')
         
-        # Register events
+        # Marshal events
         globalLines.append('// Marshalling events')
         for entity in gameEntities:
             for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
@@ -1418,6 +1441,48 @@ def genCode(lang, target, isASCompiler=False):
                         globalLines.append('}')
                     globalLines.append('')
         
+        # Marshal settings
+        globalLines.append('// Marshalling settings')
+        settEntity = metaTypeToEngineType('Game', target, False) + ' self'
+        for settTag in codeGenTags['ExportSettings']:
+            grName, targ, settings, flags, _ = settTag
+            if targ in allowedTargets:
+                for sett in settings:
+                    fixOrVar, keyType, keyName, initValues, _ = sett
+                    globalLines.append('static ' + metaTypeToASEngineType(keyType, True) + ' ASSetting_Get_' + keyName + '(' + settEntity + ')')
+                    globalLines.append('{')
+                    if not isASCompiler:
+                        globalLines.append('    return ' + marshalBack(keyType, 'self->Settings.' + keyName) + ';')
+                    else:
+                        globalLines.append('    throw ScriptCompilerException("Stub");')
+                    globalLines.append('}')
+                    if fixOrVar == 'var':
+                        globalLines.append('static void ASSetting_Set_' + keyName + '(' + settEntity + ', ' + metaTypeToASEngineType(keyType, False) + ' value)')
+                        globalLines.append('{')
+                        if not isASCompiler:
+                            globalLines.append('    self->Settings.' + keyName + ' = ' + marshalIn(keyType, 'value') + ';')
+                        else:
+                            globalLines.append('    throw ScriptCompilerException("Stub");')
+                        globalLines.append('}')
+                    globalLines.append('')
+        for settTag in codeGenTags['Setting']:
+            type, name, initValue, flags, _ = settTag
+            globalLines.append('static ' + metaTypeToASEngineType(type, True) + ' ASSetting_Get_' + name + '(' + settEntity + ')')
+            globalLines.append('{')
+            if not isASCompiler:
+                globalLines.append('    return ' + marshalBack(type, 'std::any_cast<' + metaTypeToEngineType(type, target, False) + '&>(GET_SCRIPT_SYS_FROM_SELF()->SettingsStorage["' + name + '"])') + ';')
+            else:
+                globalLines.append('    throw ScriptCompilerException("Stub");')
+            globalLines.append('}')
+            globalLines.append('static void ASSetting_Set_' + name + '(' + settEntity + ', ' + metaTypeToASEngineType(type, False) + ' value)')
+            globalLines.append('{')
+            if not isASCompiler:
+                globalLines.append('    GET_SCRIPT_SYS_FROM_SELF()->SettingsStorage["' + name + '"] = ' + marshalIn(type, 'value') + ';')
+            else:
+                globalLines.append('    throw ScriptCompilerException("Stub");')
+            globalLines.append('}')
+            globalLines.append('')
+        
         # Register exported objects
         registerLines.append('// Exported objects')
         for eo in codeGenTags['ExportObject']:
@@ -1475,6 +1540,24 @@ def genCode(lang, target, isASCompiler=False):
                     else:
                         registerLines.append('REGISTER_ENTITY_SCRIPT_EVENT("' + entity + '", "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
         registerLines.append('')
+        
+        # Register settings
+        registerLines.append('// Register settings')
+        settEntity = gameEntitiesInfo['Game']['Client' if target != 'Server' else 'Server'] + '* self'
+        for settTag in codeGenTags['ExportSettings']:
+            grName, targ, settings, flags, _ = settTag
+            if targ in allowedTargets:
+                for sett in settings:
+                    fixOrVar, keyType, keyName, initValues, _ = sett
+                    registerLines.append('REGISTER_GET_SETTING(' + keyName + ', "' + metaTypeToASType(keyType, isRet=True) + ' get_' + keyName + '() const");')
+                    if fixOrVar == 'var':
+                        registerLines.append('REGISTER_SET_SETTING(' + keyName + ', "void set_' + keyName + '(' + metaTypeToASType(keyType) + ')");')
+        for settTag in codeGenTags['Setting']:
+            type, name, initValue, flags, _ = settTag
+            if not isASCompiler:
+                registerLines.append('AngelScriptData->SettingsStorage["' + name + '"] = std::make_any<' + metaTypeToEngineType(type, target, False) + '>(' + (initValue if initValue is not None else '') + ');')
+            registerLines.append('REGISTER_GET_SETTING(' + name + ', "' + metaTypeToASType(type, isRet=True) + ' get_' + name + '() const");')
+            registerLines.append('REGISTER_SET_SETTING(' + name + ', "void set_' + name + '(' + metaTypeToASType(type) + ')");')
         
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')

@@ -1,5 +1,10 @@
 // FOS Client
 
+///@ Setting CursorType Cursor
+///@ Setting uint CursorData
+///@ Setting CursorType DraggableCursor
+///@ Setting bool MsgboxInvert
+
 interface IDropMenu {
     void Draw();
     void MouseDown(int button);
@@ -659,7 +664,7 @@ class Object
 
     Object FindMouseHit()
     {
-        return FindHit(__MouseX, __MouseY);
+        return FindHit(Settings.MouseX, Settings.MouseY);
     }
 
     Object FindHit(int x, int y)
@@ -681,7 +686,7 @@ class Object
 
     bool IsMouseHit()
     {
-        return IsHit(__MouseX, __MouseY);
+        return IsHit(Settings.MouseX, Settings.MouseY);
     }
 
     bool IsHit(int x, int y)
@@ -745,12 +750,12 @@ class Object
     {
         _IsPressed = true;
         _PressedButton = button;
-        _PressedX = __MouseX;
-        _PressedY = __MouseY;
+        _PressedX = Settings.MouseX;
+        _PressedY = Settings.MouseY;
         OnMouseDown(button);
 
         if (_IsDraggable && _PressedButton == MOUSE_BUTTON_LEFT) {
-            bool draggableCursor = (__DraggableCursor != CursorType::Default && __Cursor == __DraggableCursor);
+            bool draggableCursor = (Settings.DraggableCursor != CursorType::Default && Settings.Cursor == Settings.DraggableCursor);
             if (draggableCursor) {
                 _IsDragged = true;
                 _DragChanged();
@@ -965,8 +970,8 @@ class Object
         _Height = _BaseHeight;
         int parentAbsolutePosX = (_Parent != null ? _Parent._AbsolutePosX : 0);
         int parentAbsolutePosY = (_Parent != null ? _Parent._AbsolutePosY : 0);
-        int parentWidth = (_Parent != null ? _Parent._Width : __ScreenWidth);
-        int parentHeight = (_Parent != null ? _Parent._Height : __ScreenHeight);
+        int parentWidth = (_Parent != null ? _Parent._Width : Settings.ScreenWidth);
+        int parentHeight = (_Parent != null ? _Parent._Height : Settings.ScreenHeight);
         int parentBaseWidth = (_Parent != null ? _Parent._BaseWidth : _BaseWidth);
         int parentBaseHeight = (_Parent != null ? _Parent._BaseHeight : _BaseHeight);
 
@@ -1927,7 +1932,7 @@ class Screen : Panel
         _IsOnTop = true;
 
         // Set screen cursor
-        __Cursor = _Cursor;
+        Settings.Cursor = _Cursor;
 
         // Base behaviour
         Panel::_Appear();
@@ -1939,7 +1944,7 @@ class Screen : Panel
         _IsOnTop = false;
 
         // Store cursor
-        _Cursor = __Cursor;
+        _Cursor = Settings.Cursor;
         if (_AvailableCursors.find(_Cursor) == -1)
             _Cursor = (_AvailableCursors.length() > 0 ? AvailableCursors[0] : CursorType::Default);
 
@@ -1951,13 +1956,13 @@ class Screen : Panel
     {
         if (button == MOUSE_BUTTON_RIGHT) {
             if (_AvailableCursors.length() > 0) {
-                CursorType curCursor = __Cursor;
+                CursorType curCursor = Settings.Cursor;
                 int curCursorIndex = _AvailableCursors.find(curCursor);
                 if (curCursorIndex != -1) {
                     curCursorIndex++;
                     if (curCursorIndex >= int(_AvailableCursors.length()))
                         curCursorIndex = 0;
-                    __Cursor = _AvailableCursors[curCursorIndex];
+                    Settings.Cursor = _AvailableCursors[curCursorIndex];
                 }
             }
         }
@@ -1974,17 +1979,17 @@ class Screen : Panel
             if (pressedObj != null && pressedObj._PressedButton == MOUSE_BUTTON_LEFT && pressedObj._IsCatchable()) {
                 int lastPosX = _AbsolutePosX;
                 int lastPosY = _AbsolutePosY;
-                int newPosX = _AbsolutePosX + (__MouseX - pressedObj._PressedX);
-                int newPosY = _AbsolutePosY + (__MouseY - pressedObj._PressedY);
-                pressedObj._PressedX = __MouseX;
-                pressedObj._PressedY = __MouseY;
+                int newPosX = _AbsolutePosX + (Settings.MouseX - pressedObj._PressedX);
+                int newPosY = _AbsolutePosY + (Settings.MouseY - pressedObj._PressedY);
+                pressedObj._PressedX = Settings.MouseX;
+                pressedObj._PressedY = Settings.MouseY;
 
                 // Check screen borders
                 if (!_IsMoveIgnoreBorders) {
                     int parentAbsolutePosX = (_Parent != null ? _Parent._AbsolutePosX : 0);
                     int parentAbsolutePosY = (_Parent != null ? _Parent._AbsolutePosY : 0);
-                    int parentWidth = (_Parent != null ? _Parent._Width : __ScreenWidth);
-                    int parentHeight = (_Parent != null ? _Parent._Height : __ScreenHeight);
+                    int parentWidth = (_Parent != null ? _Parent._Width : Settings.ScreenWidth);
+                    int parentHeight = (_Parent != null ? _Parent._Height : Settings.ScreenHeight);
                     int px = newPosX;
                     int py = newPosY;
                     if (newPosX < parentAbsolutePosX)
@@ -2320,7 +2325,7 @@ class MessageBox : Text
     {
         Text::_Show(params);
 
-        _InvertMessages = __MsgboxInvert;
+        _InvertMessages = Settings.MsgboxInvert;
         _GenerateText();
     }
 
@@ -2334,8 +2339,8 @@ class MessageBox : Text
         Text::_Draw(callCallback);
 
         if (_IsHovered) {
-            Sprite::Sprite spr = (__MouseY < _AbsolutePosY + _Height / 2 ? _ScrollUp : _ScrollDown);
-            spr.Draw(__MouseX - spr.Width / 2, __MouseY - spr.Height / 2);
+            Sprite::Sprite spr = (Settings.MouseY < _AbsolutePosY + _Height / 2 ? _ScrollUp : _ScrollDown);
+            spr.Draw(Settings.MouseX - spr.Width / 2, Settings.MouseY - spr.Height / 2);
         }
     }
 
@@ -2343,7 +2348,7 @@ class MessageBox : Text
     {
         if (_CursorHidden) {
             _CursorHidden = false;
-            __HideCursor = false;
+            Settings.HideCursor = false;
         }
 
         Text::_Remove();
@@ -2353,9 +2358,9 @@ class MessageBox : Text
     {
         Text::_Hover();
 
-        if (!__HideCursor) {
+        if (!Settings.HideCursor) {
             _CursorHidden = true;
-            __HideCursor = true;
+            Settings.HideCursor = true;
         }
     }
 
@@ -2365,7 +2370,7 @@ class MessageBox : Text
 
         if (_CursorHidden) {
             _CursorHidden = false;
-            __HideCursor = false;
+            Settings.HideCursor = false;
         }
     }
 
@@ -2387,13 +2392,13 @@ class MessageBox : Text
     void _MousePressed(int button) override
     {
         if (button == MOUSE_BUTTON_LEFT || button == MOUSE_BUTTON_WHEEL_UP || button == MOUSE_BUTTON_WHEEL_DOWN) {
-            if (button == MOUSE_BUTTON_WHEEL_UP || (button == MOUSE_BUTTON_LEFT && __MouseY < _AbsolutePosY + _Height / 2)) {
+            if (button == MOUSE_BUTTON_WHEEL_UP || (button == MOUSE_BUTTON_LEFT && Settings.MouseY < _AbsolutePosY + _Height / 2)) {
                 if (_InvertMessages && _Scroll > 0)
                     _Scroll--;
                 if (!_InvertMessages && _Scroll < _MaxScroll)
                     _Scroll++;
             }
-            else if (button == MOUSE_BUTTON_WHEEL_DOWN || (button == MOUSE_BUTTON_LEFT && __MouseY >= _AbsolutePosY + _Height / 2)) {
+            else if (button == MOUSE_BUTTON_WHEEL_DOWN || (button == MOUSE_BUTTON_LEFT && Settings.MouseY >= _AbsolutePosY + _Height / 2)) {
                 if (_InvertMessages && _Scroll < _MaxScroll)
                     _Scroll++;
                 if (!_InvertMessages && _Scroll > 0)
@@ -2685,7 +2690,7 @@ class Console : TextInput
         }
 
         // Trim history length
-        uint historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : __ConsoleHistorySize);
+        uint historyMaxLength = (_HistoryMaxLength != 0 ? _HistoryMaxLength : Settings.ConsoleHistorySize);
         while (_History.length() > historyMaxLength)
             _History.removeAt(0);
         _HistoryCur = _History.length();
@@ -3173,14 +3178,14 @@ void EngineCallback_Start()
 
 void EngineCallback_ShowScreen(int screenIndex, dictionary params)
 {
-    __ScrollMouseUp = false;
-    __ScrollMouseRight = false;
-    __ScrollMouseDown = false;
-    __ScrollMouseLeft = false;
-    __ScrollKeybUp = false;
-    __ScrollKeybRight = false;
-    __ScrollKeybDown = false;
-    __ScrollKeybLeft = false;
+    Settings.ScrollMouseUp = false;
+    Settings.ScrollMouseRight = false;
+    Settings.ScrollMouseDown = false;
+    Settings.ScrollMouseLeft = false;
+    Settings.ScrollKeybUp = false;
+    Settings.ScrollKeybRight = false;
+    Settings.ScrollKeybDown = false;
+    Settings.ScrollKeybLeft = false;
 
     // Manage multiinstance
     for (int i = int(Screens.length()) - 1; i >= 0; i--) {
@@ -3236,7 +3241,7 @@ void EngineCallback_DrawCursor()
     if (draggedObject != null) {
         int x = 0, y = 0, w = 0, h = 0;
         draggedObject.GetWholeSize(x, y, w, h);
-        draggedObject.Draw(__MouseX - w / 2, __MouseY - h / 2);
+        draggedObject.Draw(Settings.MouseX - w / 2, Settings.MouseY - h / 2);
         return;
     }
 
@@ -3440,7 +3445,7 @@ void EngineCallback_InputLost()
 
 void EngineCallback_Loop()
 {
-    if (__WaitPing || __IsConnecting || __IsUpdating)
+    if (Settings.WaitPing || Settings.IsConnecting || Settings.IsUpdating)
         Input::ReleaseMouse();
 
     GetPressedObject(); // Refresh state

@@ -81,7 +81,7 @@ void ReleaseMouse()
 // Return true to disable engine events.
 void OnMouseDown(int button) // Engine callback
 {
-    if (__WaitPing || __IsConnecting || __IsUpdating)
+    if (Settings.WaitPing || Settings.IsConnecting || Settings.IsUpdating)
         return;
 
     MousePressed[button] = true;
