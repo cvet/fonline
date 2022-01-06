@@ -354,10 +354,9 @@ public:
 private:
     void ThrowException()
     {
-#if 0
-        if (!std::uncaught_exceptions())
-            throw GenericException("Some of subscriber still alive", subscriberCallbacks.size());
-#endif
+        if (std::uncaught_exceptions() == 0) {
+            throw GenericException("Some of subscriber still alive", _subscriberCallbacks.size());
+        }
     }
 
     list<Callback> _subscriberCallbacks {};
@@ -414,10 +413,9 @@ public:
 private:
     void ThrowException()
     {
-#if 0
-        if (!std::uncaught_exceptions())
-            throw GenericException("Some of pointer still alive", ptrCounter.load());
-#endif
+        if (std::uncaught_exceptions() == 0) {
+            throw GenericException("Some of pointer still alive", _ptrCounter.load());
+        }
     }
 
     std::atomic_int _ptrCounter {};
@@ -517,6 +515,66 @@ auto constexpr operator"" _len(const char* str, size_t size) -> size_t
         } \
     } \
     int RefCounter { 1 }
+
+// Ref counted objects scope holder
+template<typename T>
+class RefCountHolder
+{
+public:
+    [[nodiscard]] explicit RefCountHolder(const T& ref) : _ref {ref} { _ref.AddRef(); }
+    [[nodiscard]] RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref.AddRef(); }
+    [[nodiscard]] RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref.AddRef(); }
+    auto operator=(const RefCountHolder& other) = delete;
+    auto operator=(RefCountHolder&& other) = delete;
+    ~RefCountHolder() { _ref.Release(); }
+
+private:
+    const T& _ref;
+};
+
+// Scope callback helpers
+template<typename T>
+class ScopeCallback
+{
+public:
+    static_assert(std::is_nothrow_invocable_v<T>, "T must be noexcept invocable or use ScopeCallbackExt for callbacks that may throw");
+    [[nodiscard]] explicit ScopeCallback(T safe_callback) : _safeCallback {std::move(safe_callback)} { }
+    [[nodiscard]] ScopeCallback(ScopeCallback&& other) noexcept = default;
+    ScopeCallback(const ScopeCallback& other) = delete;
+    auto operator=(const ScopeCallback& other) = delete;
+    auto operator=(ScopeCallback&& other) = delete;
+    ~ScopeCallback() noexcept { _safeCallback(); }
+
+private:
+    T _safeCallback;
+};
+
+template<typename T, typename T2>
+class ScopeCallbackExt
+{
+public:
+    static_assert(std::is_invocable_v<T>, "T must be invocable");
+    static_assert(!std::is_nothrow_invocable_v<T>, "T invocable is safe, use ScopeCallback instead of this");
+    static_assert(std::is_nothrow_invocable_v<T2>, "T2 must be noexcept invocable");
+    [[nodiscard]] ScopeCallbackExt(T unsafe_callback, T2 safe_callback) : _unsafeCallback {std::move(unsafe_callback)}, _safeCallback {std::move(safe_callback)} { }
+    [[nodiscard]] ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
+    ScopeCallbackExt(const ScopeCallbackExt& other) = delete;
+    auto operator=(const ScopeCallbackExt& other) = delete;
+    auto operator=(ScopeCallbackExt&& other) = delete;
+    ~ScopeCallbackExt() noexcept(false)
+    {
+        if (std::uncaught_exceptions() == 0) {
+            _unsafeCallback(); // May throw
+        }
+        else {
+            _safeCallback();
+        }
+    }
+
+private:
+    T _unsafeCallback;
+    T2 _safeCallback;
+};
 
 // Generic helpers
 #define STRINGIFY(x) STRINGIFY2(x)
