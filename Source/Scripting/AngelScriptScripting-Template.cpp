@@ -156,6 +156,7 @@ public:
 #define INIT_ARGS
 
 #define GET_AS_ENGINE_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData->Engine
+#define GET_SCRIPT_SYS_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData.get()
 #define GET_SCRIPT_SYS_FROM_AS_ENGINE(as_engine) static_cast<FOEngine*>(as_engine->GetUserData())->ScriptSys->AngelScriptData.get()
 
 #define ENTITY_VERIFY(e) \
@@ -335,6 +336,7 @@ struct ScriptSystem::AngelScriptImpl
     FOEngine* GameEngine {};
     asIScriptEngine* Engine {};
     StorageData* Storage {};
+    unordered_map<string, std::any> SettingsStorage {};
     asIScriptContext* CurrentCtx {};
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
@@ -1206,13 +1208,18 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void UnsubscribeAll()", SCRIPT_FUNC_THIS(func_entry##_UnsubscribeAll), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectProperty(entity_name, entity_name event_name "Event On" event_name, 0))
 
-#define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
-    REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry)
+#define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry)
 
 #define REGISTER_ENTITY_SCRIPT_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
     REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "bool Fire(" as_args ")", SCRIPT_FUNC_THIS(func_entry##_Fire), SCRIPT_FUNC_THIS_CONV))
-    
+
+    AS_VERIFY(engine->RegisterObjectType("GlobalSettings", 0, asOBJ_REF | asOBJ_NOHANDLE));
+    AS_VERIFY(engine->RegisterGlobalProperty("GlobalSettings Settings", game_engine));
+
+#define REGISTER_GET_SETTING(setting_entry, get_decl) AS_VERIFY(engine->RegisterObjectMethod("GlobalSettings", get_decl, SCRIPT_FUNC_THIS(ASSetting_Get_##setting_entry), SCRIPT_FUNC_THIS_CONV))
+#define REGISTER_SET_SETTING(setting_entry, set_decl) AS_VERIFY(engine->RegisterObjectMethod("GlobalSettings", set_decl, SCRIPT_FUNC_THIS(ASSetting_Set_##setting_entry), SCRIPT_FUNC_THIS_CONV))
+
     ///@ CodeGen Register
 
     // Register properties

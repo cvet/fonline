@@ -36,7 +36,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-EffectManager::EffectManager(EffectSettings& settings, FileManager& file_mngr, GameTimer& game_time) : _settings {settings}, _fileMngr {file_mngr}, _gameTime {game_time}
+EffectManager::EffectManager(RenderSettings& settings, FileManager& file_mngr, GameTimer& game_time) : _settings {settings}, _fileMngr {file_mngr}, _gameTime {game_time}
 {
     _eventUnsubscriber += App->OnFrameBegin += [this]() {
         for (auto& effect : _loadedEffects) {

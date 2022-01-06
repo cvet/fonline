@@ -278,7 +278,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(InspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
-    MapperSettings& SettingsExt;
     FileManager ServerFileMngr;
 
     ConfigFile IfaceIni;
