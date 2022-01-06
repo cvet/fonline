@@ -311,6 +311,16 @@ void EntityEventBase::Unsubscribe(const void* subscription_ptr)
     _entity->UnsubscribeEvent(_callbacks, subscription_ptr);
 }
 
+void EntityEventBase::UnsubscribeAll()
+{
+    if (_callbacks == nullptr) {
+        return;
+    }
+
+    _entity->UnsubscribeAllEvent(_callbackName);
+    _callbacks = nullptr;
+}
+
 // ReSharper disable once CppMemberFunctionMayBeConst
 auto EntityEventBase::FireEx(const initializer_list<void*>& args) -> bool
 {

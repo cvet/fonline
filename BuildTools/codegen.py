@@ -638,13 +638,10 @@ def parseTags():
                     for arg in eventArgsStr.split(','):
                         arg = arg.strip()
                         sep = arg.rfind(' ')
-                        if sep != -1:
-                            argType = unifiedTypeToMetaType(arg[:sep].strip())
-                            argName = arg[sep + 1:].strip()
-                            eventArgs.append((argType, argName))
-                        else:
-                            argType = unifiedTypeToMetaType(arg.strip())
-                            eventArgs.append((argType, ''))
+                        assert sep != -1, 'No argaument name in event'
+                        argType = unifiedTypeToMetaType(arg[:sep].strip())
+                        argName = arg[sep + 1:].strip()
+                        eventArgs.append((argType, argName))
                 
                 flags = [s for s in tagInfo[braceClosePos + 1:].split(' ') if s]
 
@@ -902,6 +899,8 @@ def metaTypeToEngineType(t, target, passIn):
     elif tt[0] in gameEntities:
         if target != 'Server':
             r = gameEntitiesInfo[tt[0]]['Client'] + '*'
+            if tt[0] == 'Game' and target == 'Mapper':
+                r = 'FOMapper*'
         else:
             r = gameEntitiesInfo[tt[0]]['Server'] + '*'
     elif tt[0] in scriptEnums:
@@ -1048,18 +1047,19 @@ def genDataRegistration(isASCompiler):
                 restoreLines.append('};')
                 restoreLines.append('')
             
+            # Todo: make script events restorable
             # Restore events info
-            if target == 'Server' and not isASCompiler:
-                restoreLines.append('restoreInfo["Events"] =')
-                restoreLines.append('{')
-                for entity in gameEntities:
-                    for evTag in codeGenTags['Event']:
-                        targ, ent, evName, evArgs, evFlags, _ = evTag
-                        if targ in ['Client', 'Common'] and ent == entity:
-                            restoreLines.append('    "' + entity + ' ' + evName + ' ' + ' '.join([a[0] + ' ' + (a[1] if a[1] else '_') for a in evArgs]) +
-                                    (' | ' if evFlags else '') + ' '.join(evFlags) + '",')
-                restoreLines.append('};')
-                restoreLines.append('')
+            #if target == 'Server' and not isASCompiler:
+            #    restoreLines.append('restoreInfo["Events"] =')
+            #    restoreLines.append('{')
+            #    for entity in gameEntities:
+            #        for evTag in codeGenTags['Event']:
+            #            targ, ent, evName, evArgs, evFlags, _ = evTag
+            #            if targ in ['Client', 'Common'] and ent == entity:
+            #                restoreLines.append('    "' + entity + ' ' + evName + ' ' + ' '.join([a[0] + ' ' + (a[1] if a[1] else '_') for a in evArgs]) +
+            #                        (' | ' if evFlags else '') + ' '.join(evFlags) + '",')
+            #    restoreLines.append('};')
+            #    restoreLines.append('')
             
             # Property map
             if target == 'Client' and not isASCompiler:
@@ -1154,6 +1154,11 @@ def genCode(lang, target, isASCompiler=False):
                     return gameEntitiesInfo[tt[0]]['Server'] + '*'
             elif tt[0] in userObjects or tt[0] in entityProtos:
                 return tt[0] + '*'
+            elif tt[0] in scriptEnums:
+                for e in codeGenTags['Enum']:
+                    if e[0] == tt[0]:
+                        return 'ScriptEnum_' + e[1]
+                assert False, 'Enum not found ' + tt[0]
             else:
                 def mapType(t):
                     typeMap = {'int8': 'char', 'uint8': 'uchar', 'int16': 'short', 'uint16': 'ushort'}
@@ -1191,9 +1196,9 @@ def genCode(lang, target, isASCompiler=False):
             tt = t.split('.')
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                return 'MarshalDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>(GET_AS_ENGINE(), ' + v + ')'
+                return 'MarshalDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] == 'arr':
-                return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE(), ' + v + ')'
+                return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
                 return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], target, False)
             return v
@@ -1202,11 +1207,11 @@ def genCode(lang, target, isASCompiler=False):
             tt = t.split('.')
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>(GET_AS_ENGINE(), ' + v + ')'
+                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>", ' + v + ')'
             elif tt[0] == 'arr':
                 if tt[1] in gameEntities or tt[1] in userObjects or tt[1] in entityProtos:
-                    return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
-                return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
+                    return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
+                return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
                 return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], target, False)
             return v
@@ -1214,6 +1219,7 @@ def genCode(lang, target, isASCompiler=False):
         allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
         
         defineLines = []
+        storageLines = []
         globalLines = []
         registerLines = []
         
@@ -1221,6 +1227,9 @@ def genCode(lang, target, isASCompiler=False):
         defineLines.append('#define CLIENT_SCRIPTING ' + ('1' if target == 'Client' else '0'))
         defineLines.append('#define MAPPER_SCRIPTING ' + ('1' if target == 'Mapper' else '0'))
         defineLines.append('#define COMPILER_MODE ' + ('1' if isASCompiler else '0'))
+        
+        # Storage
+        storageLines.append('ASGlobal Global;')
         
         # Scriptable objects and entity stubs
         if isASCompiler:
@@ -1252,7 +1261,6 @@ def genCode(lang, target, isASCompiler=False):
             if entity == 'Game':
                 if target == 'Mapper':
                     engineEntityType = 'FOMapper'
-                
                 if targ == 'Common':
                     engineEntityTypeExtern = 'FOEngineBase'
                 elif targ == 'Mapper':
@@ -1288,7 +1296,7 @@ def genCode(lang, target, isASCompiler=False):
             
         globalLines.append('// Marshalling entity methods')
         for entity in gameEntities:
-            if entity != 'Game':
+            if not gameEntitiesInfo[entity]['IsGlobal']:
                 for methodTag in codeGenTags['ExportMethod']:
                     targ, ent, name, ret, params, exportFlags, comment = methodTag
                     if targ in allowedTargets and ent == entity:
@@ -1297,13 +1305,118 @@ def genCode(lang, target, isASCompiler=False):
         globalLines.append('// Marshalling global functions')
         globalLines.append('struct ASGlobal')
         globalLines.append('{')
-        for methodTag in codeGenTags['ExportMethod']:
-            targ, ent, name, ret, params, exportFlags, comment = methodTag
-            if targ in allowedTargets and ent == 'Game':
-                writeMarshalingMethod('Game', targ, name, ret, params, True)
+        for entity in gameEntities:
+            if gameEntitiesInfo[entity]['IsGlobal']:
+                for methodTag in codeGenTags['ExportMethod']:
+                    targ, ent, name, ret, params, exportFlags, comment = methodTag
+                    if targ in allowedTargets and ent == entity:
+                        writeMarshalingMethod(entity, targ, name, ret, params, True)
         globalLines.append('    FOEngine* self = nullptr;')
         globalLines.append('};')
         globalLines.append('')
+        
+        # Register events
+        globalLines.append('// Marshalling events')
+        for entity in gameEntities:
+            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
+                targ, ent, evName, evArgs, evFlags, _ = evTag
+                if targ in allowedTargets and ent == entity:
+                    isGlobal = gameEntitiesInfo[entity]['IsGlobal']
+                    isExported = evTag in codeGenTags['ExportEvent']
+                    funcEntry = 'ASEvent_' + entity + '_' + evName
+                    entityArg = metaTypeToEngineType(entity, target, True) + ' self'
+                    if not isExported:
+                        globalLines.append('static string ' + funcEntry + '_Name = "' + evName + '";')
+                    globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func)')
+                    globalLines.append('{')
+                    if not isASCompiler:
+                        globalLines.append('    ENTITY_VERIFY(self);')
+                        globalLines.append('    auto event_data = Entity::EventCallbackData();')
+                        globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
+                        globalLines.append('    event_data.Callback = [func, self](const initializer_list<void*>& args) {')
+                        argIndex = 0
+                        for p in evArgs:
+                            argType = metaTypeToEngineType(p[0], target, False)
+                            if argType[-1] == '&':
+                                argType = argType[:-1]
+                            globalLines.append('        auto&& arg_' + p[1] + ' = ' +
+                                    marshalBack(p[0], '*reinterpret_cast<' + argType + '*>(const_cast<void*>(*(args.begin() + ' + str(argIndex) + ')))') + ';') 
+                            argIndex += 1
+                        globalLines.append('        auto* script_sys = GET_SCRIPT_SYS_FROM_AS_ENGINE(func->GetEngine());')
+                        globalLines.append('        auto* ctx = script_sys->PrepareContext(func);')
+                        if not isGlobal:
+                            globalLines.append('        ctx->SetArgObject(0, self);')
+                        setIndex = 0 if isGlobal else 1
+                        for p in evArgs:
+                            tt = p[0].split('.')
+                            if tt[-1] == 'ref':
+                                globalLines.append('        ctx->SetArgAddress(' + str(setIndex) + ', &arg_' + p[1] + ');')
+                            elif tt[0] == 'dict' or tt[0] == 'arr' or p[0] == 'Entity' or p[0] in gameEntities or p[0] in userObjects:
+                                globalLines.append('        ctx->SetArgObject(' + str(setIndex) + ', arg_' + p[1] + ');')
+                            elif p[0] in entityProtos:
+                                globalLines.append('        ctx->SetArgObject(' + str(setIndex) + ', (void*)arg_' + p[1] + ');')
+                            elif p[0] in ['string']:
+                                globalLines.append('        ctx->SetArgObject(' + str(setIndex) + ', &arg_' + p[1] + ');')
+                            elif p[0] in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64', 'bool', 'float', 'double', 'hstring'] or p[0] in engineEnums or p[0] in scriptEnums:
+                                globalLines.append('        memcpy(ctx->GetAddressOfArg(' + str(setIndex) + '), &arg_' + p[1] + ', sizeof(arg_' + p[1] + '));')
+                            else:
+                                globalLines.append('        static_assert(false, "Invalid configuration");')
+                            setIndex += 1
+                        globalLines.append('        auto event_result = false;')
+                        globalLines.append('        if (script_sys->RunContext(ctx)) {')
+                        globalLines.append('            event_result = (func->GetReturnTypeId() == asTYPEID_BOOL && ctx->GetReturnByte() != 0);')
+                        globalLines.append('            // Todo: marshal back')
+                        globalLines.append('            script_sys->ReturnContext(ctx);')
+                        globalLines.append('        }')
+                        globalLines.append('        return event_result;')
+                        globalLines.append('    };')
+                        if isExported:
+                            globalLines.append('    self->' + evName + 'Event.Subscribe(std::move(event_data));')
+                        else:
+                            globalLines.append('    self->SubscribeEvent(' + funcEntry + '_Name, std::move(event_data));')
+                    else:
+                        globalLines.append('    throw ScriptCompilerException("Stub");')
+                    globalLines.append('}')
+                    globalLines.append('static void ' + funcEntry + '_Unsubscribe(' + entityArg + ', asIScriptFunction* func)')
+                    globalLines.append('{')
+                    if not isASCompiler:
+                        globalLines.append('    ENTITY_VERIFY(self);')
+                        if isExported:
+                            globalLines.append('    self->' + evName + 'Event.Unsubscribe(func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
+                        else:
+                            globalLines.append('    self->UnsubscribeEvent(' + funcEntry + '_Name, func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
+                    else:
+                        globalLines.append('    throw ScriptCompilerException("Stub");')
+                    globalLines.append('}')
+                    globalLines.append('static void ' + funcEntry + '_UnsubscribeAll(' + entityArg + ')')
+                    globalLines.append('{')
+                    if not isASCompiler:
+                        globalLines.append('    ENTITY_VERIFY(self);')
+                        if isExported:
+                            globalLines.append('    self->' + evName + 'Event.UnsubscribeAll();')
+                        else:
+                            globalLines.append('    self->UnsubscribeAllEvent(' + funcEntry + '_Name);')
+                    else:
+                        globalLines.append('    throw ScriptCompilerException("Stub");')
+                    globalLines.append('}')
+                    if not isExported:
+                        globalLines.append('static bool ' + funcEntry + '_Fire(' + entityArg + (', ' if evArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in evArgs]) + ')')
+                        globalLines.append('{')
+                        if not isASCompiler:
+                            globalLines.append('    ENTITY_VERIFY(self);')
+                            for p in evArgs:
+                                if p[0] in gameEntities:
+                                    globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
+                            for p in evArgs:
+                                globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
+                            if isExported:
+                                globalLines.append('    return self->' + evName + 'Event.Fire(' + ', '.join(['in_' + p[1] for p in evArgs]) + ');')
+                            else:
+                                globalLines.append('    return self->FireEvent(' + funcEntry + '_Name, {' + ', '.join(['&in_' + p[1] for p in evArgs]) + '});')
+                        else:
+                            globalLines.append('    throw ScriptCompilerException("Stub");')
+                        globalLines.append('}')
+                    globalLines.append('')
         
         # Register exported objects
         registerLines.append('// Exported objects')
@@ -1339,16 +1452,33 @@ def genCode(lang, target, isASCompiler=False):
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
                 if targ in allowedTargets and ent == entity:
-                    if entity == 'Game': # Game methods projected as global functions
+                    if gameEntitiesInfo[entity]['IsGlobal']:
                         registerLines.append('AS_VERIFY(engine->RegisterGlobalFunction("' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
-                                ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_METHOD(ASGlobal, AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_ASGLOBAL_METHOD_CONV, as_global));')
+                                ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_METHOD(ASGlobal, AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_FUNC_FUNCTOR_CONV, &storage->Global));')
                     else:
                         registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
                                 ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' + entity + '_' + name + '), SCRIPT_FUNC_THIS_CONV));')
         registerLines.append('')
         
+        # Register events
+        registerLines.append('// Register events')
+        for entity in gameEntities:
+            for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
+                targ, ent, evName, evArgs, evFlags, _ = evTag
+                if targ in allowedTargets and ent == entity:
+                    isExported = evTag in codeGenTags['ExportEvent']
+                    funcEntry = 'ASEvent_' + entity + '_' + evName
+                    asArgs = ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in evArgs])
+                    asArgsEnt = metaTypeToASType(entity) + (', ' if evArgs else '') if not gameEntitiesInfo[entity]['IsGlobal'] else ''
+                    if isExported:
+                        registerLines.append('REGISTER_ENTITY_EXPORTED_EVENT("' + entity + '", "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
+                    else:
+                        registerLines.append('REGISTER_ENTITY_SCRIPT_EVENT("' + entity + '", "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
+        registerLines.append('')
+        
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')
+        insertCodeGenLines(storageLines, 'Storage')
         insertCodeGenLines(globalLines, 'Global')
         insertCodeGenLines(defineLines, 'Defines')
 

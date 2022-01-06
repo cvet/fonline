@@ -26,7 +26,7 @@ float GetDirectionF(uint16 hx, uint16 hy, uint16 tx, uint16 ty)
 uint LineTracerHex(uint16 hx, uint16 hy, uint16 tx, uint16 ty, Map map, uint dist, ITraceContext context)
 {
     if (dist == 0)
-        dist = GetDistantion(hx, hy, tx, ty);
+        dist = GetHexDistance(hx, hy, tx, ty);
 
     context.StartExec(map, hx, hy, tx, ty, dist);
 

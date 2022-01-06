@@ -38,9 +38,6 @@
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Testing.h"
-#include "WinApi-Include.h" // !!!
-
-#include "minizip/zip.h"
 
 struct ServerScriptSystem
 {
@@ -68,44 +65,58 @@ int main(int argc, char** argv)
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();
+        LogWithoutTimestamp();
 
         const auto settings = GlobalSettings(argc, argv);
-        int errors = 0;
+
+        auto server_failed = false;
+        auto client_failed = false;
+        auto mapper_failed = false;
 
         if (!settings.ASServer.empty()) {
+            WriteLog("Compile server scripts...\n");
+
             try {
                 ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
             }
-            catch (std::exception& ex) {
-                WriteLog("Server scripts compilation failed!\n");
-                WriteLog("{}\n", ex.what());
-                errors++;
+            catch (std::exception&) {
+                server_failed = true;
             }
         }
 
         if (!settings.ASClient.empty()) {
+            WriteLog("Compile client scripts...\n");
+
             try {
                 ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
             }
-            catch (std::exception& ex) {
-                WriteLog("Client scripts compilation failed!\n");
-                WriteLog("{}\n", ex.what());
-                errors++;
+            catch (std::exception&) {
+                client_failed = true;
             }
         }
 
         if (!settings.ASMapper.empty()) {
+            WriteLog("Compile mapper scripts...\n");
+
             try {
                 MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
             }
-            catch (std::exception& ex) {
-                WriteLog("Mapper scripts compilation failed!\n");
-                WriteLog("{}\n", ex.what());
-                errors++;
+            catch (std::exception&) {
+                mapper_failed = true;
             }
         }
 
-        return errors;
+        if (!settings.ASServer.empty() && server_failed) {
+            WriteLog("Server scripts compilation failed!\n");
+        }
+        if (!settings.ASClient.empty() && client_failed) {
+            WriteLog("Client scripts compilation failed!\n");
+        }
+        if (!settings.ASMapper.empty() && mapper_failed) {
+            WriteLog("Mapper scripts compilation failed!\n");
+        }
+
+        return server_failed || client_failed || mapper_failed ? 1 : 0;
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

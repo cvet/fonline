@@ -488,11 +488,9 @@
 ///# param soundName ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PlaySound(FOClient* client, string_view soundName)
+[[maybe_unused]] bool Client_Game_PlaySound(FOClient* client, string_view soundName)
 {
-    if (!client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName)) {
-        WriteLog("Sound '{}' not found.\n", soundName);
-    }
+    return client->SndMngr.PlaySound(client->ResMngr.GetSoundNames(), soundName);
 }
 
 ///# ...
@@ -500,26 +498,25 @@
 ///# param repeatTime ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PlayMusic(FOClient* client, string_view musicName, uint repeatTime)
+[[maybe_unused]] bool Client_Game_PlayMusic(FOClient* client, string_view musicName, uint repeatTime)
 {
     if (musicName.empty()) {
         client->SndMngr.StopMusic();
-        return;
+        return true;
     }
 
-    if (!client->SndMngr.PlayMusic(musicName, repeatTime)) {
-        WriteLog("Music '{}' not found.\n", musicName);
-    }
+    return client->SndMngr.PlayMusic(musicName, repeatTime);
 }
 
 ///# ...
 ///# param videoName ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canStop)
+[[maybe_unused]] bool Client_Game_PlayVideo(FOClient* client, string_view videoName, bool canStop)
 {
     // client->SndMngr.StopMusic();
     // client->AddVideo(videoName, canStop, true);
+    return false;
 }
 
 ///# ...
@@ -758,7 +755,7 @@
 ///# param speed ...
 ///# param canStop ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_MoveScreenByOffset(FOClient* client, int ox, int oy, uint speed, bool canStop)
+[[maybe_unused]] void Client_Game_MoveScreenOffset(FOClient* client, int ox, int oy, uint speed, bool canStop)
 {
     if (!client->HexMngr.IsMapLoaded()) {
         throw ScriptException("Map is not loaded");
@@ -1246,7 +1243,7 @@
 ///# param fallAnimName ...
 ///# param dropAnimName ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetRainAnim(FOClient* client, string_view fallAnimName, string_view dropAnimName)
+[[maybe_unused]] void Client_Game_SetRainAnimation(FOClient* client, string_view fallAnimName, string_view dropAnimName)
 {
     client->HexMngr.SetRainAnimation(fallAnimName, dropAnimName);
 }

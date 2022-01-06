@@ -1163,7 +1163,7 @@ class Panel : Object
     {
         if (Object::IsHit(x, y)) {
             if (_CheckTransparentOnHit && _BackgroundImage != null)
-                return (GetPixelColor(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY) & 0xFF000000) != 0;
+                return (GetSpritePixelColor(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY) & 0xFF000000) != 0;
             return true;
         }
         return false;

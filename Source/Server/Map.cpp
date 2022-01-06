@@ -823,7 +823,7 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
     }
 }
 
-auto Map::GetNpcCount(hstring npc_role, uchar find_type) const -> uint
+auto Map::GetNpcCount(int npc_role, uchar find_type) const -> uint
 {
     uint result = 0;
     for (const auto* npc : _mapNonPlayerCritters) {
@@ -846,7 +846,7 @@ auto Map::GetCritter(uint crid) -> Critter*
     return nullptr;
 }
 
-auto Map::GetNpc(hstring npc_role, uchar find_type, uint skip_count) -> Critter*
+auto Map::GetNpc(int npc_role, uchar find_type, uint skip_count) -> Critter*
 {
     NON_CONST_METHOD_HINT();
 

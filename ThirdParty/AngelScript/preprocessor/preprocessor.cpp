@@ -210,7 +210,6 @@ public:
     std::string                CurrentFile;
     unsigned int               CurrentLine = 0;
     unsigned int               LinesThisFile = 0;
-    bool                       SkipPragmas = false;
     std::vector< std::string > FilesPreprocessed;
 }
 
@@ -364,7 +363,8 @@ Preprocessor::LLITR Preprocessor::ParsePreprocessor( LexemList& lexems, LLITR it
             itr->Value = " ";
             spaces++;
         }
-        prev = itr;
+        if (itr->Type != WHITESPACE)
+			prev = itr;
         ++itr;
     }
     if( spaces )
@@ -978,23 +978,15 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
             LLITR     end_of_line = ParsePreprocessor( lexems, itr, end );
 
             LexemList directive( start_of_line, end_of_line );
-
-            if( SkipPragmas && directive.begin()->Value == "#pragma" )
-            {
-                itr = end_of_line;
-                Lexem wspace;
-                wspace.Type = WHITESPACE;
-                wspace.Value = " ";
-                for( LLITR it = start_of_line; it != end_of_line;)
-                {
-                    ++it;
-                    it = lexems.insert( it, wspace );
-                    ++it;
-                }
-                continue;
-            }
-
             itr = lexems.erase( start_of_line, end_of_line );
+
+            for (auto it = directive.begin(); it != directive.end();)
+            {
+                if (it->Type == WHITESPACE)
+                    it = directive.erase(it);
+                else
+                    ++it;
+            }
 
             std::string value = directive.begin()->Value;
             if( value == "#define" )
@@ -1109,7 +1101,7 @@ void Preprocessor::RecursivePreprocess( std::string filename, FileLoader& file_s
     file_source.FileLoaded();
 }
 
-int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStream* errors, FileLoader* loader, bool skip_pragmas )
+int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStream* errors, FileLoader* loader )
 {
     static OutStream  null_stream;
     static FileLoader default_loader;
@@ -1125,8 +1117,6 @@ int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStrea
     ErrorsCount = 0;
 
     FilesPreprocessed.clear();
-
-    SkipPragmas = skip_pragmas;
 
     size_t n = file_path.find_last_of( "\\/" );
     RootFile = ( n != std::string::npos ? file_path.substr( n + 1 ) : file_path );
@@ -1152,6 +1142,14 @@ void Preprocessor::Define( const std::string& str )
     char*       d_end = &data[ data.length() - 1 ];
     LexemList   lexems;
     Lex( &data[ 0 ], ++d_end, lexems );
+
+    for (auto it = lexems.begin(); it != lexems.end();)
+    {
+        if (it->Type == WHITESPACE)
+            it = lexems.erase(it);
+        else
+            ++it;
+    }
 
     ParseDefine( CustomDefines, lexems );
 }
@@ -1225,7 +1223,7 @@ unsigned int Preprocessor::ResolveOriginalLine( unsigned int line_number, LineNu
 
 void Preprocessor::PrintLexemList( LexemList& out, OutStream& destination )
 {
-    bool need_a_space = false;
+	bool need_a_space = false;
     for( LLITR itr = out.begin(); itr != out.end(); ++itr )
     {
         if( itr->Type == IDENTIFIER || itr->Type == NUMBER )
@@ -1664,9 +1662,10 @@ int Preprocessor::Lex( char* begin, char* end, std::list< Lexem >& results )
     {
         Lexem current_lexem;
         begin = ParseLexem( begin, end, current_lexem );
-        if( current_lexem.Type != WHITESPACE &&
-            current_lexem.Type != COMMENT )
+
+        if( current_lexem.Type != COMMENT )
             results.push_back( current_lexem );
+
         if( begin == end )
             return 0;
     }

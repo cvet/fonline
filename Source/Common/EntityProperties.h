@@ -318,7 +318,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, char, Gender);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, hstring, NpcRole);
+    ENTITY_PROPERTY(Protected, int, NpcRole);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, int, ReplicationTime);
     ///@ ExportProperty

@@ -1585,7 +1585,10 @@ int asCScriptEngine::RegisterObjectType(const char *name, int byteSize, asDWORD 
 	// Must have either asOBJ_REF or asOBJ_VALUE
 	if( flags & asOBJ_REF )
 	{
-		flags |= asOBJ_IMPLICIT_HANDLE;
+		if (!(flags & asOBJ_NOHANDLE))
+		{
+			flags |= asOBJ_IMPLICIT_HANDLE;
+		}
 
 		// Can optionally have the asOBJ_GC, asOBJ_NOHANDLE, asOBJ_SCOPED, or asOBJ_TEMPLATE flag set, but nothing else
 		if( flags & ~(asOBJ_REF | asOBJ_GC | asOBJ_NOHANDLE | asOBJ_SCOPED | asOBJ_TEMPLATE | asOBJ_NOCOUNT | asOBJ_IMPLICIT_HANDLE) )

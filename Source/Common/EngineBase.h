@@ -52,6 +52,7 @@ public:
     auto operator=(FOEngineBase&&) noexcept = delete;
 
     [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
+    [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override;

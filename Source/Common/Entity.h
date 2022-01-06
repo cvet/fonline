@@ -93,10 +93,10 @@ public:
     {
         EventCallback Callback {};
         const void* SubscribtionPtr {};
-        EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain};
-        EventPriority Priority {EventPriority::Normal};
-        bool OneShot {};
-        bool Deferred {};
+        EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
+        EventPriority Priority {EventPriority::Normal}; // Todo: improve entity event Priority
+        bool OneShot {}; // Todo: improve entity event OneShot
+        bool Deferred {}; // Todo: improve entity event Deferred
     };
 
     Entity() = delete;
@@ -106,6 +106,7 @@ public:
     auto operator=(Entity&&) noexcept = delete;
 
     [[nodiscard]] virtual auto GetName() const -> string_view = 0;
+    [[nodiscard]] virtual auto IsGlobal() const -> bool { return false; }
     [[nodiscard]] auto GetClassName() const -> string_view;
     [[nodiscard]] auto GetProperties() const -> const Properties&;
     [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
@@ -196,11 +197,14 @@ protected:
 
 class EntityEventBase
 {
+public:
+    void Subscribe(Entity::EventCallbackData callback);
+    void Unsubscribe(const void* subscription_ptr);
+    void UnsubscribeAll();
+
 protected:
     EntityEventBase(Entity* entity, const char* callback_name);
 
-    void Subscribe(Entity::EventCallbackData callback);
-    void Unsubscribe(const void* subscription_ptr);
     auto FireEx(const initializer_list<void*>& args) -> bool;
 
     Entity* _entity;

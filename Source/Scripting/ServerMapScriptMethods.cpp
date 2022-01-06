@@ -723,7 +723,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, hstring npcRole, uchar findType)
+[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, int npcRole, uchar findType)
 {
     return self->GetNpcCount(npcRole, findType);
 }
@@ -734,7 +734,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, hstring npcRole, uchar findType, uint skipCount)
+[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, int npcRole, uchar findType, uint skipCount)
 {
     return self->GetNpc(npcRole, findType, skipCount);
 }

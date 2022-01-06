@@ -110,6 +110,9 @@
 #include "weakref/weakref.h"
 
 #if COMPILER_MODE
+#undef FOEngine
+#define FOEngine FOEngineBase
+
 DECLARE_EXCEPTION(ScriptCompilerException);
 
 struct FOServer;
@@ -152,7 +155,8 @@ public:
 #if !COMPILER_MODE
 #define INIT_ARGS
 
-#define GET_AS_ENGINE() self->GetEngine()->ScriptSys->AngelScriptData->Engine
+#define GET_AS_ENGINE_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData->Engine
+#define GET_SCRIPT_SYS_FROM_AS_ENGINE(as_engine) static_cast<FOEngine*>(as_engine->GetUserData())->ScriptSys->AngelScriptData.get()
 
 #define ENTITY_VERIFY(e) \
     if ((e) != nullptr && (e)->IsDestroyed()) { \
@@ -174,7 +178,8 @@ public:
 #define SCRIPT_FUNC_CONV asCALL_GENERIC
 #define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
 #define SCRIPT_METHOD_CONV asCALL_GENERIC
-#define SCRIPT_ASGLOBAL_METHOD_CONV asCALL_GENERIC
+#define SCRIPT_FUNC_FUNCTOR_CONV asCALL_GENERIC
+#define SCRIPT_METHOD_FUNCTOR_CONV asCALL_GENERIC
 #else
 #define SCRIPT_FUNC(name) asFUNCTION(name)
 #define SCRIPT_FUNC_THIS(name) asFUNCTION(name)
@@ -182,7 +187,8 @@ public:
 #define SCRIPT_FUNC_CONV asCALL_CDECL
 #define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
-#define SCRIPT_ASGLOBAL_METHOD_CONV asCALL_THISCALL_ASGLOBAL
+#define SCRIPT_FUNC_FUNCTOR_CONV asCALL_THISCALL_ASGLOBAL
+#define SCRIPT_METHOD_FUNCTOR_CONV asCALL_THISCALL_OBJFIRST
 #endif
 #else
 #define SCRIPT_FUNC(...) asFUNCTION(DummyFunc)
@@ -191,19 +197,147 @@ public:
 #define SCRIPT_FUNC_CONV asCALL_GENERIC
 #define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
 #define SCRIPT_METHOD_CONV asCALL_GENERIC
-#define SCRIPT_ASGLOBAL_METHOD_CONV asCALL_GENERIC
+#define SCRIPT_FUNC_FUNCTOR_CONV asCALL_GENERIC
+#define SCRIPT_METHOD_FUNCTOR_CONV asCALL_GENERIC
 static void DummyFunc(asIScriptGeneric* gen)
 {
 }
 #endif
 
+enum class ScriptEnum_uint8 : uchar
+{
+};
+enum class ScriptEnum_uint16 : ushort
+{
+};
+enum class ScriptEnum_int : int
+{
+};
+enum class ScriptEnum_uint : uint
+{
+};
+
 #if !COMPILER_MODE
-struct ASGlobal;
+struct StorageData;
+
+static void CallbackException(asIScriptContext* ctx, void* param)
+{
+    // string str = ctx->GetExceptionString();
+    // if (str != "Pass")
+    //    HandleException(ctx, _str("Script exception: {}{}", str, !_str(str).endsWith('.') ? "." : ""));
+}
 
 struct ScriptSystem::AngelScriptImpl
 {
+    struct ContextData
+    {
+        string Info {};
+        asIScriptContext* Parent {};
+    };
+
+    void CreateContext()
+    {
+        asIScriptContext* ctx = Engine->CreateContext();
+        RUNTIME_ASSERT(ctx);
+
+        int r = ctx->SetExceptionCallback(asFUNCTION(CallbackException), nullptr, asCALL_CDECL);
+        RUNTIME_ASSERT(r >= 0);
+
+        auto* ctx_data = new ContextData();
+        ctx->SetUserData(ctx_data);
+
+        FreeContexts.push_back(ctx);
+    }
+
+    void FinishContext(asIScriptContext* ctx)
+    {
+        auto it = std::find(FreeContexts.begin(), FreeContexts.end(), ctx);
+        RUNTIME_ASSERT(it != FreeContexts.end());
+        FreeContexts.erase(it);
+
+        delete static_cast<ContextData*>(ctx->GetUserData());
+        ctx->Release();
+    }
+
+    auto RequestContext() -> asIScriptContext*
+    {
+        if (FreeContexts.empty()) {
+            CreateContext();
+        }
+
+        auto* ctx = FreeContexts.back();
+        FreeContexts.pop_back();
+        BusyContexts.push_back(ctx);
+        return ctx;
+    }
+
+    void ReturnContext(asIScriptContext* ctx)
+    {
+        ctx->Unprepare();
+
+        auto it = std::find(BusyContexts.begin(), BusyContexts.end(), ctx);
+        RUNTIME_ASSERT(it != BusyContexts.end());
+        BusyContexts.erase(it);
+        FreeContexts.push_back(ctx);
+
+        auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
+        ctx_data->Parent = nullptr;
+        ctx_data->Info.clear();
+    }
+
+    auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
+    {
+        RUNTIME_ASSERT(func);
+
+        auto* ctx = RequestContext();
+        auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
+
+        const auto as_result = ctx->Prepare(func);
+        if (as_result < 0) {
+            throw ScriptException("Can't prepare context", func->GetName(), as_result);
+        }
+
+        return ctx;
+    }
+
+    auto RunContext(asIScriptContext* ctx) -> bool
+    {
+        auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
+
+        ctx_data->Parent = asGetActiveContext();
+
+        const auto exec_result = ctx->Execute();
+
+        if (exec_result == asEXECUTION_SUSPENDED) {
+            return false;
+        }
+
+        if (exec_result != asEXECUTION_FINISHED) {
+            ctx->Abort();
+        }
+
+        if (exec_result != asEXECUTION_FINISHED) {
+            ReturnContext(ctx);
+
+            if (exec_result == asEXECUTION_EXCEPTION) {
+                throw ScriptException("Script execution exception", ctx->GetExceptionString(), ctx->GetExceptionFunction()->GetName(), ctx->GetExceptionLineNumber());
+            }
+            if (exec_result == asEXECUTION_ABORTED) {
+                throw ScriptException("Execution of script aborted");
+            }
+
+            throw ScriptException("Context execution error", exec_result);
+        }
+
+        return true;
+    }
+
+    FOEngine* GameEngine {};
     asIScriptEngine* Engine {};
-    ASGlobal* ASGlobalInstance {};
+    StorageData* Storage {};
+    asIScriptContext* CurrentCtx {};
+    vector<asIScriptContext*> FreeContexts {};
+    vector<asIScriptContext*> BusyContexts {};
 };
 #endif
 
@@ -896,80 +1030,6 @@ static int HashedString_GetHash(const hstring& self)
     return self.as_int();
 }
 
-static void Event_Subscribe(asIScriptGeneric* gen)
-{
-#if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    auto* func = *static_cast<asIScriptFunction**>(gen->GetAddressOfArg(0));
-    const auto& event_name = *static_cast<const string*>(gen->GetAuxiliary());
-
-    auto event_data = Entity::EventCallbackData();
-    event_data.SubscribtionPtr = func;
-    event_data.Callback = [func](const initializer_list<void*>& args) {
-        // prepare and run context
-        return false;
-    };
-    entity->SubscribeEvent(event_name, std::move(event_data));
-#endif
-}
-
-static void Event_Unsubscribe(asIScriptGeneric* gen)
-{
-#if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    auto* func = *static_cast<asIScriptFunction**>(gen->GetAddressOfArg(0));
-    const auto& event_name = *static_cast<const string*>(gen->GetAuxiliary());
-
-    entity->UnsubscribeEvent(event_name, func);
-#endif
-}
-
-static void Event_UnsubscribeAll(asIScriptGeneric* gen)
-{
-#if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    const auto& event_name = *static_cast<const string*>(gen->GetAuxiliary());
-
-    entity->UnsubscribeAllEvent(event_name);
-#endif
-}
-
-static void Event_Fire(asIScriptGeneric* gen)
-{
-#if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    const auto& event_name = *static_cast<const string*>(gen->GetAuxiliary());
-
-    int args_count = gen->GetArgCount();
-    RUNTIME_ASSERT(args_count <= 100);
-    void* args_storage[100];
-    initializer_list<void*> args(&args_storage[0], &args_storage[args_count]);
-
-    for (int i = 0; i < args_count; i++) {
-        args_storage[i] = gen->GetAddressOfArg(i);
-    }
-
-    const auto result = entity->FireEvent(event_name, args);
-    gen->SetReturnByte(result ? 1 : 0);
-#endif
-}
-
-static void RegisterScriptEvent(asIScriptEngine* engine, const string& entity_name, const string& event_name, const string& as_args)
-{
-    const auto event_class_name = _str("{}Event", event_name).str();
-    int as_result;
-    AS_VERIFY(engine->RegisterFuncdef(_str("void {}Func({})", event_class_name, as_args).c_str()));
-    AS_VERIFY(engine->RegisterFuncdef(_str("bool {}FuncBool({})", event_class_name, as_args).c_str()));
-    AS_VERIFY(engine->RegisterObjectType(event_class_name.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
-    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("void Subscribe({}Func@+)", event_class_name).c_str(), asFUNCTION(Event_Subscribe), asCALL_GENERIC, (void*)&entity_name));
-    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("void Subscribe({}FuncBool@+)", event_class_name).c_str(), asFUNCTION(Event_Subscribe), asCALL_GENERIC, (void*)&entity_name));
-    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("void Unsubscribe({}Func@+)", event_class_name).c_str(), asFUNCTION(Event_Unsubscribe), asCALL_GENERIC, (void*)&entity_name));
-    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("void Unsubscribe({}FuncBool@+)", event_class_name).c_str(), asFUNCTION(Event_Unsubscribe), asCALL_GENERIC, (void*)&entity_name));
-    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), "void UnsubscribeAll()", asFUNCTION(Event_UnsubscribeAll), asCALL_GENERIC, (void*)&entity_name));
-    AS_VERIFY(engine->RegisterObjectMethod(event_class_name.c_str(), _str("bool Fire({})", as_args).c_str(), asFUNCTION(Event_Fire), asCALL_GENERIC, (void*)&entity_name));
-    AS_VERIFY(engine->RegisterObjectProperty(entity_name.c_str(), _str("{}@ On{}", event_name).c_str(), 0));
-}
-
 static const string ContextStatesStr[] = {
     "Finished",
     "Suspended",
@@ -981,17 +1041,22 @@ static const string ContextStatesStr[] = {
     "Error",
 };
 
+struct StorageData
+{
+    ///@ CodeGen Storage
+};
+
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
-    const char* type = "Error";
+    const char* type = "error";
     if (msg->type == asMSGTYPE_WARNING) {
-        type = "Warning";
+        type = "warning";
     }
     else if (msg->type == asMSGTYPE_INFORMATION) {
-        type = "Info";
+        type = "info";
     }
 
-    WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message, Preprocessor::ResolveOriginalLine(msg->row));
+    WriteLog("{}({},{}): {} : {}\n", Preprocessor::ResolveOriginalFile(msg->row), Preprocessor::ResolveOriginalLine(msg->row), msg->col, type, msg->message);
 }
 
 #if COMPILER_MODE
@@ -1002,19 +1067,28 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
 
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
-    FOEngineBase* game_engine = nullptr;
+    FOEngine* game_engine = nullptr;
 
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
     RUNTIME_ASSERT(engine);
 
-    auto* as_global = new ASGlobal();
+    engine->SetUserData(game_engine);
 
 #if !COMPILER_MODE
     AngelScriptData = std::make_unique<AngelScriptImpl>();
+    AngelScriptData->GameEngine = game_engine;
     AngelScriptData->Engine = engine;
-    AngelScriptData->ASGlobalInstance = as_global;
-    // as_global->self = game_engine;
 #endif
+
+#if COMPILER_MODE
+    StorageData Storage;
+    auto* storage = &Storage;
+#else
+    AngelScriptData->Storage = new StorageData();
+    auto* storage = AngelScriptData->Storage;
+#endif
+
+    storage->Global.self = game_engine;
 
 #if COMPILER_MODE
 #if SERVER_SCRIPTING
@@ -1108,7 +1182,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #define REGISTER_ENTITY_WITH_PROTO(class_name, real_class) \
     REGISTER_ENTITY(class_name, real_class); \
-    AS_VERIFY(engine->RegisterObjectType(class_name "Proto", 0, asOBJ_REF | asOBJ_NOCOUNT)); \
+    AS_VERIFY(engine->RegisterObjectType(class_name "Proto", 0, asOBJ_REF)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name "Proto", asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name "Proto", asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, class_name "Proto get_Proto() const", SCRIPT_FUNC_THIS(Entity_Proto), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterFuncdef("bool " class_name "ProtoPredicate(" class_name "Proto@+)")); \
@@ -1119,8 +1195,24 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
     unordered_set<string> have_protos;
 
-#define REGISTER_ENTITY_EVENT(class_name, event_name)
+#define REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
+    AS_VERIFY(engine->RegisterFuncdef("void " entity_name event_name "EventFunc(" as_args_ent as_args ")")); \
+    AS_VERIFY(engine->RegisterFuncdef("bool " entity_name event_name "EventFuncBool(" as_args_ent as_args ")")); \
+    AS_VERIFY(engine->RegisterObjectType(entity_name event_name "Event", 0, asOBJ_REF | asOBJ_NOHANDLE)); \
+    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Subscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Subscribe), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Subscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Subscribe), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void UnsubscribeAll()", SCRIPT_FUNC_THIS(func_entry##_UnsubscribeAll), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectProperty(entity_name, entity_name event_name "Event On" event_name, 0))
 
+#define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
+    REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry)
+
+#define REGISTER_ENTITY_SCRIPT_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
+    REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry); \
+    AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "bool Fire(" as_args ")", SCRIPT_FUNC_THIS(func_entry##_Fire), SCRIPT_FUNC_THIS_CONV))
+    
     ///@ CodeGen Register
 
     // Register properties
@@ -1163,7 +1255,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
 #if COMPILER_MODE
-    delete as_global;
     game_engine->Release();
 #endif
 }
@@ -1225,7 +1316,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
 
             _includeDeep++;
 
-            file_path = _str(file_name).extractFileName().eraseFileExtension();
+            file_path = file_name;
             data.resize(0);
 
             if (_includeDeep == 1) {
@@ -1270,11 +1361,11 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
 
     Preprocessor::UndefAll();
 #if SERVER_SCRIPTING
-    Preprocessor::Define("SERVER");
+    Preprocessor::Define("__SERVER");
 #elif CLIENT_SCRIPTING
-    Preprocessor::Define("CLIENT");
+    Preprocessor::Define("__CLIENT");
 #elif MAPPER_SCRIPTING
-    Preprocessor::Define("MAPPER");
+    Preprocessor::Define("__MAPPER");
 #endif
 
     ScriptLoader loader {script_data};
@@ -1285,7 +1376,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
         errors.String.pop_back();
     }
 
-    if (errors_count) {
+    if (errors_count > 0) {
         throw ScriptCompilerException("Preprocessor failed", errors.String);
     }
     else if (!errors.String.empty()) {
