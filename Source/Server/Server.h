@@ -192,7 +192,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(ItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(StaticItemWalk, Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(StaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};

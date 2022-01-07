@@ -159,11 +159,11 @@
 ///# param param ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Item_CallStaticItemFunction(Item* self, Critter* cr, Item* staticItem, int param)
+[[maybe_unused]] bool Server_Item_CallStaticItemFunction(Item* self, Critter* cr, StaticItem* staticItem, int param)
 {
     if (!self->SceneryScriptFunc) {
         return false;
     }
 
-    return self->SceneryScriptFunc(cr, self, staticItem, param) && self->SceneryScriptFunc.GetResult();
+    return self->SceneryScriptFunc(cr, staticItem, false, param) && self->SceneryScriptFunc.GetResult();
 }

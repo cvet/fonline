@@ -40,7 +40,7 @@
 
 ///@ ExportEntity Game FOServer FOClient Global
 ///@ ExportEntity Player Player PlayerView NoProto
-///@ ExportEntity Item Item ItemView
+///@ ExportEntity Item Item ItemView HasStatics
 ///@ ExportEntity Critter Critter CritterView
 ///@ ExportEntity Map Map MapView
 ///@ ExportEntity Location Location LocationView

@@ -1022,12 +1022,12 @@ void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint 
     }
 }
 
-auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>
+auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<StaticItem*>
 {
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> triggers;
-    for (auto* item : _staticMap->TriggerItemsVec) {
+    vector<StaticItem*> triggers;
+    for (const auto* item : _staticMap->TriggerItemsVec) {
         if (item->GetHexX() == hx && item->GetHexY() == hy) {
             triggers.push_back(item);
         }
@@ -1035,11 +1035,11 @@ auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>
     return triggers;
 }
 
-auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> Item*
+auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : _staticMap->StaticItemsVec) {
+    for (const auto* item : _staticMap->StaticItemsVec) {
         if ((!pid || item->GetProtoId() == pid) && item->GetHexX() == hx && item->GetHexY() == hy) {
             return item;
         }
@@ -1047,12 +1047,12 @@ auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> Item*
     return nullptr;
 }
 
-auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>
+auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>
 {
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> items;
-    for (auto* item : _staticMap->StaticItemsVec) {
+    vector<StaticItem*> items;
+    for (const auto* item : _staticMap->StaticItemsVec) {
         if (item->GetHexX() == hx && item->GetHexY() == hy) {
             items.push_back(item);
         }
@@ -1060,12 +1060,12 @@ auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>
     return items;
 }
 
-auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>
+auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<StaticItem*>
 {
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> items;
-    for (auto* item : _staticMap->StaticItemsVec) {
+    vector<StaticItem*> items;
+    for (const auto* item : _staticMap->StaticItemsVec) {
         if ((!pid || item->GetProtoId() == pid) && _engine->GeomHelper.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
             items.push_back(item);
         }
@@ -1073,12 +1073,12 @@ auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) ->
     return items;
 }
 
-auto Map::GetStaticItemsByPid(hstring pid) -> vector<Item*>
+auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
 {
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> items;
-    for (auto* item : _staticMap->StaticItemsVec) {
+    vector<StaticItem*> items;
+    for (const auto* item : _staticMap->StaticItemsVec) {
         if (!pid || item->GetProtoId() == pid) {
             items.push_back(item);
         }

@@ -146,7 +146,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
         }
     }*/
 
-    for (auto& item : static_map.AllItemsVec) {
+    for (auto* item : static_map.AllItemsVec) {
         if (!item->IsStatic() && item->GetInitScript()) {
             const auto func_name = item->GetInitScript();
             const auto func = _engine->ScriptSys->FindFunc<void, Item*, bool>(func_name);
@@ -157,13 +157,13 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
         }
         else if (item->IsStatic() && item->GetInitScript()) {
             const auto func_name = item->GetInitScript();
-            ScriptFunc<bool, Critter*, Item*, bool, int> scenery_func;
-            ScriptFunc<void, Critter*, Item*, bool, uchar> trigger_func;
+            ScriptFunc<bool, Critter*, StaticItem*, bool, int> scenery_func;
+            ScriptFunc<void, Critter*, StaticItem*, bool, uchar> trigger_func;
             if (item->GetIsTrigger() || item->GetIsTrap()) {
-                trigger_func = _engine->ScriptSys->FindFunc<void, Critter*, Item*, bool, uchar>(func_name);
+                trigger_func = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(func_name);
             }
             else {
-                scenery_func = _engine->ScriptSys->FindFunc<bool, Critter*, Item*, bool, int>(func_name);
+                scenery_func = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, bool, int>(func_name);
             }
 
             if (!scenery_func && !trigger_func) {
@@ -188,7 +188,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
 
     uint scenery_count = 0;
     vector<uchar> scenery_data;
-    for (auto& item : static_map.AllItemsVec) {
+    for (auto* item : static_map.AllItemsVec) {
         if (!item->IsStatic()) {
             item->AddRef();
             if (item->GetOwnership() == ItemOwnership::MapHex) {

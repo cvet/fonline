@@ -237,7 +237,7 @@ scriptEnums = set()
 engineEnums = set()
 gameEntities = []
 gameEntitiesInfo = {}
-entityProtos = set()
+entityRelatives = set()
 
 def parseTags():
     validTypes = set()
@@ -291,7 +291,7 @@ def parseTags():
             return t
         elif t[-1] == '*':
             tt = t[:-1]
-            if tt in userObjects or tt in entityProtos:
+            if tt in userObjects or tt in entityRelatives:
                 return tt
             for ename, einfo in gameEntitiesInfo.items():
                 if tt == einfo['Server'] or tt == einfo['Client']:
@@ -463,7 +463,7 @@ def parseTags():
                 assert name not in gameEntities
                 gameEntities.append(name)
                 gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
-                        'NoProto': 'NoProto' in exportFlags or 'Global' in exportFlags}
+                        'NoProto': 'NoProto' in exportFlags or 'Global' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags}
                 
                 assert name + 'Property' not in validTypes
                 validTypes.add(name + 'Property')
@@ -473,8 +473,14 @@ def parseTags():
                 if not gameEntitiesInfo[name]['NoProto']:
                     assert name + 'Proto' not in validTypes
                     validTypes.add(name + 'Proto')
-                    assert name + 'Proto' not in entityProtos
-                    entityProtos.add(name + 'Proto')
+                    assert name + 'Proto' not in entityRelatives
+                    entityRelatives.add(name + 'Proto')
+                
+                if gameEntitiesInfo[name]['HasStatics']:
+                    assert 'Static' + name not in validTypes
+                    validTypes.add('Static' + name)
+                    assert 'Static' + name not in entityRelatives
+                    entityRelatives.add('Static' + name)
                 
             except Exception as ex:
                 showError('Invalid tag ExportEntity', absPath + ' (' + str(lineIndex + 1) + ')', ex)
@@ -927,7 +933,7 @@ def metaTypeToEngineType(t, target, passIn):
             if e[0] == tt[0]:
                 return 'ScriptEnum_' + e[1]
         assert False, 'Enum not found ' + tt[0]
-    elif tt[0] in userObjects or tt[0] in entityProtos:
+    elif tt[0] in userObjects or tt[0] in entityRelatives:
         r = tt[0] + '*'
     else:
         def mapType(mt):
@@ -1186,7 +1192,7 @@ def genCode(lang, target, isASCompiler=False):
                     return gameEntitiesInfo[tt[0]]['Client'] + '*'
                 else:
                     return gameEntitiesInfo[tt[0]]['Server'] + '*'
-            elif tt[0] in userObjects or tt[0] in entityProtos:
+            elif tt[0] in userObjects or tt[0] in entityRelatives:
                 return tt[0] + '*'
             elif tt[0] in scriptEnums:
                 for e in codeGenTags['Enum']:
@@ -1225,7 +1231,7 @@ def genCode(lang, target, isASCompiler=False):
                 return tt[0] + getHandle()
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
                 return tt[0]
-            elif tt[0] in userObjects or tt[0] in entityProtos:
+            elif tt[0] in userObjects or tt[0] in entityRelatives:
                 return tt[0] + getHandle()
             elif tt[0] == 'ObjInfo':
                 return '?&in'
@@ -1254,7 +1260,7 @@ def genCode(lang, target, isASCompiler=False):
                 return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + \
                         '>(GET_AS_ENGINE_FROM_SELF(), "dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>", ' + v + ')'
             elif tt[0] == 'arr':
-                if tt[1] in gameEntities or tt[1] in userObjects or tt[1] in entityProtos:
+                if tt[1] in gameEntities or tt[1] in userObjects or tt[1] in entityRelatives:
                     return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
                 return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
@@ -1280,9 +1286,10 @@ def genCode(lang, target, isASCompiler=False):
         if isASCompiler:
             globalLines.append('// Compiler entity stubs')
             for entity in gameEntities:
-                if entity != 'Entity':
-                    engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
-                    globalLines.append('struct ' + engineEntityType + ' : BaseEntity { };')
+                engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+                globalLines.append('struct ' + engineEntityType + ' : BaseEntity { };')
+                if gameEntitiesInfo[entity]['HasStatics']:
+                    globalLines.append('struct Static' + entity + ' : BaseEntity { };')
             globalLines.append('')
             
             globalLines.append('// Scriptable objects')
@@ -1398,7 +1405,7 @@ def genCode(lang, target, isASCompiler=False):
                                 globalLines.append('        ctx->SetArgAddress(' + str(setIndex) + ', &arg_' + p[1] + ');')
                             elif tt[0] == 'dict' or tt[0] == 'arr' or p[0] == 'Entity' or p[0] in gameEntities or p[0] in userObjects:
                                 globalLines.append('        ctx->SetArgObject(' + str(setIndex) + ', arg_' + p[1] + ');')
-                            elif p[0] in entityProtos:
+                            elif p[0] in entityRelatives:
                                 globalLines.append('        ctx->SetArgObject(' + str(setIndex) + ', (void*)arg_' + p[1] + ');')
                             elif p[0] in ['string']:
                                 globalLines.append('        ctx->SetArgObject(' + str(setIndex) + ', &arg_' + p[1] + ');')
@@ -1523,14 +1530,15 @@ def genCode(lang, target, isASCompiler=False):
         # Register entities
         registerLines.append('// Register entities')
         for entity in gameEntities:
-            if entity != 'Entity':
-                engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
-                if gameEntitiesInfo[entity]['IsGlobal']:
-                    registerLines.append('REGISTER_GLOBAL_ENTITY("' + entity + '", ' + engineEntityType + ');')
-                elif gameEntitiesInfo[entity]['NoProto']:
-                    registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
-                else:
-                    registerLines.append('REGISTER_ENTITY_WITH_PROTO("' + entity + '", ' + engineEntityType + ');')
+            engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+            if gameEntitiesInfo[entity]['IsGlobal']:
+                registerLines.append('REGISTER_GLOBAL_ENTITY("' + entity + '", ' + engineEntityType + ');')
+            elif gameEntitiesInfo[entity]['NoProto']:
+                registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
+            else:
+                registerLines.append('REGISTER_ENTITY_WITH_PROTO("' + entity + '", ' + engineEntityType + ');')
+            if gameEntitiesInfo[entity]['HasStatics']:
+                registerLines.append('REGISTER_ENTITY_STATICS("' + entity + '", ' + engineEntityType + ');')
         registerLines.append('')
         
         # Register entity methods and global functions

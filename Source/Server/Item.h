@@ -42,6 +42,7 @@
 
 class Item;
 class Critter;
+using StaticItem = const Item;
 
 class Item final : public ServerEntity, public ItemProperties
 {
@@ -81,8 +82,8 @@ public:
     ENTITY_EVENT(CheckMove, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
 
     bool ViewPlaceOnMap {};
-    ScriptFunc<bool, Critter*, Item*, bool, int> SceneryScriptFunc {};
-    ScriptFunc<void, Critter*, Item*, bool, uchar> TriggerScriptFunc {};
+    ScriptFunc<bool, Critter*, StaticItem*, bool, int> SceneryScriptFunc {};
+    ScriptFunc<void, Critter*, StaticItem*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 
 private:

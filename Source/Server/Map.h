@@ -42,6 +42,7 @@
 #include "ServerEntity.h"
 
 class Item;
+using StaticItem = const Item;
 class Critter;
 class Map;
 class Location;
@@ -55,8 +56,8 @@ struct StaticMap
     vector<Item*> AllItemsVec {};
     vector<Item*> HexItemsVec {};
     vector<Item*> ChildItemsVec {};
-    vector<Item*> StaticItemsVec {};
-    vector<Item*> TriggerItemsVec {};
+    vector<StaticItem*> StaticItemsVec {};
+    vector<StaticItem*> TriggerItemsVec {};
     uchar* HexFlags {};
     vector<MapTile> Tiles {};
 };
@@ -113,11 +114,11 @@ public:
     [[nodiscard]] auto GetCrittersCount() const -> uint;
     [[nodiscard]] auto GetPlayersCount() const -> uint;
     [[nodiscard]] auto GetNpcsCount() const -> uint;
-    [[nodiscard]] auto GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItem(ushort hx, ushort hy, hstring pid) -> Item*;
-    [[nodiscard]] auto GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<Item*>;
+    [[nodiscard]] auto GetStaticItemTriggers(ushort hx, ushort hy) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*;
+    [[nodiscard]] auto GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
 
     void SetLocation(Location* loc);
     void Process();

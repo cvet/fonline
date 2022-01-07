@@ -2195,9 +2195,9 @@ auto FOServer::Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> 
 void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir)
 {
     if (map->IsHexStaticTrigger(from_hx, from_hy)) {
-        for (auto* item : map->GetStaticItemTriggers(from_hx, from_hy)) {
+        for (const auto* item : map->GetStaticItemTriggers(from_hx, from_hy)) {
             if (item->TriggerScriptFunc) {
-                item->TriggerScriptFunc(cr, item, false, dir);
+                const_cast<Item*>(item)->TriggerScriptFunc(cr, item, false, dir);
             }
 
             StaticItemWalkEvent.Fire(item, cr, false, dir);
@@ -2205,9 +2205,9 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
     }
 
     if (map->IsHexStaticTrigger(to_hx, to_hy)) {
-        for (auto* item : map->GetStaticItemTriggers(to_hx, to_hy)) {
+        for (const auto* item : map->GetStaticItemTriggers(to_hx, to_hy)) {
             if (item->TriggerScriptFunc) {
-                item->TriggerScriptFunc(cr, item, true, dir);
+                const_cast<Item*>(item)->TriggerScriptFunc(cr, item, true, dir);
             }
 
             StaticItemWalkEvent.Fire(item, cr, true, dir);

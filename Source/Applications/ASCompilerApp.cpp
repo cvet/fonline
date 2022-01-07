@@ -83,7 +83,11 @@ int main(int argc, char** argv)
             try {
                 ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
             }
-            catch (std::exception&) {
+            catch (std::exception& ex) {
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
                 server_failed = true;
             }
         }
@@ -96,7 +100,11 @@ int main(int argc, char** argv)
             try {
                 ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
             }
-            catch (std::exception&) {
+            catch (std::exception& ex) {
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
                 client_failed = true;
             }
         }
@@ -109,7 +117,11 @@ int main(int argc, char** argv)
             try {
                 MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
             }
-            catch (std::exception&) {
+            catch (std::exception& ex) {
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
                 mapper_failed = true;
             }
         }
