@@ -1249,6 +1249,17 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_set.c_str(), asFUNCTION(Property_SetValue), asCALL_GENERIC, (void*)prop));
             }
         }
+
+        for (const auto& [group_name, properties] : registrator->GetPropertyGroups()) {
+            vector<ScriptEnum_uint16> prop_enums;
+            prop_enums.reserve(properties.size());
+            for (const auto* prop : properties) {
+                prop_enums.push_back(static_cast<ScriptEnum_uint16>(prop->GetRegIndex()));
+            }
+
+            auto* as_prop_enums = MarshalBackScalarArray(engine, _str("{}[]", properties.front()->GetBaseTypeName()).c_str(), prop_enums);
+            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}[] {}{}", properties.front()->GetBaseTypeName(), properties.front()->GetBaseTypeName(), group_name).c_str(), as_prop_enums));
+        }
     }
 
     AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", game_engine));

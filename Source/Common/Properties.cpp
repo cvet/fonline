@@ -1184,6 +1184,11 @@ auto PropertyRegistrator::GetWholeDataSize() const -> uint
     return _wholePodDataSize;
 }
 
+auto PropertyRegistrator::GetPropertyGroups() const -> const map<string, vector<const Property*>>&
+{
+    return _propertyGroups;
+}
+
 void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& flags)
 {
     // string _propName {};
@@ -1209,6 +1214,16 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             RUNTIME_ASSERT(flags[i + 1] == "=");
             prop->_dictKeyTypeName = flags[i + 2];
             i += 2;
+        }
+        else if (flags[i] == "Group") {
+            RUNTIME_ASSERT(flags[i + 1] == "=");
+            const auto& group = flags[i + 2];
+            if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
+                it->second.push_back(prop);
+            }
+            else {
+                _propertyGroups.emplace(group, vector<const Property*> {prop});
+            }
         }
     }
 

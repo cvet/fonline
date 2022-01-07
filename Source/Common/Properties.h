@@ -345,6 +345,7 @@ public:
     [[nodiscard]] auto GetByIndex(int property_index) const -> const Property*;
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
+    [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
 
     void RegisterComponent(hstring name);
     void SetNativeSetCallback(string_view property_name, const NativeCallback& callback);
@@ -355,6 +356,7 @@ private:
     vector<Property*> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};
+    map<string, vector<const Property*>> _propertyGroups {};
 
     // PlainData info
     uint _wholePodDataSize {};
