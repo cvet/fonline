@@ -1058,7 +1058,7 @@
 ///# param rates ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_GetTimeEventsExt(Critter* self, const vector<int>& findIdentifiers, const vector<int>& identifiers, vector<int>& indexes, vector<int>& durations, vector<int>& rates)
+[[maybe_unused]] uint Server_Critter_GetTimeEvents(Critter* self, const vector<int>& findIdentifiers, const vector<int>& identifiers, vector<int>& indexes, vector<int>& durations, vector<int>& rates)
 {
     /*IntVec find_vec;
     self->GetEngine()->ScriptSys.AssignScriptArrayInVector(find_vec, findIdentifiers);

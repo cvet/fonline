@@ -462,6 +462,11 @@ static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, 
     return as_dict;
 }
 
+static auto GetASObjectInfo(void* ptr, int type_id) -> string
+{
+    return "";
+}
+
 static auto Entity_IsDestroyed(Entity* self) -> bool
 {
 #if !COMPILER_MODE

@@ -157,7 +157,7 @@
 ///# param anim2 ...
 ///# param actionItem ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_AnimateExt(CritterView* self, uint anim1, uint anim2, ItemView* actionItem)
+[[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2, ItemView* actionItem)
 {
     self->Animate(anim1, anim2, actionItem);
 }

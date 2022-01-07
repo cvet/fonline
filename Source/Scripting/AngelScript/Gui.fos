@@ -1,5 +1,7 @@
 // FOS Client
 
+///@ Enum CursorType Default = 0
+
 ///@ Setting CursorType Cursor
 ///@ Setting uint CursorData
 ///@ Setting CursorType DraggableCursor

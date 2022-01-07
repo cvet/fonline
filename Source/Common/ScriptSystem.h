@@ -44,6 +44,8 @@ DECLARE_EXCEPTION(ScriptInitException);
 
 template<typename T>
 using InitFunc = hstring;
+template<int N>
+using ObjInfo = string_view;
 
 template<typename TRet, typename... Args>
 class ScriptFunc final

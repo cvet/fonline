@@ -103,6 +103,16 @@
 ///# param separator ...
 ///# return ...
 ///@ ExportMethod
+[[maybe_unused]] string Client_Game_CustomCall(FOClient* client, string_view command)
+{
+    return client->CustomCall(command, " ");
+}
+
+///# ...
+///# param command ...
+///# param separator ...
+///# return ...
+///@ ExportMethod
 [[maybe_unused]] string Client_Game_CustomCall(FOClient* client, string_view command, string_view separator)
 {
     return client->CustomCall(command, separator);
@@ -542,7 +552,7 @@
 ///# param msg ...
 ///# param type ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_MessageExt(FOClient* client, string_view msg, uchar type)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg, uchar type)
 {
     client->AddMess(type, msg, true);
 }
@@ -565,7 +575,7 @@
 ///# param strNum ...
 ///# param type ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_MessageMsgExt(FOClient* client, int textMsg, uint strNum, int type)
+[[maybe_unused]] void Client_Game_MessageMsg(FOClient* client, int textMsg, uint strNum, int type)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -624,7 +634,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_GetMsgStrExt(FOClient* client, int textMsg, uint strNum, uint skipCount)
+[[maybe_unused]] string Client_Game_GetMsgStr(FOClient* client, int textMsg, uint strNum, uint skipCount)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -1920,7 +1930,7 @@
 ///# param w ...
 ///# param h ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PresentOffscreenSurfaceExt(FOClient* client, int effectSubtype, int x, int y, int w, int h)
+[[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, int x, int y, int w, int h)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -1957,7 +1967,7 @@
 ///# param toW ...
 ///# param toH ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_PresentOffscreenSurfaceExt2(FOClient* client, int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
+[[maybe_unused]] void Client_Game_PresentOffscreenSurface(FOClient* client, int effectSubtype, int fromX, int fromY, int fromW, int fromH, int toX, int toY, int toW, int toH)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
@@ -2186,7 +2196,7 @@
 ///# param data ...
 ///# param dataSize ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetCacheDataExt(FOClient* client, string_view name, const vector<uchar>& data, uint dataSize)
+[[maybe_unused]] void Client_Game_SetCacheData(FOClient* client, string_view name, const vector<uchar>& data, uint dataSize)
 {
     auto data_copy = data;
     data_copy.resize(dataSize);
