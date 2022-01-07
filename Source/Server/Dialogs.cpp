@@ -208,9 +208,9 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     fodlg.AppendData(data);
 
 #define LOAD_FAIL(err) \
-        WriteLog("Dialog '{}' - {}\n", pack_name, err); \
-        delete pack; \
-        return nullptr
+    WriteLog("Dialog '{}' - {}\n", pack_name, err); \
+    delete pack; \
+    return nullptr
 #define VERIFY_STR_ID(str_id) (uint(str_id) <= ~DLGID_MASK)
 
     auto* pack = new DialogPack();

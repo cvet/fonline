@@ -51,7 +51,7 @@ public:
     DiskFile(const DiskFile&) = delete;
     DiskFile(DiskFile&&) noexcept;
     auto operator=(const DiskFile&) -> DiskFile& = delete;
-    auto operator=(DiskFile &&) -> DiskFile& = delete;
+    auto operator=(DiskFile&&) -> DiskFile& = delete;
     explicit operator bool() const;
     ~DiskFile();
 
@@ -82,7 +82,7 @@ public:
     DiskFind(DiskFind&&) noexcept;
     DiskFind(const DiskFind&) = delete;
     auto operator=(const DiskFind&) -> DiskFind& = delete;
-    auto operator=(DiskFind &&) -> DiskFind& = delete;
+    auto operator=(DiskFind&&) -> DiskFind& = delete;
     DiskFind& operator++(int);
     explicit operator bool() const;
     ~DiskFind();

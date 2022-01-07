@@ -1407,10 +1407,10 @@ def genCode(lang, target, isASCompiler=False):
                             else:
                                 globalLines.append('        static_assert(false, "Invalid configuration");')
                             setIndex += 1
-                        globalLines.append('        auto event_result = false;')
-                        globalLines.append('        if (script_sys->RunContext(ctx)) {')
-                        globalLines.append('            event_result = (func->GetReturnTypeId() == asTYPEID_BOOL && ctx->GetReturnByte() != 0);')
-                        globalLines.append('            // Todo: marshal back')
+                        globalLines.append('        auto event_result = true;')
+                        globalLines.append('        if (script_sys->RunContext(ctx, func->GetReturnTypeId() == asTYPEID_VOID)) {')
+                        globalLines.append('            event_result = (func->GetReturnTypeId() == asTYPEID_VOID || (func->GetReturnTypeId() == asTYPEID_BOOL && ctx->GetReturnByte() != 0));')
+                        globalLines.append('            // Todo: marshal back before context returned')
                         globalLines.append('            script_sys->ReturnContext(ctx);')
                         globalLines.append('        }')
                         globalLines.append('        return event_result;')

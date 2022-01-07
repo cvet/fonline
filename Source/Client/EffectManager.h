@@ -89,7 +89,7 @@ public:
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;
-    auto operator=(EffectManager &&) -> EffectManager& = delete;
+    auto operator=(EffectManager&&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
     [[nodiscard]] auto LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*;

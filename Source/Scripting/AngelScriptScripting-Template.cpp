@@ -301,7 +301,7 @@ struct ScriptSystem::AngelScriptImpl
         return ctx;
     }
 
-    auto RunContext(asIScriptContext* ctx) -> bool
+    auto RunContext(asIScriptContext* ctx, bool can_suspend) -> bool
     {
         auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
 
@@ -310,14 +310,15 @@ struct ScriptSystem::AngelScriptImpl
         const auto exec_result = ctx->Execute();
 
         if (exec_result == asEXECUTION_SUSPENDED) {
+            if (!can_suspend) {
+                throw ScriptException("Can't yield current routine");
+            }
+
             return false;
         }
 
         if (exec_result != asEXECUTION_FINISHED) {
             ctx->Abort();
-        }
-
-        if (exec_result != asEXECUTION_FINISHED) {
             ReturnContext(ctx);
 
             if (exec_result == asEXECUTION_EXCEPTION) {
@@ -1163,6 +1164,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", asFUNCTION(HashedString_ConstructFromString), asCALL_GENERIC, game_engine));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const int &in)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
+    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const uint &in)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));

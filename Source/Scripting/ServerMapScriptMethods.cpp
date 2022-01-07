@@ -277,7 +277,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemProto*> Server_Map_GetStaticItemsInHex(Map* self, ushort hx, ushort hy)
+[[maybe_unused]] vector<ItemProto*> Server_Map_GetStaticItemsOnHex(Map* self, ushort hx, ushort hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");

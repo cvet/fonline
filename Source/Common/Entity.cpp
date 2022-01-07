@@ -132,8 +132,8 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
         const auto ex_policy = cb.ExPolicy;
 
         try {
-            if (cb.Callback(args)) {
-                return true;
+            if (!cb.Callback(args)) {
+                return false;
             }
         }
         catch (const std::exception& ex) {
@@ -151,7 +151,7 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
         }
     }
 
-    return false;
+    return true;
 }
 
 auto Entity::IsDestroying() const -> bool

@@ -47,7 +47,7 @@ public:
     GeometryHelper(const GeometryHelper&) = delete;
     GeometryHelper(GeometryHelper&&) = default;
     auto operator=(const GeometryHelper&) -> GeometryHelper& = delete;
-    auto operator=(GeometryHelper &&) -> GeometryHelper& = delete;
+    auto operator=(GeometryHelper&&) -> GeometryHelper& = delete;
     ~GeometryHelper();
 
     [[nodiscard]] auto DistGame(int x1, int y1, int x2, int y2) const -> uint;
