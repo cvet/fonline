@@ -977,29 +977,6 @@ void Map::SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort fr
     }
 }
 
-auto Map::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
-{
-    /*if (func)
-    {
-        hstring func_num = scriptSys.BindScriptFuncNumByFunc(func);
-        if (!func_num)
-        {
-            WriteLog("Script bind fail, map '{}'.\n", GetName());
-            return false;
-        }
-        SetScriptId(func_num);
-    }
-
-    if (GetScriptId())
-    {
-        scriptSys.PrepareScriptFuncContext(GetScriptId(), _str("Map '{}' ({})", GetName(), GetId()));
-        scriptSys.SetArgEntity(this);
-        scriptSys.SetArgBool(first_time);
-        scriptSys.RunPrepared();
-    }*/
-    return true;
-}
-
 void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
 {
     NON_CONST_METHOD_HINT();

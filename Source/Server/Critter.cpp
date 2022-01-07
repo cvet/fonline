@@ -371,34 +371,6 @@ auto Critter::IsHaveGeckItem() const -> bool
     return false;
 }
 
-auto Critter::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
-{
-    /*hstring func_num = 0;
-    if (func)
-    {
-        func_num = scriptSys.BindScriptFuncNumByFunc(func);
-        if (!func_num)
-        {
-            WriteLog("Script bind fail, critter '{}'.\n", GetName());
-            return false;
-        }
-        SetScriptId(func_num);
-    }
-    else
-    {
-        func_num = GetScriptId();
-    }
-
-    if (func_num)
-    {
-        scriptSys.PrepareScriptFuncContext(func_num, GetName());
-        scriptSys.SetArgEntity(this);
-        scriptSys.SetArgBool(first_time);
-        scriptSys.RunPrepared();
-    }*/
-    return true;
-}
-
 void Critter::Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity)
 {
     NON_CONST_METHOD_HINT();

@@ -146,7 +146,6 @@ public:
     void AttachPlayer(Player* owner);
     void ClearVisible();
     void SetItem(Item* item);
-    auto SetScript(string_view func, bool first_time) -> bool;
     void SendMessage(int num, int val, int to, MapManager& map_mngr);
     void AddCrTimeEvent(hstring func_num, uint rate, uint duration, int identifier) const;
     void EraseCrTimeEvent(int index);

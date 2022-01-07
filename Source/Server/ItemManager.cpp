@@ -246,7 +246,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     // Scripts
     _engine->ItemInitEvent.Fire(item, true);
     if (!item->IsDestroyed()) {
-        item->SetScript("", true);
+        item->CallInitScript<Item>(item->GetInitScript(), true);
     }
 
     // Verify destroying
@@ -264,7 +264,7 @@ void ItemManager::DeleteItem(Item* item)
     if (item->IsDestroying() || item->IsDestroyed()) {
         return;
     }
-    
+
     item->MarkAsDestroying();
 
     // Finish events

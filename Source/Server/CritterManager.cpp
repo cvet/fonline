@@ -232,7 +232,7 @@ auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* m
     _engine->MapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
 
     _engine->CritterInitEvent.Fire(npc, true);
-    npc->SetScript("", true);
+    npc->CallInitScript<Critter>(npc->GetInitScript(), true);
 
     _engine->MapMngr.ProcessVisibleItems(npc);
     return npc;
@@ -248,7 +248,7 @@ void CritterManager::DeleteNpc(Critter* cr)
     if (cr->IsDestroying() || cr->IsDestroyed()) {
         return;
     }
-    
+
     cr->MarkAsDestroying();
 
     // Finish event

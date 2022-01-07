@@ -56,6 +56,19 @@ public:
     [[nodiscard]] auto GetId() const -> uint;
     [[nodiscard]] auto GetEngine() -> FOServer*;
 
+    template<typename T>
+    void CallInitScript(hstring init_script, bool first_time)
+    {
+        if (init_script) {
+            if (auto&& init_func = _engine->ScriptSys->FindFunc<void, T*, bool>(init_script)) {
+                init_func(static_cast<T*>(this), first_time);
+            }
+            else {
+                throw GenericException("Init func not found or has bas signature", init_script);
+            }
+        }
+    }
+
 protected:
     ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto);
 

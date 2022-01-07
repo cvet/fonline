@@ -938,19 +938,12 @@
 }
 
 ///# ...
-///# param funcName ...
-///# return ...
+///# param initFunc ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetScript(Critter* self, string_view funcName)
+[[maybe_unused]] void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
 {
-    if (!funcName.empty()) {
-        if (!self->SetScript(funcName, true)) {
-            throw ScriptException("Script function not found");
-        }
-    }
-    else {
-        self->SetScriptId(hstring());
-    }
+    self->CallInitScript<Critter>(initFunc, true);
+    self->SetInitScript(initFunc);
 }
 
 ///# ...

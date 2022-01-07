@@ -49,19 +49,12 @@
 }
 
 ///# ...
-///# param funcName ...
-///# return ...
+///# param initFunc ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetScript(Map* self, string_view funcName)
+[[maybe_unused]] void Server_Map_SetupScript(Map* self, InitFunc<Map*> initFunc)
 {
-    if (!funcName.empty()) {
-        if (!self->SetScript(funcName, true)) {
-            throw ScriptException("Script function not found");
-        }
-    }
-    else {
-        self->SetScriptId(hstring());
-    }
+    self->CallInitScript<Map>(initFunc, true);
+    self->SetInitScript(initFunc);
 }
 
 ///# ...
@@ -80,7 +73,7 @@
 
     const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
     if (!proto) {
-        throw ScriptException("Invalid proto '{}' arg.", protoId);
+        throw ScriptException("Invalid proto '{}' arg", protoId);
     }
     if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
         throw ScriptException("No place for item");

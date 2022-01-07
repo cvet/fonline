@@ -32,6 +32,8 @@
 //
 
 #include "ServerEntity.h"
+
+#include "Server.h"
 #include "StringUtils.h"
 
 ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto) : EntityWithProto(registrator, proto), _engine {engine}, _id {id}

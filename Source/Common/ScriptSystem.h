@@ -42,6 +42,9 @@ DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
 
+template<typename T>
+using InitFunc = hstring;
+
 template<typename TRet, typename... Args>
 class ScriptFunc final
 {

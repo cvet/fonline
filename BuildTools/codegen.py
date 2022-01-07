@@ -256,21 +256,12 @@ def parseTags():
             return 'predicate.' + unifiedTypeToMetaType(t[10:])
         if t.startswith('callback-'):
             return 'callback.' + unifiedTypeToMetaType(t[9:])
+        if t.startswith('init-'):
+            return 'init.' + unifiedTypeToMetaType(t[5:])
         assert t in validTypes, 'Invalid type ' + t
         return t
 
     def engineTypeToUnifiedType(t):
-        def mapType(t):
-            typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
-                    'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
-                    'char&': 'int8&', 'uchar&': 'uint8&', 'short&': 'int16&', 'ushort&': 'uint16&',
-                    'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
-                    'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
-                    'bool': 'bool', 'bool&': 'bool&', 'hstring': 'hstring', 'hstring&': 'hstring&', 'void': 'void',
-                    'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string':  'string'}
-            assert t in typeMap, 'Invalid engine type ' + t
-            return typeMap[t]
-        
         if t.find('map<') != -1:
             tt = t[t.find('<') + 1:t.rfind('>')].split('-')
             r = engineTypeToUnifiedType(tt[0]) + '=>' + engineTypeToUnifiedType(tt[1])
@@ -289,6 +280,9 @@ def parseTags():
                 return 'callback-' + engineTypeToUnifiedType(tt[1].rstrip(')'))
             else:
                 return 'predicate-' + engineTypeToUnifiedType(tt[1].rstrip(')'))
+        elif t.find('InitFunc<') != -1:
+            r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
+            return 'init-' + r
         elif t in validTypes:
             return t
         elif t[-1] == '*':
@@ -302,6 +296,17 @@ def parseTags():
                 return 'Entity'
             assert False, tt
         else:
+            def mapType(t):
+                typeMap = {'char': 'int8', 'uchar': 'uint8', 'short': 'int16', 'ushort': 'uint16',
+                        'int': 'int', 'uint': 'uint', 'int64': 'int64', 'uint64': 'uint64',
+                        'char&': 'int8&', 'uchar&': 'uint8&', 'short&': 'int16&', 'ushort&': 'uint16&',
+                        'int&': 'int&', 'uint&': 'uint&', 'int64&': 'int64&', 'uint64&': 'uint64&',
+                        'float': 'float', 'double': 'double', 'float&': 'float&', 'double&': 'double&',
+                        'bool': 'bool', 'bool&': 'bool&', 'hstring': 'hstring', 'hstring&': 'hstring&', 'void': 'void',
+                        'string&': 'string&', 'const string&': 'string', 'string_view': 'string', 'string': 'string',
+                        'InitFunc': 'InitFunc'}
+                assert t in typeMap, 'Invalid engine type ' + t
+                return typeMap[t]
             return mapType(t)
 
     def engineTypeToMetaType(t):
@@ -900,6 +905,9 @@ def metaTypeToEngineType(t, target, passIn):
     elif tt[0] == 'predicate':
         assert passIn
         r = 'std::function<bool(' + metaTypeToEngineType(tt[1], target, False) + ')>'
+    elif tt[0] == 'init':
+        assert passIn
+        r = 'InitFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
     elif tt[0] == 'Entity':
         return 'ClientEntity*' if target != 'Server' else 'ServerEntity*'
     elif tt[0] in gameEntities:
@@ -1164,9 +1172,7 @@ def genCode(lang, target, isASCompiler=False):
                 return 'CScriptArray*'
             elif tt[0] == 'dict':
                 return 'CScriptDict*'
-            elif tt[0] == 'callback':
-                return 'asIScriptFunction*'
-            elif tt[0] == 'predicate':
+            elif tt[0] in ['callback', 'predicate', 'init']:
                 return 'asIScriptFunction*'
             elif tt[0] == 'Entity':
                 return 'ClientEntity*' if target != 'Server' else 'ServerEntity*'
@@ -1204,6 +1210,8 @@ def genCode(lang, target, isASCompiler=False):
                 return metaTypeToASType(tt[1], True) + 'Callback' + getHandle()
             elif tt[0] == 'predicate':
                 return metaTypeToASType(tt[1], True) + 'Predicate' + getHandle()
+            elif tt[0] == 'init':
+                return metaTypeToASType(tt[1], True) + 'InitFunc' + getHandle()
             elif tt[0] == 'Entity':
                 return 'Entity' + getHandle()
             elif tt[0] in gameEntities:
@@ -1223,14 +1231,17 @@ def genCode(lang, target, isASCompiler=False):
             elif tt[0] == 'arr':
                 return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
-                return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], target, False)
+                return 'nullptr' # metaTypeToEngineType(tt[1], target, False)
+            elif tt[0] == 'init' or tt[0] == 'predicate':
+                return 'hstring()' # metaTypeToEngineType(tt[1], target, False)
             return v
             
         def marshalBack(t, v):
             tt = t.split('.')
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>", ' + v + ')'
+                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + \
+                        '>(GET_AS_ENGINE_FROM_SELF(), "dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>", ' + v + ')'
             elif tt[0] == 'arr':
                 if tt[1] in gameEntities or tt[1] in userObjects or tt[1] in entityProtos:
                     return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'

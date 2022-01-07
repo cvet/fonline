@@ -221,7 +221,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, LightColor);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId);
+    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, Count);
     ///@ ExportProperty
@@ -350,7 +350,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId);
+    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId);
     ///@ ExportProperty
@@ -417,7 +417,7 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, int, CurDayTime);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, ScriptId);
+    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<int>, DayTime);
     ///@ ExportProperty

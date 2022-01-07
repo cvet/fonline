@@ -42,29 +42,6 @@ Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(eng
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
-auto Item::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
-{
-    /*if (func)
-    {
-        hstring func_num = scriptSys.BindScriptFuncNumByFunc(func);
-        if (!func_num)
-        {
-            WriteLog("Script bind fail, item '{}'.\n", GetName());
-            return false;
-        }
-        SetScriptId(func_num);
-    }
-
-    if (GetScriptId())
-    {
-        scriptSys.PrepareScriptFuncContext(GetScriptId(), _str("Item '{}' ({})", GetName(), GetId()));
-        scriptSys.SetArgEntity(this);
-        scriptSys.SetArgBool(first_time);
-        scriptSys.RunPrepared();
-    }*/
-    return true;
-}
-
 void Item::EvaluateSortValue(const vector<Item*>& items)
 {
     short sort_value = 0;

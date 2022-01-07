@@ -137,7 +137,6 @@ public:
     void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
     void SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
     void SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-    auto SetScript(string_view func, bool first_time) -> bool;
     void SetHexFlag(ushort hx, ushort hy, uchar flag);
     void UnsetHexFlag(ushort hx, ushort hy, uchar flag);
     void SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);

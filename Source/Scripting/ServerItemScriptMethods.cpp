@@ -63,18 +63,12 @@
 }
 
 ///# ...
-///# param func ...
-///# return ...
+///# param initFunc ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Item_SetScript(Item* self, const std::function<void(Item*)>& func)
+[[maybe_unused]] void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
 {
-    if (func) {
-        // if (!self->SetScript(func, true))
-        //    throw ScriptException("Script function not found");
-    }
-    else {
-        self->SetScriptId(hstring());
-    }
+    self->CallInitScript<Item>(initFunc, true);
+    self->SetInitScript(initFunc);
 }
 
 ///# ...

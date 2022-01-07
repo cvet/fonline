@@ -122,21 +122,21 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     // Bind scripts
     auto errors = 0;
 
-    if (pmap->GetScriptId()) {
+    if (pmap->GetInitScript()) {
         /*hstring func_num =
-            scriptSys.BindScriptFuncNumByFuncName(pmap->GetScriptId(), "void %s(Map, bool)");
+            scriptSys.BindScriptFuncNumByFuncName(pmap->GetInitScript(), "void %s(Map, bool)");
         if (!func_num)
         {
             WriteLog(
-                "Map '{}', can't bind map function '{}'.\n", pmap->GetName(), pmap->GetScriptId());
+                "Map '{}', can't bind map function '{}'.\n", pmap->GetName(), pmap->GetInitScript());
             errors++;
         }*/
     }
 
     /*for (auto& cr : static_map.CrittersVec) {
-        if (cr->GetScriptId())
+        if (cr->GetInitScript())
         {
-            string func_name = cr->GetScriptId();
+            string func_name = cr->GetInitScript();
             hstring func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Critter, bool)");
             if (!func_num)
             {
@@ -147,16 +147,16 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
     }*/
 
     for (auto& item : static_map.AllItemsVec) {
-        if (!item->IsStatic() && item->GetScriptId()) {
-            const auto func_name = item->GetScriptId();
+        if (!item->IsStatic() && item->GetInitScript()) {
+            const auto func_name = item->GetInitScript();
             const auto func = _engine->ScriptSys->FindFunc<void, Item*, bool>(func_name);
             if (!func) {
                 WriteLog("Map '{}', can't bind item function '{}'.\n", pmap->GetName(), func_name);
                 errors++;
             }
         }
-        else if (item->IsStatic() && item->GetScriptId()) {
-            const auto func_name = item->GetScriptId();
+        else if (item->IsStatic() && item->GetInitScript()) {
+            const auto func_name = item->GetInitScript();
             ScriptFunc<bool, Critter*, Item*, bool, int> scenery_func;
             ScriptFunc<void, Critter*, Item*, bool, uchar> trigger_func;
             if (item->GetIsTrigger() || item->GetIsTrap()) {
@@ -398,7 +398,9 @@ void MapManager::GenerateMapContent(Map* map)
     }
 
     // Map script
-    map->SetScript("", true);
+    if (!map->IsDestroyed()) {
+        map->CallInitScript<Map>(map->GetInitScript(), true);
+    }
 }
 
 void MapManager::DeleteMapContent(Map* map)
@@ -441,7 +443,7 @@ auto MapManager::GetLocationAndMapsStatistics() const -> string
         uint map_index = 0;
         for (const auto* map : loc->GetMaps()) {
             result += _str("     {:02}) {:<20} {:<9}   {:<4} {:<4} ", map_index, map->GetName(), map->GetId(), map->GetCurDayTime(), map->GetRainCapacity());
-            result += map->GetScriptId() ? map->GetScriptId() : hstring();
+            result += map->GetInitScript();
             result += "\n";
             map_index++;
         }
