@@ -18,7 +18,6 @@ void AddKeyUpCallback(KeyUpCallback callback)
     KeyUpCallbacks.insertLast(callback);
 }
 
-// Export
 bool IsKeyPressed(uint8 key)
 {
     return KeyPressed[key];

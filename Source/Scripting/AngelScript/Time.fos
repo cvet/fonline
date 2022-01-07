@@ -139,14 +139,14 @@ uint GetDaysInMonth(uint16 year, uint16 month)
 }
 
 #ifdef __CLIENT
-string GetTimeString(const string format, uint fullSecond) // Export
+string GetTimeString(const string format, uint fullSecond)
 {
     uint16 year = 0, month = 0, day = 0, dayOfWeek = 0, hour = 0, minute = 0, second = 0;
     GetGameTime(fullSecond, year, month, day, dayOfWeek, hour, minute, second);
     return GetTimeString(format, year, month, day, dayOfWeek, hour, minute, second);
 }
 
-string GetTimeString(const string format, int year, int month, int day, int dayOfWeek, int hour, int minute, int second) // Export
+string GetTimeString(const string format, int year, int month, int day, int dayOfWeek, int hour, int minute, int second)
 {
     string result = format;
 
