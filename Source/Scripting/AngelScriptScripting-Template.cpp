@@ -1257,8 +1257,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 prop_enums.push_back(static_cast<ScriptEnum_uint16>(prop->GetRegIndex()));
             }
 
-            auto* as_prop_enums = MarshalBackScalarArray(engine, _str("{}[]", properties.front()->GetBaseTypeName()).c_str(), prop_enums);
-            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}[] {}{}", properties.front()->GetBaseTypeName(), properties.front()->GetBaseTypeName(), group_name).c_str(), as_prop_enums));
+            auto* as_prop_enums = MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums);
+            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[] {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), as_prop_enums));
         }
     }
 

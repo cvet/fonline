@@ -56,6 +56,106 @@
 }
 
 ///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2, obj3);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6, obj7);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9);
+    }
+}
+
+///# ...
+///# param condition ...
+///@ ExportMethod AngelScriptOnly
+[[maybe_unused]] void Common_Game_Assert([[maybe_unused]] FOEngineBase* engine, bool condition, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9, ObjInfo<10> obj10)
+{
+    if (!condition) {
+        throw ScriptException("Assertion failed", obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10);
+    }
+}
+
+///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
 [[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message)
