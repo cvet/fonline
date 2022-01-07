@@ -382,7 +382,7 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_RadioMessageMsgLex(FOServer* server, ushort channel, ushort textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Game_RadioMessageMsg(FOServer* server, ushort channel, ushort textMsg, uint numStr, string_view lexems)
 {
     server->ItemMngr.RadioSendTextEx(channel, RADIO_BROADCAST_FORCE_ALL, 0, 0, 0, "", false, textMsg, numStr, lexems);
 }

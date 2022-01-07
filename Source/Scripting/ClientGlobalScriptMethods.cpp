@@ -700,28 +700,13 @@
 ///# param str ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] string Client_Game_ReplaceTextStr(FOClient* client, string_view text, string_view replace, string_view str)
+[[maybe_unused]] string Client_Game_ReplaceText(FOClient* client, string_view text, string_view replace, ObjInfo<1> obj1)
 {
     const auto pos = text.find(replace, 0);
     if (pos == std::string::npos) {
         return string(text);
     }
-    return string(text).replace(pos, replace.length(), str);
-}
-
-///# ...
-///# param text ...
-///# param replace ...
-///# param i ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] string Client_Game_ReplaceTextInt(FOClient* client, string_view text, string_view replace, int i)
-{
-    const auto pos = text.find(replace, 0);
-    if (pos == std::string::npos) {
-        return string(text);
-    }
-    return string(text).replace(pos, replace.length(), _str("{}", i).strv());
+    return string(text).replace(pos, replace.length(), obj1);
 }
 
 ///# ...
@@ -1493,7 +1478,7 @@
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_DrawSpriteSized(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom, uint color, bool offs)
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h, bool zoom, uint color, bool offs)
 {
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");

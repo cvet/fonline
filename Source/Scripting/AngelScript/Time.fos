@@ -82,7 +82,7 @@ uint GetNearFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint1
         jump = 3;
     }
 
-    uint fullSecond = GetFullSecond(year, month, day, hour, minute, second);
+    uint fullSecond = EvaluateFullSecond(year, month, day, hour, minute, second);
     while (fullSecond <= GetFullSecond()) {
         switch (jump) {
         case 0:
@@ -112,7 +112,7 @@ uint GetNearFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint1
             break;
         }
 
-        fullSecond = GetFullSecond(year, month, day, hour, minute, second);
+        fullSecond = EvaluateFullSecond(year, month, day, hour, minute, second);
     }
     return fullSecond;
 }

@@ -1662,7 +1662,7 @@ def genAngelScriptRoot(target):
     def writeRootModule(files):
         def addInclude(file, comment):
             writeFile('namespace ' + os.path.splitext(os.path.basename(file))[0] + ' {')
-            writeFile('#include "' + file + ('" // ' + comment if comment else '"'))
+            writeFile('#include "' + file.replace('\\', '/') + ('" // ' + comment if comment else '"'))
             writeFile('}')
 
         createFile(target + 'RootModule.fos')

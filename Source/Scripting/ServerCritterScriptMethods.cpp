@@ -337,7 +337,7 @@
 ///# param numStr ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SayMsgLex(Critter* self, uchar howSay, ushort textMsg, uint numStr, string_view lexems)
+[[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uchar howSay, ushort textMsg, uint numStr, string_view lexems)
 {
     if (self->IsNpc() && !self->IsAlive()) {
         return;

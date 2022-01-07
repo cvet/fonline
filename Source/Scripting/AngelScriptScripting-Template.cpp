@@ -1063,7 +1063,19 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
         type = "info";
     }
 
-    WriteLog("{}({},{}): {} : {}\n", Preprocessor::ResolveOriginalFile(msg->row), Preprocessor::ResolveOriginalLine(msg->row), msg->col, type, msg->message);
+    const auto formatted_message = _str("{}({},{}): {} : {}", Preprocessor::ResolveOriginalFile(msg->row), Preprocessor::ResolveOriginalLine(msg->row), msg->col, type, msg->message).str();
+
+#if COMPILER_MODE
+    extern unordered_set<string> CompilerPassedMessages;
+    if (CompilerPassedMessages.count(formatted_message) == 0u) {
+        CompilerPassedMessages.insert(formatted_message);
+    }
+    else {
+        return;
+    }
+#endif
+
+    WriteLog("{}\n", formatted_message);
 }
 
 #if COMPILER_MODE

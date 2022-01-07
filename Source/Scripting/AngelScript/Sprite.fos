@@ -33,7 +33,7 @@ class Sprite
             return true;
 
         LoadedNameHash = nameHash;
-        Id = LoadSprite(nameHash);
+        Id = LoadSpriteByHash(nameHash);
         RefreshData();
         return Id != 0;
     }
@@ -97,16 +97,16 @@ class Sprite
             DrawSpritePattern(Id, Frame, x, y, w, h, Width, Height, color);
             break;
         case IMAGE_LAYOUT_CENTER:
-            DrawSprite(Id, Frame, x + w / 2 - Width / 2, y + h / 2 - Height / 2, color);
+            DrawSprite(Id, Frame, x + w / 2 - Width / 2, y + h / 2 - Height / 2, color, false);
             break;
         case IMAGE_LAYOUT_STRETCH:
-            DrawSprite(Id, Frame, x, y, w, h, false, color);
+            DrawSprite(Id, Frame, x, y, w, h, false, color, false);
             break;
         case IMAGE_LAYOUT_ZOOM:
-            DrawSprite(Id, Frame, x, y, w, h, true, color);
+            DrawSprite(Id, Frame, x, y, w, h, true, color, false);
             break;
         default:
-            DrawSprite(Id, Frame, x, y, color);
+            DrawSprite(Id, Frame, x, y, color, false);
             break;
         }
     }
