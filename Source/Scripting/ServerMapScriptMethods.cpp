@@ -65,7 +65,7 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_AddItem(Map* self, ushort hx, ushort hy, hstring protoId, uint count, const map<int, int>& props)
+[[maybe_unused]] Item* Server_Map_AddItem(Map* self, ushort hx, ushort hy, hstring protoId, uint count, const map<ItemProperty, int>& props)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -88,7 +88,7 @@
         props_ = proto->GetProperties();
 
         for (const auto& [key, value] : props) {
-            props_.SetValueAsIntProps(key, value);
+            props_.SetValueAsIntProps(static_cast<int>(key), value);
         }
 
         return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, &props_, true);
@@ -643,7 +643,7 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, ushort hx, ushort hy, uchar dir, const map<int, int>& props)
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, ushort hx, ushort hy, uchar dir, const map<CritterProperty, int>& props)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -660,7 +660,7 @@
         props_ = proto->GetProperties();
 
         for (const auto& [key, value] : props) {
-            props_.SetValueAsIntProps(key, value);
+            props_.SetValueAsIntProps(static_cast<int>(key), value);
         }
 
         npc = self->GetEngine()->CrMngr.CreateNpc(protoId, &props_, self, hx, hy, dir, false);

@@ -39,11 +39,11 @@
 #include "Properties.h"
 
 ///@ ExportEntity Game FOServer FOClient Global
-///@ ExportEntity Player Player PlayerView NoProto
-///@ ExportEntity Item Item ItemView HasStatics
-///@ ExportEntity Critter Critter CritterView
-///@ ExportEntity Map Map MapView
-///@ ExportEntity Location Location LocationView
+///@ ExportEntity Player Player PlayerView
+///@ ExportEntity Item Item ItemView HasProto HasStatics
+///@ ExportEntity Critter Critter CritterView HasProto
+///@ ExportEntity Map Map MapView HasProto
+///@ ExportEntity Location Location LocationView HasProto
 
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \

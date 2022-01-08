@@ -1982,7 +1982,24 @@
 ///# param screen ...
 ///# param data ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, int>& data)
+[[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen)
+{
+    if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
+        client->ShowMainScreen(screen, {});
+    }
+    else if (screen != SCREEN_NONE) {
+        client->ShowScreen(screen, {});
+    }
+    else {
+        client->HideScreen(screen);
+    }
+}
+
+///# ...
+///# param screen ...
+///# param data ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_ShowScreen(FOClient* client, int screen, const map<string, string>& data)
 {
     if (screen >= SCREEN_LOGIN && screen <= SCREEN_WAIT) {
         client->ShowMainScreen(screen, data);

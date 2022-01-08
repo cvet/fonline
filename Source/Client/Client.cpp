@@ -4556,7 +4556,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
     text = dialogs[GenericUtils::Random(0u, static_cast<uint>(dialogs.size()) - 1u)];
 }
 
-void FOClient::ShowMainScreen(int new_screen, map<string, int> params)
+void FOClient::ShowMainScreen(int new_screen, map<string, string> params)
 {
     while (GetActiveScreen(nullptr) != SCREEN_NONE) {
         HideScreen(SCREEN_NONE);
@@ -4619,7 +4619,7 @@ auto FOClient::IsScreenPresent(int screen) -> bool
     return std::find(active_screens.begin(), active_screens.end(), screen) != active_screens.end();
 }
 
-void FOClient::ShowScreen(int screen, map<string, int> params)
+void FOClient::ShowScreen(int screen, map<string, string> params)
 {
     RunScreenScript(true, screen, std::move(params));
 }
@@ -4636,7 +4636,7 @@ void FOClient::HideScreen(int screen)
     RunScreenScript(false, screen, {});
 }
 
-void FOClient::RunScreenScript(bool show, int screen, map<string, int> params)
+void FOClient::RunScreenScript(bool show, int screen, map<string, string> params)
 {
     ScreenChangeEvent.Fire(show, screen, std::move(params));
 }

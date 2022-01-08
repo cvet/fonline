@@ -50,6 +50,7 @@
 
 #include "EngineBase.h"
 #include "Properties.h"
+#include "ScriptSystem.h"
 
 #if !COMPILER_MODE
 #if SERVER_REGISTRATION
@@ -80,19 +81,6 @@ public:
 #endif
 };
 #endif
-
-enum class ScriptEnum_uint8 : uchar
-{
-};
-enum class ScriptEnum_uint16 : ushort
-{
-};
-enum class ScriptEnum_int : int
-{
-};
-enum class ScriptEnum_uint : uint
-{
-};
 
 ///@ CodeGen Global
 

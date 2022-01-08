@@ -42,6 +42,26 @@ DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
 
+enum class ScriptEnum_uint8 : uchar
+{
+};
+enum class ScriptEnum_uint16 : ushort
+{
+};
+enum class ScriptEnum_int : int
+{
+};
+enum class ScriptEnum_uint : uint
+{
+};
+
+using GameProperty = ScriptEnum_uint16;
+using PlayerProperty = ScriptEnum_uint16;
+using ItemProperty = ScriptEnum_uint16;
+using CritterProperty = ScriptEnum_uint16;
+using MapProperty = ScriptEnum_uint16;
+using LocationProperty = ScriptEnum_uint16;
+
 template<typename T>
 using InitFunc = hstring;
 template<int N>

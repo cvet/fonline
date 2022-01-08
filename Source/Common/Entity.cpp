@@ -146,7 +146,7 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
                 return false;
             }
             if (ex_policy == EventExceptionPolicy::PropogateException) {
-                throw ex;
+                throw;
             }
         }
     }

@@ -167,14 +167,14 @@ public:
     auto AnimGetFrames(uint anim_id) -> AnyFrames*;
     void AnimRun(uint anim_id, uint flags);
 
-    void ShowMainScreen(int new_screen, map<string, int> params);
+    void ShowMainScreen(int new_screen, map<string, string> params);
     auto GetMainScreen() const -> int { return _screenModeMain; }
     auto IsMainScreen(int check_screen) const -> bool { return check_screen == _screenModeMain; }
-    void ShowScreen(int screen, map<string, int> params);
+    void ShowScreen(int screen, map<string, string> params);
     void HideScreen(int screen);
     auto GetActiveScreen(vector<int>* screens) -> int;
     auto IsScreenPresent(int screen) -> bool;
-    void RunScreenScript(bool show, int screen, map<string, int> params);
+    void RunScreenScript(bool show, int screen, map<string, string> params);
 
     ///@ ExportEvent
     ENTITY_EVENT(Start);
@@ -187,7 +187,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(GetActiveScreens, vector<int>& /*screens*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ScreenChange, bool /*show*/, int /*screen*/, map<string, int> /*data*/);
+    ENTITY_EVENT(ScreenChange, bool /*show*/, int /*screen*/, map<string, string> /*data*/);
     ///@ ExportEvent
     ENTITY_EVENT(ScreenScroll, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent

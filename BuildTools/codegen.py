@@ -463,14 +463,20 @@ def parseTags():
                 assert name not in gameEntities
                 gameEntities.append(name)
                 gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
-                        'NoProto': 'NoProto' in exportFlags or 'Global' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags}
+                        'HasProto': 'HasProto' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags}
                 
                 assert name + 'Property' not in validTypes
                 validTypes.add(name + 'Property')
                 assert name + 'Property' not in scriptEnums, 'Enum already added'
                 scriptEnums.add(name + 'Property')
                 
-                if not gameEntitiesInfo[name]['NoProto']:
+                if not gameEntitiesInfo[name]['IsGlobal']:
+                    assert 'Abstract' + name not in validTypes
+                    validTypes.add('Abstract' + name)
+                    assert 'Abstract' + name not in entityRelatives
+                    entityRelatives.add('Abstract' + name)
+                
+                if gameEntitiesInfo[name]['HasProto']:
                     assert name + 'Proto' not in validTypes
                     validTypes.add(name + 'Proto')
                     assert name + 'Proto' not in entityRelatives
@@ -1533,11 +1539,13 @@ def genCode(lang, target, isASCompiler=False):
             engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
             if gameEntitiesInfo[entity]['IsGlobal']:
                 registerLines.append('REGISTER_GLOBAL_ENTITY("' + entity + '", ' + engineEntityType + ');')
-            elif gameEntitiesInfo[entity]['NoProto']:
-                registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
             else:
-                registerLines.append('REGISTER_ENTITY_WITH_PROTO("' + entity + '", ' + engineEntityType + ');')
+                registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
+            if gameEntitiesInfo[entity]['HasProto']:
+                assert not gameEntitiesInfo[entity]['IsGlobal']
+                registerLines.append('REGISTER_ENTITY_PROTO("' + entity + '", ' + entity + 'Proto);')
             if gameEntitiesInfo[entity]['HasStatics']:
+                assert not gameEntitiesInfo[entity]['IsGlobal']
                 registerLines.append('REGISTER_ENTITY_STATICS("' + entity + '", ' + engineEntityType + ');')
         registerLines.append('')
         
