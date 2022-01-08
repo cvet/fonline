@@ -62,6 +62,34 @@
 ///# param hy ...
 ///# param protoId ...
 ///# param count ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Item* Server_Map_AddItem(Map* self, ushort hx, ushort hy, hstring protoId, uint count)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
+    if (!proto) {
+        throw ScriptException("Invalid proto '{}' arg", protoId);
+    }
+    if (!self->IsPlaceForProtoItem(hx, hy, proto)) {
+        throw ScriptException("No place for item");
+    }
+
+    if (count == 0u) {
+        return nullptr;
+    }
+
+    return self->GetEngine()->CreateItemOnHex(self, hx, hy, protoId, count, nullptr, true);
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param protoId ...
+///# param count ...
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
@@ -98,6 +126,34 @@
 }
 
 ///# ...
+///# param itemId ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint itemId)
+{
+    if (itemId == 0u) {
+        throw ScriptException("Item id arg is zero");
+    }
+
+    return self->GetItem(itemId);
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param pid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, ushort hx, ushort hy, hstring pid)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    return self->GetItemHex(hx, hy, pid, nullptr);
+}
+
+///# ...
 ///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self)
@@ -110,7 +166,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsOnHex(Map* self, ushort hx, ushort hy)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -126,7 +182,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hstring pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, uint radius, hstring pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -139,7 +195,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsByPid(Map* self, hstring pid)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, hstring pid)
 {
     return self->GetItemsByProto(pid);
 }
@@ -148,11 +204,13 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsByPredicate(Map* self, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, const std::function<bool(Item*)>& predicate)
 {
-    auto map_items = self->GetItems();
+    const auto map_items = self->GetItems();
+
     vector<Item*> items;
     items.reserve(map_items.size());
+
     for (auto* item : map_items) {
         if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
             items.push_back(item);
@@ -167,7 +225,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsOnHexByPredicate(Map* self, ushort hx, ushort hy, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, const std::function<bool(Item*)>& predicate)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -192,7 +250,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItemsAroundHexByPredicate(Map* self, ushort hx, ushort hy, uint radius, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, uint radius, const std::function<bool(Item*)>& predicate)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -208,52 +266,6 @@
         }
     }
     return items;
-}
-
-///# ...
-///# param itemId ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItem(Map* self, uint itemId)
-{
-    if (itemId == 0u) {
-        throw ScriptException("Item id arg is zero");
-    }
-
-    return self->GetItem(itemId);
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
-///# param pid ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] Item* Server_Map_GetItemOnHex(Map* self, ushort hx, ushort hy, hstring pid)
-{
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    return self->GetItemHex(hx, hy, pid, nullptr);
-}
-
-///# ...
-///# param hx ...
-///# param hy ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetCritterOnHex(Map* self, ushort hx, ushort hy)
-{
-    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
-        throw ScriptException("Invalid hexes args");
-    }
-
-    auto* cr = self->GetHexCritter(hx, hy, false);
-    if (!cr) {
-        cr = self->GetHexCritter(hx, hy, true);
-    }
-    return cr;
 }
 
 ///# ...
@@ -292,7 +304,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItemsAroundHex(Map* self, ushort hx, ushort hy, uint radius, hstring pid)
+[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ushort hx, ushort hy, uint radius, hstring pid)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -305,7 +317,7 @@
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItemsByPid(Map* self, hstring pid)
+[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, hstring pid)
 {
     return self->GetStaticItemsByPid(pid);
 }
@@ -314,7 +326,7 @@
 ///# param predicate ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItemsByPredicate(Map* self, const std::function<bool(StaticItem*)>& predicate)
+[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, const std::function<bool(StaticItem*)>& predicate)
 {
     const auto map_static_items = self->GetStaticMap()->StaticItemsVec;
 
@@ -350,11 +362,29 @@
 ///# ...
 ///# param hx ...
 ///# param hy ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, ushort hx, ushort hy)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    auto* cr = self->GetHexCritter(hx, hy, false);
+    if (!cr) {
+        cr = self->GetHexCritter(hx, hy, true);
+    }
+    return cr;
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
 ///# param radius ...
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersAroundHex(Map* self, ushort hx, ushort hy, uint radius, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, ushort hx, ushort hy, uint radius, uchar findType)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -370,7 +400,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersByPids(Map* self, hstring pid, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, hstring pid, uchar findType)
 {
     vector<Critter*> critters;
     if (!pid) {
@@ -437,7 +467,7 @@
 ///# param blockHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWithBlockInPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
 {
     vector<Critter*> critters;
     pair<ushort, ushort> block;
@@ -573,7 +603,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetPathLengthToHex(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Server_Map_GetPathLength(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
     if (fromHx >= self->GetWidth() || fromHy >= self->GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -606,7 +636,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetPathLengthToCritter(Map* self, Critter* cr, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Server_Map_GetPathLength(Map* self, Critter* cr, ushort toHx, ushort toHy, uint cut)
 {
     if (cr == nullptr) {
         throw ScriptException("Critter arg is null");
@@ -640,6 +670,32 @@
 ///# param hx ...
 ///# param hy ...
 ///# param dir ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Critter* Server_Map_AddNpc(Map* self, hstring protoId, ushort hx, ushort hy, uchar dir)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    const auto* proto = self->GetEngine()->ProtoMngr.GetProtoCritter(protoId);
+    if (!proto) {
+        throw ScriptException("Proto '{}' not found.", protoId);
+    }
+
+    Critter* npc = self->GetEngine()->CrMngr.CreateNpc(protoId, nullptr, self, hx, hy, dir, false);
+    if (npc == nullptr) {
+        throw ScriptException("Create npc failed");
+    }
+
+    return npc;
+}
+
+///# ...
+///# param protoId ...
+///# param hx ...
+///# param hy ...
+///# param dir ...
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
@@ -654,23 +710,16 @@
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
-    Critter* npc;
-    if (!props.empty()) {
-        Properties props_(self->GetEngine()->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME));
-        props_ = proto->GetProperties();
+    Properties props_(self->GetEngine()->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME));
+    props_ = proto->GetProperties();
 
-        for (const auto& [key, value] : props) {
-            props_.SetValueAsIntProps(static_cast<int>(key), value);
-        }
-
-        npc = self->GetEngine()->CrMngr.CreateNpc(protoId, &props_, self, hx, hy, dir, false);
-    }
-    else {
-        npc = self->GetEngine()->CrMngr.CreateNpc(protoId, nullptr, self, hx, hy, dir, false);
+    for (const auto& [key, value] : props) {
+        props_.SetValueAsIntProps(static_cast<int>(key), value);
     }
 
+    Critter* npc = self->GetEngine()->CrMngr.CreateNpc(protoId, &props_, self, hx, hy, dir, false);
     if (npc == nullptr) {
-        throw ScriptException("Create npc fail");
+        throw ScriptException("Create npc failed");
     }
 
     return npc;
@@ -778,7 +827,7 @@
 ///# param strNum ...
 ///# param lexems ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_SetTextMsgLex(Map* self, ushort hexX, ushort hexY, uint color, ushort textMsg, uint strNum, string_view lexems)
+[[maybe_unused]] void Server_Map_SetTextMsg(Map* self, ushort hexX, ushort hexY, uint color, ushort textMsg, uint strNum, string_view lexems)
 {
     if (hexX >= self->GetWidth() || hexY >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -894,7 +943,7 @@
 ///# param hy ...
 ///# param radius ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Map_PlaySoundInRadius(Map* self, string_view soundName, ushort hx, ushort hy, uint radius)
+[[maybe_unused]] void Server_Map_PlaySound(Map* self, string_view soundName, ushort hx, ushort hy, uint radius)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");

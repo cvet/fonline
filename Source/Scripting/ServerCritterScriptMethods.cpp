@@ -900,15 +900,18 @@
 
 ///# ...
 ///# param items ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_SendItems(Critter* self, const vector<Item*>& items)
+{
+    self->Send_SomeItems(&items, 0);
+}
+
+///# ...
+///# param items ...
 ///# param param ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_ShowItems(Critter* self, const vector<Item*>& items, int param)
+[[maybe_unused]] void Server_Critter_SendItems(Critter* self, const vector<Item*>& items, int param)
 {
-    // Critter is not player
-    if (!self->IsPlayer()) {
-        return;
-    }
-
     self->Send_SomeItems(&items, param);
 }
 

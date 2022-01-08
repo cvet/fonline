@@ -42,7 +42,7 @@ DeferredCallManager::DeferredCallManager(FOServer* engine) : _engine {engine}
 {
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, bool saved, string_view func_name, int* value, const vector<int>* values) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, bool saved, string_view func_name, int* value, const vector<int>* values, uint* value2, const vector<uint>* values2) -> uint
 {
     /*uint func_num = Script::GetFuncNum(func);
     uint bind_id = Script::BindByFunc(func, false);

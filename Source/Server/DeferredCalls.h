@@ -68,7 +68,7 @@ public:
     [[nodiscard]] auto GetDeferredCallsList() -> vector<int>;
     [[nodiscard]] auto GetStatistics() -> string;
 
-    auto AddDeferredCall(uint delay, bool saved, string_view func_name, int* value, const vector<int>* values) -> uint;
+    auto AddDeferredCall(uint delay, bool saved, string_view func_name, int* value, const vector<int>* values, uint* value2, const vector<uint>* values2) -> uint;
     auto LoadDeferredCalls() -> bool;
     void Process();
 

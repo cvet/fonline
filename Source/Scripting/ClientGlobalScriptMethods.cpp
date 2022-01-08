@@ -60,9 +60,29 @@
 ///# param hy2 ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Client_Game_GetHexDistance(FOClient* client, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
+[[maybe_unused]] int Client_Game_GetDistance(FOClient* client, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
 {
     return client->GeomHelper.DistGame(hx1, hy1, hx2, hy2);
+}
+
+///# ...
+///# param cr1 ...
+///# param cr2 ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] int Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
+{
+    if (!client->HexMngr.IsMapLoaded()) {
+        throw ScriptException("Map is not loaded");
+    }
+    if (cr1 == nullptr) {
+        throw ScriptException("Critter1 arg is null");
+    }
+    if (cr2 == nullptr) {
+        throw ScriptException("Critter2 arg is null");
+    }
+
+    return client->GeomHelper.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
 }
 
 ///# ...
@@ -72,7 +92,7 @@
 ///# param toHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Client_Game_GetHexDir(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] uchar Client_Game_GetDirection(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
 {
     return client->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy);
 }
@@ -85,7 +105,7 @@
 ///# param offset ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Client_Game_GetHexDirWithOffset(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
+[[maybe_unused]] uchar Client_Game_GetDirection(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
 {
     return client->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
 }
@@ -202,26 +222,6 @@
     }
 
     return items;
-}
-
-///# ...
-///# param cr1 ...
-///# param cr2 ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] int Client_Game_GetCritterDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
-{
-    if (!client->HexMngr.IsMapLoaded()) {
-        throw ScriptException("Map is not loaded");
-    }
-    if (cr1 == nullptr) {
-        throw ScriptException("Critter1 arg is null");
-    }
-    if (cr2 == nullptr) {
-        throw ScriptException("Critter2 arg is null");
-    }
-
-    return client->GeomHelper.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
 }
 
 ///# ...
