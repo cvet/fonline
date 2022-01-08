@@ -1266,6 +1266,8 @@ set( FO_SERVER_SOURCE
 	"Source/Server/CritterManager.h"
 	"Source/Server/DataBase.cpp"
 	"Source/Server/DataBase.h"
+	"Source/Server/DeferredCalls.cpp"
+	"Source/Server/DeferredCalls.h"
 	"Source/Server/Dialogs.cpp"
 	"Source/Server/Dialogs.h"
 	"Source/Server/EntityManager.cpp"

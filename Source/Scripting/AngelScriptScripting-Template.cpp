@@ -455,6 +455,15 @@ static auto GetASObjectInfo(void* ptr, int type_id) -> string
     return "";
 }
 
+static auto GetASFuncName(asIScriptFunction* func) -> string
+{
+    if (func == nullptr) {
+        return "";
+    }
+
+    return _str("AngelScript::{}", func->GetName());
+}
+
 static auto Entity_IsDestroyed(Entity* self) -> bool
 {
 #if !COMPILER_MODE
@@ -1020,17 +1029,6 @@ static int HashedString_GetHash(const hstring& self)
 {
     return self.as_int();
 }
-
-static const string ContextStatesStr[] = {
-    "Finished",
-    "Suspended",
-    "Aborted",
-    "Exception",
-    "Prepared",
-    "Uninitialized",
-    "Active",
-    "Error",
-};
 
 struct StorageData
 {

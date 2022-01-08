@@ -37,10 +37,93 @@
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
 #include "PropertiesSerializator.h"
+#include "ScriptSystem.h"
 #include "Server.h"
 #include "StringUtils.h"
 
 // ReSharper disable CppInconsistentNaming
+
+///@ ExportMethod
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
+{
+    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr);
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<int> func, int value)
+{
+    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, &value, nullptr);
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<vector<int>> func, const vector<int>& values)
+{
+    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, &values);
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
+{
+    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr);
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<int> func, int value)
+{
+    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, &value, nullptr);
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<vector<int>> func, const vector<int>& values)
+{
+    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, &values);
+}
+
+///@ ExportMethod
+[[maybe_unused]] bool Server_Game_IsDeferredCallPending(FOServer* server, uint id)
+{
+    return server->DeferredCallMngr.IsDeferredCallPending(id);
+}
+
+///@ ExportMethod
+[[maybe_unused]] bool Server_Game_CancelDeferredCall(FOServer* server, uint id)
+{
+    return server->DeferredCallMngr.CancelDeferredCall(id);
+}
+
+///@ ExportMethod
+[[maybe_unused]] bool Server_Game_GetDeferredCallData(FOServer* server, uint id, uint& delay, vector<int>& values)
+{
+    /*ScriptInvoker* self = Script::GetInvoker();
+    DeferredCall call;
+    if (self->GetDeferredCallData(id, call)) {
+        delay = (call.FireFullSecond > GameOpt.FullSecond ? (call.FireFullSecond - GameOpt.FullSecond) * Globals->GetTimeMultiplier() / 1000 : 0);
+        if (values) {
+            if (call.IsValue) {
+                values->Resize(1);
+                *(int*)values->At(0) = call.Value;
+            }
+            else if (call.IsValues) {
+                values->Resize(0);
+                Script::AppendVectorToArray(call.Values, values);
+            }
+        }
+        return true;
+    }*/
+    return false;
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Server_Game_GetDeferredCallsList(FOServer* server, const vector<int>& ids)
+{
+    /*ScriptInvoker* self = Script::GetInvoker();
+    IntVec ids_;
+    self->GetDeferredCallsList(ids_);
+    if (ids)
+        Script::AppendVectorToArray(ids_, ids);
+    return ids_.size();*/
+    return 0;
+}
 
 ///# ...
 ///# param pid ...
@@ -299,7 +382,7 @@
 ///# ...
 ///# param itemId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItemById(FOServer* server, uint itemId)
+[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, uint itemId)
 {
     auto* item = server->ItemMngr.GetItem(itemId);
     if (item) {
@@ -322,7 +405,7 @@
 ///# ...
 ///# param itemIds ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteItemsById(FOServer* server, const vector<uint>& itemIds)
+[[maybe_unused]] void Server_Game_DeleteItems(FOServer* server, const vector<uint>& itemIds)
 {
     vector<Item*> items_to_delete;
     for (auto item_id : itemIds) {
@@ -348,7 +431,7 @@
 ///# ...
 ///# param npcId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteNpcById(FOServer* server, uint npcId)
+[[maybe_unused]] void Server_Game_DeleteNpc(FOServer* server, uint npcId)
 {
     if (Critter* npc = server->CrMngr.GetCritter(npcId); npc != nullptr) {
         server->CrMngr.DeleteNpc(npc);
@@ -536,7 +619,7 @@
 ///# ...
 ///# param locId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteLocationById(FOServer* server, uint locId)
+[[maybe_unused]] void Server_Game_DeleteLocation(FOServer* server, uint locId)
 {
     auto* loc = server->MapMngr.GetLocation(locId);
     if (loc) {
@@ -663,7 +746,7 @@
 ///# param radius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetLocationsAroundPos(FOServer* server, ushort wx, ushort wy, uint radius)
+[[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, ushort wx, ushort wy, uint radius)
 {
     vector<Location*> locations;
 
@@ -683,7 +766,7 @@
 ///# param cr ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocationsAroundPos(FOServer* server, ushort wx, ushort wy, uint radius, Critter* cr)
+[[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, ushort wx, ushort wy, uint radius, Critter* cr)
 {
     vector<Location*> locations;
 
@@ -702,15 +785,9 @@
 ///# param zoneRadius ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<uint> Server_Game_GetZoneLocationIds(FOServer* server, ushort zx, ushort zy, uint zoneRadius)
+[[maybe_unused]] vector<Location*> Server_Game_GetZoneLocations(FOServer* server, ushort zx, ushort zy, uint zoneRadius)
 {
-    vector<uint> loc_ids;
-
-    for (auto* loc : server->MapMngr.GetZoneLocations(zx, zy, zoneRadius)) {
-        loc_ids.push_back(loc->GetId());
-    }
-
-    return loc_ids;
+    return server->MapMngr.GetZoneLocations(zx, zy, zoneRadius);
 }
 
 ///# ...
@@ -719,7 +796,7 @@
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunNpcDialog(FOServer* server, Critter* cr, Critter* npc, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunDialog(FOServer* server, Critter* cr, Critter* npc, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
@@ -750,7 +827,7 @@
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunCustomNpcDialog(FOServer* server, Critter* cr, Critter* npc, hstring dlgPack, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunDialog(FOServer* server, Critter* cr, Critter* npc, hstring dlgPack, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
@@ -782,7 +859,7 @@
 ///# param ignoreDistance ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Game_RunCustomDialogOnHex(FOServer* server, Critter* cr, hstring dlgPack, ushort hx, ushort hy, bool ignoreDistance)
+[[maybe_unused]] bool Server_Game_RunDialog(FOServer* server, Critter* cr, hstring dlgPack, ushort hx, ushort hy, bool ignoreDistance)
 {
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");

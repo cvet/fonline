@@ -39,6 +39,7 @@
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
+#include "DeferredCalls.h"
 #include "Dialogs.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
@@ -203,6 +204,7 @@ public:
     ScriptSystem* ScriptSys;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
+    DeferredCallManager DeferredCallMngr;
 
     EntityManager EntityMngr;
     MapManager MapMngr;

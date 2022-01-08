@@ -66,6 +66,8 @@ template<typename T>
 using InitFunc = hstring;
 template<int N>
 using ObjInfo = string_view;
+template<typename T = void>
+using ScriptFuncName = string_view;
 
 template<typename TRet, typename... Args>
 class ScriptFunc final

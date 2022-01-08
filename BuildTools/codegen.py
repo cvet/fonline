@@ -238,6 +238,7 @@ engineEnums = set()
 gameEntities = []
 gameEntitiesInfo = {}
 entityRelatives = set()
+genericFuncdefs = set()
 
 def parseTags():
     validTypes = set()
@@ -247,6 +248,14 @@ def parseTags():
     def unifiedTypeToMetaType(t):
         if t.endswith('&'):
             return unifiedTypeToMetaType(t[:-1]) + '.ref'
+        if t.startswith('init-'):
+            return 'init.' + unifiedTypeToMetaType(t[5:])
+        if t.startswith('ObjInfo-'):
+            return t.replace('-', '.')
+        if t.startswith('ScriptFuncName-'):
+            fd = unifiedTypeToMetaType(t[len('ScriptFuncName-'):])
+            genericFuncdefs.add(fd)
+            return 'ScriptFuncName.' + fd
         if '=>' in t:
             tt = t.split('=>')
             return 'dict.' + unifiedTypeToMetaType(tt[0]) + '.' + unifiedTypeToMetaType(tt[1])
@@ -256,15 +265,18 @@ def parseTags():
             return 'predicate.' + unifiedTypeToMetaType(t[10:])
         if t.startswith('callback-'):
             return 'callback.' + unifiedTypeToMetaType(t[9:])
-        if t.startswith('init-'):
-            return 'init.' + unifiedTypeToMetaType(t[5:])
-        if t.startswith('ObjInfo-'):
-            return t.replace('-', '.')
         assert t in validTypes, 'Invalid type ' + t
         return t
 
     def engineTypeToUnifiedType(t):
-        if t.find('map<') != -1:
+        if t.startswith('InitFunc<'):
+            r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
+            return 'init-' + r
+        elif t.startswith('ObjInfo<'):
+            return 'ObjInfo-' + t[t.find('<') + 1:t.rfind('>')]
+        elif t.startswith('ScriptFuncName<'):
+            return 'ScriptFuncName-' + engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
+        elif t.find('map<') != -1:
             tt = t[t.find('<') + 1:t.rfind('>')].split('-')
             r = engineTypeToUnifiedType(tt[0]) + '=>' + engineTypeToUnifiedType(tt[1])
             if not t.startswith('const') and t.endswith('&'):
@@ -282,11 +294,6 @@ def parseTags():
                 return 'callback-' + engineTypeToUnifiedType(tt[1].rstrip(')'))
             else:
                 return 'predicate-' + engineTypeToUnifiedType(tt[1].rstrip(')'))
-        elif t.startswith('InitFunc<'):
-            r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
-            return 'init-' + r
-        elif t.startswith('ObjInfo<'):
-            return 'ObjInfo-' + t[t.find('<') + 1:t.rfind('>')]
         elif t in validTypes:
             return t
         elif t[-1] == '*':
@@ -925,6 +932,8 @@ def metaTypeToEngineType(t, target, passIn):
         r = 'InitFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
     elif tt[0] == 'ObjInfo':
         return 'ObjInfo<' + tt[1] + '>'
+    elif tt[0] == 'ScriptFuncName':
+        return 'ScriptFuncName<' + metaTypeToEngineType('.'.join(tt[1:]), target, False) + '>'
     elif tt[0] == 'Entity':
         return 'ClientEntity*' if target != 'Server' else 'ServerEntity*'
     elif tt[0] in gameEntities:
@@ -1207,6 +1216,8 @@ def genCode(lang, target, isASCompiler=False):
                 assert False, 'Enum not found ' + tt[0]
             elif tt[0] == 'ObjInfo':
                 return 'void* obj' + tt[1] + 'Ptr, int'
+            elif tt[0] == 'ScriptFuncName':
+                return 'asIScriptFunction*'
             else:
                 def mapType(t):
                     typeMap = {'int8': 'char', 'uint8': 'uchar', 'int16': 'short', 'uint16': 'ushort'}
@@ -1241,6 +1252,9 @@ def genCode(lang, target, isASCompiler=False):
                 return tt[0] + getHandle()
             elif tt[0] == 'ObjInfo':
                 return '?&in'
+            elif tt[0] == 'ScriptFuncName':
+                assert len(tt) > 1, 'Invalid generic function'
+                return 'Generic_' + '_'.join(tt[1:]) + '_Func' + getHandle()
             else:
                 return tt[0] if tt[-1] != 'ref' else tt[0] + '&'
     
@@ -1257,6 +1271,8 @@ def genCode(lang, target, isASCompiler=False):
                 return 'hstring()' # metaTypeToEngineType(tt[1], target, False)
             elif tt[0] == 'ObjInfo':
                 return 'GetASObjectInfo(' + v + 'Ptr, ' + v + ')'
+            elif tt[0] == 'ScriptFuncName':
+                return 'GetASFuncName(' + v + ')'
             return v
             
         def marshalBack(t, v):
@@ -1272,6 +1288,11 @@ def genCode(lang, target, isASCompiler=False):
             elif tt[0] == 'callback' or tt[0] == 'predicate':
                 return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], target, False)
             return v
+        
+        def nameMangling(params):
+            if len(params):
+                return ''.join([''.join([p2[0] + p2[-1] for p2 in p[0].split('.')]) for p in params])
+            return '0'
         
         allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
         
@@ -1325,7 +1346,7 @@ def genCode(lang, target, isASCompiler=False):
                     engineEntityTypeExtern = 'FOMapper'
             
             globalLines.append(ident + ('static ' if not isASGlobal else '') + metaTypeToASEngineType(ret, True) +
-                    ' AS_' + targ + '_' + entity + '_' + name + '_' + str(len(params)) + '(' +
+                    ' AS_' + targ + '_' + entity + '_' + name + '_' + nameMangling(params) + '(' +
                     (engineEntityType + '* self' + (', ' if params else '') if not isASGlobal else '') +
                     ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
             globalLines.append(ident + '{')
@@ -1549,6 +1570,12 @@ def genCode(lang, target, isASCompiler=False):
                 registerLines.append('REGISTER_ENTITY_STATICS("' + entity + '", ' + engineEntityType + ');')
         registerLines.append('')
         
+        # Generic funcdefs
+        registerLines.append('// Generic funcdefs')
+        for fd in genericFuncdefs:
+            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("void Generic_' + fd.replace('.', '_') + '_Func(' + metaTypeToASType(fd) + ')"));')
+        registerLines.append('')
+        
         # Register entity methods and global functions
         registerLines.append('// Register methods')
         for entity in gameEntities:
@@ -1558,11 +1585,11 @@ def genCode(lang, target, isASCompiler=False):
                     if gameEntitiesInfo[entity]['IsGlobal']:
                         registerLines.append('AS_VERIFY(engine->RegisterGlobalFunction("' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
                                 ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_METHOD(ASGlobal, AS_' + targ + '_' +
-                                entity + '_' + name + '_' + str(len(params)) + '), SCRIPT_FUNC_FUNCTOR_CONV, &storage->Global));')
+                                entity + '_' + name + '_' + nameMangling(params) + '), SCRIPT_FUNC_FUNCTOR_CONV, &storage->Global));')
                     else:
                         registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
                                 ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' +
-                                entity + '_' + name + '_' + str(len(params)) + '), SCRIPT_FUNC_THIS_CONV));')
+                                entity + '_' + name + '_' + nameMangling(params) + '), SCRIPT_FUNC_THIS_CONV));')
         registerLines.append('')
         
         # Register events

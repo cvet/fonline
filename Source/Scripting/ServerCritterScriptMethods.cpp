@@ -1228,7 +1228,7 @@
 ///# param identifiers ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Critter_EraseTimeEventsExt(Critter* self, const vector<int>& identifiers)
+[[maybe_unused]] uint Server_Critter_EraseTimeEvents(Critter* self, const vector<int>& identifiers)
 {
     /*IntVec identifiers_;
     self->GetEngine()->ScriptSys.AssignScriptArrayInVector(identifiers_, identifiers);
