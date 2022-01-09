@@ -50,7 +50,7 @@ codeGenTags = {
         'Enum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
         'Property': [], # (entity, access, type, name, [flags], [comment])
         'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
-        'RemoteCall': [], # (target, name, [(type, name)], [flags], [comment])
+        'RemoteCall': [], # (target, subsystem, name, [(type, name)], [flags], [comment])
         'Setting': [], #(type, name, init value, [flags], [comment])
         'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
         
@@ -665,9 +665,9 @@ def parseTags():
                 funcName = tok[1] if '(' not in tok[1] else tok[1][:tok[1].find('(')]
                 
                 if absPath.endswith('.fos'):
-                    funcName = 'AngelScript.' + funcName
+                    subsystem = 'AngelScript'
                 elif absPath.endswith('.cs'):
-                    funcName = 'Mono.' + funcName
+                    subsystem = 'Mono'
                 else:
                     assert False, absPath
                 
@@ -676,20 +676,18 @@ def parseTags():
                 funcArgsStr = tagInfo[braceOpenPos + 1:braceClosePos].strip()
                 
                 funcArgs = []
-                for arg in funcArgsStr.split(','):
-                    arg = arg.strip()
-                    sep = arg.rfind(' ')
-                    if sep != -1:
+                if funcArgsStr:
+                    for arg in funcArgsStr.split(','):
+                        arg = arg.strip()
+                        sep = arg.rfind(' ')
+                        assert sep != -1, 'Name missed in remote call parameter'
                         argType = unifiedTypeToMetaType(arg[:sep].strip())
                         argName = arg[sep + 1:].strip()
                         funcArgs.append((argType, argName))
-                    else:
-                        argType = unifiedTypeToMetaType(arg.strip())
-                        funcArgs.append((argType, ''))
                 
                 flags = [s for s in tagInfo[braceClosePos + 1:].split(' ') if s]
 
-                codeGenTags['RemoteCall'].append((target, funcName, funcArgs, flags, comment))
+                codeGenTags['RemoteCall'].append((target, subsystem, funcName, funcArgs, flags, comment))
             
             except Exception as ex:
                 showError('Invalid tag RemoteCall', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -1539,6 +1537,19 @@ def genCode(lang, target, isASCompiler=False):
             globalLines.append('}')
             globalLines.append('')
         
+        # Remote calls dispatchers
+        if target in ['Server', 'Client']:
+            globalLines.append('// Remote calls dispatchers')
+            for rcTag in codeGenTags['RemoteCall']:
+                targ, subsystem, rcName, rcArgs, rcFlags, _ = rcTag
+                if targ == ('Client' if target == 'Server' else 'Client') and subsystem == 'AngelScript':
+                    selfArg = 'Critter* self' if target == 'Server' else 'FOClient* self'
+                    globalLines.append('static void ASRemoteCall_' + rcName + '(' + selfArg + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
+                    globalLines.append('{')
+                    globalLines.append('}')
+                    globalLines.append('')
+            globalLines.append('')
+        
         # Register exported objects
         registerLines.append('// Exported objects')
         for eo in codeGenTags['ExportObject']:
@@ -1625,6 +1636,17 @@ def genCode(lang, target, isASCompiler=False):
                 registerLines.append('AngelScriptData->SettingsStorage["' + name + '"] = std::make_any<' + metaTypeToEngineType(type, target, False) + '>(' + (initValue if initValue is not None else '') + ');')
             registerLines.append('REGISTER_GET_SETTING(' + name + ', "' + metaTypeToASType(type, isRet=True) + ' get_' + name + '() const");')
             registerLines.append('REGISTER_SET_SETTING(' + name + ', "void set_' + name + '(' + metaTypeToASType(type) + ')");')
+        registerLines.append('')
+        
+        # Register remote calls
+        if target in ['Server', 'Client']:
+            registerLines.append('// Register remote calls')
+            for rcTag in codeGenTags['RemoteCall']:
+                targ, subsystem, rcName, rcArgs, rcFlags, _ = rcTag
+                if targ == ('Client' if target == 'Server' else 'Client') and subsystem == 'AngelScript':
+                    registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("RemoteCaller", "void ' + rcName +
+                            '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
+            registerLines.append('')
         
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')

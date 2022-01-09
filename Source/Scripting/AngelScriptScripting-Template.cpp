@@ -461,7 +461,7 @@ static auto GetASFuncName(asIScriptFunction* func) -> string
         return "";
     }
 
-    return _str("AngelScript::{}", func->GetName());
+    return _str("AngelScript.{}", func->GetName());
 }
 
 static auto Entity_IsDestroyed(Entity* self) -> bool
@@ -1140,6 +1140,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         }
     }
 
+    // Register hstring
     AS_VERIFY(engine->RegisterObjectType("hstring", sizeof(hstring), asOBJ_VALUE | asOBJ_POD));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
@@ -1153,6 +1154,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "string get_str() const", SCRIPT_FUNC_THIS(HashedString_GetString), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "int get_hash() const", SCRIPT_FUNC_THIS(HashedString_GetHash), SCRIPT_FUNC_THIS_CONV));
 
+    // Entity registrators
 #define REGISTER_BASE_ENTITY(class_name) \
     AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV)); \
@@ -1218,6 +1220,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     unordered_set<string> entity_has_protos;
     unordered_set<string> entity_has_statics;
 
+    // Events
 #define REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
     AS_VERIFY(engine->RegisterFuncdef("void " entity_name event_name "EventFunc(" as_args_ent as_args ")")); \
     AS_VERIFY(engine->RegisterFuncdef("bool " entity_name event_name "EventFuncBool(" as_args_ent as_args ")")); \
@@ -1235,11 +1238,17 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "bool Fire(" as_args ")", SCRIPT_FUNC_THIS(func_entry##_Fire), SCRIPT_FUNC_THIS_CONV))
 
+    // Settings
     AS_VERIFY(engine->RegisterObjectType("GlobalSettings", 0, asOBJ_REF | asOBJ_NOHANDLE));
     AS_VERIFY(engine->RegisterGlobalProperty("GlobalSettings Settings", game_engine));
 
 #define REGISTER_GET_SETTING(setting_entry, get_decl) AS_VERIFY(engine->RegisterObjectMethod("GlobalSettings", get_decl, SCRIPT_FUNC_THIS(ASSetting_Get_##setting_entry), SCRIPT_FUNC_THIS_CONV))
 #define REGISTER_SET_SETTING(setting_entry, set_decl) AS_VERIFY(engine->RegisterObjectMethod("GlobalSettings", set_decl, SCRIPT_FUNC_THIS(ASSetting_Set_##setting_entry), SCRIPT_FUNC_THIS_CONV))
+
+    // Remote calls
+#if SERVER_SCRIPTING || CLIENT_SCRIPTING
+    AS_VERIFY(engine->RegisterObjectType("RemoteCaller", 0, asOBJ_REF | asOBJ_NOHANDLE));
+#endif
 
     ///@ CodeGen Register
 
@@ -1285,6 +1294,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[] {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), as_prop_enums));
         }
     }
+
+#if SERVER_SCRIPTING
+    AS_VERIFY(engine->RegisterObjectProperty("Critter", "RemoteCaller ClientCall", 0));
+#elif CLIENT_SCRIPTING
+    AS_VERIFY(engine->RegisterGlobalProperty("RemoteCaller ServerCall", game_engine));
+#endif
 
     AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", game_engine));
 
