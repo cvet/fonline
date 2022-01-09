@@ -1542,7 +1542,7 @@ def genCode(lang, target, isASCompiler=False):
             globalLines.append('// Remote calls dispatchers')
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, rcName, rcArgs, rcFlags, _ = rcTag
-                if targ == ('Client' if target == 'Server' else 'Client') and subsystem == 'AngelScript':
+                if targ == ('Client' if target == 'Server' else 'Server') and subsystem == 'AngelScript':
                     selfArg = 'Critter* self' if target == 'Server' else 'FOClient* self'
                     globalLines.append('static void ASRemoteCall_' + rcName + '(' + selfArg + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
                     globalLines.append('{')
@@ -1643,7 +1643,7 @@ def genCode(lang, target, isASCompiler=False):
             registerLines.append('// Register remote calls')
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, rcName, rcArgs, rcFlags, _ = rcTag
-                if targ == ('Client' if target == 'Server' else 'Client') and subsystem == 'AngelScript':
+                if targ == ('Client' if target == 'Server' else 'Server') and subsystem == 'AngelScript':
                     registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("RemoteCaller", "void ' + rcName +
                             '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
             registerLines.append('')
