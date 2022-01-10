@@ -1296,7 +1296,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     }
 
 #if SERVER_SCRIPTING
-    AS_VERIFY(engine->RegisterObjectProperty("Critter", "RemoteCaller ClientCall", 0));
+    AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
 #elif CLIENT_SCRIPTING
     AS_VERIFY(engine->RegisterGlobalProperty("RemoteCaller ServerCall", game_engine));
 #endif

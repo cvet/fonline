@@ -1230,13 +1230,18 @@ void Preprocessor::PrintLexemList( LexemList& out, OutStream& destination )
         {
             if( need_a_space )
                 destination << " ";
-            need_a_space = true;
             destination << itr->Value;
+            need_a_space = true;
+        }
+        else if( itr->Type == BACKSLASH )
+        {
+            destination << " ";
+            need_a_space = false;
         }
         else
         {
-            need_a_space = false;
             destination << itr->Value;
+            need_a_space = false;
         }
     }
 }

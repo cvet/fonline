@@ -39,6 +39,14 @@
 
 ///# ...
 ///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] Critter* Server_Player_GetOwnedCritter(Player* self)
+{
+    return self->GetOwnedCritter();
+}
+
+///# ...
+///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int Server_Player_GetAccess(Player* self)
 {

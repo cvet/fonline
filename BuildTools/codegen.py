@@ -628,10 +628,10 @@ def parseTags():
             
             try:
                 tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
-                entity = tok[0]
                 
-                target = tok[1]
+                target = tok[0]
                 assert target in ['Server', 'Client', 'Mapper', 'Common'], target
+                entity = tok[1]
                 eventName = tok[2] if '(' not in tok[2] else tok[2][:tok[2].find('(')]
                 
                 braceOpenPos = tagInfo.find('(')
@@ -1543,7 +1543,7 @@ def genCode(lang, target, isASCompiler=False):
             for rcTag in codeGenTags['RemoteCall']:
                 targ, subsystem, rcName, rcArgs, rcFlags, _ = rcTag
                 if targ == ('Client' if target == 'Server' else 'Server') and subsystem == 'AngelScript':
-                    selfArg = 'Critter* self' if target == 'Server' else 'FOClient* self'
+                    selfArg = 'Player* self' if target == 'Server' else 'FOClient* self'
                     globalLines.append('static void ASRemoteCall_' + rcName + '(' + selfArg + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
                     globalLines.append('{')
                     globalLines.append('}')
