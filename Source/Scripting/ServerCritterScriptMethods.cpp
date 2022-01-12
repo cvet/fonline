@@ -163,7 +163,7 @@
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_TransitToMapHex(Critter* self, Map* map, ushort hx, ushort hy, uchar dir)
+[[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, ushort hx, ushort hy, uchar dir)
 {
     if (self->LockMapTransfers) {
         throw ScriptException("Transfers locked");
