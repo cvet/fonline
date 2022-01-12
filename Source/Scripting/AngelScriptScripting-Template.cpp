@@ -1145,8 +1145,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", asFUNCTION(HashedString_ConstructFromString), asCALL_GENERIC, game_engine));
-    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const int &in)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
-    AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const uint &in)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
+    // AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const int &in)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
+    // AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const uint &in)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
+    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
+    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(uint h)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));

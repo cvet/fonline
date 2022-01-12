@@ -147,9 +147,6 @@ public:
     void ClearVisible();
     void SetItem(Item* item);
     void SendMessage(int num, int val, int to, MapManager& map_mngr);
-    void AddCrTimeEvent(hstring func_num, uint rate, uint duration, int identifier) const;
-    void EraseCrTimeEvent(int index);
-    void ContinueTimeEvents(int offs_time);
 
     void Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity);
     void Broadcast_Move(uint move_params);

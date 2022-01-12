@@ -838,7 +838,7 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
             return static_cast<int>(GetValue<double>(prop));
         }
     }
-    else if (prop->_isSignedInt) {
+    else if (prop->_isInt && prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             return static_cast<int>(GetValue<char>(prop));
         }
@@ -852,7 +852,7 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
             return static_cast<int>(GetValue<int64>(prop));
         }
     }
-    else {
+    else if (prop->_isInt && !prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             return static_cast<int>(GetValue<uchar>(prop));
         }
@@ -867,7 +867,7 @@ auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int
         }
     }
 
-    throw UnreachablePlaceException(LINE_STR);
+    throw PropertiesException("Invalid property for get as int", prop->GetName());
 }
 
 auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
@@ -885,7 +885,7 @@ auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
             return static_cast<float>(GetValue<double>(prop));
         }
     }
-    else if (prop->_isSignedInt) {
+    else if (prop->_isInt && prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             return static_cast<float>(GetValue<char>(prop));
         }
@@ -899,7 +899,7 @@ auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
             return static_cast<float>(GetValue<int64>(prop));
         }
     }
-    else {
+    else if (prop->_isInt && !prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             return static_cast<float>(GetValue<uchar>(prop));
         }
@@ -914,7 +914,7 @@ auto Properties::GetPlainDataValueAsFloat(const Property* prop) const -> float
         }
     }
 
-    throw UnreachablePlaceException(LINE_STR);
+    throw PropertiesException("Invalid property for get as float", prop->GetName());
 }
 
 void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
@@ -932,7 +932,7 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
             SetValue<double>(prop, static_cast<double>(value));
         }
     }
-    else if (prop->_isSignedInt) {
+    else if (prop->_isInt && prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<char>(prop, static_cast<char>(value));
         }
@@ -946,7 +946,7 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
             SetValue<int64>(prop, static_cast<int64>(value));
         }
     }
-    else {
+    else if (prop->_isInt && !prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<uchar>(prop, static_cast<uchar>(value));
         }
@@ -959,6 +959,9 @@ void Properties::SetPlainDataValueAsInt(const Property* prop, int value)
         else if (prop->_baseSize == 8) {
             SetValue<uint64>(prop, static_cast<uint64>(value));
         }
+    }
+    else {
+        throw PropertiesException("Invalid property for set as int", prop->GetName());
     }
 }
 
@@ -977,7 +980,7 @@ void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
             SetValue<double>(prop, static_cast<double>(value));
         }
     }
-    else if (prop->_isSignedInt) {
+    else if (prop->_isInt && prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<char>(prop, static_cast<char>(value));
         }
@@ -991,7 +994,7 @@ void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
             SetValue<int64>(prop, static_cast<int64>(value));
         }
     }
-    else {
+    else if (prop->_isInt && !prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<uchar>(prop, static_cast<uchar>(value));
         }
@@ -1004,6 +1007,9 @@ void Properties::SetPlainDataValueAsFloat(const Property* prop, float value)
         else if (prop->_baseSize == 8) {
             SetValue<uint64>(prop, static_cast<uint64>(value));
         }
+    }
+    else {
+        throw PropertiesException("Invalid property for set as float", prop->GetName());
     }
 }
 
@@ -1075,7 +1081,22 @@ void Properties::SetValueAsIntProps(int property_index, int value)
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
 
-    if (prop->_isBool) {
+    if (prop->_isHash) {
+        // Todo: convert to hstring
+        // SetValue<hstring>(prop, value);
+    }
+    else if (prop->_isEnum) {
+        if (prop->_baseSize == 1) {
+            SetValue<uchar>(prop, static_cast<uchar>(value));
+        }
+        else if (prop->_baseSize == 2) {
+            SetValue<ushort>(prop, static_cast<ushort>(value));
+        }
+        else if (prop->_baseSize == 4) {
+            SetValue<int>(prop, static_cast<int>(value));
+        }
+    }
+    else if (prop->_isBool) {
         SetValue<bool>(prop, value != 0);
     }
     else if (prop->_isFloat) {
@@ -1086,7 +1107,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
             SetValue<double>(prop, static_cast<double>(value));
         }
     }
-    else if (prop->_isSignedInt) {
+    else if (prop->_isInt && prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<char>(prop, static_cast<char>(value));
         }
@@ -1100,7 +1121,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
             SetValue<int64>(prop, static_cast<int64>(value));
         }
     }
-    else {
+    else if (prop->_isInt && !prop->_isSignedInt) {
         if (prop->_baseSize == 1) {
             SetValue<uchar>(prop, static_cast<uchar>(value));
         }
@@ -1113,6 +1134,9 @@ void Properties::SetValueAsIntProps(int property_index, int value)
         else if (prop->_baseSize == 8) {
             SetValue<uint64>(prop, static_cast<uint64>(value));
         }
+    }
+    else {
+        throw PropertiesException("Invalid property for set as int props", prop->GetName());
     }
 }
 
@@ -1235,7 +1259,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             prop->_fullTypeName = "dict<" + prop->_dictKeyTypeName + ", " + prop->_baseTypeName + "[]>";
         }
         else {
-            prop->_fullTypeName = "dict<" + prop->_baseTypeName + ", " + prop->_baseTypeName + ">";
+            prop->_fullTypeName = "dict<" + prop->_dictKeyTypeName + ", " + prop->_baseTypeName + ">";
         }
     }
     else {

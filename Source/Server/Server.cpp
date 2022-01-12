@@ -2044,42 +2044,6 @@ void FOServer::ProcessCritter(Critter* cr)
         CritterGlobalMapIdleEvent.Fire(cr);
     }
 
-    // Internal misc/drugs time events
-    // One event per cycle
-    /*if (cr->IsNonEmptyTE_FuncNum())
-    {
-        CScriptArray* te_next_time = cr->GetTE_NextTime();
-        uint next_time = *(uint*)te_next_time->At(0);
-        if (!next_time || GameTime.GetFullSecond() >= next_time)
-        {
-            CScriptArray* te_func_num = cr->GetTE_FuncNum();
-            CScriptArray* te_rate = cr->GetTE_Rate();
-            CScriptArray* te_identifier = cr->GetTE_Identifier();
-            RUNTIME_ASSERT(te_next_time->GetSize() == te_func_num->GetSize());
-            RUNTIME_ASSERT(te_func_num->GetSize() == te_rate->GetSize());
-            RUNTIME_ASSERT(te_rate->GetSize() == te_identifier->GetSize());
-            hash func_num = *(hash*)te_func_num->At(0);
-            uint rate = *(hash*)te_rate->At(0);
-            int identifier = *(hash*)te_identifier->At(0);
-            te_func_num->Release();
-            te_rate->Release();
-            te_identifier->Release();
-
-            cr->EraseCrTimeEvent(0);
-
-            uint time = GetTimeMultiplier() * 1800; // 30 minutes on error
-            ScriptSys.PrepareScriptFuncContext(func_num, cr->GetName());
-            ScriptSys.SetArgEntity(cr);
-            ScriptSys.SetArgUInt(identifier);
-            ScriptSys.SetArgAddress(&rate);
-            if (ScriptSys.RunPrepared())
-                time = ScriptSys.GetReturnedUInt();
-            if (time)
-                cr->AddCrTimeEvent(func_num, rate, time, identifier);
-        }
-        te_next_time->Release();
-    }*/
-
     CrMngr.ProcessTalk(cr, false);
 
     // Cache look distance

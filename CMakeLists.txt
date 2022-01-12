@@ -150,7 +150,6 @@ set( FO_COMMON_NATIVE_SOURCE "" )
 set( FO_SERVER_NATIVE_SOURCE "" )
 set( FO_CLIENT_NATIVE_SOURCE "" )
 set( FO_MAPPER_NATIVE_SOURCE "" )
-set( FO_NATIVE_ENTRIES "" )
 set( FO_ANGELSCRIPT_SOURCE "" )
 set( FO_ANGELSCRIPT_EXTENSION_SOURCE "" )
 set( FO_ANGELSCRIPT_EXTENSION_ENTRIES "" )
@@ -485,6 +484,10 @@ macro( AddRawResources )
 		list( APPEND FO_RESOURCES "Raw,${FO_CONTRIBUTION_DIR}/${dir}" )
 	endforeach()
 endmacro()
+macro( AddEngineSource target )
+	ResolveContributedFiles( ${ARGN} )
+	list( APPEND FO_${target}_SOURCE ${result} )
+endmacro()
 macro( AddNativeIncludeDir )
 	if( FO_NATIVE_SCRIPTING )
 		foreach( dir ${ARGN} )
@@ -494,23 +497,8 @@ macro( AddNativeIncludeDir )
 endmacro()
 macro( AddNativeSource )
 	if( FO_NATIVE_SCRIPTING )
-		ResolveContributedFiles( ${ARGN} )
-		# list( APPEND FO_NATIVE_SOURCE ${result} )
-		# Add to:
-		# FO_COMMON_SOURCE
-		# FO_SERVER_SOURCE
-		# FO_CLIENT_SOURCE
-		# FO_MAPPER_SOURCE
-		# FO_SERVER_SCRIPTING_SOURCE
-		# FO_CLIENT_SCRIPTING_SOURCE
-		# FO_MAPPER_SCRIPTING_SOURCE
-		# FO_SINGLE_SCRIPTING_SOURCE
-		# FO_ADDITIONAL_META_FILES
-	endif()
-endmacro()
-macro( AddNativeEntry funcName )
-	if( FO_NATIVE_SCRIPTING )
-		list( APPEND FO_NATIVE_ENTRIES ${funcName} )
+		#ResolveContributedFiles( ${ARGN} )
+		#list( APPEND FO_${target}_SOURCE ${result} )
 	endif()
 endmacro()
 macro( AddAngelScriptSource )
@@ -1185,7 +1173,7 @@ if( FO_MONO_SCRIPTING )
 endif()
 
 # Engine sources
-set( FO_COMMON_SOURCE
+list( APPEND FO_COMMON_SOURCE
 	"Source/Common/Application.cpp"
 	"Source/Common/Application.h"
 	"Source/Common/ApplicationHeadless.cpp"
@@ -1251,7 +1239,7 @@ set( FO_COMMON_SOURCE
 list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/Application.cpp" )
 list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/ApplicationHeadless.cpp" )
 
-set( FO_SERVER_SOURCE
+list( APPEND FO_SERVER_SOURCE
 	"Source/Server/AdminPanel.cpp"
 	"Source/Server/AdminPanel.h"
 	"Source/Server/AppGui.cpp"
@@ -1304,7 +1292,7 @@ list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGui.cpp" )
 list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGuiDX.cpp" )
 list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGuiStub.cpp" )
 
-set( FO_CLIENT_SOURCE
+list( APPEND FO_CLIENT_SOURCE
 	"Source/Client/3dAnimation.cpp"
 	"Source/Client/3dAnimation.h"
 	"Source/Client/3dStuff.cpp"
@@ -1347,7 +1335,7 @@ set( FO_CLIENT_SOURCE
 	"Source/Scripting/ClientLocationScriptMethods.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp" )
 
-set( FO_TOOLS_SOURCE
+list( APPEND FO_TOOLS_SOURCE
 	"Source/Tools/EffectBaker.h"
 	"Source/Tools/EffectBaker.cpp"
 	"Source/Tools/F2Palette-Include.h"
@@ -1358,31 +1346,31 @@ set( FO_TOOLS_SOURCE
 	"Source/Tools/ModelBaker.h"
 	"Source/Tools/ModelBaker.cpp" )
 
-set( FO_SERVER_SCRIPTING_SOURCE
+list( APPEND FO_SERVER_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
 	"Source/Scripting/ServerScripting.h" )
 	
-set( FO_CLIENT_SCRIPTING_SOURCE
+list( APPEND FO_CLIENT_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Client.cpp"
 	"Source/Scripting/ClientScripting.h" )
 
-set( FO_MAPPER_SCRIPTING_SOURCE
+list( APPEND FO_MAPPER_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
 	"Source/Scripting/MapperScripting.h" )
 	
-set( FO_SINGLE_SCRIPTING_SOURCE
+list( APPEND FO_SINGLE_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp"
 	"Source/Scripting/SingleScripting.h" )
 	
-set( FO_ADDITIONAL_META_FILES
+list( APPEND FO_ADDITIONAL_META_FILES
 	"Source/Common/DataRegistration-Template.cpp"
 	"Source/Common/EntityProperties-Template.cpp"
 	"Source/Scripting/AngelScriptScripting-Template.cpp"
@@ -1403,7 +1391,7 @@ set( FO_ADDITIONAL_META_FILES
 	"Source/Scripting/MapperGlobalScriptMethods.cpp"
 	"Source/Scripting/CommonGlobalScriptMethods.cpp" )
 	
-set( FO_TESTS_SOURCE
+list( APPEND FO_TESTS_SOURCE
 	"Source/Tests/UnitTest1.cpp" )
 
 # Code generation

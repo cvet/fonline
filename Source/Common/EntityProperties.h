@@ -303,14 +303,6 @@ public:
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Dead);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uchar>, GlobalMapFog);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<hstring>, TE_FuncNum);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_Rate);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<uint>, TE_NextTime);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, vector<int>, TE_Identifier);
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualPrivateServer, uint, SneakCoefficient);
     ///@ ExportProperty
