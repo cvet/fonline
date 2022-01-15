@@ -396,6 +396,25 @@
 }
 
 ///# ...
+///# param findType ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, uchar findType)
+{
+    vector<Critter*> critters;
+    const auto map_critters = self->GetCritters();
+    critters.reserve(map_critters.size());
+
+    for (auto* cr : map_critters) {
+        if (cr->CheckFind(findType)) {
+            critters.push_back(cr);
+        }
+    }
+
+    return critters;
+}
+
+///# ...
 ///# param pid ...
 ///# param findType ...
 ///# return ...
