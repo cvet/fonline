@@ -28,15 +28,15 @@ bool IsMousePressed(MouseButton button)
 }
 bool IsCtrlDown()
 {
-    return KeyPressed[DIK_RCONTROL] || KeyPressed[DIK_LCONTROL];
+    return KeyPressed[KeyCode::Rcontrol] || KeyPressed[KeyCode::Lcontrol];
 }
 bool IsAltDown()
 {
-    return KeyPressed[DIK_LMENU] || KeyPressed[DIK_RMENU];
+    return KeyPressed[KeyCode::Lmenu] || KeyPressed[KeyCode::Rmenu];
 }
 bool IsShiftDown()
 {
-    return KeyPressed[DIK_LSHIFT] || KeyPressed[DIK_RSHIFT];
+    return KeyPressed[KeyCode::Lshift] || KeyPressed[KeyCode::Rshift];
 }
 
 bool[] GetKeyPressed()
@@ -58,21 +58,21 @@ void ModuleInit()
     GameInstance.OnInputLost.Subscribe(OnInputLost);
 
     KeyPressed.resize(0x100);
-    MousePressed.resize(MOUSE_BUTTON_EXT4 + 1);
+    MousePressed.resize(MouseButton::Ext4 + 1);
 }
 
 void ReleaseKeys()
 {
     for (uint i = 0; i < KeyPressed.length(); i++)
         if (KeyPressed[i])
-            OnKeyUp(i);
+            OnKeyUp(KeyCode(i));
 }
 
 void ReleaseMouse()
 {
     for (uint i = 0; i < MousePressed.length(); i++)
         if (MousePressed[i])
-            OnMouseUp(i);
+            OnMouseUp(MouseButton(i));
 }
 
 // //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ void OnKeyDown(KeyCode key, string text) // Engine callback
 {
     // Avoid repeating
     if (KeyPressed[key]) {
-        if (key != DIK_TEXT && key != DIK_SPACE && key != DIK_BACK && key != DIK_DELETE && key != DIK_LEFT && key != DIK_RIGHT)
+        if (key != KeyCode::Text && key != KeyCode::Space && key != KeyCode::Back && key != KeyCode::Delete && key != KeyCode::Left && key != KeyCode::Right)
             return;
     }
     KeyPressed[key] = true;

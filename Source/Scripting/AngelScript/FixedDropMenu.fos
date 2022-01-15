@@ -14,7 +14,7 @@ class DropButton
 
 class FixedDropMenu : Gui::IDropMenu
 {
-    int MouseButton;
+    MouseButton MouseBtn;
     CursorType Cursor;
     uint ShowTime;
     int ButtonHeight;
@@ -27,9 +27,9 @@ class FixedDropMenu : Gui::IDropMenu
     uint MouseStayTick;
     Entity SelectedEntity;
 
-    FixedDropMenu(int mouseButton, CursorType cursor, uint showTime, uint buttonHeight, string artDir, string openSound)
+    FixedDropMenu(MouseButton mouseButton, CursorType cursor, uint showTime, uint buttonHeight, string artDir, string openSound)
     {
-        MouseButton = mouseButton;
+        MouseBtn = mouseButton;
         Cursor = cursor;
         ShowTime = showTime;
         ButtonHeight = buttonHeight;
@@ -80,18 +80,18 @@ class FixedDropMenu : Gui::IDropMenu
         }
     }
 
-    void MouseDown(int button)
+    void MouseDown(MouseButton button)
     {
-        if (MouseButton == button && Cursor == Settings.Cursor && SafeSelectedEntity != null) {
+        if (MouseBtn == button && Cursor == Settings.Cursor && SafeSelectedEntity != null) {
             Pressed = true;
             PressedOffsetY = 0;
             MouseStayTick = GetTick();
         }
     }
 
-    void MouseUp(int button)
+    void MouseUp(MouseButton button)
     {
-        if (MouseButton == button && SafeSelectedEntity != null) {
+        if (MouseBtn == button && SafeSelectedEntity != null) {
             Pressed = false;
 
             if (ShowButtons.length() == 0)

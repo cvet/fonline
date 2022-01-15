@@ -392,6 +392,8 @@ enum class MouseButton
     Left = 0,
     Right = 1,
     Middle = 2,
+    WheelUp = 3,
+    WheelDown = 4,
     Ext0 = 5,
     Ext1 = 6,
     Ext2 = 7,
