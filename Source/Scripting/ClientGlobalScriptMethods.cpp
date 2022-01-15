@@ -1324,7 +1324,7 @@
 ///# param nameHash ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Client_Game_LoadSpriteByHash(FOClient* client, hstring nameHash)
+[[maybe_unused]] uint Client_Game_LoadSprite(FOClient* client, hstring nameHash)
 {
     return client->AnimLoad(nameHash, AtlasType::Static);
 }

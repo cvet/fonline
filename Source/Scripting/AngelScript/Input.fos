@@ -1,7 +1,7 @@
 // FOS Client
 
-funcdef bool KeyDownCallback(uint8 key, string text);
-funcdef void KeyUpCallback(uint8 key);
+funcdef bool KeyDownCallback(KeyCode key, string text);
+funcdef void KeyUpCallback(KeyCode key);
 
 bool[] KeyPressed = {};
 bool[] MousePressed = {};
@@ -18,11 +18,11 @@ void AddKeyUpCallback(KeyUpCallback callback)
     KeyUpCallbacks.insertLast(callback);
 }
 
-bool IsKeyPressed(uint8 key)
+bool IsKeyPressed(KeyCode key)
 {
     return KeyPressed[key];
 }
-bool IsMousePressed(int button)
+bool IsMousePressed(MouseButton button)
 {
     return MousePressed[button];
 }
@@ -78,7 +78,7 @@ void ReleaseMouse()
 // //////////////////////////////////////////////////////////////////////////////////////////////////
 // Mouse behaviours. Button states look in ClientCore.fos, Mouse buttons.
 // Return true to disable engine events.
-void OnMouseDown(int button) // Engine callback
+void OnMouseDown(MouseButton button) // Engine callback
 {
     if (Settings.WaitPing || Settings.IsConnecting || Settings.IsUpdating)
         return;
@@ -88,7 +88,7 @@ void OnMouseDown(int button) // Engine callback
     Gui::EngineCallback_MouseDown(button);
 }
 
-void OnMouseUp(int button) // Engine callback
+void OnMouseUp(MouseButton button) // Engine callback
 {
     if (MousePressed[button])
         Gui::EngineCallback_MouseUp(button);
@@ -104,7 +104,7 @@ void OnMouseMove(int offsetX, int offsetY) // Engine callback
 // //////////////////////////////////////////////////////////////////////////////////////////////////
 // Keyboard behaviours. Key codes look in ClientCore.fos, DirectInput keyboard scan codes.
 // Return true to disable engine events.
-void OnKeyDown(uint8 key, string text) // Engine callback
+void OnKeyDown(KeyCode key, string text) // Engine callback
 {
     // Avoid repeating
     if (KeyPressed[key]) {
@@ -121,7 +121,7 @@ void OnKeyDown(uint8 key, string text) // Engine callback
         Gui::EngineCallback_KeyDown(key, text);
 }
 
-void OnKeyUp(uint8 key) // Engine callback
+void OnKeyUp(KeyCode key) // Engine callback
 {
     // Avoid repeating
     if (!KeyPressed[key])

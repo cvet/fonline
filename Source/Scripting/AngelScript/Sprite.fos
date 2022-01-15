@@ -13,27 +13,24 @@ class Sprite
         Assert(ok, name);
     }
 
-    Sprite(uint nameHash)
+    Sprite(hstring name)
     {
-        bool ok = Load(nameHash);
-        Assert(ok, nameHash);
+        bool ok = Load(name);
+        Assert(ok, name);
     }
 
     bool Load(string name)
     {
-        Id = (name.length() > 0 ? LoadSprite(name) : 0);
-        LoadedNameHash = uint(-1);
-        RefreshData();
-        return Id != 0;
+        return Load(hstring(name));
     }
 
-    bool Load(uint nameHash)
+    bool Load(hstring name)
     {
-        if (nameHash == LoadedNameHash)
+        if (name == LoadedName)
             return true;
 
-        LoadedNameHash = nameHash;
-        Id = LoadSpriteByHash(nameHash);
+        LoadedName = name;
+        Id = LoadedName != hstring() ? LoadSprite(LoadedName) : 0;
         RefreshData();
         return Id != 0;
     }
@@ -169,5 +166,5 @@ class Sprite
     bool AnimReverse;
     uint AnimStartTick;
     bool Hidden;
-    uint LoadedNameHash;
+    hstring LoadedName;
 };

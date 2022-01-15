@@ -136,7 +136,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   Sprite::Sprite BackgroundImage
 //   int BackgroundImageLayout
 //   void SetBackgroundImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetBackgroundImage( uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE )
+//   void SetBackgroundImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
 //   void SetCropContent( bool enabled )
 //   void SetAutoScroll( bool ver, bool hor )
 //   void ModifyScroll( int ver, int hor )
@@ -169,11 +169,11 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   bool IsSwitched
 //   bool IsDisabled
 //   void SetPressedImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetPressedImage( uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE )
+//   void SetPressedImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
 //   void SetHoverImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetHoverImage( uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE )
+//   void SetHoverImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
 //   void SetDisabledImage( string imageName, int imageLayout = IMAGE_LAYOUT_NONE )
-//   void SetDisabledImage( uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE )
+//   void SetDisabledImage( hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE )
 //   void SetSwitch( bool enabled )
 //   void SetCondition( bool enabled )
 // CheckBox : Button : Panel : Object
@@ -1211,37 +1211,25 @@ class Panel : Object
         _SetImage(_BackgroundImage, imageName, imageLayout);
     }
 
-    void SetBackgroundImage(uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetBackgroundImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage(_BackgroundImage, imageNameHash, imageLayout);
+        _SetImage(_BackgroundImage, imageName, imageLayout);
     }
 
     void _SetImage(Sprite::Sprite& curImage, string imageName, int imageLayout)
     {
-        curImage = null;
-
-        if (!imageName.isEmpty()) {
-            Sprite::Sprite spr = Sprite::Sprite();
-            if (spr.Load(imageName))
-                curImage = spr;
-        }
-
-        if (curImage != null)
-            curImage.Layout = imageLayout;
-
-        if (curImage != null && (imageLayout == IMAGE_LAYOUT_NONE || (_BaseWidth == 0 && _BaseHeight == 0)))
-            SetSize(curImage.Width, curImage.Height);
+        _SetImage(curImage, hstring(imageName), imageLayout);
     }
 
-    void _SetImage(Sprite::Sprite& curImage, uint imageNameHash, int imageLayout)
+    void _SetImage(Sprite::Sprite& curImage, hstring imageName, int imageLayout)
     {
-        if (curImage != null && curImage.LoadedNameHash == imageNameHash)
+        if (curImage != null && curImage.LoadedName == imageName)
             return;
 
         curImage = null;
-        if (imageNameHash != 0) {
+        if (imageName != hstring()) {
             Sprite::Sprite spr = Sprite::Sprite();
-            if (spr.Load(imageNameHash))
+            if (spr.Load(imageName))
                 curImage = spr;
         }
 
@@ -1733,9 +1721,9 @@ class Button : Panel
         _SetImage(_PressedImage, imageName, imageLayout);
     }
 
-    void SetPressedImage(uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetPressedImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage(_PressedImage, imageNameHash, imageLayout);
+        _SetImage(_PressedImage, imageName, imageLayout);
     }
 
     void SetHoverImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
@@ -1743,9 +1731,9 @@ class Button : Panel
         _SetImage(_HoverImage, imageName, imageLayout);
     }
 
-    void SetHoverImage(uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetHoverImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage(_HoverImage, imageNameHash, imageLayout);
+        _SetImage(_HoverImage, imageName, imageLayout);
     }
 
     void SetDisabledImage(string imageName, int imageLayout = IMAGE_LAYOUT_NONE)
@@ -1753,9 +1741,9 @@ class Button : Panel
         _SetImage(_DisabledImage, imageName, imageLayout);
     }
 
-    void SetDisabledImage(uint imageNameHash, int imageLayout = IMAGE_LAYOUT_NONE)
+    void SetDisabledImage(hstring imageName, int imageLayout = IMAGE_LAYOUT_NONE)
     {
-        _SetImage(_DisabledImage, imageNameHash, imageLayout);
+        _SetImage(_DisabledImage, imageName, imageLayout);
     }
 
     void SetSwitch(bool enabled)

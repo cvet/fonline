@@ -484,6 +484,16 @@ static auto Entity_IsDestroying(Entity* self) -> bool
 #endif
 }
 
+static auto Entity_Name(Entity* self) -> bool
+{
+#if !COMPILER_MODE
+    ENTITY_VERIFY(self);
+    return self->GetName();
+#else
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
 static auto Entity_Id(BaseEntity* self) -> uint
 {
 #if !COMPILER_MODE
@@ -1163,6 +1173,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "string get_Name() const", SCRIPT_FUNC_THIS(Entity_Name), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterFuncdef("bool " class_name "Predicate(" class_name "@+)")); \
     AS_VERIFY(engine->RegisterFuncdef("void " class_name "Callback(" class_name "@+)")); \
     AS_VERIFY(engine->RegisterFuncdef("void " class_name "InitFunc(" class_name "@+, bool)"))
