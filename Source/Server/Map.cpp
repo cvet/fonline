@@ -823,17 +823,6 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
     }
 }
 
-auto Map::GetNpcCount(int npc_role, CritterFindType find_type) const -> uint
-{
-    uint result = 0;
-    for (const auto* npc : _mapNonPlayerCritters) {
-        if (npc->GetNpcRole() == npc_role && npc->CheckFind(find_type)) {
-            result++;
-        }
-    }
-    return result;
-}
-
 auto Map::GetCritter(uint crid) -> Critter*
 {
     NON_CONST_METHOD_HINT();
@@ -841,23 +830,6 @@ auto Map::GetCritter(uint crid) -> Critter*
     for (auto* cr : _mapCritters) {
         if (cr->GetId() == crid) {
             return cr;
-        }
-    }
-    return nullptr;
-}
-
-auto Map::GetNpc(int npc_role, CritterFindType find_type, uint skip_count) -> Critter*
-{
-    NON_CONST_METHOD_HINT();
-
-    for (auto* npc : _mapNonPlayerCritters) {
-        if (npc->GetNpcRole() == npc_role && npc->CheckFind(find_type)) {
-            if (skip_count != 0u) {
-                skip_count--;
-            }
-            else {
-                return npc;
-            }
         }
     }
     return nullptr;

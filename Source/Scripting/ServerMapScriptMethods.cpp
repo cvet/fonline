@@ -378,6 +378,28 @@
 }
 
 ///# ...
+///# param property ...
+///# param propertyValue ...
+///# param findType ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, CritterProperty property, int propertyValue, CritterFindType findType)
+{
+    const auto* prop_reg = self->GetEngine()->GetPropertyRegistrator(Critter::ENTITY_CLASS_NAME);
+    RUNTIME_ASSERT(prop_reg);
+    const auto* prop = prop_reg->GetByIndex(static_cast<int>(property));
+    RUNTIME_ASSERT(prop);
+
+    for (auto* cr : self->GetCritters()) {
+        if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
+            return cr;
+        }
+    }
+
+    return nullptr;
+}
+
+///# ...
 ///# param hx ...
 ///# param hy ...
 ///# param radius ...
@@ -438,6 +460,33 @@
             if (npc->GetProtoId() == pid && npc->CheckFind(findType)) {
                 critters.push_back(npc);
             }
+        }
+    }
+
+    return critters;
+}
+
+///# ...
+///# param property ...
+///# param propertyValue ...
+///# param findType ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, CritterProperty property, int propertyValue, CritterFindType findType)
+{
+    const auto map_critters = self->GetCritters();
+
+    vector<Critter*> critters;
+    critters.reserve(map_critters.size());
+
+    const auto* prop_reg = self->GetEngine()->GetPropertyRegistrator(Critter::ENTITY_CLASS_NAME);
+    RUNTIME_ASSERT(prop_reg);
+    const auto* prop = prop_reg->GetByIndex(static_cast<int>(property));
+    RUNTIME_ASSERT(prop);
+
+    for (auto* cr : map_critters) {
+        if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
+            critters.push_back(cr);
         }
     }
 
@@ -729,9 +778,7 @@
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
-    Properties props_(self->GetEngine()->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME));
-    props_ = proto->GetProperties();
-
+    Properties props_(proto->GetProperties());
     for (const auto& [key, value] : props) {
         props_.SetValueAsIntProps(static_cast<int>(key), value);
     }
@@ -742,27 +789,6 @@
     }
 
     return npc;
-}
-
-///# ...
-///# param npcRole ...
-///# param findType ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, int npcRole, CritterFindType findType)
-{
-    return self->GetNpcCount(npcRole, findType);
-}
-
-///# ...
-///# param npcRole ...
-///# param findType ...
-///# param skipCount ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, int npcRole, CritterFindType findType, uint skipCount)
-{
-    return self->GetNpc(npcRole, findType, skipCount);
 }
 
 ///# ...
