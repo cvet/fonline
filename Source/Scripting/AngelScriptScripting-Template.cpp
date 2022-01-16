@@ -484,11 +484,11 @@ static auto Entity_IsDestroying(Entity* self) -> bool
 #endif
 }
 
-static auto Entity_Name(Entity* self) -> bool
+static auto Entity_Name(Entity* self) -> string
 {
 #if !COMPILER_MODE
     ENTITY_VERIFY(self);
-    return self->GetName();
+    return string(self->GetName());
 #else
     throw ScriptCompilerException("Stub");
 #endif

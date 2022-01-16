@@ -343,11 +343,11 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     return player_critters;
 }
 
-auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, uchar find_type) -> vector<Critter*>
+auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, CritterFindType find_type) -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT();
 
-    auto all_critters = _engine->EntityMngr.GetCritters();
+    const auto all_critters = _engine->EntityMngr.GetCritters();
 
     vector<Critter*> critters;
     critters.reserve(all_critters.size());

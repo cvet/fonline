@@ -2430,7 +2430,7 @@ void FOMapper::IntLMouseUp()
                 for (auto [hx, hy] : hexes) {
                     // Items, critters
                     HexMngr.GetItems(hx, hy, items);
-                    HexMngr.GetCritters(hx, hy, critters, FIND_ALL);
+                    HexMngr.GetCritters(hx, hy, critters, CritterFindType::Any);
 
                     // Tile, roof
                     if (IsSelectTile && Settings.ShowTile) {

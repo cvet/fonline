@@ -100,11 +100,11 @@ public:
     [[nodiscard]] auto IsHexGag(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexStaticTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool;
-    [[nodiscard]] auto GetNpcCount(int npc_role, uchar find_type) const -> uint;
+    [[nodiscard]] auto GetNpcCount(int npc_role, CritterFindType find_type) const -> uint;
     [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
-    [[nodiscard]] auto GetNpc(int npc_role, uchar find_type, uint skip_count) -> Critter*;
+    [[nodiscard]] auto GetNpc(int npc_role, CritterFindType find_type, uint skip_count) -> Critter*;
     [[nodiscard]] auto GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*;
-    [[nodiscard]] auto GetCrittersHex(ushort hx, ushort hy, uint radius, uchar find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayers() -> vector<Critter*>;
     [[nodiscard]] auto GetNpcs() -> vector<Critter*>;

@@ -384,7 +384,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, ushort hx, ushort hy, uint radius, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, ushort hx, ushort hy, uint radius, CritterFindType findType)
 {
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -399,7 +399,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, CritterFindType findType)
 {
     vector<Critter*> critters;
     const auto map_critters = self->GetCritters();
@@ -419,7 +419,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, hstring pid, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, hstring pid, CritterFindType findType)
 {
     vector<Critter*> critters;
     if (!pid) {
@@ -454,7 +454,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
 {
     vector<Critter*> critters;
     TraceData trace;
@@ -486,7 +486,7 @@
 ///# param blockHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersInPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
 {
     vector<Critter*> critters;
     pair<ushort, ushort> block;
@@ -521,7 +521,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoViewPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersWhoViewPath(Map* self, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, CritterFindType findType)
 {
     vector<Critter*> critters;
     for (auto* cr : self->GetCritters()) {
@@ -539,7 +539,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vector<Critter*>& critters, bool lookOnThem, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Map_GetCrittersSeeing(Map* self, const vector<Critter*>& critters, bool lookOnThem, CritterFindType findType)
 {
     vector<Critter*> result_critters;
     for (auto* cr : critters) {
@@ -749,7 +749,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, int npcRole, uchar findType)
+[[maybe_unused]] uint Server_Map_GetNpcCount(Map* self, int npcRole, CritterFindType findType)
 {
     return self->GetNpcCount(npcRole, findType);
 }
@@ -760,7 +760,7 @@
 ///# param skipCount ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, int npcRole, uchar findType, uint skipCount)
+[[maybe_unused]] Critter* Server_Map_GetNpc(Map* self, int npcRole, CritterFindType findType, uint skipCount)
 {
     return self->GetNpc(npcRole, findType, skipCount);
 }

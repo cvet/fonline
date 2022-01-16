@@ -700,7 +700,7 @@ auto HexManager::RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, usho
 
     if (from_hx != to_hx || from_hy != to_hy) {
         item->EffSteps.push_back(std::make_pair(from_hx, from_hy));
-        TraceBullet(from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, false, nullptr, 0, nullptr, nullptr, &item->EffSteps, false);
+        TraceBullet(from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, nullptr, &item->EffSteps, false);
         auto [x, y] = _engine->GeomHelper.GetHexInterval(from_hx, from_hy, to_hx, to_hy);
         y += GenericUtils::Random(5, 25); // Center of body
         std::tie(sx, sy) = GenericUtils::GetStepsXY(0, 0, x, y);
@@ -2936,7 +2936,7 @@ void HexManager::DeleteCritters()
     _chosenId = 0;
 }
 
-void HexManager::GetCritters(ushort hx, ushort hy, vector<CritterView*>& crits, uchar find_type)
+void HexManager::GetCritters(ushort hx, ushort hy, vector<CritterView*>& crits, CritterFindType find_type)
 {
     auto& field = GetField(hx, hy);
 
@@ -3755,7 +3755,7 @@ auto HexManager::CutPath(CritterView* cr, ushort start_x, ushort start_y, ushort
     return FindPath(cr, start_x, start_y, end_x, end_y, dummy, cut);
 }
 
-auto HexManager::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, uchar find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool
+auto HexManager::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool
 {
     if (_isShowTrack) {
         ClearHexTrack();

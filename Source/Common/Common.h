@@ -984,13 +984,19 @@ static constexpr float MAX_ZOOM = 20.0f;
 #define CRPID_MASK (0xFFFFFFF0)
 #define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
 
-// Critter find types
-static constexpr uchar FIND_LIFE = 0x01;
-static constexpr uchar FIND_KO = 0x02;
-static constexpr uchar FIND_DEAD = 0x04;
-static constexpr uchar FIND_ONLY_PLAYERS = 0x10;
-static constexpr uchar FIND_ONLY_NPC = 0x20;
-static constexpr uchar FIND_ALL = 0x0F;
+///@ ExportEnum
+enum class CritterFindType : uchar
+{
+    Any = 0,
+    Alive = 0x01,
+    Dead = 0x02,
+    Players = 0x10,
+    Npc = 0x20,
+    AlivePlayers = 0x11,
+    DeadPlayers = 0x12,
+    AliveNpc = 0x21,
+    DeadNpc = 0x22,
+};
 
 // Ping
 static constexpr uchar PING_PING = 0;

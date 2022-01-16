@@ -84,18 +84,6 @@
 #define FOG_HALF_EX (2)
 #define FOG_NONE    (3)
 
-// Critter find types
-// Combine groups with | operator
-#define FIND_ALIVE          (0x01) // First group
-#define FIND_KO             (0x02)
-#define FIND_DEAD           (0x04)
-#define FIND_ALIVE_AND_KO   (0x03)
-#define FIND_ALIVE_AND_DEAD (0x05)
-#define FIND_KO_AND_DEAD    (0x06)
-#define FIND_ALL            (0x0F)
-#define FIND_ONLY_PLAYERS   (0x10) // Second group
-#define FIND_ONLY_NPC       (0x20)
-
 // Dialog links
 #define DIALOG_END    uint(-1)
 #define DIALOG_BACK   uint(-2)

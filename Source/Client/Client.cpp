@@ -483,14 +483,14 @@ void FOClient::LookBordersPrepare()
                 }
                 const auto dist_ = dist - dist * Settings.LookDir[ii] / 100;
                 pair<ushort, ushort> block;
-                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, false);
+                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, false);
                 hx_ = block.first;
                 hy_ = block.second;
             }
 
             if (IsBitSet(Settings.LookChecks, LOOK_CHECK_TRACE)) {
                 pair<ushort, ushort> block;
-                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, true);
+                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
                 hx_ = block.first;
                 hy_ = block.second;
             }
@@ -508,7 +508,7 @@ void FOClient::LookBordersPrepare()
             if (_drawShootBorders) {
                 pair<ushort, ushort> block;
                 const auto max_shoot_dist = std::max(std::min(dist_look, dist_shoot), 0u) + 1u;
-                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, nullptr, false, nullptr, 0, nullptr, &block, nullptr, true);
+                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
                 const auto hx_2 = block.first;
                 const auto hy_2 = block.second;
 

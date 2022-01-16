@@ -87,7 +87,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Mapper_Game_GetItemByHex(FOMapper* mapper, ushort hx, ushort hy)
+[[maybe_unused]] ItemView* Mapper_Game_GetItem(FOMapper* mapper, ushort hx, ushort hy)
 {
     return mapper->HexMngr.GetItem(hx, hy, hstring());
 }
@@ -97,7 +97,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<ItemView*> Mapper_Game_GetItemsByHex(FOMapper* mapper, ushort hx, ushort hy)
+[[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, ushort hx, ushort hy)
 {
     vector<ItemHexView*> hex_items;
     mapper->HexMngr.GetItems(hx, hy, hex_items);
@@ -117,7 +117,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Mapper_Game_GetCritterByHex(FOMapper* mapper, ushort hx, ushort hy, uchar findType)
+[[maybe_unused]] CritterView* Mapper_Game_GetCritter(FOMapper* mapper, ushort hx, ushort hy, CritterFindType findType)
 {
     vector<CritterView*> critters_;
     mapper->HexMngr.GetCritters(hx, hy, critters_, findType);
@@ -130,7 +130,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<CritterView*> Mapper_Game_GetCrittersByHex(FOMapper* mapper, ushort hx, ushort hy, uchar findType)
+[[maybe_unused]] vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, ushort hx, ushort hy, CritterFindType findType)
 {
     vector<CritterView*> critters;
     mapper->HexMngr.GetCritters(hx, hy, critters, findType);

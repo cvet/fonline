@@ -64,7 +64,7 @@ public:
     [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == CritterCondition::Knockout; }
     [[nodiscard]] auto IsDead() const -> bool { return GetCond() == CritterCondition::Dead; }
     [[nodiscard]] auto IsCombatMode() const -> bool;
-    [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
+    [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto IsLastHexes() const -> bool;
     [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
     [[nodiscard]] auto IsHaveLightSources() const -> bool;

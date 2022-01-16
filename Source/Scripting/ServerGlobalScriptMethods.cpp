@@ -849,7 +849,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Game_GetGlobalMapCritters(FOServer* server, ushort wx, ushort wy, uint radius, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Game_GetGlobalMapCritters(FOServer* server, ushort wx, ushort wy, uint radius, CritterFindType findType)
 {
     return server->CrMngr.GetGlobalMapCritters(wx, wy, radius, findType);
 }

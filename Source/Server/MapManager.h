@@ -68,7 +68,7 @@ struct TraceData
     uint Dist {};
     float Angle {};
     Critter* FindCr {};
-    uchar FindType {};
+    CritterFindType FindType {};
     bool LastPassedSkipCritters {};
     HexCallbackFunc HexCallback {};
 

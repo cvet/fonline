@@ -108,7 +108,7 @@ public:
     [[nodiscard]] auto IsAlive() const -> bool;
     [[nodiscard]] auto IsDead() const -> bool;
     [[nodiscard]] auto IsKnockout() const -> bool;
-    [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
+    [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto GetItem(uint item_id, bool skip_hide) -> Item*;
     [[nodiscard]] auto GetRawItems() -> vector<Item*>& { return _invItems; }
     [[nodiscard]] auto GetItemByPid(hstring item_pid) -> Item*;
@@ -121,7 +121,7 @@ public:
     [[nodiscard]] auto GetInventory() -> vector<Item*>&;
     [[nodiscard]] auto IsHaveGeckItem() const -> bool;
     [[nodiscard]] auto GetCrSelf(uint crid) -> Critter*;
-    [[nodiscard]] auto GetCrFromVisCr(uchar find_type, bool vis_cr_self) -> vector<Critter*>;
+    [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(uint cr_id) const -> Critter*;
     [[nodiscard]] auto IsTransferTimeouts(bool send) -> bool;
     [[nodiscard]] auto IsTalking() const -> bool;

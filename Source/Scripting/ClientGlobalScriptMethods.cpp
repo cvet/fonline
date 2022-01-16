@@ -247,7 +247,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersAroundHex(FOClient* client, ushort hx, ushort hy, uint radius, uchar findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersAroundHex(FOClient* client, ushort hx, ushort hy, uint radius, CritterFindType findType)
 {
     if (hx >= client->HexMngr.GetWidth() || hy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -272,7 +272,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersByPids(FOClient* client, hstring pid, uchar findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersByPids(FOClient* client, hstring pid, CritterFindType findType)
 {
     vector<CritterView*> critters;
 
@@ -304,7 +304,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
 {
     vector<CritterView*> critters;
     client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, nullptr, nullptr, nullptr, true);
@@ -325,7 +325,7 @@
 ///# param blockHy ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersWithBlockInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, int findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersWithBlockInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
 {
     vector<CritterView*> critters;
     pair<ushort, ushort> block;
@@ -350,7 +350,7 @@
 {
     pair<ushort, ushort> pre_block;
     pair<ushort, ushort> block;
-    client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, 0, &block, &pre_block, nullptr, true);
+    client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
     toHx = pre_block.first;
     toHy = pre_block.second;
 }

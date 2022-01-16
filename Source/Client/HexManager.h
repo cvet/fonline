@@ -183,7 +183,7 @@ public:
 
     auto FindPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool;
     auto CutPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
-    auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, uchar find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
+    auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
     auto LoadMap(CacheStorage& cache, hstring map_pid) -> bool;
     void UnloadMap();
@@ -219,7 +219,7 @@ public:
     void RemoveCritter(CritterView* cr);
     void DeleteCritter(uint crid);
     void DeleteCritters();
-    void GetCritters(ushort hx, ushort hy, vector<CritterView*>& crits, uchar find_type);
+    void GetCritters(ushort hx, ushort hy, vector<CritterView*>& crits, CritterFindType find_type);
     auto GetCritters() -> map<uint, CritterView*>& { return _critters; }
     void SetCritterContour(uint crid, int contour);
     void SetCrittersContour(int contour);

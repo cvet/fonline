@@ -210,19 +210,24 @@ auto CritterView::IsCombatMode() const -> bool
     return GetTimeoutBattle() > _engine->GameTime.GetFullSecond();
 }
 
-auto CritterView::CheckFind(uchar find_type) const -> bool
+auto CritterView::CheckFind(CritterFindType find_type) const -> bool
 {
-    if (IsNpc()) {
-        if (IsBitSet(find_type, FIND_ONLY_PLAYERS)) {
-            return false;
-        }
+    if (find_type == CritterFindType::Any) {
+        return true;
     }
-    else {
-        if (IsBitSet(find_type, FIND_ONLY_NPC)) {
-            return false;
-        }
+    if (IsEnumSet(find_type, CritterFindType::Players) && IsNpc()) {
+        return false;
     }
-    return IsBitSet(find_type, FIND_ALL) || (IsAlive() && IsBitSet(find_type, FIND_LIFE)) || (IsKnockout() && IsBitSet(find_type, FIND_KO)) || (IsDead() && IsBitSet(find_type, FIND_DEAD));
+    if (IsEnumSet(find_type, CritterFindType::Npc) && !IsNpc()) {
+        return false;
+    }
+    if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {
+        return false;
+    }
+    if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
+        return false;
+    }
+    return true;
 }
 
 auto CritterView::GetAttackDist() -> uint

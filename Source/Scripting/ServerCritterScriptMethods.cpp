@@ -409,7 +409,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Critter*> Server_Critter_GetCritters(Critter* self, bool lookOnMe, uchar findType)
+[[maybe_unused]] vector<Critter*> Server_Critter_GetCritters(Critter* self, bool lookOnMe, CritterFindType findType)
 {
     vector<Critter*> critters;
 
