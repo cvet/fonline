@@ -196,40 +196,14 @@
 }
 
 ///# ...
-///# param predicate ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItemByPredicate(CritterView* self, const std::function<bool(ItemView*)>& predicate)
-{
-    const auto inv_items = self->InvItems;
-
-    for (auto* item : inv_items) {
-        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
-            return item;
-        }
-    }
-
-    return nullptr;
-}
-
-///# ...
-///# param slot ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItemBySlot(CritterView* self, int slot)
-{
-    return self->GetItemSlot(slot);
-}
-
-///# ...
 ///# param protoId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] ItemView* Client_Critter_GetItemByPid(CritterView* self, hstring protoId)
+[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
     const auto* proto_item = self->GetEngine()->ProtoMngr->GetProtoItem(protoId);
-    if (!proto_item) {
-        return nullptr;
+    if (proto_item == nullptr) {
+        throw ScriptException("Invalid proto id", protoId);
     }
 
     if (proto_item->GetStackable()) {
@@ -243,13 +217,31 @@
         ItemView* another_slot = nullptr;
         for (auto* item : self->InvItems) {
             if (item->GetProtoId() == protoId) {
-                if (!item->GetCritSlot()) {
+                if (item->GetCritSlot() == 0) {
                     return item;
                 }
                 another_slot = item;
             }
         }
         return another_slot;
+    }
+
+    return nullptr;
+}
+
+///# ...
+///# param property ...
+///# param propertyValue ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int propertyValue)
+{
+    const auto* prop = GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
+
+    for (auto* item : self->InvItems) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
+            return item;
+        }
     }
 
     return nullptr;
@@ -264,28 +256,23 @@
 }
 
 ///# ...
-///# param slot ...
+///# param property ...
+///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Critter_GetItemsBySlot(CritterView* self, int slot)
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int propertyValue)
 {
-    return self->GetItemsSlot(slot);
-}
+    const auto* prop = GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
-///# ...
-///# param predicate ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Critter_GetItemsByPredicate(CritterView* self, const std::function<bool(ItemView*)>& predicate)
-{
-    auto inv_items = self->InvItems;
     vector<ItemView*> items;
-    items.reserve(inv_items.size());
-    for (auto* item : inv_items) {
-        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
+    items.reserve(self->InvItems.size());
+
+    for (auto* item : self->InvItems) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
     }
+
     return items;
 }
 

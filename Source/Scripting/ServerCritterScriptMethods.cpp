@@ -563,45 +563,37 @@
 [[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, uint itemId)
 {
     if (itemId == 0u) {
-        return static_cast<Item*>(nullptr);
+        return nullptr;
     }
 
     return self->GetItem(itemId, false);
 }
 
 ///# ...
-///# param predicate ...
+///# param protoId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Item* Server_Critter_GetItemByPredicate(Critter* self, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, hstring protoId)
 {
-    const auto inv_items_copy = self->GetInventory(); // Make copy cuz predicate call can change inventory
+    return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
+}
 
-    for (auto* item : inv_items_copy) {
-        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
+///# ...
+///# param property ...
+///# param propertyValue ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int propertyValue)
+{
+    const auto* prop = GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+
+    for (auto* item : self->GetInventory()) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
     }
 
-    return static_cast<Item*>(nullptr);
-}
-
-///# ...
-///# param slot ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] Item* Server_Critter_GetItemBySlot(Critter* self, int slot)
-{
-    return self->GetItemSlot(slot);
-}
-
-///# ...
-///# param protoId ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] Item* Server_Critter_GetItemByPid(Critter* self, hstring protoId)
-{
-    return self->GetEngine()->CrMngr.GetItemByPidInvPriority(self, protoId);
+    return nullptr;
 }
 
 ///# ...
@@ -613,28 +605,23 @@
 }
 
 ///# ...
-///# param slot ...
+///# param property ...
+///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Critter_GetItemsBySlot(Critter* self, int slot)
+[[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, ItemProperty property, int propertyValue)
 {
-    return self->GetItemsSlot(slot);
-}
+    const auto* prop = GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
-///# ...
-///# param predicate ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Critter_GetItemsByPredicate(Critter* self, const std::function<bool(Item*)>& predicate)
-{
-    auto inv_items = self->GetInventory();
     vector<Item*> items;
-    items.reserve(inv_items.size());
-    for (auto* item : inv_items) {
-        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
+    items.reserve(self->GetInventory().size());
+
+    for (auto* item : self->GetInventory()) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
     }
+
     return items;
 }
 

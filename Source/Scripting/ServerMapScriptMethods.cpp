@@ -201,32 +201,38 @@
 }
 
 ///# ...
-///# param predicate ...
+///# param property ...
+///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ItemProperty property, int propertyValue)
 {
+    const auto* prop = GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     const auto map_items = self->GetItems();
 
     vector<Item*> items;
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
-        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
     }
+
     return items;
 }
 
 ///# ...
 ///# param hx ...
 ///# param hy ...
-///# param predicate ...
+///# param property ...
+///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, ItemProperty property, int propertyValue)
 {
+    const auto* prop = GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
@@ -236,10 +242,11 @@
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
-        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
     }
+
     return items;
 }
 
@@ -247,11 +254,14 @@
 ///# param hx ...
 ///# param hy ...
 ///# param radius ...
-///# param predicate ...
+///# param property ...
+///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, uint radius, const std::function<bool(Item*)>& predicate)
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, uint radius, ItemProperty property, int propertyValue)
 {
+    const auto* prop = GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+
     if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
@@ -261,10 +271,11 @@
     items.reserve(map_items.size());
 
     for (auto* item : map_items) {
-        if (!item->IsDestroyed() && predicate(item) && !item->IsDestroyed()) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }
     }
+
     return items;
 }
 
@@ -323,18 +334,20 @@
 }
 
 ///# ...
-///# param predicate ...
+///# param property ...
+///# param propertyValue ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, const std::function<bool(StaticItem*)>& predicate)
+[[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemProperty property, int propertyValue)
 {
+    const auto* prop = GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
     const auto map_static_items = self->GetStaticMap()->StaticItemsVec;
 
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());
 
     for (const auto* item : map_static_items) {
-        if (predicate(item)) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
             result.push_back(item);
         }
     }
@@ -385,10 +398,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Critter* Server_Map_GetCritter(Map* self, CritterProperty property, int propertyValue, CritterFindType findType)
 {
-    const auto* prop_reg = self->GetEngine()->GetPropertyRegistrator(Critter::ENTITY_CLASS_NAME);
-    RUNTIME_ASSERT(prop_reg);
-    const auto* prop = prop_reg->GetByIndex(static_cast<int>(property));
-    RUNTIME_ASSERT(prop);
+    const auto* prop = GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
 
     for (auto* cr : self->GetCritters()) {
         if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {
@@ -474,15 +484,11 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Critter*> Server_Map_GetCritters(Map* self, CritterProperty property, int propertyValue, CritterFindType findType)
 {
+    const auto* prop = GetIntConvertibleEntityProperty<Critter>(self->GetEngine(), property);
     const auto map_critters = self->GetCritters();
 
     vector<Critter*> critters;
     critters.reserve(map_critters.size());
-
-    const auto* prop_reg = self->GetEngine()->GetPropertyRegistrator(Critter::ENTITY_CLASS_NAME);
-    RUNTIME_ASSERT(prop_reg);
-    const auto* prop = prop_reg->GetByIndex(static_cast<int>(property));
-    RUNTIME_ASSERT(prop);
 
     for (auto* cr : map_critters) {
         if (cr->CheckFind(findType) && cr->GetValueAsInt(prop) == propertyValue) {

@@ -224,9 +224,19 @@ auto Entity::GetValueAsInt(const Property* prop) const -> int
     return _props.GetPlainDataValueAsInt(prop);
 }
 
+auto Entity::GetValueAsInt(int prop_index) const -> int
+{
+    return _props.GetValueAsInt(prop_index);
+}
+
 auto Entity::GetValueAsFloat(const Property* prop) const -> float
 {
     return _props.GetPlainDataValueAsFloat(prop);
+}
+
+auto Entity::GetValueAsFloat(int prop_index) const -> float
+{
+    return _props.GetValueAsFloat(prop_index);
 }
 
 void Entity::SetValueAsInt(const Property* prop, int value)
@@ -234,9 +244,19 @@ void Entity::SetValueAsInt(const Property* prop, int value)
     _props.SetPlainDataValueAsInt(prop, value);
 }
 
+void Entity::SetValueAsInt(int prop_index, int value)
+{
+    _props.SetValueAsInt(prop_index, value);
+}
+
 void Entity::SetValueAsFloat(const Property* prop, float value)
 {
     _props.SetPlainDataValueAsFloat(prop, value);
+}
+
+void Entity::SetValueAsFloat(int prop_index, float value)
+{
+    _props.SetValueAsFloat(prop_index, value);
 }
 
 ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator) : Entity(registrator), _protoId {proto_id}

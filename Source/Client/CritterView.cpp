@@ -152,6 +152,8 @@ void CritterView::DeleteAllItems()
 
 auto CritterView::GetItem(uint item_id) -> ItemView*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : InvItems) {
         if (item->GetId() == item_id) {
             return item;
@@ -162,6 +164,8 @@ auto CritterView::GetItem(uint item_id) -> ItemView*
 
 auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : InvItems) {
         if (item->GetProtoId() == item_pid) {
             return item;
@@ -170,34 +174,10 @@ auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
     return nullptr;
 }
 
-auto CritterView::GetItemSlot(int slot) -> ItemView*
-{
-    for (auto* item : InvItems) {
-        if (item->GetCritSlot() == slot) {
-            return item;
-        }
-    }
-    return nullptr;
-}
-
-auto CritterView::GetItemsSlot(int slot) -> vector<ItemView*>
-{
-    vector<ItemView*> items;
-    items.reserve(InvItems.size());
-
-    for (auto* item : InvItems) {
-        if (slot == -1 || item->GetCritSlot() == slot) {
-            items.push_back(item);
-        }
-    }
-
-    return items;
-}
-
 auto CritterView::CountItemPid(hstring item_pid) const -> uint
 {
     uint result = 0;
-    for (auto* item : InvItems) {
+    for (const auto* item : InvItems) {
         if (item->GetProtoId() == item_pid) {
             result += item->GetCount();
         }

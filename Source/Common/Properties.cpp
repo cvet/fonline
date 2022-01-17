@@ -1018,7 +1018,7 @@ auto Properties::GetValueAsInt(int property_index) const -> int
     const auto* prop = _registrator->GetByIndex(property_index);
 
     if (prop == nullptr) {
-        throw PropertiesException("Enum not found", property_index);
+        throw PropertiesException("Property not found", property_index);
     }
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
@@ -1030,12 +1030,29 @@ auto Properties::GetValueAsInt(int property_index) const -> int
     return GetPlainDataValueAsInt(prop);
 }
 
+auto Properties::GetValueAsFloat(int property_index) const -> float
+{
+    const auto* prop = _registrator->GetByIndex(property_index);
+
+    if (prop == nullptr) {
+        throw PropertiesException("Property not found", property_index);
+    }
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
+    }
+    if (!prop->IsReadable()) {
+        throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
+    }
+
+    return GetPlainDataValueAsFloat(prop);
+}
+
 void Properties::SetValueAsInt(int property_index, int value)
 {
     const auto* prop = _registrator->GetByIndex(property_index);
 
     if (prop == nullptr) {
-        throw PropertiesException("Enum not found", property_index);
+        throw PropertiesException("Property not found", property_index);
     }
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
@@ -1047,12 +1064,29 @@ void Properties::SetValueAsInt(int property_index, int value)
     SetPlainDataValueAsInt(prop, value);
 }
 
+void Properties::SetValueAsFloat(int property_index, float value)
+{
+    const auto* prop = _registrator->GetByIndex(property_index);
+
+    if (prop == nullptr) {
+        throw PropertiesException("Property not found", property_index);
+    }
+    if (!prop->IsPlainData()) {
+        throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
+    }
+    if (!prop->IsWritable()) {
+        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    }
+
+    SetPlainDataValueAsFloat(prop, value);
+}
+
 void Properties::SetValueAsIntByName(string_view property_name, int value)
 {
     const auto* prop = _registrator->Find(property_name);
 
     if (prop == nullptr) {
-        throw PropertiesException("Enum not found", property_name);
+        throw PropertiesException("Property not found", property_name);
     }
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set by name integer value from non PlainData property", prop->GetName());
@@ -1069,7 +1103,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     const auto* prop = _registrator->GetByIndex(property_index);
 
     if (prop == nullptr) {
-        throw PropertiesException("Enum not found", property_index);
+        throw PropertiesException("Property not found", property_index);
     }
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());

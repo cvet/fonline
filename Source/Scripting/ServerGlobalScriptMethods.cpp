@@ -552,8 +552,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, uint itemId)
 {
-    auto* item = server->ItemMngr.GetItem(itemId);
-    if (item) {
+    if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr) {
         server->ItemMngr.DeleteItem(item);
     }
 }
@@ -575,8 +574,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DeleteItems(FOServer* server, const vector<uint>& itemIds)
 {
-    vector<Item*> items_to_delete;
-    for (auto item_id : itemIds) {
+    for (const auto item_id : itemIds) {
         if (item_id != 0u) {
             auto* item = server->ItemMngr.GetItem(item_id);
             if (item != nullptr) {

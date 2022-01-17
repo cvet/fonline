@@ -204,6 +204,7 @@ public:
     [[nodiscard]] auto GetPlainDataValueAsInt(const Property* prop) const -> int;
     [[nodiscard]] auto GetPlainDataValueAsFloat(const Property* prop) const -> float;
     [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
+    [[nodiscard]] auto GetValueAsFloat(int property_index) const -> float;
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(Properties* base) const -> map<string, string>;
 
@@ -218,6 +219,7 @@ public:
     void SetPlainDataValueAsInt(const Property* prop, int value);
     void SetPlainDataValueAsFloat(const Property* prop, float value);
     void SetValueAsInt(int property_index, int value);
+    void SetValueAsFloat(int property_index, float value);
     void SetValueAsIntByName(string_view property_name, int value);
     void SetValueAsIntProps(int property_index, int value);
 

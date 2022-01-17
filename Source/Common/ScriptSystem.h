@@ -69,6 +69,26 @@ using ObjInfo = string_view;
 template<typename T = void>
 using ScriptFuncName = string_view;
 
+class FOEngineBase;
+
+template<typename T, typename U>
+static auto GetIntConvertibleEntityProperty(FOEngineBase* engine, U prop_index) -> const Property*
+{
+    const auto* prop_reg = engine->GetPropertyRegistrator(T::ENTITY_CLASS_NAME);
+    RUNTIME_ASSERT(prop_reg);
+    const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));
+    if (prop == nullptr) {
+        throw ScriptException("Invalid property index", T::ENTITY_CLASS_NAME, prop_index);
+    }
+    if (!prop->IsReadable()) {
+        throw ScriptException("Property is not readable", T::ENTITY_CLASS_NAME, prop_index);
+    }
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property is not plain data", T::ENTITY_CLASS_NAME, prop_index);
+    }
+    return prop;
+}
+
 template<typename TRet, typename... Args>
 class ScriptFunc final
 {

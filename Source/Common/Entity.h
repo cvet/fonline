@@ -113,7 +113,9 @@ public:
     [[nodiscard]] auto IsDestroying() const -> bool;
     [[nodiscard]] auto IsDestroyed() const -> bool;
     [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;
+    [[nodiscard]] auto GetValueAsInt(int prop_index) const -> int;
     [[nodiscard]] auto GetValueAsFloat(const Property* prop) const -> float;
+    [[nodiscard]] auto GetValueAsFloat(int prop_index) const -> float;
 
     void SetProperties(const Properties& props);
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
@@ -122,7 +124,9 @@ public:
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     void SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send);
     void SetValueAsInt(const Property* prop, int value);
+    void SetValueAsInt(int prop_index, int value);
     void SetValueAsFloat(const Property* prop, float value);
+    void SetValueAsFloat(int prop_index, float value);
     void SubscribeEvent(const string& event_name, EventCallbackData callback);
     void UnsubscribeEvent(const string& event_name, const void* subscription_ptr);
     void UnsubscribeAllEvent(const string& event_name);

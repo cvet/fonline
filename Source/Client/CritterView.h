@@ -85,8 +85,6 @@ public:
     [[nodiscard]] auto GetAttackDist() -> uint;
     [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
     [[nodiscard]] auto GetItemByPid(hstring item_pid) -> ItemView*;
-    [[nodiscard]] auto GetItemSlot(int slot) -> ItemView*;
-    [[nodiscard]] auto GetItemsSlot(int slot) -> vector<ItemView*>;
 
     [[nodiscard]] auto PopLastHex() -> tuple<ushort, ushort>;
 
