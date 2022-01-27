@@ -4425,6 +4425,7 @@ void FOClient::AddMess(uchar mess_type, string_view msg, bool script_call)
     MessageBoxEvent.Fire(string(msg), mess_type, script_call);
 }
 
+// Todo: move targs formatting to scripts
 void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems)
 {
     if (text == "error") {
@@ -4481,7 +4482,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             }
             // Sex
             else if (_str(tag).compareIgnoreCase("sex")) {
-                sex = (cr != nullptr ? cr->GetGender() + 1 : 1);
+                // sex = (cr != nullptr ? cr->GetGender() + 1 : 1);
                 sex_tags = true;
                 continue;
             }

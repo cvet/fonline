@@ -66,7 +66,7 @@ template<typename T>
 using InitFunc = hstring;
 template<int N>
 using ObjInfo = string_view;
-template<typename T = void>
+template<typename...>
 using ScriptFuncName = string_view;
 
 class FOEngineBase;

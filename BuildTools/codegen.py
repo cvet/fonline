@@ -6,6 +6,7 @@ import os
 import sys
 import argparse
 import time
+import uuid
 
 startTime = time.time()
 
@@ -35,7 +36,6 @@ parser.add_argument('-output', dest='output', required=True, help='scripts outpu
 args = parser.parse_args()
 
 def getGuid(name):
-    import uuid
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
 
 # Parse meta information
@@ -246,16 +246,16 @@ def parseTags():
             'float', 'double', 'hstring', 'string', 'bool', 'Entity', 'void'])
     
     def unifiedTypeToMetaType(t):
-        if t.endswith('&'):
-            return unifiedTypeToMetaType(t[:-1]) + '.ref'
         if t.startswith('init-'):
             return 'init.' + unifiedTypeToMetaType(t[5:])
         if t.startswith('ObjInfo-'):
             return t.replace('-', '.')
         if t.startswith('ScriptFuncName-'):
-            fd = unifiedTypeToMetaType(t[len('ScriptFuncName-'):])
-            genericFuncdefs.add(fd)
-            return 'ScriptFuncName.' + fd
+            fd = [unifiedTypeToMetaType(a) for a in t[len('ScriptFuncName-'):].split('|')]
+            genericFuncdefs.add('|'.join(fd))
+            return 'ScriptFuncName.' + '|'.join(fd)
+        if t.endswith('&'):
+            return unifiedTypeToMetaType(t[:-1]) + '.ref'
         if '=>' in t:
             tt = t.split('=>')
             return 'dict.' + unifiedTypeToMetaType(tt[0]) + '.' + unifiedTypeToMetaType(tt[1])
@@ -275,10 +275,11 @@ def parseTags():
         elif t.startswith('ObjInfo<'):
             return 'ObjInfo-' + t[t.find('<') + 1:t.rfind('>')]
         elif t.startswith('ScriptFuncName<'):
-            return 'ScriptFuncName-' + engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
+            fargs = splitEngineArgs(t[t.find('<') + 1:t.rfind('>')])
+            return 'ScriptFuncName-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs])
         elif t.find('map<') != -1:
-            tt = t[t.find('<') + 1:t.rfind('>')].split('-')
-            r = engineTypeToUnifiedType(tt[0]) + '=>' + engineTypeToUnifiedType(tt[1])
+            tt = t[t.find('<') + 1:t.rfind('>')].split(',', 1)
+            r = engineTypeToUnifiedType(tt[0].strip()) + '=>' + engineTypeToUnifiedType(tt[1].strip())
             if not t.startswith('const') and t.endswith('&'):
                 r += '&'
             return r
@@ -323,12 +324,23 @@ def parseTags():
         ut = engineTypeToUnifiedType(t)
         return unifiedTypeToMetaType(ut)
 
-    def fixTemplateComma(s, cls):
-        mapPos = s.find(cls + '<')
-        if mapPos != -1:
-            mapSubs = s[mapPos:s.find('>', mapPos)]
-            return s.replace(mapSubs, mapSubs.replace(', ', '-'))
-        return s
+    def splitEngineArgs(fargs):
+        result = []
+        braces = 0
+        r = ''
+        for c in fargs:
+            if c == ',' and braces == 0:
+                result.append(r.strip())
+                r = ''
+            else:
+                r += c
+                if c == '<':
+                    braces += 1
+                elif c == '>':
+                    braces -= 1
+        assert r.strip()
+        result.append(r.strip())
+        return result
 
     def parseTypeTags():
         global codeGenTags
@@ -544,10 +556,8 @@ def parseTags():
                 name = funcTok[2]
                 ret = engineTypeToMetaType(tagContext[tagContext.rfind(' ', 0, retSpace - 1):retSpace].strip())
                 
-                funcArgs = fixTemplateComma(funcArgs, 'map')
-                
                 resultArgs = []
-                for arg in funcArgs.split(',')[1 if entity != 'Global' else 1:]:
+                for arg in splitEngineArgs(funcArgs)[1 if entity != 'Global' else 1:]:
                     arg = arg.strip()
                     sep = arg.rfind(' ')
                     argType = engineTypeToMetaType(arg[:sep].rstrip())
@@ -584,9 +594,8 @@ def parseTags():
                 eventArgs = []
                 if firstCommaPos != -1:
                     argsStr = tagContext[firstCommaPos + 1:braceClosePos].strip()
-                    argsStr = fixTemplateComma(argsStr, 'map')
                     if len(argsStr):
-                        for arg in argsStr.split(','):
+                        for arg in splitEngineArgs(argsStr):
                             arg = arg.strip()
                             sep = arg.find('/')
                             argType = engineTypeToMetaType(arg[:sep - 1].rstrip())
@@ -931,7 +940,7 @@ def metaTypeToEngineType(t, target, passIn):
     elif tt[0] == 'ObjInfo':
         return 'ObjInfo<' + tt[1] + '>'
     elif tt[0] == 'ScriptFuncName':
-        return 'ScriptFuncName<' + metaTypeToEngineType('.'.join(tt[1:]), target, False) + '>'
+        return 'ScriptFuncName<' + ', '.join([metaTypeToEngineType(a, target, False) for a in '.'.join(tt[1:]).split('|')]) + '>'
     elif tt[0] == 'Entity':
         return 'ClientEntity*' if target != 'Server' else 'ServerEntity*'
     elif tt[0] in gameEntities:
@@ -1252,7 +1261,7 @@ def genCode(lang, target, isASCompiler=False):
                 return '?&in'
             elif tt[0] == 'ScriptFuncName':
                 assert len(tt) > 1, 'Invalid generic function'
-                return 'Generic_' + '_'.join(tt[1:]) + '_Func' + getHandle()
+                return 'Generic_' + '.'.join(tt[1:]).replace('|', '_').replace('.', '_') + '_Func' + getHandle()
             else:
                 return tt[0] if tt[-1] != 'ref' else tt[0] + '&'
     
@@ -1584,7 +1593,9 @@ def genCode(lang, target, isASCompiler=False):
         # Generic funcdefs
         registerLines.append('// Generic funcdefs')
         for fd in genericFuncdefs:
-            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("void Generic_' + fd.replace('.', '_') + '_Func(' + metaTypeToASType(fd) + ')"));')
+            fdParams = fd.split('|')
+            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0]) + ' Generic_' + '.'.join(fdParams).replace('.', '_') +
+                    '_Func(' + ', '.join([metaTypeToASType(p) for p in fdParams[1:]]) + ')"));')
         registerLines.append('')
         
         # Register entity methods and global functions

@@ -50,25 +50,25 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<int> func, int value)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, int> func, int value)
 {
     return server->DeferredCallMngr.AddDeferredCall(delay, false, func, &value, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<uint> func, uint value)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, uint> func, uint value)
 {
     return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr, &value, nullptr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<vector<int>> func, const vector<int>& values)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
 {
     return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, &values, nullptr, nullptr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
 {
     return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr, nullptr, &values);
 }
@@ -80,25 +80,25 @@
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<int> func, int value)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, int> func, int value)
 {
     return server->DeferredCallMngr.AddDeferredCall(delay, true, func, &value, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<uint> func, uint value)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, uint> func, uint value)
 {
     return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr, &value, nullptr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<vector<int>> func, const vector<int>& values)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
 {
     return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, &values, nullptr, nullptr);
 }
 
 ///@ ExportMethod
-[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<vector<uint>> func, const vector<uint>& values)
+[[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
 {
     return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr, nullptr, &values);
 }
@@ -548,12 +548,46 @@
 }
 
 ///# ...
+///# param item ...
+///# param count ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, Item* item, uint count)
+{
+    if (item != nullptr && count > 0u) {
+        const auto cur_count = item->GetCount();
+        if (count >= cur_count) {
+            server->ItemMngr.DeleteItem(item);
+        }
+        else {
+            item->SetCount(cur_count - count);
+        }
+    }
+}
+
+///# ...
 ///# param itemId ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, uint itemId)
 {
     if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr) {
         server->ItemMngr.DeleteItem(item);
+    }
+}
+
+///# ...
+///# param itemId ...
+///# param count ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DeleteItem(FOServer* server, uint itemId, uint count)
+{
+    if (auto* item = server->ItemMngr.GetItem(itemId); item != nullptr && count > 0u) {
+        const auto cur_count = item->GetCount();
+        if (count >= cur_count) {
+            server->ItemMngr.DeleteItem(item);
+        }
+        else {
+            item->SetCount(cur_count - count);
+        }
     }
 }
 
