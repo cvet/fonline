@@ -110,7 +110,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         CreateGlobalData();
         LogToFile();
 
-        WriteLog("Starting Mapper ({:#x})...\n", FO_VERSION);
+        WriteLog("Starting Mapper {}...\n", FO_GAME_VERSION);
 
         Data->Settings = new GlobalSettings(argc, argv);
         InitApplication(*Data->Settings);

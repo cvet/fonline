@@ -51,7 +51,6 @@ set( FO_DEV_NAME "Unknown" )
 set( FO_NICE_NAME "Unknown" )
 set( FO_COMPANY_NAME "Unknown" )
 set( FO_GAME_VERSION "0.0.1" )
-set( FO_ENGINE_VERSION "" )
 set( FO_MULTIPLAYER_SCRIPTING YES )
 set( FO_SINGLEPLAYER_SCRIPTING NO )
 set( FO_NATIVE_SCRIPTING NO )
@@ -84,10 +83,6 @@ set( FO_RENDER_LIBS "" )
 set( FO_BAKER_SYSTEM_LIBS "" )
 set( FO_BAKER_LIBS "" )
 set( FO_USE_GLEW NO )
-set( FO_GIT_HASH_RESULT "" )
-set( FO_GIT_DIFF_RESULT "" )
-set( FO_GIT_HASH "" )
-set( FO_VERSION_CONTENT "" )
 set( FO_SDL_DIR "" )
 set( FO_ZLIB_DIR "" )
 set( FO_PNG_DIR "" )
@@ -452,7 +447,7 @@ macro( ResolveContributedFiles fileList )
 endmacro()
 
 macro( SetupGame )
-	set( allowedCommands "DEV_NAME" "NICE_NAME" "COMPANY_NAME" "GAME_VERSION" "ENGINE_VERSION"
+	set( allowedCommands "DEV_NAME" "NICE_NAME" "COMPANY_NAME" "GAME_VERSION"
 		"MULTIPLAYER_SCRIPTING" "SINGLEPLAYER_SCRIPTING" "NATIVE_SCRIPTING" "ANGELSCRIPT_SCRIPTING" "MONO_SCRIPTING" )
 	unset( opt )
 	foreach( arg ${ARGN} )
@@ -482,6 +477,11 @@ endmacro()
 macro( AddRawResources )
 	foreach( dir ${ARGN} )
 		list( APPEND FO_RESOURCES "Raw,${FO_CONTRIBUTION_DIR}/${dir}" )
+	endforeach()
+endmacro()
+macro( AddEmbeddedResources )
+	foreach( dir ${ARGN} )
+		list( APPEND FO_RESOURCES "Embedded,${FO_CONTRIBUTION_DIR}/${dir}" )
 	endforeach()
 endmacro()
 macro( AddEngineSource target )
@@ -584,6 +584,7 @@ AddAngelScriptSource( "Source/Scripting/AngelScript/*.fos" )
 AddMonoAssembly( "FOnline" )
 AddMonoSource( "FOnline" "Common" "Source/Scripting/Mono/*.cs" )
 AddResources( "Core" "Resources/Core" )
+AddEmbeddedResources( "Resources/Embedded" )
 
 # Scripting defines
 if( FO_NATIVE_SCRIPTING )
@@ -635,69 +636,7 @@ include_directories( "Source/Server" )
 include_directories( "Source/Client" )
 include_directories( "Source/Tools" )
 include_directories( "Source/Scripting" )
-
-# Generated includes
-macro( GenerateSourceFile fileName )
-	set( GeneratedSource_${fileName} "// Automatically generated, do not change manually\n" )
-endmacro()
-macro( AddGeneratedSourceLine fileName line )
-	set( GeneratedSource_${fileName} "${GeneratedSource_${fileName}}${line}\n" )
-endmacro()
-macro( FinalizeGeneratedSource fileName fileExt )
-	set( filePath "${CMAKE_BINARY_DIR}/GeneratedSource/${fileName}.${fileExt}" )
-	set( curContent "" )
-	if( EXISTS ${filePath} )
-		file( READ ${filePath} curContent )
-	endif()
-	if( NOT "${curContent}" STREQUAL "${GeneratedSource_${fileName}}" )
-		file( WRITE ${filePath} "${GeneratedSource_${fileName}}" )
-	endif()
-endmacro()
 include_directories( "${CMAKE_BINARY_DIR}/GeneratedSource" )
-
-# Embedded resources
-GenerateSourceFile( "EmbeddedResources-Include" )
-file( GLOB bins "Resources/Embedded/*.zipped" )
-foreach( bin ${bins} )
-	string( REGEX MATCH "([^/]+)$" filename ${bin} )
-	string( REGEX REPLACE "\\.| " "_" filename ${filename} )
-	file( READ ${bin} filedata HEX )
-	string( REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1, " filedata ${filedata} )
-	AddGeneratedSourceLine( "EmbeddedResources-Include" "const unsigned char Resource_${filename}[] = { ${filedata}};" )
-endforeach()
-FinalizeGeneratedSource( "EmbeddedResources-Include" "h" )
-
-# Unique hash for build
-if( FO_ENGINE_VERSION STREQUAL "" )
-	execute_process( COMMAND git rev-parse --short=7 HEAD WORKING_DIRECTORY "${CMAKE_HOME_DIRECTORY}" RESULT_VARIABLE FO_GIT_HASH_RESULT OUTPUT_VARIABLE FO_GIT_HASH )
-	execute_process( COMMAND git diff-index --quiet HEAD WORKING_DIRECTORY "${CMAKE_HOME_DIRECTORY}" RESULT_VARIABLE FO_GIT_DIFF_RESULT )
-	string( STRIP "${FO_GIT_HASH}" FO_GIT_HASH )
-	if( NOT FO_GIT_HASH_RESULT STREQUAL "0" OR NOT FO_GIT_DIFF_RESULT STREQUAL "0" )
-		string( RANDOM LENGTH 5 ALPHABET "0123456789abcdef" SOME_RANDOM )
-		set( FO_ENGINE_VERSION "fff${SOME_RANDOM}" CACHE STRING "Custom version for build (FO_VERSION in code), use hex digits (0-9, a-f), maximum are 8" )
-	endif()
-endif()
-
-GenerateSourceFile( "Version-Include" )
-if( FO_ENGINE_VERSION STREQUAL "" )
-	if( $ENV{GITHUB_SHA} )
-		StatusMessage( "Build version: ${FO_GIT_HASH} (commit hash at GitHub)" )
-		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_GIT_HASH}; /* Commit hash at GitHub */" )
-		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_GIT_HASH}\";" )
-		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_GITHUB = true;" )
-	else()
-		StatusMessage( "Build version: ${FO_GIT_HASH} (commit hash)" )
-		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_GIT_HASH}; /* Commit hash */" )
-		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_GIT_HASH}\";" )
-		AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_GITHUB = false;" )
-	endif()
-else()
-	StatusMessage( "Build version: ${FO_ENGINE_VERSION} (custom version)" )
-	AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION = 0x${FO_ENGINE_VERSION}; /* Custom version */" )
-	AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_VERSION_STR = \"${FO_ENGINE_VERSION}\";" )
-	AddGeneratedSourceLine( "Version-Include" "static constexpr auto FO_GITHUB = false;" )
-endif()
-FinalizeGeneratedSource( "Version-Include" "h" )
 
 # Third-party libs
 StatusMessage( "Third-party libs:" )
@@ -1087,14 +1026,6 @@ endif()
 if( FO_NATIVE_SCRIPTING )
 	# Generated native scripting files placed here
 	include_directories( ${FO_SCRIPTS_OUTPUT} )
-
-	# Entry points
-	GenerateSourceFile( "NativeScriptingEntries" )
-	foreach( funcName ${FO_NATIVE_ENTRIES} )
-		AddGeneratedSourceLine( "NativeScriptingEntries" "FO_ENTRY_POINT(${funcName})" )
-	endforeach()
-	AddGeneratedSourceLine( "NativeScriptingEntries" "#undef FO_ENTRY_POINT" )
-	FinalizeGeneratedSource( "NativeScriptingEntries" "h" )
 endif()
 
 # AngelScript scripting
@@ -1234,6 +1165,8 @@ list( APPEND FO_COMMON_SOURCE
 	"Source/Common/UcsTables-Include.h"
 	"Source/Common/WinApi-Include.h"
 	"Source/Scripting/CommonGlobalScriptMethods.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
 
 list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/Application.cpp" )
@@ -1401,6 +1334,8 @@ find_package( Python3 REQUIRED COMPONENTS Interpreter )
 list( APPEND FO_CODEGEN_COMMAND_ARGS -output "${FO_SCRIPTS_OUTPUT}" )
 list( APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_BINARY_DIR}/GeneratedSource" )
 
+list( APPEND FO_CODEGEN_COMMAND_ARGS -gamename "${FO_NICE_NAME} ${FO_GAME_VERSION}" )
+
 list( APPEND FO_CODEGEN_COMMAND_ARGS -markdown )
 if( FONLINE_INFO_MARKDOWN_OUTPUT )
 	list( APPEND FO_CODEGEN_COMMAND_ARGS -mdpath "${FONLINE_INFO_MARKDOWN_OUTPUT}" )
@@ -1473,7 +1408,11 @@ foreach( entry ${FO_MONO_ASSEMBLIES} )
 endforeach()
 
 foreach( entry ${FO_CONTENT} )
-	list( APPEND FO_CODEGEN_COMMAND_ARGS -content ${entry} )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -content "${entry}" )
+endforeach()
+
+foreach( entry ${FO_RESOURCES} )
+	list( APPEND FO_CODEGEN_COMMAND_ARGS -resource "${entry}" )
 endforeach()
 
 list( APPEND FO_CODEGEN_META_SOURCE

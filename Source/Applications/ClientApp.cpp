@@ -141,7 +141,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         CreateGlobalData();
         LogToFile();
 
-        WriteLog("Starting FOnline ({:#x})...\n", FO_VERSION);
+        WriteLog("Starting {}...\n", FO_GAME_VERSION);
 
         Data->Settings = new GlobalSettings(argc, argv);
         InitApplication(*Data->Settings);

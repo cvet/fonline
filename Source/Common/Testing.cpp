@@ -89,7 +89,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
 
     const auto dt = Timer::GetCurrentDateTime();
     const auto* dump_str = (except != nullptr ? "CrashDump" : ManualDumpAppendix);
-    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_VERSION_STR, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_GAME_VERSION, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     DiskFileSystem::ResetCurDir();
     DiskFileSystem::MakeDirTree(dump_path);
@@ -101,7 +101,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
         file.Write(_str("\tName        {}\n", GetAppName()));
-        file.Write(_str("\tVersion     {}\n", FO_VERSION_STR));
+        file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
         file.Write(_str("\tOS          Windows\n"));
         file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
         file.Write(_str("\n"));
@@ -273,7 +273,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     // Dump file
     const auto dt = Timer::GetCurrentDateTime();
     string dump_str = (siginfo ? "CrashDump" : ManualDumpAppendix);
-    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_VERSION_STR, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_GAME_VERSION, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     DiskFileSystem::ResetCurDir();
     DiskFileSystem::MakeDirTree(dump_path);
@@ -286,7 +286,7 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
         file.Write(_str("\tName        {}\n", GetAppName()));
-        file.Write(_str("\tVersion     {}\n", FO_VERSION_STR));
+        file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
         struct utsname ver;
         uname(&ver);
         file.Write(_str("\tOS          {} / {} / {}\n", ver.sysname, ver.release, ver.version));

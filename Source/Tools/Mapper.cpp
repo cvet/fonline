@@ -63,9 +63,9 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     ClientWritePath = Settings.WorkDir;
 
     // Resources
-    FileMngr.AddDataSource("$Basic", false);
+    FileMngr.AddDataSource("$Embedded", false);
     FileMngr.AddDataSource(ClientWritePath + "Data/", false);
-    ServerFileMngr.AddDataSource("$Basic", false);
+    ServerFileMngr.AddDataSource("$Embedded", false);
     ServerFileMngr.AddDataSource(ServerWritePath, false);
 
     // Default effects

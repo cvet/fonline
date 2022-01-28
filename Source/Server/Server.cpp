@@ -592,7 +592,7 @@ void FOServer::ProcessFreeConnection(ClientConnection* connection)
             connection->Bout << static_cast<uint>(0);
             connection->Bout << static_cast<uchar>(0);
             connection->Bout << static_cast<uchar>(0xF0);
-            connection->Bout << static_cast<ushort>(FO_VERSION);
+            connection->Bout << static_cast<ushort>(FO_COMPATIBILITY_VERSION);
             CONNECTION_OUTPUT_END(connection);
 
             connection->HardDisconnect();
@@ -2225,7 +2225,7 @@ void FOServer::Process_Update(ClientConnection* connection)
     // Net protocol
     ushort proto_ver = 0;
     connection->Bin >> proto_ver;
-    const auto outdated = (proto_ver != static_cast<ushort>(FO_VERSION));
+    const auto outdated = (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION));
 
     // Begin data encrypting
     uint encrypt_key = 0;
@@ -2329,7 +2329,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     connection->Bout.SetEncryptKey(1234567890);
 
     // Check protocol
-    if (proto_ver != static_cast<ushort>(FO_VERSION)) {
+    if (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION)) {
         connection->Send_CustomMessage(NETMSG_WRONG_NET_PROTO);
         connection->GracefulDisconnect();
         return;
@@ -2452,7 +2452,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     connection->Bout.SetEncryptKey(12345);
 
     // Check protocol
-    if (proto_ver != static_cast<ushort>(FO_VERSION)) {
+    if (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION)) {
         connection->Send_CustomMessage(NETMSG_WRONG_NET_PROTO);
         connection->GracefulDisconnect();
         return;

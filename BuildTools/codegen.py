@@ -7,10 +7,13 @@ import sys
 import argparse
 import time
 import uuid
+import io
+import zipfile
 
 startTime = time.time()
 
-parser = argparse.ArgumentParser(description='FOnline scripts generation', fromfile_prefix_chars='@')
+parser = argparse.ArgumentParser(description='FOnline code generator', fromfile_prefix_chars='@')
+parser.add_argument('-gamename', dest='gamename', required=True, help='game name and version')
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
 parser.add_argument('-multiplayer', dest='multiplayer', action='store_true', help='generate multiplayer api')
 parser.add_argument('-singleplayer', dest='singleplayer', action='store_true', help='generate singleplayer api')
@@ -31,6 +34,7 @@ parser.add_argument('-monoclientsource', dest='monoclientsource', action='append
 parser.add_argument('-monosinglesource', dest='monosinglesource', action='append', default=[], help='csharp sp file path')
 parser.add_argument('-monomappersource', dest='monomappersource', action='append', default=[], help='csharp mapper file path')
 parser.add_argument('-content', dest='content', action='append', default=[], help='content file path')
+parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
 parser.add_argument('-output', dest='output', required=True, help='scripts output dir')
 args = parser.parse_args()
@@ -82,6 +86,8 @@ def checkErrors():
                 with open(args.genoutput.rstrip('/') + '/' + fname, 'w', encoding='utf-8') as f:
                     f.write('\n'.join(errorLines))
             
+            writeStub('EmbeddedResources-Include.h')
+            writeStub('Version-Include.h')
             writeStub('EntityProperties-Common.cpp')
             writeStub('DataRegistration-Server.cpp')
             writeStub('DataRegistration-Client.cpp')
@@ -806,26 +812,6 @@ tagsMetas = {} # Cleanup memory
 # Parse content
 content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fomsg': [] }
 
-def collectFiles(pathPattern, generator):
-    # Todo: recursive search
-    result = []
-    if '*' in pathPattern:
-        dir = os.path.dirname(pathPattern)
-        basename = os.path.basename(pathPattern)
-        name = os.path.splitext(basename)[0]
-        ext = os.path.splitext(basename)[1] if len(os.path.splitext(basename)) > 1 else None
-        for file in os.listdir(dir):
-            n, e = os.path.splitext(file)
-            if ('*' in name or n == name) and ('*' in ext or e == ext):
-                result.append(dir + '/' + file)
-    else:
-        if not os.path.isfile(pathPattern):
-            lines = generator()
-            with open(pathPattern, 'w', encoding='utf-8') as f:
-                f.write('\n'.join(lines))
-        result.append(pathPattern)
-    return result
-    
 for contentDir in args.content:
     try:
         def collectFiles(dir):
@@ -852,6 +838,37 @@ for contentDir in args.content:
     
     except Exception as ex:
         showError('Can\'t process content dir ' + contentDir, ex)
+
+checkErrors()
+
+# Parse resources
+resources = {}
+
+for resourceEntry in args.resource:
+    try:
+        def collectFiles(dir, arcDir):
+            result = []
+            for entry in os.listdir(dir):
+                entryPath = os.path.abspath(os.path.join(dir, entry))
+                if os.path.isdir(entryPath):
+                    result.extend(collectFiles(entryPath, arcDir + '/' + entry))
+                elif os.path.isfile(entryPath):
+                    result.append(((arcDir + '/' + entry).lstrip('/'), entryPath))
+            return result        
+        
+        resType, resDir = resourceEntry.split(',', 1)
+        resDir = os.path.abspath(resDir)
+        
+        if resType not in resources:
+            resources[resType] = []
+        
+        resources[resType].extend(collectFiles(resDir, ''))
+    
+    except Exception as ex:
+        showError('Can\'t process resources entry ' + resourceEntry, ex)
+
+for key in resources.keys():
+    resources[key].sort(key=lambda x: x[0])
 
 checkErrors()
 
@@ -2731,6 +2748,25 @@ if csprojects:
         showError('Can\'t write solution files', ex)
 
 checkErrors()
+
+# Embedded resources
+try:
+    zipData = io.BytesIO()
+    with zipfile.ZipFile(zipData, 'w', compression=zipfile.ZIP_DEFLATED) as zip:
+        for res in resources['Embedded']:
+            zip.write(res[1], res[0])
+        createFile('EmbeddedResources-Include.h', args.genoutput)
+        writeFile('const unsigned char EmbeddedResources[] = {0x' + ', 0x'.join(zipData.getvalue().hex(' ').split(' ')) + '};')
+
+except Exception as ex:
+    showError('Can\'t write embedded resources', ex)
+
+checkErrors()
+
+# Version info
+createFile('Version-Include.h', args.genoutput)
+writeFile('static constexpr auto FO_GAME_VERSION = "' + args.gamename + '";')
+writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = 0x12345678;')
 
 # Actual writing of generated files
 try:

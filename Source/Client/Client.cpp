@@ -68,6 +68,7 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngin
     SetGameColor(COLOR_IFACE);
 
     // Data sources
+    FileMngr.AddDataSource("$Embedded", true);
 #if FO_IOS
     FileMngr.AddDataSource("../../Documents/", true);
 #elif FO_ANDROID
@@ -1673,7 +1674,7 @@ void FOClient::Net_SendUpdate()
     _netOut << NETMSG_UPDATE;
 
     // Protocol version
-    _netOut << static_cast<ushort>(FO_VERSION);
+    _netOut << static_cast<ushort>(FO_COMPATIBILITY_VERSION);
 
     // Data encrypting
     const uint encrypt_key = 0x00420042;
@@ -1690,7 +1691,7 @@ void FOClient::Net_SendLogIn()
 
     _netOut << NETMSG_LOGIN;
     _netOut << msg_len;
-    _netOut << FO_VERSION;
+    _netOut << FO_COMPATIBILITY_VERSION;
 
     // Begin data encrypting
     _netOut.SetEncryptKey(12345);
@@ -1711,7 +1712,7 @@ void FOClient::Net_SendCreatePlayer()
 
     _netOut << NETMSG_REGISTER;
     _netOut << msg_len;
-    _netOut << FO_VERSION;
+    _netOut << FO_COMPATIBILITY_VERSION;
 
     // Begin data encrypting
     _netOut.SetEncryptKey(1234567890);
@@ -4856,8 +4857,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         TryExit();
     }
     else if (cmd == "Version") {
-        // return _str("{}", FO_VERSION);
-        return _str("{}", "Unsupported");
+        return _str("{}", FO_GAME_VERSION);
     }
     else if (cmd == "BytesSend") {
         return _str("{}", _bytesSend);
