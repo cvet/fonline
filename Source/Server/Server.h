@@ -277,7 +277,6 @@ private:
         string BanInfo {};
     };
 
-    static constexpr auto TEXT_LISTEN_FIRST_STR_MAX_LEN = 63;
     static constexpr auto BANS_FNAME_ACTIVE = "Save/Bans/Active.txt";
     static constexpr auto BANS_FNAME_EXPIRED = "Save/Bans/Expired.txt";
 
@@ -365,7 +364,6 @@ private:
     vector<UpdateFile> _updateFiles {};
     vector<uchar> _updateFilesList {};
     vector<TextListener> _textListeners {};
-    std::mutex _textListenersLocker {};
     vector<Player*> _logClients {};
     vector<string> _logLines {};
     // Todo: run network listeners dynamically, without restriction, based on server settings

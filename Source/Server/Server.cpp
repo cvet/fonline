@@ -924,41 +924,28 @@ void FOServer::Process_Text(Player* player)
     }
 
     // Text listen
-    auto listen_count = 0;
-    ScriptFunc<void, Critter*, string> listen_func[100]; // 100 calls per one message is enough
-    string listen_str[100];
+    vector<pair<ScriptFunc<void, Critter*, string>, string>> listen_callbacks;
+    listen_callbacks.reserve(100u);
 
-    {
-        std::lock_guard locker(_textListenersLocker);
-
-        if (how_say == SAY_RADIO) {
-            for (auto& tl : _textListeners) {
-                if (tl.SayType == SAY_RADIO && std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
-                    listen_func[listen_count] = tl.Func;
-                    listen_str[listen_count] = str;
-                    if (++listen_count >= 100) {
-                        break;
-                    }
-                }
+    if (how_say == SAY_RADIO) {
+        for (auto& tl : _textListeners) {
+            if (tl.SayType == SAY_RADIO && std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
+                listen_callbacks.emplace_back(tl.Func, str);
             }
         }
-        else {
-            auto* map = MapMngr.GetMap(cr->GetMapId());
-            const auto pid = (map != nullptr ? map->GetProtoId() : hstring());
-            for (auto& tl : _textListeners) {
-                if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
-                    listen_func[listen_count] = tl.Func;
-                    listen_str[listen_count] = str;
-                    if (++listen_count >= 100) {
-                        break;
-                    }
-                }
+    }
+    else {
+        auto* map = MapMngr.GetMap(cr->GetMapId());
+        const auto pid = (map != nullptr ? map->GetProtoId() : hstring());
+        for (auto& tl : _textListeners) {
+            if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
+                listen_callbacks.emplace_back(tl.Func, str);
             }
         }
     }
 
-    for (auto i = 0; i < listen_count; i++) {
-        listen_func[i](cr, listen_str[i]);
+    for (auto& cb : listen_callbacks) {
+        cb.first(cr, cb.second);
     }
 }
 
@@ -2767,7 +2754,7 @@ void FOServer::Process_GiveMap(Player* player)
     }
 
     if (automap) {
-        if (!MapMngr.CheckKnownLocById(cr, loc_id)) {
+        if (!MapMngr.CheckKnownLoc(cr, loc_id)) {
             WriteLog("Request for loading unknown automap, client '{}'.\n", cr->GetName());
             return;
         }

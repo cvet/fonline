@@ -153,8 +153,7 @@ public:
     [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
     [[nodiscard]] auto GetMaps() -> vector<Map*>;
     [[nodiscard]] auto GetMapsCount() const -> uint;
-    [[nodiscard]] auto CheckKnownLocById(Critter* cr, uint loc_id) const -> bool;
-    [[nodiscard]] auto CheckKnownLocByPid(Critter* cr, hstring loc_pid) const -> bool;
+    [[nodiscard]] auto CheckKnownLoc(Critter* cr, uint loc_id) const -> bool;
     [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& pfd) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;

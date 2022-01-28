@@ -709,7 +709,7 @@ void MapManager::DeleteLocation(Location* loc, vector<Critter*>* gmap_player_cri
     }
 
     for (auto* cl : *gmap_player_critters) {
-        if (CheckKnownLocById(cl, loc->GetId())) {
+        if (CheckKnownLoc(cl, loc->GetId())) {
             cl->Send_GlobalLocation(loc, false);
         }
     }
@@ -2296,21 +2296,10 @@ void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushor
     }
 }
 
-auto MapManager::CheckKnownLocById(Critter* cr, uint loc_id) const -> bool
+auto MapManager::CheckKnownLoc(Critter* cr, uint loc_id) const -> bool
 {
-    for (auto known_loc_id : cr->GetKnownLocations()) {
+    for (const auto known_loc_id : cr->GetKnownLocations()) {
         if (known_loc_id == loc_id) {
-            return true;
-        }
-    }
-    return false;
-}
-
-auto MapManager::CheckKnownLocByPid(Critter* cr, hstring loc_pid) const -> bool
-{
-    for (auto known_loc_id : cr->GetKnownLocations()) {
-        const auto* loc = const_cast<MapManager*>(this)->GetLocation(known_loc_id);
-        if (loc != nullptr && loc->GetProtoId() == loc_pid) {
             return true;
         }
     }
@@ -2321,7 +2310,7 @@ void MapManager::AddKnownLoc(Critter* cr, uint loc_id)
 {
     NON_CONST_METHOD_HINT();
 
-    if (CheckKnownLocById(cr, loc_id)) {
+    if (CheckKnownLoc(cr, loc_id)) {
         return;
     }
 

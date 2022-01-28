@@ -971,7 +971,7 @@
     vector<Location*> locations;
 
     for (auto* loc : server->MapMngr.GetLocations()) {
-        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsPlayer() && server->MapMngr.CheckKnownLocById(cr, loc->GetId())))) {
+        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
     }
@@ -1100,12 +1100,9 @@
 ///# param func ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_AddTextListener(FOServer* server, int sayType, string_view firstStr, uint parameter, const std::function<void(ServerEntity*)>& func)
+[[maybe_unused]] void Server_Game_AddTextListener(FOServer* server, int sayType, string_view firstStr, int parameter, ScriptFuncName<void, Critter, string> func)
 {
-    /*if (firstStr.length() > TEXT_LISTEN_FIRST_STR_MAX_LEN)
-        throw ScriptException("First string arg length greater than maximum");
-
-    uint func_id = server->ScriptSys.BindByFunc(func, false);
+    /*uint func_id = server->ScriptSys.BindByFunc(func, false);
     if (!func_id)
         throw ScriptException("Unable to bind script function");
 
@@ -1115,8 +1112,6 @@
     tl.FirstStr = firstStr;
     tl.Parameter = parameter;
 
-    std::lock_guard locker(server->TextListenersLocker);
-
     server->TextListeners.push_back(tl);*/
 }
 
@@ -1125,11 +1120,9 @@
 ///# param firstStr ...
 ///# param parameter ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_EraseTextListener(FOServer* server, int sayType, string_view firstStr, uint parameter)
+[[maybe_unused]] void Server_Game_EraseTextListener(FOServer* server, int sayType, string_view firstStr, int parameter)
 {
-    /*std::lock_guard locker(server->TextListenersLocker);
-
-    for (auto it = server->TextListeners.begin(), end = server->TextListeners.end(); it != end; ++it)
+    /*for (auto it = server->TextListeners.begin(), end = server->TextListeners.end(); it != end; ++it)
     {
         TextListener& tl = *it;
         if (sayType == tl.SayType && _str(firstStr).compareIgnoreCaseUtf8(tl.FirstStr) && tl.Parameter == parameter)

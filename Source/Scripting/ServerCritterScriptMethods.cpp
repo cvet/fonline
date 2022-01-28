@@ -769,26 +769,13 @@
 ///# param locId ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsKnownLocationId(Critter* self, uint locId)
+[[maybe_unused]] bool Server_Critter_IsKnownLocation(Critter* self, uint locId)
 {
     if (locId == 0u) {
         throw ScriptException("Invalid location id");
     }
 
-    return self->GetEngine()->MapMngr.CheckKnownLocById(self, locId);
-}
-
-///# ...
-///# param locPid ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsKnownLocationProto(Critter* self, hstring locPid)
-{
-    if (!locPid) {
-        throw ScriptException("Invalid location pid");
-    }
-
-    return self->GetEngine()->MapMngr.CheckKnownLocByPid(self, locPid);
+    return self->GetEngine()->MapMngr.CheckKnownLoc(self, locId);
 }
 
 ///# ...
@@ -799,6 +786,10 @@
 {
     if (locId == 0u) {
         throw ScriptException("Invalid location id");
+    }
+
+    if (self->GetEngine()->MapMngr.CheckKnownLoc(self, locId)) {
+        return;
     }
 
     auto* loc = self->GetEngine()->MapMngr.GetLocation(locId);
@@ -847,18 +838,16 @@
         throw ScriptException("Invalid location id");
     }
 
-    auto* loc = self->GetEngine()->MapMngr.GetLocation(locId);
-    if (!loc) {
-        throw ScriptException("Location not found");
-    }
-    if (!self->GetEngine()->MapMngr.CheckKnownLocById(self, loc->GetId())) {
-        throw ScriptException("Player is not know this location");
+    if (!self->GetEngine()->MapMngr.CheckKnownLoc(self, locId)) {
+        return;
     }
 
-    self->GetEngine()->MapMngr.EraseKnownLoc(self, loc->GetId());
+    self->GetEngine()->MapMngr.EraseKnownLoc(self, locId);
 
-    if (!self->GetMapId()) {
-        self->Send_GlobalLocation(loc, false);
+    if (self->GetMapId() == 0u) {
+        if (auto* loc = self->GetEngine()->MapMngr.GetLocation(locId); loc != nullptr) {
+            self->Send_GlobalLocation(loc, false);
+        }
     }
 }
 
