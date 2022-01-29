@@ -1432,6 +1432,8 @@ foreach( entry ${FO_CODEGEN_META_SOURCE} )
 endforeach()
 
 list( APPEND FO_CODEGEN_OUTPUT
+	"${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
