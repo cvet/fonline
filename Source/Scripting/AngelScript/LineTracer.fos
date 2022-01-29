@@ -4,11 +4,12 @@
 // utilities for tracing
 // pathfinding/critter-gathering functions etc.
 
-interface ITraceContext {
+interface ITraceContext
+{
     void StartExec(Map map, uint16 hx, uint16 hy, uint16 tx, uint16 ty, uint maxDist);
     void FinishExec(Map map, uint resultDist);
     bool Exec(Map map, uint16 hx, uint16 hy); // Return true to stop tracing
-}
+};
 
 // math
 const float SQRT3T2_FLOAT = 3.4641016151f;
