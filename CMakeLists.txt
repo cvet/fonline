@@ -1423,6 +1423,8 @@ list( APPEND FO_CODEGEN_META_SOURCE
 	${FO_TOOLS_SOURCE}
 	${FO_ANGELSCRIPT_SOURCE}
 	${FO_MONO_SOURCE} )
+list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h" )
+list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h" )
 list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
 list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" )
 list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp" )

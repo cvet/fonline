@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "EngineBase.h"
 #include "Entity.h"
 #include "Settings.h"
 
@@ -70,23 +69,7 @@ using ObjInfo = string_view;
 template<typename...>
 using ScriptFuncName = string_view;
 
-template<typename T, typename U>
-static auto GetIntConvertibleEntityProperty(FOEngineBase* engine, U prop_index) -> const Property*
-{
-    const auto* prop_reg = engine->GetPropertyRegistrator(T::ENTITY_CLASS_NAME);
-    RUNTIME_ASSERT(prop_reg);
-    const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));
-    if (prop == nullptr) {
-        throw ScriptException("Invalid property index", T::ENTITY_CLASS_NAME, prop_index);
-    }
-    if (!prop->IsReadable()) {
-        throw ScriptException("Property is not readable", T::ENTITY_CLASS_NAME, prop_index);
-    }
-    if (!prop->IsPlainData()) {
-        throw ScriptException("Property is not plain data", T::ENTITY_CLASS_NAME, prop_index);
-    }
-    return prop;
-}
+class FOEngineBase;
 
 template<typename TRet, typename... Args>
 class ScriptFunc final
@@ -240,4 +223,31 @@ private:
     HashIntMap scriptFuncBinds {}; // Func Num -> Bind Id
     StrIntMap cachedEnums {};
     map<string, IntStrMap> cachedEnumNames {};*/
+};
+
+class ScriptHelpers final
+{
+public:
+    ScriptHelpers() = delete;
+
+    template<typename T, typename U>
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, U prop_index) -> const Property*
+    {
+        return GetIntConvertibleEntityProperty(engine, T::ENTITY_CLASS_NAME, static_cast<int>(prop_index));
+    }
+
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*;
+
+    template<typename T>
+    static void CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time)
+    {
+        if (init_script) {
+            if (auto&& init_func = script_sys->FindFunc<void, T*, bool>(init_script)) {
+                init_func(entity, first_time);
+            }
+            else {
+                throw GenericException("Init func not found or has bas signature", init_script);
+            }
+        }
+    }
 };

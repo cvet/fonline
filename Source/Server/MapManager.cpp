@@ -399,7 +399,7 @@ void MapManager::GenerateMapContent(Map* map)
 
     // Map script
     if (!map->IsDestroyed()) {
-        map->CallInitScript<Map>(map->GetInitScript(), true);
+        ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), true);
     }
 }
 

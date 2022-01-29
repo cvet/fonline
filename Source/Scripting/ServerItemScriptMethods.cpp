@@ -67,7 +67,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
 {
-    self->CallInitScript<Item>(initFunc, true);
+    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
     self->SetInitScript(initFunc);
 }
 

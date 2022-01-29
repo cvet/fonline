@@ -32,6 +32,7 @@
 //
 
 #include "ScriptSystem.h"
+#include "EngineBase.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Timer.h"
@@ -1238,3 +1239,20 @@ CScriptArray* ScriptSystem::CreateArray(string_view type)
     return CScriptArray::Create(asEngine->GetTypeInfoById(asEngine->GetTypeIdByDecl(type.c_str())));
 }
 */
+
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*
+{
+    const auto* prop_reg = engine->GetPropertyRegistrator(class_name);
+    RUNTIME_ASSERT(prop_reg);
+    const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));
+    if (prop == nullptr) {
+        throw ScriptException("Invalid property index", class_name, prop_index);
+    }
+    if (!prop->IsReadable()) {
+        throw ScriptException("Property is not readable", class_name, prop_index);
+    }
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property is not plain data", class_name, prop_index);
+    }
+    return prop;
+}

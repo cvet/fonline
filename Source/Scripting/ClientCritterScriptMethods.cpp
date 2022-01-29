@@ -236,7 +236,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ItemProperty property, int propertyValue)
 {
-    const auto* prop = GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
     for (auto* item : self->InvItems) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -262,7 +262,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemProperty property, int propertyValue)
 {
-    const auto* prop = GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
     vector<ItemView*> items;
     items.reserve(self->InvItems.size());

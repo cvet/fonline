@@ -585,7 +585,7 @@
 ///@ ExportMethod
 [[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, ItemProperty property, int propertyValue)
 {
-    const auto* prop = GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     for (auto* item : self->GetInventory()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
@@ -611,7 +611,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, ItemProperty property, int propertyValue)
 {
-    const auto* prop = GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
 
     vector<Item*> items;
     items.reserve(self->GetInventory().size());
@@ -952,7 +952,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
 {
-    self->CallInitScript<Critter>(initFunc, true);
+    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
     self->SetInitScript(initFunc);
 }
 
