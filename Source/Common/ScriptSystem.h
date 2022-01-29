@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "EngineBase.h"
 #include "Entity.h"
 #include "Settings.h"
 
@@ -68,8 +69,6 @@ template<int N>
 using ObjInfo = string_view;
 template<typename...>
 using ScriptFuncName = string_view;
-
-class FOEngineBase;
 
 template<typename T, typename U>
 static auto GetIntConvertibleEntityProperty(FOEngineBase* engine, U prop_index) -> const Property*
