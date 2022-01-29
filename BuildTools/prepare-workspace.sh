@@ -18,10 +18,10 @@ function install_common_packages()
 
     echo "Install clang"
     sudo apt-get -qq -y install clang
-    echo "Install clang-10"
-    sudo apt-get -qq -y install clang-10
-    echo "Install clang-format-10"
-    sudo apt-get -qq -y install clang-format-10
+    echo "Install clang-12"
+    sudo apt-get -qq -y install clang-12
+    echo "Install clang-format-12"
+    sudo apt-get -qq -y install clang-format-12
     echo "Install build-essential"
     sudo apt-get -qq -y install build-essential
     echo "Install git"

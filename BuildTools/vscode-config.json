@@ -57,7 +57,7 @@
         {
             "label": "Format Engine code",
             "group": "Service",
-            "command": "cd Source && clang-format-10 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.* Tests/*.*",
+            "command": "cd Source && clang-format-12 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.* Scripting/AngelScript/*.fos Tests/*.*",
             "env": "linux wsl engine"
         },
         {
