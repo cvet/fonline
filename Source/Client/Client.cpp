@@ -3516,30 +3516,26 @@ void FOClient::Net_OnMap()
     delete[] cache;
 
     if (tiles && scen) {
-        // Todo: need attention!
-        /*OutputFile output_file {};
-        output_file.SetBEUInt(CLIENT_MAP_FORMAT_VER);
-        output_file.SetBEUInt(map_pid);
-        output_file.SetBEUShort(maxhx);
-        output_file.SetBEUShort(maxhy);
-        output_file.SetBEUInt(tiles_len);
-        output_file.SetBEUInt(scen_len);
-        if (tiles_len)
-            output_file.SetData(tiles_data, tiles_len);
-        if (scen_len)
-            output_file.SetData(scen_data, scen_len);
+        OutputBuffer output_buf;
+        output_buf.SetBEUInt(CLIENT_MAP_FORMAT_VER);
+        output_buf.SetBEUInt(map_pid.as_uint());
+        output_buf.SetBEUShort(maxhx);
+        output_buf.SetBEUShort(maxhy);
+        output_buf.SetBEUInt(tiles_len);
+        output_buf.SetBEUInt(scen_len);
+        output_buf.SetData(tiles_data, tiles_len);
+        output_buf.SetData(scen_data, scen_len);
 
-        uint obuf_len = output_file.GetOutBufLen();
-        uchar* buf = Compressor::Compress(output_file.GetOutBuf(), obuf_len);
-        if (!buf)
-        {
+        uint obuf_len = output_buf.GetOutBufLen();
+        uchar* buf = Compressor::Compress(output_buf.GetOutBuf(), obuf_len);
+        if (!buf) {
             WriteLog("Failed to compress data '{}', disconnect.\n", map_name);
             NetDisconnect();
             return;
         }
 
         Cache.SetRawData(map_name, buf, obuf_len);
-        delete[] buf;*/
+        delete[] buf;
     }
     else {
         WriteLog("Not for all data of map, disconnect.\n");

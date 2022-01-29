@@ -329,7 +329,6 @@ void ScriptSystem::ProcessDeferredCalls()
     invoker->Process();
 }
 
-// Todo: rework FONLINE_
 / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool ScriptSystem::LoadDeferredCalls()
 {

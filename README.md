@@ -40,9 +40,9 @@
 * Perendered sprites for environment but with possibility of using 3D models for characters
 * Engine core written in C++ (favored C++17 standard)
 * Flexible scripting system with varies supporting languages:
-  + Mono C# (modern and safe scripting)
-  + Native C++ (for performance critical places)
-  + AngelScript (engine legacy scripting support)
+  + Mono C#
+  + Native C++
+  + AngelScript
 * Cross-platform with target platforms:
   + Windows
   + Linux
@@ -50,7 +50,6 @@
   + iOS
   + Android
   + Web
-  + PlayStation
   + UWP *(PC, Mobile, Xbox)*
 * Supporting of following asset file formats:
   + Fallout 1/2
@@ -213,23 +212,26 @@ Please follow these instructions to understand how to use this engine by design:
 
 **First release version:**
 
-* Rework scripting system *(improve Native C++, AngelScript and C#/Mono scripting layers)*
-* Improve DirectX rendering with Universal Windows Platform
-* Major part of code refactoring *(look at separate section below)*
-* Improve Singleplayer mode (at least stable from architectural point of view)
-* Multiplayer mode stabilization
-* Documentation (all public API, tutorial, but core engine not included)
+* [FOnline TLA]((https://github.com/cvet/fonline-tla)) as demo game
+* Code refactoring *(see separate section below)*
+* Native C++ and AngelScript scripting layers
+* Documentation for public API
 * API freezing and continuing development with it's backward compatibility
 
-**Futher releases:**
+**Futher releases:** *(in order of priority)*
 
-* Finish with code refactoring *(see below)*
+* Visual Studio Code extension *(see separate section below)*
+* Improve more unit tests and gain code coverage to at least 80%
+* C#/Mono scripting layer
+* DirectX rendering with Universal Windows Platform
+* Singleplayer mode
 * Particle system
-* Singleplayer mode stabilization
-* Tasks related to Visual Studio Code extension *(see separate section below)*
-* Improve supporting of PlayStation
-* Improve Metal rendering for macOS/iOS
-* Integration with Unity engine (research)
+* Metal rendering for macOS/iOS
+
+**Research plans:**
+
+* Supporting of PlayStation
+* Integration with Unity engine
 
 ### Visual Studio Code extension
 
@@ -254,7 +256,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Eliminate raw pointers, use raii and smart pointers for control objects lifetime
 * Hide implementation details from headers using abstraction and pimpl idiom
 * Fix all warnings from PVS Studio and other static analyzer tools
-* Improve more unit tests and gain code coverage to at least 80%
 * Improve more new C++ features like std::array, std::filesystem, std::string_view and etc
 * Decrease platform specific code to minimum (we can leave this work to portable C++ or SDL)
 * C-style casts to C++-style casts
@@ -314,6 +315,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: rename char to int8 and use int8_t as alias
 * Common: rename short to int16 and use int16_t as alias
 * Common: rename int to int32 and use int32_t as alias
+* Common: remove max_t
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
 * Common: auto expand exception parameters to readable state
 * Common: recursion guard for EventDispatcher
@@ -321,13 +323,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: add _hash c-string literal helper
 * Common: move WriteData/ReadData to DataWriter/DataReader
 * Common: fix TRect Width/Height
-* Common: move NetProperty to more proper place
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: remove critter flags
 * Common: remove special OTHER_* params
 * BakerApp: sound and video preprocessing move to baker
+* BakerApp: bake prototypes?
 * BakerApp: add dialogs verification during baking
 * ServerApp: fix data racing
 * ServerServiceApp: convert argv from wchar_t** to char**
@@ -339,12 +341,12 @@ Please follow these instructions to understand how to use this engine by design:
 * Client: handle mouse wheel
 * Client: proto player?
 * Client: synchronize effects showing (for example shot and kill)
-* Client: need attention!
+* Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
 * Client: add working in IPv6 networks
-* Client: rename FOClient to just Client (after reworking server Client to ClientConnection)
 * CritterView: migrate critter on head text moving in scripts
 * CritterView: do same for 2d animations
+* HexManager: rework smooth item re-appearing before same item still on map
 * HexManager: optimize lighting rebuilding to skip unvisible lights
 * HexManager: need attention! (3)
 * HexManager: move HexManager to MapView?
@@ -367,8 +369,13 @@ Please follow these instructions to understand how to use this engine by design:
 * ApplicationHeadless: move different renderers to separate modules
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
+* Entity: events array may be modified during call, need take it into account here
+* Entity: not exception safe, revert ignore with raii
+* Entity: improve entity event ExPolicy
+* Entity: improve entity event Priority
+* Entity: improve entity event OneShot
+* Entity: improve entity event Deferred
 * FileSystem: handle apply file writing
-* GenericUtils: script handling in ConvertParamValue
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: delete \n appendix from WriteLog
@@ -377,15 +384,13 @@ Please follow these instructions to understand how to use this engine by design:
 * MapLoader: remove mapper specific IsSelected from MapTile
 * MsgFiles: pass default to fomsg gets
 * MsgFiles: move loading to constructors
+* Properties: convert to hstring
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
-* ScriptSystem: rework FONLINE_
+* Properties: remove friend from PropertiesSerializator and use public Property interface
+* Properties: ResolveHash
 * ScriptSystem: fill settings to scripts
-* ScriptSystem: rework FONLINE_
 * Settings-Include: rework global Quit setting
-* Settings: exclude server specific settings from client
-* Settings: remove VAR_SETTING; must stay only constant values
-* StringUtils: restore hash parsing
 * StringUtils: make isNumber const
 * Testing: improve global exceptions handlers for mobile os
 * Testing: fix script system
@@ -397,7 +402,6 @@ Please follow these instructions to understand how to use this engine by design:
 * MapperGlobalScriptMethods: need attention! (4)
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
-* ServerCritterScriptMethods: need attention!
 * ServerItemScriptMethods: fix ItemOwnership::ItemContainer recursion
 * AdminPanel: admin panel network to Asio
 * Critter: rename to IsOwnedByPlayer
@@ -405,13 +409,12 @@ Please follow these instructions to understand how to use this engine by design:
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * Dialogs: check item name on DR_ITEM
-* EntityManager: store player critters in separate collection
+* EntityManager: load locations -> theirs maps -> critters/items on map -> items in critters/containers
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
 * Player: allow attach many critters to sigle player
-* Server: restore hashes loading
 * Server: move server loop to async processing
 * Server: restore settings (2)
 * Server: disable look distance caching
@@ -421,7 +424,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
-* Server: rename FOServer to just Server
 * Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL

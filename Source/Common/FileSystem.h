@@ -120,16 +120,15 @@ private:
     uint _curPos {};
 };
 
-class OutputFile final
+class OutputBuffer
 {
-    friend class FileManager;
-
 public:
-    OutputFile(const OutputFile&) = delete;
-    OutputFile(OutputFile&&) noexcept = default;
-    auto operator=(const OutputFile&) = delete;
-    auto operator=(OutputFile&&) noexcept = delete;
-    ~OutputFile() = default;
+    OutputBuffer() = default;
+    OutputBuffer(const OutputBuffer&) = delete;
+    OutputBuffer(OutputBuffer&&) noexcept = default;
+    auto operator=(const OutputBuffer&) = delete;
+    auto operator=(OutputBuffer&&) noexcept = delete;
+    ~OutputBuffer() = default;
 
     [[nodiscard]] auto GetOutBuf() const -> const uchar*;
     [[nodiscard]] auto GetOutBufLen() const -> uint;
@@ -145,14 +144,30 @@ public:
     void SetBEUInt(uint data);
     void SetLEUInt(uint data);
     // ReSharper restore CppInconsistentNaming
+    void Clear();
+
+private:
+    vector<uchar> _dataBuf {};
+    DataWriter _dataWriter {_dataBuf};
+};
+
+class OutputFile final : public OutputBuffer
+{
+    friend class FileManager;
+
+public:
+    OutputFile(const OutputFile&) = delete;
+    OutputFile(OutputFile&&) noexcept = default;
+    auto operator=(const OutputFile&) = delete;
+    auto operator=(OutputFile&&) noexcept = delete;
+    ~OutputFile() = default;
+
     void Save();
 
 private:
     explicit OutputFile(DiskFile file);
 
     DiskFile _diskFile;
-    vector<uchar> _dataBuf {};
-    DataWriter _dataWriter {_dataBuf};
 };
 
 class FileCollection final

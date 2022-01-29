@@ -380,35 +380,21 @@ auto File::GetLEFloat() -> float
     return res;
 }
 
-OutputFile::OutputFile(DiskFile file) : _diskFile {std::move(file)}
-{
-    RUNTIME_ASSERT(_diskFile);
-}
-
-void OutputFile::Save()
-{
-    if (!_dataBuf.empty()) {
-        const auto save_ok = _diskFile.Write(&_dataBuf[0], static_cast<uint>(_dataBuf.size()));
-        RUNTIME_ASSERT(save_ok);
-        _dataBuf.clear();
-    }
-}
-
-auto OutputFile::GetOutBuf() const -> const uchar*
+auto OutputBuffer::GetOutBuf() const -> const uchar*
 {
     RUNTIME_ASSERT(!_dataBuf.empty());
 
     return &_dataBuf[0];
 }
 
-auto OutputFile::GetOutBufLen() const -> uint
+auto OutputBuffer::GetOutBufLen() const -> uint
 {
     RUNTIME_ASSERT(!_dataBuf.empty());
 
     return static_cast<uint>(_dataBuf.size());
 }
 
-void OutputFile::SetData(const void* data, uint len)
+void OutputBuffer::SetData(const void* data, uint len)
 {
     if (len == 0u) {
         return;
@@ -417,24 +403,24 @@ void OutputFile::SetData(const void* data, uint len)
     _dataWriter.WritePtr(data, len);
 }
 
-void OutputFile::SetStr(string_view str)
+void OutputBuffer::SetStr(string_view str)
 {
     SetData(str.data(), static_cast<uint>(str.length()));
 }
 
 // ReSharper disable once CppInconsistentNaming
-void OutputFile::SetStrNT(string_view str)
+void OutputBuffer::SetStrNT(string_view str)
 {
     SetData(str.data(), static_cast<uint>(str.length()) + 1);
 }
 
-void OutputFile::SetUChar(uchar data)
+void OutputBuffer::SetUChar(uchar data)
 {
     _dataWriter.Write(data);
 }
 
 // ReSharper disable once CppInconsistentNaming
-void OutputFile::SetBEUShort(ushort data)
+void OutputBuffer::SetBEUShort(ushort data)
 {
     auto* pdata = reinterpret_cast<uchar*>(&data);
     _dataWriter.Write(pdata[1]);
@@ -442,7 +428,7 @@ void OutputFile::SetBEUShort(ushort data)
 }
 
 // ReSharper disable once CppInconsistentNaming
-void OutputFile::SetLEUShort(ushort data)
+void OutputBuffer::SetLEUShort(ushort data)
 {
     auto* pdata = reinterpret_cast<uchar*>(&data);
     _dataWriter.Write(pdata[0]);
@@ -450,7 +436,7 @@ void OutputFile::SetLEUShort(ushort data)
 }
 
 // ReSharper disable once CppInconsistentNaming
-void OutputFile::SetBEUInt(uint data)
+void OutputBuffer::SetBEUInt(uint data)
 {
     auto* pdata = reinterpret_cast<uchar*>(&data);
     _dataWriter.Write(pdata[3]);
@@ -460,13 +446,32 @@ void OutputFile::SetBEUInt(uint data)
 }
 
 // ReSharper disable once CppInconsistentNaming
-void OutputFile::SetLEUInt(uint data)
+void OutputBuffer::SetLEUInt(uint data)
 {
     auto* pdata = reinterpret_cast<uchar*>(&data);
     _dataWriter.Write(pdata[0]);
     _dataWriter.Write(pdata[1]);
     _dataWriter.Write(pdata[2]);
     _dataWriter.Write(pdata[3]);
+}
+
+void OutputBuffer::Clear()
+{
+    _dataBuf.clear();
+}
+
+OutputFile::OutputFile(DiskFile file) : _diskFile {std::move(file)}
+{
+    RUNTIME_ASSERT(_diskFile);
+}
+
+void OutputFile::Save()
+{
+    if (GetOutBufLen() > 0u) {
+        const auto save_ok = _diskFile.Write(GetOutBuf(), GetOutBufLen());
+        RUNTIME_ASSERT(save_ok);
+        Clear();
+    }
 }
 
 FileCollection::FileCollection(string_view path, vector<FileHeader> files) : _filterPath {path}, _allFiles {std::move(files)}

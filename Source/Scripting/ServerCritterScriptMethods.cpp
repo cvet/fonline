@@ -181,9 +181,8 @@
         throw ScriptException("Transit to map hex fail");
     }
 
-    // Todo: need attention!
     auto* loc = map->GetLocation();
-    if (loc && GenericUtils::DistSqrt(self->GetWorldX(), self->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) > loc->GetRadius()) {
+    if (loc != nullptr && GenericUtils::DistSqrt(self->GetWorldX(), self->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) > loc->GetRadius()) {
         self->SetWorldX(loc->GetWorldX());
         self->SetWorldY(loc->GetWorldY());
     }

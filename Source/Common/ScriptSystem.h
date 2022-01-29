@@ -162,7 +162,6 @@ public:
 
     string GetDeferredCallsStatistics();
     void ProcessDeferredCalls();
-    // Todo: rework FONLINE_
     / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
         bool LoadDeferredCalls();
     #endif* /
