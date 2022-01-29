@@ -11,7 +11,7 @@ jobs:
         with:
           source: ./Source
           extensions: 'h,cpp,fos'
-          clangFormatVersion: 13
+          clangFormatVersion: 12
   unit-tests:
     runs-on: ubuntu-20.04
     steps:
