@@ -17,11 +17,7 @@ function install_common_packages()
     sudo apt-get -qq -y update
 
     echo "Install clang"
-    sudo apt-get -qq -y install clang --install-suggests
-    echo "Install clang-12"
-    sudo apt-get -qq -y install clang-12 --install-suggests
-    echo "Install libc++-dev"
-    sudo apt-get -qq -y install libc++-dev
+    sudo apt-get -qq -y install clang
     echo "Install clang-format-12"
     sudo apt-get -qq -y install clang-format-12
     echo "Install build-essential"
