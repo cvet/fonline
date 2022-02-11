@@ -251,6 +251,7 @@ public:
         RUNTIME_ASSERT(prop->_isHash);
         const auto h = *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]);
         // Todo: ResolveHash
+        UNUSED_VARIABLE(h);
         return hstring();
     }
 

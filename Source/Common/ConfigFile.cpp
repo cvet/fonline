@@ -258,10 +258,10 @@ auto ConfigFile::GetStr(string_view app_name, string_view key_name, string_view 
 auto ConfigFile::GetInt(string_view app_name, string_view key_name) const -> int
 {
     const auto* str = GetRawValue(app_name, key_name);
-    if (str != nullptr && str->length() == 4 && _str(*str).compareIgnoreCase("true")) {
+    if (str != nullptr && str->length() == "true"_len && _str(*str).compareIgnoreCase("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == 5 && _str(*str).compareIgnoreCase("false")) {
+    if (str != nullptr && str->length() == "false"_len && _str(*str).compareIgnoreCase("false")) {
         return 0;
     }
     return str != nullptr ? _str(*str).toInt() : 0;
@@ -270,10 +270,10 @@ auto ConfigFile::GetInt(string_view app_name, string_view key_name) const -> int
 auto ConfigFile::GetInt(string_view app_name, string_view key_name, int def_val) const -> int
 {
     const auto* str = GetRawValue(app_name, key_name);
-    if (str != nullptr && str->length() == 4 && _str(*str).compareIgnoreCase("true")) {
+    if (str != nullptr && str->length() == "true"_len && _str(*str).compareIgnoreCase("true")) {
         return 1;
     }
-    if (str != nullptr && str->length() == 5 && _str(*str).compareIgnoreCase("false")) {
+    if (str != nullptr && str->length() == "false"_len && _str(*str).compareIgnoreCase("false")) {
         return 0;
     }
     return str != nullptr ? _str(*str).toInt() : def_val;
@@ -281,7 +281,7 @@ auto ConfigFile::GetInt(string_view app_name, string_view key_name, int def_val)
 
 void ConfigFile::SetStr(string_view app_name, string_view key_name, string_view val)
 {
-    auto it_app = _appKeyValues.find(string(app_name));
+    const auto it_app = _appKeyValues.find(string(app_name));
     if (it_app == _appKeyValues.end()) {
         map<string, string> key_values;
         key_values[string(key_name)] = val;
@@ -321,7 +321,7 @@ auto ConfigFile::GetApps(string_view app_name) -> vector<map<string, string>*>
 
 auto ConfigFile::SetApp(string_view app_name) -> map<string, string>&
 {
-    auto it = _appKeyValues.insert(std::make_pair(app_name, map<string, string>()));
+    const auto it = _appKeyValues.insert(std::make_pair(app_name, map<string, string>()));
     _appKeyValuesOrder.push_back(it);
     return it->second;
 }
@@ -365,7 +365,7 @@ void ConfigFile::GotoNextApp(string_view app_name)
 
 auto ConfigFile::GetAppKeyValues(string_view app_name) -> const map<string, string>*
 {
-    auto it_app = _appKeyValues.find(string(app_name));
+    const auto it_app = _appKeyValues.find(string(app_name));
     return it_app != _appKeyValues.end() ? &it_app->second : nullptr;
 }
 
@@ -373,9 +373,9 @@ auto ConfigFile::GetAppContent(string_view app_name) -> string
 {
     RUNTIME_ASSERT(_collectContent);
 
-    auto it_app = _appKeyValues.find(string(app_name));
+    const auto it_app = _appKeyValues.find(string(app_name));
     if (it_app == _appKeyValues.end()) {
-        return nullptr;
+        return "";
     }
 
     const auto it_key = it_app->second.find("");

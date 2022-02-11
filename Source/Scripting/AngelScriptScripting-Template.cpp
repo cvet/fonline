@@ -48,6 +48,7 @@
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
 #endif
 
 #include "Common.h"

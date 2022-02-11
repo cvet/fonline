@@ -74,7 +74,8 @@
 // Todo: temporary entities, disable writing to data base
 // Todo: RUNTIME_ASSERT to assert
 // Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
-// Todo: remove dynamic_cast?
+// Todo: review all SDL_hints.h entries
+// Todo: fix all warnings (especially under clang) and enable threating warnings as errors
 
 // ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
 
