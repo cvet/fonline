@@ -27,10 +27,10 @@ if [%1] == [win32] (
     set BUILD_CACHE=uwp.cache.cmake
 ) else if [%1] == [win32-clang] (
     set BUILD_ARCH=Win32
-    set BUILD_TOOLSET=LLVM_v142
+    set BUILD_TOOLSET=ClangCL
 ) else if [%1] == [win64-clang] (
     set BUILD_ARCH=x64
-    set BUILD_TOOLSET=LLVM_v142
+    set BUILD_TOOLSET=ClangCL
 ) else (
     echo Invalid build argument
     exit /b 1
