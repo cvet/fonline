@@ -6,78 +6,78 @@ jobs:
   check-formatting:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: DoozyX/clang-format-lint-action@v0.13
-        with:
-          source: ./Source
-          extensions: 'h,cpp,fos'
-          clangFormatVersion: 12
+    - uses: actions/checkout@v2
+    - uses: DoozyX/clang-format-lint-action@v0.13
+      with:
+        source: ./Source
+        extensions: 'h,cpp,fos'
+        clangFormatVersion: 12
   unit-tests:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - run: BuildTools/validate.sh unit-tests
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh unit-tests
   code-coverage:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
-      - env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        run: BuildTools/validate.sh code-coverage
+    - uses: actions/checkout@v2
+    - env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      run: BuildTools/validate.sh code-coverage
   windows:
     runs-on: windows-2019
     strategy:
       fail-fast: false
       matrix:
         app:
-          - win32-client
-          - win64-client
-          - win64-server
-          - win32-single
-          - win64-single
-          - win64-mapper
-          - win64-ascompiler
-          - win64-baker
+        - win32-client
+        - win64-client
+        - win64-server
+        - win32-single
+        - win64-single
+        - win64-mapper
+        - win64-ascompiler
+        - win64-baker
     steps:
     - uses: actions/checkout@v2
-    - run: BuildTools\validate.bat ${{ matrix.app }}
+    - run: BuildTools/validate.bat ${{ matrix.app }}
   ubuntu:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
         app:
-          - linux-client
-          - linux-gcc-client
-          - android-arm-client
-          - android-arm64-client
-          - web-client
-          - linux-server
-          - linux-gcc-server
-          - linux-single
-          - linux-gcc-single
-          - android-arm-single
-          - android-arm64-single
-          - web-single
-          - linux-mapper
-          - linux-gcc-mapper
-          - linux-ascompiler
-          - linux-gcc-ascompiler
-          - linux-baker
-          - linux-gcc-baker
+        - linux-client
+        - linux-gcc-client
+        - android-arm-client
+        - android-arm64-client
+        - web-client
+        - linux-server
+        - linux-gcc-server
+        - linux-single
+        - linux-gcc-single
+        - android-arm-single
+        - android-arm64-single
+        - web-single
+        - linux-mapper
+        - linux-gcc-mapper
+        - linux-ascompiler
+        - linux-gcc-ascompiler
+        - linux-baker
+        - linux-gcc-baker
     steps:
-      - uses: actions/checkout@v2
-      - run: BuildTools/validate.sh ${{ matrix.app }}
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh ${{ matrix.app }}
   macos:
     runs-on: macos-10.15
     strategy:
       fail-fast: false
       matrix:
         app:
-          - mac-client
-          - ios-client
-          - mac-single
-          - ios-single
+        - mac-client
+        - ios-client
+        - mac-single
+        - ios-single
     steps:
-      - uses: actions/checkout@v2
-      - run: BuildTools/validate.sh ${{ matrix.app }}
+    - uses: actions/checkout@v2
+    - run: BuildTools/validate.sh ${{ matrix.app }}
