@@ -154,6 +154,26 @@
 }
 
 ///# ...
+///# param hx ...
+///# param hy ...
+///# param property ...
+///# param propertyValue ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Item* Server_Map_GetItem(Map* self, ushort hx, ushort hy, ItemProperty property, int propertyValue)
+{
+    const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
+
+    for (auto* item : self->GetItemsHex(hx, hy)) {
+        if (item->GetValueAsInt(prop) == propertyValue) {
+            return item;
+        }
+    }
+
+    return nullptr;
+}
+
+///# ...
 ///# return ...
 ///@ ExportMethod
 [[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self)
@@ -173,6 +193,21 @@
     }
 
     return self->GetItemsHex(hx, hy);
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param radius ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Item*> Server_Map_GetItems(Map* self, ushort hx, ushort hy, uint radius)
+{
+    if (hx >= self->GetWidth() || hy >= self->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    return self->GetItemsHexEx(hx, hy, radius, hstring());
 }
 
 ///# ...

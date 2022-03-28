@@ -294,7 +294,7 @@ public:
 
 private:
     using Callback = std::function<void()>;
-    explicit EventUnsubscriberCallback(Callback cb) : _unsubscribeCallback {std::move(std::move(cb))} { }
+    explicit EventUnsubscriberCallback(Callback cb) : _unsubscribeCallback {std::move(cb)} { }
     Callback _unsubscribeCallback {};
 };
 

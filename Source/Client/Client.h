@@ -255,7 +255,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(CritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterCheckMoveItem, CritterView* /*critter*/, ItemView* /*item*/, char /*toSlot*/);
+    ENTITY_EVENT(CritterCheckMoveItem, CritterView* /*critter*/, ItemView* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
     ENTITY_EVENT(CritterGetAttackDistantion, CritterView* /*critter*/, ItemView* /*item*/, char /*itemMode*/, uint& /*dist*/);
 

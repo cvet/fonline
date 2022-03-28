@@ -596,13 +596,13 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
 {
     switch (to) {
     case MESSAGE_TO_VISIBLE_ME: {
-        auto critters = VisCr;
+        const auto critters = VisCr;
         for (auto* cr : critters) {
             _engine->CritterMessageEvent.Fire(cr, this, num, val);
         }
     } break;
     case MESSAGE_TO_IAM_VISIBLE: {
-        auto critters = VisCrSelf;
+        const auto critters = VisCrSelf;
         for (auto* cr : critters) {
             _engine->CritterMessageEvent.Fire(cr, this, num, val);
         }
@@ -613,7 +613,7 @@ void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
             break;
         }
 
-        auto critters = map->GetCritters();
+        const auto critters = map->GetCritters();
         for (auto* cr : critters) {
             _engine->CritterMessageEvent.Fire(cr, this, num, val);
         }
@@ -648,7 +648,7 @@ auto Critter::IsTalking() const -> bool
 auto Critter::GetTalkedPlayers() const -> uint
 {
     auto talk = 0u;
-    for (auto* cr : VisCr) {
+    for (const auto* cr : VisCr) {
         if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId()) {
             talk++;
         }
@@ -658,7 +658,7 @@ auto Critter::GetTalkedPlayers() const -> uint
 
 auto Critter::IsTalkedPlayers() const -> bool
 {
-    for (auto* cr : VisCr) {
+    for (const auto* cr : VisCr) {
         if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId()) {
             return true;
         }
@@ -669,7 +669,7 @@ auto Critter::IsTalkedPlayers() const -> bool
 auto Critter::GetBarterPlayers() const -> uint
 {
     auto barter = 0u;
-    for (auto* cr : VisCr) {
+    for (const auto* cr : VisCr) {
         if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId() && cr->_talk.Barter) {
             barter++;
         }

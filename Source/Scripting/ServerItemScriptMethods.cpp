@@ -76,9 +76,9 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] Map* Server_Item_GetMapPos(Item* self, ushort& hx, ushort& hy)
+[[maybe_unused]] Map* Server_Item_GetMapPosition(Item* self, ushort& hx, ushort& hy)
 {
-    Map* map = nullptr;
+    Map* map;
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
@@ -120,7 +120,7 @@
             throw ScriptException("Container accessory, container not found");
         }
 
-        // return Item_GetMapPosition(cont, hx, hy); // Todo: fix ItemOwnership::ItemContainer recursion
+        map = Server_Item_GetMapPosition(cont, hx, hy);
     } break;
     default:
         throw ScriptException("Unknown accessory");
@@ -141,8 +141,7 @@
         // if(cr) cr->Send_AnimateItem(self,from_frm,to_frm);
     } break;
     case ItemOwnership::MapHex: {
-        auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
-        if (map) {
+        if (auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId()); map != nullptr) {
             map->AnimateItem(self, fromFrm, toFrm);
         }
     } break;
