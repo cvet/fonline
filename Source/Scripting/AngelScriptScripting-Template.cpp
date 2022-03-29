@@ -1041,6 +1041,11 @@ static int HashedString_GetHash(const hstring& self)
     return self.as_int();
 }
 
+static uint HashedString_GetUHash(const hstring& self)
+{
+    return self.as_uint();
+}
+
 struct StorageData
 {
     ///@ CodeGen Storage
@@ -1166,6 +1171,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "string opImplCast() const", SCRIPT_FUNC_THIS(HashedString_StringCast), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "string get_str() const", SCRIPT_FUNC_THIS(HashedString_GetString), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "int get_hash() const", SCRIPT_FUNC_THIS(HashedString_GetHash), SCRIPT_FUNC_THIS_CONV));
+    AS_VERIFY(engine->RegisterObjectMethod("hstring", "uint get_uhash() const", SCRIPT_FUNC_THIS(HashedString_GetUHash), SCRIPT_FUNC_THIS_CONV));
 
     // Entity registrators
 #define REGISTER_BASE_ENTITY(class_name) \
@@ -1318,8 +1324,14 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", game_engine));
 
 #if CLIENT_SCRIPTING
-    // AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &BIND_CLASS ClientCurMap));
-    // AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &BIND_CLASS ClientCurLocation));
+#if !COMPILER_MODE
+    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", game_engine->_curMap));
+    AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", game_engine->_curLocation));
+#else
+    int dummy = 0;
+    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &dummy));
+    AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &dummy));
+#endif
 #endif
 
 #if COMPILER_MODE

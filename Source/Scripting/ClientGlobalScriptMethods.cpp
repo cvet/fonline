@@ -549,19 +549,19 @@
 }
 
 ///# ...
-///# param msg ...
 ///# param type ...
+///# param msg ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg, uchar type)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, int type, string_view msg)
 {
-    client->AddMess(type, msg, true);
+    client->AddMess(static_cast<uchar>(type), msg, true);
 }
 
 ///# ...
 ///# param textMsg ...
 ///# param strNum ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_MessageMsg(FOClient* client, int textMsg, uint strNum)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
@@ -571,17 +571,17 @@
 }
 
 ///# ...
+///# param type ...
 ///# param textMsg ...
 ///# param strNum ...
-///# param type ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_MessageMsg(FOClient* client, int textMsg, uint strNum, int type)
+[[maybe_unused]] void Client_Game_Message(FOClient* client, int type, int textMsg, uint strNum)
 {
     if (textMsg >= TEXTMSG_COUNT) {
         throw ScriptException("Invalid text msg arg");
     }
 
-    client->AddMess(type, client->GetCurLang().Msg[textMsg].GetStr(strNum), true);
+    client->AddMess(static_cast<uchar>(type), client->GetCurLang().Msg[textMsg].GetStr(strNum), true);
 }
 
 ///# ...

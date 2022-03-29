@@ -61,6 +61,8 @@
 
 class FOMapper final : public FOClient
 {
+    friend class MapperScriptSystem;
+
 public:
     struct IfaceAnim
     {

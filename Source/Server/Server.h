@@ -69,6 +69,8 @@ class NetServerBase;
 
 class FOServer final : public FOEngineBase
 {
+    friend class ServerScriptSystem;
+
 public:
     FOServer() = delete;
     explicit FOServer(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);

@@ -112,6 +112,8 @@ constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
 class FOClient : public FOEngineBase, public AnimationResolver
 {
+    friend class ClientScriptSystem;
+
 public:
     struct MapText
     {
