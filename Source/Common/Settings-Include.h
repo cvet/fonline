@@ -62,6 +62,7 @@ FIXED_SETTING(uint, GlobalMapZoneLength, 50);
 FIXED_SETTING(uint, LookChecks, 0);
 FIXED_SETTING(vector<uint>, LookDir, 0, 20, 40, 60, 60);
 FIXED_SETTING(vector<uint>, LookSneakDir, 90, 60, 30, 0, 0);
+FIXED_SETTING(uint, LookMinimum, 6);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -75,7 +76,6 @@ FIXED_SETTING(uint, WhisperDist, 2);
 FIXED_SETTING(uint, ShoutDist, 200);
 FIXED_SETTING(bool, NoAnswerShuffle, false);
 FIXED_SETTING(uint, SneakDivider, 6);
-FIXED_SETTING(uint, LookMinimum, 6);
 FIXED_SETTING(int, DeadHitPoints, -6);
 SETTING_GROUP_END();
 
@@ -129,20 +129,20 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(GeometrySettings, virtual DummySettings);
-FIXED_SETTING(bool, MapHexagonal, true);
+FIXED_SETTING(bool, MapHexagonal, true); // true - hexagonal, false - square
 FIXED_SETTING(int, MapDirCount);
-FIXED_SETTING(int, MapHexWidth, 32);
-FIXED_SETTING(int, MapHexHeight, 16);
-FIXED_SETTING(int, MapHexLineHeight, 12);
-FIXED_SETTING(int, MapTileOffsX, -8);
-FIXED_SETTING(int, MapTileOffsY, 32);
+FIXED_SETTING(int, MapHexWidth, 32); // hex/square width
+FIXED_SETTING(int, MapHexHeight, 16); // hex/square height
+FIXED_SETTING(int, MapHexLineHeight, 12); // hex/square line height
+FIXED_SETTING(int, MapTileOffsX, -8); // tile default offsets
+FIXED_SETTING(int, MapTileOffsY, 32); // tile default offsets
 FIXED_SETTING(int, MapTileStep, 2);
-FIXED_SETTING(int, MapRoofOffsX, -8);
-FIXED_SETTING(int, MapRoofOffsY, -66);
-FIXED_SETTING(int, MapRoofSkipSize, 2);
-FIXED_SETTING(float, MapCameraAngle, 21.671f);
-FIXED_SETTING(bool, MapSmoothPath, true);
-FIXED_SETTING(string, MapDataPrefix, "art/geometry/fallout_");
+FIXED_SETTING(int, MapRoofOffsX, -8); // roof default offsets
+FIXED_SETTING(int, MapRoofOffsY, -66); // roof default offsets
+FIXED_SETTING(int, MapRoofSkipSize, 2); // default length (in hexes/squares) of roof tiles
+FIXED_SETTING(float, MapCameraAngle, 21.671f); // angle for 3d critters rendering
+FIXED_SETTING(bool, MapSmoothPath, true); // enable pathfinding path smoothing
+FIXED_SETTING(string, MapDataPrefix, "art/geometry/fallout_"); // path and prefix for names used for geometry sprites
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client

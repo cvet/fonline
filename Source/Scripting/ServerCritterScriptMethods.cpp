@@ -625,6 +625,24 @@
 }
 
 ///# ...
+///# param protoId ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, hstring protoId)
+{
+    vector<Item*> items;
+    items.reserve(self->GetInventory().size());
+
+    for (auto* item : self->GetInventory()) {
+        if (item->GetProtoId() == protoId) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
+}
+
+///# ...
 ///# param itemId ...
 ///# param slot ...
 ///@ ExportMethod
@@ -708,9 +726,10 @@
 ///# param actionExt ...
 ///# param item ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Critter_Action(Critter* self, int action, int actionExt, Item* item)
+[[maybe_unused]] void Server_Critter_Action(Critter* self, int action, int actionExt, AbstractItem* item)
 {
-    self->SendAndBroadcast_Action(action, actionExt, item);
+    // Todo: handle AbstractItem in Action
+    // self->SendAndBroadcast_Action(action, actionExt, item);
 }
 
 ///# ...
@@ -720,9 +739,10 @@
 ///# param clearSequence ...
 ///# param delayPlay ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Server_Critter_Animate(Critter* self, uint anim1, uint anim2, Item* item, bool clearSequence, bool delayPlay)
+[[maybe_unused]] void Server_Critter_Animate(Critter* self, uint anim1, uint anim2, AbstractItem* item, bool clearSequence, bool delayPlay)
 {
-    self->SendAndBroadcast_Animate(anim1, anim2, item, clearSequence, delayPlay);
+    // Todo: handle AbstractItem in Animate
+    // self->SendAndBroadcast_Animate(anim1, anim2, item, clearSequence, delayPlay);
 }
 
 ///# ...
@@ -733,14 +753,14 @@
 [[maybe_unused]] void Server_Critter_SetConditionAnims(Critter* self, CritterCondition cond, uint anim1, uint anim2)
 {
     if (cond == CritterCondition::Alive) {
-        self->SetAnim1Life(anim1);
-        self->SetAnim2Life(anim2);
+        self->SetAnim1Alive(anim1);
+        self->SetAnim2Alive(anim2);
     }
-    if (cond == CritterCondition::Knockout) {
+    else if (cond == CritterCondition::Knockout) {
         self->SetAnim1Knockout(anim1);
         self->SetAnim2Knockout(anim2);
     }
-    if (cond == CritterCondition::Dead) {
+    else if (cond == CritterCondition::Dead) {
         self->SetAnim1Dead(anim1);
         self->SetAnim2Dead(anim2);
     }

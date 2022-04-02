@@ -661,7 +661,7 @@ auto CritterView::GetAnim1() const -> uint
 {
     switch (GetCond()) {
     case CritterCondition::Alive:
-        return GetAnim1Life() != 0u ? GetAnim1Life() : ANIM1_UNARMED;
+        return GetAnim1Alive() != 0u ? GetAnim1Alive() : ANIM1_UNARMED;
     case CritterCondition::Knockout:
         return GetAnim1Knockout() != 0u ? GetAnim1Knockout() : ANIM1_UNARMED;
     case CritterCondition::Dead:
@@ -674,7 +674,7 @@ auto CritterView::GetAnim2() const -> uint
 {
     switch (GetCond()) {
     case CritterCondition::Alive:
-        return GetAnim2Life() != 0u ? GetAnim2Life() : IsCombatMode() && _engine->Settings.Anim2CombatIdle != 0u ? _engine->Settings.Anim2CombatIdle : ANIM2_IDLE;
+        return GetAnim2Alive() != 0u ? GetAnim2Alive() : IsCombatMode() && _engine->Settings.Anim2CombatIdle != 0u ? _engine->Settings.Anim2CombatIdle : ANIM2_IDLE;
     case CritterCondition::Knockout:
         return GetAnim2Knockout() != 0u ? GetAnim2Knockout() : ANIM2_IDLE_PRONE_FRONT;
     case CritterCondition::Dead:
@@ -886,7 +886,7 @@ void CritterView::Process()
 
     // Battle 3d mode
     // Todo: do same for 2d animations
-    if (_model != nullptr && _engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Life() == 0u) {
+    if (_model != nullptr && _engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u) {
         if (_engine->Settings.Anim2CombatBegin != 0u && IsCombatMode() && _model->GetAnim2() != static_cast<int>(_engine->Settings.Anim2CombatIdle)) {
             Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
         }
@@ -1058,7 +1058,10 @@ void CritterView::DrawTextOnHead()
                 str += _engine->Settings.PlayerOffAppendix;
             }
 
-            color = _nameColor != 0u ? _nameColor : COLOR_CRITTER_NAME;
+            color = GetNameColor();
+            if (color == 0u) {
+                color = COLOR_CRITTER_NAME;
+            }
         }
         else {
             str = _strTextOnHead;

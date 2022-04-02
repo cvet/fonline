@@ -116,7 +116,6 @@ public:
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
     void NextAnim(bool erase_front);
 
-    uint ContourColor {};
     uint Flags {};
     RenderEffect* DrawEffect {};
     string AlternateName {};

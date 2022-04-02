@@ -74,8 +74,3 @@ class ProtoLocation final : public ProtoEntity, public LocationProperties
 public:
     ProtoLocation(hstring proto_id, const PropertyRegistrator* registrator);
 };
-
-using ItemProto = const ProtoItem;
-using CritterProto = const ProtoCritter;
-using MapProto = const ProtoMap;
-using LocationProto = const ProtoLocation;

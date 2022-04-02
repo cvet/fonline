@@ -104,10 +104,10 @@ void Player::Send_AddCritter(Critter* cr)
     Connection->Bout << cr->GetHexY();
     Connection->Bout << cr->GetDir();
     Connection->Bout << cr->GetCond();
-    Connection->Bout << cr->GetAnim1Life();
+    Connection->Bout << cr->GetAnim1Alive();
     Connection->Bout << cr->GetAnim1Knockout();
     Connection->Bout << cr->GetAnim1Dead();
-    Connection->Bout << cr->GetAnim2Life();
+    Connection->Bout << cr->GetAnim2Alive();
     Connection->Bout << cr->GetAnim2Knockout();
     Connection->Bout << cr->GetAnim2Dead();
     Connection->Bout << cr->Flags;

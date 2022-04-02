@@ -71,6 +71,21 @@ using ScriptFuncName = string_view;
 
 class FOEngineBase;
 
+class ProtoItem;
+class ProtoCritter;
+class ProtoMap;
+class ProtoLocation;
+
+using ItemProto = const ProtoItem;
+using CritterProto = const ProtoCritter;
+using MapProto = const ProtoMap;
+using LocationProto = const ProtoLocation;
+
+using AbstractItem = Entity;
+using AbstractCritter = Entity;
+using AbstractMap = Entity;
+using AbstractLocation = Entity;
+
 template<typename TRet, typename... Args>
 class ScriptFunc final
 {

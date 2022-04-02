@@ -239,17 +239,17 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MessageBox, string /*text*/, uchar /*type*/, bool /*scriptCall*/);
+    ENTITY_EVENT(MessageBox, string& /*text*/, int /*type*/, bool /*scriptCall*/);
     ///@ ExportEvent
     ENTITY_EVENT(CombatResult, vector<uint> /*result*/);
     ///@ ExportEvent
     ENTITY_EVENT(ItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAction, bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, ItemView* /*actionItem*/);
+    ENTITY_EVENT(CritterAction, bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Animation2dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/);
+    ENTITY_EVENT(Animation2dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Animation3dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, ItemView* /*arg5*/);
+    ENTITY_EVENT(Animation3dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
     ///@ ExportEvent
     ENTITY_EVENT(CritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
     ///@ ExportEvent
@@ -259,7 +259,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(CritterCheckMoveItem, CritterView* /*critter*/, ItemView* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterGetAttackDistantion, CritterView* /*critter*/, ItemView* /*item*/, char /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(CritterGetAttackDistantion, CritterView* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
 
     ClientSettings& Settings;
     GeometryHelper GeomHelper;
@@ -456,6 +456,7 @@ private:
     void OnSendPlayerValue(Entity* entity, const Property* prop);
     void OnSendCritterValue(Entity* entity, const Property* prop);
     void OnSetCritterModelName(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetCritterContourColor(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSendItemValue(Entity* entity, const Property* prop);
     void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);

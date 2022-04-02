@@ -1039,7 +1039,7 @@ void HexManager::RebuildMap(int rx, int ry)
             else if (!cr->IsChosen()) {
                 contour = _crittersContour;
             }
-            spr.SetContour(contour, cr->ContourColor);
+            spr.SetContour(contour, cr->GetContourColor());
 
             field.AddSpriteToChain(&spr);
         }
@@ -1287,7 +1287,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
                 contour = _crittersContour;
             }
 
-            spr.SetContour(contour, cr->ContourColor);
+            spr.SetContour(contour, cr->GetContourColor());
 
             field.AddSpriteToChain(&spr);
         }
@@ -2837,7 +2837,7 @@ void HexManager::SetCritter(CritterView* cr)
         else if (!cr->IsDead() && !cr->IsChosen()) {
             contour = _crittersContour;
         }
-        spr.SetContour(contour, cr->ContourColor);
+        spr.SetContour(contour, cr->GetContourColor());
 
         field.AddSpriteToChain(&spr);
     }

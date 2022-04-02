@@ -363,7 +363,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<uchar> Client_Game_GetPathToHex(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] vector<uchar> Client_Game_GetPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
     if (fromHx >= client->HexMngr.GetWidth() || fromHy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -394,7 +394,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<uchar> Client_Game_GetPathToCritter(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] vector<uchar> Client_Game_GetPath(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
 {
     if (toHx >= client->HexMngr.GetWidth() || toHy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid to hexes args");
@@ -423,7 +423,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Game_GetPathLengthToHex(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Client_Game_GetPathLength(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
     if (fromHx >= client->HexMngr.GetWidth() || fromHy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid from hexes args");
@@ -454,7 +454,7 @@
 ///# param cut ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] uint Client_Game_GetPathLengthToCritter(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
+[[maybe_unused]] uint Client_Game_GetPathLength(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
 {
     if (toHx >= client->HexMngr.GetWidth() || toHy >= client->HexMngr.GetHeight()) {
         throw ScriptException("Invalid to hexes args");
@@ -2010,6 +2010,13 @@
     else {
         client->HideScreen(screen);
     }
+}
+
+///# ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_HideScreen(FOClient* client)
+{
+    client->HideScreen(SCREEN_NONE);
 }
 
 ///# ...

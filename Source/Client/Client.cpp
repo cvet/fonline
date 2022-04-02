@@ -2005,10 +2005,10 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         cr->SetHexY(hy);
         cr->SetDir(dir);
         cr->SetCond(cond);
-        cr->SetAnim1Life(anim1_alive);
+        cr->SetAnim1Alive(anim1_alive);
         cr->SetAnim1Knockout(anim1_ko);
         cr->SetAnim1Dead(anim1_dead);
-        cr->SetAnim2Life(anim2_alive);
+        cr->SetAnim2Alive(anim2_alive);
         cr->SetAnim2Knockout(anim2_ko);
         cr->SetAnim2Dead(anim2_dead);
         cr->Flags = flags;
@@ -2585,8 +2585,8 @@ void FOClient::Net_OnCritterSetAnims()
     }
 
     if (cond == CritterCondition::Alive) {
-        cr->SetAnim1Life(anim1);
-        cr->SetAnim2Life(anim2);
+        cr->SetAnim1Alive(anim1);
+        cr->SetAnim2Alive(anim2);
     }
     if (cond == CritterCondition::Knockout) {
         cr->SetAnim1Knockout(anim1);
@@ -4200,6 +4200,17 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, void*
     auto* cr = dynamic_cast<CritterView*>(entity);
     cr->RefreshModel();
     cr->Action(ACTION_REFRESH, 0, nullptr, false);
+}
+
+void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop, void* cur_value, void* old_value)
+{
+    UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(old_value);
+
+    auto* cr = dynamic_cast<CritterView*>(entity);
+    if (cr->SprDrawValid) {
+        cr->SprDraw->SetContour(cr->SprDraw->ContourType, *static_cast<uint*>(cur_value));
+    }
 }
 
 void FOClient::OnSendItemValue(Entity* entity, const Property* prop)

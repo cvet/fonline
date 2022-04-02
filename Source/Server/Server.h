@@ -185,7 +185,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(CritterBarter, Critter* /*critter*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterGetAttackDistantion, Critter* /*critter*/, Item* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(CritterGetAttackDistantion, Critter* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
     ENTITY_EVENT(ItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent

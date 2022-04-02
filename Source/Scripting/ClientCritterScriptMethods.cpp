@@ -157,9 +157,10 @@
 ///# param anim2 ...
 ///# param actionItem ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2, ItemView* actionItem)
+[[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2, AbstractItem* actionItem)
 {
-    self->Animate(anim1, anim2, actionItem);
+    // Todo: handle AbstractItem in Animate
+    // self->Animate(anim1, anim2, actionItem);
 }
 
 ///# ...
@@ -291,26 +292,6 @@
 [[maybe_unused]] bool Client_Critter_GetVisibility(CritterView* self)
 {
     return self->Visible;
-}
-
-///# ...
-///# param value ...
-///@ ExportMethod
-[[maybe_unused]] void Client_Critter_SetContourColor(CritterView* self, uint value)
-{
-    if (self->SprDrawValid) {
-        self->SprDraw->SetContour(self->SprDraw->ContourType, value);
-    }
-
-    self->ContourColor = value;
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uint Client_Critter_GetContourColor(CritterView* self)
-{
-    return self->ContourColor;
 }
 
 ///# ...

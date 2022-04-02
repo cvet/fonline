@@ -290,13 +290,13 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, ushort, LastMapHexY);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Life);
+    ENTITY_PROPERTY(PrivateCommon, uint, Anim1Alive);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Knockout);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim1Dead);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Life);
+    ENTITY_PROPERTY(PrivateCommon, uint, Anim2Alive);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Knockout);
     ///@ ExportProperty ReadOnly
@@ -367,6 +367,10 @@ public:
     ENTITY_PROPERTY(Protected, uint, TimeoutTransfer);
     ///@ ExportProperty Temporary
     ENTITY_PROPERTY(Protected, uint, TimeoutRemoveFromGame);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, uint, NameColor);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateClient, uint, ContourColor);
 };
 
 class MapProperties : public EntityProperties
