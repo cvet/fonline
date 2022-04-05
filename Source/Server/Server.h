@@ -157,28 +157,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(CritterMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterShow, Critter* /*critter*/, Critter* /*showCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterShowDist1, Critter* /*critter*/, Critter* /*showCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterShowDist2, Critter* /*critter*/, Critter* /*showCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterShowDist3, Critter* /*critter*/, Critter* /*showCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterHide, Critter* /*critter*/, Critter* /*hideCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterHideDist1, Critter* /*critter*/, Critter* /*hideCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterHideDist2, Critter* /*critter*/, Critter* /*hideCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterHideDist3, Critter* /*critter*/, Critter* /*hideCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterShowItemOnMap, Critter* /*critter*/, Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterHideItemOnMap, Critter* /*critter*/, Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(CritterChangeItemOnMap, Critter* /*critter*/, Item* /*item*/);
-    ///@ ExportEvent
     ENTITY_EVENT(CritterMessage, Critter* /*critter*/, Critter* /*receiver*/, int /*num*/, int /*value*/);
     ///@ ExportEvent
     ENTITY_EVENT(CritterTalk, Critter* /*critter*/, Critter* /*who*/, bool /*begin*/, uint /*talkers*/);

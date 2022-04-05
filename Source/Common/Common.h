@@ -1355,6 +1355,12 @@ constexpr auto xrange(T value)
     return irange_loop<decltype(value.size())> {0, value.size()};
 }
 
+template<typename T>
+constexpr auto copy(T&& value) -> T
+{
+    return T(value);
+}
+
 // ReSharper restore CppInconsistentNaming
 
 class NameResolver

@@ -239,7 +239,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MessageBox, string& /*text*/, int /*type*/, bool /*scriptCall*/);
+    ENTITY_EVENT(MessageBox, string /*text*/, int /*type*/, bool /*scriptCall*/);
     ///@ ExportEvent
     ENTITY_EVENT(CombatResult, vector<uint> /*result*/);
     ///@ ExportEvent

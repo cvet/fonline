@@ -216,25 +216,25 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(ItemMoved, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterShown, Critter* /*showCritter*/);
+    ENTITY_EVENT(CritterAppeared, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterShownDist1, Critter* /*showCritter*/);
+    ENTITY_EVENT(CritterAppearedDist1, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterShownDist2, Critter* /*showCritter*/);
+    ENTITY_EVENT(CritterAppearedDist2, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterShownDist3, Critter* /*showCritter*/);
+    ENTITY_EVENT(CritterAppearedDist3, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterHidden, Critter* /*hideCritter*/);
+    ENTITY_EVENT(CritterDisappeared, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterHiddenDist1, Critter* /*hideCritter*/);
+    ENTITY_EVENT(CritterDisappearedDist1, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterHiddenDist2, Critter* /*hideCritter*/);
+    ENTITY_EVENT(CritterDisappearedDist2, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterHiddenDist3, Critter* /*hideCritter*/);
+    ENTITY_EVENT(CritterDisappearedDist3, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemOnMapShown, Item* /*item*/, bool /*added*/, Critter* /*fromCritter*/);
+    ENTITY_EVENT(ItemOnMapAppeared, Item* /*item*/, bool /*added*/, Critter* /*fromCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemOnMapHidden, Item* /*item*/, bool /*removed*/, Critter* /*toCritter*/);
+    ENTITY_EVENT(ItemOnMapDisappeared, Item* /*item*/, bool /*removed*/, Critter* /*toCr*/);
     ///@ ExportEvent
     ENTITY_EVENT(ItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
@@ -250,7 +250,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(GlobalMapOut);
 
-    uint Flags {};
+    uint Flags {}; // Todo: move Flags to properties
     string Name {};
     bool IsRunning {};
     int LockMapTransfers {};

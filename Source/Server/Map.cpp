@@ -244,7 +244,7 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            _engine->CritterShowItemOnMapEvent.Fire(cr, item, false, nullptr);
+            cr->ItemOnMapAppearedEvent.Fire(item, false, nullptr);
         }
     }
     item->ViewPlaceOnMap = false;
@@ -319,7 +319,7 @@ void Map::EraseItem(uint item_id)
     for (auto* cr : GetCritters()) {
         if (cr->DelIdVisItem(item->GetId())) {
             cr->Send_EraseItemFromMap(item);
-            _engine->CritterHideItemOnMapEvent.Fire(cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+            cr->ItemOnMapDisappearedEvent.Fire(item, item->ViewPlaceOnMap, item->ViewByCritter);
         }
     }
     item->ViewPlaceOnMap = false;
@@ -332,7 +332,7 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
         for (auto* cr : GetCritters()) {
             if (cr->CountIdVisItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
-                _engine->CritterChangeItemOnMapEvent.Fire(cr, item);
+                cr->ItemOnMapChangedEvent.Fire(item);
             }
         }
     }
@@ -356,7 +356,7 @@ void Map::ChangeViewItem(Item* item)
             if (item->GetIsHidden()) {
                 cr->DelIdVisItem(item->GetId());
                 cr->Send_EraseItemFromMap(item);
-                _engine->CritterHideItemOnMapEvent.Fire(cr, item, false, nullptr);
+                cr->ItemOnMapDisappearedEvent.Fire(item, false, nullptr);
             }
             else if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
@@ -374,7 +374,7 @@ void Map::ChangeViewItem(Item* item)
                 if (!allowed) {
                     cr->DelIdVisItem(item->GetId());
                     cr->Send_EraseItemFromMap(item);
-                    _engine->CritterHideItemOnMapEvent.Fire(cr, item, false, nullptr);
+                    cr->ItemOnMapDisappearedEvent.Fire(item, false, nullptr);
                 }
             }
         }
@@ -399,7 +399,7 @@ void Map::ChangeViewItem(Item* item)
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            _engine->CritterShowItemOnMapEvent.Fire(cr, item, false, nullptr);
+            cr->ItemOnMapAppearedEvent.Fire(item, false, nullptr);
         }
     }
 }
