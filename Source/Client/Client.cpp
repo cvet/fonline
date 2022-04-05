@@ -96,7 +96,7 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngin
 
 #if !FO_SINGLEPLAYER
     // Modules initialization
-    StartEvent.Fire();
+    OnStart.Fire();
 #endif
 
     // Flush atlas data
@@ -134,17 +134,17 @@ FOClient::~FOClient()
 
 auto FOClient::ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool
 {
-    return CritterAnimationEvent.Fire(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+    return OnCritterAnimation.Fire(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
 auto FOClient::ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool
 {
-    return CritterAnimationSubstituteEvent.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
+    return OnCritterAnimationSubstitute.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 auto FOClient::ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool
 {
-    return CritterAnimationFalloutEvent.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
+    return OnCritterAnimationFallout.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 auto FOClient::GetChosen() -> CritterView*
@@ -192,7 +192,7 @@ void FOClient::ProcessAutoLogin()
     _isAutoLogin = true;
 
 #if !FO_SINGLEPLAYER
-    if (AutoLoginEvent.Fire(auto_login_args[0], auto_login_args[1]) && _initNetReason == INIT_NET_REASON_NONE) {
+    if (OnAutoLogin.Fire(auto_login_args[0], auto_login_args[1]) && _initNetReason == INIT_NET_REASON_NONE) {
         _loginName = auto_login_args[0];
         _loginPassword = auto_login_args[1];
         _initNetReason = INIT_NET_REASON_LOGIN;
@@ -683,7 +683,7 @@ void FOClient::MainLoop()
 
 #if !FO_SINGLEPLAYER
     // Script loop
-    LoopEvent.Fire();
+    OnLoop.Fire();
 #endif
 
     // Quake effect
@@ -710,7 +710,7 @@ void FOClient::DrawIface()
     }
 
     CanDrawInScripts = true;
-    RenderIfaceEvent.Fire();
+    OnRenderIface.Fire();
     CanDrawInScripts = false;
 }
 
@@ -824,7 +824,7 @@ void FOClient::ProcessInputEvents()
         }
 
         Keyb.Lost();
-        InputLostEvent.Fire();
+        OnInputLost.Fire();
         return;
     }
 
@@ -850,7 +850,7 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
             Keyb.ShiftDwn = true;
         }
 
-        KeyDownEvent.Fire(key_code, key_text);
+        OnKeyDown.Fire(key_code, key_text);
     }
     else if (event.Type == InputEvent::EventType::KeyUpEvent) {
         const auto key_code = event.KeyUp.Code;
@@ -865,7 +865,7 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
             Keyb.ShiftDwn = false;
         }
 
-        KeyUpEvent.Fire(key_code);
+        OnKeyUp.Fire(key_code);
     }
     else if (event.Type == InputEvent::EventType::MouseMoveEvent) {
         const auto mouse_x = event.MouseMove.MouseX;
@@ -876,17 +876,17 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
         Settings.MouseX = mouse_x;
         Settings.MouseY = mouse_y;
 
-        MouseMoveEvent.Fire(delta_x, delta_y);
+        OnMouseMove.Fire(delta_x, delta_y);
     }
     else if (event.Type == InputEvent::EventType::MouseDownEvent) {
         const auto mouse_button = event.MouseDown.Button;
 
-        MouseDownEvent.Fire(mouse_button);
+        OnMouseDown.Fire(mouse_button);
     }
     else if (event.Type == InputEvent::EventType::MouseUpEvent) {
         const auto mouse_button = event.MouseUp.Button;
 
-        MouseUpEvent.Fire(mouse_button);
+        OnMouseUp.Fire(mouse_button);
     }
     else if (event.Type == InputEvent::EventType::MouseWheelEvent) {
         const auto wheel_delta = event.MouseWheel.Delta;
@@ -1726,7 +1726,7 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
 {
     int say_type = how_say;
     auto str = string(send_str);
-    const auto result = OutMessageEvent.Fire(str, say_type);
+    const auto result = OnOutMessage.Fire(str, say_type);
 
     how_say = static_cast<uchar>(say_type);
 
@@ -2032,7 +2032,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 
         AddCritter(cr);
 
-        CritterInEvent.Fire(cr);
+        OnCritterIn.Fire(cr);
 
         if (cr->IsChosen()) {
             _rebuildLookBordersRequest = true;
@@ -2054,7 +2054,7 @@ void FOClient::Net_OnRemoveCritter()
 
     cr->Finish();
 
-    CritterOutEvent.Fire(cr);
+    OnCritterOut.Fire(cr);
 }
 
 void FOClient::Net_OnText()
@@ -2133,7 +2133,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
 
     auto text_delay = Settings.TextDelay + static_cast<uint>(fstr.length()) * 100u;
     const auto sstr = fstr;
-    if (!InMessageEvent.Fire(sstr, how_say, crid, text_delay)) {
+    if (!OnInMessage.Fire(sstr, how_say, crid, text_delay)) {
         return;
     }
 
@@ -2231,7 +2231,7 @@ void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
     auto text_delay = Settings.TextDelay + static_cast<uint>(str.length()) * 100;
 
     auto sstr = _str(str).str();
-    MapMessageEvent.Fire(sstr, hx, hy, color, text_delay);
+    OnMapMessage.Fire(sstr, hx, hy, color, text_delay);
 
     MapText map_text;
     map_text.HexX = hx;
@@ -2834,7 +2834,7 @@ void FOClient::Net_OnChosenAddItem()
     }
 
     if (!_initialItemsSend) {
-        ItemInvInEvent.Fire(item);
+        OnItemInvIn.Fire(item);
     }
 
     item->Release();
@@ -2866,7 +2866,7 @@ void FOClient::Net_OnChosenEraseItem()
         HexMngr.RebuildLight();
     }
 
-    ItemInvOutEvent.Fire(item_clone);
+    OnItemInvOut.Fire(item_clone);
     item_clone->Release();
 }
 
@@ -2883,7 +2883,7 @@ void FOClient::Net_OnAllItemsSend()
         _chosen->GetModel()->StartMeshGeneration();
     }
 
-    ItemInvAllInEvent.Fire();
+    OnItemInvAllIn.Fire();
 }
 
 void FOClient::Net_OnAddItemOnMap()
@@ -2911,7 +2911,7 @@ void FOClient::Net_OnAddItemOnMap()
 
     ItemView* item = HexMngr.GetItemById(item_id);
     if (item != nullptr) {
-        ItemMapInEvent.Fire(item);
+        OnItemMapIn.Fire(item);
 
         // Refresh borders
         if (!item->GetIsShootThru()) {
@@ -2931,7 +2931,7 @@ void FOClient::Net_OnEraseItemFromMap()
 
     ItemView* item = HexMngr.GetItemById(item_id);
     if (item != nullptr) {
-        ItemMapOutEvent.Fire(item);
+        OnItemMapOut.Fire(item);
 
         // Refresh borders
         if (!item->GetIsShootThru()) {
@@ -2974,7 +2974,7 @@ void FOClient::Net_OnCombatResult()
 
     CHECK_IN_BUFF_ERROR();
 
-    CombatResultEvent.Fire(data_vec);
+    OnCombatResult.Fire(data_vec);
 }
 
 void FOClient::Net_OnEffect()
@@ -3211,13 +3211,14 @@ void FOClient::Net_OnProperty(uint data_size)
     entity->SetValueFromData(prop, _tempPropertyData, true);
 
     if (type == NetProperty::MapItem) {
-        ItemMapChangedEvent.Fire(dynamic_cast<ItemView*>(entity), dynamic_cast<ItemView*>(entity));
+        OnItemMapChanged.Fire(dynamic_cast<ItemView*>(entity), dynamic_cast<ItemView*>(entity));
     }
 
     if (type == NetProperty::ChosenItem) {
         auto* item = dynamic_cast<ItemView*>(entity);
         item->AddRef();
-        OnItemInvChanged(item, item);
+        OnItemInvChanged.Fire(item, item);
+        item->Release();
     }
 }
 
@@ -3665,7 +3666,7 @@ void FOClient::Net_OnSomeItems()
 
     CHECK_IN_BUFF_ERROR();
 
-    ReceiveItemsEvent.Fire(item_container, param);
+    OnReceiveItems.Fire(item_container, param);
 }
 
 void FOClient::Net_OnUpdateFilesList()
@@ -4425,12 +4426,12 @@ void FOClient::GameDraw()
 
 void FOClient::AddMess(uchar mess_type, string_view msg)
 {
-    MessageBoxEvent.Fire(string(msg), mess_type, false);
+    OnMessageBox.Fire(string(msg), mess_type, false);
 }
 
 void FOClient::AddMess(uchar mess_type, string_view msg, bool script_call)
 {
-    MessageBoxEvent.Fire(string(msg), mess_type, script_call);
+    OnMessageBox.Fire(string(msg), mess_type, script_call);
 }
 
 // Todo: move targs formatting to scripts
@@ -4608,7 +4609,7 @@ void FOClient::ShowMainScreen(int new_screen, map<string, string> params)
 auto FOClient::GetActiveScreen(vector<int>* screens) -> int
 {
     vector<int> active_screens;
-    GetActiveScreensEvent.Fire(active_screens);
+    OnGetActiveScreens.Fire(active_screens);
 
     if (screens != nullptr) {
         *screens = active_screens;
@@ -4647,7 +4648,7 @@ void FOClient::HideScreen(int screen)
 
 void FOClient::RunScreenScript(bool show, int screen, map<string, string> params)
 {
-    ScreenChangeEvent.Fire(show, screen, std::move(params));
+    OnScreenChange.Fire(show, screen, std::move(params));
 }
 
 void FOClient::LmapPrepareMap()
@@ -4729,12 +4730,6 @@ void FOClient::WaitDraw()
 {
     SprMngr.DrawSpriteSize(_waitPic, 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
     SprMngr.Flush();
-}
-
-void FOClient::OnItemInvChanged(ItemView* old_item, ItemView* item)
-{
-    ItemInvChangedEvent.Fire(item, old_item);
-    old_item->Release();
 }
 
 auto FOClient::CustomCall(string_view command, string_view separator) -> string
@@ -5041,7 +5036,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
 
         // Notify scripts about item changing
-        OnItemInvChanged(old_item, item);
+        OnItemInvChanged.Fire(item, old_item);
+        old_item->Release();
     }
     else if (cmd == "SkipRoof" && args.size() == 3) {
         auto hx = _str(args[1]).toUInt();

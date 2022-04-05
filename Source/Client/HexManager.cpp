@@ -1065,7 +1065,7 @@ void HexManager::RebuildMap(int rx, int ry)
     _screenHexX = rx;
     _screenHexY = ry;
 
-    _engine->RenderMapEvent.Fire();
+    _engine->OnRenderMap.Fire();
 }
 
 void HexManager::RebuildMapOffset(int ox, int oy)
@@ -1379,7 +1379,7 @@ void HexManager::RebuildMapOffset(int ox, int oy)
     _requestRebuildLight = false;
     _requestRenderLight = true;
 
-    _engine->RenderMapEvent.Fire();
+    _engine->OnRenderMap.Fire();
 }
 
 void HexManager::ClearHexLight()
@@ -2637,7 +2637,7 @@ auto HexManager::Scroll() -> bool
         const auto final_scr_ox = _engine->Settings.ScrOx - prev_scr_ox + xmod * _engine->Settings.MapHexWidth;
         const auto final_scr_oy = _engine->Settings.ScrOy - prev_scr_oy + (-ymod / 2) * (_engine->Settings.MapHexLineHeight * 2);
         if ((final_scr_ox != 0) || (final_scr_oy != 0)) {
-            _engine->ScreenScrollEvent.Fire(final_scr_ox, final_scr_oy);
+            _engine->OnScreenScroll.Fire(final_scr_ox, final_scr_oy);
         }
     }
 
@@ -4073,7 +4073,7 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
     AutoScroll.Active = false;
     WriteLog("Load map success.\n");
 
-    _engine->MapLoadEvent.Fire();
+    _engine->OnMapLoad.Fire();
 
     return true;
 }
@@ -4086,7 +4086,7 @@ void HexManager::UnloadMap()
 
     WriteLog("Unload map.\n");
 
-    _engine->MapUnloadEvent.Fire();
+    _engine->OnMapUnload.Fire();
 
     _curPidMap = hstring();
     _curMapTime = -1;

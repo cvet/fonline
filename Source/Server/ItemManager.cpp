@@ -244,7 +244,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
     }
 
     // Scripts
-    _engine->ItemInitEvent.Fire(item, true);
+    _engine->OnItemInit.Fire(item, true);
     if (!item->IsDestroyed()) {
         ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), true);
     }
@@ -268,7 +268,7 @@ void ItemManager::DeleteItem(Item* item)
     item->MarkAsDestroying();
 
     // Finish events
-    _engine->ItemFinishEvent.Fire(item);
+    _engine->OnItemFinish.Fire(item);
 
     // Tear off from environment
     while (item->GetOwnership() != ItemOwnership::Nowhere || item->ContIsItems()) {
@@ -589,7 +589,7 @@ auto ItemManager::SetItemCritter(Critter* cr, hstring pid, uint count) -> bool
 
 auto ItemManager::ItemCheckMove(Item* item, uint count, Entity* from, Entity* to) const -> bool
 {
-    return _engine->ItemCheckMoveEvent.Fire(item, count, from, to);
+    return _engine->OnItemCheckMove.Fire(item, count, from, to);
 }
 
 void ItemManager::RegisterRadio(Item* radio)

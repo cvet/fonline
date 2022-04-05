@@ -68,7 +68,7 @@
     }
 
     string pass;
-    const auto allow = self->GetEngine()->PlayerGetAccessEvent.Fire(self, access, pass);
+    const auto allow = self->GetEngine()->OnPlayerGetAccess.Fire(self, access, pass);
     if (allow) {
         self->Access = static_cast<uchar>(access);
     }

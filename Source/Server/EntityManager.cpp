@@ -391,22 +391,22 @@ void EntityManager::InitAfterLoad()
         }
 
         if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
-            _engine->LocationInitEvent.Fire(loc, false);
+            _engine->OnLocationInit.Fire(loc, false);
         }
         else if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
-            _engine->MapInitEvent.Fire(map, false);
+            _engine->OnMapInit.Fire(map, false);
             if (!map->IsDestroyed()) {
                 ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), false);
             }
         }
         else if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
-            _engine->CritterInitEvent.Fire(cr, false);
+            _engine->OnCritterInit.Fire(cr, false);
             if (!cr->IsDestroyed()) {
                 ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), false);
             }
         }
         else if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-            _engine->ItemInitEvent.Fire(item, false);
+            _engine->OnItemInit.Fire(item, false);
             if (!item->IsDestroyed()) {
                 ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), false);
             }

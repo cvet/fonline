@@ -124,7 +124,7 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
     }
 
     // Change item
-    _engine->CritterMoveItemEvent.Fire(cr, item, -1);
+    _engine->OnCritterMoveItem.Fire(cr, item, -1);
 }
 
 void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
@@ -147,7 +147,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
         cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
     }
 
-    _engine->CritterMoveItemEvent.Fire(cr, item, item->GetCritSlot());
+    _engine->OnCritterMoveItem.Fire(cr, item, item->GetCritSlot());
 }
 
 auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
@@ -231,7 +231,7 @@ auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* m
     RUNTIME_ASSERT(can);
     _engine->MapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
 
-    _engine->CritterInitEvent.Fire(npc, true);
+    _engine->OnCritterInit.Fire(npc, true);
     ScriptHelpers::CallInitScript(_engine->ScriptSys, npc, npc->GetInitScript(), true);
 
     _engine->MapMngr.ProcessVisibleItems(npc);
@@ -252,7 +252,7 @@ void CritterManager::DeleteNpc(Critter* cr)
     cr->MarkAsDestroying();
 
     // Finish event
-    _engine->CritterFinishEvent.Fire(cr);
+    _engine->OnCritterFinish.Fire(cr);
 
     // Tear off from environment
     cr->LockMapTransfers++;
@@ -502,9 +502,9 @@ void CritterManager::CloseTalk(Critter* cr)
             talker = GetCritter(cr->_talk.CritterId);
             if (talker != nullptr) {
                 if (cr->_talk.Barter) {
-                    _engine->CritterBarterEvent.Fire(cr, talker, false, talker->GetBarterPlayers());
+                    _engine->OnCritterBarter.Fire(cr, talker, false, talker->GetBarterPlayers());
                 }
-                _engine->CritterTalkEvent.Fire(cr, talker, false, talker->GetTalkedPlayers());
+                _engine->OnCritterTalk.Fire(cr, talker, false, talker->GetTalkedPlayers());
             }
         }
 

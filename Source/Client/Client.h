@@ -470,7 +470,6 @@ private:
 
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
-    void OnItemInvChanged(ItemView* old_item, ItemView* new_item);
 
     void AddCritter(CritterView* cr);
     void DeleteCritters();

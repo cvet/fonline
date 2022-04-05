@@ -1474,7 +1474,7 @@ def genCode(lang, target, isASCompiler=False):
                         globalLines.append('        return event_result;')
                         globalLines.append('    };')
                         if isExported:
-                            globalLines.append('    self->' + evName + 'Event.Subscribe(std::move(event_data));')
+                            globalLines.append('    self->On' + evName + '.Subscribe(std::move(event_data));')
                         else:
                             globalLines.append('    self->SubscribeEvent(' + funcEntry + '_Name, std::move(event_data));')
                     else:
@@ -1485,7 +1485,7 @@ def genCode(lang, target, isASCompiler=False):
                     if not isASCompiler:
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
-                            globalLines.append('    self->' + evName + 'Event.Unsubscribe(func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
+                            globalLines.append('    self->On' + evName + '.Unsubscribe(func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                         else:
                             globalLines.append('    self->UnsubscribeEvent(' + funcEntry + '_Name, func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                     else:
@@ -1496,7 +1496,7 @@ def genCode(lang, target, isASCompiler=False):
                     if not isASCompiler:
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
-                            globalLines.append('    self->' + evName + 'Event.UnsubscribeAll();')
+                            globalLines.append('    self->On' + evName + '.UnsubscribeAll();')
                         else:
                             globalLines.append('    self->UnsubscribeAllEvent(' + funcEntry + '_Name);')
                     else:
@@ -1513,7 +1513,7 @@ def genCode(lang, target, isASCompiler=False):
                             for p in evArgs:
                                 globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
                             if isExported:
-                                globalLines.append('    return self->' + evName + 'Event.Fire(' + ', '.join(['in_' + p[1] for p in evArgs]) + ');')
+                                globalLines.append('    return self->On' + evName + '.Fire(' + ', '.join(['in_' + p[1] for p in evArgs]) + ');')
                             else:
                                 globalLines.append('    return self->FireEvent(' + funcEntry + '_Name, {' + ', '.join(['&in_' + p[1] for p in evArgs]) + '});')
                         else:

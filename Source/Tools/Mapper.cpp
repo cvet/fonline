@@ -486,7 +486,7 @@ void FOMapper::ProcessInputEvents()
         }
 
         Keyb.Lost();
-        InputLostEvent.Fire();
+        OnInputLost.Fire();
         return;
     }
 
@@ -532,12 +532,12 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
         if (dikdw)
         {
             string event_text_script = event_text;
-            script_result = KeyDownEvent.Fire(dikdw, event_text_script);
+            script_result = KeyDown.Fire(dikdw, event_text_script);
         }
         if (dikup)
         {
             string event_text_script = event_text;
-            script_result = KeyUpEvent.Fire(dikup, event_text_script);
+            script_result = KeyUp.Fire(dikup, event_text_script);
         }
 
         // Disable keyboard events
@@ -841,7 +841,7 @@ void FOMapper::ParseMouse()
     {
         Settings.MainWindowMouseEvents.clear();
         IntHold = INT_NONE;
-        InputLostEvent.Fire();
+        InputLost.Fire();
         return;
     }
 
@@ -853,7 +853,7 @@ void FOMapper::ParseMouse()
         Settings.LastMouseX = Settings.MouseX;
         Settings.LastMouseY = Settings.MouseY;
 
-        MouseMoveEvent.Fire(ox, oy);
+        MouseMove.Fire(ox, oy);
 
         IntMouseMove();
     }
@@ -898,39 +898,39 @@ void FOMapper::ParseMouse()
         // Scripts
         bool script_result = true;
         if (event == SDL_MOUSEWHEEL)
-            script_result = MouseDownEvent.Fire(event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
+            script_result = MouseDown.Fire(event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT)
-            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_LEFT);
+            script_result = MouseDown.Fire(MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT)
-            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_LEFT);
+            script_result = MouseUp.Fire(MOUSE_BUTTON_LEFT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT)
-            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_RIGHT);
+            script_result = MouseDown.Fire(MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT)
-            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_RIGHT);
+            script_result = MouseUp.Fire(MOUSE_BUTTON_RIGHT);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE)
-            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_MIDDLE);
+            script_result = MouseDown.Fire(MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE)
-            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_MIDDLE);
+            script_result = MouseUp.Fire(MOUSE_BUTTON_MIDDLE);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(4))
-            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT0);
+            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(4))
-            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT0);
+            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT0);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(5))
-            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT1);
+            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(5))
-            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT1);
+            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT1);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(6))
-            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT2);
+            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(6))
-            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT2);
+            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT2);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(7))
-            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT3);
+            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(7))
-            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT3);
+            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT3);
         if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(8))
-            script_result = MouseDownEvent.Fire(MOUSE_BUTTON_EXT4);
+            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT4);
         if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(8))
-            script_result = MouseUpEvent.Fire(MOUSE_BUTTON_EXT4);
+            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT4);
         if (!script_result || Settings.DisableMouseEvents)
             continue;
 
@@ -1127,7 +1127,7 @@ void FOMapper::MapperMainLoop()
     }*/
 
     // Script loop
-    LoopEvent.Fire();
+    OnLoop.Fire();
 
     // Input
     ConsoleProcess();
@@ -1912,7 +1912,7 @@ auto FOMapper::GetInspectorEntity() -> ClientEntity*
 
     if (entity != nullptr) {
         vector<int> prop_indices;
-        InspectorPropertiesEvent.Fire(entity, prop_indices);
+        OnInspectorProperties.Fire(entity, prop_indices);
         for (const auto prop_index : prop_indices) {
             ShowProps.push_back(prop_index != -1 ? entity->GetProperties().GetRegistrator()->GetByIndex(prop_index) : nullptr);
         }
@@ -3708,7 +3708,7 @@ void FOMapper::ConsoleKeyDown(KeyCode dik, string_view dik_text)
                 Cache.SetString("mapper_console.txt", history_str);
 
                 // Process command
-                const auto process_command = ConsoleMessageEvent.Fire(ConsoleStr);
+                const auto process_command = OnConsoleMessage.Fire(ConsoleStr);
                 AddMess(ConsoleStr);
                 if (process_command) {
                     ParseCommand(ConsoleStr);
@@ -4073,25 +4073,27 @@ auto FOMapper::SaveLogFile() -> bool
 
 void FOMapper::RunStartScript()
 {
-    StartEvent.Fire();
+    OnStart.Fire();
 }
 
 void FOMapper::RunMapLoadScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    EditMapLoadEvent.Fire(map);
+
+    OnEditMapLoad.Fire(map);
 }
 
 void FOMapper::RunMapSaveScript(MapView* map)
 {
     RUNTIME_ASSERT(map);
-    EditMapSaveEvent.Fire(map);
+
+    OnEditMapSave.Fire(map);
 }
 
 void FOMapper::DrawIfaceLayer(uint /*layer*/)
 {
     SpritesCanDraw = true;
-    RenderIfaceEvent.Fire(); // Todo: mapper render iface layer
+    OnRenderIface.Fire(); // Todo: mapper render iface layer
     SpritesCanDraw = false;
 }
 

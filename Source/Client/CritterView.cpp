@@ -213,7 +213,7 @@ auto CritterView::CheckFind(CritterFindType find_type) const -> bool
 auto CritterView::GetAttackDist() -> uint
 {
     uint dist = 0;
-    _engine->CritterGetAttackDistantionEvent.Fire(this, nullptr, 0, dist);
+    _engine->OnCritterGetAttackDistantion.Fire(this, nullptr, 0, dist);
     return dist;
 }
 
@@ -401,7 +401,7 @@ void CritterView::Move(uchar dir)
 
 void CritterView::Action(int action, int action_ext, ItemView* item, bool local_call /* = true */)
 {
-    _engine->CritterActionEvent.Fire(local_call, this, action, action_ext, item);
+    _engine->OnCritterAction.Fire(local_call, this, action, action_ext, item);
 
     switch (action) {
     case ACTION_KNOCKOUT:
@@ -686,10 +686,10 @@ auto CritterView::GetAnim2() const -> uint
 void CritterView::ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item)
 {
     if (is2d) {
-        _engine->Animation2dProcessEvent.Fire(animate_stay, this, anim1, anim2, item);
+        _engine->OnAnimation2dProcess.Fire(animate_stay, this, anim1, anim2, item);
     }
     else {
-        _engine->Animation3dProcessEvent.Fire(animate_stay, this, anim1, anim2, item);
+        _engine->OnAnimation3dProcess.Fire(animate_stay, this, anim1, anim2, item);
     }
 }
 
