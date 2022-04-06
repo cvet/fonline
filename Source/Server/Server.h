@@ -159,9 +159,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(CritterMessage, Critter* /*critter*/, Critter* /*receiver*/, int /*num*/, int /*value*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterTalk, Critter* /*critter*/, Critter* /*who*/, bool /*begin*/, uint /*talkers*/);
+    ENTITY_EVENT(CritterTalk, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterBarter, Critter* /*critter*/, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
+    ENTITY_EVENT(CritterBarter, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
     ENTITY_EVENT(CritterGetAttackDistantion, Critter* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent

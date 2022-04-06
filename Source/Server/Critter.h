@@ -240,9 +240,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(Message, Critter* /*receiver*/, int /*num*/, int /*value*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Talk, Critter* /*who*/, bool /*begin*/, uint /*talkers*/);
+    ENTITY_EVENT(Talk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Barter, Critter* /*trader*/, bool /*begin*/, uint /*barterCount*/);
+    ENTITY_EVENT(Barter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
     ENTITY_EVENT(GlobalMapIdle);
     ///@ ExportEvent

@@ -3834,11 +3834,13 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
         // Todo: don't remeber but need check (IsPlaneNoTalk)
 
-        OnCritterTalk.Fire(cl, npc, true, npc->GetTalkedPlayers() + 1);
+        if (!npc->OnTalk.Fire(cl, true, npc->GetTalkedPlayers() + 1) || !OnCritterTalk.Fire(npc, cl, true, npc->GetTalkedPlayers() + 1)) {
+            return;
+        }
 
         dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
-        if ((dialogs == nullptr) || dialogs->empty()) {
+        if (dialogs == nullptr || dialogs->empty()) {
             return;
         }
 
@@ -3862,7 +3864,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
         dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
-        if ((dialogs == nullptr) || dialogs->empty()) {
+        if (dialogs == nullptr || dialogs->empty()) {
             WriteLog("No dialogs, hx {}, hy {}, client '{}'.\n", hx, hy, cl->GetName());
             return;
         }
@@ -4064,7 +4066,7 @@ void FOServer::Process_Dialog(Player* player)
                 return;
             }
 
-            if (!OnCritterBarter.Fire(cr, npc, true, npc->GetBarterPlayers() + 1)) {
+            if (!npc->OnBarter.Fire(cr, true, npc->GetBarterPlayers() + 1) || !OnCritterBarter.Fire(npc, cr, true, npc->GetBarterPlayers() + 1)) {
                 cr->Talk.Barter = true;
                 cr->Talk.StartTick = GameTime.GameTick();
                 cr->Talk.TalkTime = Settings.DlgBarterMinTime;
@@ -4091,7 +4093,8 @@ void FOServer::Process_Dialog(Player* player)
         cr->Talk.Barter = false;
         dlg_id = cur_dialog->Id;
         if (npc != nullptr) {
-            OnCritterBarter.Fire(cr, npc, false, npc->GetBarterPlayers() + 1);
+            npc->OnBarter.Fire(cr, false, npc->GetBarterPlayers() + 1);
+            OnCritterBarter.Fire(npc, cr, false, npc->GetBarterPlayers() + 1);
         }
     }
 

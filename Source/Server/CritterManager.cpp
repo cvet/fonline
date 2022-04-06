@@ -502,9 +502,11 @@ void CritterManager::CloseTalk(Critter* cr)
             talker = GetCritter(cr->_talk.CritterId);
             if (talker != nullptr) {
                 if (cr->_talk.Barter) {
-                    _engine->OnCritterBarter.Fire(cr, talker, false, talker->GetBarterPlayers());
+                    talker->OnBarter.Fire(cr, false, talker->GetBarterPlayers());
+                    _engine->OnCritterBarter.Fire(talker, cr, false, talker->GetBarterPlayers());
                 }
-                _engine->OnCritterTalk.Fire(cr, talker, false, talker->GetTalkedPlayers());
+                talker->OnTalk.Fire(cr, false, talker->GetTalkedPlayers());
+                _engine->OnCritterTalk.Fire(talker, cr, false, talker->GetTalkedPlayers());
             }
         }
 

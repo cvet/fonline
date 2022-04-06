@@ -44,27 +44,6 @@
 #define DRAW_PRIMITIVE_TRIANGLESTRIP (4)
 #define DRAW_PRIMITIVE_TRIANGLEFAN   (5)
 
-// Effect types
-#define EFFECT_2D_GENERIC             (0x00000001) // Subtype can be item id, zero for all items
-#define EFFECT_2D_CRITTER             (0x00000002) // Subtype can be critter id, zero for all critters
-#define EFFECT_2D_TILE                (0x00000004)
-#define EFFECT_2D_ROOF                (0x00000008)
-#define EFFECT_2D_RAIN                (0x00000010)
-#define EFFECT_3D_SKINNED             (0x00000400)
-#define EFFECT_3D_SKINNED_SHADOW      (0x00000800)
-#define EFFECT_INTERFACE_BASE         (0x00001000)
-#define EFFECT_INTERFACE_CONTOUR      (0x00002000)
-#define EFFECT_FONT                   (0x00010000) // Subtype is FONT_*, -1 default for all fonts
-#define EFFECT_PRIMITIVE_GENERIC      (0x00100000)
-#define EFFECT_PRIMITIVE_LIGHT        (0x00200000)
-#define EFFECT_FLUSH_RENDER_TARGET    (0x01000000)
-#define EFFECT_FLUSH_RENDER_TARGET_MS (0x02000000) // Multisample
-#define EFFECT_FLUSH_PRIMITIVE        (0x04000000)
-#define EFFECT_FLUSH_MAP              (0x08000000)
-#define EFFECT_FLUSH_LIGHT            (0x10000000)
-#define EFFECT_FLUSH_FOG              (0x20000000)
-#define EFFECT_OFFSCREEN              (0x40000000) // Each subtype are separate effect
-
 // Anchor styles
 #define ANCHOR_NONE   (0x0)
 #define ANCHOR_LEFT   (0x1)

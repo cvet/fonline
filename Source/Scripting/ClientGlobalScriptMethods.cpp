@@ -1184,7 +1184,7 @@
 ///# param y ...
 ///# param button ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SimulateMouseClick(FOClient* client, int x, int y, int button)
+[[maybe_unused]] void Client_Game_SimulateMouseClick(FOClient* client, int x, int y, MouseButton button)
 {
     /*App->Input.PushEvent({InputEvent::MouseDown({(MouseButton)button})});
 
