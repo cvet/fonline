@@ -85,14 +85,11 @@ function setup_emscripten()
 {
     echo "Setup Emscripten"
     rm -rf emsdk
-    mkdir emsdk
-    cp -r "$FO_ROOT/BuildTools/emsdk" "./"
+    git clone https://github.com/emscripten-core/emsdk.git
     cd emsdk
-    chmod +x ./emsdk
-    ./emsdk update
     ./emsdk list
     ./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
-    ./emsdk activate --build=Release --embedded $EMSCRIPTEN_VERSION
+    ./emsdk activate --build=Release $EMSCRIPTEN_VERSION
 }
 
 function setup_android_ndk()

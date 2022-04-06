@@ -7,7 +7,7 @@ echo "Setup environment"
 
 export FO_ROOT=$(cd $FO_ROOT; pwd)
 export FO_WORKSPACE=$(mkdir -p $FO_WORKSPACE; cd $FO_WORKSPACE; pwd)
-export EMSCRIPTEN_VERSION="2.0.18"
+export EMSCRIPTEN_VERSION="3.1.8"
 export ANDROID_HOME="/usr/lib/android-sdk"
 export ANDROID_NDK_VERSION="android-ndk-r23b"
 export ANDROID_SDK_VERSION="tools_r25.2.3"
