@@ -32,6 +32,9 @@
 //
 
 #include "AdminPanel.h"
+
+#if !FO_SINGLEPLAYER
+
 #include "Log.h"
 #include "NetBuffer.h"
 #include "NetCommand.h"
@@ -353,3 +356,11 @@ label_Finish:
         delete session;
     }
 }
+
+#else
+
+void InitAdminManager(FOServer* server, ushort port)
+{
+}
+
+#endif
