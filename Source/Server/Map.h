@@ -42,7 +42,7 @@
 #include "ServerEntity.h"
 
 class Item;
-using StaticItem = const Item;
+using StaticItem = Item;
 class Critter;
 class Map;
 class Location;

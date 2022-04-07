@@ -42,7 +42,7 @@
 
 class Item;
 class Critter;
-using StaticItem = const Item;
+using StaticItem = Item;
 
 class Item final : public ServerEntity, public ItemProperties
 {

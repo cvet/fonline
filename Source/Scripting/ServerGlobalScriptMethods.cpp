@@ -619,22 +619,50 @@
 }
 
 ///# ...
-///# param npc ...
+///# param cr ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteNpc(FOServer* server, Critter* npc)
+[[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, Critter* cr)
 {
-    if (npc != nullptr) {
-        server->CrMngr.DeleteNpc(npc);
+    if (cr != nullptr && cr->IsNpc()) {
+        server->CrMngr.DeleteNpc(cr);
     }
 }
 
 ///# ...
-///# param npcId ...
+///# param crId ...
 ///@ ExportMethod
-[[maybe_unused]] void Server_Game_DeleteNpc(FOServer* server, uint npcId)
+[[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, uint crId)
 {
-    if (Critter* npc = server->CrMngr.GetCritter(npcId); npc != nullptr) {
-        server->CrMngr.DeleteNpc(npc);
+    if (crId != 0u) {
+        if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && cr->IsNpc()) {
+            server->CrMngr.DeleteNpc(cr);
+        }
+    }
+}
+
+///# ...
+///# param critters ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DeleteCritters(FOServer* server, const vector<Critter*>& critters)
+{
+    for (auto* cr : critters) {
+        if (cr != nullptr && cr->IsNpc()) {
+            server->CrMngr.DeleteNpc(cr);
+        }
+    }
+}
+
+///# ...
+///# param critterIds ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Game_DeleteCritters(FOServer* server, const vector<uint>& critterIds)
+{
+    for (const auto id : critterIds) {
+        if (id != 0u) {
+            if (Critter* cr = server->CrMngr.GetCritter(id); cr != nullptr && cr->IsNpc()) {
+                server->CrMngr.DeleteNpc(cr);
+            }
+        }
     }
 }
 
@@ -924,6 +952,19 @@
     }
 
     return server->MapMngr.GetLocation(locId);
+}
+
+///# ...
+///# param locPid ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Location* Server_Game_GetLocationByPid(FOServer* server, hstring locPid)
+{
+    if (!locPid) {
+        throw ScriptException("Invalid zero location proto id arg");
+    }
+
+    return server->MapMngr.GetLocationByPid(locPid, 0);
 }
 
 ///# ...
@@ -1259,4 +1300,19 @@
 [[maybe_unused]] void Server_Game_AddDataSource(FOServer* server, string_view datName)
 {
     server->FileMngr.AddDataSource(datName, false);
+}
+
+///# ...
+///# param cr ...
+///# param staticItem ...
+///# param param ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Server_Game_CallStaticItemFunction(FOServer* server, Critter* cr, StaticItem* staticItem, int param)
+{
+    if (!staticItem->SceneryScriptFunc) {
+        return false;
+    }
+
+    return staticItem->SceneryScriptFunc(cr, staticItem, false, param) && staticItem->SceneryScriptFunc.GetResult();
 }

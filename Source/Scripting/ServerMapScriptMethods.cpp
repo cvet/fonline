@@ -402,7 +402,7 @@
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());
 
-    for (const auto* item : map_static_items) {
+    for (auto* item : map_static_items) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             result.push_back(item);
         }

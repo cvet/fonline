@@ -151,18 +151,3 @@
         throw ScriptException("Unknown accessory");
     }
 }
-
-///# ...
-///# param cr ...
-///# param staticItem ...
-///# param param ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Item_CallStaticItemFunction(Item* self, Critter* cr, StaticItem* staticItem, int param)
-{
-    if (!self->SceneryScriptFunc) {
-        return false;
-    }
-
-    return self->SceneryScriptFunc(cr, staticItem, false, param) && self->SceneryScriptFunc.GetResult();
-}
