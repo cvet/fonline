@@ -3126,21 +3126,9 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
     }
 }
 
-static constexpr auto MOVING_SUCCESS = 1;
-static constexpr auto MOVING_TARGET_NOT_FOUND = 2;
-static constexpr auto MOVING_CANT_MOVE = 3;
-static constexpr auto MOVING_GAG_CRITTER = 4;
-static constexpr auto MOVING_GAG_ITEM = 5;
-static constexpr auto MOVING_FIND_PATH_ERROR = 6;
-static constexpr auto MOVING_HEX_TOO_FAR = 7;
-static constexpr auto MOVING_HEX_BUSY = 8;
-static constexpr auto MOVING_HEX_BUSY_RING = 9;
-static constexpr auto MOVING_DEADLOCK = 10;
-static constexpr auto MOVING_TRACE_FAIL = 11;
-
 void FOServer::ProcessMove(Critter* cr)
 {
-    if (cr->Moving.State != 0) {
+    if (cr->Moving.State != MovingState::InProgress) {
         return;
     }
 
@@ -3164,7 +3152,7 @@ void FOServer::ProcessMove(Critter* cr)
         if (cr->Moving.TargId != 0u) {
             auto* targ = cr->GetCrSelf(cr->Moving.TargId);
             if (targ == nullptr) {
-                cr->Moving.State = MOVING_TARGET_NOT_FOUND;
+                cr->Moving.State = MovingState::TargetNotFound;
                 cr->Broadcast_Position();
                 return;
             }
@@ -3203,19 +3191,19 @@ void FOServer::ProcessMove(Critter* cr)
             input.IsRun = false;
         }
         if (!input.IsRun && cr->GetIsNoWalk()) {
-            cr->Moving.State = MOVING_CANT_MOVE;
+            cr->Moving.State = MovingState::CantMove;
             return;
         }
 
         auto output = MapMngr.FindPath(input);
         if (output.GagCritter != nullptr) {
-            cr->Moving.State = MOVING_GAG_CRITTER;
+            cr->Moving.State = MovingState::GagCritter;
             cr->Moving.GagEntityId = output.GagCritter->GetId();
             return;
         }
 
         if (output.GagItem != nullptr) {
-            cr->Moving.State = MOVING_GAG_ITEM;
+            cr->Moving.State = MovingState::GagItem;
             cr->Moving.GagEntityId = output.GagItem->GetId();
             return;
         }
@@ -3223,41 +3211,41 @@ void FOServer::ProcessMove(Critter* cr)
         // Failed
         if (output.Result != FindPathResult::Ok) {
             if (output.Result == FindPathResult::AlreadyHere) {
-                cr->Moving.State = MOVING_SUCCESS;
+                cr->Moving.State = MovingState::Success;
                 return;
             }
 
-            int reason;
+            MovingState reason;
             switch (output.Result) {
             case FindPathResult::MapNotFound:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             case FindPathResult::TooFar:
-                reason = MOVING_HEX_TOO_FAR;
+                reason = MovingState::HexTooFar;
                 break;
             case FindPathResult::InternalError:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             case FindPathResult::InvalidHexes:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             case FindPathResult::TraceTargetNullptr:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             case FindPathResult::HexBusy:
-                reason = MOVING_HEX_BUSY;
+                reason = MovingState::HexBusy;
                 break;
             case FindPathResult::HexBusyRing:
-                reason = MOVING_HEX_BUSY_RING;
+                reason = MovingState::HexBusyRing;
                 break;
-            case FindPathResult::DeadLock:
-                reason = MOVING_DEADLOCK;
+            case FindPathResult::Deadlock:
+                reason = MovingState::Deadlock;
                 break;
             case FindPathResult::TraceFailed:
-                reason = MOVING_TRACE_FAIL;
+                reason = MovingState::TraceFail;
                 break;
             default:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             }
 
@@ -3287,7 +3275,7 @@ void FOServer::ProcessMove(Critter* cr)
     }
     else {
         // Done
-        cr->Moving.State = MOVING_SUCCESS;
+        cr->Moving.State = MovingState::Success;
     }
 }
 

@@ -40,23 +40,6 @@
 #include "EntityProtos.h"
 #include "ServerEntity.h"
 
-///@ ExportEnum
-enum class MovingState : uchar
-{
-    InProgress = 0,
-    Success = 1,
-    TargetNotFound = 2,
-    CantMove = 3,
-    GagCritter = 4,
-    GagItem = 5,
-    InternalError = 6,
-    HexTooFar = 7,
-    HexBusy = 8,
-    HexBusyRing = 9,
-    Deadlock = 10,
-    TraceFail = 11,
-};
-
 struct PathStep
 {
     ushort HexX {};
@@ -79,7 +62,7 @@ class Critter final : public ServerEntity, public CritterProperties
 public:
     struct MovingData
     {
-        int State {1};
+        MovingState State {MovingState::Success};
         uint TargId {};
         ushort HexX {};
         ushort HexY {};

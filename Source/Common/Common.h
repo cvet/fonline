@@ -1216,6 +1216,23 @@ enum class CritterCondition : uchar
     Dead = 2,
 };
 
+///@ ExportEnum
+enum class MovingState : uchar
+{
+    InProgress = 0,
+    Success = 1,
+    TargetNotFound = 2,
+    CantMove = 3,
+    GagCritter = 4,
+    GagItem = 5,
+    InternalError = 6,
+    HexTooFar = 7,
+    HexBusy = 8,
+    HexBusyRing = 9,
+    Deadlock = 10,
+    TraceFail = 11,
+};
+
 // Uses
 #define USE_PRIMARY (0)
 #define USE_SECONDARY (1)

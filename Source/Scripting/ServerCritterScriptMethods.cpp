@@ -1012,7 +1012,7 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Server_Critter_GetMovingState(Critter* self)
+[[maybe_unused]] MovingState Server_Critter_GetMovingState(Critter* self)
 {
     return self->Moving.State;
 }
@@ -1022,5 +1022,16 @@
 [[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self)
 {
     self->Moving = Critter::MovingData();
-    self->Moving.State = 1;
+    self->Moving.State = MovingState::Success;
+}
+
+///# ...
+///# param gagId ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, uint& gagId)
+{
+    gagId = self->Moving.GagEntityId;
+
+    self->Moving = Critter::MovingData();
+    self->Moving.State = MovingState::Success;
 }

@@ -1076,7 +1076,7 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
         }
 
         if (p_togo == 0) {
-            output.Result = FindPathResult::DeadLock;
+            output.Result = FindPathResult::Deadlock;
             return output;
         }
     }

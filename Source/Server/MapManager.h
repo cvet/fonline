@@ -111,7 +111,7 @@ enum class FindPathResult
     HexBusy = 6,
     HexBusyRing = 7,
     TooFar = 8,
-    DeadLock = 9,
+    Deadlock = 9,
     InternalError = 10,
     InvalidHexes = 11,
     TraceFailed = 12,
