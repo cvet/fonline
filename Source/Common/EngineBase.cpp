@@ -50,7 +50,9 @@ auto FOEngineBase::CreatePropertyRegistrator(string_view class_name) -> Property
     }
 
     const auto it = _registrators.find(string(class_name));
-    RUNTIME_ASSERT(it == _registrators.end());
+    if (it != _registrators.end()) {
+        return const_cast<PropertyRegistrator*>(it->second);
+    }
 
     auto* registrator = new PropertyRegistrator(class_name, _isServer);
     _registrators.emplace(class_name, registrator);
@@ -83,16 +85,6 @@ auto FOEngineBase::GetPropertyRegistrator(string_view class_name) const -> const
     const auto it = _registrators.find(string(class_name));
     RUNTIME_ASSERT(it != _registrators.end());
     return it->second;
-}
-
-void FOEngineBase::ResetRegisteredData()
-{
-    _registrationFinalized = false;
-
-    for (auto [name, registrator] : _registrators) {
-        delete registrator;
-    }
-    _registrators.clear();
 }
 
 void FOEngineBase::FinalizeDataRegistration()

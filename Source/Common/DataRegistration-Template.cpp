@@ -95,8 +95,6 @@ static void RegisterProperty(PropertyRegistrator* registrator, Property::AccessT
 
 void FOServer::RegisterData()
 {
-    ResetRegisteredData();
-
     unordered_map<string, PropertyRegistrator*> registrators;
     PropertyRegistrator* registrator;
 
@@ -175,8 +173,6 @@ static void RestoreProperty(PropertyRegistrator* registrator, string_view access
 
 void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
 {
-    ResetRegisteredData();
-
     unordered_map<string, PropertyRegistrator*> registrators;
     PropertyRegistrator* registrator;
 
@@ -253,8 +249,6 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
 
 void FOMapper::RegisterData()
 {
-    ResetRegisteredData();
-
     unordered_map<string, PropertyRegistrator*> registrators;
     PropertyRegistrator* registrator;
 
@@ -276,8 +270,6 @@ AngelScriptClientCompilerData::AngelScriptClientCompilerData() : FOEngineBase(fa
 AngelScriptMapperCompilerData::AngelScriptMapperCompilerData() : FOEngineBase(true)
 #endif
 {
-    ResetRegisteredData();
-
     unordered_map<string, PropertyRegistrator*> registrators;
     PropertyRegistrator* registrator;
 

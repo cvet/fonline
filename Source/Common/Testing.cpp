@@ -357,14 +357,6 @@ static void DumpAngelScript(DiskFile& file)
 
 static void ShowErrorMessage(string_view message, bool is_fatal)
 {
-    // Try break into debugger
-#if FO_WINDOWS
-    if (::IsDebuggerPresent() != FALSE) {
-        ::DebugBreak();
-        return;
-    }
-#endif
-
     // Show message
     if (is_fatal) {
         MessageBox::ShowErrorMessage("Fatal Error", message, GetStackTrace());

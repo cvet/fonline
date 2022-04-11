@@ -33,6 +33,8 @@
 
 #include "Common.h"
 
+#include "WinApi-Include.h"
+
 hstring::entry hstring::_zeroEntry;
 
 static const char* AppName;
@@ -88,3 +90,15 @@ void emscripten_sleep(unsigned int ms)
     throw UnreachablePlaceException(LINE_STR);
 }
 #endif
+
+bool BreakIntoDebugger()
+{
+#if FO_WINDOWS
+    if (::IsDebuggerPresent() != FALSE) {
+        ::DebugBreak();
+        return true;
+    }
+#endif
+
+    return false;
+}

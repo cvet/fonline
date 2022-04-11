@@ -258,18 +258,24 @@ private:
         ~exception_name() override = default; \
     }
 
-#define RUNTIME_ASSERT(expr) \
+#if FO_DEBUG
+#define RUNTIME_ASSERT_STR(expr, str) \
     do { \
-        if (!(expr)) { \
-            throw AssertationException(#expr, __FILE__, __LINE__); \
+        if (!(expr) && !BreakIntoDebugger()) { \
+            throw AssertationException(str, __FILE__, __LINE__); \
         } \
     } while (false)
+extern bool BreakIntoDebugger();
+#else
 #define RUNTIME_ASSERT_STR(expr, str) \
     do { \
         if (!(expr)) { \
             throw AssertationException(str, __FILE__, __LINE__); \
         } \
     } while (false)
+#endif
+
+#define RUNTIME_ASSERT(expr) RUNTIME_ASSERT_STR(expr, #expr)
 
 // Common exceptions
 DECLARE_EXCEPTION(AssertationException);

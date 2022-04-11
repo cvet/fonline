@@ -63,7 +63,6 @@ public:
     [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
 
-    void ResetRegisteredData();
     void FinalizeDataRegistration();
 
 protected:
