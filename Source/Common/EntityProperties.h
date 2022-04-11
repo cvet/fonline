@@ -73,6 +73,9 @@ public:
 
     explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
 
+    // Todo: implement Player InitScript
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp);
     ///@ ExportProperty
@@ -86,6 +89,8 @@ public:
 
     explicit ItemProperties(Properties& props) : EntityProperties(props) { }
 
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Public, ItemOwnership, Ownership);
     ///@ ExportProperty ReadOnly
@@ -221,8 +226,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, LightColor);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Public, uint, Count);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, short, TrapValue);
@@ -243,6 +246,8 @@ public:
 
     explicit CritterProperties(Properties& props) : EntityProperties(props) { }
 
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, ModelName);
     ///@ ExportProperty
@@ -338,8 +343,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ ExportProperty
     ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers);
@@ -381,6 +384,8 @@ public:
     explicit MapProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
+    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime1);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime2);
@@ -409,8 +414,6 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, int, CurDayTime);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
-    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<int>, DayTime);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uchar>, DayColor);
@@ -425,6 +428,9 @@ public:
 
     explicit LocationProperties(Properties& props) : EntityProperties(props) { }
 
+    // Todo: implement Location InitScript
+    ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
     ///@ ExportProperty ReadOnly

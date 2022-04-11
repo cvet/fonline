@@ -592,37 +592,6 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
     }
 }
 
-void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
-{
-    switch (to) {
-    case MESSAGE_TO_VISIBLE_ME: {
-        const auto critters = VisCr;
-        for (auto* cr : critters) {
-            _engine->OnCritterMessage.Fire(cr, this, num, val);
-        }
-    } break;
-    case MESSAGE_TO_IAM_VISIBLE: {
-        const auto critters = VisCrSelf;
-        for (auto* cr : critters) {
-            _engine->OnCritterMessage.Fire(cr, this, num, val);
-        }
-    } break;
-    case MESSAGE_TO_ALL_ON_MAP: {
-        auto* map = map_mngr.GetMap(GetMapId());
-        if (map == nullptr) {
-            break;
-        }
-
-        const auto critters = map->GetCritters();
-        for (auto* cr : critters) {
-            _engine->OnCritterMessage.Fire(cr, this, num, val);
-        }
-    } break;
-    default:
-        break;
-    }
-}
-
 auto Critter::IsTransferTimeouts(bool send) -> bool
 {
     if (GetTimeoutTransfer() > _engine->GameTime.GetFullSecond()) {

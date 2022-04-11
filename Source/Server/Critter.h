@@ -129,7 +129,6 @@ public:
     void AttachPlayer(Player* owner);
     void ClearVisible();
     void SetItem(Item* item);
-    void SendMessage(int num, int val, int to, MapManager& map_mngr);
 
     void Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity);
     void Broadcast_Move(uint move_params);
@@ -220,8 +219,6 @@ public:
     ENTITY_EVENT(ItemOnMapDisappeared, Item* /*item*/, bool /*removed*/, Critter* /*toCr*/);
     ///@ ExportEvent
     ENTITY_EVENT(ItemOnMapChanged, Item* /*item*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(Message, Critter* /*receiver*/, int /*num*/, int /*value*/);
     ///@ ExportEvent
     ENTITY_EVENT(Talk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent

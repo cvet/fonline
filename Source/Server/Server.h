@@ -157,8 +157,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(CritterMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterMessage, Critter* /*critter*/, Critter* /*receiver*/, int /*num*/, int /*value*/);
-    ///@ ExportEvent
     ENTITY_EVENT(CritterTalk, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
     ENTITY_EVENT(CritterBarter, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);

@@ -39,6 +39,24 @@
 // ReSharper disable CppInconsistentNaming
 
 ///# ...
+///# param initFunc ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
+{
+    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    self->SetInitScript(initFunc);
+}
+
+///# ...
+///# param initFunc ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Item_SetupScriptEx(Item* self, hstring initFunc)
+{
+    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    self->SetInitScript(initFunc);
+}
+
+///# ...
 ///# param pid ...
 ///# param count ...
 ///# param stackId ...
@@ -60,15 +78,6 @@
 [[maybe_unused]] vector<Item*> Server_Item_GetItems(Item* self, uint stackId)
 {
     return self->ContGetItems(stackId);
-}
-
-///# ...
-///# param initFunc ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Item_SetupScript(Item* self, InitFunc<Item*> initFunc)
-{
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
-    self->SetInitScript(initFunc);
 }
 
 ///# ...

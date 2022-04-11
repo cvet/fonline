@@ -1123,11 +1123,6 @@ static constexpr uint LOOK_CHECK_TRACE = 0x08;
 static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
 static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 
-// SendMessage types
-static constexpr auto MESSAGE_TO_VISIBLE_ME = 0;
-static constexpr auto MESSAGE_TO_IAM_VISIBLE = 1;
-static constexpr auto MESSAGE_TO_ALL_ON_MAP = 2;
-
 // Anims
 #define ANIM1_UNARMED (1)
 #define ANIM2_IDLE (1)

@@ -38,6 +38,24 @@
 // ReSharper disable CppInconsistentNaming
 
 ///# ...
+///# param initFunc ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Location_SetupScript(Location* self, InitFunc<Map*> initFunc)
+{
+    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    self->SetInitScript(initFunc);
+}
+
+///# ...
+///# param initFunc ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Location_SetupScriptEx(Location* self, hstring initFunc)
+{
+    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    self->SetInitScript(initFunc);
+}
+
+///# ...
 ///# return ...
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Location_GetMapCount(Location* self)

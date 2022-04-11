@@ -42,6 +42,24 @@
 // ReSharper disable CppInconsistentNaming
 
 ///# ...
+///# param initFunc ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
+{
+    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    self->SetInitScript(initFunc);
+}
+
+///# ...
+///# param initFunc ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_SetupScriptEx(Critter* self, hstring initFunc)
+{
+    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
+    self->SetInitScript(initFunc);
+}
+
+///# ...
 ///# return ...
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Critter_IsFree(Critter* self)
@@ -964,15 +982,6 @@
     }
 
     return self->GetOwner() != nullptr;
-}
-
-///# ...
-///# param initFunc ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Critter_SetupScript(Critter* self, InitFunc<Critter*> initFunc)
-{
-    ScriptHelpers::CallInitScript(self->GetEngine()->ScriptSys, self, initFunc, true);
-    self->SetInitScript(initFunc);
 }
 
 ///# ...
