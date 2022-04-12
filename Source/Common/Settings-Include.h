@@ -79,9 +79,9 @@ FIXED_SETTING(uint, SneakDivider, 6);
 FIXED_SETTING(int, DeadHitPoints, -6);
 SETTING_GROUP_END();
 
-///@ ExportSettings Server
+///@ ExportSettings Common
 SETTING_GROUP(NetworkSettings, virtual DummySettings);
-FIXED_SETTING(uint, Port, 4000);
+FIXED_SETTING(uint, ServerPort, 4000);
 FIXED_SETTING(bool, SecuredWebSockets, false);
 FIXED_SETTING(bool, DisableTcpNagle, true);
 FIXED_SETTING(bool, DisableZlibCompression, false);
@@ -96,7 +96,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Client
 SETTING_GROUP(ClientNetworkSettings, virtual NetworkSettings);
-FIXED_SETTING(string, Host, "localhost");
+FIXED_SETTING(string, ServerHost, "localhost");
 FIXED_SETTING(uint, PingPeriod, 2000);
 VARIABLE_SETTING(uint, ProxyType, 0);
 VARIABLE_SETTING(string, ProxyHost, "");

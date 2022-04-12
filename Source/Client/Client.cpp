@@ -256,7 +256,7 @@ void FOClient::UpdateFilesLoop()
 
         // Connect to server
         UpdateFilesAddText(STR_CONNECT_TO_SERVER, "Connect to server...");
-        NetConnect(Settings.Host, static_cast<ushort>(Settings.Port));
+        NetConnect(Settings.ServerHost, static_cast<ushort>(Settings.ServerPort));
         _updateData->Connecting = true;
     }
     else {
@@ -610,7 +610,7 @@ void FOClient::MainLoop()
     if (_initNetReason != INIT_NET_REASON_NONE && !_updateData) {
         // Connect to server
         if (!_isConnected) {
-            if (!NetConnect(Settings.Host, static_cast<ushort>(Settings.Port))) {
+            if (!NetConnect(Settings.ServerHost, static_cast<ushort>(Settings.ServerPort))) {
                 ShowMainScreen(SCREEN_LOGIN, {});
                 AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
             }

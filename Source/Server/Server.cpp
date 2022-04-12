@@ -178,12 +178,12 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngin
     _stats.ServerStartTick = GameTime.FrameTick();
 
     // Network
-    WriteLog("Starting server on ports {} and {}.\n", Settings.Port, Settings.Port + 1);
+    WriteLog("Starting server on ports {} and {}.\n", Settings.ServerPort, Settings.ServerPort + 1);
     if ((_tcpServer = NetServerBase::StartTcpServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
-        throw ServerInitException("Can't listen TCP server ports", Settings.Port);
+        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort);
     }
     if ((_webSocketsServer = NetServerBase::StartWebSocketsServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
-        throw ServerInitException("Can't listen TCP server ports", Settings.Port + 1);
+        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort + 1);
     }
 
     // Admin manager

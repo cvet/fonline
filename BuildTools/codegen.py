@@ -132,7 +132,7 @@ def parseMetaFile(absPath):
     global tagsMetas
     
     try:
-        with open(absPath, 'r', encoding='utf-8') as f:
+        with open(absPath, 'r', encoding='utf-8-sig') as f:
             lines = f.readlines()
     except Exception as ex:
         showError('Can\'t read file', absPath, ex)
@@ -826,7 +826,7 @@ for contentDir in args.content:
         for file in collectFiles(contentDir):
             def getPidNames(file):
                 result = [os.path.splitext(os.path.basename(file))[0]]
-                with open(file, encoding='utf-8') as f:
+                with open(file, 'r', encoding='utf-8-sig') as f:
                     fileLines = f.readlines()
                 for fileLine in fileLines:
                     if fileLine.startswith('$Name'):
@@ -901,7 +901,7 @@ def flushFiles():
             os.makedirs(pathDir)
         
         if os.path.isfile(path):
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8-sig') as f:
                 if ''.join([l.rstrip('\r\n') for l in f.readlines()]).rstrip() == ''.join(lines).rstrip():
                     continue
         with open(path, 'w', encoding='utf-8') as f:
@@ -921,7 +921,7 @@ def writeCodeGenTemplate(templateType):
             break
     assert templatePath, 'Code gen template not found'
     
-    with open(templatePath, 'r', encoding='utf-8') as f:
+    with open(templatePath, 'r', encoding='utf-8-sig') as f:
         lines = f.readlines()
     insertFileLines([l.rstrip('\r\n') for l in lines], 0)
 
@@ -1736,7 +1736,7 @@ def genAngelScriptRoot(target):
     for file in args.assource:
         file = os.path.abspath(file)
         
-        with open(file, 'r', encoding='utf-8') as f:
+        with open(file, 'r', encoding='utf-8-sig') as f:
             line = f.readline()
 
         if len(line) >= 3 and ord(line[0]) == 0xEF and ord(line[1]) == 0xBB and ord(line[2]) == 0xBF:

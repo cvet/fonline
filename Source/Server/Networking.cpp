@@ -465,7 +465,7 @@ private:
     connection_ptr _connection {};
 };
 
-NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}, _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<ushort>(settings.Port)))
+NetTcpServer::NetTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) : _settings {settings}, _acceptor(_ioService, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), static_cast<ushort>(settings.ServerPort)))
 {
     _connectionCallback = std::move(callback);
     AcceptNext();
@@ -510,7 +510,7 @@ NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settin
     _server.init_asio();
     _server.set_open_handler(websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
     _server.set_validate_handler(websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
-    _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.Port + 1));
+    _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = std::thread(&NetNoTlsWebSocketsServer::Run, this);
@@ -556,7 +556,7 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, 
     _server.set_open_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
     _server.set_validate_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
     _server.set_tls_init_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnTlsInit, this, websocketpp::lib::placeholders::_1));
-    _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.Port + 1));
+    _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
     _server.start_accept();
 
     _runThread = std::thread(&NetTlsWebSocketsServer::Run, this);
