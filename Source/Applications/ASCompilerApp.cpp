@@ -76,9 +76,7 @@ int main(int argc, char** argv)
         auto mapper_failed = false;
 
         if (!settings.ASServer.empty()) {
-            WriteLog("\n");
             WriteLog("    Compile server scripts at {}\n", settings.ASServer);
-            WriteLog("\n");
 
             try {
                 ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
@@ -89,13 +87,12 @@ int main(int argc, char** argv)
                 }
 
                 server_failed = true;
+                WriteLog("\n");
             }
         }
 
         if (!settings.ASClient.empty()) {
-            WriteLog("\n");
             WriteLog("    Compile client scripts at {}\n", settings.ASClient);
-            WriteLog("\n");
 
             try {
                 ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
@@ -106,13 +103,12 @@ int main(int argc, char** argv)
                 }
 
                 client_failed = true;
+                WriteLog("\n");
             }
         }
 
         if (!settings.ASMapper.empty()) {
-            WriteLog("\n");
             WriteLog("    Compile mapper scripts at {}\n", settings.ASMapper);
-            WriteLog("\n");
 
             try {
                 MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
@@ -123,6 +119,7 @@ int main(int argc, char** argv)
                 }
 
                 mapper_failed = true;
+                WriteLog("\n");
             }
         }
 

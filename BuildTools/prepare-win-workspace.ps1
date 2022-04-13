@@ -62,55 +62,44 @@ if (!(Test-Path $FO_WORKSPACE)) {
 Set-Location -Path $FO_WORKSPACE
 
 while ($True) {
-    $chocoNeeded = $False
     $ready = $True
 
-    if (!(Test-Command wsl)) {
-        Write-Host "WSL not found"
-        Write-Host "Follow this link to get inforamtion about how to install WSL2"
-        Write-Host "https://docs.microsoft.com/en-us/windows/wsl/install-win10"
-        $ready = $False
-    }
-
-    # Todo: check WSL vetsion
-    # Todo: check WSL active distro
 
     if (!(Test-BuildTools)) {
         Write-Host "Build Tools not found"
         Write-Host "If you planning development in Visual Studio 2019 then install it"
         Write-Host "But if you don't need whole IDE then you may install just Build Tools for Visual Studio 2019"
         Write-Host "All this stuff you can get here: https://visualstudio.microsoft.com/downloads"
-        Write-Host "(chocovs) Or install Visual Studio 2019 Community Edition automatically within Chocolatey"
-        Write-Host "(chocobt) Or install Visual Studio Build Tools 2019 automatically within Chocolatey"
-        $chocoNeeded = $True
         $ready = $False
     }
 
     if (!(Test-Command cmake)) {
         Write-Host "CMake not found"
         Write-Host "You can get it here: https://cmake.org"
-        Write-Host "(chococmake) Or install CMake automatically within Chocolatey"
-        $chocoNeeded = $True
         $ready = $False
     }
 
     if (!(Test-Command python)) {
         Write-Host "Python not found"
         Write-Host "You can get it here: https://www.python.org"
-        Write-Host "(chocopy) Or install Python automatically within Chocolatey"
-        $chocoNeeded = $True
         $ready = $False
+    }
+    
+    $toolsetDir = "$FO_WORKSPACE/build-win64-toolset"
+    if (!(Test-Path -Path $toolsetDir)) {
+        if ($args[0] -Eq "check") {
+            Write-Host "Toolset not ready"
+            $ready = $False
+        } else {
+            Write-Host "Prepare toolset"
+            mkdir $toolsetDir
+            cd $toolsetDir
+            cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+        }
     }
 
     # Todo: check VSCode
     # Todo: check WiX Toolset
-
-    if ($chocoNeeded -And !(Test-Command choco)) {
-        Write-Host "Chocolatey can install all necessary stuff automatically"
-        Write-Host "Additional information you can find here: https://chocolatey.org"
-        Write-Host "How to install Chocolatey you can find here: https://chocolatey.org/install"
-        Write-Host "(choco) Or you can install Chocolatey automatically here and now"
-    }
 
     if ($ready) {
         Write-Host "Workspace is ready!"
@@ -122,42 +111,5 @@ while ($True) {
         exit 10
     }
 
-    while ($True) {
-        $answer = Read-Host -Prompt "Type command"
-        if ($answer -Eq "choco") {
-            if (!(Test-Admin)) {
-                Write-Host "To install Chocolatey here you must run this setup under administrative privileges"
-            } else {
-                if ((Get-ExecutionPolicy) -Eq "Restricted") {
-                    Set-ExecutionPolicy AllSigned
-                }
-                Set-ExecutionPolicy Bypass -Scope Process -Force
-                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-                iex ((New-Object System.Net.WebClient).DownloadString("https://chocolatey.org/install.ps1"))
-                break
-            }
-        } elseif (($answer.Length -Gt 5) -And ($answer.Substring(0, 5) -Eq "choco")) {
-            if (!(Test-Admin)) {
-                Write-Host "To install Chocolatey packages you must run this setup under administrative privileges"
-            } elseif (!(Test-Command choco)) {
-                Write-Host "(choco) Chocolatey not found, please install it first"
-            } else {
-                if ($answer -Eq "chocovs") {
-                    choco install -y visualstudio2019community
-                } elseif ($answer -Eq "chocobt") {
-                    choco install -y visualstudio2019buildtools
-                } elseif ($answer -Eq "chococmake") {
-                    choco install -y cmake
-                } elseif ($answer -Eq "chocopy") {
-                    choco install python
-                    choco install pip
-                }
-                break
-            }
-        } elseif ($answer -Eq "") {
-            Write-Host "Write command and press Enter"
-        } else {
-            Write-Host "Invalid command"
-        }
-    }
+    Read-Host -Prompt "Fix things manually and press any key"
 }

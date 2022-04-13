@@ -16,7 +16,6 @@
   * [Workflow](#workflow)
   * [Public API](#public-api)
   * [Setup](#setup)
-    + [Windows Subsystem for Linux](#windows-subsystem-for-linux)
     + [Visual Studio Code](#visual-studio-code)
     + [Package dependencies](#package-dependencies)
     + [Statically linked packages](#statically-linked-packages)
@@ -68,14 +67,10 @@ Important note: *Not all from described above features are already implemented, 
 
 Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
 You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
-Shell scripts targeted for work under Windows 10 within WSL2 and Ubuntu-20.04 as distro.  
-Almost all will be work under native Linuxes but some of scripts (like build.sh win32) must be run only from WSL2 shell because runs Windows binaries.  
-So main point of all of this that you build your game fully from source, there is no prebuilt binaries, full control over the process.
+Shell scripts targeted for work under Windows 10 / Ubuntu-22.04 / macOS 12.  
+You build your game fully from source, there is no prebuilt binaries, full control over the process.
 
 ### Workflow
-
-As described above all what you need to build and package your game in one place for different platforms is WSL2.  
-You may do it in separate environments (like build Windows binaries in your IDE, build macOS/iOS binaries on macOS and rest on native Linux distro) but better do it in one place.
 
 Process of creating your game in two words looks like this:
 * Once prepare workspace where all intermediate build files will be stored
@@ -89,12 +84,8 @@ There are couple of shell scripts that help us to do it:
 * `BuildTools/prepare-workspace.sh` - prepare our linux workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
 * `BuildTools/prepare-win-workspace.ps1` - windows version of prepare workspace, that helps prepare to work
 * `BuildTools/prepare-mac-workspace.sh` - mac version of prepare workspace, that helps prepare to work
-* `BuildTools/build.sh` - build executable for specific platform
-* `BuildTools/compile-scripts.sh` - compile scripts from scripting layers
-* `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats
-* `BuildTools/make-packages.sh` - finally package server(s) and client(s) for end user
+* `BuildTools/build.sh/bat` - build executable for specific platform
 * `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
-* `BuildTools/gen-project.ps1` - project generation script (windows only)
 
 Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in [BuildTools/README.md](https://github.com/cvet/fonline/blob/master/BuildTools/README.md).
 
@@ -145,8 +136,8 @@ Also our build scripts download and install following packages:
 * [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
 List of tools for Windows operating system *(some optional)*:
-* [Chocolatey](https://chocolatey.org) - package manager for Windows system (helps to install other packages automatically)
 * [CMake](https://cmake.org) - utility that helps build program from source on any platform for any platform without much pain
+* [Python](https://python.org) - needed for additional game code generation
 * [Visual Studio 2019](https://visualstudio.microsoft.com) - IDE for Windows
 * [Build Tools for Visual Studio 2019](https://visualstudio.microsoft.com) - just build tools without full IDE
 * [Visual Studio Code](https://code.visualstudio.com) - IDE for Windows with supporting of our engine management

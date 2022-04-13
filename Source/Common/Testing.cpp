@@ -334,6 +334,7 @@ void CreateDump(const char* appendix, const char* message)
 auto GetStackTrace() -> string
 {
 #if FO_WINDOWS || FO_LINUX || FO_MAC
+    [[maybe_unused]] backward::TraceResolver resolver;
     backward::StackTrace st;
     st.load_here(42);
     backward::Printer st_printer;
