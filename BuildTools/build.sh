@@ -47,7 +47,6 @@ cd $BUILD_DIR
 rm -rf ready
 
 OUTPUT_PATH=$FO_WORKSPACE/output
-mkdir -p $OUTPUT_PATH
 
 if [ "$1" = "linux" ]; then
     export CC=/usr/bin/clang

@@ -111,9 +111,12 @@ function setup_toolset()
 {
     echo "Setup Toolset"
 
+    OUTPUT_PATH=$FO_WORKSPACE/output
+
+    rm -rf build-linux-toolset
     mkdir build-linux-toolset
     cd build-linux-toolset
-    cmake -G "Unix Makefiles" -A x64 -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" -DCMAKE_BUILD_TYPE=Release -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" -DCMAKE_BUILD_TYPE=Release -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
 }
 
 function verify_workspace_part()
@@ -151,7 +154,7 @@ if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
 fi
 
 if [ ! -z `check_arg toolset all` ]; then
-    verify_workspace_part toolset 1 setup_toolset
+    verify_workspace_part toolset 3 setup_toolset
 fi
 if [ ! -z `check_arg web all` ]; then
     verify_workspace_part emscripten $EMSCRIPTEN_VERSION setup_emscripten
