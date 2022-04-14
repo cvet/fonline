@@ -92,7 +92,7 @@ while ($True) {
             $ready = $False
         } else {
             Write-Host "Prepare toolset"
-            OUTPUT_PATH=$FO_WORKSPACE/output
+            $OUTPUT_PATH = "$FO_WORKSPACE/output"
             mkdir $toolsetDir
             cd $toolsetDir
             cmake -G "Visual Studio 16 2019" -A x64 -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
