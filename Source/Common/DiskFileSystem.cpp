@@ -229,9 +229,8 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
     SDL_RWops* ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
     if (!ops) {
         if (write) {
-            DiskFileSystem::MakeDirTree(fname);
+            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
         }
-
         ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
     }
     if (!ops) {
@@ -372,7 +371,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
     FILE* f = ::fopen(string(fname).c_str(), write ? "wb" : "rb");
     if (!f) {
         if (write) {
-            DiskFileSystem::MakeDirTree(fname);
+            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
         }
         f = ::fopen(string(fname).c_str(), write ? "wb" : "rb");
     }
