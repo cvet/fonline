@@ -17,8 +17,8 @@ layout(location = 0) out vec4 Color;
 
 void main(void)
 {
-	gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
-	Color = InColor;
+    gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
+    Color = InColor;
 }
 
 [FragmentShader]
@@ -28,21 +28,18 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-	// Input:
-	// a - fog area or attack area (0.0 or 1.0)
-	// r - actual distance
-	// g - whole distance
-	
-	// Place fog area in r channel
-	if (Color.a < 0.5)
-	{
-		float value = (1.0 - Color.r) * FogBordersPower;
-		FragColor = vec4(max(value, FogBlackout), 0.0, 0.0, 1.0);
-	}
-	// Place attack area in g/b channel
-	else
-	{
-		float value = (1.0 - Color.r) * AttackBordersPower;
-		FragColor = vec4(0.0, min(value, 0.65), Color.g, 1.0);
-	}
+    // Input:
+    // a - fog area or attack area (0.0 or 1.0)
+    // r - actual distance
+    // g - whole distance
+    
+    // Place fog area in r channel
+    if (Color.a < 0.5) {
+        float value = (1.0 - Color.r) * FogBordersPower;
+        FragColor = vec4(max(value, FogBlackout), 0.0, 0.0, 1.0);
+    } else {
+        // Place attack area in g/b channel
+        float value = (1.0 - Color.r) * AttackBordersPower;
+        FragColor = vec4(0.0, min(value, 0.65), Color.g, 1.0);
+    }
 }

@@ -13,8 +13,8 @@ layout(location = 0) out vec2 TexCoord;
 
 void main(void)
 {
-	gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
-	TexCoord = InTexCoord;
+    gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
+    TexCoord = InTexCoord;
 }
 
 [FragmentShader Pass1]
@@ -26,11 +26,12 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-	vec4 tex = texture(ColorMap, TexCoord);
-	if (tex.a == 0.0)
-		discard;
+    vec4 tex = texture(ColorMap, TexCoord);
+    if (tex.a == 0.0) {
+        discard;
+    }
 
-	FragColor = vec4(tex.a, tex.a, tex.a, 1.0);
+    FragColor = vec4(tex.a, tex.a, tex.a, 1.0);
 }
 
 [FragmentShader Pass2]
@@ -42,9 +43,10 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-	vec4 tex = texture(ColorMap, TexCoord);
-	if (tex.a == 0.0)
-		discard;
-	
-	FragColor = vec4(tex.r, tex.g, tex.b, 1.0);
+    vec4 tex = texture(ColorMap, TexCoord);
+    if (tex.a == 0.0) {
+        discard;
+    }
+    
+    FragColor = vec4(tex.r, tex.g, tex.b, 1.0);
 }

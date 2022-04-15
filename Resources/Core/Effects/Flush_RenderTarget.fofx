@@ -10,8 +10,8 @@ layout(location = 0) out vec2 TexCoord;
 
 void main(void)
 {
-	gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
-	TexCoord = InTexCoord;
+    gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
+    TexCoord = InTexCoord;
 }
 
 [FragmentShader]
@@ -23,5 +23,5 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-	FragColor = texture(ColorMap, TexCoord);
+    FragColor = texture(ColorMap, TexCoord);
 }

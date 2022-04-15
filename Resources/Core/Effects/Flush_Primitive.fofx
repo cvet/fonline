@@ -10,8 +10,8 @@ layout(location = 0) out vec4 Color;
 
 void main(void)
 {
-	gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
-	Color = InColor;
+    gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
+    Color = InColor;
 }
 
 [FragmentShader]
@@ -21,5 +21,5 @@ layout(location = 0) out vec4 FragColor;
 
 void main(void)
 {
-	FragColor = Color;
+    FragColor = Color;
 }
