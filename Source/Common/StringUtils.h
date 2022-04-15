@@ -123,12 +123,10 @@ public:
 
     auto formatPath() -> _str&;
     auto extractDir() -> _str&;
-    auto extractLastDir() -> _str&;
     auto extractFileName() -> _str&;
     auto getFileExtension() -> _str&; // Extension without dot
     auto eraseFileExtension() -> _str&; // Erase extension with dot
     auto combinePath(string_view path) -> _str&;
-    auto forwardPath(string_view relative_dir) -> _str&;
     auto normalizePathSlashes() -> _str&;
     auto normalizeLineEndings() -> _str&;
 

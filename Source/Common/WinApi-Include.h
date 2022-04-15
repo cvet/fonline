@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-#pragma once
-
 // WinApi universal header
 #if FO_WINDOWS
 #define WIN32_LEAN_AND_MEAN

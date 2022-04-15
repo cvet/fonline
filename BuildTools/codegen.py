@@ -862,7 +862,10 @@ for resourceEntry in args.resource:
         if resType not in resources:
             resources[resType] = []
         
-        resources[resType].extend(collectFiles(resDir, ''))
+        if os.path.isdir(resDir):
+            resources[resType].extend(collectFiles(resDir, ''))
+        elif os.path.isfile(resDir):
+            resources[resType].extend(resDir)
     
     except Exception as ex:
         showError('Can\'t process resources entry ' + resourceEntry, ex)

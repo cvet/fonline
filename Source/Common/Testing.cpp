@@ -91,9 +91,6 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
     const auto* dump_str = (except != nullptr ? "CrashDump" : ManualDumpAppendix);
     string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_GAME_VERSION, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
-    DiskFileSystem::ResetCurDir();
-    DiskFileSystem::MakeDirTree(dump_path);
-
     if (auto file = DiskFileSystem::OpenFile(dump_path, true)) {
         // Generic info
         file.Write(_str("Message\n"));
@@ -274,9 +271,6 @@ static void TerminationHandler(int signum, siginfo_t* siginfo, void* context)
     const auto dt = Timer::GetCurrentDateTime();
     string dump_str = (siginfo ? "CrashDump" : ManualDumpAppendix);
     string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_GAME_VERSION, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-
-    DiskFileSystem::ResetCurDir();
-    DiskFileSystem::MakeDirTree(dump_path);
 
     DiskFile file = DiskFileSystem::OpenFile(dump_path, true);
     if (file) {

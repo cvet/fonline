@@ -4054,17 +4054,14 @@ auto FOMapper::SaveLogFile() -> bool
     const auto dt = Timer::GetCurrentDateTime();
     const string log_path = _str("mapper_messbox_{:02}-{:02}-{}_{:02}-{:02}-{:02}.txt", dt.Day, dt.Month, dt.Year, dt.Hour, dt.Minute, dt.Second);
 
-    DiskFileSystem::ResetCurDir();
     auto f = DiskFileSystem::OpenFile(log_path, true);
     if (!f) {
         return false;
     }
 
-    string cur_mess;
     string fmt_log;
     for (auto& i : MessBox) {
-        cur_mess = _str(i.Mess).erase('|', ' ');
-        fmt_log += i.Time + string(cur_mess);
+        fmt_log += i.Time + _str(i.Mess).erase('|', ' ').str();
     }
 
     f.Write(fmt_log.c_str(), static_cast<uint>(fmt_log.length()));

@@ -1,35 +1,35 @@
-Effect Pass 0 BlendFunc GL_ONE GL_ONE
-Effect Pass 0 BlendEquation GL_MAX
+[Effect]
+BlendFunc_Pass1 = BlendFunc GL_ONE GL_ONE
+BlendEquation_Pass1 = GL_MAX
 
-#version 110
-
+[ShaderCommon]
 const float ShinePower = 5.0;
 const float ResultPower = 0.5;
 
-#ifdef VERTEX_SHADER
-uniform mat4 ProjectionMatrix;
+[VertexShader]
+layout(location = 0) uniform mat4 ProjectionMatrix;
 
-attribute vec2 InPosition;
-attribute vec4 InColor;
+layout(location = 0) in vec2 InPosition;
+layout(location = 1) in vec4 InColor;
 
-varying vec4 Color;
+layout(location = 0) out vec4 Color;
 
-void main( void )
+void main(void)
 {
-	gl_Position = ProjectionMatrix * vec4( InPosition, 0.0, 1.0 );
+	gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
 	Color = InColor;
 }
-#endif
 
-#ifdef FRAGMENT_SHADER
-varying vec4 Color;
+[FragmentShader]
+layout(location = 0) in vec4 Color;
 
-void main( void )
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
 {
 	float a = Color.a * ShinePower;
-    float r = Color.r * min( a, 1.0 );
-    float g = Color.g * min( a, 1.0 );
-    float b = Color.b * min( a, 1.0 );
-	gl_FragColor = vec4( r, g, b, a ) * ResultPower;
+    float r = Color.r * min(a, 1.0);
+    float g = Color.g * min(a, 1.0);
+    float b = Color.b * min(a, 1.0);
+	FragColor = vec4(r, g, b, a) * ResultPower;
 }
-#endif

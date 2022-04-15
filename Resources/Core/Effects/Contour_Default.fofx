@@ -1,82 +1,81 @@
-#version 110
+[Effect]
 
-#ifdef VERTEX_SHADER
-uniform mat4 ProjectionMatrix;
+[VertexShader]
+layout(location = 0) uniform mat4 ProjectionMatrix;
 
-attribute vec2 InPosition;
-attribute vec4 InColor;
-attribute vec2 InTexCoord;
+layout(location = 0) in vec2 InPosition;
+layout(location = 1) in vec4 InColor;
+layout(location = 2) in vec2 InTexCoord;
 
-varying vec4 Color;
-varying vec2 TexCoord;
+layout(location = 0) out vec4 Color;
+layout(location = 1) out vec2 TexCoord;
 
-void main( void )
+void main(void)
 {
-	gl_Position = ProjectionMatrix * vec4( InPosition, 0.0, 1.0 );
+	gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
 	Color = InColor;
 	TexCoord = InTexCoord;
 }
-#endif
 
-#ifdef FRAGMENT_SHADER
-uniform sampler2D ColorMap;
-uniform vec4      ColorMapSize;
-uniform float     ColorMapWidth;
-uniform float     ColorMapHeight;
+[FragmentShader]
+layout(location = 0) uniform sampler2D ColorMap;
+layout(location = 1) uniform vec4 ColorMapSize;
+layout(location = 2) uniform float ColorMapWidth;
+layout(location = 3) uniform float ColorMapHeight;
+layout(location = 4) uniform vec4 SpriteBorder;
+layout(location = 5) uniform float TimeGame;
 
-uniform vec4  SpriteBorder;
-uniform float TimeGame;
+layout(location = 0) in vec4 Color;
+layout(location = 1) in vec2 TexCoord;
 
-varying vec4 Color;
-varying vec2 TexCoord;
+layout(location = 0) out vec4 FragColor;
 
-vec4 border = SpriteBorder;
-
-bool CheckPixel( float x, float y )
+bool CheckPixel(float x, float y)
 {
-	return texture2D( ColorMap, vec2( x, y ) ).a > 0.1;
+	return texture(ColorMap, vec2(x, y)).a > 0.1;
 }
 
-void main( void )
+void main(void)
 {
 	float l = TexCoord.x - ColorMapSize.z;
 	float t = TexCoord.y - ColorMapSize.w;
 	float r = TexCoord.x + ColorMapSize.z;
 	float b = TexCoord.y + ColorMapSize.w;
 	
-	if( border.w < border.y )
+	vec4 border = SpriteBorder;
+	if (border.w < border.y)
 		border.yw = border.wy;
 	
 	bool checkPixelResult = false;
-	if( l < border.x )
-		checkPixelResult = CheckPixel( r, TexCoord.y );
-	else if( r > border.z )
-		checkPixelResult = CheckPixel( l, TexCoord.y );
-	else if( t < border.y )
-		checkPixelResult = CheckPixel( TexCoord.x, b );
-	else if( b > border.w )
-		checkPixelResult = CheckPixel( TexCoord.x, t );
-	else if( texture2D( ColorMap, TexCoord ).a < 0.1)
-		checkPixelResult = CheckPixel( l, TexCoord.y ) || CheckPixel( r, TexCoord.y ) ||
-			CheckPixel( TexCoord.x, t ) || CheckPixel( TexCoord.x, b );
+	if (l < border.x)
+		checkPixelResult = CheckPixel(r, TexCoord.y);
+	else if (r > border.z)
+		checkPixelResult = CheckPixel(l, TexCoord.y);
+	else if (t < border.y)
+		checkPixelResult = CheckPixel(TexCoord.x, b);
+	else if (b > border.w)
+		checkPixelResult = CheckPixel(TexCoord.x, t);
+	else if (texture(ColorMap, TexCoord).a < 0.1)
+		checkPixelResult = CheckPixel(l, TexCoord.y) || CheckPixel(r, TexCoord.y) ||
+			CheckPixel(TexCoord.x, t) || CheckPixel(TexCoord.x, b);
 	
-	if( checkPixelResult )
+	if (checkPixelResult)
 	{
-		gl_FragColor = Color;
-		if( gl_FragColor.a > 0.1 )
+		FragColor = Color;
+		if (FragColor.a > 0.1)
 		{
-			float v = ( TexCoord.y - border.y ) / ( border.w - border.y );
-			v += 1.0 - mod( TimeGame, 2.0 );
-			if( v > 1.0 )
+			float v = (TexCoord.y - border.y) / (border.w - border.y);
+			v += 1.0 - mod(TimeGame, 2.0);
+			if (v > 1.0)
 				v = 2.0 - v;
-			else if( v < 0.0 )
+			else if (v < 0.0)
 				v = -v;
-			gl_FragColor.rgb += v * 0.60 - 0.30;
-			gl_FragColor.rgb = clamp( gl_FragColor.rgb, 0.0, 1.0 );
+			FragColor.rgb += v * 0.60 - 0.30;
+			FragColor.rgb = clamp(FragColor.rgb, 0.0, 1.0);
 		}
 		else
 		{
-			gl_FragColor.a = 1.0;
+			FragColor.a = 1.0;
 		}
 	}
 	else
@@ -84,4 +83,3 @@ void main( void )
 		discard;
 	}
 }
-#endif

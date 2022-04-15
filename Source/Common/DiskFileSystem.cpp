@@ -35,6 +35,8 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
+#include <filesystem>
+
 #if FO_WINDOWS
 #include <io.h>
 #else
@@ -49,27 +51,6 @@
 #if FO_WINDOWS && FO_UWP
 #define CreateFileW CreateFileFromAppW
 #endif
-
-struct DiskFileSystemData
-{
-    DiskFileSystemData()
-    {
-        constexpr auto buf_len = 16384 * 2;
-#if FO_WINDOWS
-        const auto dir_buf = std::make_unique<wchar_t[]>(buf_len);
-        ::GetCurrentDirectoryW(buf_len, dir_buf.get());
-        InitialDir = _str().parseWideChar(dir_buf.get());
-#else
-        const auto dir_buf = std::make_unique<char[]>(buf_len);
-        char* r = getcwd(dir_buf.get(), buf_len);
-        UNUSED_VARIABLE(r);
-        InitialDir = dir_buf.get();
-#endif
-    }
-
-    string InitialDir {};
-};
-GLOBAL_DATA(DiskFileSystemData, Data);
 
 auto DiskFileSystem::OpenFile(string_view fname, bool write) -> DiskFile
 {
@@ -116,7 +97,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 
         h = try_create();
         if (h == INVALID_HANDLE_VALUE) {
-            DiskFileSystem::MakeDirTree(fname);
+            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
             h = try_create();
         }
     }
@@ -504,27 +485,6 @@ uint DiskFile::GetSize() const
 #endif
 
 #if FO_WINDOWS
-auto DiskFileSystem::DeleteFile(string_view fname) -> bool
-{
-    return ::DeleteFileW(WinMultiByteToWideChar(fname).c_str()) != FALSE;
-}
-
-auto DiskFileSystem::IsFileExists(string_view fname) -> bool
-{
-    return ::_waccess(WinMultiByteToWideChar(fname).c_str(), 0) == 0;
-}
-
-auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
-{
-    return ::CopyFileW(WinMultiByteToWideChar(fname).c_str(), WinMultiByteToWideChar(copy_fname).c_str(), FALSE) != FALSE;
-}
-
-auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
-{
-    constexpr DWORD flags = MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH;
-    return !(::MoveFileExW(WinMultiByteToWideChar(fname).c_str(), WinMultiByteToWideChar(new_fname).c_str(), flags) == 0);
-}
-
 struct DiskFind::Impl
 {
     HANDLE FindHandle {};
@@ -559,7 +519,7 @@ DiskFind::DiskFind(string_view path, string_view ext)
 DiskFind::~DiskFind()
 {
     if (_pImpl) {
-        ::CloseHandle(_pImpl->FindHandle);
+        ::FindClose(_pImpl->FindHandle);
     }
 }
 
@@ -616,48 +576,6 @@ auto DiskFind::GetWriteTime() const -> uint64
 }
 
 #else
-
-bool DiskFileSystem::DeleteFile(string_view fname)
-{
-    return remove(string(fname).c_str()) != 0;
-}
-
-bool DiskFileSystem::IsFileExists(string_view fname)
-{
-    return access(string(fname).c_str(), 0) == 0;
-}
-
-bool DiskFileSystem::CopyFile(string_view fname, string_view copy_fname)
-{
-    bool ok = false;
-    FILE* from = fopen(string(fname).c_str(), "rb");
-    if (from) {
-        FILE* to = fopen(string(copy_fname).c_str(), "wb");
-        if (to) {
-            ok = true;
-            char buf[BUFSIZ];
-            while (!feof(from)) {
-                size_t rb = fread(buf, 1, BUFSIZ, from);
-                size_t rw = fwrite(buf, 1, rb, to);
-                if (!rb || rb != rw) {
-                    ok = false;
-                    break;
-                }
-            }
-            fclose(to);
-            if (!ok) {
-                DeleteFile(copy_fname);
-            }
-        }
-    }
-    fclose(from);
-    return ok;
-}
-
-bool DiskFileSystem::RenameFile(string_view fname, string_view new_fname)
-{
-    return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
-}
 
 struct DiskFind::Impl
 {
@@ -787,84 +705,46 @@ uint64 DiskFind::GetWriteTime() const
 }
 #endif
 
+auto DiskFileSystem::DeleteFile(string_view fname) -> bool
+{
+    std::error_code ec;
+    return std::filesystem::remove(fname, ec);
+}
+
+auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
+{
+    std::error_code ec;
+    return std::filesystem::copy_file(fname, copy_fname, ec);
+}
+
+auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
+{
+    std::error_code ec;
+    std::filesystem::rename(fname, new_fname, ec);
+    return !!ec;
+}
+
 void DiskFileSystem::ResolvePath(string& path)
 {
-#if FO_WINDOWS
-    const auto len = ::GetFullPathNameW(WinMultiByteToWideChar(path).c_str(), 0, nullptr, nullptr);
-    vector<wchar_t> buf(len);
-    if (::GetFullPathNameW(WinMultiByteToWideChar(path).c_str(), len, &buf[0], nullptr) != 0u) {
-        path = WinWideCharToMultiByte(&buf[0]);
-        path = _str(path).normalizePathSlashes();
+    std::error_code ec;
+    const auto resolved = std::filesystem::absolute(path, ec);
+    if (!!ec) {
+        path = WinWideCharToMultiByte(resolved.native().c_str());
     }
-
-#else
-    char* buf = realpath(path.c_str(), nullptr);
-    if (buf) {
-        path = buf;
-        free(buf);
-    }
-#endif
 }
 
 void DiskFileSystem::MakeDirTree(string_view path)
 {
-    const string work = _str(path).normalizePathSlashes();
-    for (size_t i = 0; i < work.length(); i++) {
-        if (work[i] == '/') {
-            auto path_part = work.substr(0, i);
-#if FO_WINDOWS
-            ::CreateDirectoryW(WinMultiByteToWideChar(path_part).c_str(), nullptr);
-#else
-            mkdir(path_part.c_str(), 0777);
-#endif
-        }
-    }
+    std::error_code ec;
+    std::filesystem::create_directories(path, ec);
 }
 
 auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 {
-    MakeDirTree(dir);
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
 
-    vector<string> file_paths;
-    for (auto find = DiskFind(dir, ""); find; find++) {
-        if (!find.IsDir()) {
-            file_paths.emplace_back(find.GetPath());
-        }
-    }
-
-    for (auto& fp : file_paths) {
-        if (!DeleteFile(fp)) {
-            return false;
-        }
-    }
-
-#if FO_WINDOWS
-    return ::RemoveDirectoryW(_str(dir).toWideChar().c_str()) != FALSE;
-#else
-    return rmdir(string(dir).c_str()) == 0;
-#endif
-}
-
-auto DiskFileSystem::SetCurrentDir(string_view dir) -> bool
-{
-    string resolved_dir = _str(dir).formatPath();
-    ResolvePath(resolved_dir);
-
-#if FO_WINDOWS
-    return ::SetCurrentDirectoryW(_str(resolved_dir).toWideChar().c_str()) != FALSE;
-#else
-    return chdir(resolved_dir.c_str()) == 0;
-#endif
-}
-
-void DiskFileSystem::ResetCurDir()
-{
-#if FO_WINDOWS
-    ::SetCurrentDirectoryW(_str(Data->InitialDir).toWideChar().c_str());
-#else
-    int r = chdir(Data->InitialDir.c_str());
-    UNUSED_VARIABLE(r);
-#endif
+    return !std::filesystem::exists(dir, ec);
 }
 
 auto DiskFileSystem::GetExePath() -> string

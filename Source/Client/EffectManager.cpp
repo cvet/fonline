@@ -56,7 +56,7 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
 
     // Load new
     auto* effect = App->Render.CreateEffect(name, defines, [this, &base_path](string_view path) -> vector<uchar> {
-        auto file = _fileMngr.ReadFile(_str("{}{}", _str(base_path).extractDir(), path));
+        auto file = _fileMngr.ReadFile(_str("{}/{}", _str(base_path).extractDir(), path));
         if (!file) {
             file = _fileMngr.ReadFile(path);
             if (!file) {

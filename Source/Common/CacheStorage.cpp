@@ -197,17 +197,17 @@ struct CacheStorage::Impl
 
 static auto MakeCacheEntryPath(string_view work_path, string_view data_name) -> string
 {
-    return _str("{}{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
+    return _str("{}/{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 CacheStorage::CacheStorage(string_view real_path)
 {
-    _workPath = _str(real_path).eraseFileExtension() + "/";
+    _workPath = _str(real_path).eraseFileExtension();
 
     DiskFileSystem::ResolvePath(_workPath);
     DiskFileSystem::MakeDirTree(_workPath);
 
-    auto file = DiskFileSystem::OpenFile(_workPath + "Ping.txt", true);
+    auto file = DiskFileSystem::OpenFile(_workPath + "/Ping.txt", true);
     if (!file) {
         throw CacheStorageException("Can't init ping file", _workPath);
     }

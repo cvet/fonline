@@ -184,8 +184,8 @@ public:
     [[nodiscard]] auto GetPath() const -> string_view;
     [[nodiscard]] auto GetCurFile() const -> File;
     [[nodiscard]] auto GetCurFileHeader() const -> FileHeader;
-    [[nodiscard]] auto FindFile(string_view name) const -> File;
-    [[nodiscard]] auto FindFileHeader(string_view name) const -> FileHeader;
+    [[nodiscard]] auto FindFileByName(string_view name) const -> File;
+    [[nodiscard]] auto FindFileByPath(string_view path) const -> File;
     [[nodiscard]] auto GetFilesCount() const -> uint;
 
     [[nodiscard]] auto MoveNext() -> bool;

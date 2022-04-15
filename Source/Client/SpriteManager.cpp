@@ -132,7 +132,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileManager& file_mngr, E
     if (_settings.Enable3dRendering) {
         _modelMngr = std::make_unique<ModelManager>(_settings, _fileMngr, _effectMngr, _gameTime, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
             PushAtlasType(AtlasType::MeshTextures);
-            auto* anim = LoadAnimation(_str("{}{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
+            auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
             PopAtlasType();
 
             if (anim != nullptr) {

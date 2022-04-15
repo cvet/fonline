@@ -416,17 +416,6 @@ auto _str::formatPath() -> _str&
         _s.replace(pos, 3, "/");
     }
 
-    // Replace '//' to '/'
-    while (true) {
-        const auto pos = _s.find("//");
-
-        if (pos == string::npos) {
-            break;
-        }
-
-        _s.replace(pos, 2, "/");
-    }
-
     // Replace 'folder/../' to '/'
     while (true) {
         const auto pos = _s.find("/../");
@@ -459,27 +448,7 @@ auto _str::extractDir() -> _str&
     const auto pos = _s.find_last_of('/');
 
     if (pos != string::npos) {
-        _s = _s.substr(0, pos + 1);
-    }
-    else if (!_s.empty() && _s.back() != '/') {
-        _s += "/";
-    }
-    return *this;
-}
-
-auto _str::extractLastDir() -> _str&
-{
-    formatPath();
-    extractDir();
-
-    if (!_s.empty()) {
-        _s.pop_back();
-    }
-
-    const auto pos = _s.find_last_of('/');
-
-    if (pos != string::npos) {
-        _s = _s.substr(pos + 1);
+        _s = _s.substr(0, pos);
     }
     return *this;
 }
@@ -525,17 +494,6 @@ auto _str::combinePath(string_view path) -> _str&
     }
 
     _s += path;
-    formatPath();
-
-    return *this;
-}
-
-auto _str::forwardPath(string_view relative_dir) -> _str&
-{
-    const string dir = _str(*this).extractDir();
-    const string name = _str(*this).extractFileName();
-
-    _s = dir + string(relative_dir) + name;
     formatPath();
 
     return *this;

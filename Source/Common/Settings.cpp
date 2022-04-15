@@ -187,8 +187,6 @@ static void DrawEditableEntry(string_view name, vector<bool>& entry)
 
 GlobalSettings::GlobalSettings(int argc, char** argv)
 {
-    DiskFileSystem::ResetCurDir();
-
     // Injected config
     static char internal_config[5022] = {"###InternalConfig###\0"
                                          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
@@ -262,33 +260,11 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
         if (argv[i][0] == '-') {
             auto key = _str("{}", argv[i]).trim().str().substr(1);
-            if (key == "AddConfig") {
-                if (i < argc - 1 && argv[i + 1][0] != '-') {
-                    const string path = _str(argv[i + 1]);
-                    string dir = _str(path).extractDir();
-                    string fname = _str(path).extractFileName();
-                    DiskFileSystem::SetCurrentDir(dir);
-                    auto config_file = DiskFileSystem::OpenFile(fname, false);
-                    if (config_file) {
-                        auto* buf = new char[config_file.GetSize()];
-                        if (config_file.Read(buf, config_file.GetSize())) {
-                            auto config = ConfigFile(buf, nullptr);
-                            for (const auto& [key, value] : config.GetApp("")) {
-                                SetValue(key, value);
-                            }
-                        }
-                        delete[] buf;
-                    }
-                    DiskFileSystem::ResetCurDir();
-                }
+            if (i < argc - 1 && argv[i + 1][0] != '-') {
+                SetValue(key, _str("{}", argv[i + 1]).trim());
             }
             else {
-                if (i < argc - 1 && argv[i + 1][0] != '-') {
-                    SetValue(key, _str("{}", argv[i + 1]).trim());
-                }
-                else {
-                    SetValue(key, "1");
-                }
+                SetValue(key, "1");
             }
         }
     }

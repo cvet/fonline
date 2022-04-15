@@ -570,12 +570,7 @@ public:
     auto operator=(DbJson&&) noexcept = delete;
     ~DbJson() override = default;
 
-    explicit DbJson(string_view storage_dir)
-    {
-        DiskFileSystem::MakeDirTree(_str("{}/", storage_dir));
-
-        _storageDir = storage_dir;
-    }
+    explicit DbJson(string_view storage_dir) : _storageDir {storage_dir} { DiskFileSystem::MakeDirTree(storage_dir); }
 
     [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint> override
     {
@@ -742,7 +737,7 @@ public:
 
     explicit DbUnQLite(string_view storage_dir)
     {
-        DiskFileSystem::MakeDirTree(_str("{}/", storage_dir));
+        DiskFileSystem::MakeDirTree(storage_dir);
 
         unqlite* ping_db = nullptr;
         const auto ping_db_path = _str("{}/Ping.unqlite", storage_dir);

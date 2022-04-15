@@ -517,7 +517,7 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
     return FileHeader(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource);
 }
 
-auto FileCollection::FindFile(string_view name) const -> File
+auto FileCollection::FindFileByName(string_view name) const -> File
 {
     for (const auto& fh : _allFiles) {
         if (fh._fileName == name) {
@@ -531,14 +531,18 @@ auto FileCollection::FindFile(string_view name) const -> File
     return File();
 }
 
-auto FileCollection::FindFileHeader(string_view name) const -> FileHeader
+auto FileCollection::FindFileByPath(string_view name) const -> File
 {
     for (const auto& fh : _allFiles) {
-        if (fh._fileName == name) {
-            return FileHeader(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource);
+        if (fh._filePath == name) {
+            auto fs = fh._fileSize;
+            auto wt = fh._writeTime;
+            auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+            RUNTIME_ASSERT(buf);
+            return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
         }
     }
-    return FileHeader();
+    return File();
 }
 
 auto FileCollection::GetFilesCount() const -> uint
@@ -625,8 +629,7 @@ auto FileManager::WriteFile(string_view path, bool apply) -> OutputFile
 {
     NON_CONST_METHOD_HINT();
 
-    DiskFileSystem::SetCurrentDir(_rootPath);
-    auto file = DiskFileSystem::OpenFile(path, true); // Todo: handle apply file writing
+    auto file = DiskFileSystem::OpenFile(_str("{}/{}", _rootPath, path), true); // Todo: handle apply file writing
     if (!file) {
         throw FileSystemExeption("Can't open file for writing", path, apply);
     }
@@ -637,22 +640,19 @@ void FileManager::DeleteFile(string_view path)
 {
     NON_CONST_METHOD_HINT();
 
-    DiskFileSystem::SetCurrentDir(_rootPath);
-    DiskFileSystem::DeleteFile(path);
+    DiskFileSystem::DeleteFile(_str("{}/{}", _rootPath, path));
 }
 
 void FileManager::DeleteDir(string_view path)
 {
     NON_CONST_METHOD_HINT();
 
-    DiskFileSystem::SetCurrentDir(_rootPath);
-    DiskFileSystem::DeleteDir(path);
+    DiskFileSystem::DeleteDir(_str("{}/{}", _rootPath, path));
 }
 
 void FileManager::RenameFile(string_view from_path, string_view to_path)
 {
     NON_CONST_METHOD_HINT();
 
-    DiskFileSystem::SetCurrentDir(_rootPath);
-    DiskFileSystem::RenameFile(from_path, to_path);
+    DiskFileSystem::RenameFile(_str("{}/{}", _rootPath, from_path), _str("{}/{}", _rootPath, to_path));
 }

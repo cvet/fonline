@@ -41,7 +41,7 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
 {
     // Find file
     auto maps = file_mngr.FilterFiles("fomap");
-    auto map_file = maps.FindFile(name);
+    auto map_file = maps.FindFileByName(name);
     if (!map_file) {
         throw MapLoaderException("Map not found", name);
     }

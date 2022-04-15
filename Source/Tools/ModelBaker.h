@@ -37,6 +37,8 @@
 
 #include "FileSystem.h"
 
+DECLARE_EXCEPTION(ModelBakerException);
+
 #if FO_HAVE_FBXSDK
 namespace fbxsdk
 {
@@ -63,6 +65,7 @@ private:
 
     FileCollection& _allFiles;
     map<string, vector<uchar>> _bakedFiles {};
+    int _errors {};
 #if FO_HAVE_FBXSDK
     fbxsdk::FbxManager* _fbxManager {};
 #endif

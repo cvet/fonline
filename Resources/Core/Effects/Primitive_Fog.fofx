@@ -1,31 +1,32 @@
-Effect Pass 0 BlendFunc GL_ONE GL_ONE
-Effect Pass 0 BlendEquation GL_MAX
+[Effect]
+BlendFunc_Pass1 = BlendFunc GL_ONE GL_ONE
+BlendEquation_Pass1 = GL_MAX
 
-#version 110
-
+[ShaderCommon]
 const float FogBordersPower = 5.0;
 const float FogBlackout = 0.2;
 const float AttackBordersPower = 7.0;
 
-#ifdef VERTEX_SHADER
-uniform mat4 ProjectionMatrix;
+[VertexShader]
+layout(location = 0) uniform mat4 ProjectionMatrix;
 
-attribute vec2 InPosition;
-attribute vec4 InColor;
+layout(location = 0) in vec2 InPosition;
+layout(location = 1) in vec4 InColor;
 
-varying vec4 Color;
+layout(location = 0) out vec4 Color;
 
-void main( void )
+void main(void)
 {
-	gl_Position = ProjectionMatrix * vec4( InPosition, 0.0, 1.0 );
+	gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
 	Color = InColor;
 }
-#endif
 
-#ifdef FRAGMENT_SHADER
-varying vec4 Color;
+[FragmentShader]
+layout(location = 0) in vec4 Color;
 
-void main( void )
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
 {
 	// Input:
 	// a - fog area or attack area (0.0 or 1.0)
@@ -33,16 +34,15 @@ void main( void )
 	// g - whole distance
 	
 	// Place fog area in r channel
-	if( Color.a < 0.5 )
+	if (Color.a < 0.5)
 	{
-		float value = ( 1.0 - Color.r ) * FogBordersPower;
-		gl_FragColor = vec4( max( value, FogBlackout ), 0.0, 0.0, 1.0 );
+		float value = (1.0 - Color.r) * FogBordersPower;
+		FragColor = vec4(max(value, FogBlackout), 0.0, 0.0, 1.0);
 	}
 	// Place attack area in g/b channel
 	else
 	{
-		float value = ( 1.0 - Color.r ) * AttackBordersPower;
-		gl_FragColor = vec4( 0.0, min( value, 0.65 ), Color.g, 1.0 );
+		float value = (1.0 - Color.r) * AttackBordersPower;
+		FragColor = vec4(0.0, min(value, 0.65), Color.g, 1.0);
 	}
 }
-#endif

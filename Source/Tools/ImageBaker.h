@@ -56,7 +56,7 @@ public:
     void FillBakedFiles(map<string, vector<uchar>>& baked_files);
 
 private:
-    static const int MAX_FRAME_SEQUENCE = 50;
+    static const int MAX_FRAME_SEQUENCE = 200;
     static const int MAX_DIRS_MINUS_ONE = 7;
 
     struct FrameShot
@@ -111,5 +111,6 @@ private:
     FileCollection& _allFiles;
     map<string, vector<uchar>> _bakedFiles {};
     unordered_map<string, File> _cachedFiles {};
+    int _errors {};
     bool _nonConstHelper {};
 };

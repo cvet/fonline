@@ -32,14 +32,126 @@
 //
 
 #include "EffectBaker.h"
+
+#include "Application.h"
+#include "ConfigFile.h"
 #include "Log.h"
 #include "StringUtils.h"
 
 #include "GlslangToSpv.h"
 #include "ShaderLang.h"
+#include "Testing.h"
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
+
+constexpr TBuiltInResource GLSLANG_BUILT_IN_RESOURCE = {
+    /* .MaxLights = */ 32,
+    /* .MaxClipPlanes = */ 6,
+    /* .MaxTextureUnits = */ 32,
+    /* .MaxTextureCoords = */ 32,
+    /* .MaxVertexAttribs = */ 64,
+    /* .MaxVertexUniformComponents = */ 4096,
+    /* .MaxVaryingFloats = */ 64,
+    /* .MaxVertexTextureImageUnits = */ 32,
+    /* .MaxCombinedTextureImageUnits = */ 80,
+    /* .MaxTextureImageUnits = */ 32,
+    /* .MaxFragmentUniformComponents = */ 4096,
+    /* .MaxDrawBuffers = */ 32,
+    /* .MaxVertexUniformVectors = */ 128,
+    /* .MaxVaryingVectors = */ 8,
+    /* .MaxFragmentUniformVectors = */ 16,
+    /* .MaxVertexOutputVectors = */ 16,
+    /* .MaxFragmentInputVectors = */ 15,
+    /* .MinProgramTexelOffset = */ -8,
+    /* .MaxProgramTexelOffset = */ 7,
+    /* .MaxClipDistances = */ 8,
+    /* .MaxComputeWorkGroupCountX = */ 65535,
+    /* .MaxComputeWorkGroupCountY = */ 65535,
+    /* .MaxComputeWorkGroupCountZ = */ 65535,
+    /* .MaxComputeWorkGroupSizeX = */ 1024,
+    /* .MaxComputeWorkGroupSizeY = */ 1024,
+    /* .MaxComputeWorkGroupSizeZ = */ 64,
+    /* .MaxComputeUniformComponents = */ 1024,
+    /* .MaxComputeTextureImageUnits = */ 16,
+    /* .MaxComputeImageUniforms = */ 8,
+    /* .MaxComputeAtomicCounters = */ 8,
+    /* .MaxComputeAtomicCounterBuffers = */ 1,
+    /* .MaxVaryingComponents = */ 60,
+    /* .MaxVertexOutputComponents = */ 64,
+    /* .MaxGeometryInputComponents = */ 64,
+    /* .MaxGeometryOutputComponents = */ 128,
+    /* .MaxFragmentInputComponents = */ 128,
+    /* .MaxImageUnits = */ 8,
+    /* .MaxCombinedImageUnitsAndFragmentOutputs = */ 8,
+    /* .MaxCombinedShaderOutputResources = */ 8,
+    /* .MaxImageSamples = */ 0,
+    /* .MaxVertexImageUniforms = */ 0,
+    /* .MaxTessControlImageUniforms = */ 0,
+    /* .MaxTessEvaluationImageUniforms = */ 0,
+    /* .MaxGeometryImageUniforms = */ 0,
+    /* .MaxFragmentImageUniforms = */ 8,
+    /* .MaxCombinedImageUniforms = */ 8,
+    /* .MaxGeometryTextureImageUnits = */ 16,
+    /* .MaxGeometryOutputVertices = */ 256,
+    /* .MaxGeometryTotalOutputComponents = */ 1024,
+    /* .MaxGeometryUniformComponents = */ 1024,
+    /* .MaxGeometryVaryingComponents = */ 64,
+    /* .MaxTessControlInputComponents = */ 128,
+    /* .MaxTessControlOutputComponents = */ 128,
+    /* .MaxTessControlTextureImageUnits = */ 16,
+    /* .MaxTessControlUniformComponents = */ 1024,
+    /* .MaxTessControlTotalOutputComponents = */ 4096,
+    /* .MaxTessEvaluationInputComponents = */ 128,
+    /* .MaxTessEvaluationOutputComponents = */ 128,
+    /* .MaxTessEvaluationTextureImageUnits = */ 16,
+    /* .MaxTessEvaluationUniformComponents = */ 1024,
+    /* .MaxTessPatchComponents = */ 120,
+    /* .MaxPatchVertices = */ 32,
+    /* .MaxTessGenLevel = */ 64,
+    /* .MaxViewports = */ 16,
+    /* .MaxVertexAtomicCounters = */ 0,
+    /* .MaxTessControlAtomicCounters = */ 0,
+    /* .MaxTessEvaluationAtomicCounters = */ 0,
+    /* .MaxGeometryAtomicCounters = */ 0,
+    /* .MaxFragmentAtomicCounters = */ 8,
+    /* .MaxCombinedAtomicCounters = */ 8,
+    /* .MaxAtomicCounterBindings = */ 1,
+    /* .MaxVertexAtomicCounterBuffers = */ 0,
+    /* .MaxTessControlAtomicCounterBuffers = */ 0,
+    /* .MaxTessEvaluationAtomicCounterBuffers = */ 0,
+    /* .MaxGeometryAtomicCounterBuffers = */ 0,
+    /* .MaxFragmentAtomicCounterBuffers = */ 1,
+    /* .MaxCombinedAtomicCounterBuffers = */ 1,
+    /* .MaxAtomicCounterBufferSize = */ 16384,
+    /* .MaxTransformFeedbackBuffers = */ 4,
+    /* .MaxTransformFeedbackInterleavedComponents = */ 64,
+    /* .MaxCullDistances = */ 8,
+    /* .MaxCombinedClipAndCullDistances = */ 8,
+    /* .MaxSamples = */ 4,
+    /* .maxMeshOutputVerticesNV = */ 256,
+    /* .maxMeshOutputPrimitivesNV = */ 512,
+    /* .maxMeshWorkGroupSizeX_NV = */ 32,
+    /* .maxMeshWorkGroupSizeY_NV = */ 1,
+    /* .maxMeshWorkGroupSizeZ_NV = */ 1,
+    /* .maxTaskWorkGroupSizeX_NV = */ 32,
+    /* .maxTaskWorkGroupSizeY_NV = */ 1,
+    /* .maxTaskWorkGroupSizeZ_NV = */ 1,
+    /* .maxMeshViewCountNV = */ 4,
+    /* .maxDualSourceDrawBuffersEXT = */ 1,
+
+    /* .limits = */
+    {
+        /* .nonInductiveForLoops = */ true,
+        /* .whileLoops = */ true,
+        /* .doWhileLoops = */ true,
+        /* .generalUniformIndexing = */ true,
+        /* .generalAttributeMatrixVectorIndexing = */ true,
+        /* .generalVaryingIndexing = */ true,
+        /* .generalSamplerIndexing = */ true,
+        /* .generalVariableIndexing = */ true,
+        /* .generalConstantMatrixVectorIndexing = */ true,
+    }};
 
 EffectBaker::EffectBaker(FileCollection& all_files) : _allFiles {all_files}
 {
@@ -53,7 +165,11 @@ EffectBaker::~EffectBaker()
 
 void EffectBaker::AutoBakeEffects()
 {
-    vector<future<void>> futs;
+    _errors = 0;
+
+#if FO_ASYNC_BAKE
+    vector<std::future<void>> futs;
+#endif
 
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
@@ -61,69 +177,133 @@ void EffectBaker::AutoBakeEffects()
         auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
 
         {
+#if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
+#endif
             if (_bakedFiles.count(string(relative_path)) != 0u) {
                 continue;
             }
         }
 
         string ext = _str(relative_path).getFileExtension();
-        if (ext != "glsl") {
+        if (ext != "fofx") {
             continue;
         }
 
         auto file = _allFiles.GetCurFile();
         string content(file.GetCStr(), file.GetFsize());
+
+#if FO_ASYNC_BAKE
         futs.emplace_back(std::async(std::launch::async | std::launch::deferred, &EffectBaker::BakeShaderProgram, this, relative_path, content));
+#else
+        try {
+            BakeShaderProgram(relative_path, content);
+        }
+        catch (const EffectBakerException& ex) {
+            ReportExceptionAndContinue(ex);
+            _errors++;
+        }
+        catch (const FileSystemExeption& ex) {
+            ReportExceptionAndContinue(ex);
+            _errors++;
+        }
+#endif
     }
 
+#if FO_ASYNC_BAKE
     for (auto& fut : futs) {
         fut.wait();
     }
+#endif
+
+    if (_errors > 0) {
+        throw EffectBakerException("Errors during effects bakering", _errors);
+    }
 }
 
-void EffectBaker::BakeShaderProgram(string_view fname, string_view /*content*/)
+void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 {
-    string fname_wo_ext = _str(fname).eraseFileExtension();
-
-    glslang::TShader vert(EShLangVertex);
-    vert.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientOpenGL, 100);
-    vert.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-    vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_4);
-    // vert.setStrings()
-    // vert.preprocess
-    // vert.parse()
-
-    glslang::TShader frag(EShLangFragment);
-    frag.setEnvInput(glslang::EShSourceGlsl, EShLangFragment, glslang::EShClientOpenGL, 100);
-    frag.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
-    frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_4);
-    // if (!frag.parse())
-
-    glslang::TProgram program;
-    program.addShader(&vert);
-    program.addShader(&frag);
-    if (!program.link(EShMsgDefault)) {
-        throw GenericException("Can't link shader program", fname, program.getInfoLog());
+    auto fofx = ConfigFile("", nullptr);
+    fofx.CollectContent();
+    fofx.AppendData(content);
+    if (!fofx || !fofx.IsApp("Effect")) {
+        throw EffectBakerException(".fofx file truncated", fname);
     }
 
-    BakeShaderStage(fname_wo_ext + ".vert", program.getIntermediate(EShLangVertex));
-    BakeShaderStage(fname_wo_ext + ".frag", program.getIntermediate(EShLangFragment));
+    constexpr bool old_code_profile = false;
 
-    {
-        std::lock_guard locker(_bakedFilesLocker);
-        string dummy_content = "BAKED";
-        _bakedFiles.emplace(fname, vector<uchar>(dummy_content.begin(), dummy_content.end()));
+    const auto passes = fofx.GetInt("Effect", "Passes", 1);
+    const auto shader_common_content = fofx.GetAppContent("ShaderCommon");
+    const auto shader_version = fofx.GetInt("Effect", "Version", 310);
+    const auto shader_version_str = _str("#version {} es\n", shader_version).str();
+    const auto shader_defines = _str("precision mediump float;\n#define MAX_BONES {}\n", MODEL_MAX_BONES).str();
+    const auto shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
+
+    for (auto pass = 1; pass <= passes; pass++) {
+        string vertex_pass_content = fofx.GetAppContent(_str("VertexShader Pass{}", pass));
+        if (vertex_pass_content.empty()) {
+            vertex_pass_content = fofx.GetAppContent("VertexShader");
+        }
+        if (vertex_pass_content.empty()) {
+            throw EffectBakerException("No content for vertex shader", fname, pass);
+        }
+
+        string fragment_pass_content = fofx.GetAppContent(_str("FragmentShader Pass{}", pass));
+        if (fragment_pass_content.empty()) {
+            fragment_pass_content = fofx.GetAppContent("FragmentShader");
+        }
+        if (fragment_pass_content.empty()) {
+            throw EffectBakerException("No content for fragment shader", fname, pass);
+        }
+
+        glslang::TShader vert(EShLangVertex);
+        vert.setEnvInput(glslang::EShSourceGlsl, EShLangVertex, glslang::EShClientNone, shader_version);
+        vert.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
+        vert.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
+        const char* vertext_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_common_content.c_str(), vertex_pass_content.c_str()};
+        vert.setStrings(vertext_strings, 5);
+        if (!vert.parse(&GLSLANG_BUILT_IN_RESOURCE, shader_version, true, EShMessages::EShMsgDefault)) {
+            throw EffectBakerException("Failed to parse vertex shader", fname, pass, vert.getInfoLog());
+        }
+
+        glslang::TShader frag(EShLangFragment);
+        frag.setEnvInput(glslang::EShSourceGlsl, EShLangFragment, glslang::EShClientNone, shader_version);
+        frag.setEnvClient(glslang::EShClientOpenGL, glslang::EShTargetOpenGL_450);
+        frag.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_5);
+        const char* fragment_strings[] = {shader_version_str.c_str(), shader_defines.c_str(), shader_defines_ex, shader_common_content.c_str(), fragment_pass_content.c_str()};
+        frag.setStrings(fragment_strings, 5);
+        if (!frag.parse(&GLSLANG_BUILT_IN_RESOURCE, shader_version, true, EShMessages::EShMsgDefault)) {
+            throw EffectBakerException("Failed to parse fragment shader", fname, pass, frag.getInfoLog());
+        }
+
+        glslang::TProgram program;
+        program.addShader(&vert);
+        program.addShader(&frag);
+        if (!program.link(EShMsgDefault)) {
+            throw EffectBakerException("Failed to link shader program", fname, program.getInfoLog());
+        }
+
+        const string fname_wo_ext = _str(fname).eraseFileExtension();
+        BakeShaderStage(_str("{}.{}.vert", fname_wo_ext, pass), program.getIntermediate(EShLangVertex));
+        BakeShaderStage(_str("{}.{}.frag", fname_wo_ext, pass), program.getIntermediate(EShLangFragment));
+
+        {
+#if FO_ASYNC_BAKE
+            std::lock_guard locker(_bakedFilesLocker);
+#endif
+            string dummy_content = "BAKED";
+            _bakedFiles.emplace(fname, vector<uchar>(dummy_content.begin(), dummy_content.end()));
+        }
     }
 }
 
-void EffectBaker::BakeShaderStage(string_view fname_wo_ext, glslang::TIntermediate* intermediate)
+void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate)
 {
     // Glslang to SPIR-V
     std::vector<uint32_t> spirv;
 
     glslang::SpvOptions spv_options;
-    // options.generateDebugInfo = true;
+    // spv_options.generateDebugInfo = true;
     spv_options.disableOptimizer = false;
     spv_options.optimizeSize = true;
     spv_options.disassemble = false;
@@ -136,7 +316,9 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, glslang::TIntermedia
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         vector<uchar> data(spirv.size() * sizeof(uint32_t));
         std::memcpy(&data[0], &spirv[0], data.size());
+#if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
+#endif
         _bakedFiles.emplace(_str("{}.spv", fname_wo_ext), std::move(data));
     };
 
@@ -146,7 +328,9 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, glslang::TIntermedia
         const auto& options = compiler.get_common_options();
         compiler.set_common_options(options);
         auto source = compiler.compile();
+#if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
+#endif
         _bakedFiles.emplace(_str("{}.glsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
@@ -157,7 +341,9 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, glslang::TIntermedia
         options.es = true;
         compiler.set_common_options(options);
         auto source = compiler.compile();
+#if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
+#endif
         _bakedFiles.emplace(_str("{}.glsl-es", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
@@ -167,7 +353,9 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, glslang::TIntermedia
         const auto& options = compiler.get_hlsl_options();
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
+#if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
+#endif
         _bakedFiles.emplace(_str("{}.hlsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
@@ -178,7 +366,9 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, glslang::TIntermedia
         options.platform = spirv_cross::CompilerMSL::Options::macOS;
         compiler.set_msl_options(options);
         auto source = compiler.compile();
+#if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
+#endif
         _bakedFiles.emplace(_str("{}.msl-mac", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
@@ -189,10 +379,13 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, glslang::TIntermedia
         options.platform = spirv_cross::CompilerMSL::Options::iOS;
         compiler.set_msl_options(options);
         auto source = compiler.compile();
+#if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
+#endif
         _bakedFiles.emplace(_str("{}.msl-ios", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
+#if FO_ASYNC_BAKE
     // Make all asynchronously
     auto futs = {
         std::async(std::launch::async | std::launch::deferred, make_spirv),
@@ -205,11 +398,21 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, glslang::TIntermedia
     for (const auto& fut : futs) {
         fut.wait();
     }
+#else
+    make_spirv();
+    make_glsl();
+    make_glsl_es();
+    make_hlsl();
+    make_msl_mac();
+    make_msl_ios();
+#endif
 }
 
 void EffectBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
+#if FO_ASYNC_BAKE
     std::lock_guard locker(_bakedFilesLocker);
+#endif
 
     for (const auto& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);

@@ -37,6 +37,7 @@
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
+#include "Testing.h"
 
 #if FO_HAVE_FBXSDK
 #include "fbxsdk.h"
@@ -191,7 +192,7 @@ ModelBaker::ModelBaker(FileCollection& all_files) : _allFiles {all_files}
 #if FO_HAVE_FBXSDK
     _fbxManager = FbxManager::Create();
     if (_fbxManager == nullptr) {
-        throw GenericException("Unable to create FBX Manager");
+        throw ModelBakerException("Unable to create FBX Manager");
     }
 
     // Create an IOSettings object. This object holds all import/export settings.
@@ -212,6 +213,8 @@ ModelBaker::~ModelBaker()
 
 void ModelBaker::AutoBakeModels()
 {
+    _errors = 0;
+
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
@@ -221,13 +224,28 @@ void ModelBaker::AutoBakeModels()
         }
 
         string ext = _str(relative_path).getFileExtension();
-        if (!(ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj")) {
+        if (!(ext == "fbx" || ext == "dae" || ext == "obj")) {
             continue;
         }
 
         auto file = _allFiles.GetCurFile();
-        auto data = BakeFile(relative_path, file);
-        _bakedFiles.emplace(relative_path, std::move(data));
+
+        try {
+            auto data = BakeFile(relative_path, file);
+            _bakedFiles.emplace(relative_path, std::move(data));
+        }
+        catch (const ModelBakerException& ex) {
+            ReportExceptionAndContinue(ex);
+            _errors++;
+        }
+        catch (const FileSystemExeption& ex) {
+            ReportExceptionAndContinue(ex);
+            _errors++;
+        }
+    }
+
+    if (_errors > 0) {
+        throw ModelBakerException("Errors during effects bakering", _errors);
     }
 }
 
@@ -329,13 +347,13 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
     // Create an FBX scene
     FbxScene* fbx_scene = FbxScene::Create(_fbxManager, "Root Scene");
     if (fbx_scene == nullptr) {
-        throw GenericException("Unable to create FBX scene");
+        throw ModelBakerException("Unable to create FBX scene");
     }
 
     // Create an importer
     FbxImporter* fbx_importer = FbxImporter::Create(_fbxManager, "");
     if (fbx_importer == nullptr) {
-        throw GenericException("Unable to create FBX importer");
+        throw ModelBakerException("Unable to create FBX importer");
     }
 
     // Initialize the importer
@@ -354,12 +372,12 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
             error_desc += _str(" (minimum version {}.{}.{}, file version {}.{}.{})", sdk_major, sdk_minor, sdk_revision, file_major, file_minor, file_revision);
         }
 
-        throw GenericException("Call to FbxImporter::Initialize() failed", fname, error_desc);
+        throw ModelBakerException("Call to FbxImporter::Initialize() failed", fname, error_desc);
     }
 
     // Import the scene
     if (!fbx_importer->Import(fbx_scene)) {
-        throw GenericException("Can't import scene", fname);
+        throw ModelBakerException("Can't import scene", fname);
     }
 
     // Load hierarchy

@@ -178,7 +178,6 @@ FIXED_SETTING(string, ASMapper);
 SETTING_GROUP_END();
 
 SETTING_GROUP(BakerSettings, virtual DummySettings);
-FIXED_SETTING(string, ResourcesOutput, ".");
 FIXED_SETTING(vector<string>, ContentEntry);
 FIXED_SETTING(vector<string>, ResourcesEntry);
 SETTING_GROUP_END();

@@ -178,7 +178,6 @@ static_assert(CHAR_BIT == 8);
 // Bind to global scope frequently used types
 using std::array;
 using std::deque;
-using std::future;
 using std::initializer_list;
 using std::istringstream;
 using std::list;
@@ -351,7 +350,13 @@ public:
     EventObserver(EventObserver&&) noexcept = default;
     auto operator=(const EventObserver&) = delete;
     auto operator=(EventObserver&&) noexcept = delete;
-    ~EventObserver() { ThrowException(); }
+
+    ~EventObserver()
+    {
+        if (!_subscriberCallbacks.empty()) {
+            ThrowException();
+        }
+    }
 
     [[nodiscard]] auto operator+=(Callback cb) -> EventUnsubscriberCallback
     {

@@ -107,7 +107,6 @@ public:
 
     DiskFileSystem() = delete;
 
-    [[nodiscard]] static auto IsFileExists(string_view fname) -> bool;
     [[nodiscard]] static auto GetExePath() -> string;
 
     [[nodiscard]] static auto OpenFile(string_view fname, bool write) -> DiskFile;
@@ -120,7 +119,5 @@ public:
     static void ResolvePath(string& path);
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
-    static auto SetCurrentDir(string_view dir) -> bool;
-    static void ResetCurDir();
     static void IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor);
 };

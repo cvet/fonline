@@ -59,10 +59,6 @@ int main(int argc, char** argv)
 
         auto settings = GlobalSettings(argc, argv);
 
-        DiskFileSystem::MakeDirTree(settings.ResourcesOutput);
-        auto set_res_dir_ok = DiskFileSystem::SetCurrentDir(settings.ResourcesOutput);
-        RUNTIME_ASSERT(set_res_dir_ok);
-
         // Content
         if (!settings.ContentEntry.empty()) {
             WriteLog("Bake content.\n");
@@ -110,10 +106,16 @@ int main(int argc, char** argv)
             for (const auto& re : settings.ResourcesEntry) {
                 auto re_splitted = _str(re).split(',');
                 RUNTIME_ASSERT(re_splitted.size() == 2);
-                res_packs[re_splitted[0]].push_back(re_splitted[1]);
+                if (re_splitted[0] != "Embedded") {
+                    res_packs[re_splitted[0]].push_back(re_splitted[1]);
+                }
             }
 
             for (const auto& [pack_name, paths] : res_packs) {
+                if (pack_name == "Embedded") {
+                    continue;
+                }
+
                 FileManager res_files;
                 for (const auto& path : paths) {
                     WriteLog("Add resource pack '{}' entry '{}'.\n", pack_name, path);
@@ -122,8 +124,8 @@ int main(int argc, char** argv)
 
                 auto resources = res_files.FilterFiles("");
 
-                if (pack_name != "_Raw") {
-                    WriteLog("Create resources '{}' from files {}...\n", pack_name, resources.GetFilesCount());
+                if (pack_name != "Raw") {
+                    WriteLog("Create resource pack '{}' from {} files.\n", pack_name, resources.GetFilesCount());
 
                     // Bake files
                     map<string, vector<uchar>> baked_files;
@@ -151,7 +153,7 @@ int main(int argc, char** argv)
                     }
                 }
                 else {
-                    WriteLog("Copy raw resource files {}...\n", resources.GetFilesCount());
+                    WriteLog("Copy raw {} resource files.\n", resources.GetFilesCount());
 
                     auto del_raw_ok = DiskFileSystem::DeleteDir("Raw");
                     RUNTIME_ASSERT(del_raw_ok);
@@ -167,6 +169,7 @@ int main(int argc, char** argv)
             }
         }
 
+        WriteLog("Bakering complete!\n");
         return 0;
     }
     catch (std::exception& ex) {
