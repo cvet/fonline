@@ -729,7 +729,11 @@ void DiskFileSystem::ResolvePath(string& path)
     std::error_code ec;
     const auto resolved = std::filesystem::absolute(path, ec);
     if (!!ec) {
+#if FO_WINDOWS
         path = WinWideCharToMultiByte(resolved.native().c_str());
+#else
+        path = resolved.native();
+#endif
     }
 }
 
