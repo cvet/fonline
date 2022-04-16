@@ -107,8 +107,6 @@ public:
 
     DiskFileSystem() = delete;
 
-    [[nodiscard]] static auto GetExePath() -> string;
-
     [[nodiscard]] static auto OpenFile(string_view fname, bool write) -> DiskFile;
     [[nodiscard]] static auto OpenFile(string_view fname, bool write, bool write_through) -> DiskFile;
     [[nodiscard]] static auto FindFiles(string_view path, string_view ext) -> DiskFind;

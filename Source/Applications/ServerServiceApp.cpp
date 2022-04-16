@@ -154,10 +154,10 @@ int main(int argc, char** argv)
             auto error = false;
 
             // Evaluate service path
-            const auto path_mb = string("\"").append(DiskFileSystem::GetExePath()).append("\" ");
-            wchar_t path_buf[4096];
-            ::MultiByteToWideChar(CP_UTF8, 0, path_mb.c_str(), static_cast<int>(path_mb.length()), path_buf, 4096);
-            const auto path = std::wstring(path_buf).append(::GetCommandLineW()).append(L" --server-service");
+            constexpr DWORD buf_len = 4096 * 2;
+            wchar_t buf[buf_len];
+            ::GetModuleFileNameW(nullptr, buf, buf_len);
+            const auto path = std::wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
 
             // Change executable path, if changed
             if (service != nullptr) {

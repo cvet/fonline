@@ -35,7 +35,9 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
+#if !FO_IOS
 #include <filesystem>
+#endif
 
 #if FO_WINDOWS
 #include <io.h>
@@ -704,6 +706,7 @@ uint64 DiskFind::GetWriteTime() const
 }
 #endif
 
+#if !FO_IOS
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {
     std::error_code ec;
@@ -750,17 +753,85 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
     return !std::filesystem::exists(dir, ec);
 }
 
-auto DiskFileSystem::GetExePath() -> string
-{
-#if FO_WINDOWS
-    constexpr DWORD buf_len = 4096;
-    wchar_t buf[buf_len] {};
-    const auto r = ::GetModuleFileNameW(nullptr, buf, buf_len);
-    return r != 0u ? _str().parseWideChar(buf).str() : string();
 #else
-    return string();
-#endif
+
+bool DiskFileSystem::DeleteFile(string_view fname)
+{
+    return remove(string(fname).c_str()) != 0;
 }
+
+bool DiskFileSystem::CopyFile(string_view fname, string_view copy_fname)
+{
+    bool ok = false;
+    FILE* from = fopen(string(fname).c_str(), "rb");
+    if (from) {
+        FILE* to = fopen(string(copy_fname).c_str(), "wb");
+        if (to) {
+            ok = true;
+            char buf[BUFSIZ];
+            while (!feof(from)) {
+                size_t rb = fread(buf, 1, BUFSIZ, from);
+                size_t rw = fwrite(buf, 1, rb, to);
+                if (!rb || rb != rw) {
+                    ok = false;
+                    break;
+                }
+            }
+            fclose(to);
+            if (!ok) {
+                DeleteFile(copy_fname);
+            }
+        }
+    }
+    fclose(from);
+    return ok;
+}
+
+bool DiskFileSystem::RenameFile(string_view fname, string_view new_fname)
+{
+    return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
+}
+
+void DiskFileSystem::ResolvePath(string& path)
+{
+    char* buf = realpath(path.c_str(), nullptr);
+    if (buf) {
+        path = buf;
+        free(buf);
+    }
+}
+
+void DiskFileSystem::MakeDirTree(string_view path)
+{
+    const string work = _str(path).normalizePathSlashes();
+    for (size_t i = 0; i < work.length(); i++) {
+        if (work[i] == '/') {
+            auto path_part = work.substr(0, i);
+            mkdir(path_part.c_str(), 0777);
+        }
+    }
+}
+
+auto DiskFileSystem::DeleteDir(string_view dir) -> bool
+{
+    MakeDirTree(dir);
+
+    vector<string> file_paths;
+    for (auto find = DiskFind(dir, ""); find; find++) {
+        if (!find.IsDir()) {
+            file_paths.emplace_back(find.GetPath());
+        }
+    }
+
+    for (auto& fp : file_paths) {
+        if (!DeleteFile(fp)) {
+            return false;
+        }
+    }
+
+    return rmdir(string(dir).c_str()) == 0;
+}
+#endif
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool include_subdirs, string_view ext, DiskFileSystem::FileVisitor& visitor)
 {
