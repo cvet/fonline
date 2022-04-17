@@ -171,7 +171,7 @@ StatusMessage( "Build hash: ${FO_BUILD_HASH}" )
 
 macro( WriteBuildHash target )
 	get_target_property( dir ${target} RUNTIME_OUTPUT_DIRECTORY )
-	add_custom_command( TARGET ${target} PRE_BUILD COMMAND ${CMAKE_COMMAND} -E rm -f "${dir}/${target}.build-hash" )
+	add_custom_command( TARGET ${target} PRE_BUILD COMMAND ${CMAKE_COMMAND} -E remove -f "${dir}/${target}.build-hash" )
 	add_custom_command( TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E echo_append ${FO_BUILD_HASH} > "${dir}/${target}.build-hash" )
 endmacro()
 
@@ -813,6 +813,7 @@ include_directories( "ThirdParty/AssimpMath" )
 if( FONLINE_BUILD_BAKER AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8 )
 	message( FATAL_ERROR "Using of FBX SDK for non 64 bit builds is not supported" )
 endif()
+
 if( ( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND ( WIN32 OR CMAKE_SYSTEM_NAME MATCHES "Linux" ) AND CMAKE_SIZEOF_VOID_P EQUAL 8 )
 	StatusMessage( "+ Fbx SDK" )
 
@@ -828,8 +829,10 @@ if( ( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE ) AND (
 	add_compile_definitions( FO_HAVE_FBXSDK=1 )
 
 	macro( CopyFbxSdkLib target )
-		get_target_property( dir ${target} RUNTIME_OUTPUT_DIRECTORY )
-		add_custom_command( TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/fbxsdk/libfbxsdk.dll" ${dir} )
+		if( WIN32 )
+			get_target_property( dir ${target} RUNTIME_OUTPUT_DIRECTORY )
+			add_custom_command( TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/fbxsdk/libfbxsdk.dll" ${dir} )
+		endif()
 	endmacro()
 
 else()
