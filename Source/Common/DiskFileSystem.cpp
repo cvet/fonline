@@ -33,6 +33,7 @@
 
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #if !FO_IOS
@@ -710,7 +711,8 @@ uint64 DiskFind::GetWriteTime() const
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {
     std::error_code ec;
-    return std::filesystem::remove(fname, ec);
+    std::filesystem::remove(fname, ec);
+    return !std::filesystem::exists(fname, ec) && !ec;
 }
 
 auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
@@ -723,14 +725,14 @@ auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> boo
 {
     std::error_code ec;
     std::filesystem::rename(fname, new_fname, ec);
-    return !!ec;
+    return !ec;
 }
 
 void DiskFileSystem::ResolvePath(string& path)
 {
     std::error_code ec;
     const auto resolved = std::filesystem::absolute(path, ec);
-    if (!!ec) {
+    if (!ec) {
 #if FO_WINDOWS
         path = WinWideCharToMultiByte(resolved.native().c_str());
 #else
@@ -749,8 +751,7 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 {
     std::error_code ec;
     std::filesystem::remove_all(dir, ec);
-
-    return !std::filesystem::exists(dir, ec);
+    return !std::filesystem::exists(dir, ec) && !ec;
 }
 
 #else
@@ -855,4 +856,19 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool inc
 void DiskFileSystem::IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor)
 {
     RecursiveDirLook(path, "", include_subdirs, ext, visitor);
+}
+
+void DiskFileSystem::RemoveBuildHashFile(string_view hash_name)
+{
+    const auto build_hash_deleted = DeleteFile(_str("{}.build-hash", hash_name));
+    RUNTIME_ASSERT(build_hash_deleted);
+}
+
+void DiskFileSystem::CreateBuildHashFile(string_view hash_name)
+{
+    auto build_hash_file = OpenFile(_str("{}.build-hash", hash_name), true, true);
+    RUNTIME_ASSERT(build_hash_file);
+    const auto build_hash = string(FO_BUILD_HASH);
+    const auto build_hash_writed = build_hash_file.Write(build_hash.c_str(), static_cast<uint>(build_hash.length()));
+    RUNTIME_ASSERT(build_hash_writed);
 }

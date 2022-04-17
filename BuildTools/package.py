@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import os
 import argparse
@@ -7,31 +7,65 @@ import shutil
 import zipfile
 import subprocess
 import tarfile
-import PIL
+#import PIL
 
 parser = argparse.ArgumentParser(description='FOnline packager')
-parser.add_argument('-target', dest='target', required=True,
-		choises=['Server', 'Client'], help='package target type')
-parser.add_argument('-platform', dest='platform', required=True,
-		choises=['Win32', 'Win64', 'Linux', 'Android', 'macOS', 'iOS', 'Web'], help='platform type')
-parser.add_argument('-devmode', dest='devmode', required=True, action='const_true', help='development mode')
+parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
+parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
+parser.add_argument('-nicename', dest='nicename', required=True, help='Representable game name')
+parser.add_argument('-authorname', dest='authorname', required=True, help='Author name')
+parser.add_argument('-gameversion', dest='gameversion', required=True, help='Game version')
+parser.add_argument('-target', dest='target', required=True, choices=['Server', 'Client', 'Single'], help='package target type')
+parser.add_argument('-platform', dest='platform', required=True, choices=['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web'], help='platform type')
+parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
+# Windows: win32 win64
+# Linux: x64
+# Android: arm arm64 x86
+# macOS: x64
+# iOS: arm64
+# Web: wasm
 parser.add_argument('-pack', dest='pack', required=True, help='package type')
+# Windows: Raw Zip Wix
+# Linux: Raw Tar Zip AppImage
+# Android: Raw Apk
+# macOS: Raw Bundle
+# iOS: Raw Bundle
+# Web: Raw
+parser.add_argument('-debug', dest='debug', action='store_true', help='debug mode')
+parser.add_argument('-config', dest='config', required=True, action='append', default=[], help='config tweaks')
 
-parser.add_argument('-binaries', dest='binaries', required=True, help='directory where to find binaries')
-parser.add_argument('-scripts', dest='scripts', required=True, help='directory to generated scripts')
-parser.add_argument('-resources', dest='resources', required=True, help='directory to generated resources')
+parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FONLINE_OUTPUT_PATH)')
+#parser.add_argument('-binaries', dest='binaries', required=True, help='directory where to find binaries')
+#parser.add_argument('-scripts', dest='scripts', required=True, help='directory to generated scripts')
+#parser.add_argument('-resources', dest='resources', required=True, help='directory to generated resources')
 
-parser.add_argument('-config', dest='config', action='append', default=[], help='config tweaks')
-
-parser.add_argument('-foroot', dest='foroot', help='path to fonline engine repository root (detected automatically if not specified)')
-parser.add_argument('-output', dest='output', help='output dir (current if not specified)')
+parser.add_argument('-output', dest='output', required=True, help='output dir')
 args = parser.parse_args()
 
-foRootPath = (args.foroot if args.foroot else os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))).rstrip('\\/')
+print('[Package]', f'Make {args.target} for {args.platform}-{args.arch} in {args.pack} to {args.output}')
+
+# Validate input
+for input in args.input:
+	pass
+	# Check 'version' in Scripts, Resources, Client/.., Server/.., Single/.., Tools/..
+
+# Dev build.hash runs inplace, without resources packing
+
+# Copy files
+
+# Patch files
+
+# Make packs
+
+# ========================================================================================
+
+sys.exit(1)
+
+"""
 outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
 
 for a in sys.argv:
-	print a
+	print(a)
 
 curPath = os.path.dirname(sys.argv[0])
 gameName = sys.argv[1]
@@ -126,7 +160,7 @@ def build():
 		import createmsi
 		import uuid
 
-		msiConfig = """ \
+		msiConfig = " "" \
 		{
 			"upgrade_guid": "%s",
 			"version": "%s",
@@ -147,7 +181,7 @@ def build():
 					"absent": "%s",
 					"staged_dir": "%s"
 			} ]
-		}""" % (uuid.uuid3(uuid.NAMESPACE_OID, gameName), '1.0.0', \
+		}" "" % (uuid.uuid3(uuid.NAMESPACE_OID, gameName), '1.0.0', \
 				gameName, 'Dream', gameName, gameName, 'The game', \
 				gameName, 'License.rtf', 'false', 32, \
 				gameName, gameName, 'MMORPG', 'disallow', gameName)
@@ -296,3 +330,4 @@ except:
 	if targetOutputPath:
 		shutil.rmtree(targetOutputPath, True)
 	raise
+"""

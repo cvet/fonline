@@ -118,4 +118,7 @@ public:
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
     static void IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor);
+
+    static void RemoveBuildHashFile(string_view hash_name);
+    static void CreateBuildHashFile(string_view hash_name);
 };

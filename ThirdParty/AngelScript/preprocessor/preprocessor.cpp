@@ -1120,7 +1120,7 @@ int Preprocessor::Preprocess( std::string file_path, OutStream& result, OutStrea
 
     size_t n = file_path.find_last_of( "\\/" );
     RootFile = ( n != std::string::npos ? file_path.substr( n + 1 ) : file_path );
-    RootPath = ( n != std::string::npos ? file_path.substr( 0, n + 1 ) : "./" );
+    RootPath = ( n != std::string::npos ? file_path.substr( 0, n + 1 ) : "" );
 
     DefineTable define_table = CustomDefines;
     LexemList   lexems;

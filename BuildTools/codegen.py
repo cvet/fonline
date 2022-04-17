@@ -13,6 +13,7 @@ import zipfile
 startTime = time.time()
 
 parser = argparse.ArgumentParser(description='FOnline code generator', fromfile_prefix_chars='@')
+parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 parser.add_argument('-gamename', dest='gamename', required=True, help='game name and version')
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
 parser.add_argument('-multiplayer', dest='multiplayer', action='store_true', help='generate multiplayer api')
@@ -810,12 +811,11 @@ checkErrors()
 tagsMetas = {} # Cleanup memory
 
 # Parse content
-content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fomsg': [] }
+content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fotxt': [] }
 
 for contentDir in args.content:
     try:
         def collectFiles(dir):
-            # Todo: recursive search
             result = []
             for file in os.listdir(dir):
                 fileParts = os.path.splitext(file)
@@ -2768,8 +2768,9 @@ checkErrors()
 
 # Version info
 createFile('Version-Include.h', args.genoutput)
+writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
 writeFile('static constexpr auto FO_GAME_VERSION = "' + args.gamename + '";')
-writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = 0x12345678;')
+writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = 0x12345678;') # Todo: FO_COMPATIBILITY_VERSION
 
 # Actual writing of generated files
 try:

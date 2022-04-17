@@ -1458,7 +1458,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
 
     ScriptLoader loader {script_data};
     Preprocessor::StringOutStream result, errors;
-    const auto errors_count = Preprocessor::Preprocess("Root", result, &errors, &loader);
+    const auto errors_count = Preprocessor::Preprocess("", result, &errors, &loader);
 
     while (!errors.String.empty() && errors.String.back() == '\n') {
         errors.String.pop_back();

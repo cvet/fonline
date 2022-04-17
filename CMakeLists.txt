@@ -45,13 +45,16 @@ set( BUILD_SHARED_LIBS OFF CACHE BOOL "Forced by FOnline" FORCE )
 set( BUILD_TESTING OFF CACHE BOOL "Forced by FOnline" FORCE )
 
 # Temporary variables
+set( FO_BUILD_HASH "" )
+set( FO_GIT_HASH_RESULT "" )
+set( FO_GIT_DIFF_RESULT "" )
+set( FO_GIT_HASH "" )
 set( FO_HEADLESS_ONLY YES )
 set( FO_DEV_NAME "Unknown" )
 set( FO_NICE_NAME "Unknown" )
-set( FO_COMPANY_NAME "Unknown" )
+set( FO_AUTHOR_NAME "Unknown" )
 set( FO_GAME_VERSION "0.0.1" )
-set( FO_MULTIPLAYER_SCRIPTING YES )
-set( FO_SINGLEPLAYER_SCRIPTING NO )
+set( FO_SINGLEPLAYER NO )
 set( FO_NATIVE_SCRIPTING NO )
 set( FO_ANGELSCRIPT_SCRIPTING NO )
 set( FO_MONO_SCRIPTING NO )
@@ -147,6 +150,28 @@ set( FO_MONO_ASSEMBLIES "" )
 set( FO_MONO_SOURCE "" )
 set( FO_CONFIGS "" )
 set( FO_PACKAGES "" )
+
+# Evaluate build hash
+execute_process( COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} RESULT_VARIABLE FO_GIT_HASH_RESULT OUTPUT_VARIABLE FO_GIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE )
+if( FO_GIT_HASH_RESULT STREQUAL "0" )
+	execute_process( COMMAND git diff-index --quiet HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} RESULT_VARIABLE FO_GIT_DIFF_RESULT )
+	if( FO_GIT_DIFF_RESULT STREQUAL "0" )
+		set( FO_BUILD_HASH ${FO_GIT_HASH} )
+	else()
+		set( FO_BUILD_HASH ${FO_GIT_HASH}-dirty )
+	endif()
+else()
+	string( RANDOM LENGTH 40 ALPHABET "0123456789abcdef" randomHash )
+	set( FO_BUILD_HASH ${randomHash}-random )
+endif()
+
+StatusMessage( "Build hash: ${FO_BUILD_HASH}" )
+
+macro( WriteBuildHash target )
+	get_target_property( dir ${target} RUNTIME_OUTPUT_DIRECTORY )
+	add_custom_command( TARGET ${target} PRE_BUILD COMMAND ${CMAKE_COMMAND} -E rm -f "${dir}/${target}.build-hash" )
+	add_custom_command( TARGET ${target} POST_BUILD COMMAND ${CMAKE_COMMAND} -E echo_append ${FO_BUILD_HASH} > "${dir}/${target}.build-hash" )
+endmacro()
 
 # Some info about build
 StatusMessage( "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}" )
@@ -427,8 +452,8 @@ macro( ResolveContributedFiles )
 endmacro()
 
 macro( SetupGame )
-	set( allowedCommands "DEV_NAME" "NICE_NAME" "COMPANY_NAME" "GAME_VERSION"
-		"MULTIPLAYER_SCRIPTING" "SINGLEPLAYER_SCRIPTING" "NATIVE_SCRIPTING" "ANGELSCRIPT_SCRIPTING" "MONO_SCRIPTING" )
+	set( allowedCommands "DEV_NAME" "NICE_NAME" "AUTHOR_NAME" "GAME_VERSION"
+		"SINGLEPLAYER" "NATIVE_SCRIPTING" "ANGELSCRIPT_SCRIPTING" "MONO_SCRIPTING" )
 	unset( opt )
 	foreach( arg ${ARGN} )
 		if( NOT opt )
@@ -449,7 +474,7 @@ macro( AddContent )
 	ResolveContributedFiles( ${ARGN} )
 	foreach( resultEntry ${result} )
 		StatusMessage( "+ Content at ${resultEntry}" )
-		list( APPEND FO_CONTENT ${result} )
+		list( APPEND FO_CONTENT ${resultEntry} )
 	endforeach()
 endmacro()
 macro( AddResources packName )
@@ -1324,9 +1349,9 @@ list( APPEND FO_TESTS_SOURCE
 include( FindPython3 )
 find_package( Python3 REQUIRED COMPONENTS Interpreter )
 
+list( APPEND FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}" )
 list( APPEND FO_CODEGEN_COMMAND_ARGS -output "${FO_SCRIPTS_OUTPUT}" )
 list( APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_BINARY_DIR}/GeneratedSource" )
-
 list( APPEND FO_CODEGEN_COMMAND_ARGS -gamename "${FO_NICE_NAME} ${FO_GAME_VERSION}" )
 
 list( APPEND FO_CODEGEN_COMMAND_ARGS -markdown )
@@ -1343,10 +1368,9 @@ endif()
 if( FO_MONO_SCRIPTING )
 	list( APPEND FO_CODEGEN_COMMAND_ARGS -csharp )
 endif()
-if( FO_MULTIPLAYER_SCRIPTING )
+if( NOT FO_SINGLEPLAYER )
 	list( APPEND FO_CODEGEN_COMMAND_ARGS -multiplayer )
-endif()
-if( FO_SINGLEPLAYER_SCRIPTING )
+else()
 	list( APPEND FO_CODEGEN_COMMAND_ARGS -singleplayer )
 endif()
 list( APPEND FO_CODEGEN_COMMAND_ARGS -mapper )
@@ -1522,6 +1546,7 @@ if( FONLINE_BUILD_CLIENT )
 	set_target_properties( FOnlineClient PROPERTIES OUTPUT_NAME "FOnlineClient" )
 	set_target_properties( FOnlineClient PROPERTIES COMPILE_DEFINITIONS "FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineClient "ClientLib" "CommonLib" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	WriteBuildHash( FOnlineClient )
 endif()
 
 if( FONLINE_BUILD_SERVER )
@@ -1537,6 +1562,7 @@ if( FONLINE_BUILD_SERVER )
 	set_target_properties( FOnlineServer PROPERTIES OUTPUT_NAME "FOnlineServer" )
 	set_target_properties( FOnlineServer PROPERTIES COMPILE_DEFINITIONS "FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineServer "ServerLib" "CommonLib" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	WriteBuildHash( FOnlineServer )
 
 	StatusMessage( "+ FOnlineServerHeadless" )
 	list( APPEND FO_APPLICATIONS_GROUP "FOnlineServerHeadless" )
@@ -1548,6 +1574,7 @@ if( FONLINE_BUILD_SERVER )
 	set_target_properties( FOnlineServerHeadless PROPERTIES OUTPUT_NAME "FOnlineServerHeadless" )
 	set_target_properties( FOnlineServerHeadless PROPERTIES COMPILE_DEFINITIONS "FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineServerHeadless "ServerLib" "CommonLib" "${CMAKE_DL_LIBS}" )
+	WriteBuildHash( FOnlineServerHeadless )
 
 	if( WIN32 )
 		StatusMessage( "+ FOnlineServerService" )
@@ -1560,6 +1587,7 @@ if( FONLINE_BUILD_SERVER )
 		set_target_properties( FOnlineServerService PROPERTIES OUTPUT_NAME "FOnlineServerService" )
 		set_target_properties( FOnlineServerService PROPERTIES COMPILE_DEFINITIONS "FO_TESTING=0;FO_SINGLEPLAYER=0" )
 		target_link_libraries( FOnlineServerService "ServerLib" "CommonLib" "${CMAKE_DL_LIBS}" )
+		WriteBuildHash( FOnlineServerService )
 	else()
 		StatusMessage( "+ FOnlineServerDaemon" )
 		list( APPEND FO_APPLICATIONS_GROUP "FOnlineServerDaemon" )
@@ -1571,6 +1599,7 @@ if( FONLINE_BUILD_SERVER )
 		set_target_properties( FOnlineServerDaemon PROPERTIES OUTPUT_NAME "FOnlineServerDaemon" )
 		set_target_properties( FOnlineServerDaemon PROPERTIES COMPILE_DEFINITIONS "FO_TESTING=0;FO_SINGLEPLAYER=0" )
 		target_link_libraries( FOnlineServerDaemon "ServerLib" "CommonLib" "${CMAKE_DL_LIBS}" )
+		WriteBuildHash( FOnlineServerDaemon )
 	endif()
 endif()
 
@@ -1602,6 +1631,7 @@ if( FONLINE_BUILD_SINGLE )
 	set_target_properties( FOnlineSingle PROPERTIES OUTPUT_NAME "FOnlineSingle" )
 	set_target_properties( FOnlineSingle PROPERTIES COMPILE_DEFINITIONS "FO_TESTING=0;FO_SINGLEPLAYER=1" )
 	target_link_libraries( FOnlineSingle "bson_static" "${FO_COMMON_SYSTEM_LIBS}" "${FO_COMMON_LIBS}" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	WriteBuildHash( FOnlineSingle )
 endif()
 
 if( FONLINE_BUILD_MAPPER )
@@ -1621,6 +1651,7 @@ if( FONLINE_BUILD_MAPPER )
 	set_target_properties( FOnlineMapper PROPERTIES OUTPUT_NAME "FOnlineMapper" )
 	set_target_properties( FOnlineMapper PROPERTIES COMPILE_DEFINITIONS "FO_TESTING=0;FO_SINGLEPLAYER=0" )
 	target_link_libraries( FOnlineMapper "CommonLib" "${FO_CLIENT_SYSTEM_LIBS}" "${FO_CLIENT_LIBS}" "${FO_RENDER_SYSTEM_LIBS}" "${FO_RENDER_LIBS}" "${CMAKE_DL_LIBS}" )
+	WriteBuildHash( FOnlineMapper )
 endif()
 
 if( FONLINE_BUILD_BAKER )
@@ -1740,12 +1771,11 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	if( FO_ANGELSCRIPT_SCRIPTING )
 		set( compileASScripts FOnlineASCompiler
 			-ASMapper "${FO_SCRIPTS_OUTPUT}/MapperRootModule.fos" )
-		if( FO_MULTIPLAYER_SCRIPTING )
+		if( NOT FO_SINGLEPLAYER )
 			list( APPEND compileASScripts
 				-ASServer "${FO_SCRIPTS_OUTPUT}/ServerRootModule.fos"
 				-ASClient "${FO_SCRIPTS_OUTPUT}/ClientRootModule.fos" )
-		endif()
-		if( FO_SINGLEPLAYER_SCRIPTING )
+		else()
 			list( APPEND compileASScripts
 				-ASSingle "${FO_SCRIPTS_OUTPUT}/SingleRootModule.fos" )
 		endif()
@@ -1821,87 +1851,98 @@ add_custom_target( BakeAll
 	COMMENT "Bake all" )
 list( APPEND FO_COMMANDS_GROUP "BakeAll" )
 
+# Configs
+StatusMessage( "Configs:" )
+foreach( config ${FO_CONFIGS} )
+	if ( Config_${config}_Inheriten )
+		StatusMessage( "+ Config ${config} (inheriten from ${Config_${config}_Inheriten})" )
+	else()
+		StatusMessage( "+ Config ${config}" )
+	endif()
+
+	set( processedOptions "" )
+	foreach( option ${Config_${config}_Options} )
+		list( FIND processedOptions ${option} optionIndex )
+		if( optionIndex EQUAL -1 )
+			list( APPEND processedOptions ${option} )
+			StatusMessage( "  ${option} = ${Config_${config}___${option}}" )
+		endif()
+	endforeach()
+endforeach()
+
 # Packaging
-if( FO_PACKAGES )
-	add_custom_target( MakeAllPackages
-		COMMAND ${compileASScripts}
-		COMMAND ${compileMonoScripts}
-		COMMAND ${bakeContent}
-		COMMAND ${bakeResources}
+StatusMessage( "Packages:" )
+
+add_custom_target( MakeAllPackages
+	DEPENDS CodeGeneration
+	WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
+	COMMENT "Make all packages" )
+list( APPEND FO_COMMANDS_GROUP "MakeAllPackages" )
+
+foreach( package ${FO_PACKAGES} )
+	if( ${Package_${package}_Debug} )
+		StatusMessage( "+ Debug package ${package}" )
+	else()
+		StatusMessage( "+ Release package ${package}" )
+	endif()
+
+	add_custom_target( MakePackage-${package}
 		DEPENDS CodeGeneration
 		WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
-		COMMENT "Make all packages" )
-	list( APPEND FO_COMMANDS_GROUP "MakeAllPackages" )
+		COMMENT "Make package ${package}" )
+	list( APPEND FO_COMMANDS_GROUP "MakePackage-${package}" )
 
-	StatusMessage( "Package parts:" )
+	foreach( entry ${Package_${package}_Parts} )
+		set( packageCommands ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" )
 
-	foreach( package ${FO_PACKAGES} )
-		add_custom_target( MakePackage-${package}
-			COMMAND ${compileASScripts}
-			COMMAND ${compileMonoScripts}
-			COMMAND ${bakeContent}
-			COMMAND ${bakeResources}
-			DEPENDS CodeGeneration
-			WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
-			COMMENT "Make package ${package}" )
-		list( APPEND FO_COMMANDS_GROUP "MakePackage-${package}" )
+		list( APPEND packageCommands -buildhash "${FO_BUILD_HASH}" )
+		list( APPEND packageCommands -devname "${FO_DEV_NAME}" )
+		list( APPEND packageCommands -nicename "${FO_NICE_NAME}" )
+		list( APPEND packageCommands -authorname "${FO_AUTHOR_NAME}" )
+		list( APPEND packageCommands -gameversion "${FO_GAME_VERSION}" )
 
-		foreach( entry ${Package_${package}_Parts} )
-			string( REPLACE "," ";" entry ${entry} )
-			list( GET entry 0 target )
-			list( GET entry 1 platform )
-			list( GET entry 2 arch )
-			list( GET entry 3 packType )
-			list( GET entry 4 customConfig )
+		string( REPLACE "," ";" entry ${entry} )
+		list( GET entry 0 target )
+		list( GET entry 1 platform )
+		list( GET entry 2 arch )
+		list( GET entry 3 pack )
+		list( GET entry 4 customConfig )
 
-			set( packageCommands ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/BuildTools/package.py" )
-			list( APPEND packageCommands -devname "${FO_DEV_NAME}" )
-			list( APPEND packageCommands -nicename "${FO_NICE_NAME}" )
-			list( APPEND packageCommands -author "${FO_COMPANY_NAME}" )
-			list( APPEND packageCommands -version "${FO_VERSION}" )
+		list( APPEND packageCommands -target "${target}" )
+		list( APPEND packageCommands -platform "${platform}" )
+		list( APPEND packageCommands -arch "${arch}" )
+		list( APPEND packageCommands -pack "${pack}" )
 
-			set( configuration "Release" )
-			if( ${Package_${package}_Debug} )
-				set( configuration "Debug" )
-				list( APPEND packageCommands -debug )
-			endif()
-
-			list( APPEND packageCommands -binaries "${FONLINE_OUTPUT_PATH}" )
-			list( APPEND packageCommands -scripts "${FO_SCRIPTS_OUTPUT}" )
-			list( APPEND packageCommands -resources "${FO_RESOURCES_OUTPUT}" )
-
-			if( customConfig )
-				set( curConfig ${customConfig} )
-			else()
-				set( curConfig ${Package_${package}_Config} )
-			endif()
-			set( processedOptions "" )
-			while( curConfig )
-				foreach( option ${Config_${curConfig}_Options} )
-					list( FIND processedOptions ${option} optionIndex )
-					if( optionIndex EQUAL -1 )
-						list( APPEND processedOptions ${option} )
-						list( APPEND packageCommands -config "${option},${Config_${curConfig}___${option}}" )
-					endif()
-				endforeach()
-				set( curConfig ${Config_${curConfig}_Inheriten} )
-			endwhile()
-
-			foreach( res ${FO_RESOURCES} )
-				list( APPEND packageCommands -res ${res} )
+		if( customConfig )
+			set( config ${customConfig} )
+		else()
+			set( config ${Package_${package}_Config} )
+		endif()
+		set( curConfig ${config} )
+		set( processedOptions "" )
+		while( curConfig )
+			foreach( option ${Config_${curConfig}_Options} )
+				list( FIND processedOptions ${option} optionIndex )
+				if( optionIndex EQUAL -1 )
+					list( APPEND processedOptions ${option} )
+					list( APPEND packageCommands -config "${option},${Config_${curConfig}___${option}}" )
+				endif()
 			endforeach()
+			set( curConfig ${Config_${curConfig}_Inheriten} )
+		endwhile()
 
-			set( packagePartName ${package}-${target}-${platform}-${arch}-${configuration}-${packType} )
-			StatusMessage( "+ ${packagePartName}" )
-			add_custom_command( TARGET MakePackage-${package} POST_BUILD
-				COMMAND ${packageCommands}
-				COMMENT "Process ${packagePartName}" )
-			add_custom_command( TARGET MakeAllPackages POST_BUILD
-				COMMAND ${packageCommands}
-				COMMENT "Process ${packagePartName}" )
-		endforeach()
+		if( ${Package_${package}_Debug} )
+			list( APPEND packageCommands -debug )
+		endif()
+
+		list( APPEND packageCommands -input ${FONLINE_OUTPUT_PATH} )
+		list( APPEND packageCommands -output ${FO_PACKAGES_OUTPUT} )
+
+		StatusMessage( "  ${target} for ${platform}-${arch} in ${pack} with ${config} config" )
+		add_custom_command( TARGET MakePackage-${package} POST_BUILD COMMAND ${packageCommands} )
+		add_custom_command( TARGET MakeAllPackages POST_BUILD COMMAND ${packageCommands} )
 	endforeach()
-endif()
+endforeach()
 
 # Setup targets grouping
 set_property( GLOBAL PROPERTY USE_FOLDERS ON )

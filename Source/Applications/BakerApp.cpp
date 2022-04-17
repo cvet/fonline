@@ -59,6 +59,8 @@ int main(int argc, char** argv)
 
         auto settings = GlobalSettings(argc, argv);
 
+        DiskFileSystem::RemoveBuildHashFile("Resources");
+
         // Content
         if (!settings.ContentEntry.empty()) {
             WriteLog("Bake content.\n");
@@ -106,9 +108,7 @@ int main(int argc, char** argv)
             for (const auto& re : settings.ResourcesEntry) {
                 auto re_splitted = _str(re).split(',');
                 RUNTIME_ASSERT(re_splitted.size() == 2);
-                if (re_splitted[0] != "Embedded") {
-                    res_packs[re_splitted[0]].push_back(re_splitted[1]);
-                }
+                res_packs[re_splitted[0]].push_back(re_splitted[1]);
             }
 
             for (const auto& [pack_name, paths] : res_packs) {
@@ -170,6 +170,8 @@ int main(int argc, char** argv)
         }
 
         WriteLog("Bakering complete!\n");
+
+        DiskFileSystem::CreateBuildHashFile("Resources");
         return 0;
     }
     catch (std::exception& ex) {
