@@ -39,11 +39,12 @@ class ConfigFile final
 {
 public:
     ConfigFile() = delete;
-    explicit ConfigFile(string_view str);
+    ConfigFile(string_view str, NameResolver& name_resolver);
+    ConfigFile(string_view str, std::nullptr_t);
     ConfigFile(const ConfigFile&) = delete;
     ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
-    auto operator=(ConfigFile&&) noexcept -> ConfigFile& = default;
+    auto operator=(ConfigFile&&) noexcept = delete;
     explicit operator bool() const { return !_appKeyValues.empty(); }
     ~ConfigFile() = default;
 
@@ -75,6 +76,7 @@ private:
 
     void ParseStr(string_view str);
 
+    NameResolver* _nameResolver;
     bool _collectContent {};
     ValuesMap _appKeyValues {};
     ValuesMapItVec _appKeyValuesOrder {};

@@ -1,39 +1,36 @@
 // FOS Common Sort -10
 
-#define EXPORT
-#define HASH                             # (name) GetStrHash( name )
-
 // Say types
-#define SAY_NORM                         ( 1 )
-#define SAY_NORM_ON_HEAD                 ( 2 )
-#define SAY_SHOUT                        ( 3 )
-#define SAY_SHOUT_ON_HEAD                ( 4 )
-#define SAY_EMOTE                        ( 5 )
-#define SAY_EMOTE_ON_HEAD                ( 6 )
-#define SAY_WHISP                        ( 7 )
-#define SAY_WHISP_ON_HEAD                ( 8 )
-#define SAY_SOCIAL                       ( 9 )
-#define SAY_RADIO                        ( 10 )
-#define SAY_NETMSG                       ( 11 )
-#define SAY_DIALOG                       ( 12 )
-#define SAY_APPEND                       ( 13 )
-#define SAY_FLASH_WINDOW                 ( 41 )   // Only flash window in tray and beep
+#define SAY_NORM          (1)
+#define SAY_NORM_ON_HEAD  (2)
+#define SAY_SHOUT         (3)
+#define SAY_SHOUT_ON_HEAD (4)
+#define SAY_EMOTE         (5)
+#define SAY_EMOTE_ON_HEAD (6)
+#define SAY_WHISP         (7)
+#define SAY_WHISP_ON_HEAD (8)
+#define SAY_SOCIAL        (9)
+#define SAY_RADIO         (10)
+#define SAY_NETMSG        (11)
+#define SAY_DIALOG        (12)
+#define SAY_APPEND        (13)
+#define SAY_FLASH_WINDOW  (41) // Only flash window in tray and beep
 
 // Msg nums
-#define TEXTMSG_TEXT                     ( 0 )
-#define TEXTMSG_DLG                      ( 1 )
-#define TEXTMSG_ITEM                     ( 2 )
-#define TEXTMSG_GAME                     ( 3 )
-#define TEXTMSG_GM                       ( 4 )
-#define TEXTMSG_COMBAT                   ( 5 )
-#define TEXTMSG_QUEST                    ( 6 )
-#define TEXTMSG_HOLO                     ( 7 )
-#define TEXTMSG_INTERNAL                 ( 8 )
-#define TEXTMSG_LOCATIONS                ( 9 )
-#define DLGSTR                           # ( dialogId, strNum )( ( ( dialogId ) & 0xFFFFC000 ) | ( ( 12000 + ( strNum ) ) & ~0xFFFFC000 ) )
-#define LOCSTR                           # ( locPid, strNum )( ( ( locPid ) & 0xFFFFF000 ) | ( ( strNum ) & ~0xFFFFF000 ) )
-#define ITEMSTR                          # ( itemPid, strNum )( ( ( itemPid ) & 0xFFFFFFF0 ) | ( ( strNum ) & ~0xFFFFFFF0 ) )
-#define CRSTR                            # ( crPid, strNum )( ( ( crPid ) & 0xFFFFFFF0 ) | ( ( strNum ) & ~0xFFFFFFF0 ) )
+#define TEXTMSG_TEXT      (0)
+#define TEXTMSG_DLG       (1)
+#define TEXTMSG_ITEM      (2)
+#define TEXTMSG_GAME      (3)
+#define TEXTMSG_GM        (4)
+#define TEXTMSG_COMBAT    (5)
+#define TEXTMSG_QUEST     (6)
+#define TEXTMSG_HOLO      (7)
+#define TEXTMSG_INTERNAL  (8)
+#define TEXTMSG_LOCATIONS (9)
+#define DLGSTR            #(dialogId, strNum)((uint(dialogId.hash) & 0xFFFFC000) |((12000 +(strNum)) & ~0xFFFFC000))
+#define LOCSTR            #(locPid, strNum)((uint(locPid.hash) & 0xFFFFF000) |((strNum) & ~0xFFFFF000))
+#define ITEMSTR           #(itemPid, strNum)((uint(itemPid.hash) & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
+#define CRSTR             #(crPid, strNum)((uint(crPid.hash) & 0xFFFFFFF0) |((strNum) & ~0xFFFFFFF0))
 
 // Critter actions
 // Flags for chosen:
@@ -41,151 +38,139 @@
 // s - hardcoded server call
 // for all others critters actions call only server
 // flags actionExt item
-#define ACTION_MOVE                      ( 0 )     // l
-#define ACTION_RUN                       ( 1 )     // l
-#define ACTION_MOVE_ITEM                 ( 2 )     // l s from slot +
-#define ACTION_MOVE_ITEM_SWAP            ( 3 )     // l s from slot +
-#define ACTION_USE_ITEM                  ( 4 )     // l s +
-#define ACTION_DROP_ITEM                 ( 5 )     // l s from slot +
-#define ACTION_USE_WEAPON                ( 6 )     // l fail attack 8 bit, use index (0-2) 4-7 bits, aim 0-3 bits +
-#define ACTION_RELOAD_WEAPON             ( 7 )     // l s +
-#define ACTION_USE_SKILL                 ( 8 )     // l s skill index (see SK_*)
-#define ACTION_PICK_ITEM                 ( 9 )     // l s +
-#define ACTION_PICK_CRITTER              ( 10 )    // l 0 - loot, 1 - steal, 2 - push
-#define ACTION_OPERATE_CONTAINER         ( 11 )    // l s transfer type * 10 + [0 - get, 1 - get all, 2 - put] + (exclude get all)
-#define ACTION_BARTER                    ( 12 )    // s 0 - item taken, 1 - item given +
-#define ACTION_DODGE                     ( 13 )    // 0 - front, 1 - back
-#define ACTION_DAMAGE                    ( 14 )    // 0 - front, 1 - back
-#define ACTION_DAMAGE_FORCE              ( 15 )    // 0 - front, 1 - back
-#define ACTION_KNOCKOUT                  ( 16 )    // s 0 - knockout anim2begin
-#define ACTION_STANDUP                   ( 17 )    // s 0 - knockout anim2end
-#define ACTION_FIDGET                    ( 18 )    // l
-#define ACTION_DEAD                      ( 19 )    // s dead type anim2 (see Anim2 in _animation.fos)
-#define ACTION_CONNECT                   ( 20 )    //
-#define ACTION_DISCONNECT                ( 21 )    //
-#define ACTION_RESPAWN                   ( 22 )    // s
-#define ACTION_REFRESH                   ( 23 )    // s
+#define ACTION_MOVE              (0)  // l
+#define ACTION_RUN               (1)  // l
+#define ACTION_MOVE_ITEM         (2)  // l s from slot +
+#define ACTION_MOVE_ITEM_SWAP    (3)  // l s from slot +
+#define ACTION_USE_ITEM          (4)  // l s +
+#define ACTION_DROP_ITEM         (5)  // l s from slot +
+#define ACTION_USE_WEAPON        (6)  // l fail attack 8 bit, use index (0-2) 4-7 bits, aim 0-3 bits +
+#define ACTION_RELOAD_WEAPON     (7)  // l s +
+#define ACTION_USE_SKILL         (8)  // l s skill index (see SK_*)
+#define ACTION_PICK_ITEM         (9)  // l s +
+#define ACTION_PICK_CRITTER      (10) // l 0 - loot, 1 - steal, 2 - push
+#define ACTION_OPERATE_CONTAINER (11) // l s transfer type * 10 + [0 - get, 1 - get all, 2 - put] + (exclude get all)
+#define ACTION_BARTER            (12) // s 0 - item taken, 1 - item given +
+#define ACTION_DODGE             (13) // 0 - front, 1 - back
+#define ACTION_DAMAGE            (14) // 0 - front, 1 - back
+#define ACTION_DAMAGE_FORCE      (15) // 0 - front, 1 - back
+#define ACTION_KNOCKOUT          (16) // s 0 - knockout anim2begin
+#define ACTION_STANDUP           (17) // s 0 - knockout anim2end
+#define ACTION_FIDGET            (18) // l
+#define ACTION_DEAD              (19) // s dead type anim2 (see Anim2 in _animation.fos)
+#define ACTION_CONNECT           (20) //
+#define ACTION_DISCONNECT        (21) //
+#define ACTION_RESPAWN           (22) // s
+#define ACTION_REFRESH           (23) // s
 
 // Slots
-#define SLOT_INV                         ( 0 )     // Inventory
-#define SLOT_HAND1                       ( 1 )     // Weapon slot
-#define SLOT_HAND2                       ( 2 )     // Extended slot
-#define SLOT_ARMOR                       ( 3 )     // Armor slot
+#define SLOT_INV   (0) // Inventory
+#define SLOT_HAND1 (1) // Weapon slot
+#define SLOT_HAND2 (2) // Extended slot
+#define SLOT_ARMOR (3) // Armor slot
 
 // Timeouts in real seconds, generic values
-#define MAXIMUM_TIMEOUT                  ( Time::RealHour( 5 ) )
-#define IS_TIMEOUT                       # (to) ( ( to ) > __FullSecond )
+#define MAXIMUM_TIMEOUT (Time::RealHour(5))
+#define IS_TIMEOUT      #(to)((to)> GetFullSecond())
 
 // Combat modes
-#define COMBAT_MODE_ANY                  ( 0 )
-#define COMBAT_MODE_REAL_TIME            ( 1 )
-#define COMBAT_MODE_TURN_BASED           ( 2 )
+#define COMBAT_MODE_ANY        (0)
+#define COMBAT_MODE_REAL_TIME  (1)
+#define COMBAT_MODE_TURN_BASED (2)
 
 // Global map fog
-#define FOG_FULL                         ( 0 )
-#define FOG_HALF                         ( 1 )
-#define FOG_HALF_EX                      ( 2 )
-#define FOG_NONE                         ( 3 )
-
-// Critter find types
-// Combine groups with | operator
-#define FIND_LIFE                        ( 0x01 )   // First group
-#define FIND_KO                          ( 0x02 )
-#define FIND_DEAD                        ( 0x04 )
-#define FIND_LIFE_AND_KO                 ( 0x03 )
-#define FIND_LIFE_AND_DEAD               ( 0x05 )
-#define FIND_KO_AND_DEAD                 ( 0x06 )
-#define FIND_ALL                         ( 0x0F )
-#define FIND_ONLY_PLAYERS                ( 0x10 )   // Second group
-#define FIND_ONLY_NPC                    ( 0x20 )
+#define FOG_FULL    (0)
+#define FOG_HALF    (1)
+#define FOG_HALF_EX (2)
+#define FOG_NONE    (3)
 
 // Dialog links
-#define DIALOG_END                       uint( -1 )
-#define DIALOG_BACK                      uint( -2 )
-#define DIALOG_BARTER                    uint( -3 )
-#define DIALOG_ATTACK                    uint( -4 )
+#define DIALOG_END    uint(-1)
+#define DIALOG_BACK   uint(-2)
+#define DIALOG_BARTER uint(-3)
+#define DIALOG_ATTACK uint(-4)
 
 // Access levels
-#define ACCESS_CLIENT                    ( 0 )
-#define ACCESS_TESTER                    ( 1 )
-#define ACCESS_MODER                     ( 2 )
-#define ACCESS_ADMIN                     ( 3 )
+#define ACCESS_CLIENT (0)
+#define ACCESS_TESTER (1)
+#define ACCESS_MODER  (2)
+#define ACCESS_ADMIN  (3)
 
 // Look checks
-#define LOOK_CHECK_DIR                   ( 0x01 )   // Nerfe look by directions of look
-#define LOOK_CHECK_SNEAK_DIR             ( 0x02 )   // Nerfe opponent sneak by directions of look
-#define LOOK_CHECK_SNEAK_WEIGHT          ( 0x04 )   // Nerfe sneak by current weight
-#define LOOK_CHECK_TRACE                 ( 0x08 )   // Tracing for wall aviablility
-#define LOOK_CHECK_SCRIPT                ( 0x10 )   // Allow bool check_look(...) in main.fos, all other defines ignored
-#define LOOK_CHECK_ITEM_SCRIPT           ( 0x20 )   // Allow bool check_trap_look(...) in main.fos, for items with ITEM_TRAP flag
+#define LOOK_CHECK_DIR          (0x01) // Nerfe look by directions of look
+#define LOOK_CHECK_SNEAK_DIR    (0x02) // Nerfe opponent sneak by directions of look
+#define LOOK_CHECK_SNEAK_WEIGHT (0x04) // Nerfe sneak by current weight
+#define LOOK_CHECK_TRACE        (0x08) // Tracing for wall aviablility
+#define LOOK_CHECK_SCRIPT       (0x10) // Allow bool check_look(...) in main.fos, all other defines ignored
+#define LOOK_CHECK_ITEM_SCRIPT  (0x20) // Allow bool check_trap_look(...) in main.fos, for items with ITEM_TRAP flag
 
 // Radio
 // Flags, Item::RadioFlags
-#define RADIO_DISABLE_SEND               ( 0x0001 )   // Hardcoded
-#define RADIO_DISABLE_RECV               ( 0x0002 )   // Hardcoded
-#define RADIO_DISABLE_SHIFT_SEND         ( 0x0100 )
-#define RADIO_DISABLE_SHIFT_RECV         ( 0x0200 )
-#define RADIO_DISABLE_SHIFT_BC_SEND      ( 0x0400 )
-#define RADIO_DISABLE_SHIFT_BC_RECV      ( 0x0800 )
-#define RADIO_DISABLE_SHIFT_CHANNEL      ( 0x1000 )
+#define RADIO_DISABLE_SEND          (0x0001) // Hardcoded
+#define RADIO_DISABLE_RECV          (0x0002) // Hardcoded
+#define RADIO_DISABLE_SHIFT_SEND    (0x0100)
+#define RADIO_DISABLE_SHIFT_RECV    (0x0200)
+#define RADIO_DISABLE_SHIFT_BC_SEND (0x0400)
+#define RADIO_DISABLE_SHIFT_BC_RECV (0x0800)
+#define RADIO_DISABLE_SHIFT_CHANNEL (0x1000)
 // Broadcast, Item::RadioBroadcastSend/RadioBroadcastRecv, Hardcoded
-#define RADIO_BROADCAST_WORLD            ( 0 )                   // Send/recv in all world
-#define RADIO_BROADCAST_MAP              ( 20 )                  // Send/recv only on one map
-#define RADIO_BROADCAST_LOCATION         ( 40 )                  // Send/recv only on one location
-#define RADIO_BROADCAST_ZONE             # (x) ( 100 + ( x ) )   // Send/recv only in x (1..100) zones radius on global map
-#define RADIO_BROADCAST_FORCE_ALL        ( 250 )                 // Force send/recv in any place
+#define RADIO_BROADCAST_WORLD     (0)            // Send/recv in all world
+#define RADIO_BROADCAST_MAP       (20)           // Send/recv only on one map
+#define RADIO_BROADCAST_LOCATION  (40)           // Send/recv only on one location
+#define RADIO_BROADCAST_ZONE      #(x)(100 +(x)) // Send/recv only in x (1..100) zones radius on global map
+#define RADIO_BROADCAST_FORCE_ALL (250)          // Force send/recv in any place
 
 // Internal server commands
-#define COMMAND_EXIT                     ( 1 )
-#define COMMAND_MYINFO                   ( 2 )
-#define COMMAND_GAMEINFO                 ( 3 )
-#define COMMAND_CRITID                   ( 4 )
-#define COMMAND_MOVECRIT                 ( 5 )
-#define COMMAND_KILLCRIT                 ( 6 )
-#define COMMAND_DISCONCRIT               ( 7 )
-#define COMMAND_TOGLOBAL                 ( 8 )
-#define COMMAND_RESPAWN                  ( 9 )
-#define COMMAND_PARAM                    ( 10 )
-#define COMMAND_GETACCESS                ( 11 )
-#define COMMAND_ADDITEM                  ( 12 )
-#define COMMAND_CRASH                    ( 13 )
-#define COMMAND_ADDITEM_SELF             ( 14 )
-#define COMMAND_ADDNPC                   ( 15 )
-#define COMMAND_ADDLOCATION              ( 16 )
-#define COMMAND_RELOADSCRIPTS            ( 17 )
-#define COMMAND_RELOAD_CLIENT_SCRIPTS    ( 19 )
-#define COMMAND_RUNSCRIPT                ( 20 )
-#define COMMAND_RELOAD_PROTOS            ( 21 )
-#define COMMAND_REGENMAP                 ( 25 )
-#define COMMAND_RELOADDIALOGS            ( 26 )
-#define COMMAND_LOADDIALOG               ( 27 )
-#define COMMAND_RELOADTEXTS              ( 28 )
-#define COMMAND_RELOADAI                 ( 29 )
-#define COMMAND_CHECKVAR                 ( 30 )
-#define COMMAND_SETVAR                   ( 31 )
-#define COMMAND_SETTIME                  ( 32 )
-#define COMMAND_BAN                      ( 33 )
-#define COMMAND_DELETE_ACCOUNT           ( 34 )
-#define COMMAND_CHANGE_PASSWORD          ( 35 )
-#define COMMAND_DROP_UID                 ( 36 )
-#define COMMAND_LOG                      ( 37 )
-#define COMMAND_DEV_EXEC                 ( 38 )
-#define COMMAND_DEV_FUNC                 ( 39 )
-#define COMMAND_DEV_GVAR                 ( 40 )
+#define COMMAND_EXIT                  (1)
+#define COMMAND_MYINFO                (2)
+#define COMMAND_GAMEINFO              (3)
+#define COMMAND_CRITID                (4)
+#define COMMAND_MOVECRIT              (5)
+#define COMMAND_KILLCRIT              (6)
+#define COMMAND_DISCONCRIT            (7)
+#define COMMAND_TOGLOBAL              (8)
+#define COMMAND_RESPAWN               (9)
+#define COMMAND_PARAM                 (10)
+#define COMMAND_GETACCESS             (11)
+#define COMMAND_ADDITEM               (12)
+#define COMMAND_CRASH                 (13)
+#define COMMAND_ADDITEM_SELF          (14)
+#define COMMAND_ADDNPC                (15)
+#define COMMAND_ADDLOCATION           (16)
+#define COMMAND_RELOADSCRIPTS         (17)
+#define COMMAND_RELOAD_CLIENT_SCRIPTS (19)
+#define COMMAND_RUNSCRIPT             (20)
+#define COMMAND_RELOAD_PROTOS         (21)
+#define COMMAND_REGENMAP              (25)
+#define COMMAND_RELOADDIALOGS         (26)
+#define COMMAND_LOADDIALOG            (27)
+#define COMMAND_RELOADTEXTS           (28)
+#define COMMAND_RELOADAI              (29)
+#define COMMAND_CHECKVAR              (30)
+#define COMMAND_SETVAR                (31)
+#define COMMAND_SETTIME               (32)
+#define COMMAND_BAN                   (33)
+#define COMMAND_DELETE_ACCOUNT        (34)
+#define COMMAND_CHANGE_PASSWORD       (35)
+#define COMMAND_DROP_UID              (36)
+#define COMMAND_LOG                   (37)
+#define COMMAND_DEV_EXEC              (38)
+#define COMMAND_DEV_FUNC              (39)
+#define COMMAND_DEV_GVAR              (40)
 
 // Item uses
-#define USE_PRIMARY                      ( 0 )
-#define USE_SECONDARY                    ( 1 )
-#define USE_THIRD                        ( 2 )
-#define USE_RELOAD                       ( 3 )
-#define USE_USE                          ( 4 )
-#define MAX_USES                         ( 3 )
+#define USE_PRIMARY   (0)
+#define USE_SECONDARY (1)
+#define USE_THIRD     (2)
+#define USE_RELOAD    (3)
+#define USE_USE       (4)
+#define MAX_USES      (3)
 
 // Client lighting
-#define MAX_LIGHT_VALUE                  ( 10000 )
-#define MAX_LIGHT_HEX                    ( 200 )
-#define MAX_LIGHT_ALPHA                  ( 255 )
+#define MAX_LIGHT_VALUE (10000)
+#define MAX_LIGHT_HEX   (200)
+#define MAX_LIGHT_ALPHA (255)
 // Flags
-#define LIGHT_DISABLE_DIR                # (dir) ( 1 << Math::Clamp( dir, 0, 5 ) )
-#define LIGHT_GLOBAL                     ( 0x40 )
-#define LIGHT_INVERSE                    ( 0x80 )
+#define LIGHT_DISABLE_DIR #(dir)(1 << Math::Clamp(dir, 0, 5))
+#define LIGHT_GLOBAL      (0x40)
+#define LIGHT_INVERSE     (0x80)

@@ -39,22 +39,22 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
-#include "minizip/zip.h"
-
 struct ServerScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(const char* script_path);
 };
 
 struct ClientScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(const char* script_path);
 };
 
 struct MapperScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(const char* script_path);
 };
+
+unordered_set<string> CompilerPassedMessages;
 
 #if !FO_TESTING
 int main(int argc, char** argv)
@@ -67,44 +67,87 @@ int main(int argc, char** argv)
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();
+        LogWithoutTimestamp();
 
-        auto settings = GlobalSettings(argc, argv);
-        int errors = 0;
+        const auto settings = GlobalSettings(argc, argv);
+
+        DiskFileSystem::RemoveBuildHashFile("AngelScript");
+
+        auto server_failed = false;
+        auto client_failed = false;
+        auto mapper_failed = false;
 
         if (!settings.ASServer.empty()) {
+            WriteLog("    Compile server scripts at {}\n", settings.ASServer);
+
             try {
-                ServerScriptSystem().InitAngelScriptScripting(settings.ASServer);
+                ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
             }
             catch (std::exception& ex) {
-                WriteLog("Server scripts compilation failed!\n");
-                WriteLog("{}\n", ex.what());
-                errors++;
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
+                server_failed = true;
+                WriteLog("\n");
             }
         }
 
         if (!settings.ASClient.empty()) {
+            WriteLog("    Compile client scripts at {}\n", settings.ASClient);
+
             try {
-                ClientScriptSystem().InitAngelScriptScripting(settings.ASClient);
+                ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
             }
             catch (std::exception& ex) {
-                WriteLog("Client scripts compilation failed!\n");
-                WriteLog("{}\n", ex.what());
-                errors++;
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
+                client_failed = true;
+                WriteLog("\n");
             }
         }
 
         if (!settings.ASMapper.empty()) {
+            WriteLog("    Compile mapper scripts at {}\n", settings.ASMapper);
+
             try {
-                MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper);
+                MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
             }
             catch (std::exception& ex) {
-                WriteLog("Mapper scripts compilation failed!\n");
-                WriteLog("{}\n", ex.what());
-                errors++;
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
+                mapper_failed = true;
+                WriteLog("\n");
             }
         }
 
-        return errors;
+        WriteLog("\n");
+
+        if (!settings.ASServer.empty()) {
+            WriteLog("    Server scripts compilation {}!\n", server_failed ? "failed" : "succeeded");
+        }
+        if (!settings.ASClient.empty()) {
+            WriteLog("    Client scripts compilation {}!\n", client_failed ? "failed" : "succeeded");
+        }
+        if (!settings.ASMapper.empty()) {
+            WriteLog("    Mapper scripts compilation {}!\n", mapper_failed ? "failed" : "succeeded");
+        }
+        if (settings.ASServer.empty() && settings.ASClient.empty() && settings.ASMapper.empty()) {
+            WriteLog("    Nothing to compile!\n");
+        }
+
+        WriteLog("\n");
+
+        if (server_failed || client_failed || mapper_failed) {
+            return 1;
+        }
+
+        DiskFileSystem::CreateBuildHashFile("AngelScript");
+        return 0;
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

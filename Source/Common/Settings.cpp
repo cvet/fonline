@@ -187,8 +187,6 @@ static void DrawEditableEntry(string_view name, vector<bool>& entry)
 
 GlobalSettings::GlobalSettings(int argc, char** argv)
 {
-    DiskFileSystem::ResetCurDir();
-
     // Injected config
     static char internal_config[5022] = {"###InternalConfig###\0"
                                          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
@@ -242,7 +240,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
                                          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"};
 
-    if (const auto config = ConfigFile(internal_config)) {
+    if (const auto config = ConfigFile(internal_config, nullptr)) {
         for (const auto& [key, value] : config.GetApp("")) {
             SetValue(key, value);
         }
@@ -262,33 +260,11 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
         if (argv[i][0] == '-') {
             auto key = _str("{}", argv[i]).trim().str().substr(1);
-            if (key == "AddConfig") {
-                if (i < argc - 1 && argv[i + 1][0] != '-') {
-                    const string path = _str(argv[i + 1]);
-                    string dir = _str(path).extractDir();
-                    string fname = _str(path).extractFileName();
-                    DiskFileSystem::SetCurrentDir(dir);
-                    auto config_file = DiskFileSystem::OpenFile(fname, false);
-                    if (config_file) {
-                        auto* buf = new char[config_file.GetSize()];
-                        if (config_file.Read(buf, config_file.GetSize())) {
-                            auto config = ConfigFile(buf);
-                            for (const auto& [key, value] : config.GetApp("")) {
-                                SetValue(key, value);
-                            }
-                        }
-                        delete[] buf;
-                    }
-                    DiskFileSystem::ResetCurDir();
-                }
+            if (i < argc - 1 && argv[i + 1][0] != '-') {
+                SetValue(key, _str("{}", argv[i + 1]).trim());
             }
             else {
-                if (i < argc - 1 && argv[i + 1][0] != '-') {
-                    SetValue(key, _str("{}", argv[i + 1]).trim());
-                }
-                else {
-                    SetValue(key, "1");
-                }
+                SetValue(key, "1");
             }
         }
     }
@@ -342,12 +318,12 @@ void GlobalSettings::SetValue(string_view setting_name, string value)
         DiskFileSystem::ResolvePath(value);
     }
 
-#define SETTING(type, name, ...) \
+#define FIXED_SETTING(type, name, ...) \
     if (setting_name == #name) { \
         SetEntry(const_cast<type&>(name), value); \
         return; \
     }
-#define VAR_SETTING(type, name, ...) \
+#define VARIABLE_SETTING(type, name, ...) \
     if (setting_name == #name) { \
         SetEntry(name, value); \
         return; \
@@ -359,12 +335,12 @@ void GlobalSettings::SetValue(string_view setting_name, string value)
 
 void GlobalSettings::Draw(bool editable)
 {
-#define SETTING(type, name, ...) \
+#define FIXED_SETTING(type, name, ...) \
     if (editable) \
         DrawEditableEntry(#name, const_cast<type&>(name)); \
     else \
         DrawEntry(#name, name)
-#define VAR_SETTING(type, name, ...) \
+#define VARIABLE_SETTING(type, name, ...) \
     if (editable) \
         DrawEditableEntry(#name, name); \
     else \

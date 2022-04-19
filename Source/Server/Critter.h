@@ -36,14 +36,9 @@
 #include "Common.h"
 
 #include "Dialogs.h"
-#include "Entity.h"
-#include "GeometryHelper.h"
-#include "ServerScripting.h"
-#include "Settings.h"
-#include "Timer.h"
-
-#define FO_API_CRITTER_HEADER 1
-#include "ScriptApi.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
+#include "ServerEntity.h"
 
 struct PathStep
 {
@@ -59,7 +54,7 @@ class Item;
 class Map;
 class Location;
 
-class Critter final : public Entity
+class Critter final : public ServerEntity, public CritterProperties
 {
     friend class Player;
     friend class CritterManager;
@@ -67,7 +62,7 @@ class Critter final : public Entity
 public:
     struct MovingData
     {
-        int State {1};
+        MovingState State {MovingState::Success};
         uint TargId {};
         ushort HexX {};
         ushort HexY {};
@@ -80,7 +75,7 @@ public:
     };
 
     Critter() = delete;
-    Critter(uint id, Player* owner, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto);
     Critter(const Critter&) = delete;
     Critter(Critter&&) noexcept = delete;
     auto operator=(const Critter&) = delete;
@@ -96,20 +91,20 @@ public:
     [[nodiscard]] auto IsAlive() const -> bool;
     [[nodiscard]] auto IsDead() const -> bool;
     [[nodiscard]] auto IsKnockout() const -> bool;
-    [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
+    [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto GetItem(uint item_id, bool skip_hide) -> Item*;
-    [[nodiscard]] auto GetItemsNoLock() -> vector<Item*>& { return _invItems; }
-    [[nodiscard]] auto GetItemByPid(hash item_pid) -> Item*;
-    [[nodiscard]] auto GetItemByPidSlot(hash item_pid, int slot) -> Item*;
+    [[nodiscard]] auto GetRawItems() -> vector<Item*>& { return _invItems; }
+    [[nodiscard]] auto GetItemByPid(hstring item_pid) -> Item*;
+    [[nodiscard]] auto GetItemByPidSlot(hstring item_pid, int slot) -> Item*;
     [[nodiscard]] auto GetItemSlot(int slot) -> Item*;
     [[nodiscard]] auto GetItemsSlot(int slot) -> vector<Item*>;
-    [[nodiscard]] auto CountItemPid(hash item_pid) -> uint;
+    [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
     [[nodiscard]] auto RealCountItems() const -> uint { return static_cast<uint>(_invItems.size()); }
-    [[nodiscard]] auto CountItems() -> uint;
+    [[nodiscard]] auto CountItems() const -> uint;
     [[nodiscard]] auto GetInventory() -> vector<Item*>&;
-    [[nodiscard]] auto IsHaveGeckItem() -> bool;
+    [[nodiscard]] auto IsHaveGeckItem() const -> bool;
     [[nodiscard]] auto GetCrSelf(uint crid) -> Critter*;
-    [[nodiscard]] auto GetCrFromVisCr(uchar find_type, bool vis_cr_self) -> vector<Critter*>;
+    [[nodiscard]] auto GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>;
     [[nodiscard]] auto GetGlobalMapCritter(uint cr_id) const -> Critter*;
     [[nodiscard]] auto IsTransferTimeouts(bool send) -> bool;
     [[nodiscard]] auto IsTalking() const -> bool;
@@ -134,13 +129,8 @@ public:
     void AttachPlayer(Player* owner);
     void ClearVisible();
     void SetItem(Item* item);
-    auto SetScript(string_view func, bool first_time) -> bool;
-    void SendMessage(int num, int val, int to, MapManager& map_mngr);
-    void AddCrTimeEvent(hash func_num, uint rate, uint duration, int identifier) const;
-    void EraseCrTimeEvent(int index);
-    void ContinueTimeEvents(int offs_time);
 
-    void Broadcast_Property(NetProperty::Type type, Property* prop, Entity* entity);
+    void Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity);
     void Broadcast_Move(uint move_params);
     void Broadcast_Position();
     void Broadcast_Action(int action, int action_ext, Item* item);
@@ -150,12 +140,12 @@ public:
     void SendAndBroadcast_Action(int action, int action_ext, Item* item);
     void SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot);
     void SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void SendAndBroadcast_SetAnims(int cond, uint anim1, uint anim2);
+    void SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2);
     void SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view text, uchar how_say, bool unsafe_text);
     void SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg);
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
 
-    void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
+    void Send_Property(NetProperty type, const Property* prop, ServerEntity* entity);
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
     void Send_AddCritter(Critter* cr);
@@ -183,11 +173,11 @@ public:
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2);
+    void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
-    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
+    void Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     void Send_PlaySound(uint crid_synchronize, string_view sound_name);
     void Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
@@ -199,7 +189,48 @@ public:
     void Send_AllAutomapsInfo(MapManager& map_mngr);
     void Send_SomeItems(const vector<Item*>* items, int param);
 
-    uint Flags {};
+    ///@ ExportEvent
+    ENTITY_EVENT(Finish);
+    ///@ ExportEvent
+    ENTITY_EVENT(Idle);
+    ///@ ExportEvent
+    ENTITY_EVENT(CheckMoveItem, Item* /*item*/, uchar /*toSlot*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(ItemMoved, Item* /*item*/, uchar /*fromSlot*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterAppeared, Critter* /*appearedCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterAppearedDist1, Critter* /*appearedCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterAppearedDist2, Critter* /*appearedCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterAppearedDist3, Critter* /*appearedCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterDisappeared, Critter* /*disappearedCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterDisappearedDist1, Critter* /*disappearedCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterDisappearedDist2, Critter* /*disappearedCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterDisappearedDist3, Critter* /*disappearedCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(ItemOnMapAppeared, Item* /*item*/, bool /*added*/, Critter* /*fromCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(ItemOnMapDisappeared, Item* /*item*/, bool /*removed*/, Critter* /*toCr*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(ItemOnMapChanged, Item* /*item*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(Talk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(Barter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(GlobalMapIdle);
+    ///@ ExportEvent
+    ENTITY_EVENT(GlobalMapIn);
+    ///@ ExportEvent
+    ENTITY_EVENT(GlobalMapOut);
+
+    uint Flags {}; // Todo: move Flags to properties
     string Name {};
     bool IsRunning {};
     int LockMapTransfers {};
@@ -213,7 +244,7 @@ public:
     set<uint> VisCr3 {};
     set<uint> VisItem {};
     uint ViewMapId {};
-    hash ViewMapPid {};
+    hstring ViewMapPid {};
     ushort ViewMapLook {};
     ushort ViewMapHx {};
     ushort ViewMapHy {};
@@ -225,21 +256,9 @@ public:
     uint LookCacheValue {};
     vector<Critter*>* GlobalMapGroup {};
     uint RadioMessageSended {};
-
-#define FO_API_CRITTER_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
-
     TalkData Talk {}; // Todo: incapsulate Critter::Talk
 
 private:
-    CritterSettings& _settings;
-    GeometryHelper _geomHelper;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
     Player* _player {};
     bool _playerDetached {};
     uint _playerDetachTick {};

@@ -34,16 +34,10 @@
 #include "Location.h"
 #include "Critter.h"
 #include "Map.h"
+#include "Server.h"
 #include "StringUtils.h"
 
-#define FO_API_LOCATION_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(Location, "Location", true);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Location, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-Location::Location(uint id, const ProtoLocation* proto, ServerScriptSystem& script_sys) : Entity(id, EntityType::Location, PropertiesRegistrator, proto), _scriptSys {script_sys}
+Location::Location(FOServer* engine, uint id, const ProtoLocation* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), LocationProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
 }
@@ -52,16 +46,15 @@ void Location::BindScript()
 {
     EntranceScriptBindId = 0;
 
-    if (GetEntranceScript() != 0u) {
-        string func_name = _str().parseHash(GetEntranceScript());
+    if (const auto func_name = GetEntranceScript()) {
         /*EntranceScriptBindId =
-            scriptSys.BindByFuncName(func_name, "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
+            scriptSys.BindByFuncName(GetEntranceScript(), "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
     }
 }
 
 auto Location::GetProtoLoc() const -> const ProtoLocation*
 {
-    return dynamic_cast<const ProtoLocation*>(Proto);
+    return static_cast<const ProtoLocation*>(_proto);
 }
 
 auto Location::IsLocVisible() const -> bool
@@ -74,9 +67,16 @@ auto Location::GetMapsRaw() -> vector<Map*>&
     return _locMaps;
 };
 
-auto Location::GetMaps() const -> vector<Map*>
+auto Location::GetMaps() -> vector<Map*>
 {
     return _locMaps;
+}
+
+auto Location::GetMaps() const -> vector<const Map*>
+{
+    vector<const Map*> maps;
+    maps.insert(maps.begin(), _locMaps.begin(), _locMaps.end());
+    return maps;
 }
 
 auto Location::GetMapsCount() const -> uint
@@ -92,7 +92,7 @@ auto Location::GetMapByIndex(uint index) -> Map*
     return _locMaps[index];
 }
 
-auto Location::GetMapByPid(hash map_pid) -> Map*
+auto Location::GetMapByPid(hstring map_pid) -> Map*
 {
     for (auto* map : _locMaps) {
         if (map->GetProtoId() == map_pid) {
@@ -102,7 +102,7 @@ auto Location::GetMapByPid(hash map_pid) -> Map*
     return nullptr;
 }
 
-auto Location::GetMapIndex(hash map_pid) -> uint
+auto Location::GetMapIndex(hstring map_pid) -> uint
 {
     uint index = 0;
     for (auto* map : _locMaps) {

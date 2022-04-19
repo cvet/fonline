@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "CacheStorage.h"
+#include "Client.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"
@@ -47,19 +48,21 @@
 #include "LocationView.h"
 #include "MapLoader.h"
 #include "MapView.h"
-#include "MapperScripting.h"
 #include "MsgFiles.h"
 #include "NetBuffer.h"
 #include "PlayerView.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "Timer.h"
 
-class FOMapper final // Todo: rename FOMapper to just Mapper
+class FOMapper final : public FOClient
 {
+    friend class MapperScriptSystem;
+
 public:
     struct IfaceAnim
     {
@@ -70,25 +73,11 @@ public:
         uint CurSpr {};
     };
 
-    struct MapText
-    {
-        ushort HexX {};
-        ushort HexY {};
-        uint StartTick {};
-        uint Tick {};
-        string Text {};
-        uint Color {};
-        bool Fade {};
-        IRect Pos {};
-        IRect EndPos {};
-    };
-
     struct SubTab
     {
         vector<const ProtoItem*> ItemProtos {};
         vector<const ProtoCritter*> NpcProtos {};
-        vector<string> TileNames {};
-        vector<hash> TileHashes {};
+        vector<hstring> TileNames {};
         int Index {};
         int Scroll {};
     };
@@ -110,7 +99,8 @@ public:
     {
         ushort HexX {};
         ushort HexY {};
-        EntityType Type {};
+        bool IsCritter {};
+        bool IsItem {};
         const ProtoEntity* Proto {};
         Properties* Props {};
         vector<EntityBuf*> Children {};
@@ -118,7 +108,7 @@ public:
 
     struct TileBuf
     {
-        hash Name {};
+        hstring Name {};
         ushort HexX {};
         ushort HexY {};
         short OffsX {};
@@ -188,17 +178,18 @@ public:
     auto operator=(FOMapper&&) noexcept = delete;
     ~FOMapper() = default;
 
+    void RegisterData();
+
     auto InitIface() -> int;
     auto IfaceLoadRect(IRect& comp, string_view name) -> bool;
-    void MainLoop();
+    void MapperMainLoop();
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ChangeGameTime();
     void ProcessInputEvents();
     void ProcessInputEvent(const InputEvent& event);
 
-    auto AnimLoad(uint name_hash, AtlasType res_type) -> uint;
-    auto AnimLoad(string_view fname, AtlasType res_type) -> uint;
+    auto AnimLoad(hstring name, AtlasType res_type) -> uint;
     auto AnimGetCurSpr(uint anim_id) -> uint;
     auto AnimGetCurSprCnt(uint anim_id) -> uint;
     auto AnimGetSprCount(uint anim_id) -> uint;
@@ -227,24 +218,24 @@ public:
     void SetTabIndex(uint index);
     void RefreshCurProtos();
     auto IsObjectMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
-    auto IsTileMode() const -> bool { return CurTileHashes != nullptr && CurTileNames != nullptr && CurProtoScroll != nullptr; }
+    auto IsTileMode() const -> bool { return CurTileNames != nullptr && CurProtoScroll != nullptr; }
     auto IsCritMode() const -> bool { return CurNpcProtos != nullptr && CurProtoScroll != nullptr; }
 
-    void MoveEntity(Entity* entity, ushort hx, ushort hy);
-    void DeleteEntity(Entity* entity);
+    void MoveEntity(ClientEntity* entity, ushort hx, ushort hy);
+    void DeleteEntity(ClientEntity* entity);
     void SelectClear();
     void SelectAddItem(ItemHexView* item);
     void SelectAddCrit(CritterView* npc);
     void SelectAddTile(ushort hx, ushort hy, bool is_roof);
-    void SelectAdd(Entity* entity);
-    void SelectErase(Entity* entity);
+    void SelectAdd(ClientEntity* entity);
+    void SelectErase(ClientEntity* entity);
     void SelectAll();
     auto SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x, int& offs_y) -> bool;
     void SelectDelete();
 
-    auto AddCritter(hash pid, ushort hx, ushort hy) -> CritterView*;
-    auto AddItem(hash pid, ushort hx, ushort hy, Entity* owner) -> ItemView*;
-    void AddTile(hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof);
+    auto AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*;
+    auto AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> ItemView*;
+    void AddTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof);
     auto CloneEntity(Entity* entity) -> Entity*;
 
     void BufferCopy();
@@ -256,7 +247,7 @@ public:
     void ObjKeyDown(KeyCode dik, string_view dik_text);
     void ObjKeyDownApply(Entity* entity);
     void SelectEntityProp(int line);
-    auto GetInspectorEntity() -> Entity*;
+    auto GetInspectorEntity() -> ClientEntity*;
 
     void ConsoleDraw();
     void ConsoleKeyDown(KeyCode dik, string_view dik_text);
@@ -274,32 +265,29 @@ public:
     void RunMapSaveScript(MapView* map);
     void DrawIfaceLayer(uint layer);
 
-    void OnSetItemFlags(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemSomeLight(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemPicMap(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOffsetXY(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
 
-    MapperSettings& Settings;
-    GameTimer GameTime;
-    GeometryHelper GeomHelper;
-    FileManager FileMngr;
+    ///@ ExportEvent
+    ENTITY_EVENT(ConsoleMessage, string& /*text*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(EditMapLoad, MapView* /*map*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(EditMapSave, MapView* /*map*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(InspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
+
     FileManager ServerFileMngr;
-    MapperScriptSystem ScriptSys;
-    CacheStorage Cache;
-    Keyboard Keyb;
-    ProtoManager ProtoMngr;
-    EffectManager EffectMngr;
-    SpriteManager SprMngr;
-    HexManager HexMngr;
-    ResourceManager ResMngr;
+
     ConfigFile IfaceIni;
     string ServerWritePath {};
     string ClientWritePath {};
     PropertyVec ShowProps {};
     MapView* ClientCurMap {};
     LocationView* ClientCurLocation {};
-    vector<MapText> GameMapTexts {};
     int DrawCrExtInfo {};
     LanguagePack CurLang {};
     vector<IfaceAnim*> Animations {};
@@ -362,8 +350,7 @@ public:
     int SubTabsX {};
     int SubTabsY {};
     vector<const ProtoItem*>* CurItemProtos {};
-    vector<hash>* CurTileHashes {};
-    vector<string>* CurTileNames {};
+    vector<hstring>* CurTileNames {};
     vector<const ProtoCritter*>* CurNpcProtos {};
     int NpcDir {};
     int* CurProtoScroll {};
@@ -387,7 +374,7 @@ public:
     bool IsSelectCrit {};
     bool IsSelectTile {};
     bool IsSelectRoof {};
-    vector<Entity*> SelectedEntities {};
+    vector<ClientEntity*> SelectedEntities {};
     vector<SelMapTile> SelectedTile {};
     vector<EntityBuf> EntitiesBuffer {};
     vector<TileBuf> TilesBuffer {};
@@ -407,7 +394,7 @@ public:
     bool ObjVisible {};
     bool ObjFix {};
     bool ObjToAll {};
-    Entity* InspectorEntity {};
+    ClientEntity* InspectorEntity {};
     AnyFrames* ConsolePic {};
     int ConsolePicX {};
     int ConsolePicY {};

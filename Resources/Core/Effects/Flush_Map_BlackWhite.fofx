@@ -1,0 +1,47 @@
+[Effect]
+
+[VertexShader]
+layout(location = 0) uniform mat4 ProjectionMatrix;
+
+layout(location = 0) in vec2 InPosition;
+layout(location = 1) in vec2 InTexCoord;
+
+layout(location = 0) out vec2 TexCoord;
+
+void main(void)
+{
+    gl_Position = ProjectionMatrix * vec4(InPosition, 0.0, 1.0);
+    TexCoord = InTexCoord;
+}
+
+[FragmentShader]
+layout(location = 0) uniform sampler2D ColorMap;
+
+layout(location = 0) in vec2 TexCoord;
+
+layout(location = 0) out vec4 FragColor;
+
+void main(void)
+{
+    FragColor = texture(ColorMap, TexCoord);
+    
+    FragColor.rgb = vec3((FragColor.r + FragColor.g + FragColor.b) / 3.0);
+    
+    if (FragColor.r < 0.2 || FragColor.r > 0.9) {
+        FragColor.r = 0.0;
+    } else {
+        FragColor.r = 1.0;
+    }
+    
+    if (FragColor.g < 0.2 || FragColor.g > 0.9) {
+        FragColor.g = 0.0;
+    } else {
+        FragColor.g = 1.0;
+    }
+    
+    if (FragColor.b < 0.2 || FragColor.b > 0.9) {
+        FragColor.b = 0.0;
+    } else {
+        FragColor.b = 1.0;
+    }
+}

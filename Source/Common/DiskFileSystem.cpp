@@ -33,7 +33,12 @@
 
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
+
+#if !FO_IOS
+#include <filesystem>
+#endif
 
 #if FO_WINDOWS
 #include <io.h>
@@ -49,27 +54,6 @@
 #if FO_WINDOWS && FO_UWP
 #define CreateFileW CreateFileFromAppW
 #endif
-
-struct DiskFileSystemData
-{
-    DiskFileSystemData()
-    {
-        const auto buf_len = 16384 * 2;
-#if FO_WINDOWS
-        const auto dir_buf = std::make_unique<wchar_t[]>(buf_len);
-        ::GetCurrentDirectoryW(buf_len, dir_buf.get());
-        InitialDir = _str().parseWideChar(dir_buf.get());
-#else
-        const auto dir_buf = std::make_unique<char[]>(buf_len);
-        char* r = getcwd(dir_buf.get(), buf_len);
-        UNUSED_VARIABLE(r);
-        InitialDir = dir_buf.get();
-#endif
-    }
-
-    string InitialDir {};
-};
-GLOBAL_DATA(DiskFileSystemData, Data);
 
 auto DiskFileSystem::OpenFile(string_view fname, bool write) -> DiskFile
 {
@@ -116,7 +100,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
 
         h = try_create();
         if (h == INVALID_HANDLE_VALUE) {
-            DiskFileSystem::MakeDirTree(fname);
+            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
             h = try_create();
         }
     }
@@ -248,9 +232,8 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
     SDL_RWops* ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
     if (!ops) {
         if (write) {
-            DiskFileSystem::MakeDirTree(fname);
+            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
         }
-
         ops = SDL_RWFromFile(string(fname).c_str(), write ? "wb" : "rb");
     }
     if (!ops) {
@@ -391,7 +374,7 @@ DiskFile::DiskFile(string_view fname, bool write, bool write_through)
     FILE* f = ::fopen(string(fname).c_str(), write ? "wb" : "rb");
     if (!f) {
         if (write) {
-            DiskFileSystem::MakeDirTree(fname);
+            DiskFileSystem::MakeDirTree(_str(fname).extractDir());
         }
         f = ::fopen(string(fname).c_str(), write ? "wb" : "rb");
     }
@@ -504,27 +487,6 @@ uint DiskFile::GetSize() const
 #endif
 
 #if FO_WINDOWS
-auto DiskFileSystem::DeleteFile(string_view fname) -> bool
-{
-    return ::DeleteFileW(WinMultiByteToWideChar(fname).c_str()) != FALSE;
-}
-
-auto DiskFileSystem::IsFileExists(string_view fname) -> bool
-{
-    return ::_waccess(WinMultiByteToWideChar(fname).c_str(), 0) == 0;
-}
-
-auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
-{
-    return ::CopyFileW(WinMultiByteToWideChar(fname).c_str(), WinMultiByteToWideChar(copy_fname).c_str(), FALSE) != FALSE;
-}
-
-auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
-{
-    const DWORD flags = MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH;
-    return !(::MoveFileExW(WinMultiByteToWideChar(fname).c_str(), WinMultiByteToWideChar(new_fname).c_str(), flags) == 0);
-}
-
 struct DiskFind::Impl
 {
     HANDLE FindHandle {};
@@ -559,7 +521,7 @@ DiskFind::DiskFind(string_view path, string_view ext)
 DiskFind::~DiskFind()
 {
     if (_pImpl) {
-        ::CloseHandle(_pImpl->FindHandle);
+        ::FindClose(_pImpl->FindHandle);
     }
 }
 
@@ -616,48 +578,6 @@ auto DiskFind::GetWriteTime() const -> uint64
 }
 
 #else
-
-bool DiskFileSystem::DeleteFile(string_view fname)
-{
-    return remove(string(fname).c_str()) != 0;
-}
-
-bool DiskFileSystem::IsFileExists(string_view fname)
-{
-    return access(string(fname).c_str(), 0) == 0;
-}
-
-bool DiskFileSystem::CopyFile(string_view fname, string_view copy_fname)
-{
-    bool ok = false;
-    FILE* from = fopen(string(fname).c_str(), "rb");
-    if (from) {
-        FILE* to = fopen(string(copy_fname).c_str(), "wb");
-        if (to) {
-            ok = true;
-            char buf[BUFSIZ];
-            while (!feof(from)) {
-                size_t rb = fread(buf, 1, BUFSIZ, from);
-                size_t rw = fwrite(buf, 1, rb, to);
-                if (!rb || rb != rw) {
-                    ok = false;
-                    break;
-                }
-            }
-            fclose(to);
-            if (!ok) {
-                DeleteFile(copy_fname);
-            }
-        }
-    }
-    fclose(from);
-    return ok;
-}
-
-bool DiskFileSystem::RenameFile(string_view fname, string_view new_fname)
-{
-    return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
-}
 
 struct DiskFind::Impl
 {
@@ -787,36 +707,108 @@ uint64 DiskFind::GetWriteTime() const
 }
 #endif
 
+#if !FO_IOS
+auto DiskFileSystem::DeleteFile(string_view fname) -> bool
+{
+    std::error_code ec;
+    std::filesystem::remove(fname, ec);
+    return !std::filesystem::exists(fname, ec) && !ec;
+}
+
+auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
+{
+    std::error_code ec;
+    return std::filesystem::copy_file(fname, copy_fname, ec);
+}
+
+auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
+{
+    std::error_code ec;
+    std::filesystem::rename(fname, new_fname, ec);
+    return !ec;
+}
+
 void DiskFileSystem::ResolvePath(string& path)
 {
+    std::error_code ec;
+    const auto resolved = std::filesystem::absolute(path, ec);
+    if (!ec) {
 #if FO_WINDOWS
-    const auto len = ::GetFullPathNameW(WinMultiByteToWideChar(path).c_str(), 0, nullptr, nullptr);
-    vector<wchar_t> buf(len);
-    if (::GetFullPathNameW(WinMultiByteToWideChar(path).c_str(), len, &buf[0], nullptr) != 0u) {
-        path = WinWideCharToMultiByte(&buf[0]);
-        path = _str(path).normalizePathSlashes();
+        path = WinWideCharToMultiByte(resolved.native().c_str());
+#else
+        path = resolved.native();
+#endif
     }
+}
+
+void DiskFileSystem::MakeDirTree(string_view path)
+{
+    std::error_code ec;
+    std::filesystem::create_directories(path, ec);
+}
+
+auto DiskFileSystem::DeleteDir(string_view dir) -> bool
+{
+    std::error_code ec;
+    std::filesystem::remove_all(dir, ec);
+    return !std::filesystem::exists(dir, ec) && !ec;
+}
 
 #else
+
+bool DiskFileSystem::DeleteFile(string_view fname)
+{
+    return remove(string(fname).c_str()) != 0;
+}
+
+bool DiskFileSystem::CopyFile(string_view fname, string_view copy_fname)
+{
+    bool ok = false;
+    FILE* from = fopen(string(fname).c_str(), "rb");
+    if (from) {
+        FILE* to = fopen(string(copy_fname).c_str(), "wb");
+        if (to) {
+            ok = true;
+            char buf[BUFSIZ];
+            while (!feof(from)) {
+                size_t rb = fread(buf, 1, BUFSIZ, from);
+                size_t rw = fwrite(buf, 1, rb, to);
+                if (!rb || rb != rw) {
+                    ok = false;
+                    break;
+                }
+            }
+            fclose(to);
+            if (!ok) {
+                DeleteFile(copy_fname);
+            }
+        }
+    }
+    fclose(from);
+    return ok;
+}
+
+bool DiskFileSystem::RenameFile(string_view fname, string_view new_fname)
+{
+    return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
+}
+
+void DiskFileSystem::ResolvePath(string& path)
+{
     char* buf = realpath(path.c_str(), nullptr);
     if (buf) {
         path = buf;
         free(buf);
     }
-#endif
 }
 
 void DiskFileSystem::MakeDirTree(string_view path)
 {
-    string work = _str(path).normalizePathSlashes();
+    const string work = _str(path).normalizePathSlashes();
     for (size_t i = 0; i < work.length(); i++) {
         if (work[i] == '/') {
             auto path_part = work.substr(0, i);
-#if FO_WINDOWS
-            ::CreateDirectoryW(WinMultiByteToWideChar(path_part).c_str(), nullptr);
-#else
             mkdir(path_part.c_str(), 0777);
-#endif
         }
     }
 }
@@ -838,46 +830,9 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
         }
     }
 
-#if FO_WINDOWS
-    return ::RemoveDirectoryW(_str(dir).toWideChar().c_str()) != FALSE;
-#else
     return rmdir(string(dir).c_str()) == 0;
-#endif
 }
-
-auto DiskFileSystem::SetCurrentDir(string_view dir) -> bool
-{
-    string resolved_dir = _str(dir).formatPath();
-    ResolvePath(resolved_dir);
-
-#if FO_WINDOWS
-    return ::SetCurrentDirectoryW(_str(resolved_dir).toWideChar().c_str()) != FALSE;
-#else
-    return chdir(resolved_dir.c_str()) == 0;
 #endif
-}
-
-void DiskFileSystem::ResetCurDir()
-{
-#if FO_WINDOWS
-    ::SetCurrentDirectoryW(_str(Data->InitialDir).toWideChar().c_str());
-#else
-    int r = chdir(Data->InitialDir.c_str());
-    UNUSED_VARIABLE(r);
-#endif
-}
-
-auto DiskFileSystem::GetExePath() -> string
-{
-#if FO_WINDOWS
-    const DWORD buf_len = 4096;
-    wchar_t buf[buf_len] {};
-    const auto r = ::GetModuleFileNameW(nullptr, buf, buf_len);
-    return r != 0u ? _str().parseWideChar(buf).str() : string();
-#else
-    return string();
-#endif
-}
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool include_subdirs, string_view ext, DiskFileSystem::FileVisitor& visitor)
 {
@@ -901,4 +856,19 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool inc
 void DiskFileSystem::IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor)
 {
     RecursiveDirLook(path, "", include_subdirs, ext, visitor);
+}
+
+void DiskFileSystem::RemoveBuildHashFile(string_view hash_name)
+{
+    const auto build_hash_deleted = DeleteFile(_str("{}.build-hash", hash_name));
+    RUNTIME_ASSERT(build_hash_deleted);
+}
+
+void DiskFileSystem::CreateBuildHashFile(string_view hash_name)
+{
+    auto build_hash_file = OpenFile(_str("{}.build-hash", hash_name), true, true);
+    RUNTIME_ASSERT(build_hash_file);
+    const auto build_hash = string(FO_BUILD_HASH);
+    const auto build_hash_writed = build_hash_file.Write(build_hash.c_str(), static_cast<uint>(build_hash.length()));
+    RUNTIME_ASSERT(build_hash_writed);
 }

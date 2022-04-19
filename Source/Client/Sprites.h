@@ -40,11 +40,37 @@
 constexpr auto SPRITES_POOL_GROW_SIZE = 10000;
 
 class RenderEffect;
-class MapSprite;
 class SpriteManager;
 class Sprites;
 class Sprite;
 using SpriteVec = vector<Sprite*>;
+
+///@ ExportObject Client
+struct MapSprite
+{
+    SCRIPTABLE_OBJECT();
+    bool Valid {};
+    uint SprId {};
+    ushort HexX {};
+    ushort HexY {};
+    hstring ProtoId {};
+    int FrameIndex {};
+    int OffsX {};
+    int OffsY {};
+    bool IsFlat {};
+    bool NoLight {};
+    int DrawOrder {};
+    int DrawOrderHyOffset {};
+    CornerType Corner {};
+    bool DisableEgg {};
+    uint Color {};
+    uint ContourColor {};
+    bool IsTweakOffs {};
+    short TweakOffsX {};
+    short TweakOffsY {};
+    bool IsTweakAlpha {};
+    uchar TweakAlpha {};
+};
 
 class Sprite
 {
@@ -65,7 +91,7 @@ public:
     void SetColor(uint color);
     void SetAlpha(uchar* alpha);
     void SetFlash(uint mask);
-    void SetLight(int corner, uchar* light, ushort maxhx, ushort maxhy);
+    void SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy);
     void SetFixedAlpha(uchar alpha);
 
     // Todo:: incapsulate all sprite data

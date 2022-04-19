@@ -32,11 +32,12 @@
 //
 
 #include "ScriptSystem.h"
+#include "EngineBase.h"
 #include "Log.h"
 #include "StringUtils.h"
 #include "Timer.h"
 
-ScriptSystem::ScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr) : _mainObj {obj}, _settings {settings}, _fileMngr {file_mngr}
+ScriptSystem::ScriptSystem(GlobalSettings& settings) : _settings {settings}
 {
 }
 
@@ -328,7 +329,6 @@ void ScriptSystem::ProcessDeferredCalls()
     invoker->Process();
 }
 
-// Todo: rework FONLINE_
 / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
 bool ScriptSystem::LoadDeferredCalls()
 {
@@ -871,7 +871,7 @@ void ScriptSystem::CacheEnumValues()
     }
 }
 
-int ScriptSystem::GetEnumValue(string_view enum_value_name, bool& fail)
+int ScriptSystem::ResolveEnumValue(string_view enum_value_name, bool& fail)
 {
     auto it = cachedEnums.find(enum_value_name);
     if (it == cachedEnums.end())
@@ -883,14 +883,14 @@ int ScriptSystem::GetEnumValue(string_view enum_value_name, bool& fail)
     return it->second;
 }
 
-int ScriptSystem::GetEnumValue(string_view enum_name, string_view value_name, bool& fail)
+int ScriptSystem::ResolveEnumValue(string_view enum_name, string_view value_name, bool& fail)
 {
     if (_str(value_name).isNumber())
         return _str(value_name).toInt();
-    return GetEnumValue(_str("{}::{}", enum_name, value_name), fail);
+    return ResolveEnumValue(_str("{}::{}", enum_name, value_name), fail);
 }
 
-string ScriptSystem::GetEnumValueName(string_view enum_name, int value)
+string ScriptSystem::ResolveEnumValueName(string_view enum_name, int value)
 {
     auto it = cachedEnumNames.find(enum_name);
     RUNTIME_ASSERT(it != cachedEnumNames.end());
@@ -1238,3 +1238,20 @@ CScriptArray* ScriptSystem::CreateArray(string_view type)
     return CScriptArray::Create(asEngine->GetTypeInfoById(asEngine->GetTypeIdByDecl(type.c_str())));
 }
 */
+
+auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*
+{
+    const auto* prop_reg = engine->GetPropertyRegistrator(class_name);
+    RUNTIME_ASSERT(prop_reg);
+    const auto* prop = prop_reg->GetByIndex(static_cast<int>(prop_index));
+    if (prop == nullptr) {
+        throw ScriptException("Invalid property index", class_name, prop_index);
+    }
+    if (!prop->IsReadable()) {
+        throw ScriptException("Property is not readable", class_name, prop_index);
+    }
+    if (!prop->IsPlainData()) {
+        throw ScriptException("Property is not plain data", class_name, prop_index);
+    }
+    return prop;
+}

@@ -32,15 +32,9 @@
 //
 
 #include "MapView.h"
+#include "Client.h"
 
-#define FO_API_MAP_VIEW_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(MapView, "Map", false);
-#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(MapView, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-MapView::MapView(uint id, const ProtoMap* proto) : Entity(id, EntityType::MapView, PropertiesRegistrator, proto)
+MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), MapProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
 }

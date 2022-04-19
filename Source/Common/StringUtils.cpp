@@ -416,17 +416,6 @@ auto _str::formatPath() -> _str&
         _s.replace(pos, 3, "/");
     }
 
-    // Replace '//' to '/'
-    while (true) {
-        const auto pos = _s.find("//");
-
-        if (pos == string::npos) {
-            break;
-        }
-
-        _s.replace(pos, 2, "/");
-    }
-
     // Replace 'folder/../' to '/'
     while (true) {
         const auto pos = _s.find("/../");
@@ -459,27 +448,7 @@ auto _str::extractDir() -> _str&
     const auto pos = _s.find_last_of('/');
 
     if (pos != string::npos) {
-        _s = _s.substr(0, pos + 1);
-    }
-    else if (!_s.empty() && _s.back() != '/') {
-        _s += "/";
-    }
-    return *this;
-}
-
-auto _str::extractLastDir() -> _str&
-{
-    formatPath();
-    extractDir();
-
-    if (!_s.empty()) {
-        _s.pop_back();
-    }
-
-    const auto pos = _s.find_last_of('/');
-
-    if (pos != string::npos) {
-        _s = _s.substr(pos + 1);
+        _s = _s.substr(0, pos);
     }
     return *this;
 }
@@ -530,17 +499,6 @@ auto _str::combinePath(string_view path) -> _str&
     return *this;
 }
 
-auto _str::forwardPath(string_view relative_dir) -> _str&
-{
-    const string dir = _str(*this).extractDir();
-    const string name = _str(*this).extractFileName();
-
-    _s = dir + string(relative_dir) + name;
-    formatPath();
-
-    return *this;
-}
-
 auto _str::normalizePathSlashes() -> _str&
 {
     std::replace(_s.begin(), _s.end(), '\\', '/');
@@ -560,7 +518,7 @@ auto _str::parseWideChar(const wchar_t* str) -> _str&
     const auto len = static_cast<int>(wcslen(str));
 
     if (len != 0) {
-        auto* buf = static_cast<char*>(alloca(UTF8_BUF_SIZE(len)));
+        auto* buf = static_cast<char*>(alloca(len * 4));
         const auto r = WideCharToMultiByte(CP_UTF8, 0, str, len, buf, len * 4, nullptr, nullptr);
 
         _s += string(buf, r);
@@ -580,28 +538,6 @@ auto _str::toWideChar() const -> std::wstring
     return std::wstring(buf, len);
 }
 #endif
-
-auto _str::parseHash(hash /*h*/) -> _str&
-{
-    // Todo: restore hash parsing
-    throw UnreachablePlaceException(LINE_STR);
-}
-
-auto _str::toHash() -> hash
-{
-    if (_s.empty()) {
-        return 0;
-    }
-
-    normalizePathSlashes();
-    trim();
-
-    if (_s.empty()) {
-        return 0;
-    }
-
-    return Hashing::MurmurHash2(reinterpret_cast<const uchar*>(_s.c_str()), static_cast<uint>(_s.length()));
-}
 
 // ReSharper restore CppInconsistentNaming
 

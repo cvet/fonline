@@ -78,7 +78,7 @@ public:
     [[nodiscard]] auto GetBinaryData() const -> vector<uchar>;
 
     auto LoadFromBinaryData(const vector<uchar>& data) -> bool;
-    auto LoadFromString(string_view str) -> bool;
+    auto LoadFromString(string_view str, NameResolver& name_resolver) -> bool;
     void LoadFromMap(const map<string, string>& kv);
     void AddStr(uint num, string_view str);
     void AddBinary(uint num, const uchar* binary, uint len);
@@ -103,8 +103,8 @@ public:
 
     [[nodiscard]] auto GetMsgCacheName(int msg_num) const -> string;
 
-    void LoadFromFiles(FileManager& file_mngr, string_view lang_name);
-    void LoadFromCache(CacheStorage& cache, string_view lang_name);
+    void LoadFromFiles(FileManager& file_mngr, NameResolver& name_resolver, string_view lang_name);
+    void LoadFromCache(const CacheStorage& cache, NameResolver& name_resolver, string_view lang_name);
 
     string Name {};
     uint NameCode {};

@@ -35,126 +35,96 @@
 #include "Log.h"
 #include "PropertiesSerializator.h"
 #include "ProtoManager.h"
+#include "Server.h"
 #include "StringUtils.h"
 
-EntityManager::EntityManager(ProtoManager& proto_mngr, ServerScriptSystem& script_sys, DataBase& db_storage, GlobalVars* globs) : _protoMngr {proto_mngr}, _scriptSys {script_sys}, _dbStorage {db_storage}, _globals {globs}
+EntityManager::EntityManager(FOServer* engine) : _engine {engine}
 {
 }
 
-void EntityManager::RegisterEntity(Entity* entity)
+void EntityManager::RegisterEntity(ServerEntity* entity)
 {
-    if (entity->Id == 0u) {
-        auto id = _globals->GetLastEntityId() + 1;
+    if (entity->GetId() == 0u) {
+        auto id = _engine->GetLastEntityId() + 1;
         id = std::max(id, 2u);
-        _globals->SetLastEntityId(id);
+        _engine->SetLastEntityId(id);
 
         entity->SetId(id);
 
-        auto doc = PropertiesSerializator::SaveToDbDocument(&entity->Props, entity->Proto != nullptr ? &entity->Proto->Props : nullptr, _scriptSys);
-        doc["_Proto"] = (entity->Proto != nullptr ? entity->Proto->GetName() : "");
-
-        if (entity->Type == EntityType::Location) {
-            _dbStorage.Insert("Locations", id, doc);
-        }
-        else if (entity->Type == EntityType::Map) {
-            _dbStorage.Insert("Maps", id, doc);
-        }
-        else if (entity->Type == EntityType::Critter) {
-            _dbStorage.Insert("Critters", id, doc);
-        }
-        else if (entity->Type == EntityType::Item) {
-            _dbStorage.Insert("Items", id, doc);
-        }
-        else if (entity->Type == EntityType::Player) {
-            _dbStorage.Insert("Players", id, doc);
-        }
-        else if (entity->Type == EntityType::Custom) {
-            _dbStorage.Insert(entity->Props.GetRegistrator()->GetClassName() + "s", id, doc);
-        }
-        else {
-            throw UnreachablePlaceException(LINE_STR);
-        }
+        const auto proto = entity->GetProto();
+        auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), proto != nullptr ? &proto->GetProperties() : nullptr, *_engine);
+        doc["_Proto"] = string(proto != nullptr ? proto->GetName() : "");
+        _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
     }
 
-    const auto [it, inserted] = _allEntities.insert(std::make_pair(entity->Id, entity));
+    const auto [it, inserted] = _allEntities.insert(std::make_pair(entity->GetId(), entity));
     RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(Entity* entity)
+void EntityManager::UnregisterEntity(ServerEntity* entity)
 {
-    const auto it = _allEntities.find(entity->Id);
+    const auto it = _allEntities.find(entity->GetId());
     RUNTIME_ASSERT(it != _allEntities.end());
     _allEntities.erase(it);
 
-    _scriptSys.RemoveEntity(entity);
-
-    if (entity->Type == EntityType::Location) {
-        _dbStorage.Delete("Locations", entity->Id);
-    }
-    else if (entity->Type == EntityType::Map) {
-        _dbStorage.Delete("Maps", entity->Id);
-    }
-    else if (entity->Type == EntityType::Critter) {
-        _dbStorage.Delete("Critters", entity->Id);
-    }
-    else if (entity->Type == EntityType::Item) {
-        _dbStorage.Delete("Items", entity->Id);
-    }
-    else if (entity->Type == EntityType::Player) {
-        _dbStorage.Delete("Players", entity->Id);
-    }
-    else if (entity->Type == EntityType::Custom) {
-        _dbStorage.Delete(entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id);
-    }
+    _engine->ScriptSys->RemoveEntity(entity);
+    _engine->DbStorage.Delete(_str("{}s", entity->GetClassName()), entity->GetId());
 
     entity->SetId(0);
 }
 
-auto EntityManager::GetEntity(uint id, EntityType type) -> Entity*
+auto EntityManager::GetEntity(uint id) -> ServerEntity*
 {
-    const auto it = _allEntities.find(id);
-    if (it != _allEntities.end() && it->second->Type == type) {
+    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
         return it->second;
     }
+
     return nullptr;
 }
 
-auto EntityManager::GetEntities(EntityType type) -> vector<Entity*>
+auto EntityManager::GetEntities() -> vector<ServerEntity*>
 {
-    vector<Entity*> entities;
-    entities.reserve(_entitiesCount[static_cast<int>(type)]);
+    vector<ServerEntity*> entities;
+    entities.reserve(_allEntities.size());
 
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == type) {
-            entities.push_back(entity);
-        }
+        entities.push_back(entity);
     }
 
     return entities;
 }
 
-auto EntityManager::GetEntitiesCount(EntityType type) const -> uint
-{
-    return _entitiesCount[static_cast<int>(type)];
-}
-
 auto EntityManager::GetPlayer(uint id) -> Player*
 {
-    const auto it = _allEntities.find(id);
-    if (it != _allEntities.end() && it->second->Type == EntityType::Player) {
+    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
         return dynamic_cast<Player*>(it->second);
     }
+
     return nullptr;
 }
 
 auto EntityManager::GetPlayers() -> vector<Player*>
 {
     vector<Player*> players;
-    players.reserve(_entitiesCount[static_cast<int>(EntityType::Player)]);
+    players.reserve(_allEntities.size());
 
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Player) {
-            players.push_back(dynamic_cast<Player*>(entity));
+        if (auto* player = dynamic_cast<Player*>(entity); player != nullptr) {
+            players.push_back(player);
+        }
+    }
+
+    return players;
+}
+
+auto EntityManager::GetPlayers() const -> vector<const Player*>
+{
+    vector<const Player*> players;
+    players.reserve(_allEntities.size());
+
+    for (auto [id, entity] : _allEntities) {
+        if (const auto* player = dynamic_cast<const Player*>(entity); player != nullptr) {
+            players.push_back(player);
         }
     }
 
@@ -163,21 +133,21 @@ auto EntityManager::GetPlayers() -> vector<Player*>
 
 auto EntityManager::GetItem(uint id) -> Item*
 {
-    const auto it = _allEntities.find(id);
-    if (it != _allEntities.end() && it->second->Type == EntityType::Item) {
+    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
         return dynamic_cast<Item*>(it->second);
     }
+
     return nullptr;
 }
 
 auto EntityManager::GetItems() -> vector<Item*>
 {
     vector<Item*> items;
-    items.reserve(_entitiesCount[static_cast<int>(EntityType::Item)]);
+    items.reserve(_allEntities.size());
 
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Item) {
-            items.push_back(dynamic_cast<Item*>(entity));
+        if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
+            items.push_back(item);
         }
     }
 
@@ -187,23 +157,24 @@ auto EntityManager::GetItems() -> vector<Item*>
 auto EntityManager::FindCritterItems(uint crid) -> vector<Item*>
 {
     vector<Item*> items;
+
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Item) {
-            auto* item = dynamic_cast<Item*>(entity);
-            if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER && item->GetCritId() == crid) {
+        if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
+            if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritId() == crid) {
                 items.push_back(item);
             }
         }
     }
+
     return items;
 }
 
 auto EntityManager::GetCritter(uint id) -> Critter*
 {
-    const auto it = _allEntities.find(id);
-    if (it != _allEntities.end() && it->second->Type == EntityType::Critter) {
+    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
         return dynamic_cast<Critter*>(it->second);
     }
+
     return nullptr;
 }
 
@@ -212,11 +183,11 @@ auto EntityManager::GetCritters() -> vector<Critter*>
     NON_CONST_METHOD_HINT();
 
     vector<Critter*> critters;
-    critters.reserve(_entitiesCount[static_cast<int>(EntityType::Critter)]);
+    critters.reserve(_allEntities.size());
 
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Critter) {
-            critters.push_back(dynamic_cast<Critter*>(entity));
+        if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
+            critters.push_back(cr);
         }
     }
 
@@ -225,38 +196,37 @@ auto EntityManager::GetCritters() -> vector<Critter*>
 
 auto EntityManager::GetMap(uint id) -> Map*
 {
-    const auto it = _allEntities.find(id);
-    if (it != _allEntities.end() && it->second->Type == EntityType::Map) {
+    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
         return dynamic_cast<Map*>(it->second);
     }
+
     return nullptr;
 }
 
-auto EntityManager::GetMapByPid(hash pid, uint skip_count) -> Map*
+auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
 {
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Map) {
-            auto* map = dynamic_cast<Map*>(entity);
+        if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
             if (map->GetProtoId() == pid) {
                 if (skip_count == 0u) {
                     return map;
                 }
-
                 skip_count--;
             }
         }
     }
+
     return nullptr;
 }
 
 auto EntityManager::GetMaps() -> vector<Map*>
 {
     vector<Map*> maps;
-    maps.reserve(_entitiesCount[static_cast<int>(EntityType::Map)]);
+    maps.reserve(_allEntities.size());
 
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Map) {
-            maps.push_back(dynamic_cast<Map*>(entity));
+        if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
+            maps.push_back(map);
         }
     }
 
@@ -265,38 +235,37 @@ auto EntityManager::GetMaps() -> vector<Map*>
 
 auto EntityManager::GetLocation(uint id) -> Location*
 {
-    const auto it = _allEntities.find(id);
-    if (it != _allEntities.end() && it->second->Type == EntityType::Location) {
+    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
         return dynamic_cast<Location*>(it->second);
     }
+
     return nullptr;
 }
 
-auto EntityManager::GetLocationByPid(hash pid, uint skip_count) -> Location*
+auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
 {
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Location) {
-            auto* loc = dynamic_cast<Location*>(entity);
+        if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
             if (loc->GetProtoId() == pid) {
                 if (skip_count == 0u) {
                     return loc;
                 }
-
                 skip_count--;
             }
         }
     }
+
     return nullptr;
 }
 
 auto EntityManager::GetLocations() -> vector<Location*>
 {
     vector<Location*> locations;
-    locations.reserve(_entitiesCount[static_cast<int>(EntityType::Location)]);
+    locations.reserve(_allEntities.size());
 
     for (auto [id, entity] : _allEntities) {
-        if (entity->Type == EntityType::Location) {
-            locations.push_back(dynamic_cast<Location*>(entity));
+        if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
+            locations.push_back(loc);
         }
     }
 
@@ -309,119 +278,90 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
     WriteLog("Load entities...\n");
 
-    EntityType query[] = {
-        EntityType::Location,
-        EntityType::Map,
-        EntityType::Critter,
-        EntityType::Item,
-        EntityType::Custom,
+    // Todo: load locations -> theirs maps -> critters/items on map -> items in critters/containers
+    const string query[] = {
+        "Locations",
+        "Maps",
+        "Critters",
+        "Items",
     };
 
-    vector<string> custom_types; // = scriptSys.GetCustomEntityTypes();
-    auto custom_index = -1;
+    for (auto q = 0; q < 4; q++) {
+        string collection_name = query[q];
 
-    for (auto q = 0; q < 5; q++) {
-        const auto type = query[q];
+        const auto ids = _engine->DbStorage.GetAllIds(collection_name);
 
-        if (type == EntityType::Custom) {
-            custom_index++;
-            if (custom_index >= static_cast<int>(custom_types.size())) {
-                break;
-            }
+        for (const auto id : ids) {
+            auto doc = _engine->DbStorage.Get(collection_name, id);
 
-            q--;
-        }
-
-        // Todo: store player critters in separate collection
-        string collection_name;
-        if (type == EntityType::Location) {
-            collection_name = "Locations";
-        }
-        else if (type == EntityType::Map) {
-            collection_name = "Maps";
-        }
-        else if (type == EntityType::Critter) {
-            collection_name = "Critters";
-        }
-        else if (type == EntityType::Item) {
-            collection_name = "Items";
-        }
-        else if (type == EntityType::Custom) {
-            collection_name = custom_types[custom_index] + "s";
-        }
-
-        auto ids = _dbStorage.GetAllIds(collection_name);
-        for (auto id : ids) {
-            auto doc = _dbStorage.Get(collection_name, id);
-
-            auto proto_it = doc.find("_Proto");
+            const auto proto_it = doc.find("_Proto");
             if (proto_it == doc.end()) {
                 throw EntitiesLoadException("'_Proto' section not found in entity", collection_name, id);
             }
-            if (proto_it->second.index() != DataBase::STRING_VALUE) {
+            if (proto_it->second.index() != AnyData::STRING_VALUE) {
                 throw EntitiesLoadException("'_Proto' section is not string type", collection_name, id, proto_it->second.index());
             }
 
-            const auto proto_id = !std::get<string>(proto_it->second).empty() ? _str(std::get<string>(proto_it->second)).toHash() : hash();
+            const auto& proto_name = std::get<string>(proto_it->second);
+            if (proto_name.empty()) {
+                throw EntitiesLoadException("'_Proto' section is empty", collection_name, id);
+            }
 
-            if (type == EntityType::Location) {
-                const auto* proto = _protoMngr.GetProtoLocation(proto_id);
+            const auto proto_id = _engine->ToHashedString(std::get<string>(proto_it->second));
+
+            if (q == 0) {
+                const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
                 if (proto == nullptr) {
-                    throw EntitiesLoadException("Location proto not found", _str().parseHash(proto_id));
+                    throw EntitiesLoadException("Location proto not found", proto_name);
                 }
 
                 auto* loc = loc_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&loc->Props, doc, _scriptSys)) {
-                    throw EntitiesLoadException("Failed to restore location properties", _str().parseHash(proto_id), id);
+                if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), doc, *_engine)) {
+                    throw EntitiesLoadException("Failed to restore location properties", proto_name, id);
                 }
 
                 loc->BindScript();
 
                 RegisterEntity(loc);
             }
-            else if (type == EntityType::Map) {
-                const auto* proto = _protoMngr.GetProtoMap(proto_id);
+            else if (q == 1) {
+                const auto* proto = _engine->ProtoMngr.GetProtoMap(proto_id);
                 if (proto == nullptr) {
-                    throw EntitiesLoadException("Map proto not found", _str().parseHash(proto_id));
+                    throw EntitiesLoadException("Map proto not found", proto_name);
                 }
 
                 auto* map = map_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&map->Props, doc, _scriptSys)) {
-                    throw EntitiesLoadException("Failed to restore map properties", _str().parseHash(proto_id), id);
+                if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), doc, *_engine)) {
+                    throw EntitiesLoadException("Failed to restore map properties", proto_name, id);
                 }
 
                 RegisterEntity(map);
             }
-            else if (type == EntityType::Critter) {
-                const auto* proto = _protoMngr.GetProtoCritter(proto_id);
+            else if (q == 2) {
+                const auto* proto = _engine->ProtoMngr.GetProtoCritter(proto_id);
                 if (proto == nullptr) {
-                    throw EntitiesLoadException("Proto critter not found", _str().parseHash(proto_id));
+                    throw EntitiesLoadException("Proto critter not found", proto_name);
                 }
 
                 auto* npc = npc_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&npc->Props, doc, _scriptSys)) {
-                    throw EntitiesLoadException("Failed to restore critter properties", _str().parseHash(proto_id), id);
+                if (!PropertiesSerializator::LoadFromDocument(&npc->GetPropertiesForEdit(), doc, *_engine)) {
+                    throw EntitiesLoadException("Failed to restore critter properties", proto_name, id);
                 }
 
                 RegisterEntity(npc);
             }
-            else if (type == EntityType::Item) {
-                const auto* proto = _protoMngr.GetProtoItem(proto_id);
+            else if (q == 3) {
+                const auto* proto = _engine->ProtoMngr.GetProtoItem(proto_id);
                 if (proto == nullptr) {
-                    throw EntitiesLoadException("Proto item is not loaded", _str().parseHash(proto_id));
+                    throw EntitiesLoadException("Proto item is not loaded", proto_name);
                 }
 
                 auto* item = item_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&item->Props, doc, _scriptSys)) {
-                    throw EntitiesLoadException("Failed to restore item properties", _str().parseHash(proto_id), id);
+                if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), doc, *_engine)) {
+                    throw EntitiesLoadException("Failed to restore item properties", proto_name, id);
                 }
 
                 RegisterEntity(item);
-            }
-            else if (type == EntityType::Custom) {
-                /*if (!scriptSys.RestoreCustomEntity(custom_types[custom_index], id, doc)) {
-                    throw EntitiesLoadException("Fail to restore custom entity", id, custom_types[custom_index]);
-                }*/
             }
             else {
                 throw UnreachablePlaceException(LINE_STR);
@@ -445,36 +385,30 @@ void EntityManager::InitAfterLoad()
     }
 
     for (auto [id, entity] : entities) {
-        if (entity->IsDestroyed) {
+        if (entity->IsDestroyed()) {
             entity->Release();
             continue;
         }
 
-        if (entity->Type == EntityType::Location) {
-            auto* loc = dynamic_cast<Location*>(entity);
-            _scriptSys.LocationInitEvent(loc, false);
+        if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
+            _engine->OnLocationInit.Fire(loc, false);
         }
-        else if (entity->Type == EntityType::Map) {
-            auto* map = dynamic_cast<Map*>(entity);
-            _scriptSys.MapInitEvent(map, false);
-            if (!map->IsDestroyed && map->GetScriptId() != 0u) {
-                map->SetScript("", false);
+        else if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
+            _engine->OnMapInit.Fire(map, false);
+            if (!map->IsDestroyed()) {
+                ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), false);
             }
         }
-        else if (entity->Type == EntityType::Critter) {
-            auto* npc = dynamic_cast<Critter*>(entity);
-            _scriptSys.CritterInitEvent(npc, false);
-            if (!npc->IsDestroyed && npc->GetScriptId() != 0u) {
-                npc->SetScript("", false);
+        else if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
+            _engine->OnCritterInit.Fire(cr, false);
+            if (!cr->IsDestroyed()) {
+                ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), false);
             }
         }
-        else if (entity->Type == EntityType::Item) {
-            auto* item = dynamic_cast<Item*>(entity);
-            if (!item->IsDestroyed) {
-                _scriptSys.ItemInitEvent(item, false);
-            }
-            if (!item->IsDestroyed && item->GetScriptId() != 0u) {
-                item->SetScript("", false);
+        else if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
+            _engine->OnItemInit.Fire(item, false);
+            if (!item->IsDestroyed()) {
+                ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), false);
             }
         }
 
@@ -491,9 +425,8 @@ void EntityManager::FinalizeEntities()
     while (!_allEntities.empty()) {
         auto entities_copy = _allEntities;
         for (auto [id, entity] : entities_copy) {
-            entity->IsDestroyed = true;
-            _scriptSys.RemoveEntity(entity);
-            _entitiesCount[static_cast<int>(entity->Type)]--;
+            entity->MarkAsDestroyed();
+            _engine->ScriptSys->RemoveEntity(entity);
             entity->Release();
             _allEntities.erase(id);
         }

@@ -32,21 +32,20 @@
 //
 
 #include "CritterView.h"
+#include "Client.h"
+#include "EffectManager.h"
 #include "GenericUtils.h"
+#include "GeometryHelper.h"
 #include "ItemView.h"
+#include "ResourceManager.h"
+#include "Settings.h"
 #include "StringUtils.h"
+#include "Timer.h"
 
-#define FO_API_CRITTER_VIEW_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(CritterView, "Critter", false);
-#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(CritterView, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-CritterView::CritterView(uint id, const ProtoCritter* proto, CritterViewSettings& settings, SpriteManager& spr_mngr, ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, bool mapper_mode) : Entity(id, EntityType::CritterView, PropertiesRegistrator, proto), _settings {settings}, _geomHelper(_settings), _sprMngr {spr_mngr}, _resMngr {res_mngr}, _effectMngr {effect_mngr}, _scriptSys {script_sys}, _gameTime {game_time}, _mapperMode {mapper_mode}
+CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), CritterProperties(GetInitRef()), _mapperMode {mapper_mode}
 {
-    _tickFidget = _gameTime.GameTick() + GenericUtils::Random(_settings.CritterFidgetTime, _settings.CritterFidgetTime * 2u);
-    DrawEffect = _effectMngr.Effects.Critter;
+    _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u);
+    DrawEffect = _engine->EffectMngr.Effects.Critter;
     auto layers = GetModelLayers();
     layers.resize(LAYERS3D_COUNT);
     SetModelLayers(layers);
@@ -55,10 +54,10 @@ CritterView::CritterView(uint id, const ProtoCritter* proto, CritterViewSettings
 CritterView::~CritterView()
 {
     if (_model != nullptr) {
-        _sprMngr.FreeModel(_model);
+        _engine->SprMngr.FreeModel(_model);
     }
     if (_modelStay != nullptr) {
-        _sprMngr.FreeModel(_modelStay);
+        _engine->SprMngr.FreeModel(_modelStay);
     }
 }
 
@@ -67,7 +66,7 @@ void CritterView::Init()
     RefreshModel();
     AnimateStay();
 
-    const auto* si = _sprMngr.GetSpriteInfo(SprId);
+    const auto* si = _engine->SprMngr.GetSpriteInfo(SprId);
     if (si != nullptr) {
         _textRect = IRect {0, 0, si->Width, si->Height};
     }
@@ -88,12 +87,12 @@ auto CritterView::IsFinishing() const -> bool
 
 auto CritterView::IsFinish() const -> bool
 {
-    return _finishingTime != 0u && _gameTime.GameTick() > _finishingTime;
+    return _finishingTime != 0u && _engine->GameTime.GameTick() > _finishingTime;
 }
 
 void CritterView::SetFade(bool fade_up)
 {
-    const auto tick = _gameTime.GameTick();
+    const auto tick = _engine->GameTime.GameTick();
     FadingTick = tick + FADING_PERIOD - (FadingTick > tick ? FadingTick - tick : 0);
     _fadeUp = fade_up;
     _fadingEnable = true;
@@ -101,7 +100,7 @@ void CritterView::SetFade(bool fade_up)
 
 auto CritterView::GetFadeAlpha() -> uchar
 {
-    const auto tick = _gameTime.GameTick();
+    const auto tick = _engine->GameTime.GameTick();
     const auto fading_proc = 100u - GenericUtils::Percent(FADING_PERIOD, FadingTick > tick ? FadingTick - tick : 0u);
     if (fading_proc == 100u) {
         _fadingEnable = false;
@@ -113,8 +112,8 @@ auto CritterView::GetFadeAlpha() -> uchar
 
 void CritterView::AddItem(ItemView* item)
 {
-    item->SetAccessory(ITEM_ACCESSORY_CRITTER);
-    item->SetCritId(Id);
+    item->SetOwnership(ItemOwnership::CritterInventory);
+    item->SetCritId(GetId());
 
     InvItems.push_back(item);
 
@@ -127,7 +126,7 @@ void CritterView::AddItem(ItemView* item)
 
 void CritterView::DeleteItem(ItemView* item, bool animate)
 {
-    item->SetAccessory(ITEM_ACCESSORY_NONE);
+    item->SetOwnership(ItemOwnership::Nowhere);
     item->SetCritId(0);
     item->SetCritSlot(0);
 
@@ -135,8 +134,8 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
     RUNTIME_ASSERT(it != InvItems.end());
     InvItems.erase(it);
 
-    item->IsDestroyed = true;
-    _scriptSys.RemoveEntity(item);
+    item->MarkAsDestroyed();
+    _engine->ScriptSys->RemoveEntity(item);
     item->Release();
 
     if (animate && !IsAnim()) {
@@ -153,6 +152,8 @@ void CritterView::DeleteAllItems()
 
 auto CritterView::GetItem(uint item_id) -> ItemView*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : InvItems) {
         if (item->GetId() == item_id) {
             return item;
@@ -161,8 +162,10 @@ auto CritterView::GetItem(uint item_id) -> ItemView*
     return nullptr;
 }
 
-auto CritterView::GetItemByPid(hash item_pid) -> ItemView*
+auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : InvItems) {
         if (item->GetProtoId() == item_pid) {
             return item;
@@ -171,34 +174,10 @@ auto CritterView::GetItemByPid(hash item_pid) -> ItemView*
     return nullptr;
 }
 
-auto CritterView::GetItemSlot(int slot) -> ItemView*
-{
-    for (auto* item : InvItems) {
-        if (item->GetCritSlot() == slot) {
-            return item;
-        }
-    }
-    return nullptr;
-}
-
-auto CritterView::GetItemsSlot(int slot) -> vector<ItemView*>
-{
-    vector<ItemView*> items;
-    items.reserve(InvItems.size());
-
-    for (auto* item : InvItems) {
-        if (slot == -1 || item->GetCritSlot() == slot) {
-            items.push_back(item);
-        }
-    }
-
-    return items;
-}
-
-auto CritterView::CountItemPid(hash item_pid) const -> uint
+auto CritterView::CountItemPid(hstring item_pid) const -> uint
 {
     uint result = 0;
-    for (auto* item : InvItems) {
+    for (const auto* item : InvItems) {
         if (item->GetProtoId() == item_pid) {
             result += item->GetCount();
         }
@@ -208,39 +187,44 @@ auto CritterView::CountItemPid(hash item_pid) const -> uint
 
 auto CritterView::IsCombatMode() const -> bool
 {
-    return GetTimeoutBattle() > _gameTime.GetFullSecond();
+    return GetTimeoutBattle() > _engine->GameTime.GetFullSecond();
 }
 
-auto CritterView::CheckFind(uchar find_type) const -> bool
+auto CritterView::CheckFind(CritterFindType find_type) const -> bool
 {
-    if (IsNpc()) {
-        if (IsBitSet(find_type, FIND_ONLY_PLAYERS)) {
-            return false;
-        }
+    if (find_type == CritterFindType::Any) {
+        return true;
     }
-    else {
-        if (IsBitSet(find_type, FIND_ONLY_NPC)) {
-            return false;
-        }
+    if (IsEnumSet(find_type, CritterFindType::Players) && IsNpc()) {
+        return false;
     }
-    return IsBitSet(find_type, FIND_ALL) || (IsAlive() && IsBitSet(find_type, FIND_LIFE)) || (IsKnockout() && IsBitSet(find_type, FIND_KO)) || (IsDead() && IsBitSet(find_type, FIND_DEAD));
+    if (IsEnumSet(find_type, CritterFindType::Npc) && !IsNpc()) {
+        return false;
+    }
+    if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {
+        return false;
+    }
+    if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
+        return false;
+    }
+    return true;
 }
 
 auto CritterView::GetAttackDist() -> uint
 {
     uint dist = 0;
-    _scriptSys.CritterGetAttackDistantionEvent(this, nullptr, 0, dist);
+    _engine->OnCritterGetAttackDistantion.Fire(this, nullptr, 0, dist);
     return dist;
 }
 
 void CritterView::DrawStay(IRect r)
 {
-    if (_gameTime.FrameTick() - _staySprTick > 500) {
+    if (_engine->GameTime.FrameTick() - _staySprTick > 500) {
         _staySprDir++;
-        if (_staySprDir >= _settings.MapDirCount) {
+        if (_staySprDir >= _engine->Settings.MapDirCount) {
             _staySprDir = 0;
         }
-        _staySprTick = _gameTime.FrameTick();
+        _staySprTick = _engine->GameTime.FrameTick();
     }
 
     const auto dir = (!IsAlive() ? GetDir() : _staySprDir);
@@ -248,16 +232,16 @@ void CritterView::DrawStay(IRect r)
     const auto anim2 = GetAnim2();
 
     if (_model == nullptr) {
-        auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
+        auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
         if (anim != nullptr) {
             const auto spr_id = (IsAlive() ? anim->Ind[0] : anim->Ind[anim->CntFrm - 1]);
-            _sprMngr.DrawSpriteSize(spr_id, r.Left, r.Top, r.Width(), r.Height(), false, true, 0);
+            _engine->SprMngr.DrawSpriteSize(spr_id, r.Left, r.Top, r.Width(), r.Height(), false, true, 0);
         }
     }
     else if (_modelStay != nullptr) {
         _modelStay->SetDir(dir);
         _modelStay->SetAnimation(anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD(100) | ANIMATION_NO_SMOOTH);
-        _sprMngr.Draw3d(r.CenterX(), r.Bottom, _modelStay, COLOR_IFACE);
+        _engine->SprMngr.Draw3d(r.CenterX(), r.Bottom, _modelStay, COLOR_IFACE);
     }
 }
 
@@ -284,7 +268,7 @@ auto CritterView::PopLastHex() -> tuple<ushort, ushort>
 
 void CritterView::Move(uchar dir)
 {
-    if (dir >= _settings.MapDirCount || GetIsNoRotate()) {
+    if (dir >= _engine->Settings.MapDirCount || GetIsNoRotate()) {
         dir = 0;
     }
 
@@ -293,15 +277,15 @@ void CritterView::Move(uchar dir)
     const auto time_move = IsRunning ? GetRunTime() : GetWalkTime();
 
     TickStart(time_move);
-    _animStartTick = _gameTime.GameTick();
+    _animStartTick = _engine->GameTime.GameTick();
 
     if (_model == nullptr) {
-        if (_str().parseHash(GetModelName()).startsWith("art/critters/")) {
+        if (_str(GetModelName()).startsWith("art/critters/")) {
             const auto anim1 = IsRunning ? ANIM1_UNARMED : GetAnim1();
             const uint anim2 = IsRunning ? ANIM2_RUN : ANIM2_WALK;
-            auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
+            auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
             if (anim == nullptr) {
-                anim = _resMngr.CritterDefaultAnim;
+                anim = _engine->ResMngr.CritterDefaultAnim;
             }
 
             uint step;
@@ -367,9 +351,9 @@ void CritterView::Move(uchar dir)
                 anim2 = IsRunning ? ANIM2_SNEAK_RUN : ANIM2_SNEAK_WALK;
             }
 
-            auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
+            auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
             if (anim == nullptr) {
-                anim = _resMngr.CritterDefaultAnim;
+                anim = _engine->ResMngr.CritterDefaultAnim;
             }
 
             auto m1 = 0;
@@ -417,22 +401,22 @@ void CritterView::Move(uchar dir)
 
 void CritterView::Action(int action, int action_ext, ItemView* item, bool local_call /* = true */)
 {
-    _scriptSys.CritterActionEvent(local_call, this, action, action_ext, item);
+    _engine->OnCritterAction.Fire(local_call, this, action, action_ext, item);
 
     switch (action) {
     case ACTION_KNOCKOUT:
-        SetCond(COND_KNOCKOUT);
+        SetCond(CritterCondition::Knockout);
         SetAnim2Knockout(action_ext);
         break;
     case ACTION_STANDUP:
-        SetCond(COND_ALIVE);
+        SetCond(CritterCondition::Alive);
         break;
     case ACTION_DEAD: {
-        SetCond(COND_DEAD);
+        SetCond(CritterCondition::Dead);
         SetAnim2Dead(action_ext);
         auto* anim = GetCurAnim();
         _needReset = true;
-        _resetTick = _gameTime.GameTick() + (anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000);
+        _resetTick = _engine->GameTime.GameTick() + (anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000);
     } break;
     case ACTION_CONNECT:
         UnsetBit(Flags, FCRIT_DISCONNECT);
@@ -441,12 +425,12 @@ void CritterView::Action(int action, int action_ext, ItemView* item, bool local_
         SetBit(Flags, FCRIT_DISCONNECT);
         break;
     case ACTION_RESPAWN:
-        SetCond(COND_ALIVE);
+        SetCond(CritterCondition::Alive);
         Alpha = 0;
         SetFade(true);
         AnimateStay();
         _needReset = true;
-        _resetTick = _gameTime.GameTick(); // Fast
+        _resetTick = _engine->GameTime.GameTick(); // Fast
         break;
     case ACTION_REFRESH:
         if (_model != nullptr) {
@@ -476,7 +460,7 @@ void CritterView::NextAnim(bool erase_front)
     }
 
     auto& cr_anim = _animSequence[0];
-    _animStartTick = _gameTime.GameTick();
+    _animStartTick = _engine->GameTime.GameTick();
 
     ProcessAnim(false, _model == nullptr, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ActiveItem);
 
@@ -513,7 +497,7 @@ void CritterView::Animate(uint anim1, uint anim2, ItemView* item)
     }
 
     if (_model == nullptr) {
-        auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
+        auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, dir);
         if (anim == nullptr) {
             if (!IsAnim()) {
                 AnimateStay();
@@ -559,9 +543,9 @@ void CritterView::AnimateStay()
     auto anim2 = GetAnim2();
 
     if (_model == nullptr) {
-        auto* anim = _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, GetDir());
+        auto* anim = _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, GetDir());
         if (anim == nullptr) {
-            anim = _resMngr.CritterDefaultAnim;
+            anim = _engine->ResMngr.CritterDefaultAnim;
         }
 
         if (_stayAnim.Anim != anim) {
@@ -571,7 +555,7 @@ void CritterView::AnimateStay()
             _stayAnim.AnimTick = anim->Ticks;
             _stayAnim.BeginFrm = 0;
             _stayAnim.EndFrm = anim->CntFrm - 1;
-            if (GetCond() == COND_DEAD) {
+            if (GetCond() == CritterCondition::Dead) {
                 _stayAnim.BeginFrm = _stayAnim.EndFrm;
             }
             _curSpr = _stayAnim.BeginFrm;
@@ -611,7 +595,7 @@ void CritterView::AnimateStay()
         ProcessAnim(true, false, anim1, anim2, nullptr);
         SetOffs(0, 0, true);
 
-        if (GetCond() == COND_ALIVE || GetCond() == COND_KNOCKOUT) {
+        if (GetCond() == CritterCondition::Alive || GetCond() == CritterCondition::Knockout) {
             _model->SetAnimation(anim1, anim2, GetLayers3dData(), IsCombatMode() ? ANIMATION_COMBAT : 0);
         }
         else {
@@ -649,7 +633,7 @@ auto CritterView::IsHaveLightSources() const -> bool
 
 auto CritterView::IsNeedReset() const -> bool
 {
-    return _needReset && _gameTime.GameTick() >= _resetTick;
+    return _needReset && _engine->GameTime.GameTick() >= _resetTick;
 }
 
 void CritterView::ResetOk()
@@ -660,7 +644,7 @@ void CritterView::ResetOk()
 void CritterView::TickStart(uint ms)
 {
     _tickCount = ms;
-    _startTick = _gameTime.GameTick();
+    _startTick = _engine->GameTime.GameTick();
 }
 
 void CritterView::TickNull()
@@ -670,20 +654,18 @@ void CritterView::TickNull()
 
 auto CritterView::IsFree() const -> bool
 {
-    return _gameTime.GameTick() - _startTick >= _tickCount;
+    return _engine->GameTime.GameTick() - _startTick >= _tickCount;
 }
 
 auto CritterView::GetAnim1() const -> uint
 {
     switch (GetCond()) {
-    case COND_ALIVE:
-        return GetAnim1Life() != 0u ? GetAnim1Life() : ANIM1_UNARMED;
-    case COND_KNOCKOUT:
+    case CritterCondition::Alive:
+        return GetAnim1Alive() != 0u ? GetAnim1Alive() : ANIM1_UNARMED;
+    case CritterCondition::Knockout:
         return GetAnim1Knockout() != 0u ? GetAnim1Knockout() : ANIM1_UNARMED;
-    case COND_DEAD:
+    case CritterCondition::Dead:
         return GetAnim1Dead() != 0u ? GetAnim1Dead() : ANIM1_UNARMED;
-    default:
-        break;
     }
     return ANIM1_UNARMED;
 }
@@ -691,14 +673,12 @@ auto CritterView::GetAnim1() const -> uint
 auto CritterView::GetAnim2() const -> uint
 {
     switch (GetCond()) {
-    case COND_ALIVE:
-        return GetAnim2Life() != 0u ? GetAnim2Life() : IsCombatMode() && _settings.Anim2CombatIdle != 0u ? _settings.Anim2CombatIdle : ANIM2_IDLE;
-    case COND_KNOCKOUT:
+    case CritterCondition::Alive:
+        return GetAnim2Alive() != 0u ? GetAnim2Alive() : IsCombatMode() && _engine->Settings.Anim2CombatIdle != 0u ? _engine->Settings.Anim2CombatIdle : ANIM2_IDLE;
+    case CritterCondition::Knockout:
         return GetAnim2Knockout() != 0u ? GetAnim2Knockout() : ANIM2_IDLE_PRONE_FRONT;
-    case COND_DEAD:
+    case CritterCondition::Dead:
         return GetAnim2Dead() != 0u ? GetAnim2Dead() : ANIM2_DEAD_FRONT;
-    default:
-        break;
     }
     return ANIM2_IDLE;
 }
@@ -706,10 +686,10 @@ auto CritterView::GetAnim2() const -> uint
 void CritterView::ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item)
 {
     if (is2d) {
-        _scriptSys.Animation2dProcessEvent(animate_stay, this, anim1, anim2, item);
+        _engine->OnAnimation2dProcess.Fire(animate_stay, this, anim1, anim2, item);
     }
     else {
-        _scriptSys.Animation3dProcessEvent(animate_stay, this, anim1, anim2, item);
+        _engine->OnAnimation3dProcess.Fire(animate_stay, this, anim1, anim2, item);
     }
 }
 
@@ -729,36 +709,35 @@ auto CritterView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
     if (_model != nullptr) {
         return _model->HasAnimation(anim1, anim2);
     }
-    return _resMngr.GetCritterAnim(GetModelName(), anim1, anim2, GetDir()) != nullptr;
+    return _engine->ResMngr.GetCritterAnim(GetModelName(), anim1, anim2, GetDir()) != nullptr;
 }
 
 void CritterView::RefreshModel()
 {
     // Release previous
     if (_model != nullptr) {
-        _sprMngr.FreeModel(_model);
+        _engine->SprMngr.FreeModel(_model);
         _model = nullptr;
     }
 
     if (_modelStay != nullptr) {
-        _sprMngr.FreeModel(_modelStay);
+        _engine->SprMngr.FreeModel(_modelStay);
         _modelStay = nullptr;
     }
 
     // Check 3d availability
-    const string model_name = _str().parseHash(GetModelName());
-    const string ext = _str(model_name).getFileExtension();
+    const string ext = _str(GetModelName()).getFileExtension();
     if (ext != "fo3d") {
         return;
     }
 
     // Try load
-    _sprMngr.PushAtlasType(AtlasType::Dynamic);
+    _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
 
-    auto* model = _sprMngr.LoadModel(model_name, true);
+    auto* model = _engine->SprMngr.LoadModel(GetModelName(), true);
     if (model != nullptr) {
         _model = model;
-        _modelStay = _sprMngr.LoadModel(model_name, false);
+        _modelStay = _engine->SprMngr.LoadModel(GetModelName(), false);
 
         _model->SetDir(GetDir());
         SprId = _model->SprId;
@@ -772,12 +751,12 @@ void CritterView::RefreshModel()
         }
     }
 
-    _sprMngr.PopAtlasType();
+    _engine->SprMngr.PopAtlasType();
 }
 
 void CritterView::ChangeDir(uchar dir, bool animate /* = true */)
 {
-    if (dir >= _settings.MapDirCount || GetIsNoRotate()) {
+    if (dir >= _engine->Settings.MapDirCount || GetIsNoRotate()) {
         dir = 0;
     }
     if (GetDir() == dir) {
@@ -803,8 +782,8 @@ void CritterView::Process()
     }
 
     // Extra offsets
-    if (_offsExtNextTick != 0u && _gameTime.GameTick() >= _offsExtNextTick) {
-        _offsExtNextTick = _gameTime.GameTick() + 30;
+    if (_offsExtNextTick != 0u && _engine->GameTime.GameTick() >= _offsExtNextTick) {
+        _offsExtNextTick = _engine->GameTime.GameTick() + 30;
 
         SprOx = static_cast<short>(SprOx - _oxExtI);
         SprOy = static_cast<short>(SprOy - _oyExtI);
@@ -833,7 +812,7 @@ void CritterView::Process()
 
     // Animation
     auto& cr_anim = (!_animSequence.empty() ? _animSequence[0] : _stayAnim);
-    auto anim_proc = (_gameTime.GameTick() - _animStartTick) * 100u / (cr_anim.AnimTick != 0u ? cr_anim.AnimTick : 1u);
+    auto anim_proc = (_engine->GameTime.GameTick() - _animStartTick) * 100u / (cr_anim.AnimTick != 0u ? cr_anim.AnimTick : 1u);
     if (anim_proc >= 100u) {
         if (!_animSequence.empty()) {
             anim_proc = 100u;
@@ -907,22 +886,22 @@ void CritterView::Process()
 
     // Battle 3d mode
     // Todo: do same for 2d animations
-    if (_model != nullptr && _settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == COND_ALIVE && GetAnim2Life() == 0u) {
-        if (_settings.Anim2CombatBegin != 0u && IsCombatMode() && _model->GetAnim2() != static_cast<int>(_settings.Anim2CombatIdle)) {
-            Animate(0, _settings.Anim2CombatBegin, nullptr);
+    if (_model != nullptr && _engine->Settings.Anim2CombatIdle != 0u && _animSequence.empty() && GetCond() == CritterCondition::Alive && GetAnim2Alive() == 0u) {
+        if (_engine->Settings.Anim2CombatBegin != 0u && IsCombatMode() && _model->GetAnim2() != static_cast<int>(_engine->Settings.Anim2CombatIdle)) {
+            Animate(0, _engine->Settings.Anim2CombatBegin, nullptr);
         }
-        else if (_settings.Anim2CombatEnd != 0u && !IsCombatMode() && _model->GetAnim2() == static_cast<int>(_settings.Anim2CombatIdle)) {
-            Animate(0, _settings.Anim2CombatEnd, nullptr);
+        else if (_engine->Settings.Anim2CombatEnd != 0u && !IsCombatMode() && _model->GetAnim2() == static_cast<int>(_engine->Settings.Anim2CombatIdle)) {
+            Animate(0, _engine->Settings.Anim2CombatEnd, nullptr);
         }
     }
 
     // Fidget animation
-    if (_gameTime.GameTick() >= _tickFidget) {
-        if (_animSequence.empty() && GetCond() == COND_ALIVE && IsFree() && MoveSteps.empty() && !IsCombatMode()) {
+    if (_engine->GameTime.GameTick() >= _tickFidget) {
+        if (_animSequence.empty() && GetCond() == CritterCondition::Alive && IsFree() && MoveSteps.empty() && !IsCombatMode()) {
             Action(ACTION_FIDGET, 0, nullptr, false);
         }
 
-        _tickFidget = _gameTime.GameTick() + GenericUtils::Random(_settings.CritterFidgetTime, _settings.CritterFidgetTime * 2);
+        _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2);
     }
 }
 
@@ -937,17 +916,17 @@ void CritterView::SetOffs(short set_ox, short set_oy, bool move_text)
     SprOy = static_cast<short>(set_oy + _oyExtI);
 
     if (SprDrawValid) {
-        DRect = _sprMngr.GetDrawRect(SprDraw);
+        DRect = _engine->SprMngr.GetDrawRect(SprDraw);
 
         if (move_text) {
             _textRect = DRect;
             if (_model != nullptr) {
-                _textRect.Top += _sprMngr.GetSpriteInfo(SprId)->Height / 6;
+                _textRect.Top += _engine->SprMngr.GetSpriteInfo(SprId)->Height / 6;
             }
         }
 
         if (IsChosen()) {
-            _sprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
+            _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
         }
     }
 }
@@ -957,7 +936,7 @@ void CritterView::SetSprRect()
     if (SprDrawValid) {
         const auto old = DRect;
 
-        DRect = _sprMngr.GetDrawRect(SprDraw);
+        DRect = _engine->SprMngr.GetDrawRect(SprDraw);
 
         _textRect.Left += DRect.Left - old.Left;
         _textRect.Right += DRect.Left - old.Left;
@@ -965,7 +944,7 @@ void CritterView::SetSprRect()
         _textRect.Bottom += DRect.Top - old.Top;
 
         if (IsChosen()) {
-            _sprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
+            _engine->SprMngr.SetEgg(GetHexX(), GetHexY(), SprDraw);
         }
     }
 }
@@ -991,7 +970,7 @@ void CritterView::AddOffsExt(short ox, short oy)
     std::tie(_oxExtSpeed, _oyExtSpeed) = GenericUtils::GetStepsXY(0, 0, ox, oy);
     _oxExtSpeed = -_oxExtSpeed;
     _oyExtSpeed = -_oyExtSpeed;
-    _offsExtNextTick = _gameTime.GameTick() + 30;
+    _offsExtNextTick = _engine->GameTime.GameTick() + 30;
     SetOffs(SprOx, SprOy, true);
 }
 
@@ -999,13 +978,13 @@ auto CritterView::GetWalkHexOffsets(uchar dir) const -> tuple<short, short>
 {
     auto hx = 1;
     auto hy = 1;
-    _geomHelper.MoveHexByDirUnsafe(hx, hy, dir);
-    return _geomHelper.GetHexInterval(hx, hy, 1, 1);
+    _engine->GeomHelper.MoveHexByDirUnsafe(hx, hy, dir);
+    return _engine->GeomHelper.GetHexInterval(hx, hy, 1, 1);
 }
 
 void CritterView::SetText(string_view str, uint color, uint text_delay)
 {
-    _tickStartText = _gameTime.GameTick();
+    _tickStartText = _engine->GameTime.GameTick();
     _strTextOnHead = str;
     _tickTextDelay = text_delay;
     _textOnHeadColor = color;
@@ -1017,21 +996,21 @@ void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, in
 
     string str;
     if (_strTextOnHead.empty()) {
-        if (IsPlayer() && !_settings.ShowPlayerNames) {
+        if (IsPlayer() && !_engine->Settings.ShowPlayerNames) {
             return;
         }
-        if (IsNpc() && !_settings.ShowNpcNames) {
+        if (IsNpc() && !_engine->Settings.ShowNpcNames) {
             return;
         }
 
         name_visible = true;
 
         str = _nameOnHead.empty() ? AlternateName : _nameOnHead;
-        if (_settings.ShowCritId) {
+        if (_engine->Settings.ShowCritId) {
             str += _str("  {}", GetId());
         }
         if (IsBitSet(Flags, FCRIT_DISCONNECT)) {
-            str += _settings.PlayerOffAppendix;
+            str += _engine->Settings.PlayerOffAppendix;
         }
     }
     else {
@@ -1040,10 +1019,10 @@ void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, in
 
     const auto tr = GetTextRect();
     const auto tr_half_width = tr.Width() / 2;
-    x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
-    y = static_cast<int>(static_cast<float>(tr.Top + _settings.ScrOy) / _settings.SpritesZoom - 70.0f);
+    x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f);
+    y = static_cast<int>(static_cast<float>(tr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f);
 
-    if (_sprMngr.GetTextInfo(200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines)) {
+    if (_engine->SprMngr.GetTextInfo(200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines)) {
         x += 100 - w / 2;
         y += 70 - h;
     }
@@ -1052,10 +1031,10 @@ void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, in
 void CritterView::DrawTextOnHead()
 {
     if (_strTextOnHead.empty()) {
-        if (IsPlayer() && !_settings.ShowPlayerNames) {
+        if (IsPlayer() && !_engine->Settings.ShowPlayerNames) {
             return;
         }
-        if (IsNpc() && !_settings.ShowNpcNames) {
+        if (IsNpc() && !_engine->Settings.ShowNpcNames) {
             return;
         }
     }
@@ -1063,8 +1042,8 @@ void CritterView::DrawTextOnHead()
     if (SprDrawValid) {
         const auto tr = GetTextRect();
         const auto tr_half_width = tr.Width() / 2;
-        const auto x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _settings.ScrOx) / _settings.SpritesZoom - 100.0f);
-        const auto y = static_cast<int>(static_cast<float>(tr.Top + _settings.ScrOy) / _settings.SpritesZoom - 70.0f);
+        const auto x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f);
+        const auto y = static_cast<int>(static_cast<float>(tr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f);
         const IRect r(x, y, x + 200, y + 70);
 
         string str;
@@ -1072,21 +1051,24 @@ void CritterView::DrawTextOnHead()
         if (_strTextOnHead.empty()) {
             str = _nameOnHead.empty() ? AlternateName : _nameOnHead;
 
-            if (_settings.ShowCritId) {
+            if (_engine->Settings.ShowCritId) {
                 str += _str(" ({})", GetId());
             }
             if (IsBitSet(Flags, FCRIT_DISCONNECT)) {
-                str += _settings.PlayerOffAppendix;
+                str += _engine->Settings.PlayerOffAppendix;
             }
 
-            color = _nameColor != 0u ? _nameColor : COLOR_CRITTER_NAME;
+            color = GetNameColor();
+            if (color == 0u) {
+                color = COLOR_CRITTER_NAME;
+            }
         }
         else {
             str = _strTextOnHead;
             color = _textOnHeadColor;
 
             if (_tickTextDelay > 500) {
-                const auto dt = _gameTime.GameTick() - _tickStartText;
+                const auto dt = _engine->GameTime.GameTick() - _tickStartText;
                 const auto hide = _tickTextDelay - 200;
 
                 if (dt >= hide) {
@@ -1098,14 +1080,14 @@ void CritterView::DrawTextOnHead()
 
         if (_fadingEnable) {
             const uint alpha = GetFadeAlpha();
-            _sprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), 0);
+            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), 0);
         }
         else if (!IsFinishing()) {
-            _sprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, 0);
+            _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, 0);
         }
     }
 
-    if (_gameTime.GameTick() - _tickStartText >= _tickTextDelay && !_strTextOnHead.empty()) {
+    if (_engine->GameTime.GameTick() - _tickStartText >= _tickTextDelay && !_strTextOnHead.empty()) {
         _strTextOnHead = "";
     }
 }

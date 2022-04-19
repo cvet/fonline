@@ -33,16 +33,21 @@
 
 #include "Server.h"
 #include "AdminPanel.h"
+#include "AnyData.h"
 #include "GenericUtils.h"
 #include "Networking.h"
 #include "PropertiesSerializator.h"
+#include "ServerScripting.h"
 #include "Testing.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(Settings), ScriptSys(this, settings, FileMngr), ProtoMngr(FileMngr), EntityMngr(ProtoMngr, ScriptSys, DbStorage, Globals), MapMngr(Settings, ProtoMngr, EntityMngr, CrMngr, ItemMngr, ScriptSys, GameTime), CrMngr(Settings, ProtoMngr, EntityMngr, MapMngr, ItemMngr, ScriptSys, GameTime), ItemMngr(ProtoMngr, EntityMngr, MapMngr, CrMngr, ScriptSys), DlgMngr(FileMngr, ScriptSys), GameTime(Settings)
+FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(true), Settings {settings}, GeomHelper(Settings), ProtoMngr(FileMngr, *this), DeferredCallMngr(this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this), GameTime(Settings)
 {
     WriteLog("***   Starting initialization   ***\n");
+
+    RegisterData();
+    ScriptSys = (script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys);
 
     GameTime.FrameAdvance();
 
@@ -67,7 +72,7 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
 
     // PropertyRegistrator::GlobalSetCallbacks.push_back(EntitySetValue);
 
-    if (!InitLangPacks(LangPacks)) {
+    if (!InitLangPacks(_langPacks)) {
         throw ServerInitException("Can't init lang packs");
     }
 
@@ -81,33 +86,27 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     //    return false;
 
     // Language packs
-    if (!InitLangPacksDialogs(LangPacks)) {
+    if (!InitLangPacksDialogs(_langPacks)) {
         throw ServerInitException("Can't init dialogs lang packs");
     }
-    if (!InitLangPacksLocations(LangPacks)) {
+    if (!InitLangPacksLocations(_langPacks)) {
         throw ServerInitException("Can't init locations lang packs");
     }
-    if (!InitLangPacksItems(LangPacks)) {
+    if (!InitLangPacksItems(_langPacks)) {
         throw ServerInitException("Can't init items lang packs");
     }
 
-    // Load globals
-    Globals = new GlobalVars();
-    Globals->SetId(1);
-    const auto globals_doc = DbStorage.Get("Globals", 1);
+    const auto globals_doc = DbStorage.Get("Game", 1);
     if (globals_doc.empty()) {
-        DbStorage.Insert("Globals", Globals->Id, {{"_Proto", string("")}});
+        DbStorage.Insert("Game", 1, {{"_Proto", string("")}});
     }
     else {
-        if (!PropertiesSerializator::LoadFromDbDocument(&Globals->Props, globals_doc, ScriptSys)) {
+        if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
             throw ServerInitException("Failed to load globals document");
         }
 
-        GameTime.Reset(Globals->GetYear(), Globals->GetMonth(), Globals->GetDay(), Globals->GetHour(), Globals->GetMinute(), Globals->GetSecond(), Globals->GetTimeMultiplier());
+        GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
     }
-
-    // Todo: restore hashes loading
-    // _str::loadHashes();
 
     // Deferred calls
     // if (!ScriptSys.LoadDeferredCalls())
@@ -123,27 +122,27 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     }
 
     // Initialization script
-    if (ScriptSys.InitEvent()) {
+    if (OnInit.Fire()) {
         throw ServerInitException("Initialization script failed");
     }
 
     // Init world
     if (globals_doc.empty()) {
-        if (ScriptSys.GenerateWorldEvent()) {
+        if (OnGenerateWorld.Fire()) {
             throw ServerInitException("Generate world script failed");
         }
     }
     else {
-        const auto loc_fabric = [this](uint id, const ProtoLocation* proto) { return new Location(id, proto, ScriptSys); };
+        const auto loc_fabric = [this](uint id, const ProtoLocation* proto) { return new Location(this, id, proto); };
         const auto map_fabric = [this](uint id, const ProtoMap* proto) {
             const auto* static_map = MapMngr.FindStaticMap(proto);
             if (static_map == nullptr) {
                 throw EntitiesLoadException("Static map not found", proto->GetName());
             }
-            return new Map(id, proto, nullptr, static_map, Settings, ScriptSys, GameTime);
+            return new Map(this, id, proto, nullptr, static_map);
         };
-        const auto cr_fabric = [this](uint id, const ProtoCritter* proto) { return new Critter(id, nullptr, proto, Settings, ScriptSys, GameTime); };
-        const auto item_fabric = [this](uint id, const ProtoItem* proto) { return new Item(id, proto, ScriptSys); };
+        const auto cr_fabric = [this](uint id, const ProtoCritter* proto) { return new Critter(this, id, nullptr, proto); };
+        const auto item_fabric = [this](uint id, const ProtoItem* proto) { return new Item(this, id, proto); };
         EntityMngr.LoadEntities(loc_fabric, map_fabric, cr_fabric, item_fabric);
 
         MapMngr.LinkMaps();
@@ -153,7 +152,7 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
         EntityMngr.InitAfterLoad();
 
         for (auto* item : EntityMngr.GetItems()) {
-            if (!item->IsDestroyed && item->GetIsRadio()) {
+            if (!item->IsDestroyed() && item->GetIsRadio()) {
                 ItemMngr.RegisterRadio(item);
             }
         }
@@ -167,7 +166,7 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     }
 
     // Start script
-    if (ScriptSys.StartEvent()) {
+    if (OnStart.Fire()) {
         throw ServerInitException("Start script failed");
     }
 
@@ -177,15 +176,15 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
         DbHistory.CommitChanges();
     }
 
-    Stats.ServerStartTick = GameTime.FrameTick();
+    _stats.ServerStartTick = GameTime.FrameTick();
 
     // Network
-    WriteLog("Starting server on ports {} and {}.\n", Settings.Port, Settings.Port + 1);
-    if ((TcpServer = NetServerBase::StartTcpServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
-        throw ServerInitException("Can't listen TCP server ports", Settings.Port);
+    WriteLog("Starting server on ports {} and {}.\n", Settings.ServerPort, Settings.ServerPort + 1);
+    if ((_tcpServer = NetServerBase::StartTcpServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
+        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort);
     }
-    if ((WebSocketsServer = NetServerBase::StartWebSocketsServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
-        throw ServerInitException("Can't listen TCP server ports", Settings.Port + 1);
+    if ((_webSocketsServer = NetServerBase::StartWebSocketsServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
+        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort + 1);
     }
 
     // Admin manager
@@ -194,19 +193,20 @@ FOServer::FOServer(GlobalSettings& settings) : Settings {settings}, GeomHelper(S
     }
 
     GameTime.FrameAdvance();
-    FpsTick = GameTime.FrameTick();
-    Started = true;
+    _fpsTick = GameTime.FrameTick();
+    _started = true;
 }
 
 FOServer::~FOServer()
 {
-    delete TcpServer;
-    delete WebSocketsServer;
+    delete _tcpServer;
+    delete _webSocketsServer;
+    delete ScriptSys;
 }
 
 void FOServer::Shutdown()
 {
-    WillFinishDispatcher();
+    _willFinishDispatcher();
 
     // Finish logic
     DbStorage.StartChanges();
@@ -214,7 +214,7 @@ void FOServer::Shutdown()
         DbHistory.StartChanges();
     }
 
-    ScriptSys.FinishEvent();
+    OnFinish.Fire();
     EntityMngr.FinalizeEntities();
 
     DbStorage.CommitChanges();
@@ -224,10 +224,10 @@ void FOServer::Shutdown()
 
     // Logging clients
     LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
-    for (auto* cl : LogClients) {
+    for (auto* cl : _logClients) {
         cl->Release();
     }
-    LogClients.clear();
+    _logClients.clear();
 
     // Connected players
     for (auto* player : EntityMngr.GetPlayers()) {
@@ -236,41 +236,41 @@ void FOServer::Shutdown()
 
     // Free connections
     {
-        std::lock_guard locker(FreeConnectionsLocker);
+        std::lock_guard locker(_freeConnectionsLocker);
 
-        for (auto* free_connection : FreeConnections) {
+        for (auto* free_connection : _freeConnections) {
             free_connection->HardDisconnect();
             delete free_connection;
         }
 
-        FreeConnections.clear();
+        _freeConnections.clear();
     }
 
     // Shutdown servers
-    if (TcpServer != nullptr) {
-        TcpServer->Shutdown();
-        delete TcpServer;
-        TcpServer = nullptr;
+    if (_tcpServer != nullptr) {
+        _tcpServer->Shutdown();
+        delete _tcpServer;
+        _tcpServer = nullptr;
     }
-    if (WebSocketsServer != nullptr) {
-        WebSocketsServer->Shutdown();
-        delete WebSocketsServer;
-        WebSocketsServer = nullptr;
+    if (_webSocketsServer != nullptr) {
+        _webSocketsServer->Shutdown();
+        delete _webSocketsServer;
+        _webSocketsServer = nullptr;
     }
 
     // Stats
     WriteLog("Server stopped.\n");
     WriteLog("Stats:\n");
     WriteLog("Traffic:\n");
-    WriteLog("Bytes Send: {}\n", Stats.BytesSend);
-    WriteLog("Bytes Recv: {}\n", Stats.BytesRecv);
-    WriteLog("Cycles count: {}\n", Stats.LoopCycles);
-    WriteLog("Approx cycle period: {}\n", Stats.LoopTime / (Stats.LoopCycles != 0u ? Stats.LoopCycles : 1));
-    WriteLog("Min cycle period: {}\n", Stats.LoopMin);
-    WriteLog("Max cycle period: {}\n", Stats.LoopMax);
-    WriteLog("Count of lags (>100ms): {}\n", Stats.LagsCount);
+    WriteLog("Bytes Send: {}\n", _stats.BytesSend);
+    WriteLog("Bytes Recv: {}\n", _stats.BytesRecv);
+    WriteLog("Cycles count: {}\n", _stats.LoopCycles);
+    WriteLog("Approx cycle period: {}\n", _stats.LoopTime / (_stats.LoopCycles != 0u ? _stats.LoopCycles : 1));
+    WriteLog("Min cycle period: {}\n", _stats.LoopMin);
+    WriteLog("Max cycle period: {}\n", _stats.LoopMax);
+    WriteLog("Count of lags (>100ms): {}\n", _stats.LagsCount);
 
-    DidFinishDispatcher();
+    _didFinishDispatcher();
 }
 
 void FOServer::MainLoop()
@@ -279,12 +279,12 @@ void FOServer::MainLoop()
 
     if (GameTime.FrameAdvance()) {
         const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
-        Globals->SetYear(st.Year);
-        Globals->SetMonth(st.Month);
-        Globals->SetDay(st.Day);
-        Globals->SetHour(st.Hour);
-        Globals->SetMinute(st.Minute);
-        Globals->SetSecond(st.Second);
+        SetYear(st.Year);
+        SetMonth(st.Month);
+        SetDay(st.Day);
+        SetHour(st.Hour);
+        SetMinute(st.Minute);
+        SetSecond(st.Second);
     }
 
     // Cycle time
@@ -301,8 +301,8 @@ void FOServer::MainLoop()
         vector<ClientConnection*> free_connections;
 
         {
-            std::lock_guard locker(FreeConnectionsLocker);
-            free_connections = FreeConnections;
+            std::lock_guard locker(_freeConnectionsLocker);
+            free_connections = _freeConnections;
         }
 
         for (auto* free_connection : free_connections) {
@@ -320,7 +320,7 @@ void FOServer::MainLoop()
         }
 
         for (auto* player : players) {
-            RUNTIME_ASSERT(!player->IsDestroyed);
+            RUNTIME_ASSERT(!player->IsDestroyed());
 
             ProcessConnection(player->Connection);
             ProcessPlayerConnection(player);
@@ -333,7 +333,7 @@ void FOServer::MainLoop()
 
     // Process critters
     for (auto* cr : EntityMngr.GetCritters()) {
-        if (cr->IsDestroyed) {
+        if (cr->IsDestroyed()) {
             continue;
         }
 
@@ -342,7 +342,7 @@ void FOServer::MainLoop()
 
     // Process maps
     for (auto* map : EntityMngr.GetMaps()) {
-        if (map->IsDestroyed) {
+        if (map->IsDestroyed()) {
             continue;
         }
 
@@ -357,7 +357,7 @@ void FOServer::MainLoop()
     ProcessBans();
 
     // Script game loop
-    ScriptSys.LoopEvent();
+    OnLoop.Fire();
 
     // Commit changed to data base
     DbStorage.CommitChanges();
@@ -371,28 +371,28 @@ void FOServer::MainLoop()
     // Fill statistics
     const auto frame_time = Timer::RealtimeTick() - frame_begin;
     const auto loop_tick = static_cast<uint>(frame_time);
-    Stats.LoopTime += loop_tick;
-    Stats.LoopCycles++;
-    if (loop_tick > Stats.LoopMax) {
-        Stats.LoopMax = loop_tick;
+    _stats.LoopTime += loop_tick;
+    _stats.LoopCycles++;
+    if (loop_tick > _stats.LoopMax) {
+        _stats.LoopMax = loop_tick;
     }
-    if (loop_tick < Stats.LoopMin) {
-        Stats.LoopMin = loop_tick;
+    if (loop_tick < _stats.LoopMin) {
+        _stats.LoopMin = loop_tick;
     }
-    Stats.CycleTime = loop_tick;
+    _stats.CycleTime = loop_tick;
     if (loop_tick > 100) {
-        Stats.LagsCount++;
+        _stats.LagsCount++;
     }
-    Stats.Uptime = (GameTime.FrameTick() - Stats.ServerStartTick) / 1000;
+    _stats.Uptime = (GameTime.FrameTick() - _stats.ServerStartTick) / 1000;
 
     // Calculate fps
-    if (GameTime.FrameTick() - FpsTick >= 1000) {
-        Stats.Fps = FpsCounter;
-        FpsCounter = 0;
-        FpsTick = GameTime.FrameTick();
+    if (GameTime.FrameTick() - _fpsTick >= 1000) {
+        _stats.Fps = _fpsCounter;
+        _fpsCounter = 0;
+        _fpsTick = GameTime.FrameTick();
     }
     else {
-        FpsCounter++;
+        _fpsCounter++;
     }
 
     // Sleep
@@ -404,121 +404,121 @@ void FOServer::MainLoop()
 void FOServer::DrawGui()
 {
     // Players
-    ImGui::SetNextWindowPos(Gui.PlayersPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.PlayersPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     if (ImGui::Begin("Players", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        Gui.Stats = "WIP..........................."; // ( Server && Server->Started ? Server->GetIngamePlayersStatistics() :
-                                                      // "Waiting for server start..." );
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+        _gui.Stats = "WIP..........................."; // ( Server && Server->_started ? Server->GetIngamePlayersStatistics() :
+                                                       // "Waiting for server start..." );
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
     }
     ImGui::End();
 
     // Locations and maps
-    ImGui::SetNextWindowPos(Gui.LocMapsPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.LocMapsPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     if (ImGui::Begin("Locations and maps", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        Gui.Stats = "WIP..........................."; // ( Server && Server->Started ? MapMngr.GetLocationAndMapsStatistics() :
-                                                      // "Waiting for server start..." );
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+        _gui.Stats = "WIP..........................."; // ( Server && Server->_started ? MapMngr.GetLocationAndMapsStatistics() :
+                                                       // "Waiting for server start..." );
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
     }
     ImGui::End();
 
     // Items count
-    ImGui::SetNextWindowPos(Gui.ItemsPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.ItemsPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     if (ImGui::Begin("Items count", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        Gui.Stats = (Started ? ItemMngr.GetItemsStatistics() : "Waiting for server start...");
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+        _gui.Stats = (_started ? ItemMngr.GetItemsStatistics() : "Waiting for server start...");
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
     }
     ImGui::End();
 
     // Profiler
-    ImGui::SetNextWindowPos(Gui.ProfilerPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.ProfilerPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        Gui.Stats = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+        _gui.Stats = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
     }
     ImGui::End();
 
     // Info
-    ImGui::SetNextWindowPos(Gui.InfoPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.InfoPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     if (ImGui::Begin("Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        Gui.Stats = "";
+        _gui.Stats = "";
         const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
-        Gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*Globals->GetTimeMultiplier()*/);
-        Gui.Stats += _str("Connections: {}\n", Stats.CurOnline);
-        Gui.Stats += _str("Players in game: {}\n", CrMngr.PlayersInGame());
-        Gui.Stats += _str("NPC in game: {}\n", CrMngr.NpcInGame());
-        Gui.Stats += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
-        Gui.Stats += _str("Items: {}\n", ItemMngr.GetItemsCount());
-        Gui.Stats += _str("Cycles per second: {}\n", Stats.Fps);
-        Gui.Stats += _str("Cycle time: {}\n", Stats.CycleTime);
-        const auto seconds = Stats.Uptime;
-        Gui.Stats += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
-        Gui.Stats += _str("KBytes Send: {}\n", Stats.BytesSend / 1024);
-        Gui.Stats += _str("KBytes Recv: {}\n", Stats.BytesRecv / 1024);
-        Gui.Stats += _str("Compress ratio: {}", static_cast<double>(Stats.DataReal) / (Stats.DataCompressed != 0 ? Stats.DataCompressed : 1));
-        ImGui::TextUnformatted(Gui.Stats.c_str(), Gui.Stats.c_str() + Gui.Stats.size());
+        _gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*GetTimeMultiplier()*/);
+        _gui.Stats += _str("Connections: {}\n", _stats.CurOnline);
+        _gui.Stats += _str("Players in game: {}\n", CrMngr.PlayersInGame());
+        _gui.Stats += _str("NPC in game: {}\n", CrMngr.NpcInGame());
+        _gui.Stats += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
+        _gui.Stats += _str("Items: {}\n", ItemMngr.GetItemsCount());
+        _gui.Stats += _str("Cycles per second: {}\n", _stats.Fps);
+        _gui.Stats += _str("Cycle time: {}\n", _stats.CycleTime);
+        const auto seconds = _stats.Uptime;
+        _gui.Stats += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
+        _gui.Stats += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
+        _gui.Stats += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
+        _gui.Stats += _str("Compress ratio: {}", static_cast<double>(_stats.DataReal) / (_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
     }
     ImGui::End();
 
     // Control panel
-    ImGui::SetNextWindowPos(Gui.ControlPanelPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.DefaultSize, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.ControlPanelPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
     ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
     if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (Started && !Settings.Quit && ImGui::Button("Stop & Quit", Gui.ButtonSize)) {
+        if (_started && !Settings.Quit && ImGui::Button("Stop & Quit", _gui.ButtonSize)) {
             Settings.Quit = true;
         }
-        if (ImGui::Button("Quit", Gui.ButtonSize)) {
+        if (ImGui::Button("Quit", _gui.ButtonSize)) {
             exit(0);
         }
-        if (ImGui::Button("Create dump", Gui.ButtonSize)) {
+        if (ImGui::Button("Create dump", _gui.ButtonSize)) {
             CreateDump("ManualDump", "Manual");
         }
-        if (ImGui::Button("Save log", Gui.ButtonSize)) {
+        if (ImGui::Button("Save log", _gui.ButtonSize)) {
             const auto dt = Timer::GetCurrentDateTime();
             const string log_name = _str("Logs/FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
             auto log_file = FileMngr.WriteFile(log_name, false);
-            log_file.SetStr(Gui.WholeLog);
+            log_file.SetStr(_gui.WholeLog);
             log_file.Save();
         }
     }
     ImGui::End();
 
     // Log
-    ImGui::SetNextWindowPos(Gui.LogPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(Gui.LogSize, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.LogPos, ImGuiCond_Once);
+    ImGui::SetNextWindowSize(_gui.LogSize, ImGuiCond_Once);
     if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
         const auto log = LogGetBuffer();
         if (!log.empty()) {
-            Gui.WholeLog += log;
-            if (Gui.WholeLog.size() > 100000) {
-                Gui.WholeLog = Gui.WholeLog.substr(Gui.WholeLog.size() - 100000);
+            _gui.WholeLog += log;
+            if (_gui.WholeLog.size() > 100000) {
+                _gui.WholeLog = _gui.WholeLog.substr(_gui.WholeLog.size() - 100000);
             }
         }
 
-        if (!Gui.WholeLog.empty()) {
-            ImGui::TextUnformatted(Gui.WholeLog.c_str(), Gui.WholeLog.c_str() + Gui.WholeLog.size());
+        if (!_gui.WholeLog.empty()) {
+            ImGui::TextUnformatted(_gui.WholeLog.c_str(), _gui.WholeLog.c_str() + _gui.WholeLog.size());
         }
     }
     ImGui::End();
 }
 
-auto FOServer::GetIngamePlayersStatistics() -> string
+auto FOServer::GetIngamePlayersStatistics() const -> string
 {
     uint conn_count;
 
     {
-        std::lock_guard locker(FreeConnectionsLocker);
-        conn_count = static_cast<uint>(FreeConnections.size());
+        std::lock_guard locker(_freeConnectionsLocker);
+        conn_count = static_cast<uint>(_freeConnections.size());
     }
 
     auto players = EntityMngr.GetPlayers();
@@ -528,10 +528,10 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     for (auto* player : players) {
         auto* cr = player->GetOwnedCritter();
         auto* map = MapMngr.GetMap(cr->GetMapId());
-        auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
+        const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
         const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : 0, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : 0);
-        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->Name, player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
+        result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
     }
     return result;
 }
@@ -553,18 +553,18 @@ void FOServer::OnNewConnection(NetConnection* net_connection)
 
     // Add to free connections
     {
-        std::lock_guard locker(FreeConnectionsLocker);
-        FreeConnections.push_back(connection);
+        std::lock_guard locker(_freeConnectionsLocker);
+        _freeConnections.push_back(connection);
     }
 }
 
 void FOServer::ProcessFreeConnection(ClientConnection* connection)
 {
     if (connection->IsHardDisconnected()) {
-        std::lock_guard locker(FreeConnectionsLocker);
-        const auto it = std::find(FreeConnections.begin(), FreeConnections.end(), connection);
-        RUNTIME_ASSERT(it != FreeConnections.end());
-        FreeConnections.erase(it);
+        std::lock_guard locker(_freeConnectionsLocker);
+        const auto it = std::find(_freeConnections.begin(), _freeConnections.end(), connection);
+        RUNTIME_ASSERT(it != _freeConnections.end());
+        _freeConnections.erase(it);
         delete connection;
         return;
     }
@@ -572,7 +572,7 @@ void FOServer::ProcessFreeConnection(ClientConnection* connection)
     std::lock_guard locker(connection->BinLocker);
 
     if (connection->IsGracefulDisconnected()) {
-        connection->Bin.Reset();
+        connection->Bin.ResetBuf();
         return;
     }
 
@@ -588,12 +588,12 @@ void FOServer::ProcessFreeConnection(ClientConnection* connection)
             // even if answer data will change its meaning
             CONNECTION_OUTPUT_BEGIN(connection);
             connection->DisableCompression();
-            connection->Bout << Stats.CurOnline;
-            connection->Bout << Stats.Uptime;
+            connection->Bout << _stats.CurOnline;
+            connection->Bout << _stats.Uptime;
             connection->Bout << static_cast<uint>(0);
             connection->Bout << static_cast<uchar>(0);
             connection->Bout << static_cast<uchar>(0xF0);
-            connection->Bout << static_cast<ushort>(FO_VERSION);
+            connection->Bout << static_cast<ushort>(FO_COMPATIBILITY_VERSION);
             CONNECTION_OUTPUT_END(connection);
 
             connection->HardDisconnect();
@@ -632,7 +632,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
         // Manage saves, exit from game
         /*
          #if !FO_SINGLEPLAYER
-        ScriptSys.PlayerLogoutEvent(cr);
+        PlayerLogout.Fire(cr);
 #endif
          * const auto id = cl->GetId();
         auto* cl_ = (id != 0u ? CrMngr.GetPlayer(id) : nullptr);
@@ -665,7 +665,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
 
     if (player->Connection->IsGracefulDisconnected()) {
         std::lock_guard locker(player->Connection->BinLocker);
-        player->Connection->Bin.Reset();
+        player->Connection->Bin.ResetBuf();
         return;
     }
 
@@ -925,52 +925,39 @@ void FOServer::Process_Text(Player* player)
     }
 
     // Text listen
-    auto listen_count = 0;
-    ScriptFunc<void, Critter*, string> listen_func[100]; // 100 calls per one message is enough
-    string listen_str[100];
+    vector<pair<ScriptFunc<void, Critter*, string>, string>> listen_callbacks;
+    listen_callbacks.reserve(100u);
 
-    {
-        std::lock_guard locker(TextListenersLocker);
-
-        if (how_say == SAY_RADIO) {
-            for (auto& tl : TextListeners) {
-                if (tl.SayType == SAY_RADIO && std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
-                    listen_func[listen_count] = tl.Func;
-                    listen_str[listen_count] = str;
-                    if (++listen_count >= 100) {
-                        break;
-                    }
-                }
+    if (how_say == SAY_RADIO) {
+        for (auto& tl : _textListeners) {
+            if (tl.SayType == SAY_RADIO && std::find(channels.begin(), channels.end(), tl.Parameter) != channels.end() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
+                listen_callbacks.emplace_back(tl.Func, str);
             }
         }
-        else {
-            auto* map = MapMngr.GetMap(cr->GetMapId());
-            const auto pid = (map != nullptr ? map->GetProtoId() : 0);
-            for (auto& tl : TextListeners) {
-                if (tl.SayType == how_say && tl.Parameter == pid && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
-                    listen_func[listen_count] = tl.Func;
-                    listen_str[listen_count] = str;
-                    if (++listen_count >= 100) {
-                        break;
-                    }
-                }
+    }
+    else {
+        auto* map = MapMngr.GetMap(cr->GetMapId());
+        const auto pid = (map != nullptr ? map->GetProtoId() : hstring());
+        for (auto& tl : _textListeners) {
+            if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
+                listen_callbacks.emplace_back(tl.Func, str);
             }
         }
     }
 
-    for (auto i = 0; i < listen_count; i++) {
-        listen_func[i](cr, listen_str[i]);
+    for (auto& cb : listen_callbacks) {
+        cb.first(cr, cb.second);
     }
 }
 
-void FOServer::Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
+void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
     LogToFunc("Process_Command", logcb, true);
     Process_CommandReal(buf, logcb, player, admin_panel);
     LogToFunc("Process_Command", logcb, false);
 }
 
-void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
+void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
     auto* cl_ = player->GetOwnedCritter();
 
@@ -981,7 +968,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     buf >> cmd;
 
     auto sstr = string(cl_ != nullptr ? "" : admin_panel);
-    auto allow_command = ScriptSys.PlayerAllowCommandEvent(player, sstr, cmd);
+    auto allow_command = OnPlayerAllowCommand.Fire(player, sstr, cmd);
 
     if (!allow_command && (cl_ == nullptr)) {
         logcb("Command refused by script.");
@@ -990,8 +977,9 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
 #define CHECK_ALLOW_COMMAND() \
     do { \
-        if (!allow_command) \
+        if (!allow_command) { \
             return; \
+        } \
     } while (0)
 
 #define CHECK_ADMIN_PANEL() \
@@ -1062,8 +1050,8 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
         string str;
         {
-            std::lock_guard locker(FreeConnectionsLocker);
-            str = _str("Free connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.", FreeConnections.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), GameTime.FrameTick() / 1000 / 60, (GameTime.FrameTick() - Stats.ServerStartTick) / 1000 / 60);
+            std::lock_guard locker(_freeConnectionsLocker);
+            str = _str("Free connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.", _freeConnections.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), GameTime.FrameTick() / 1000 / 60, (GameTime.FrameTick() - _stats.ServerStartTick) / 1000 / 60);
         }
 
         result += str;
@@ -1078,7 +1066,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
         CHECK_ALLOW_COMMAND();
 
-        auto player_id = MAKE_PLAYER_ID(name);
+        const auto player_id = MakePlayerId(name);
         if (DbStorage.Valid("Players", player_id)) {
             logcb(_str("Player id is {}.", player_id));
         }
@@ -1179,17 +1167,17 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
         auto* cr = (crid == 0u ? cl_ : CrMngr.GetCritter(crid));
         if (cr != nullptr) {
-            auto* prop = Critter::PropertiesRegistrator->Find(property_name);
+            const auto* prop = GetPropertyRegistrator("Critter")->Find(property_name);
             if (prop == nullptr) {
                 logcb("Property not found.");
                 return;
             }
-            if (!prop->IsPOD() || prop->GetBaseSize() != 4) {
-                logcb("For now you can modify only int/uint properties.");
+            if (!prop->IsPlainData()) {
+                logcb("Property is not plain data type.");
                 return;
             }
 
-            cr->Props.SetValue<int>(prop, property_value);
+            cr->SetValueAsInt(prop, property_value);
             logcb("Done.");
         }
         else {
@@ -1229,7 +1217,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         auto allow = false;
         if (wanted_access != -1) {
             auto& pass = pasw_access;
-            allow = ScriptSys.PlayerGetAccessEvent(player, wanted_access, pass);
+            allow = OnPlayerGetAccess.Fire(player, wanted_access, pass);
         }
 
         if (!allow) {
@@ -1243,11 +1231,11 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     case CMD_ADDITEM: {
         ushort hex_x = 0;
         ushort hex_y = 0;
-        hash pid = 0;
+        hstring pid;
         uint count = 0;
         buf >> hex_x;
         buf >> hex_y;
-        buf >> pid;
+        pid = buf.ReadHashedString(*this);
         buf >> count;
 
         CHECK_ALLOW_COMMAND();
@@ -1267,9 +1255,9 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         }
     } break;
     case CMD_ADDITEM_SELF: {
-        hash pid = 0;
+        hstring pid;
         uint count = 0;
-        buf >> pid;
+        pid = buf.ReadHashedString(*this);
         buf >> count;
 
         CHECK_ALLOW_COMMAND();
@@ -1286,11 +1274,11 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
         ushort hex_x = 0;
         ushort hex_y = 0;
         uchar dir = 0;
-        hash pid = 0;
+        hstring pid;
         buf >> hex_x;
         buf >> hex_y;
         buf >> dir;
-        buf >> pid;
+        pid = buf.ReadHashedString(*this);
 
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
@@ -1307,10 +1295,10 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
     case CMD_ADDLOCATION: {
         ushort wx = 0;
         ushort wy = 0;
-        hash pid = 0;
+        hstring pid;
         buf >> wx;
         buf >> wy;
-        buf >> pid;
+        pid = buf.ReadHashedString(*this);
 
         CHECK_ALLOW_COMMAND();
 
@@ -1339,7 +1327,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
             break;
         }
 
-        if (ScriptSys.CallFunc<void, Critter*, int, int, int>(func_name, static_cast<Critter*>(cl_), param0, param1, param2)) {
+        if (ScriptSys->CallFunc<void, Critter*, int, int, int>(func_name, static_cast<Critter*>(cl_), param0, param1, param2)) {
             logcb("Run script success.");
         }
         else {
@@ -1404,16 +1392,16 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
         CHECK_ALLOW_COMMAND();
 
-        std::lock_guard locker(BannedLocker);
+        std::lock_guard locker(_bannedLocker);
 
         if (_str(params).compareIgnoreCase("list")) {
-            if (Banned.empty()) {
+            if (_banned.empty()) {
                 logcb("Ban list empty.");
                 return;
             }
 
             uint index = 1;
-            for (auto& ban : Banned) {
+            for (auto& ban : _banned) {
                 logcb(_str("--- {:3} ---", index));
                 if (ban.ClientName[0] != 0) {
                     logcb(_str("User: {}", ban.ClientName));
@@ -1439,7 +1427,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
                 return;
             }
 
-            auto player_id = MAKE_PLAYER_ID(name);
+            const auto player_id = MakePlayerId(name);
             auto* ban_player = EntityMngr.GetPlayer(player_id);
             ClientBanned ban;
             ban.ClientName = name;
@@ -1450,7 +1438,7 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
             ban.BannedBy = (cl_ != nullptr ? cl_->Name : admin_panel);
             ban.BanInfo = info;
 
-            Banned.push_back(ban);
+            _banned.push_back(ban);
             SaveBan(ban, false);
             logcb("User banned.");
 
@@ -1469,17 +1457,17 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
             auto resave = false;
             if (name == "*") {
                 auto index = static_cast<int>(ban_hours) - 1;
-                if (index >= 0 && index < static_cast<int>(Banned.size())) {
-                    Banned.erase(Banned.begin() + index);
+                if (index >= 0 && index < static_cast<int>(_banned.size())) {
+                    _banned.erase(_banned.begin() + index);
                     resave = true;
                 }
             }
             else {
-                for (auto it = Banned.begin(); it != Banned.end();) {
+                for (auto it = _banned.begin(); it != _banned.end();) {
                     auto& ban = *it;
                     if (_str(ban.ClientName).compareIgnoreCaseUtf8(name)) {
                         SaveBan(ban, true);
-                        it = Banned.erase(it);
+                        it = _banned.erase(it);
                         resave = true;
                     }
                     else {
@@ -1509,29 +1497,29 @@ void FOServer::Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player*
 
         LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
 
-        auto it = std::find(LogClients.begin(), LogClients.end(), player);
-        if (flags[0] == '-' && flags[1] == '\0' && it != LogClients.end()) // Detach current
+        auto it = std::find(_logClients.begin(), _logClients.end(), player);
+        if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
         {
             logcb("Detached.");
             player->Release();
-            LogClients.erase(it);
+            _logClients.erase(it);
         }
-        else if (flags[0] == '+' && flags[1] == '\0' && it == LogClients.end()) // Attach current
+        else if (flags[0] == '+' && flags[1] == '\0' && it == _logClients.end()) // Attach current
         {
             logcb("Attached.");
             player->AddRef();
-            LogClients.push_back(player);
+            _logClients.push_back(player);
         }
         else if (flags[0] == '-' && flags[1] == '-' && flags[2] == '\0') // Detach all
         {
             logcb("Detached all.");
-            for (auto* acc : LogClients) {
+            for (auto* acc : _logClients) {
                 acc->Release();
             }
-            LogClients.clear();
+            _logClients.clear();
         }
 
-        if (!LogClients.empty()) {
+        if (!_logClients.empty()) {
             LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), true);
         }
     } break;
@@ -1555,13 +1543,13 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     RUNTIME_ASSERT(minute >= 0 && minute <= 59);
     RUNTIME_ASSERT(second >= 0 && second <= 59);
 
-    Globals->SetTimeMultiplier(multiplier);
-    Globals->SetYear(year);
-    Globals->SetMonth(month);
-    Globals->SetDay(day);
-    Globals->SetHour(hour);
-    Globals->SetMinute(minute);
-    Globals->SetSecond(second);
+    SetTimeMultiplier(multiplier);
+    SetYear(year);
+    SetMonth(month);
+    SetDay(day);
+    SetHour(hour);
+    SetMinute(minute);
+    SetSecond(second);
 
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
@@ -1595,7 +1583,7 @@ auto FOServer::InitLangPacks(vector<LanguagePack>& lang_packs) -> bool
         }
 
         LanguagePack lang;
-        lang.LoadFromFiles(FileMngr, lang_name);
+        lang.LoadFromFiles(FileMngr, *this, lang_name);
 
         lang_packs.push_back(lang);
         cur_lang++;
@@ -1666,7 +1654,7 @@ auto FOServer::InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool
                 }
 
                 if (lang.Msg[TEXTMSG_LOCATIONS].IsIntersects(*ploc->Texts[i])) {
-                    WriteLog("Warning! Location '{}' text intersection detected, send notification about this to developers.\n", _str().parseHash(ploc->ProtoId));
+                    WriteLog("Warning! Location '{}' text intersection detected, send notification about this to developers.\n", ploc->GetName());
                 }
 
                 lang.Msg[TEXTMSG_LOCATIONS] += *ploc->Texts[i];
@@ -1707,49 +1695,49 @@ auto FOServer::InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool
 void FOServer::LogToClients(string_view str)
 {
     if (!str.empty() && str.back() == '\n') {
-        LogLines.emplace_back(str, 0, str.length() - 1);
+        _logLines.emplace_back(str, 0, str.length() - 1);
     }
     else {
-        LogLines.emplace_back(str);
+        _logLines.emplace_back(str);
     }
 }
 
 void FOServer::DispatchLogToClients()
 {
-    if (LogLines.empty()) {
+    if (_logLines.empty()) {
         return;
     }
 
-    for (const auto& str : LogLines) {
-        for (auto it = LogClients.begin(); it < LogClients.end();) {
-            if (auto* player = *it; !player->IsDestroyed) {
+    for (const auto& str : _logLines) {
+        for (auto it = _logClients.begin(); it < _logClients.end();) {
+            if (auto* player = *it; !player->IsDestroyed()) {
                 player->Send_TextEx(0, str, SAY_NETMSG, false);
                 ++it;
             }
             else {
                 player->Release();
-                it = LogClients.erase(it);
+                it = _logClients.erase(it);
             }
         }
     }
 
-    if (LogClients.empty()) {
+    if (_logClients.empty()) {
         LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
     }
 
-    LogLines.clear();
+    _logLines.clear();
 }
 
 auto FOServer::GetBanByName(string_view name) -> ClientBanned*
 {
-    const auto it = std::find_if(Banned.begin(), Banned.end(), [name](const ClientBanned& ban) { return _str(name).compareIgnoreCaseUtf8(ban.ClientName); });
-    return it != Banned.end() ? &(*it) : nullptr;
+    const auto it = std::find_if(_banned.begin(), _banned.end(), [name](const ClientBanned& ban) { return _str(name).compareIgnoreCaseUtf8(ban.ClientName); });
+    return it != _banned.end() ? &(*it) : nullptr;
 }
 
 auto FOServer::GetBanByIp(uint ip) -> ClientBanned*
 {
-    const auto it = std::find_if(Banned.begin(), Banned.end(), [ip](const ClientBanned& ban) { return ban.ClientIp == ip; });
-    return it != Banned.end() ? &(*it) : nullptr;
+    const auto it = std::find_if(_banned.begin(), _banned.end(), [ip](const ClientBanned& ban) { return ban.ClientIp == ip; });
+    return it != _banned.end() ? &(*it) : nullptr;
 }
 
 auto FOServer::GetBanTime(ClientBanned& ban) -> uint
@@ -1766,15 +1754,15 @@ auto FOServer::GetBanLexems(ClientBanned& ban) -> string
 
 void FOServer::ProcessBans()
 {
-    std::lock_guard locker(BannedLocker);
+    std::lock_guard locker(_bannedLocker);
 
     auto resave = false;
     const auto time = Timer::GetCurrentDateTime();
-    for (auto it = Banned.begin(); it != Banned.end();) {
+    for (auto it = _banned.begin(); it != _banned.end();) {
         auto& ban_time = it->EndTime;
         if (time.Year >= ban_time.Year && time.Month >= ban_time.Month && time.Day >= ban_time.Day && time.Hour >= ban_time.Hour && time.Minute >= ban_time.Minute) {
             SaveBan(*it, true);
-            it = Banned.erase(it);
+            it = _banned.erase(it);
             resave = true;
         }
         else {
@@ -1788,7 +1776,7 @@ void FOServer::ProcessBans()
 
 void FOServer::SaveBan(ClientBanned& ban, bool expired)
 {
-    std::lock_guard locker(BannedLocker);
+    std::lock_guard locker(_bannedLocker);
 
     const string ban_file_name = (expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE);
     auto out_ban_file = FileMngr.WriteFile(ban_file_name, true);
@@ -1815,10 +1803,10 @@ void FOServer::SaveBan(ClientBanned& ban, bool expired)
 
 void FOServer::SaveBans()
 {
-    std::lock_guard locker(BannedLocker);
+    std::lock_guard locker(_bannedLocker);
 
     auto out_ban_file = FileMngr.WriteFile(BANS_FNAME_ACTIVE, false);
-    for (auto& ban : Banned) {
+    for (auto& ban : _banned) {
         out_ban_file.SetStr("[Ban]\n");
         if (ban.ClientName[0] != 0) {
             out_ban_file.SetStr(_str("User = {}\n", ban.ClientName));
@@ -1842,11 +1830,11 @@ void FOServer::SaveBans()
 
 void FOServer::LoadBans()
 {
-    std::lock_guard locker(BannedLocker);
+    std::lock_guard locker(_bannedLocker);
 
-    Banned.clear();
+    _banned.clear();
 
-    auto bans = FileMngr.ReadConfigFile(BANS_FNAME_ACTIVE);
+    auto bans = FileMngr.ReadConfigFile(BANS_FNAME_ACTIVE, *this);
     if (!bans) {
         return;
     }
@@ -1855,7 +1843,6 @@ void FOServer::LoadBans()
         ClientBanned ban;
 
         DateTimeStamp time;
-        std::memset(&time, 0, sizeof(time));
 
         string s;
         if (!(s = bans.GetStr("Ban", "User")).empty()) {
@@ -1880,7 +1867,7 @@ void FOServer::LoadBans()
             ban.BanInfo = s;
         }
 
-        Banned.push_back(ban);
+        _banned.push_back(ban);
 
         bans.GotoNextApp("Ban");
     }
@@ -1889,7 +1876,7 @@ void FOServer::LoadBans()
 
 void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resource_names)
 {
-    if (!first_generation && UpdateFiles.empty()) {
+    if (!first_generation && _updateFiles.empty()) {
         return;
     }
 
@@ -1901,23 +1888,23 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
             player->Connection->HardDisconnect();
         }
 
-        std::lock_guard locker(FreeConnectionsLocker);
+        std::lock_guard locker(_freeConnectionsLocker);
 
-        for (auto* free_connection : FreeConnections) {
+        for (auto* free_connection : _freeConnections) {
             free_connection->HardDisconnect();
         }
     }
 
     // Clear collections
-    for (auto& update_file : UpdateFiles) {
+    for (auto& update_file : _updateFiles) {
         delete[] update_file.Data;
     }
-    UpdateFiles.clear();
-    UpdateFilesList.clear();
+    _updateFiles.clear();
+    _updateFilesList.clear();
 
     // Fill MSG
     UpdateFile update_file {};
-    for (auto& lang_pack : LangPacks) {
+    for (auto& lang_pack : _langPacks) {
         for (auto i = 0; i < TEXTMSG_COUNT; i++) {
             const auto msg_data = lang_pack.Msg[i].GetBinaryData();
             auto msg_cache_name = lang_pack.GetMsgCacheName(i);
@@ -1926,12 +1913,12 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
             update_file.Size = static_cast<uint>(msg_data.size());
             update_file.Data = new uchar[update_file.Size];
             std::memcpy(update_file.Data, &msg_data[0], update_file.Size);
-            UpdateFiles.push_back(update_file);
+            _updateFiles.push_back(update_file);
 
-            WriteData(UpdateFilesList, static_cast<short>(msg_cache_name.length()));
-            WriteDataArr(UpdateFilesList, msg_cache_name.c_str(), msg_cache_name.length());
-            WriteData(UpdateFilesList, update_file.Size);
-            WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
+            WriteData(_updateFilesList, static_cast<short>(msg_cache_name.length()));
+            WriteDataArr(_updateFilesList, msg_cache_name.c_str(), msg_cache_name.length());
+            WriteData(_updateFilesList, update_file.Size);
+            WriteData(_updateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
         }
     }
 
@@ -1942,13 +1929,13 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
     update_file.Size = static_cast<uint>(proto_items_data.size());
     update_file.Data = new uchar[update_file.Size];
     std::memcpy(update_file.Data, &proto_items_data[0], update_file.Size);
-    UpdateFiles.push_back(update_file);
+    _updateFiles.push_back(update_file);
 
     const string protos_cache_name = "$protos.cache";
-    WriteData(UpdateFilesList, static_cast<short>(protos_cache_name.length()));
-    WriteDataArr(UpdateFilesList, protos_cache_name.c_str(), protos_cache_name.length());
-    WriteData(UpdateFilesList, update_file.Size);
-    WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
+    WriteData(_updateFilesList, static_cast<short>(protos_cache_name.length()));
+    WriteDataArr(_updateFilesList, protos_cache_name.c_str(), protos_cache_name.length());
+    WriteData(_updateFilesList, update_file.Size);
+    WriteData(_updateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
 
     // Fill files
     auto files = FileMngr.FilterFiles("", "Update/", true);
@@ -1958,13 +1945,13 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
         std::memset(&update_file, 0, sizeof(update_file));
         update_file.Size = file.GetFsize();
         update_file.Data = file.ReleaseBuffer();
-        UpdateFiles.push_back(update_file);
+        _updateFiles.push_back(update_file);
 
         auto file_path = file.GetName().substr("Update/"_len);
-        WriteData(UpdateFilesList, static_cast<short>(file_path.length()));
-        WriteDataArr(UpdateFilesList, file_path.data(), file_path.length());
-        WriteData(UpdateFilesList, update_file.Size);
-        WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
+        WriteData(_updateFilesList, static_cast<short>(file_path.length()));
+        WriteDataArr(_updateFilesList, file_path.data(), file_path.length());
+        WriteData(_updateFilesList, update_file.Size);
+        WriteData(_updateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
 
     WriteLog("Generate update files complete.\n");
@@ -1977,90 +1964,56 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
         std::memset(&update_file, 0, sizeof(update_file));
         update_file.Size = file.GetFsize();
         update_file.Data = file.ReleaseBuffer();
-        UpdateFiles.push_back(update_file);
+        _updateFiles.push_back(update_file);
 
         auto file_path = file.GetName().substr("Binaries/"_len);
-        WriteData(UpdateFilesList, static_cast<short>(file_path.length()));
-        WriteDataArr(UpdateFilesList, file_path.data(), file_path.length());
-        WriteData(UpdateFilesList, update_file.Size);
-        WriteData(UpdateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
+        WriteData(_updateFilesList, static_cast<short>(file_path.length()));
+        WriteDataArr(_updateFilesList, file_path.data(), file_path.length());
+        WriteData(_updateFilesList, update_file.Size);
+        WriteData(_updateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
 
     // Complete files list
-    WriteData(UpdateFilesList, static_cast<short>(-1));
+    WriteData(_updateFilesList, static_cast<short>(-1));
 }
 
-void FOServer::EntitySetValue(Entity* entity, Property* prop, void* /*cur_value*/, void* /*old_value*/)
+void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
 {
     NON_CONST_METHOD_HINT();
 
-    if ((entity->Id == 0u) || prop->IsTemporary()) {
+    if (prop->IsTemporary()) {
         return;
     }
 
-    const auto value = PropertiesSerializator::SavePropertyToDbValue(&entity->Props, prop, ScriptSys);
+    uint entry_id;
 
-    if (entity->Type == EntityType::Location) {
-        DbStorage.Update("Locations", entity->Id, prop->GetName(), value);
-    }
-    else if (entity->Type == EntityType::Map) {
-        DbStorage.Update("Maps", entity->Id, prop->GetName(), value);
-    }
-    else if (entity->Type == EntityType::Critter) {
-        DbStorage.Update("Critters", entity->Id, prop->GetName(), value);
-    }
-    else if (entity->Type == EntityType::Item) {
-        DbStorage.Update("Items", entity->Id, prop->GetName(), value);
-    }
-    else if (entity->Type == EntityType::Custom) {
-        DbStorage.Update(entity->Props.GetRegistrator()->GetClassName() + "s", entity->Id, prop->GetName(), value);
-    }
-    else if (entity->Type == EntityType::Player) {
-        DbStorage.Update("Players", entity->Id, prop->GetName(), value);
-    }
-    else if (entity->Type == EntityType::Global) {
-        DbStorage.Update("Globals", entity->Id, prop->GetName(), value);
+    if (auto* server_entity = dynamic_cast<ServerEntity*>(entity); server_entity != nullptr) {
+        if (server_entity->GetId() == 0u) {
+            return;
+        }
+
+        entry_id = server_entity->GetId();
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        entry_id = 1u;
     }
 
-    if (DbHistory && !prop->IsNoHistory()) {
-        const auto id = Globals->GetHistoryRecordsId();
-        Globals->SetHistoryRecordsId(id + 1);
+    const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
+    DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
+
+    if (DbHistory && prop->IsHistorical()) {
+        const auto history_id = GetHistoryRecordsId();
+        SetHistoryRecordsId(history_id + 1u);
 
         const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
-        DataBase::Document doc;
+        AnyData::Document doc;
         doc["Time"] = static_cast<int64>(time.count());
-        doc["EntityId"] = static_cast<int>(entity->Id);
+        doc["EntityId"] = static_cast<int>(entry_id);
         doc["Property"] = prop->GetName();
         doc["Value"] = value;
 
-        if (entity->Type == EntityType::Location) {
-            DbHistory.Insert("LocationsHistory", id, doc);
-        }
-        else if (entity->Type == EntityType::Map) {
-            DbHistory.Insert("MapsHistory", id, doc);
-        }
-        else if (entity->Type == EntityType::Critter) {
-            DbHistory.Insert("CrittersHistory", id, doc);
-        }
-        else if (entity->Type == EntityType::Item) {
-            DbHistory.Insert("ItemsHistory", id, doc);
-        }
-        else if (entity->Type == EntityType::Custom) {
-            DbHistory.Insert(entity->Props.GetRegistrator()->GetClassName() + "sHistory", id, doc);
-        }
-        else if (entity->Type == EntityType::Player) {
-            DbHistory.Insert("PlayersHistory", id, doc);
-        }
-        else if (entity->Type == EntityType::Global) {
-            DbHistory.Insert("GlobalsHistory", id, doc);
-        }
-        else {
-            throw UnreachablePlaceException(LINE_STR);
-        }
+        DbHistory.Insert(_str("{}sHistory", entity->GetClassName()), history_id, doc);
     }
 }
 
@@ -2074,46 +2027,10 @@ void FOServer::ProcessCritter(Critter* cr)
     ProcessMove(cr);
 
     // Idle functions
-    ScriptSys.CritterIdleEvent(cr);
+    OnCritterIdle.Fire(cr);
     if (cr->GetMapId() == 0u) {
-        ScriptSys.CritterGlobalMapIdleEvent(cr);
+        OnCritterGlobalMapIdle.Fire(cr);
     }
-
-    // Internal misc/drugs time events
-    // One event per cycle
-    /*if (cr->IsNonEmptyTE_FuncNum())
-    {
-        CScriptArray* te_next_time = cr->GetTE_NextTime();
-        uint next_time = *(uint*)te_next_time->At(0);
-        if (!next_time || GameTime.GetFullSecond() >= next_time)
-        {
-            CScriptArray* te_func_num = cr->GetTE_FuncNum();
-            CScriptArray* te_rate = cr->GetTE_Rate();
-            CScriptArray* te_identifier = cr->GetTE_Identifier();
-            RUNTIME_ASSERT(te_next_time->GetSize() == te_func_num->GetSize());
-            RUNTIME_ASSERT(te_func_num->GetSize() == te_rate->GetSize());
-            RUNTIME_ASSERT(te_rate->GetSize() == te_identifier->GetSize());
-            hash func_num = *(hash*)te_func_num->At(0);
-            uint rate = *(hash*)te_rate->At(0);
-            int identifier = *(hash*)te_identifier->At(0);
-            te_func_num->Release();
-            te_rate->Release();
-            te_identifier->Release();
-
-            cr->EraseCrTimeEvent(0);
-
-            uint time = Globals->GetTimeMultiplier() * 1800; // 30 minutes on error
-            ScriptSys.PrepareScriptFuncContext(func_num, cr->GetName());
-            ScriptSys.SetArgEntity(cr);
-            ScriptSys.SetArgUInt(identifier);
-            ScriptSys.SetArgAddress(&rate);
-            if (ScriptSys.RunPrepared())
-                time = ScriptSys.GetReturnedUInt();
-            if (time)
-                cr->AddCrTimeEvent(func_num, rate, time, identifier);
-        }
-        te_next_time->Release();
-    }*/
 
     CrMngr.ProcessTalk(cr, false);
 
@@ -2127,7 +2044,7 @@ void FOServer::ProcessCritter(Critter* cr)
     // Remove player critter from game
     if (cr->IsPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0u && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
         if (cr->GetClientToDelete()) {
-            ScriptSys.CritterFinishEvent(cr);
+            OnCritterFinish.Fire(cr);
         }
 
         auto* map = MapMngr.GetMap(cr->GetMapId());
@@ -2136,11 +2053,10 @@ void FOServer::ProcessCritter(Critter* cr)
         // Destroy
         const auto full_delete = cr->GetClientToDelete();
         EntityMngr.UnregisterEntity(cr);
-        cr->IsDestroyed = true;
+        cr->MarkAsDestroyed();
 
         // Erase radios from collection
-        auto items = cr->GetItemsNoLock();
-        for (auto* item : items) {
+        for (auto* item : cr->GetRawItems()) {
             if (item->GetIsRadio()) {
                 ItemMngr.UnregisterRadio(item);
             }
@@ -2149,7 +2065,7 @@ void FOServer::ProcessCritter(Critter* cr)
         // Full delete
         if (full_delete) {
             CrMngr.DeleteInventory(cr);
-            DbStorage.Delete("Players", cr->Id);
+            DbStorage.Delete("Players", cr->GetId());
         }
 
         cr->Release();
@@ -2236,7 +2152,7 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
                 item->TriggerScriptFunc(cr, item, false, dir);
             }
 
-            ScriptSys.StaticItemWalkEvent(item, cr, false, dir);
+            OnStaticItemWalk.Fire(item, cr, false, dir);
         }
     }
 
@@ -2246,19 +2162,19 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
                 item->TriggerScriptFunc(cr, item, true, dir);
             }
 
-            ScriptSys.StaticItemWalkEvent(item, cr, true, dir);
+            OnStaticItemWalk.Fire(item, cr, true, dir);
         }
     }
 
     if (map->IsHexTrigger(from_hx, from_hy)) {
         for (auto* item : map->GetItemsTrigger(from_hx, from_hy)) {
-            ScriptSys.ItemWalkEvent(item, cr, false, dir);
+            OnItemWalk.Fire(item, cr, false, dir);
         }
     }
 
     if (map->IsHexTrigger(to_hx, to_hy)) {
         for (auto* item : map->GetItemsTrigger(to_hx, to_hy)) {
-            ScriptSys.ItemWalkEvent(item, cr, true, dir);
+            OnItemWalk.Fire(item, cr, true, dir);
         }
     }
 }
@@ -2297,7 +2213,7 @@ void FOServer::Process_Update(ClientConnection* connection)
     // Net protocol
     ushort proto_ver = 0;
     connection->Bin >> proto_ver;
-    const auto outdated = (proto_ver != static_cast<ushort>(FO_VERSION));
+    const auto outdated = (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION));
 
     // Begin data encrypting
     uint encrypt_key = 0;
@@ -2308,22 +2224,22 @@ void FOServer::Process_Update(ClientConnection* connection)
     CHECK_IN_BUFF_ERROR(connection);
 
     // Send update files list
-    uint msg_len = sizeof(NETMSG_UPDATE_FILES_LIST) + sizeof(msg_len) + sizeof(bool) + sizeof(uint) + static_cast<uint>(UpdateFilesList.size());
+    uint msg_len = sizeof(NETMSG_UPDATE_FILES_LIST) + sizeof(msg_len) + sizeof(bool) + sizeof(uint) + static_cast<uint>(_updateFilesList.size());
 
     // With global properties
     vector<uchar*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
     if (!outdated) {
-        msg_len += sizeof(ushort) + Globals->Props.StoreData(false, &global_vars_data, &global_vars_data_sizes);
+        msg_len += sizeof(ushort) + StoreData(false, &global_vars_data, &global_vars_data_sizes);
     }
 
     CONNECTION_OUTPUT_BEGIN(connection);
     connection->Bout << NETMSG_UPDATE_FILES_LIST;
     connection->Bout << msg_len;
     connection->Bout << outdated;
-    connection->Bout << static_cast<uint>(UpdateFilesList.size());
-    if (!UpdateFilesList.empty()) {
-        connection->Bout.Push(&UpdateFilesList[0], static_cast<uint>(UpdateFilesList.size()));
+    connection->Bout << static_cast<uint>(_updateFilesList.size());
+    if (!_updateFilesList.empty()) {
+        connection->Bout.Push(&_updateFilesList[0], static_cast<uint>(_updateFilesList.size()));
     }
     if (!outdated) {
         NET_WRITE_PROPERTIES(connection->Bout, global_vars_data, global_vars_data_sizes);
@@ -2338,7 +2254,7 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
 
     CHECK_IN_BUFF_ERROR(connection);
 
-    if (file_index >= static_cast<uint>(UpdateFiles.size())) {
+    if (file_index >= static_cast<uint>(_updateFiles.size())) {
         WriteLog("Wrong file index {}, from host '{}'.\n", file_index, connection->GetHost());
         connection->GracefulDisconnect();
         return;
@@ -2358,7 +2274,7 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
         return;
     }
 
-    auto& update_file = UpdateFiles[connection->UpdateFileIndex];
+    auto& update_file = _updateFiles[connection->UpdateFileIndex];
     const auto offset = connection->UpdateFilePortion * FILE_UPDATE_PORTION;
 
     if (offset + FILE_UPDATE_PORTION < update_file.Size) {
@@ -2401,7 +2317,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     connection->Bout.SetEncryptKey(1234567890);
 
     // Check protocol
-    if (proto_ver != static_cast<ushort>(FO_VERSION)) {
+    if (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION)) {
         connection->Send_CustomMessage(NETMSG_WRONG_NET_PROTO);
         connection->GracefulDisconnect();
         return;
@@ -2409,7 +2325,7 @@ void FOServer::Process_Register(ClientConnection* connection)
 
     // Check for ban by ip
     {
-        std::lock_guard locker(BannedLocker);
+        std::lock_guard locker(_bannedLocker);
 
         const auto ip = connection->GetIp();
         if (auto* ban = GetBanByIp(ip); ban != nullptr) {
@@ -2447,7 +2363,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     }
 
     // Check for exist
-    const auto player_id = MAKE_PLAYER_ID(name);
+    const auto player_id = MakePlayerId(name);
     if (DbStorage.Valid("Players", player_id)) {
         connection->Send_TextMsg(STR_NET_PLAYER_ALREADY);
         connection->GracefulDisconnect();
@@ -2456,11 +2372,11 @@ void FOServer::Process_Register(ClientConnection* connection)
 
     // Check brute force registration
     if (Settings.RegistrationTimeout != 0u) {
-        std::lock_guard locker(RegIpLocker);
+        std::lock_guard locker(_regIpLocker);
 
         auto ip = connection->GetIp();
         const auto reg_tick = Settings.RegistrationTimeout * 1000;
-        if (auto it = RegIp.find(ip); it != RegIp.end()) {
+        if (auto it = _regIp.find(ip); it != _regIp.end()) {
             auto& last_reg = it->second;
             const auto tick = GameTime.FrameTick();
             if (tick - last_reg < reg_tick) {
@@ -2472,7 +2388,7 @@ void FOServer::Process_Register(ClientConnection* connection)
             last_reg = tick;
         }
         else {
-            RegIp.insert(std::make_pair(ip, GameTime.FrameTick()));
+            _regIp.insert(std::make_pair(ip, GameTime.FrameTick()));
         }
     }
 
@@ -2480,7 +2396,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     uint disallow_msg_num = 0;
     uint disallow_str_num = 0;
     string lexems;
-    const auto allow = ScriptSys.PlayerRegistrationEvent(connection->GetIp(), name, disallow_msg_num, disallow_str_num, lexems);
+    const auto allow = OnPlayerRegistration.Fire(connection->GetIp(), name, disallow_msg_num, disallow_str_num, lexems);
     if (!allow) {
         if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
             connection->Send_TextMsgLex(disallow_str_num, lexems);
@@ -2494,9 +2410,9 @@ void FOServer::Process_Register(ClientConnection* connection)
 #endif
 
     // Register
-    auto reg_ip = DataBase::Array();
+    auto reg_ip = AnyData::Array();
     reg_ip.push_back(static_cast<int>(connection->GetIp()));
-    auto reg_port = DataBase::Array();
+    auto reg_port = AnyData::Array();
     reg_port.push_back(static_cast<int>(connection->GetPort()));
 
     DbStorage.Insert("Players", player_id, {{"_Proto", string("Player")}, {"Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
@@ -2524,7 +2440,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     connection->Bout.SetEncryptKey(12345);
 
     // Check protocol
-    if (proto_ver != static_cast<ushort>(FO_VERSION)) {
+    if (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION)) {
         connection->Send_CustomMessage(NETMSG_WRONG_NET_PROTO);
         connection->GracefulDisconnect();
         return;
@@ -2542,8 +2458,8 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     CHECK_IN_BUFF_ERROR(connection);
 
-    if (const auto it_l = std::find(LangPacks.begin(), LangPacks.end(), msg_language); it_l == LangPacks.end()) {
-        msg_language = (*LangPacks.begin()).NameCode;
+    if (const auto it_l = std::find(_langPacks.begin(), _langPacks.end(), msg_language); it_l == _langPacks.end()) {
+        msg_language = (*_langPacks.begin()).NameCode;
     }
 
     // If only cache checking than disconnect
@@ -2554,7 +2470,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     // Check for ban by ip
     {
-        std::lock_guard locker(BannedLocker);
+        std::lock_guard locker(_bannedLocker);
 
         if (auto* ban = GetBanByIp(connection->GetIp())) {
             connection->Send_TextMsg(STR_NET_BANNED_IP);
@@ -2588,9 +2504,9 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Check password
-    const auto player_id = MAKE_PLAYER_ID(name);
+    const auto player_id = MakePlayerId(name);
     auto doc = DbStorage.Get("Players", player_id);
-    if (doc.count("Password") == 0u || doc["Password"].index() != DataBase::STRING_VALUE || std::get<string>(doc["Password"]).length() != password.length() || std::get<string>(doc["Password"]) != password) {
+    if (doc.count("Password") == 0u || doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(doc["Password"]).length() != password.length() || std::get<string>(doc["Password"]) != password) {
         connection->Send_TextMsg(STR_NET_LOGINPASS_WRONG);
         connection->GracefulDisconnect();
         return;
@@ -2598,7 +2514,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     // Check for ban by name
     {
-        std::lock_guard locker(BannedLocker);
+        std::lock_guard locker(_bannedLocker);
 
         if (auto* ban = GetBanByName(name); ban != nullptr) {
             connection->Send_TextMsg(STR_NET_BANNED);
@@ -2615,7 +2531,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
         uint disallow_msg_num = 0;
         uint disallow_str_num = 0;
         string lexems;
-        if (const auto allow = !ScriptSys.PlayerLoginEvent(connection->GetIp(), name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
+        if (const auto allow = !OnPlayerLogin.Fire(connection->GetIp(), name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
             if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
                 connection->Send_TextMsgLex(disallow_str_num, lexems);
             }
@@ -2630,11 +2546,11 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     // Move from free connections to player
     {
-        std::lock_guard locker(FreeConnectionsLocker);
+        std::lock_guard locker(_freeConnectionsLocker);
 
-        const auto it = std::find(FreeConnections.begin(), FreeConnections.end(), connection);
-        RUNTIME_ASSERT(it != FreeConnections.end());
-        FreeConnections.erase(it);
+        const auto it = std::find(_freeConnections.begin(), _freeConnections.end(), connection);
+        RUNTIME_ASSERT(it != _freeConnections.end());
+        _freeConnections.erase(it);
     }
 
     // Kick previous
@@ -2643,12 +2559,13 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Create new
-    const auto* player_proto = ProtoMngr.GetProtoCritter(_str("Player").toHash());
+    const auto player_proto_id = ToHashedString("Player");
+    const auto* player_proto = ProtoMngr.GetProtoCritter(player_proto_id);
     RUNTIME_ASSERT(player_proto);
 
-    auto* player = new Player(player_id, connection, player_proto, Settings, ScriptSys, GameTime);
+    auto* player = new Player(this, player_id, name, connection, player_proto);
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->Props, doc, ScriptSys)) {
+    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *this)) {
         player->Release();
         connection->Send_TextMsg(STR_NET_WRONG_DATA);
         connection->GracefulDisconnect();
@@ -2664,7 +2581,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     RUNTIME_ASSERT(can);
     MapMngr.AddCrToMap(cl, nullptr, 0, 0, 0, 0);
 
-    if (ScriptSys.CritterInitEvent(cl, true)) {
+    if (CritterInit.Fire(cl, true)) {
     }*/
 
     // Connection info
@@ -2711,12 +2628,12 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     vector<uchar*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
-    const auto whole_global_vars_data_size = Globals->Props.StoreData(false, &global_vars_data, &global_vars_data_sizes);
+    const auto whole_global_vars_data_size = StoreData(false, &global_vars_data, &global_vars_data_sizes);
     msg_len += sizeof(ushort) + whole_global_vars_data_size;
 
     vector<uchar*>* player_data = nullptr;
     vector<uint>* player_data_sizes = nullptr;
-    const auto whole_player_data_size = Globals->Props.StoreData(false, &player_data, &player_data_sizes);
+    const auto whole_player_data_size = StoreData(false, &player_data, &player_data_sizes);
     msg_len += sizeof(ushort) + whole_player_data_size;
 
     CONNECTION_OUTPUT_BEGIN(connection);
@@ -2789,16 +2706,15 @@ void FOServer::Process_PlaceToGame(Player* player)
         cr->Send_AllAutomapsInfo(MapMngr);
 
         // Send current critters
-        auto critters = cr->VisCrSelf;
-        for (auto& critter : critters) {
-            cr->Send_AddCritter(critter);
+        const auto critters = cr->VisCrSelf;
+        for (auto& cr_ : critters) {
+            cr->Send_AddCritter(cr_);
         }
 
         // Send current items on map
-        auto items = cr->VisItem;
-        for (auto item_id : items) {
-            auto* item = ItemMngr.GetItem(item_id);
-            if (item != nullptr) {
+        const auto items = cr->VisItem;
+        for (const auto item_id : items) {
+            if (auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
                 cr->Send_AddItemOnMap(item);
             }
         }
@@ -2819,13 +2735,12 @@ void FOServer::Process_GiveMap(Player* player)
     Critter* cr = player->GetOwnedCritter();
 
     bool automap = 0;
-    hash map_pid = 0;
     uint loc_id = 0;
-    hash hash_tiles = 0;
-    hash hash_scen = 0;
+    uint hash_tiles = 0;
+    uint hash_scen = 0;
 
     player->Connection->Bin >> automap;
-    player->Connection->Bin >> map_pid;
+    const auto map_pid = player->Connection->Bin.ReadHashedString(*this);
     player->Connection->Bin >> loc_id;
     player->Connection->Bin >> hash_tiles;
     player->Connection->Bin >> hash_scen;
@@ -2840,7 +2755,7 @@ void FOServer::Process_GiveMap(Player* player)
     }
 
     if (automap) {
-        if (!MapMngr.CheckKnownLocById(cr, loc_id)) {
+        if (!MapMngr.CheckKnownLoc(cr, loc_id)) {
             WriteLog("Request for loading unknown automap, client '{}'.\n", cr->GetName());
             return;
         }
@@ -2852,7 +2767,7 @@ void FOServer::Process_GiveMap(Player* player)
         }
 
         auto found = false;
-        auto automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : vector<hash>());
+        auto automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : vector<hstring>());
         if (!automaps.empty()) {
             for (size_t i = 0; i < automaps.size() && !found; i++) {
                 if (automaps[i] == map_pid) {
@@ -2889,10 +2804,10 @@ void FOServer::Process_GiveMap(Player* player)
 
 void FOServer::Send_MapData(Player* player, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery)
 {
-    auto msg = NETMSG_MAP;
-    auto map_pid = pmap->ProtoId;
-    auto maxhx = pmap->GetWidth();
-    auto maxhy = pmap->GetHeight();
+    constexpr auto msg = NETMSG_MAP;
+    const auto map_pid = pmap->GetProtoId();
+    const auto maxhx = pmap->GetWidth();
+    const auto maxhy = pmap->GetHeight();
     uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(map_pid) + sizeof(maxhx) + sizeof(maxhy) + sizeof(bool) * 2;
 
     if (send_tiles) {
@@ -3015,7 +2930,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
     char type_ = 0;
     player->Connection->Bin >> type_;
-    const auto type = static_cast<NetProperty::Type>(type_);
+    const auto type = static_cast<NetProperty>(type_);
 
     uint additional_args = 0;
     switch (type) {
@@ -3063,45 +2978,45 @@ void FOServer::Process_Property(Player* player, uint data_size)
     CHECK_IN_BUFF_ERROR(player->Connection);
 
     auto is_public = false;
-    Property* prop = nullptr;
+    const Property* prop = nullptr;
     Entity* entity = nullptr;
     switch (type) {
-    case NetProperty::Global:
+    case NetProperty::Game:
         is_public = true;
-        prop = GlobalVars::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
-            entity = Globals;
+            entity = this;
         }
         break;
     case NetProperty::Player:
-        prop = Player::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = player;
         }
         break;
     case NetProperty::Critter:
         is_public = true;
-        prop = Critter::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = CrMngr.GetCritter(cr_id);
         }
         break;
     case NetProperty::Chosen:
-        prop = Critter::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = cr;
         }
         break;
     case NetProperty::MapItem:
         is_public = true;
-        prop = Item::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = ItemMngr.GetItem(item_id);
         }
         break;
     case NetProperty::CritterItem:
         is_public = true;
-        prop = Item::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             auto* cr = CrMngr.GetCritter(cr_id);
             if (cr != nullptr) {
@@ -3110,21 +3025,21 @@ void FOServer::Process_Property(Player* player, uint data_size)
         }
         break;
     case NetProperty::ChosenItem:
-        prop = Item::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = cr->GetItem(item_id, true);
         }
         break;
     case NetProperty::Map:
         is_public = true;
-        prop = Map::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             entity = MapMngr.GetMap(cr->GetMapId());
         }
         break;
     case NetProperty::Location:
         is_public = true;
-        prop = Location::PropertiesRegistrator->Get(property_index);
+        prop = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME)->GetByIndex(property_index);
         if (prop != nullptr) {
             auto* map = MapMngr.GetMap(cr->GetMapId());
             if (map != nullptr) {
@@ -3140,51 +3055,51 @@ void FOServer::Process_Property(Player* player, uint data_size)
     }
 
     const auto access = prop->GetAccess();
-    if (is_public && (access & Property::PublicMask) == 0) {
+    if (is_public && !IsEnumSet(access, Property::AccessType::PublicMask)) {
         return;
     }
-    if (!is_public && (access & (Property::ProtectedMask | Property::PublicMask)) == 0) {
+    if (!is_public && (!IsEnumSet(access, Property::AccessType::ProtectedMask) || !IsEnumSet(access, Property::AccessType::PublicMask))) {
         return;
     }
-    if ((access & Property::ModifiableMask) == 0) {
+    if (!IsEnumSet(access, Property::AccessType::ModifiableMask)) {
         return;
     }
-    if (is_public && access != Property::PublicFullModifiable) {
+    if (is_public && access != Property::AccessType::PublicFullModifiable) {
         return;
     }
-    if (prop->IsPOD() && data_size != prop->GetBaseSize()) {
+    if (prop->IsPlainData() && data_size != prop->GetBaseSize()) {
         return;
     }
-    if (!prop->IsPOD() && data_size != 0) {
+    if (!prop->IsPlainData() && data_size != 0) {
         return;
     }
 
     // Todo: disable send changing field by client to this client
-    entity->Props.SetValueFromData(prop, data.data(), static_cast<uint>(data.size()));
+    entity->SetValueFromData(prop, data, false);
 }
 
-void FOServer::OnSendGlobalValue(Entity* entity, Property* prop)
+void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
-    if ((prop->GetAccess() & Property::PublicMask) != 0) {
+    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto* player : EntityMngr.GetPlayers()) {
-            player->Send_Property(NetProperty::Global, prop, Globals);
+            player->Send_Property(NetProperty::Game, prop, this);
         }
     }
 }
 
-void FOServer::OnSendPlayerValue(Entity* entity, Property* prop)
+void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     auto* player = dynamic_cast<Player*>(entity);
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
 
-void FOServer::OnSendCritterValue(Entity* entity, Property* prop)
+void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     auto* cr = dynamic_cast<Critter*>(entity);
 
-    const auto is_public = (prop->GetAccess() & Property::PublicMask) != 0;
-    const auto is_protected = (prop->GetAccess() & Property::ProtectedMask) != 0;
+    const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
+    const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
 
     if (is_public || is_protected) {
         cr->Send_Property(NetProperty::Chosen, prop, cr);
@@ -3194,17 +3109,17 @@ void FOServer::OnSendCritterValue(Entity* entity, Property* prop)
     }
 }
 
-void FOServer::OnSendMapValue(Entity* entity, Property* prop)
+void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 {
-    if ((prop->GetAccess() & Property::PublicMask) != 0) {
+    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
         map->SendProperty(NetProperty::Map, prop, map);
     }
 }
 
-void FOServer::OnSendLocationValue(Entity* entity, Property* prop)
+void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 {
-    if ((prop->GetAccess() & Property::PublicMask) != 0) {
+    if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
         for (auto* map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
@@ -3212,21 +3127,9 @@ void FOServer::OnSendLocationValue(Entity* entity, Property* prop)
     }
 }
 
-static constexpr auto MOVING_SUCCESS = 1;
-static constexpr auto MOVING_TARGET_NOT_FOUND = 2;
-static constexpr auto MOVING_CANT_MOVE = 3;
-static constexpr auto MOVING_GAG_CRITTER = 4;
-static constexpr auto MOVING_GAG_ITEM = 5;
-static constexpr auto MOVING_FIND_PATH_ERROR = 6;
-static constexpr auto MOVING_HEX_TOO_FAR = 7;
-static constexpr auto MOVING_HEX_BUSY = 8;
-static constexpr auto MOVING_HEX_BUSY_RING = 9;
-static constexpr auto MOVING_DEADLOCK = 10;
-static constexpr auto MOVING_TRACE_FAIL = 11;
-
 void FOServer::ProcessMove(Critter* cr)
 {
-    if (cr->Moving.State != 0) {
+    if (cr->Moving.State != MovingState::InProgress) {
         return;
     }
 
@@ -3250,7 +3153,7 @@ void FOServer::ProcessMove(Critter* cr)
         if (cr->Moving.TargId != 0u) {
             auto* targ = cr->GetCrSelf(cr->Moving.TargId);
             if (targ == nullptr) {
-                cr->Moving.State = MOVING_TARGET_NOT_FOUND;
+                cr->Moving.State = MovingState::TargetNotFound;
                 cr->Broadcast_Position();
                 return;
             }
@@ -3289,19 +3192,19 @@ void FOServer::ProcessMove(Critter* cr)
             input.IsRun = false;
         }
         if (!input.IsRun && cr->GetIsNoWalk()) {
-            cr->Moving.State = MOVING_CANT_MOVE;
+            cr->Moving.State = MovingState::CantMove;
             return;
         }
 
         auto output = MapMngr.FindPath(input);
         if (output.GagCritter != nullptr) {
-            cr->Moving.State = MOVING_GAG_CRITTER;
+            cr->Moving.State = MovingState::GagCritter;
             cr->Moving.GagEntityId = output.GagCritter->GetId();
             return;
         }
 
         if (output.GagItem != nullptr) {
-            cr->Moving.State = MOVING_GAG_ITEM;
+            cr->Moving.State = MovingState::GagItem;
             cr->Moving.GagEntityId = output.GagItem->GetId();
             return;
         }
@@ -3309,41 +3212,41 @@ void FOServer::ProcessMove(Critter* cr)
         // Failed
         if (output.Result != FindPathResult::Ok) {
             if (output.Result == FindPathResult::AlreadyHere) {
-                cr->Moving.State = MOVING_SUCCESS;
+                cr->Moving.State = MovingState::Success;
                 return;
             }
 
-            int reason;
+            MovingState reason;
             switch (output.Result) {
             case FindPathResult::MapNotFound:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             case FindPathResult::TooFar:
-                reason = MOVING_HEX_TOO_FAR;
+                reason = MovingState::HexTooFar;
                 break;
             case FindPathResult::InternalError:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             case FindPathResult::InvalidHexes:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             case FindPathResult::TraceTargetNullptr:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             case FindPathResult::HexBusy:
-                reason = MOVING_HEX_BUSY;
+                reason = MovingState::HexBusy;
                 break;
             case FindPathResult::HexBusyRing:
-                reason = MOVING_HEX_BUSY_RING;
+                reason = MovingState::HexBusyRing;
                 break;
-            case FindPathResult::DeadLock:
-                reason = MOVING_DEADLOCK;
+            case FindPathResult::Deadlock:
+                reason = MovingState::Deadlock;
                 break;
             case FindPathResult::TraceFailed:
-                reason = MOVING_TRACE_FAIL;
+                reason = MovingState::TraceFail;
                 break;
             default:
-                reason = MOVING_FIND_PATH_ERROR;
+                reason = MovingState::InternalError;
                 break;
             }
 
@@ -3373,7 +3276,7 @@ void FOServer::ProcessMove(Critter* cr)
     }
     else {
         // Done
-        cr->Moving.State = MOVING_SUCCESS;
+        cr->Moving.State = MovingState::Success;
     }
 }
 
@@ -3437,6 +3340,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
         }
 
         const auto index = demand.ParamId;
+
         switch (demand.Type) {
         case DR_PROP_GLOBAL:
         case DR_PROP_CRITTER:
@@ -3445,38 +3349,37 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
         case DR_PROP_LOCATION:
         case DR_PROP_MAP: {
             Entity* entity = nullptr;
-            PropertyRegistrator* prop_registrator = nullptr;
+            const PropertyRegistrator* prop_registrator = nullptr;
             if (demand.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = GlobalVars::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_CRITTER) {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_CRITTER_DICT) {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_ITEM) {
                 entity = master->GetItemSlot(1);
-                prop_registrator = Item::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
-                prop_registrator = Location::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME);
             }
             else if (demand.Type == DR_PROP_MAP) {
                 entity = MapMngr.GetMap(master->GetMapId());
-                prop_registrator = Map::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME);
             }
             if (entity == nullptr) {
                 break;
             }
 
-            const auto prop_index = static_cast<uint>(index);
-            auto* prop = prop_registrator->Get(prop_index);
+            const auto* prop = prop_registrator->GetByIndex(index);
             auto val = 0;
             if (demand.Type == DR_PROP_CRITTER_DICT) {
                 if (slave == nullptr) {
@@ -3517,7 +3420,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
                 }*/
             }
             else {
-                val = entity->Props.GetPODValueAsInt(prop);
+                val = entity->GetProperties().GetPlainDataValueAsInt(prop);
             }
 
             switch (demand.Op) {
@@ -3556,7 +3459,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
             }
         } break;
         case DR_ITEM: {
-            const auto pid = static_cast<hash>(index);
+            const auto pid = ResolveHash(index);
             switch (demand.Op) {
             case '>':
                 if (static_cast<int>(master->CountItemPid(pid)) > demand.Value) {
@@ -3658,38 +3561,37 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
         case DR_PROP_LOCATION:
         case DR_PROP_MAP: {
             Entity* entity = nullptr;
-            PropertyRegistrator* prop_registrator = nullptr;
+            const PropertyRegistrator* prop_registrator = nullptr;
             if (result.Type == DR_PROP_GLOBAL) {
                 entity = master;
-                prop_registrator = GlobalVars::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_CRITTER) {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_CRITTER_DICT) {
                 entity = master;
-                prop_registrator = Critter::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_ITEM) {
                 entity = master->GetItemSlot(1);
-                prop_registrator = Item::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_LOCATION) {
                 auto* map = MapMngr.GetMap(master->GetMapId());
                 entity = (map != nullptr ? map->GetLocation() : nullptr);
-                prop_registrator = Location::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME);
             }
             else if (result.Type == DR_PROP_MAP) {
                 entity = MapMngr.GetMap(master->GetMapId());
-                prop_registrator = Map::PropertiesRegistrator;
+                prop_registrator = GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME);
             }
             if (entity == nullptr) {
                 break;
             }
 
-            /*uint prop_index = (uint)index;
-            Property* prop = prop_registrator->Get(prop_index);
+            /*const auto* prop = prop_registrator->GetByIndex(index);
             int val = 0;
             CScriptDict* dict = nullptr;
             if (result.Type == DR_PROP_CRITTER_DICT)
@@ -3797,7 +3699,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
         }
             continue;
         case DR_ITEM: {
-            const auto pid = static_cast<hash>(index);
+            const auto pid = ResolveHash(index);
             const int cur_count = master->CountItemPid(pid);
             auto need_count = cur_count;
 
@@ -3844,7 +3746,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
     return force_dialog;
 }
 
-void FOServer::Dialog_Begin(Critter* cl, Critter* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance)
+void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance)
 {
     if (cl->Talk.Locked) {
         WriteLog("Dialog locked, client '{}'.\n", cl->GetName());
@@ -3854,8 +3756,8 @@ void FOServer::Dialog_Begin(Critter* cl, Critter* npc, hash dlg_pack_id, ushort 
         CrMngr.CloseTalk(cl);
     }
 
-    DialogPack* dialog_pack = nullptr;
-    DialogsVec* dialogs = nullptr;
+    DialogPack* dialog_pack;
+    DialogsVec* dialogs;
 
     // Talk with npc
     if (npc != nullptr) {
@@ -3863,11 +3765,12 @@ void FOServer::Dialog_Begin(Critter* cl, Critter* npc, hash dlg_pack_id, ushort 
             return;
         }
 
-        if (dlg_pack_id == 0u) {
+        if (dlg_pack_id) {
             const auto npc_dlg_id = npc->GetDialogId();
-            if (npc_dlg_id == 0u) {
+            if (npc_dlg_id) {
                 return;
             }
+
             dlg_pack_id = npc_dlg_id;
         }
 
@@ -3920,11 +3823,13 @@ void FOServer::Dialog_Begin(Critter* cl, Critter* npc, hash dlg_pack_id, ushort 
 
         // Todo: don't remeber but need check (IsPlaneNoTalk)
 
-        ScriptSys.CritterTalkEvent(cl, npc, true, npc->GetTalkedPlayers() + 1);
+        if (!npc->OnTalk.Fire(cl, true, npc->GetTalkedPlayers() + 1) || !OnCritterTalk.Fire(npc, cl, true, npc->GetTalkedPlayers() + 1)) {
+            return;
+        }
 
         dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
-        if ((dialogs == nullptr) || dialogs->empty()) {
+        if (dialogs == nullptr || dialogs->empty()) {
             return;
         }
 
@@ -3948,7 +3853,7 @@ void FOServer::Dialog_Begin(Critter* cl, Critter* npc, hash dlg_pack_id, ushort 
 
         dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
-        if ((dialogs == nullptr) || dialogs->empty()) {
+        if (dialogs == nullptr || dialogs->empty()) {
             WriteLog("No dialogs, hx {}, hy {}, client '{}'.\n", hx, hy, cl->GetName());
             return;
         }
@@ -4055,7 +3960,7 @@ void FOServer::Process_Dialog(Player* player)
     player->Connection->Bin >> talk_id;
     player->Connection->Bin >> num_answer;
 
-    if ((is_npc != 0u && (cr->Talk.Type != TalkType::Critter || cr->Talk.CritterId != talk_id)) || (is_npc == 0u && (cr->Talk.Type != TalkType::Hex || cr->Talk.DialogPackId != talk_id))) {
+    if ((is_npc != 0u && (cr->Talk.Type != TalkType::Critter || cr->Talk.CritterId != talk_id)) || (is_npc == 0u && (cr->Talk.Type != TalkType::Hex || cr->Talk.DialogPackId.as_uint() != talk_id))) {
         CrMngr.CloseTalk(cr);
         WriteLog("Invalid talk id {}, client '{}'.\n", is_npc, talk_id, cr->GetName());
         return;
@@ -4067,8 +3972,6 @@ void FOServer::Process_Dialog(Player* player)
     CrMngr.ProcessTalk(cr, true);
 
     Critter* npc = nullptr;
-    DialogPack* dialog_pack = nullptr;
-    DialogsVec* dialogs = nullptr;
 
     // Find npc
     if (is_npc != 0u) {
@@ -4082,8 +3985,8 @@ void FOServer::Process_Dialog(Player* player)
     }
 
     // Set dialogs
-    dialog_pack = DlgMngr.GetDialog(cr->Talk.DialogPackId);
-    dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
+    auto* dialog_pack = DlgMngr.GetDialog(cr->Talk.DialogPackId);
+    auto* dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
     if ((dialogs == nullptr) || dialogs->empty()) {
         CrMngr.CloseTalk(cr);
         WriteLog("No dialogs, npc '{}', client '{}'.\n", npc->GetName(), cr->GetName());
@@ -4093,7 +3996,7 @@ void FOServer::Process_Dialog(Player* player)
     // Continue dialog
     auto* cur_dialog = &cr->Talk.CurDialog;
     const auto last_dialog = cur_dialog->Id;
-    uint dlg_id = 0;
+    uint dlg_id;
     uint force_dialog = 0;
     DialogAnswer* answer = nullptr;
 
@@ -4152,7 +4055,7 @@ void FOServer::Process_Dialog(Player* player)
                 return;
             }
 
-            if (!ScriptSys.CritterBarterEvent(cr, npc, true, npc->GetBarterPlayers() + 1)) {
+            if (!npc->OnBarter.Fire(cr, true, npc->GetBarterPlayers() + 1) || !OnCritterBarter.Fire(npc, cr, true, npc->GetBarterPlayers() + 1)) {
                 cr->Talk.Barter = true;
                 cr->Talk.StartTick = GameTime.GameTick();
                 cr->Talk.TalkTime = Settings.DlgBarterMinTime;
@@ -4179,7 +4082,8 @@ void FOServer::Process_Dialog(Player* player)
         cr->Talk.Barter = false;
         dlg_id = cur_dialog->Id;
         if (npc != nullptr) {
-            ScriptSys.CritterBarterEvent(cr, npc, false, npc->GetBarterPlayers() + 1);
+            npc->OnBarter.Fire(cr, false, npc->GetBarterPlayers() + 1);
+            OnCritterBarter.Fire(npc, cr, false, npc->GetBarterPlayers() + 1);
         }
     }
 
@@ -4235,7 +4139,7 @@ void FOServer::Process_Dialog(Player* player)
     cr->Send_Talk();
 }
 
-auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks) -> Item*
+auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*
 {
     // Checks
     const auto* proto_item = ProtoMngr.GetProtoItem(pid);
@@ -4268,13 +4172,12 @@ auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint co
     return item;
 }
 
-void FOServer::OnSendItemValue(Entity* entity, Property* prop)
+void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
-    auto* item = dynamic_cast<Item*>(entity);
-    if (item->Id != 0u && item->Id != static_cast<uint>(-1)) {
-        const auto is_public = (prop->GetAccess() & Property::PublicMask) != 0;
-        const auto is_protected = (prop->GetAccess() & Property::ProtectedMask) != 0;
-        if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
+        const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
+        const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
+        if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             if (is_public || is_protected) {
                 auto* cr = CrMngr.GetCritter(item->GetCritId());
                 if (cr != nullptr) {
@@ -4287,7 +4190,7 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
                 }
             }
         }
-        else if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+        else if (item->GetOwnership() == ItemOwnership::MapHex) {
             if (is_public) {
                 auto* map = MapMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
@@ -4295,14 +4198,14 @@ void FOServer::OnSendItemValue(Entity* entity, Property* prop)
                 }
             }
         }
-        else if (item->GetAccessory() == ITEM_ACCESSORY_CONTAINER) {
+        else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
             // Todo: add container properties changing notifications
             // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
         }
     }
 }
 
-void FOServer::OnSetItemCount(Entity* entity, Property* /*prop*/, void* cur_value, void* old_value)
+void FOServer::OnSetItemCount(Entity* entity, const Property* /*prop*/, void* cur_value, void* old_value)
 {
     NON_CONST_METHOD_HINT();
 
@@ -4323,21 +4226,21 @@ void FOServer::OnSetItemCount(Entity* entity, Property* /*prop*/, void* cur_valu
     }
 }
 
-void FOServer::OnSetItemChangeView(Entity* entity, Property* prop, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* /*old_value*/)
 {
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->ChangeViewItem(item);
-            if (prop == Item::PropertyIsTrap) {
+            if (prop == item->GetPropertyIsTrap()) {
                 map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
             }
         }
     }
-    else if (item->GetAccessory() == ITEM_ACCESSORY_CRITTER) {
+    else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
         auto* cr = CrMngr.GetCritter(item->GetCritId());
         if (cr != nullptr) {
             const auto value = *static_cast<bool*>(cur_value);
@@ -4352,13 +4255,13 @@ void FOServer::OnSetItemChangeView(Entity* entity, Property* prop, void* cur_val
     }
 }
 
-void FOServer::OnSetItemRecacheHex(Entity* entity, Property* /*prop*/, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
 {
     // IsNoBlock, IsShootThru, IsGag, IsTrigger
     auto* item = dynamic_cast<Item*>(entity);
     auto value = *static_cast<bool*>(cur_value);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
@@ -4366,11 +4269,11 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, Property* /*prop*/, void* cur
     }
 }
 
-void FOServer::OnSetItemBlockLines(Entity* entity, Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
+void FOServer::OnSetItemBlockLines(Entity* entity, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
 {
     // BlockLines
     auto* item = dynamic_cast<Item*>(entity);
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
@@ -4378,12 +4281,12 @@ void FOServer::OnSetItemBlockLines(Entity* entity, Property* /*prop*/, void* /*c
     }
 }
 
-void FOServer::OnSetItemIsGeck(Entity* entity, Property* /*prop*/, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemIsGeck(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto value = *static_cast<bool*>(cur_value);
 
-    if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             map->GetLocation()->GeckCount += (value ? 1 : -1);
@@ -4391,7 +4294,7 @@ void FOServer::OnSetItemIsGeck(Entity* entity, Property* /*prop*/, void* cur_val
     }
 }
 
-void FOServer::OnSetItemIsRadio(Entity* entity, Property* /*prop*/, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemIsRadio(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto value = *static_cast<bool*>(cur_value);
@@ -4404,7 +4307,7 @@ void FOServer::OnSetItemIsRadio(Entity* entity, Property* /*prop*/, void* cur_va
     }
 }
 
-void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_value, void* old_value)
+void FOServer::OnSetItemOpened(Entity* entity, const Property* /*prop*/, void* cur_value, void* old_value)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto cur = *static_cast<bool*>(cur_value);
@@ -4414,7 +4317,7 @@ void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_val
         if (!old && cur) {
             item->SetIsLightThru(true);
 
-            if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+            if (item->GetOwnership() == ItemOwnership::MapHex) {
                 auto* map = MapMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
                     map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
@@ -4424,7 +4327,7 @@ void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_val
         if (old && !cur) {
             item->SetIsLightThru(false);
 
-            if (item->GetAccessory() == ITEM_ACCESSORY_HEX) {
+            if (item->GetOwnership() == ItemOwnership::MapHex) {
                 auto* map = MapMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
                     map->SetHexFlag(item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM);
@@ -4435,7 +4338,7 @@ void FOServer::OnSetItemOpened(Entity* entity, Property* /*prop*/, void* cur_val
     }
 }
 
-auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter * /*slave*/) -> bool
+auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter* /*slave*/) -> bool
 {
     /*int bind_id = (int)demand.ParamId;
     ScriptSys.PrepareContext(bind_id, master->GetName());
@@ -4448,7 +4351,7 @@ auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/,
     return false;
 }
 
-auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter * /*slave*/) -> uint
+auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/, Critter* /*slave*/) -> uint
 {
     /*int bind_id = (int)result.ParamId;
     ScriptSys.PrepareContext(
@@ -4460,4 +4363,12 @@ auto FOServer::DialogScriptResult(DemandResult& /*result*/, Critter* /*master*/,
     if (ScriptSys.RunPrepared() && result.RetValue)
         return ScriptSys.GetReturnedUInt();*/
     return 0;
+}
+
+auto FOServer::MakePlayerId(string_view player_name) const -> uint
+{
+    RUNTIME_ASSERT(!player_name.empty());
+    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(player_name.data()), static_cast<uint>(player_name.length()));
+    RUNTIME_ASSERT(hash_value);
+    return (1u << 31u) | hash_value;
 }

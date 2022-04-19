@@ -32,40 +32,42 @@
 //
 
 #include "ItemHexView.h"
+#include "Client.h"
+#include "EffectManager.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "Sprites.h"
+#include "Timer.h"
 
-ItemHexView::ItemHexView(uint id, const ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemView(id, proto), _resMngr {res_mngr}, _effectMngr {effect_mngr}, _gameTime {game_time}
+ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto) : ItemView(engine, id, proto)
 {
-    const_cast<EntityType&>(Type) = EntityType::ItemHexView;
-    DrawEffect = _effectMngr.Effects.Generic;
+    DrawEffect = _engine->EffectMngr.Effects.Generic;
 }
 
-ItemHexView::ItemHexView(uint id, const ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
+ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, const Properties& props) : ItemHexView(engine, id, proto)
 {
-    Props = props;
+    SetProperties(props);
 
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
+ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data) : ItemHexView(engine, id, proto)
 {
     RUNTIME_ASSERT(props_data);
-    Props.RestoreData(*props_data);
+    RestoreData(*props_data);
 
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time) : ItemHexView(id, proto, res_mngr, effect_mngr, game_time)
+ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y) : ItemHexView(engine, id, proto)
 {
     if (props_data != nullptr) {
-        Props.RestoreData(*props_data);
+        RestoreData(*props_data);
     }
 
     SetHexX(hx);
     SetHexY(hy);
-    SetAccessory(ITEM_ACCESSORY_HEX);
+    SetOwnership(ItemOwnership::MapHex);
     HexScrX = hex_scr_x;
     HexScrY = hex_scr_y;
 
@@ -74,7 +76,7 @@ ItemHexView::ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>*
 
 void ItemHexView::AfterConstruction()
 {
-    RUNTIME_ASSERT(GetAccessory() == ITEM_ACCESSORY_HEX);
+    RUNTIME_ASSERT(GetOwnership() == ItemOwnership::MapHex);
 
     RefreshAnim();
     RefreshAlpha();
@@ -83,7 +85,7 @@ void ItemHexView::AfterConstruction()
         _isAnimated = true;
     }
 
-    _animNextTick = _gameTime.GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+    _animNextTick = _engine->GameTime.GameTick() + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
 
     SetFade(true);
 }
@@ -96,7 +98,7 @@ void ItemHexView::Finish()
     _finishingTime = _fadingTick;
 
     if (_isEffect) {
-        _finishingTime = _gameTime.GameTick();
+        _finishingTime = _engine->GameTime.GameTick();
     }
 }
 
@@ -107,7 +109,7 @@ auto ItemHexView::IsFinishing() const -> bool
 
 auto ItemHexView::IsFinish() const -> bool
 {
-    return _finishing && _gameTime.GameTick() > _finishingTime;
+    return _finishing && _engine->GameTime.GameTick() > _finishingTime;
 }
 
 void ItemHexView::StopFinishing()
@@ -121,11 +123,11 @@ void ItemHexView::Process()
 {
     // Animation
     if (_begSpr != _endSpr) {
-        const auto anim_proc = GenericUtils::Percent(Anim->Ticks, _gameTime.GameTick() - _animTick);
+        const auto anim_proc = GenericUtils::Percent(Anim->Ticks, _engine->GameTime.GameTick() - _animTick);
         if (anim_proc >= 100) {
             _begSpr = _animEndSpr;
             SetSpr(_endSpr);
-            _animNextTick = _gameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+            _animNextTick = _engine->GameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
         }
         else {
             const auto cur_spr = _begSpr + (_endSpr - _begSpr + (_begSpr < _endSpr ? 1 : -1)) * anim_proc / 100;
@@ -142,15 +144,15 @@ void ItemHexView::Process()
             Finish();
         }
     }
-    else if (IsAnimated() && _gameTime.GameTick() - _animTick >= Anim->Ticks) {
-        if (_gameTime.GameTick() >= _animNextTick) {
+    else if (IsAnimated() && _engine->GameTime.GameTick() - _animTick >= Anim->Ticks) {
+        if (_engine->GameTime.GameTick() >= _animNextTick) {
             SetStayAnim();
         }
     }
 
     // Effect
     if (IsDynamicEffect() && !IsFinishing()) {
-        const auto dt = static_cast<float>(_gameTime.GameTick() - _effLastTick);
+        const auto dt = static_cast<float>(_engine->GameTime.GameTick() - _effLastTick);
         if (dt > 0) {
             auto speed = GetFlyEffectSpeed();
             if (speed == 0.0f) {
@@ -163,7 +165,7 @@ void ItemHexView::Process()
             _effCurY += _effSy * dt * speed;
 
             SetAnimOffs();
-            _effLastTick = _gameTime.GameTick();
+            _effLastTick = _engine->GameTime.GameTick();
 
             if (GenericUtils::DistSqrt(static_cast<int>(_effCurX), static_cast<int>(_effCurY), _effStartX, _effStartY) >= _effDist) {
                 Finish();
@@ -173,7 +175,7 @@ void ItemHexView::Process()
 
     // Fading
     if (_fading) {
-        auto fading_proc = 100u - GenericUtils::Percent(FADING_PERIOD, _fadingTick - _gameTime.GameTick());
+        auto fading_proc = 100u - GenericUtils::Percent(FADING_PERIOD, _fadingTick - _engine->GameTime.GameTick());
         fading_proc = std::clamp(fading_proc, 0u, 100u);
         if (fading_proc >= 100u) {
             fading_proc = 100u;
@@ -198,7 +200,7 @@ void ItemHexView::SetEffect(float sx, float sy, uint dist, int dir)
     _effCurX = ScrX;
     _effCurY = ScrY;
     _effDir = dir;
-    _effLastTick = _gameTime.GameTick();
+    _effLastTick = _engine->GameTime.GameTick();
     _isEffect = true;
 
     // Check off fade
@@ -226,7 +228,7 @@ auto ItemHexView::GetEffectStep() const -> pair<ushort, ushort>
 
 void ItemHexView::SetFade(bool fade_up)
 {
-    const auto tick = _gameTime.GameTick();
+    const auto tick = _engine->GameTime.GameTick();
     _fadingTick = tick + FADING_PERIOD - (_fadingTick > tick ? _fadingTick - tick : 0);
     _fadeUp = fade_up;
     _fading = true;
@@ -243,18 +245,20 @@ void ItemHexView::SkipFade()
 void ItemHexView::RefreshAnim()
 {
     Anim = nullptr;
-    const auto name_hash = GetPicMap();
-    if (name_hash != 0u) {
-        Anim = _resMngr.GetItemAnim(name_hash);
+
+    const auto pic_name = GetPicMap();
+    if (pic_name) {
+        Anim = _engine->ResMngr.GetItemAnim(pic_name);
     }
-    if (name_hash != 0u && Anim == nullptr) {
+    if (pic_name && Anim == nullptr) {
         WriteLog("PicMap for item '{}' not found.\n", GetName());
     }
+
     if (Anim != nullptr && _isEffect) {
         Anim = Anim->GetDir(_effDir);
     }
     if (Anim == nullptr) {
-        Anim = _resMngr.ItemHexDefaultAnim;
+        Anim = _engine->ResMngr.ItemHexDefaultAnim;
     }
 
     SetStayAnim();
@@ -293,22 +297,22 @@ auto ItemHexView::GetEggType() const -> int
     }
 
     switch (GetCorner()) {
-    case CORNER_SOUTH:
+    case CornerType::South:
         return EGG_X_OR_Y;
-    case CORNER_NORTH:
+    case CornerType::North:
         return EGG_X_AND_Y;
-    case CORNER_EAST_WEST:
-    case CORNER_WEST:
+    case CornerType::EastWest:
+    case CornerType::West:
         return EGG_Y;
     default:
-        return EGG_X; // CORNER_NORTH_SOUTH, CORNER_EAST
+        return EGG_X; // CornerType::NorthSouth, CORNER_EAST
     }
 }
 
 void ItemHexView::StartAnimate()
 {
     SetStayAnim();
-    _animNextTick = _gameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
+    _animNextTick = _engine->GameTime.GameTick() + GetAnimWaitBase() * 10 + GenericUtils::Random(GetAnimWaitRndMin() * 10, GetAnimWaitRndMax() * 10);
     _isAnimated = true;
 }
 
@@ -325,7 +329,7 @@ void ItemHexView::SetAnimFromEnd()
     _begSpr = _animEndSpr;
     _endSpr = _animBegSpr;
     SetSpr(_begSpr);
-    _animTick = _gameTime.GameTick();
+    _animTick = _engine->GameTime.GameTick();
 }
 
 void ItemHexView::SetAnimFromStart()
@@ -333,7 +337,7 @@ void ItemHexView::SetAnimFromStart()
     _begSpr = _animBegSpr;
     _endSpr = _animEndSpr;
     SetSpr(_begSpr);
-    _animTick = _gameTime.GameTick();
+    _animTick = _engine->GameTime.GameTick();
 }
 
 void ItemHexView::SetAnim(uint beg, uint end)
@@ -348,7 +352,7 @@ void ItemHexView::SetAnim(uint beg, uint end)
     _begSpr = beg;
     _endSpr = end;
     SetSpr(_begSpr);
-    _animTick = _gameTime.GameTick();
+    _animTick = _engine->GameTime.GameTick();
 }
 
 void ItemHexView::SetSprStart()

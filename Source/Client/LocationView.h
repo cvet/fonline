@@ -35,20 +35,12 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
-#define FO_API_LOCATION_VIEW_HEADER 1
-#include "ScriptApi.h"
-
-class LocationView final : public Entity
+class LocationView final : public ClientEntity, public LocationProperties
 {
 public:
-    LocationView(uint id, const ProtoLocation* proto);
-
-#define FO_API_LOCATION_VIEW_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+    LocationView(FOClient* engine, uint id, const ProtoLocation* proto);
 };

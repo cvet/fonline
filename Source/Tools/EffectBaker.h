@@ -37,6 +37,8 @@
 
 #include "FileSystem.h"
 
+DECLARE_EXCEPTION(EffectBakerException);
+
 namespace glslang
 {
     class TIntermediate;
@@ -58,9 +60,12 @@ public:
 
 private:
     void BakeShaderProgram(string_view fname, string_view content);
-    void BakeShaderStage(string_view fname_wo_ext, glslang::TIntermediate* intermediate);
+    void BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate* intermediate);
 
     FileCollection& _allFiles;
     map<string, vector<uchar>> _bakedFiles;
+    int _errors {};
+#if FO_ASYNC_BAKE
     std::mutex _bakedFilesLocker;
+#endif
 };

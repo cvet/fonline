@@ -36,29 +36,28 @@
 #include "Common.h"
 
 #include "ClientConnection.h"
-#include "Dialogs.h"
-#include "Entity.h"
-#include "GeometryHelper.h"
-#include "ServerScripting.h"
-#include "Settings.h"
-#include "Timer.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
+#include "ServerEntity.h"
 
-#define FO_API_PLAYER_HEADER 1
-#include "ScriptApi.h"
-
+class Item;
 class Critter;
+class Map;
+class Location;
 class MapManager;
 
-class Player final : public Entity
+class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(uint id, ClientConnection* connection, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto);
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
+
+    [[nodiscard]] auto GetName() const -> string_view override;
 
     [[nodiscard]] auto IsSendDisabled() const -> bool { return DisableSend > 0; }
     [[nodiscard]] auto GetIp() const -> uint;
@@ -68,7 +67,7 @@ public:
     [[nodiscard]] auto GetOwnedCritter() const -> const Critter* { return _ownedCr; }
     [[nodiscard]] auto GetOwnedCritter() -> Critter* { return _ownedCr; }
 
-    void Send_Property(NetProperty::Type type, Property* prop, Entity* entity);
+    void Send_Property(NetProperty type, const Property* prop, Entity* entity);
 
     void Send_Move(Critter* from_cr, uint move_params);
     void Send_Dir(Critter* from_cr);
@@ -97,11 +96,11 @@ public:
     void Send_Action(Critter* from_cr, int action, int action_ext, Item* item);
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
-    void Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2);
+    void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
     void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
-    void Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
+    void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
+    void Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     void Send_PlaySound(uint crid_synchronize, string_view sound_name);
     void Send_MapText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text);
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
@@ -113,7 +112,13 @@ public:
     void Send_AllAutomapsInfo(MapManager& map_mngr);
     void Send_SomeItems(const vector<Item*>* items, int param);
 
-    string Name {};
+    ///@ ExportEvent
+    ENTITY_EVENT(GetAccess, int /*arg1*/, string& /*arg2*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(AllowCommand, string /*arg1*/, uchar /*arg2*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(Logout);
+
     ClientConnection* Connection {};
     int DisableSend {};
     uchar Access {ACCESS_CLIENT};
@@ -122,17 +127,8 @@ public:
     string LastSay {};
     uint LastSayEqualCount {};
 
-#define FO_API_PLAYER_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_PLAYER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
-
 private:
-    CritterSettings& _settings;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
+    string _name {};
     Critter* _ownedCr {}; // Todo: allow attach many critters to sigle player
     uint _talkNextTick {};
 };

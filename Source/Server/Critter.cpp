@@ -37,16 +37,10 @@
 #include "Map.h"
 #include "MapManager.h"
 #include "Player.h"
+#include "Server.h"
 #include "Settings.h"
 
-#define FO_API_CRITTER_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(Critter, "Critter", true);
-#define FO_API_CRITTER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Critter, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-Critter::Critter(uint id, Player* owner, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Entity(id, EntityType::Critter, PropertiesRegistrator, proto), _player {owner}, _settings {settings}, _geomHelper(_settings), _scriptSys {script_sys}, _gameTime {game_time}
+Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), CritterProperties(GetInitRef()), _player {owner}
 {
     if (_player != nullptr) {
         _player->AddRef();
@@ -64,44 +58,49 @@ Critter::~Critter()
 
 auto Critter::GetOfflineTime() const -> uint
 {
-    return _playerDetached ? _gameTime.FrameTick() - _playerDetachTick : 0u;
+    return _playerDetached ? _engine->GameTime.FrameTick() - _playerDetachTick : 0u;
 }
 
 auto Critter::GetAttackDist(Item* weap, uchar use) -> uint
 {
     uint dist = 1;
-    _scriptSys.CritterGetAttackDistantionEvent(this, weap, use, dist);
+    _engine->OnCritterGetAttackDistantion.Fire(this, weap, use, dist);
     return dist;
 }
 
 auto Critter::IsAlive() const -> bool
 {
-    return GetCond() == COND_ALIVE;
+    return GetCond() == CritterCondition::Alive;
 }
 
 auto Critter::IsDead() const -> bool
 {
-    return GetCond() == COND_DEAD;
+    return GetCond() == CritterCondition::Dead;
 }
 
 auto Critter::IsKnockout() const -> bool
 {
-    return GetCond() == COND_KNOCKOUT;
+    return GetCond() == CritterCondition::Knockout;
 }
 
-auto Critter::CheckFind(uchar find_type) const -> bool
+auto Critter::CheckFind(CritterFindType find_type) const -> bool
 {
-    if (IsNpc()) {
-        if (IsBitSet(find_type, FIND_ONLY_PLAYERS)) {
-            return false;
-        }
+    if (find_type == CritterFindType::Any) {
+        return true;
     }
-    else {
-        if (IsBitSet(find_type, FIND_ONLY_NPC)) {
-            return false;
-        }
+    if (IsEnumSet(find_type, CritterFindType::Players) && IsNpc()) {
+        return false;
     }
-    return (IsBitSet(find_type, FIND_LIFE) && IsAlive()) || (IsBitSet(find_type, FIND_KO) && IsKnockout()) || (IsBitSet(find_type, FIND_DEAD) && IsDead());
+    if (IsEnumSet(find_type, CritterFindType::Npc) && !IsNpc()) {
+        return false;
+    }
+    if (IsEnumSet(find_type, CritterFindType::Alive) && IsDead()) {
+        return false;
+    }
+    if (IsEnumSet(find_type, CritterFindType::Dead) && !IsDead()) {
+        return false;
+    }
+    return true;
 }
 
 void Critter::DetachPlayer()
@@ -112,7 +111,7 @@ void Critter::DetachPlayer()
     _player->Release();
     _player = nullptr;
     _playerDetached = true;
-    _playerDetachTick = _gameTime.FrameTick();
+    _playerDetachTick = _engine->GameTime.FrameTick();
 }
 
 void Critter::AttachPlayer(Player* owner)
@@ -161,7 +160,7 @@ auto Critter::GetCrSelf(uint crid) -> Critter*
     return it != VisCrSelfMap.end() ? it->second : nullptr;
 }
 
-auto Critter::GetCrFromVisCr(uchar find_type, bool vis_cr_self) -> vector<Critter*>
+auto Critter::GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>
 {
     auto& vis_cr = (vis_cr_self ? VisCrSelf : VisCr);
 
@@ -177,7 +176,7 @@ auto Critter::GetCrFromVisCr(uchar find_type, bool vis_cr_self) -> vector<Critte
 auto Critter::GetGlobalMapCritter(uint cr_id) const -> Critter*
 {
     RUNTIME_ASSERT(GlobalMapGroup);
-    const auto it = std::find_if(GlobalMapGroup->begin(), GlobalMapGroup->end(), [&cr_id](Critter* other) { return other->Id == cr_id; });
+    const auto it = std::find_if(GlobalMapGroup->begin(), GlobalMapGroup->end(), [&cr_id](Critter* other) { return other->GetId() == cr_id; });
     return it != GlobalMapGroup->end() ? *it : nullptr;
 }
 
@@ -264,15 +263,18 @@ void Critter::SetItem(Item* item)
 
     _invItems.push_back(item);
 
-    if (item->GetAccessory() != ITEM_ACCESSORY_CRITTER) {
+    if (item->GetOwnership() != ItemOwnership::CritterInventory) {
         item->SetCritSlot(0);
     }
-    item->SetAccessory(ITEM_ACCESSORY_CRITTER);
-    item->SetCritId(Id);
+
+    item->SetOwnership(ItemOwnership::CritterInventory);
+    item->SetCritId(GetId());
 }
 
 auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
 {
+    NON_CONST_METHOD_HINT();
+
     if (item_id == 0u) {
         return nullptr;
     }
@@ -288,8 +290,10 @@ auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemByPid(hash item_pid) -> Item*
+auto Critter::GetItemByPid(hstring item_pid) -> Item*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : _invItems) {
         if (item->GetProtoId() == item_pid) {
             return item;
@@ -298,8 +302,10 @@ auto Critter::GetItemByPid(hash item_pid) -> Item*
     return nullptr;
 }
 
-auto Critter::GetItemByPidSlot(hash item_pid, int slot) -> Item*
+auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : _invItems) {
         if (item->GetProtoId() == item_pid && item->GetCritSlot() == slot) {
             return item;
@@ -310,6 +316,8 @@ auto Critter::GetItemByPidSlot(hash item_pid, int slot) -> Item*
 
 auto Critter::GetItemSlot(int slot) -> Item*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* item : _invItems) {
         if (item->GetCritSlot() == slot) {
             return item;
@@ -320,6 +328,8 @@ auto Critter::GetItemSlot(int slot) -> Item*
 
 auto Critter::GetItemsSlot(int slot) -> vector<Item*>
 {
+    NON_CONST_METHOD_HINT();
+
     vector<Item*> items;
     items.reserve(_invItems.size());
 
@@ -331,10 +341,10 @@ auto Critter::GetItemsSlot(int slot) -> vector<Item*>
     return items;
 }
 
-auto Critter::CountItemPid(hash pid) -> uint
+auto Critter::CountItemPid(hstring pid) const -> uint
 {
     uint res = 0;
-    for (auto* item : _invItems) {
+    for (const auto* item : _invItems) {
         if (item->GetProtoId() == pid) {
             res += item->GetCount();
         }
@@ -342,10 +352,10 @@ auto Critter::CountItemPid(hash pid) -> uint
     return res;
 }
 
-auto Critter::CountItems() -> uint
+auto Critter::CountItems() const -> uint
 {
     uint count = 0;
-    for (auto* item : _invItems) {
+    for (const auto* item : _invItems) {
         count += item->GetCount();
     }
     return count;
@@ -356,9 +366,9 @@ auto Critter::GetInventory() -> vector<Item*>&
     return _invItems;
 }
 
-auto Critter::IsHaveGeckItem() -> bool
+auto Critter::IsHaveGeckItem() const -> bool
 {
-    for (auto* item : _invItems) {
+    for (const auto* item : _invItems) {
         if (item->GetIsGeck()) {
             return true;
         }
@@ -366,36 +376,10 @@ auto Critter::IsHaveGeckItem() -> bool
     return false;
 }
 
-auto Critter::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
+void Critter::Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity)
 {
-    /*hash func_num = 0;
-    if (func)
-    {
-        func_num = scriptSys.BindScriptFuncNumByFunc(func);
-        if (!func_num)
-        {
-            WriteLog("Script bind fail, critter '{}'.\n", GetName());
-            return false;
-        }
-        SetScriptId(func_num);
-    }
-    else
-    {
-        func_num = GetScriptId();
-    }
+    NON_CONST_METHOD_HINT();
 
-    if (func_num)
-    {
-        scriptSys.PrepareScriptFuncContext(func_num, GetName());
-        scriptSys.SetArgEntity(this);
-        scriptSys.SetArgBool(first_time);
-        scriptSys.RunPrepared();
-    }*/
-    return true;
-}
-
-void Critter::Broadcast_Property(NetProperty::Type type, Property* prop, Entity* entity)
-{
     if (VisCr.empty()) {
         return;
     }
@@ -499,7 +483,7 @@ void Critter::SendAndBroadcast_Animate(uint anim1, uint anim2, Item* item, bool 
     }
 }
 
-void Critter::SendAndBroadcast_SetAnims(int cond, uint anim1, uint anim2)
+void Critter::SendAndBroadcast_SetAnims(CritterCondition cond, uint anim1, uint anim2)
 {
     Send_SetAnims(this, cond, anim1, anim2);
 
@@ -528,10 +512,10 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
 
     auto dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _settings.ShoutDist + GetMultihex();
+        dist = _engine->Settings.ShoutDist + GetMultihex();
     }
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _settings.WhisperDist + GetMultihex();
+        dist = _engine->Settings.WhisperDist + GetMultihex();
     }
 
     for (auto* cr : to_cr) {
@@ -542,7 +526,7 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
         if (dist == -1) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
-        else if (_geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
     }
@@ -558,10 +542,10 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
 
     auto dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _settings.ShoutDist + GetMultihex();
+        dist = _engine->Settings.ShoutDist + GetMultihex();
     }
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _settings.WhisperDist + GetMultihex();
+        dist = _engine->Settings.WhisperDist + GetMultihex();
     }
 
     for (auto* cr : to_cr) {
@@ -572,7 +556,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
         if (dist == -1) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
-        else if (_geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
     }
@@ -588,10 +572,10 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
 
     auto dist = -1;
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
-        dist = _settings.ShoutDist + GetMultihex();
+        dist = _engine->Settings.ShoutDist + GetMultihex();
     }
     else if (how_say == SAY_WHISP || how_say == SAY_WHISP_ON_HEAD) {
-        dist = _settings.WhisperDist + GetMultihex();
+        dist = _engine->Settings.WhisperDist + GetMultihex();
     }
 
     for (auto* cr : to_cr) {
@@ -602,52 +586,21 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
         if (dist == -1) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
-        else if (_geomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
     }
 }
 
-void Critter::SendMessage(int num, int val, int to, MapManager& map_mngr)
-{
-    switch (to) {
-    case MESSAGE_TO_VISIBLE_ME: {
-        auto critters = VisCr;
-        for (auto* cr : critters) {
-            _scriptSys.CritterMessageEvent(cr, this, num, val);
-        }
-    } break;
-    case MESSAGE_TO_IAM_VISIBLE: {
-        auto critters = VisCrSelf;
-        for (auto* cr : critters) {
-            _scriptSys.CritterMessageEvent(cr, this, num, val);
-        }
-    } break;
-    case MESSAGE_TO_ALL_ON_MAP: {
-        auto* map = map_mngr.GetMap(GetMapId());
-        if (map == nullptr) {
-            break;
-        }
-
-        auto critters = map->GetCritters();
-        for (auto* cr : critters) {
-            _scriptSys.CritterMessageEvent(cr, this, num, val);
-        }
-    } break;
-    default:
-        break;
-    }
-}
-
 auto Critter::IsTransferTimeouts(bool send) -> bool
 {
-    if (GetTimeoutTransfer() > _gameTime.GetFullSecond()) {
+    if (GetTimeoutTransfer() > _engine->GameTime.GetFullSecond()) {
         if (send) {
             Send_TextMsg(this, STR_TIMEOUT_TRANSFER_WAIT, SAY_NETMSG, TEXTMSG_GAME);
         }
         return true;
     }
-    if (GetTimeoutBattle() > _gameTime.GetFullSecond()) {
+    if (GetTimeoutBattle() > _engine->GameTime.GetFullSecond()) {
         if (send) {
             Send_TextMsg(this, STR_TIMEOUT_BATTLE_WAIT, SAY_NETMSG, TEXTMSG_GAME);
         }
@@ -664,7 +617,7 @@ auto Critter::IsTalking() const -> bool
 auto Critter::GetTalkedPlayers() const -> uint
 {
     auto talk = 0u;
-    for (auto* cr : VisCr) {
+    for (const auto* cr : VisCr) {
         if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId()) {
             talk++;
         }
@@ -674,7 +627,7 @@ auto Critter::GetTalkedPlayers() const -> uint
 
 auto Critter::IsTalkedPlayers() const -> bool
 {
-    for (auto* cr : VisCr) {
+    for (const auto* cr : VisCr) {
         if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId()) {
             return true;
         }
@@ -685,7 +638,7 @@ auto Critter::IsTalkedPlayers() const -> bool
 auto Critter::GetBarterPlayers() const -> uint
 {
     auto barter = 0u;
-    for (auto* cr : VisCr) {
+    for (const auto* cr : VisCr) {
         if (cr->_talk.Type == TalkType::Critter && cr->_talk.CritterId == GetId() && cr->_talk.Barter) {
             barter++;
         }
@@ -697,90 +650,13 @@ auto Critter::IsFreeToTalk() const -> bool
 {
     auto max_talkers = GetMaxTalkers();
     if (max_talkers == 0u) {
-        max_talkers = _settings.NpcMaxTalkers;
+        max_talkers = _engine->Settings.NpcMaxTalkers;
     }
 
     return GetTalkedPlayers() < max_talkers;
 }
 
-void Critter::AddCrTimeEvent(hash /*func_num*/, uint /*rate*/, uint duration, int /*identifier*/) const
-{
-    // if (duration != 0u) {
-    //    duration += _gameTime.GetFullSecond();
-    //}
-
-    /*CScriptArray* te_next_time = GetTE_NextTime();
-    CScriptArray* te_func_num = GetTE_FuncNum();
-    CScriptArray* te_rate = GetTE_Rate();
-    CScriptArray* te_identifier = GetTE_Identifier();
-    RUNTIME_ASSERT(te_next_time->GetSize() == te_func_num->GetSize());
-    RUNTIME_ASSERT(te_func_num->GetSize() == te_rate->GetSize());
-    RUNTIME_ASSERT(te_rate->GetSize() == te_identifier->GetSize());
-
-    uint i = 0;
-    for (uint j = te_func_num->GetSize(); i < j; i++)
-        if (duration < *(uint*)te_next_time->At(i))
-            break;
-
-    te_next_time->InsertAt(i, &duration);
-    te_func_num->InsertAt(i, &func_num);
-    te_rate->InsertAt(i, &rate);
-    te_identifier->InsertAt(i, &identifier);
-
-    SetTE_NextTime(te_next_time);
-    SetTE_FuncNum(te_func_num);
-    SetTE_Rate(te_rate);
-    SetTE_Identifier(te_identifier);
-
-    te_next_time->Release();
-    te_func_num->Release();
-    te_rate->Release();
-    te_identifier->Release();*/
-}
-
-void Critter::EraseCrTimeEvent(int index)
-{
-    /*CScriptArray* te_next_time = GetTE_NextTime();
-    CScriptArray* te_func_num = GetTE_FuncNum();
-    CScriptArray* te_rate = GetTE_Rate();
-    CScriptArray* te_identifier = GetTE_Identifier();
-    RUNTIME_ASSERT(te_next_time->GetSize() == te_func_num->GetSize());
-    RUNTIME_ASSERT(te_func_num->GetSize() == te_rate->GetSize());
-    RUNTIME_ASSERT(te_rate->GetSize() == te_identifier->GetSize());
-
-    if (index < (int)te_next_time->GetSize())
-    {
-        te_next_time->RemoveAt(index);
-        te_func_num->RemoveAt(index);
-        te_rate->RemoveAt(index);
-        te_identifier->RemoveAt(index);
-
-        SetTE_NextTime(te_next_time);
-        SetTE_FuncNum(te_func_num);
-        SetTE_Rate(te_rate);
-        SetTE_Identifier(te_identifier);
-    }
-
-    te_next_time->Release();
-    te_func_num->Release();
-    te_rate->Release();
-    te_identifier->Release();*/
-}
-
-void Critter::ContinueTimeEvents(int offs_time)
-{
-    /*CScriptArray* te_next_time = GetTE_NextTime();
-    if (te_next_time->GetSize() > 0)
-    {
-        for (uint i = 0, j = te_next_time->GetSize(); i < j; i++)
-            *(uint*)te_next_time->At(i) += offs_time;
-
-        SetTE_NextTime(te_next_time);
-    }
-    te_next_time->Release();*/
-}
-
-void Critter::Send_Property(NetProperty::Type type, Property* prop, Entity* entity)
+void Critter::Send_Property(NetProperty type, const Property* prop, ServerEntity* entity)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1032,7 +908,7 @@ void Critter::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item,
     }
 }
 
-void Critter::Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2)
+void Critter::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1059,7 +935,7 @@ void Critter::Send_AutomapsInfo(void* locs_vec, Location* loc)
     }
 }
 
-void Critter::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
+void Critter::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1068,7 +944,7 @@ void Critter::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
     }
 }
 
-void Critter::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Critter::Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
     NON_CONST_METHOD_HINT();
 

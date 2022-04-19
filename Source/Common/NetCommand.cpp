@@ -64,7 +64,7 @@ static const CmdDef CMD_LIST[] = {
     {"log", CMD_LOG},
 };
 
-auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, string_view name) -> bool
+auto PackNetCommand(string_view str, NetOutBuffer* pbuf, const LogCallback& logcb, string_view name, NameResolver& name_resolver) -> bool
 {
     string args = _str(str).trim();
     auto cmd_str = args;
@@ -205,7 +205,7 @@ auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, 
             logcb("Invalid arguments. Example: additem hx hy name count.");
             break;
         }
-        auto pid = _str(proto_name).toHash();
+        auto pid = name_resolver.ToHashedString(proto_name);
         msg_len += sizeof(hex_x) + sizeof(hex_y) + sizeof(pid) + sizeof(count);
 
         buf << msg;
@@ -223,7 +223,7 @@ auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, 
             logcb("Invalid arguments. Example: additemself name count.");
             break;
         }
-        auto pid = _str(proto_name).toHash();
+        auto pid = name_resolver.ToHashedString(proto_name);
         msg_len += sizeof(pid) + sizeof(count);
 
         buf << msg;
@@ -241,7 +241,7 @@ auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, 
             logcb("Invalid arguments. Example: addnpc hx hy dir name.");
             break;
         }
-        auto pid = _str(proto_name).toHash();
+        auto pid = name_resolver.ToHashedString(proto_name);
         msg_len += sizeof(hex_x) + sizeof(hex_y) + sizeof(dir) + sizeof(pid);
 
         buf << msg;
@@ -260,7 +260,7 @@ auto PackNetCommand(string_view str, NetBuffer* pbuf, const LogCallback& logcb, 
             logcb("Invalid arguments. Example: addloc wx wy name.");
             break;
         }
-        auto pid = _str(proto_name).toHash();
+        auto pid = name_resolver.ToHashedString(proto_name);
         msg_len += sizeof(wx) + sizeof(wy) + sizeof(pid);
 
         buf << msg;

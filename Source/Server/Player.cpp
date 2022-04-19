@@ -35,32 +35,27 @@
 #include "Critter.h"
 #include "CritterManager.h"
 #include "Item.h"
-#include "ItemManager.h"
 #include "Location.h"
-#include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
-#include "ProtoManager.h"
+#include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
-#define FO_API_PLAYER_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(Player, "Player", true);
-#define FO_API_PLAYER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Player, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-Player::Player(uint id, ClientConnection* connection, const ProtoCritter* proto, CritterSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Entity(id, EntityType::Player, PropertiesRegistrator, proto), _settings {settings}, _scriptSys {script_sys}, _gameTime {game_time}
+Player::Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef()), _name {name}
 {
     Connection = connection;
-    _talkNextTick = _gameTime.GameTick() + PROCESS_TALK_TICK;
+    _talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
 }
 
 Player::~Player()
 {
     Connection->HardDisconnect();
     delete Connection;
+}
+
+auto Player::GetName() const -> string_view
+{
+    return _name;
 }
 
 auto Player::GetIp() const -> uint
@@ -89,7 +84,7 @@ void Player::Send_AddCritter(Critter* cr)
     uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(uchar) + sizeof(int) + sizeof(uint) * 6 + sizeof(uint);
 
     if (is_npc) {
-        msg_len += sizeof(hash);
+        msg_len += sizeof(hstring::hash_t);
     }
     else {
         msg_len += NetBuffer::STRING_LEN_SIZE + static_cast<uint>(cr->Name.length());
@@ -97,7 +92,7 @@ void Player::Send_AddCritter(Critter* cr)
 
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = cr->Props.StoreData(IsBitSet(cr->Flags, FCRIT_CHOSEN), &data, &data_sizes);
+    const auto whole_data_size = cr->StoreData(IsBitSet(cr->Flags, FCRIT_CHOSEN), &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -109,10 +104,10 @@ void Player::Send_AddCritter(Critter* cr)
     Connection->Bout << cr->GetHexY();
     Connection->Bout << cr->GetDir();
     Connection->Bout << cr->GetCond();
-    Connection->Bout << cr->GetAnim1Life();
+    Connection->Bout << cr->GetAnim1Alive();
     Connection->Bout << cr->GetAnim1Knockout();
     Connection->Bout << cr->GetAnim1Dead();
-    Connection->Bout << cr->GetAnim2Life();
+    Connection->Bout << cr->GetAnim2Alive();
     Connection->Bout << cr->GetAnim2Knockout();
     Connection->Bout << cr->GetAnim2Dead();
     Connection->Bout << cr->Flags;
@@ -154,13 +149,13 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     }
 
     Location* loc = nullptr;
-    hash pid_map = 0;
-    hash pid_loc = 0;
+    hstring pid_map;
+    hstring pid_loc;
     uchar map_index_in_loc = 0;
     auto map_time = -1;
     uchar map_rain = 0;
-    hash hash_tiles = 0;
-    hash hash_scen = 0;
+    uint hash_tiles = 0;
+    uint hash_scen = 0;
 
     if (map == nullptr) {
         RUNTIME_ASSERT(_ownedCr);
@@ -178,14 +173,14 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
         hash_scen = map->GetStaticMap()->HashScen;
     }
 
-    uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(hash) * 2 + sizeof(uchar) + sizeof(int) + sizeof(uchar) + sizeof(hash) * 2;
+    uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(hstring::hash_t) * 2 + sizeof(uchar) + sizeof(int) + sizeof(uchar) + sizeof(hstring::hash_t) * 2;
     vector<uchar*>* map_data = nullptr;
     vector<uint>* map_data_sizes = nullptr;
     vector<uchar*>* loc_data = nullptr;
     vector<uint>* loc_data_sizes = nullptr;
     if (map != nullptr) {
-        const auto map_whole_data_size = map->Props.StoreData(false, &map_data, &map_data_sizes);
-        const auto loc_whole_data_size = loc->Props.StoreData(false, &loc_data, &loc_data_sizes);
+        const auto map_whole_data_size = map->StoreData(false, &map_data, &map_data_sizes);
+        const auto loc_whole_data_size = loc->StoreData(false, &loc_data, &loc_data_sizes);
         msg_len += sizeof(ushort) + map_whole_data_size + sizeof(ushort) + loc_whole_data_size;
     }
 
@@ -210,7 +205,7 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     IsTransferring = true;
 }
 
-void Player::Send_Property(NetProperty::Type type, Property* prop, Entity* entity)
+void Player::Send_Property(NetProperty type, const Property* prop, Entity* entity)
 {
     NON_CONST_METHOD_HINT();
 
@@ -239,11 +234,11 @@ void Player::Send_Property(NetProperty::Type type, Property* prop, Entity* entit
     }
 
     uint data_size = 0;
-    void* data = entity->Props.GetRawData(prop, data_size);
+    const void* data = entity->GetProperties().GetRawData(prop, data_size);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
 
-    const auto is_pod = prop->IsPOD();
+    const auto is_pod = prop->IsPlainData();
     if (is_pod) {
         Connection->Bout << NETMSG_POD_PROPERTY(data_size, additional_args);
     }
@@ -259,27 +254,27 @@ void Player::Send_Property(NetProperty::Type type, Property* prop, Entity* entit
     switch (type) {
     case NetProperty::CritterItem:
         Connection->Bout << dynamic_cast<Item*>(entity)->GetCritId();
-        Connection->Bout << entity->Id;
+        Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     case NetProperty::Critter:
-        Connection->Bout << entity->Id;
+        Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     case NetProperty::MapItem:
-        Connection->Bout << entity->Id;
+        Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     case NetProperty::ChosenItem:
-        Connection->Bout << entity->Id;
+        Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     default:
         break;
     }
 
     if (is_pod) {
-        Connection->Bout << static_cast<ushort>(prop->GetRegIndex());
+        Connection->Bout << prop->GetRegIndex();
         Connection->Bout.Push(data, data_size);
     }
     else {
-        Connection->Bout << static_cast<ushort>(prop->GetRegIndex());
+        Connection->Bout << prop->GetRegIndex();
         if (data_size != 0u) {
             Connection->Bout.Push(data, data_size);
         }
@@ -358,7 +353,7 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     items.reserve(inv.size());
     for (auto* item_ : inv) {
         const auto slot = item_->GetCritSlot();
-        if (slot < _settings.CritterSlotEnabled.size() && _settings.CritterSlotEnabled[slot] && slot < _settings.CritterSlotSendData.size() && _settings.CritterSlotSendData[slot]) {
+        if (slot < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[slot] && slot < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[slot]) {
             items.push_back(item_);
         }
     }
@@ -367,8 +362,8 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     vector<vector<uchar*>*> items_data(items.size());
     vector<vector<uint>*> items_data_sizes(items.size());
     for (const auto i : xrange(items)) {
-        const auto whole_data_size = items[i]->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
-        msg_len += sizeof(uchar) + sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
+        const auto whole_data_size = items[i]->StoreData(false, &items_data[i], &items_data_sizes[i]);
+        msg_len += sizeof(uchar) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) + whole_data_size;
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -412,7 +407,7 @@ void Player::Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, 
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_SetAnims(Critter* from_cr, int cond, uint anim1, uint anim2)
+void Player::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2)
 {
     NON_CONST_METHOD_HINT();
 
@@ -438,11 +433,11 @@ void Player::Send_AddItemOnMap(Item* item)
     }
 
     const auto is_added = item->ViewPlaceOnMap;
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hash) + sizeof(ushort) * 2 + sizeof(bool);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) * 2 + sizeof(bool);
 
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = item->Props.StoreData(false, &data, &data_sizes);
+    const auto whole_data_size = item->StoreData(false, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -499,10 +494,10 @@ void Player::Send_AddItem(Item* item)
         return;
     }
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hash) + sizeof(uchar);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uchar);
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = item->Props.StoreData(true, &data, &data_sizes);
+    const auto whole_data_size = item->StoreData(true, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -531,7 +526,7 @@ void Player::Send_EraseItem(Item* item)
 
 void Player::Send_GlobalInfo(uchar info_flags, MapManager& map_mngr)
 {
-#define SEND_LOCATION_SIZE (sizeof(uint) + sizeof(hash) + sizeof(ushort) * 2 + sizeof(ushort) + sizeof(uint) + sizeof(uchar))
+#define SEND_LOCATION_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) * 2 + sizeof(ushort) + sizeof(uint) + sizeof(uchar))
 
     NON_CONST_METHOD_HINT();
 
@@ -692,7 +687,7 @@ void Player::Send_AllProperties()
 
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = Props.StoreData(true, &data, &data_sizes);
+    const auto whole_data_size = StoreData(true, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -729,8 +724,8 @@ void Player::Send_Talk()
     RUNTIME_ASSERT(_ownedCr);
 
     const auto close = _ownedCr->_talk.Type == TalkType::None;
-    auto is_npc = static_cast<uchar>(_ownedCr->_talk.Type == TalkType::Critter);
-    auto talk_id = (is_npc != 0u ? _ownedCr->_talk.CritterId : _ownedCr->_talk.DialogPackId);
+    const auto is_npc = static_cast<uchar>(_ownedCr->_talk.Type == TalkType::Critter);
+    const auto talk_id = (is_npc != 0u ? _ownedCr->_talk.CritterId : _ownedCr->_talk.DialogPackId.as_uint());
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(is_npc) + sizeof(talk_id) + sizeof(uchar);
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -749,7 +744,7 @@ void Player::Send_Talk()
 
         auto talk_time = _ownedCr->_talk.TalkTime;
         if (talk_time != 0u) {
-            const auto diff = _gameTime.GameTick() - _ownedCr->_talk.StartTick;
+            const auto diff = _engine->GameTime.GameTick() - _ownedCr->_talk.StartTick;
             talk_time = diff < talk_time ? talk_time - diff : 1;
         }
 
@@ -1011,7 +1006,7 @@ void Player::Send_CombatResult(uint* combat_res, uint len)
     if (IsSendDisabled()) {
         return;
     }
-    if (combat_res == nullptr || len > _settings.FloodSize / sizeof(uint)) {
+    if (combat_res == nullptr || len > _engine->Settings.FloodSize / sizeof(uint)) {
         return;
     }
 
@@ -1041,11 +1036,11 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
         for (uint i = 0, j = (uint)locs->size(); i < j; i++)
         {
             Location* loc_ = (*locs)[i];
-            msg_len += sizeof(uint) + sizeof(hash) + sizeof(ushort);
+            msg_len += sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort);
             if (loc_->IsNonEmptyAutomaps())
             {
                 CScriptArray* automaps = loc_->GetAutomaps();
-                msg_len += (sizeof(hash) + sizeof(uchar)) * (uint)automaps->GetSize();
+                msg_len += (sizeof(hstring::hash_t) + sizeof(uchar)) * (uint)automaps->GetSize();
                 automaps->Release();
             }
         }
@@ -1066,7 +1061,7 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
                 Connection->Bout << (ushort)automaps->GetSize();
                 for (uint k = 0, l = (uint)automaps->GetSize(); k < l; k++)
                 {
-                    hash pid = *(hash*)automaps->At(k);
+                    hstring pid = *(hash*)automaps->At(k);
                     Connection->Bout << pid;
                     Connection->Bout << (uchar)loc_->GetMapIndex(pid);
                 }
@@ -1112,7 +1107,7 @@ void Player::Send_AutomapsInfo(void* locs_vec, Location* loc)
     }*/
 }
 
-void Player::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
+void Player::Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1129,7 +1124,7 @@ void Player::Send_Effect(hash eff_pid, ushort hx, ushort hy, ushort radius)
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_FlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Player::Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1194,10 +1189,10 @@ void Player::Send_SomeItem(Item* item)
         return;
     }
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hash) + sizeof(uchar);
+    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uchar);
     vector<uchar*>* data = nullptr;
     vector<uint>* data_sizes = nullptr;
-    const auto whole_data_size = item->Props.StoreData(false, &data, &data_sizes);
+    const auto whole_data_size = item->StoreData(false, &data, &data_sizes);
     msg_len += sizeof(ushort) + whole_data_size;
 
     CONNECTION_OUTPUT_BEGIN(Connection);
@@ -1277,8 +1272,8 @@ void Player::Send_SomeItems(const vector<Item*>* items, int param)
     vector<vector<uchar*>*> items_data(items != nullptr ? items->size() : 0);
     vector<vector<uint>*> items_data_sizes(items != nullptr ? items->size() : 0);
     for (size_t i = 0, j = items_data.size(); i < j; i++) {
-        const auto whole_data_size = items->at(i)->Props.StoreData(false, &items_data[i], &items_data_sizes[i]);
-        msg_len += sizeof(uint) + sizeof(hash) + sizeof(ushort) + whole_data_size;
+        const auto whole_data_size = items->at(i)->StoreData(false, &items_data[i], &items_data_sizes[i]);
+        msg_len += sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) + whole_data_size;
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);

@@ -42,7 +42,7 @@ DECLARE_EXCEPTION(MapLoaderException);
 
 struct MapTile
 {
-    hash Name {};
+    hstring::hash_t NameHash {};
     ushort HexX {};
     ushort HexY {};
     short OffsX {};
@@ -61,5 +61,5 @@ public:
 
     MapLoader() = delete;
 
-    static void Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
+    static void Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
 };

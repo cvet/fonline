@@ -32,15 +32,9 @@
 //
 
 #include "LocationView.h"
+#include "Client.h"
 
-#define FO_API_LOCATION_VIEW_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(LocationView, "Location", false);
-#define FO_API_LOCATION_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(LocationView, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-LocationView::LocationView(uint id, const ProtoLocation* proto) : Entity(id, EntityType::LocationView, PropertiesRegistrator, proto)
+LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), LocationProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
 }

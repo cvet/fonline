@@ -128,7 +128,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         while (!Data->StartServer || Data->Server != nullptr) {
             if (!AppGui::BeginFrame()) {
                 // Immediate finish
-                if (!Data->StartServer || Data->Server == nullptr || !Data->Server->Started) {
+                if (!Data->StartServer || Data->Server == nullptr || !Data->Server->IsStarted()) {
                     return 0;
                 }
 

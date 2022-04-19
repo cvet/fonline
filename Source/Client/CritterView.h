@@ -37,27 +37,18 @@
 
 #include "3dStuff.h"
 #include "Application.h"
-#include "ClientScripting.h"
-#include "EffectManager.h"
-#include "Entity.h"
-#include "GeometryHelper.h"
-#include "ProtoManager.h"
-#include "ResourceManager.h"
-#include "Settings.h"
-#include "SoundManager.h"
+#include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 #include "SpriteManager.h"
-#include "Timer.h"
-
-#define FO_API_CRITTER_VIEW_HEADER 1
-#include "ScriptApi.h"
 
 class ItemView;
 
-class CritterView final : public Entity
+class CritterView final : public ClientEntity, public CritterProperties
 {
 public:
     CritterView() = delete;
-    CritterView(uint id, const ProtoCritter* proto, CritterViewSettings& settings, SpriteManager& spr_mngr, ResourceManager& res_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_timer, bool mapper_mode);
+    CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode);
     CritterView(const CritterView&) = delete;
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;
@@ -69,13 +60,13 @@ public:
     [[nodiscard]] auto IsChosen() const -> bool { return IsBitSet(Flags, FCRIT_CHOSEN); }
     [[nodiscard]] auto IsOnline() const -> bool { return !IsBitSet(Flags, FCRIT_DISCONNECT); }
     [[nodiscard]] auto IsOffline() const -> bool { return IsBitSet(Flags, FCRIT_DISCONNECT); }
-    [[nodiscard]] auto IsAlive() const -> bool { return GetCond() == COND_ALIVE; }
-    [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == COND_KNOCKOUT; }
-    [[nodiscard]] auto IsDead() const -> bool { return GetCond() == COND_DEAD; }
+    [[nodiscard]] auto IsAlive() const -> bool { return GetCond() == CritterCondition::Alive; }
+    [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == CritterCondition::Knockout; }
+    [[nodiscard]] auto IsDead() const -> bool { return GetCond() == CritterCondition::Dead; }
     [[nodiscard]] auto IsCombatMode() const -> bool;
-    [[nodiscard]] auto CheckFind(uchar find_type) const -> bool;
+    [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto IsLastHexes() const -> bool;
-    [[nodiscard]] auto CountItemPid(hash item_pid) const -> uint;
+    [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
     [[nodiscard]] auto IsHaveLightSources() const -> bool;
     [[nodiscard]] auto IsNeedMove() const -> bool { return !MoveSteps.empty() && !IsWalkAnim(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
@@ -93,9 +84,7 @@ public:
     [[nodiscard]] auto GetTextRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
     [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
-    [[nodiscard]] auto GetItemByPid(hash item_pid) -> ItemView*;
-    [[nodiscard]] auto GetItemSlot(int slot) -> ItemView*;
-    [[nodiscard]] auto GetItemsSlot(int slot) -> vector<ItemView*>;
+    [[nodiscard]] auto GetItemByPid(hstring item_pid) -> ItemView*;
 
     [[nodiscard]] auto PopLastHex() -> tuple<ushort, ushort>;
 
@@ -127,7 +116,6 @@ public:
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
     void NextAnim(bool erase_front);
 
-    uint ContourColor {};
     uint Flags {};
     RenderEffect* DrawEffect {};
     string AlternateName {};
@@ -145,13 +133,6 @@ public:
     short SprOx {};
     short SprOy {};
     uint FadingTick {};
-
-#define FO_API_CRITTER_VIEW_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
 
 private:
     struct CritterAnim
@@ -173,14 +154,7 @@ private:
 
     void SetFade(bool fade_up);
 
-    CritterViewSettings& _settings;
-    GeometryHelper _geomHelper;
-    SpriteManager& _sprMngr;
-    ResourceManager& _resMngr;
-    EffectManager& _effectMngr;
-    ClientScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
-    bool _mapperMode {};
+    bool _mapperMode;
     bool _needReset {};
     uint _resetTick {};
     uint _curSpr {};

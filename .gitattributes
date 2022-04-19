@@ -19,6 +19,16 @@
 *.fodlg    text
 *.fogui    text
 
+# Syntax highlighting
+*.fos      linguist-language=AngelScript
+*.fopro    linguist-language=INI
+*.foitem   linguist-language=INI
+*.focr     linguist-language=INI
+*.fomap    linguist-language=INI
+*.foloc    linguist-language=INI
+*.fofrm    linguist-language=INI
+*.focfg    linguist-language=INI
+
 # Documents
 *.cmake    text
 *.md       text
@@ -71,6 +81,8 @@
 *.mp3      binary
 *.avi      binary
 *.mp4      binary
+*.acm      binary
+*.ogv      binary
 
 # Scripts
 *.bash     text eol=lf
@@ -95,6 +107,8 @@
 *.zip      binary
 *.zipped   binary
 *.bz2      binary
+*.dat      binary
+*.bos      binary
 
 # Text files where line endings should be preserved
 *.patch    -text

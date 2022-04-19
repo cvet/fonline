@@ -154,15 +154,14 @@ int main(int argc, char** argv)
             auto error = false;
 
             // Evaluate service path
-            const auto path_mb = string("\"").append(DiskFileSystem::GetExePath()).append("\" ");
-            wchar_t path_buf[TEMP_BUF_SIZE];
-            ::MultiByteToWideChar(CP_UTF8, 0, path_mb.c_str(), static_cast<int>(path_mb.length()), path_buf, TEMP_BUF_SIZE);
-            const auto path = std::wstring(path_buf).append(::GetCommandLineW()).append(L" --server-service");
+            constexpr DWORD buf_len = 4096 * 2;
+            wchar_t buf[buf_len];
+            ::GetModuleFileNameW(nullptr, buf, buf_len);
+            const auto path = std::wstring(L"\"").append(buf).append(L"\" ").append(::GetCommandLineW()).append(L" --server-service");
 
             // Change executable path, if changed
             if (service != nullptr) {
-                uchar service_cfg_buf[8192];
-                std::memset(service_cfg_buf, 0, sizeof(service_cfg_buf));
+                uchar service_cfg_buf[8192] = {};
                 auto* service_cfg = reinterpret_cast<LPQUERY_SERVICE_CONFIG>(service_cfg_buf);
 
                 DWORD dw = 0;
@@ -232,11 +231,11 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         SetFOServiceStatus(SERVICE_START_PENDING);
 
         Data->ServerThread = std::thread(ServerEntry);
-        while (Data->Server == nullptr || !Data->Server->Started) {
+        while (Data->Server == nullptr || !Data->Server->IsStarted()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(0));
         }
 
-        if (Data->Server->Started) {
+        if (Data->Server->IsStarted()) {
             SetFOServiceStatus(SERVICE_RUNNING);
         }
         else {

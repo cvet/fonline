@@ -38,7 +38,6 @@
 #include "Common.h"
 
 #include "CacheStorage.h"
-#include "ClientScripting.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"
@@ -54,6 +53,8 @@
 #include "Timer.h"
 
 static constexpr int MAX_FIND_PATH = 600;
+
+class FOClient;
 
 struct ViewField
 {
@@ -135,7 +136,7 @@ public:
     vector<ItemHexView*>* BlockLinesItems {};
     short RoofNum {};
     FlagsType Flags {};
-    uchar Corner {};
+    CornerType Corner {};
 };
 
 class HexManager final
@@ -157,14 +158,14 @@ public:
     };
 
     HexManager() = delete;
-    HexManager(bool mapper_mode, HexSettings& settings, ProtoManager& proto_mngr, SpriteManager& spr_mngr, EffectManager& effect_mngr, ResourceManager& res_mngr, ClientScriptSystem& script_sys, GameTimer& game_time);
+    explicit HexManager(FOClient* engine);
     HexManager(const HexManager&) = delete;
     HexManager(HexManager&&) noexcept = delete;
     auto operator=(const HexManager&) = delete;
     auto operator=(HexManager&&) noexcept = delete;
     ~HexManager();
 
-    [[nodiscard]] auto IsMapLoaded() const -> bool { return _curPidMap != 0; }
+    [[nodiscard]] auto IsMapLoaded() const -> bool { return !!_curPidMap; }
     [[nodiscard]] auto IsShowTrack() const -> bool { return _isShowTrack; }
     [[nodiscard]] auto GetField(ushort hx, ushort hy) -> Field& { NON_CONST_METHOD_HINT_ONELINE() return _hexField[hy * _maxHexX + hx]; }
     [[nodiscard]] auto IsHexToDraw(ushort hx, ushort hy) const -> bool { return _hexField[hy * _maxHexX + hx].IsView; }
@@ -178,14 +179,16 @@ public:
     [[nodiscard]] auto GetMapDayColor() -> uchar*;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
 
+    void EnableMapperMode();
+
     auto FindPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool;
     auto CutPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
-    auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, uchar find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
+    auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
-    auto LoadMap(CacheStorage& cache, hash map_pid) -> bool;
+    auto LoadMap(CacheStorage& cache, hstring map_pid) -> bool;
     void UnloadMap();
-    void GetMapHash(CacheStorage& cache, hash map_pid, hash& hash_tiles, hash& hash_scen) const;
-    void GenerateItem(uint id, hash proto_id, Properties& props);
+    void GetMapHash(CacheStorage& cache, hstring map_pid, uint& hash_tiles, uint& hash_scen) const;
+    void GenerateItem(uint id, hstring proto_id, Properties& props);
     void ResizeField(ushort w, ushort h);
     void ClearHexTrack();
     void SwitchShowTrack();
@@ -216,16 +219,16 @@ public:
     void RemoveCritter(CritterView* cr);
     void DeleteCritter(uint crid);
     void DeleteCritters();
-    void GetCritters(ushort hx, ushort hy, vector<CritterView*>& crits, uchar find_type);
+    void GetCritters(ushort hx, ushort hy, vector<CritterView*>& crits, CritterFindType find_type);
     auto GetCritters() -> map<uint, CritterView*>& { return _critters; }
     void SetCritterContour(uint crid, int contour);
     void SetCrittersContour(int contour);
     void SetMultihex(ushort hx, ushort hy, uint multihex, bool set);
-    auto AddItem(uint id, hash pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data) -> uint;
+    void AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added, vector<vector<uchar>>* data);
     void FinishItem(uint id, bool is_deleted);
     void DeleteItem(ItemHexView* item, bool destroy_item, vector<ItemHexView*>::iterator* it_hex_items);
     void PushItem(ItemHexView* item);
-    auto GetItem(ushort hx, ushort hy, hash pid) -> ItemHexView*;
+    auto GetItem(ushort hx, ushort hy, hstring pid) -> ItemHexView*;
     auto GetItemById(ushort hx, ushort hy, uint id) -> ItemHexView*;
     auto GetItemById(uint id) -> ItemHexView*;
     void GetItems(ushort hx, ushort hy, vector<ItemHexView*>& items);
@@ -244,7 +247,7 @@ public:
     auto GetItemPixel(int x, int y, bool& item_egg) -> ItemHexView*; // With transparent egg
     auto GetCritterPixel(int x, int y, bool ignore_dead_and_chosen) -> CritterView*;
     void GetSmthPixel(int x, int y, ItemHexView*& item, CritterView*& cr);
-    auto RunEffect(hash eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
+    auto RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
     void ProcessRain();
     void SetRainAnimation(string_view fall_anim_name, string_view drop_anim_name);
     void SetCursorPos(int x, int y, bool show_steps, bool refresh);
@@ -252,20 +255,20 @@ public:
     void DrawCursor(string_view text);
 
     [[nodiscard]] auto GetTiles(ushort hx, ushort hy, bool is_roof) -> vector<MapTile>&;
-    [[nodiscard]] auto IsFastPid(hash pid) const -> bool;
-    [[nodiscard]] auto IsIgnorePid(hash pid) const -> bool;
+    [[nodiscard]] auto IsFastPid(hstring pid) const -> bool;
+    [[nodiscard]] auto IsIgnorePid(hstring pid) const -> bool;
     [[nodiscard]] auto GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushort>>;
 
-    auto SetProtoMap(ProtoMap& pmap) -> bool;
+    auto SetProtoMap(const ProtoMap& pmap) -> bool;
     void GetProtoMap(ProtoMap& pmap);
     void ClearSelTiles();
     void ParseSelTiles();
-    void SetTile(hash name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select);
+    void SetTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select);
     void EraseTile(ushort hx, ushort hy, uchar layer, bool is_roof, uint skip_index);
-    void AddFastPid(hash pid);
+    void AddFastPid(hstring pid);
     void ClearFastPids();
-    void AddIgnorePid(hash pid);
-    void SwitchIgnorePid(hash pid);
+    void AddIgnorePid(hstring pid);
+    void SwitchIgnorePid(hstring pid);
     void ClearIgnorePids();
     void MarkPassedHexes();
 
@@ -308,14 +311,7 @@ private:
     void RealRebuildLight();
     void CollectLightSources();
 
-    HexSettings& _settings;
-    GeometryHelper _geomHelper;
-    ProtoManager& _protoMngr;
-    SpriteManager& _sprMngr;
-    EffectManager& _effectMngr;
-    ResourceManager& _resMngr;
-    ClientScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
+    FOClient* _engine;
     SpriteVec _spritesPool {};
     Sprites _mainTree;
     Sprites _tilesTree;
@@ -333,12 +329,12 @@ private:
     AnyFrames* _picHex[3] {};
     string _curDataPrefix {};
     short* _findPathGrid {};
-    hash _curPidMap {};
+    hstring _curPidMap {};
     int _curMapTime {-1};
     int _dayTime[4] {};
     uchar _dayColor[12] {};
-    hash _curHashTiles {};
-    hash _curHashScen {};
+    uint _curHashTiles {};
+    uint _curHashScen {};
     bool _mapperMode {};
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};
@@ -397,7 +393,7 @@ private:
     AnyFrames* _cursorXPic {};
     int _cursorX {};
     int _cursorY {};
-    set<hash> _fastPids {};
-    set<hash> _ignorePids {};
+    set<hstring> _fastPids {};
+    set<hstring> _ignorePids {};
     bool _nonConstHelper {};
 };

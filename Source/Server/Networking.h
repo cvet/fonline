@@ -60,9 +60,9 @@ public:
     void AddRef() const;
     void Release() const;
 
-    NetBuffer Bin {};
+    NetInBuffer Bin {};
     std::mutex BinLocker {};
-    NetBuffer Bout {};
+    NetOutBuffer Bout {};
     std::mutex BoutLocker {};
 
 private:

@@ -51,7 +51,7 @@ public:
     DiskFile(const DiskFile&) = delete;
     DiskFile(DiskFile&&) noexcept;
     auto operator=(const DiskFile&) -> DiskFile& = delete;
-    auto operator=(DiskFile &&) -> DiskFile& = delete;
+    auto operator=(DiskFile&&) -> DiskFile& = delete;
     explicit operator bool() const;
     ~DiskFile();
 
@@ -82,7 +82,7 @@ public:
     DiskFind(DiskFind&&) noexcept;
     DiskFind(const DiskFind&) = delete;
     auto operator=(const DiskFind&) -> DiskFind& = delete;
-    auto operator=(DiskFind &&) -> DiskFind& = delete;
+    auto operator=(DiskFind&&) -> DiskFind& = delete;
     DiskFind& operator++(int);
     explicit operator bool() const;
     ~DiskFind();
@@ -107,9 +107,6 @@ public:
 
     DiskFileSystem() = delete;
 
-    [[nodiscard]] static auto IsFileExists(string_view fname) -> bool;
-    [[nodiscard]] static auto GetExePath() -> string;
-
     [[nodiscard]] static auto OpenFile(string_view fname, bool write) -> DiskFile;
     [[nodiscard]] static auto OpenFile(string_view fname, bool write, bool write_through) -> DiskFile;
     [[nodiscard]] static auto FindFiles(string_view path, string_view ext) -> DiskFind;
@@ -120,7 +117,8 @@ public:
     static void ResolvePath(string& path);
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
-    static auto SetCurrentDir(string_view dir) -> bool;
-    static void ResetCurDir();
     static void IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor);
+
+    static void RemoveBuildHashFile(string_view hash_name);
+    static void CreateBuildHashFile(string_view hash_name);
 };

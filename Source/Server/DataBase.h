@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#include "AnyData.h"
+
 DECLARE_EXCEPTION(DataBaseException);
 
 class DataBaseImpl;
@@ -44,19 +46,7 @@ class DataBase
     friend auto ConnectToDataBase(string_view connection_info) -> DataBase;
 
 public:
-    static constexpr auto INT_VALUE = 0;
-    static constexpr auto INT64_VALUE = 1;
-    static constexpr auto DOUBLE_VALUE = 2;
-    static constexpr auto BOOL_VALUE = 3;
-    static constexpr auto STRING_VALUE = 4;
-    static constexpr auto ARRAY_VALUE = 5;
-    static constexpr auto DICT_VALUE = 6;
-
-    using Array = vector<std::variant<int, int64, double, bool, string>>;
-    using Dict = map<string, std::variant<int, int64, double, bool, string, Array>>;
-    using Value = std::variant<int, int64, double, bool, string, Array, Dict>;
-    using Document = map<string, Value>;
-    using Collection = map<uint, Document>;
+    using Collection = map<uint, AnyData::Document>;
     using Collections = map<string, Collection>;
     using RecordsState = map<string, set<uint>>;
 
@@ -69,12 +59,12 @@ public:
     ~DataBase();
 
     [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint>;
-    [[nodiscard]] auto Get(string_view collection_name, uint id) const -> Document;
+    [[nodiscard]] auto Get(string_view collection_name, uint id) const -> AnyData::Document;
     [[nodiscard]] auto Valid(string_view collection_name, uint id) const -> bool;
 
     void StartChanges();
-    void Insert(string_view collection_name, uint id, const Document& doc);
-    void Update(string_view collection_name, uint id, string_view key, const Value& value);
+    void Insert(string_view collection_name, uint id, const AnyData::Document& doc);
+    void Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value);
     void Delete(string_view collection_name, uint id);
     void CommitChanges();
 

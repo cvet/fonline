@@ -36,21 +36,12 @@
 #include "CritterManager.h"
 #include "GenericUtils.h"
 #include "Item.h"
-#include "ItemManager.h"
 #include "Location.h"
-#include "Log.h"
 #include "MapManager.h"
+#include "Server.h"
 #include "Settings.h"
-#include "StringUtils.h"
 
-#define FO_API_MAP_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(Map, "Map", true);
-#define FO_API_MAP_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Map, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-Map::Map(uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map, MapSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time) : Entity(id, EntityType::Map, PropertiesRegistrator, proto), _settings {settings}, _geomHelper(_settings), _scriptSys {script_sys}, _gameTime {game_time}, _staticMap {static_map}, _mapLocation {location}
+Map::Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), MapProperties(GetInitRef()), _staticMap {static_map}, _mapLocation {location}
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(_staticMap);
@@ -67,7 +58,7 @@ Map::~Map()
 
 void Map::Process()
 {
-    const auto tick = _gameTime.GameTick();
+    const auto tick = _engine->GameTime.GameTick();
     ProcessLoop(0, GetLoopTime1(), tick);
     ProcessLoop(1, GetLoopTime2(), tick);
     ProcessLoop(2, GetLoopTime3(), tick);
@@ -79,19 +70,32 @@ void Map::ProcessLoop(int index, uint time, uint tick)
 {
     if (time != 0u && tick - _loopLastTick[index] >= time) {
         _loopLastTick[index] = tick;
-        _scriptSys.MapLoopEvent(this, index + 1);
+
+        if (index == 0) {
+            OnLoop.Fire();
+            _engine->OnMapLoop.Fire(this);
+        }
+        else {
+            OnLoopEx.Fire(index);
+            _engine->OnMapLoopEx.Fire(this, index);
+        }
     }
 }
 
 auto Map::GetProtoMap() const -> const ProtoMap*
 {
-    return dynamic_cast<const ProtoMap*>(Proto);
+    return static_cast<const ProtoMap*>(_proto);
 }
 
 auto Map::GetLocation() -> Location*
 {
     NON_CONST_METHOD_HINT();
 
+    return _mapLocation;
+}
+
+auto Map::GetLocation() const -> const Location*
+{
     return _mapLocation;
 }
 
@@ -112,10 +116,10 @@ auto Map::FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bo
         seek_radius = MAX_HEX_OFFSET;
     }
 
-    const auto [sx, sy] = _geomHelper.GetHexOffsets((hx % 2) != 0);
+    const auto [sx, sy] = _engine->GeomHelper.GetHexOffsets((hx % 2) != 0);
     auto hx_ = static_cast<short>(hx);
     auto hy_ = static_cast<short>(hy);
-    const auto max_pos = static_cast<int>(GenericUtils::NumericalNumber(seek_radius) * _settings.MapDirCount);
+    const auto max_pos = static_cast<int>(GenericUtils::NumericalNumber(seek_radius) * _engine->Settings.MapDirCount);
 
     auto pos = -1;
     while (true) {
@@ -223,11 +227,11 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
             if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed;
-                if (item->GetIsTrap() && IsBitSet(_settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _scriptSys.MapCheckTrapLookEvent(this, cr, item);
+                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
+                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = _geomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy);
+                    int dist = _engine->GeomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), hx, hy);
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -240,7 +244,7 @@ auto Map::AddItem(Item* item, ushort hx, ushort hy) -> bool
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            _scriptSys.CritterShowItemOnMapEvent(cr, item, false, nullptr);
+            cr->OnItemOnMapAppeared.Fire(item, false, nullptr);
         }
     }
     item->ViewPlaceOnMap = false;
@@ -252,8 +256,8 @@ void Map::SetItem(Item* item, ushort hx, ushort hy)
 {
     RUNTIME_ASSERT(!_mapItemsById.count(item->GetId()));
 
-    item->SetAccessory(ITEM_ACCESSORY_HEX);
-    item->SetMapId(Id);
+    item->SetOwnership(ItemOwnership::MapHex);
+    item->SetMapId(GetId());
     item->SetHexX(hx);
     item->SetHexY(hy);
 
@@ -286,7 +290,7 @@ void Map::EraseItem(uint item_id)
 
     const auto hx = item->GetHexX();
     const auto hy = item->GetHexY();
-    auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
+    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
     RUNTIME_ASSERT(it_hex_all != _mapItemsByHex.end());
     const auto it_hex = std::find(it_hex_all->second.begin(), it_hex_all->second.end(), item);
     RUNTIME_ASSERT(it_hex != it_hex_all->second.end());
@@ -295,7 +299,7 @@ void Map::EraseItem(uint item_id)
         _mapItemsByHex.erase(it_hex_all);
     }
 
-    item->SetAccessory(ITEM_ACCESSORY_NONE);
+    item->SetOwnership(ItemOwnership::Nowhere);
     item->SetMapId(0);
     item->SetHexX(0);
     item->SetHexY(0);
@@ -315,27 +319,27 @@ void Map::EraseItem(uint item_id)
     for (auto* cr : GetCritters()) {
         if (cr->DelIdVisItem(item->GetId())) {
             cr->Send_EraseItemFromMap(item);
-            _scriptSys.CritterHideItemOnMapEvent(cr, item, item->ViewPlaceOnMap, item->ViewByCritter);
+            cr->OnItemOnMapDisappeared.Fire(item, item->ViewPlaceOnMap, item->ViewByCritter);
         }
     }
     item->ViewPlaceOnMap = false;
 }
 
-void Map::SendProperty(NetProperty::Type type, Property* prop, Entity* entity)
+void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* entity)
 {
     if (type == NetProperty::MapItem) {
         auto* item = dynamic_cast<Item*>(entity);
         for (auto* cr : GetCritters()) {
             if (cr->CountIdVisItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
-                _scriptSys.CritterChangeItemOnMapEvent(cr, item);
+                cr->OnItemOnMapChanged.Fire(item);
             }
         }
     }
     else if (type == NetProperty::Map || type == NetProperty::Location) {
         for (auto* cr : GetCritters()) {
             cr->Send_Property(type, prop, entity);
-            if (type == NetProperty::Map && (prop == PropertyDayTime || prop == PropertyDayColor)) {
+            if (type == NetProperty::Map && (prop == GetPropertyDayTime() || prop == GetPropertyDayColor())) {
                 cr->Send_GameInfo(nullptr);
             }
         }
@@ -352,16 +356,16 @@ void Map::ChangeViewItem(Item* item)
             if (item->GetIsHidden()) {
                 cr->DelIdVisItem(item->GetId());
                 cr->Send_EraseItemFromMap(item);
-                _scriptSys.CritterHideItemOnMapEvent(cr, item, false, nullptr);
+                cr->OnItemOnMapDisappeared.Fire(item, false, nullptr);
             }
             else if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed;
-                if (item->GetIsTrap() && IsBitSet(_settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _scriptSys.MapCheckTrapLookEvent(this, cr, item);
+                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
+                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = _geomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                    int dist = _engine->GeomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -370,7 +374,7 @@ void Map::ChangeViewItem(Item* item)
                 if (!allowed) {
                     cr->DelIdVisItem(item->GetId());
                     cr->Send_EraseItemFromMap(item);
-                    _scriptSys.CritterHideItemOnMapEvent(cr, item, false, nullptr);
+                    cr->OnItemOnMapDisappeared.Fire(item, false, nullptr);
                 }
             }
         }
@@ -378,11 +382,11 @@ void Map::ChangeViewItem(Item* item)
             if (!item->GetIsAlwaysView()) // Check distance for non-hide items
             {
                 bool allowed;
-                if (item->GetIsTrap() && IsBitSet(_settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
-                    allowed = _scriptSys.MapCheckTrapLookEvent(this, cr, item);
+                if (item->GetIsTrap() && IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_ITEM_SCRIPT)) {
+                    allowed = _engine->OnMapCheckTrapLook.Fire(this, cr, item);
                 }
                 else {
-                    int dist = _geomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
+                    int dist = _engine->GeomHelper.DistGame(cr->GetHexX(), cr->GetHexY(), item->GetHexX(), item->GetHexY());
                     if (item->GetIsTrap()) {
                         dist += item->GetTrapValue();
                     }
@@ -395,13 +399,15 @@ void Map::ChangeViewItem(Item* item)
 
             cr->AddIdVisItem(item->GetId());
             cr->Send_AddItemOnMap(item);
-            _scriptSys.CritterShowItemOnMapEvent(cr, item, false, nullptr);
+            cr->OnItemOnMapAppeared.Fire(item, false, nullptr);
         }
     }
 }
 
 void Map::AnimateItem(Item* item, uchar from_frm, uchar to_frm)
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* cr : _mapPlayerCritters) {
         if (cr->CountIdVisItem(item->GetId())) {
             cr->Send_AnimateItem(item, from_frm, to_frm);
@@ -415,22 +421,23 @@ auto Map::GetItem(uint item_id) -> Item*
     return it != _mapItemsById.end() ? it->second : nullptr;
 }
 
-auto Map::GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker) -> Item*
+auto Map::GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) -> Item*
 {
-    auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
+    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
     if (it_hex_all != _mapItemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
-            if ((item_pid == 0 || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetIsHidden() && picker->CountIdVisItem(item->GetId())))) {
+            if ((!item_pid || item->GetProtoId() == item_pid) && (picker == nullptr || (!item->GetIsHidden() && picker->CountIdVisItem(item->GetId())))) {
                 return item;
             }
         }
     }
+
     return nullptr;
 }
 
 auto Map::GetItemGag(ushort hx, ushort hy) -> Item*
 {
-    auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
+    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
     if (it_hex_all != _mapItemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
             if (item->GetIsGag()) {
@@ -451,31 +458,37 @@ auto Map::GetItems() -> vector<Item*>
 auto Map::GetItemsHex(ushort hx, ushort hy) -> vector<Item*>
 {
     vector<Item*> items;
-    auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
+
+    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
     if (it_hex_all != _mapItemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
             items.push_back(item);
         }
     }
+
     return items;
 }
 
-auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>
+auto Map::GetItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>
 {
+    NON_CONST_METHOD_HINT();
+
     vector<Item*> items;
     for (auto* item : _mapItems) {
-        if ((pid == 0u || item->GetProtoId() == pid) && _geomHelper.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
+        if ((!pid || item->GetProtoId() == pid) && _engine->GeomHelper.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
             items.push_back(item);
         }
     }
     return items;
 }
 
-auto Map::GetItemsPid(hash pid) -> vector<Item*>
+auto Map::GetItemsByProto(hstring pid) -> vector<Item*>
 {
+    NON_CONST_METHOD_HINT();
+
     vector<Item*> items;
     for (auto* item : _mapItems) {
-        if (pid == 0u || item->GetProtoId() == pid) {
+        if (!pid || item->GetProtoId() == pid) {
             items.push_back(item);
         }
     }
@@ -485,7 +498,7 @@ auto Map::GetItemsPid(hash pid) -> vector<Item*>
 auto Map::GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>
 {
     vector<Item*> traps;
-    auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
+    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
     if (it_hex_all != _mapItemsByHex.end()) {
         for (auto* item : it_hex_all->second) {
             if (item->GetIsTrap() || item->GetIsTrigger()) {
@@ -503,13 +516,13 @@ auto Map::IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item)
     }
 
     auto is_critter = false;
-    _geomHelper.ForEachBlockLines(proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, &is_critter](auto hx2, auto hy2) { is_critter = is_critter || IsHexCritter(hx2, hy2); });
+    _engine->GeomHelper.ForEachBlockLines(proto_item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, &is_critter](auto hx2, auto hy2) { is_critter = is_critter || IsHexCritter(hx2, hy2); });
     return !is_critter;
 }
 
 void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 {
-    _geomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
+    _engine->GeomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
         _mapBlockLinesByHex.insert(std::make_pair((hy2 << 16) | hx2, vector<Item*>())).first->second.push_back(item);
         RecacheHexFlags(hx2, hy2);
     });
@@ -517,7 +530,7 @@ void Map::PlaceItemBlocks(ushort hx, ushort hy, Item* item)
 
 void Map::RemoveItemBlocks(ushort hx, ushort hy, Item* item)
 {
-    _geomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
+    _engine->GeomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, GetWidth(), GetHeight(), [this, item](auto hx2, auto hy2) {
         auto it_hex_all_bl = _mapBlockLinesByHex.find((hy2 << 16) | hx2);
         RUNTIME_ASSERT(it_hex_all_bl != _mapBlockLinesByHex.end());
 
@@ -546,9 +559,9 @@ void Map::RecacheHexFlags(ushort hx, ushort hy)
     auto is_trap = false;
     auto is_trigger = false;
 
-    auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
+    const auto it_hex_all = _mapItemsByHex.find(hy << 16 | hx);
     if (it_hex_all != _mapItemsByHex.end()) {
-        for (auto* item : it_hex_all->second) {
+        for (const auto* item : it_hex_all->second) {
             if (!is_block && !item->GetIsNoBlock()) {
                 is_block = true;
             }
@@ -571,11 +584,11 @@ void Map::RecacheHexFlags(ushort hx, ushort hy)
     }
 
     if (!is_block && !is_nrake) {
-        auto it_hex_all_bl = _mapBlockLinesByHex.find(hy << 16 | hx);
+        const auto it_hex_all_bl = _mapBlockLinesByHex.find(hy << 16 | hx);
         if (it_hex_all_bl != _mapBlockLinesByHex.end()) {
             is_block = true;
 
-            for (auto* item : it_hex_all_bl->second) {
+            for (const auto* item : it_hex_all_bl->second) {
                 if (!item->GetIsShootThru()) {
                     is_nrake = true;
                     break;
@@ -643,8 +656,8 @@ auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
     }
 
     // Neighbors
-    const auto [sx, sy] = _geomHelper.GetHexOffsets((hx % 2) != 0);
-    const auto count = GenericUtils::NumericalNumber(radius) * _settings.MapDirCount;
+    const auto [sx, sy] = _engine->GeomHelper.GetHexOffsets((hx % 2) != 0);
+    const auto count = GenericUtils::NumericalNumber(radius) * _engine->Settings.MapDirCount;
     const auto maxhx = GetWidth();
     const auto maxhy = GetHeight();
 
@@ -674,7 +687,7 @@ auto Map::IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> 
     int hx_ = hx;
     int hy_ = hy;
     for (uint k = 0; k < multihex; k++) {
-        if (!_geomHelper.MoveHexByDirUnsafe(hx_, hy_, dir, map_width, map_height)) {
+        if (!_engine->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, dir, map_width, map_height)) {
             return false;
         }
     }
@@ -682,11 +695,11 @@ auto Map::IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> 
         return false;
     }
 
-    const auto is_square_corner = (!_settings.MapHexagonal && (dir % 2) != 0);
+    const auto is_square_corner = (!_engine->Settings.MapHexagonal && (dir % 2) != 0);
     const auto steps_count = (is_square_corner ? multihex * 2 : multihex);
 
     // Clock wise hexes
-    auto dir_cw = static_cast<uchar>(_settings.MapHexagonal ? (dir + 2) % 6 : (dir + 2) % 8);
+    auto dir_cw = static_cast<uchar>(_engine->Settings.MapHexagonal ? (dir + 2) % 6 : (dir + 2) % 8);
     if (is_square_corner) {
         dir_cw = (dir_cw + 1) % 8;
     }
@@ -694,7 +707,7 @@ auto Map::IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> 
     auto hx_cw = hx_;
     auto hy_cw = hy_;
     for (uint k = 0; k < steps_count; k++) {
-        if (!_geomHelper.MoveHexByDirUnsafe(hx_cw, hy_cw, dir_cw, map_width, map_height)) {
+        if (!_engine->GeomHelper.MoveHexByDirUnsafe(hx_cw, hy_cw, dir_cw, map_width, map_height)) {
             return false;
         }
         if (!IsHexPassed(static_cast<ushort>(hx_cw), static_cast<ushort>(hy_cw))) {
@@ -703,7 +716,7 @@ auto Map::IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> 
     }
 
     // Counter clock wise hexes
-    auto dir_ccw = static_cast<uchar>(_settings.MapHexagonal ? (dir + 4) % 6 : (dir + 6) % 8);
+    auto dir_ccw = static_cast<uchar>(_engine->Settings.MapHexagonal ? (dir + 4) % 6 : (dir + 6) % 8);
     if (is_square_corner) {
         dir_ccw = (dir_ccw + 7) % 8;
     }
@@ -711,7 +724,7 @@ auto Map::IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> 
     auto hx_ccw = hx_;
     auto hy_ccw = hy_;
     for (uint k = 0; k < steps_count; k++) {
-        if (!_geomHelper.MoveHexByDirUnsafe(hx_ccw, hy_ccw, dir_ccw, map_width, map_height)) {
+        if (!_engine->GeomHelper.MoveHexByDirUnsafe(hx_ccw, hy_ccw, dir_ccw, map_width, map_height)) {
             return false;
         }
         if (!IsHexPassed(static_cast<ushort>(hx_ccw), static_cast<ushort>(hy_ccw))) {
@@ -760,8 +773,8 @@ void Map::SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
         SetHexFlag(hx, hy, FH_CRITTER);
 
         if (multihex != 0u) {
-            const auto [sx, sy] = _geomHelper.GetHexOffsets((hx % 2) != 0);
-            const auto count = GenericUtils::NumericalNumber(multihex) * _settings.MapDirCount;
+            const auto [sx, sy] = _engine->GeomHelper.GetHexOffsets((hx % 2) != 0);
+            const auto count = GenericUtils::NumericalNumber(multihex) * _engine->Settings.MapDirCount;
             const auto maxhx = GetWidth();
             const auto maxhy = GetHeight();
 
@@ -780,7 +793,7 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
 {
     if (dead) {
         uint dead_count = 0;
-        for (auto* cr : _mapCritters) {
+        for (const auto* cr : _mapCritters) {
             if (cr->GetHexX() == hx && cr->GetHexY() == hy && cr->IsDead()) {
                 dead_count++;
             }
@@ -794,8 +807,8 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
         UnsetHexFlag(hx, hy, FH_CRITTER);
 
         if (multihex > 0) {
-            const auto [sx, sy] = _geomHelper.GetHexOffsets((hx % 2) != 0);
-            const auto count = GenericUtils::NumericalNumber(multihex) * _settings.MapDirCount;
+            const auto [sx, sy] = _engine->GeomHelper.GetHexOffsets((hx % 2) != 0);
+            const auto count = GenericUtils::NumericalNumber(multihex) * _engine->Settings.MapDirCount;
             const auto maxhx = GetWidth();
             const auto maxhy = GetHeight();
 
@@ -810,19 +823,10 @@ void Map::UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead)
     }
 }
 
-auto Map::GetNpcCount(hash npc_role, uchar find_type) const -> uint
-{
-    uint result = 0;
-    for (auto* npc : _mapNonPlayerCritters) {
-        if (npc->GetNpcRole() == npc_role && npc->CheckFind(find_type)) {
-            result++;
-        }
-    }
-    return result;
-}
-
 auto Map::GetCritter(uint crid) -> Critter*
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* cr : _mapCritters) {
         if (cr->GetId() == crid) {
             return cr;
@@ -831,37 +835,24 @@ auto Map::GetCritter(uint crid) -> Critter*
     return nullptr;
 }
 
-auto Map::GetNpc(hash npc_role, uchar find_type, uint skip_count) -> Critter*
-{
-    for (auto* npc : _mapNonPlayerCritters) {
-        if (npc->GetNpcRole() == npc_role && npc->CheckFind(find_type)) {
-            if (skip_count != 0u) {
-                skip_count--;
-            }
-            else {
-                return npc;
-            }
-        }
-    }
-    return nullptr;
-}
-
 auto Map::GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*
 {
+    NON_CONST_METHOD_HINT();
+
     if (!IsFlagCritter(hx, hy, dead)) {
         return nullptr;
     }
 
     for (auto* cr : _mapCritters) {
         if (cr->IsDead() == dead) {
-            const int mh = cr->GetMultihex();
-            if (mh == 0) {
+            const auto mh = cr->GetMultihex();
+            if (mh == 0u) {
                 if (cr->GetHexX() == hx && cr->GetHexY() == hy) {
                     return cr;
                 }
             }
             else {
-                if (_geomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, mh)) {
+                if (_engine->GeomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, mh)) {
                     return cr;
                 }
             }
@@ -870,13 +861,15 @@ auto Map::GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*
     return nullptr;
 }
 
-auto Map::GetCrittersHex(ushort hx, ushort hy, uint radius, uchar find_type) -> vector<Critter*>
+auto Map::GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find_type) -> vector<Critter*>
 {
+    NON_CONST_METHOD_HINT();
+
     vector<Critter*> critters;
     critters.reserve(_mapCritters.size());
 
     for (auto* cr : _mapCritters) {
-        if (cr->CheckFind(find_type) && _geomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex())) {
+        if (cr->CheckFind(find_type) && _engine->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius + cr->GetMultihex())) {
             critters.push_back(cr);
         }
     }
@@ -934,17 +927,21 @@ auto Map::GetNpcsCount() const -> uint
     return static_cast<uint>(_mapNonPlayerCritters.size());
 }
 
-void Map::SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius)
+void Map::SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius)
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* cr : _mapPlayerCritters) {
-        if (_geomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, cr->LookCacheValue + radius)) {
+        if (_engine->GeomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, cr->LookCacheValue + radius)) {
             cr->Send_Effect(eff_pid, hx, hy, radius);
         }
     }
 }
 
-void Map::SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
+void Map::SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy)
 {
+    NON_CONST_METHOD_HINT();
+
     for (auto* cr : _mapPlayerCritters) {
         if (GenericUtils::IntersectCircleLine(cr->GetHexX(), cr->GetHexY(), cr->LookCacheValue, from_hx, from_hy, to_hx, to_hy)) {
             cr->Send_FlyEffect(eff_pid, from_crid, to_crid, from_hx, from_hy, to_hx, to_hy);
@@ -952,37 +949,16 @@ void Map::SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_
     }
 }
 
-auto Map::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
-{
-    /*if (func)
-    {
-        hash func_num = scriptSys.BindScriptFuncNumByFunc(func);
-        if (!func_num)
-        {
-            WriteLog("Script bind fail, map '{}'.\n", GetName());
-            return false;
-        }
-        SetScriptId(func_num);
-    }
-
-    if (GetScriptId())
-    {
-        scriptSys.PrepareScriptFuncContext(GetScriptId(), _str("Map '{}' ({})", GetName(), GetId()));
-        scriptSys.SetArgEntity(this);
-        scriptSys.SetArgBool(first_time);
-        scriptSys.RunPrepared();
-    }*/
-    return true;
-}
-
 void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsafe_text)
 {
+    NON_CONST_METHOD_HINT();
+
     if (hx >= GetWidth() || hy >= GetHeight()) {
         return;
     }
 
     for (auto* cr : _mapPlayerCritters) {
-        if (cr->LookCacheValue >= _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->LookCacheValue >= _engine->GeomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapText(hx, hy, color, text, unsafe_text);
         }
     }
@@ -990,12 +966,14 @@ void Map::SetText(ushort hx, ushort hy, uint color, string_view text, bool unsaf
 
 void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str)
 {
+    NON_CONST_METHOD_HINT();
+
     if (hx >= GetWidth() || hy >= GetHeight() || num_str == 0u) {
         return;
     }
 
     for (auto* cr : _mapPlayerCritters) {
-        if (cr->LookCacheValue >= _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->LookCacheValue >= _engine->GeomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapTextMsg(hx, hy, color, text_msg, num_str);
         }
     }
@@ -1003,22 +981,24 @@ void Map::SetTextMsg(ushort hx, ushort hy, uint color, ushort text_msg, uint num
 
 void Map::SetTextMsgLex(ushort hx, ushort hy, uint color, ushort text_msg, uint num_str, string_view lexems)
 {
+    NON_CONST_METHOD_HINT();
+
     if (hx >= GetWidth() || hy >= GetHeight() || num_str == 0u) {
         return;
     }
 
     for (auto* cr : _mapPlayerCritters) {
-        if (cr->LookCacheValue >= _geomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
+        if (cr->LookCacheValue >= _engine->GeomHelper.DistGame(hx, hy, cr->GetHexX(), cr->GetHexY())) {
             cr->Send_MapTextMsgLex(hx, hy, color, text_msg, num_str, lexems);
         }
     }
 }
 
-auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>
+auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<StaticItem*>
 {
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> triggers;
+    vector<StaticItem*> triggers;
     for (auto* item : _staticMap->TriggerItemsVec) {
         if (item->GetHexX() == hx && item->GetHexY() == hy) {
             triggers.push_back(item);
@@ -1027,23 +1007,23 @@ auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>
     return triggers;
 }
 
-auto Map::GetStaticItem(ushort hx, ushort hy, hash pid) -> Item*
+auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
 {
     NON_CONST_METHOD_HINT();
 
     for (auto* item : _staticMap->StaticItemsVec) {
-        if ((pid == 0u || item->GetProtoId() == pid) && item->GetHexX() == hx && item->GetHexY() == hy) {
+        if ((!pid || item->GetProtoId() == pid) && item->GetHexX() == hx && item->GetHexY() == hy) {
             return item;
         }
     }
     return nullptr;
 }
 
-auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>
+auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>
 {
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> items;
+    vector<StaticItem*> items;
     for (auto* item : _staticMap->StaticItemsVec) {
         if (item->GetHexX() == hx && item->GetHexY() == hy) {
             items.push_back(item);
@@ -1052,26 +1032,26 @@ auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>
     return items;
 }
 
-auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>
+auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<StaticItem*>
 {
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> items;
+    vector<StaticItem*> items;
     for (auto* item : _staticMap->StaticItemsVec) {
-        if ((pid == 0u || item->GetProtoId() == pid) && _geomHelper.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
+        if ((!pid || item->GetProtoId() == pid) && _engine->GeomHelper.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
             items.push_back(item);
         }
     }
     return items;
 }
 
-auto Map::GetStaticItemsByPid(hash pid) -> vector<Item*>
+auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
 {
     NON_CONST_METHOD_HINT();
 
-    vector<Item*> items;
+    vector<StaticItem*> items;
     for (auto* item : _staticMap->StaticItemsVec) {
-        if (pid == 0u || item->GetProtoId() == pid) {
+        if (!pid || item->GetProtoId() == pid) {
             items.push_back(item);
         }
     }

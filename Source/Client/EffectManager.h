@@ -42,6 +42,8 @@
 
 DECLARE_EXCEPTION(EffectManagerException);
 
+class FOServer;
+
 struct EffectCollection
 {
     RenderEffect* Contour {};
@@ -83,11 +85,11 @@ struct EffectCollection
 class EffectManager final
 {
 public:
-    EffectManager(EffectSettings& settings, FileManager& file_mngr, GameTimer& game_time);
+    EffectManager(RenderSettings& settings, FileManager& file_mngr, GameTimer& game_time);
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;
-    auto operator=(EffectManager &&) -> EffectManager& = delete;
+    auto operator=(EffectManager&&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
     [[nodiscard]] auto LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*;
@@ -101,7 +103,7 @@ public:
 private:
     void PerFrameEffectUpdate(RenderEffect* effect) const;
 
-    EffectSettings& _settings;
+    RenderSettings& _settings;
     FileManager& _fileMngr;
     GameTimer& _gameTime;
     vector<unique_ptr<RenderEffect>> _loadedEffects {};

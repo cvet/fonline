@@ -36,12 +36,17 @@
 #include "Application.h"
 #include "Client.h"
 #include "Log.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "Testing.h"
 #include "Timer.h"
 #include "Version-Include.h"
+
 #if FO_SINGLEPLAYER
+#include "ClientScripting.h"
 #include "Server.h"
+#include "ServerScripting.h"
+#include "SingleScripting.h"
 #endif
 
 #include "SDL_main.h"
@@ -66,6 +71,15 @@ void ClientScriptSystem::InitAngelScriptScripting()
 void ClientScriptSystem::InitMonoScripting()
 {
 }
+void ServerScriptSystem::InitNativeScripting()
+{
+}
+void ServerScriptSystem::InitAngelScriptScripting()
+{
+}
+void ServerScriptSystem::InitMonoScripting()
+{
+}
 #endif
 
 static void ClientEntry(void*)
@@ -80,9 +94,12 @@ static void ClientEntry(void*)
 
             try {
 #if FO_SINGLEPLAYER
-                Data->Server = new FOServer(*Data->Settings);
-#endif
+                auto* script_sys = new SingleScriptSystem(*Data->Settings);
+                Data->Server = new FOServer(*Data->Settings, script_sys);
+                Data->Client = new FOClient(*Data->Settings, script_sys);
+#else
                 Data->Client = new FOClient(*Data->Settings);
+#endif
 #if FO_SINGLEPLAYER
                 Data->Server->ConnectClient(Data->Client);
 #endif
@@ -124,7 +141,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         CreateGlobalData();
         LogToFile();
 
-        WriteLog("Starting FOnline ({:#x})...\n", FO_VERSION);
+        WriteLog("Starting {}...\n", FO_GAME_VERSION);
 
         Data->Settings = new GlobalSettings(argc, argv);
         InitApplication(*Data->Settings);

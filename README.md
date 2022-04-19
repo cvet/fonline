@@ -16,7 +16,6 @@
   * [Workflow](#workflow)
   * [Public API](#public-api)
   * [Setup](#setup)
-    + [Windows Subsystem for Linux](#windows-subsystem-for-linux)
     + [Visual Studio Code](#visual-studio-code)
     + [Package dependencies](#package-dependencies)
     + [Statically linked packages](#statically-linked-packages)
@@ -40,9 +39,9 @@
 * Perendered sprites for environment but with possibility of using 3D models for characters
 * Engine core written in C++ (favored C++17 standard)
 * Flexible scripting system with varies supporting languages:
-  + Mono C# (modern and safe scripting)
-  + Native C++ (for performance critical places)
-  + AngelScript (engine legacy scripting support)
+  + Mono C#
+  + Native C++
+  + AngelScript
 * Cross-platform with target platforms:
   + Windows
   + Linux
@@ -50,7 +49,6 @@
   + iOS
   + Android
   + Web
-  + PlayStation
   + UWP *(PC, Mobile, Xbox)*
 * Supporting of following asset file formats:
   + Fallout 1/2
@@ -69,14 +67,10 @@ Important note: *Not all from described above features are already implemented, 
 
 Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
 You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
-Shell scripts targeted for work under Windows 10 within WSL2 and Ubuntu-20.04 as distro.  
-Almost all will be work under native Linuxes but some of scripts (like build.sh win32) must be run only from WSL2 shell because runs Windows binaries.  
-So main point of all of this that you build your game fully from source, there is no prebuilt binaries, full control over the process.
+Shell scripts targeted for work under Windows 10 / Ubuntu-22.04 / macOS 12.  
+You build your game fully from source, there is no prebuilt binaries, full control over the process.
 
 ### Workflow
-
-As described above all what you need to build and package your game in one place for different platforms is WSL2.  
-You may do it in separate environments (like build Windows binaries in your IDE, build macOS/iOS binaries on macOS and rest on native Linux distro) but better do it in one place.
 
 Process of creating your game in two words looks like this:
 * Once prepare workspace where all intermediate build files will be stored
@@ -90,12 +84,8 @@ There are couple of shell scripts that help us to do it:
 * `BuildTools/prepare-workspace.sh` - prepare our linux workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
 * `BuildTools/prepare-win-workspace.ps1` - windows version of prepare workspace, that helps prepare to work
 * `BuildTools/prepare-mac-workspace.sh` - mac version of prepare workspace, that helps prepare to work
-* `BuildTools/build.sh` - build executable for specific platform
-* `BuildTools/compile-scripts.sh` - compile scripts from scripting layers
-* `BuildTools/bake-resources.sh` - bake game assets (images, shaders, scripts, models and etc) to special intermediate formats
-* `BuildTools/make-packages.sh` - finally package server(s) and client(s) for end user
+* `BuildTools/build.sh/bat` - build executable for specific platform
 * `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
-* `BuildTools/gen-project.ps1` - project generation script (windows only)
 
 Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in [BuildTools/README.md](https://github.com/cvet/fonline/blob/master/BuildTools/README.md).
 
@@ -146,8 +136,8 @@ Also our build scripts download and install following packages:
 * [Android NDK](https://developer.android.com/ndk) - compilation for Android devices
 
 List of tools for Windows operating system *(some optional)*:
-* [Chocolatey](https://chocolatey.org) - package manager for Windows system (helps to install other packages automatically)
 * [CMake](https://cmake.org) - utility that helps build program from source on any platform for any platform without much pain
+* [Python](https://python.org) - needed for additional game code generation
 * [Visual Studio 2019](https://visualstudio.microsoft.com) - IDE for Windows
 * [Build Tools for Visual Studio 2019](https://visualstudio.microsoft.com) - just build tools without full IDE
 * [Visual Studio Code](https://code.visualstudio.com) - IDE for Windows with supporting of our engine management
@@ -213,23 +203,26 @@ Please follow these instructions to understand how to use this engine by design:
 
 **First release version:**
 
-* Rework scripting system *(improve Native C++, AngelScript and C#/Mono scripting layers)*
-* Improve DirectX rendering with Universal Windows Platform
-* Major part of code refactoring *(look at separate section below)*
-* Improve Singleplayer mode (at least stable from architectural point of view)
-* Multiplayer mode stabilization
-* Documentation (all public API, tutorial, but core engine not included)
+* [FOnline TLA]((https://github.com/cvet/fonline-tla)) as demo game
+* Code refactoring *(see separate section below)*
+* Native C++ and AngelScript scripting layers
+* Documentation for public API
 * API freezing and continuing development with it's backward compatibility
 
-**Futher releases:**
+**Futher releases:** *(in order of priority)*
 
-* Finish with code refactoring *(see below)*
+* Visual Studio Code extension *(see separate section below)*
+* Improve more unit tests and gain code coverage to at least 80%
+* C#/Mono scripting layer
+* DirectX rendering with Universal Windows Platform
+* Singleplayer mode
 * Particle system
-* Singleplayer mode stabilization
-* Tasks related to Visual Studio Code extension *(see separate section below)*
-* Improve supporting of PlayStation
-* Improve Metal rendering for macOS/iOS
-* Integration with Unity engine (research)
+* Metal rendering for macOS/iOS
+
+**Research plans:**
+
+* Supporting of PlayStation
+* Integration with Unity engine
 
 ### Visual Studio Code extension
 
@@ -254,7 +247,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Eliminate raw pointers, use raii and smart pointers for control objects lifetime
 * Hide implementation details from headers using abstraction and pimpl idiom
 * Fix all warnings from PVS Studio and other static analyzer tools
-* Improve more unit tests and gain code coverage to at least 80%
 * Improve more new C++ features like std::array, std::filesystem, std::string_view and etc
 * Decrease platform specific code to minimum (we can leave this work to portable C++ or SDL)
 * C-style casts to C++-style casts
@@ -305,7 +297,8 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: temporary entities, disable writing to data base
 * Common: RUNTIME_ASSERT to assert
 * Common: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
-* Common: remove dynamic_cast?
+* Common: review all SDL_hints.h entries
+* Common: fix all warnings (especially under clang) and enable threating warnings as errors
 * Common: split meanings if int8 and char in code
 * Common: move from 32 bit hashes to 64 bit
 * Common: rename uchar to uint8 and use uint8_t as alias
@@ -314,6 +307,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: rename char to int8 and use int8_t as alias
 * Common: rename short to int16 and use int16_t as alias
 * Common: rename int to int32 and use int32_t as alias
+* Common: remove max_t
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
 * Common: auto expand exception parameters to readable state
 * Common: recursion guard for EventDispatcher
@@ -321,13 +315,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: add _hash c-string literal helper
 * Common: move WriteData/ReadData to DataWriter/DataReader
 * Common: fix TRect Width/Height
-* Common: move NetProperty to more proper place
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: remove critter flags
 * Common: remove special OTHER_* params
 * BakerApp: sound and video preprocessing move to baker
+* BakerApp: bake prototypes?
 * BakerApp: add dialogs verification during baking
 * ServerApp: fix data racing
 * ServerServiceApp: convert argv from wchar_t** to char**
@@ -339,12 +333,12 @@ Please follow these instructions to understand how to use this engine by design:
 * Client: handle mouse wheel
 * Client: proto player?
 * Client: synchronize effects showing (for example shot and kill)
-* Client: need attention!
+* Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
 * Client: add working in IPv6 networks
-* Client: rename FOClient to just Client (after reworking server Client to ClientConnection)
 * CritterView: migrate critter on head text moving in scripts
 * CritterView: do same for 2d animations
+* HexManager: rework smooth item re-appearing before same item still on map
 * HexManager: optimize lighting rebuilding to skip unvisible lights
 * HexManager: need attention! (3)
 * HexManager: move HexManager to MapView?
@@ -367,12 +361,13 @@ Please follow these instructions to understand how to use this engine by design:
 * ApplicationHeadless: move different renderers to separate modules
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
-* Entity: fix proto name recognition
-* Entity: remove EntityType enum, use dynamic cast
-* Entity: use passkey for SetId
+* Entity: events array may be modified during call, need take it into account here
+* Entity: not exception safe, revert ignore with raii
+* Entity: improve entity event ExPolicy
+* Entity: improve entity event Priority
+* Entity: improve entity event OneShot
+* Entity: improve entity event Deferred
 * FileSystem: handle apply file writing
-* GenericUtils: script handling in ConvertParamValue
-* KeyCodes-Include: rename DIK_ to Key or something else
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: delete \n appendix from WriteLog
@@ -381,51 +376,37 @@ Please follow these instructions to understand how to use this engine by design:
 * MapLoader: remove mapper specific IsSelected from MapTile
 * MsgFiles: pass default to fomsg gets
 * MsgFiles: move loading to constructors
+* Properties: convert to hstring
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
-* ScriptSystem: rework FONLINE_
+* Properties: remove friend from PropertiesSerializator and use public Property interface
+* Properties: ResolveHash
 * ScriptSystem: fill settings to scripts
-* ScriptSystem: rework FONLINE_
 * Settings-Include: rework global Quit setting
-* Settings: exclude server specific settings from client
-* Settings: remove VAR_SETTING; must stay only constant values
-* StringUtils: restore hash parsing
 * StringUtils: make isNumber const
 * Testing: improve global exceptions handlers for mobile os
 * Testing: fix script system
 * Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
 * Testing: send client dumps to server
-* MonoScripting: set Mono domain user data
-* MonoScripting: get Mono domain user data
-* ScriptApi-Client: solve recursion in GetMapPos
-* ScriptApi-Client: need attention!
-* ScriptApi-Common: fix script system
-* ScriptApi-Mapper: need attention! (4)
-* ScriptApi-Server: fix ITEM_ACCESSORY_CONTAINER recursion
-* ScriptApi-Server: need attention!
-* ScriptApi: add FO_API_*_VIRTUAL_PROPERTY and FO_API_*_VIRTUAL_READONLY_PROPERTY
-* ScriptApi: add supporting of components for properties
-* ScriptApi: split FO_API_SETTING by subgroups (CLIENT, SERVER, RENDER, etc)
-* ScriptApi: improve RPC calls
-* ScriptApi: add custom entities handling
-* ScriptApi: add Proto* to scripts that have readable properties
-* ScriptApi: add local entity events
-* ScriptApi: add ImGui bindings
-* ScriptApi: hex coords to single structure (hx, hy -> coord)
-* ScriptApi: remove for better portability (2)
+* ClientItemScriptMethods: solve recursion in GetMapPos
+* ClientItemScriptMethods: need attention!
+* CommonGlobalScriptMethods: fix script system
+* MapperGlobalScriptMethods: need attention! (4)
+* MonoScripting-Template: set Mono domain user data
+* MonoScripting-Template: get Mono domain user data
+* ServerItemScriptMethods: fix ItemOwnership::ItemContainer recursion
 * AdminPanel: admin panel network to Asio
 * Critter: rename to IsOwnedByPlayer
 * Critter: replace to !IsOwnedByPlayer
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * Dialogs: check item name on DR_ITEM
-* EntityManager: store player critters in separate collection
+* EntityManager: load locations -> theirs maps -> critters/items on map -> items in critters/containers
 * Location: encapsulate Location data
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
 * Player: allow attach many critters to sigle player
-* Server: restore hashes loading
 * Server: move server loop to async processing
 * Server: restore settings (2)
 * Server: disable look distance caching
@@ -435,7 +416,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
-* Server: rename FOServer to just Server
 * Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
@@ -443,7 +423,6 @@ Please follow these instructions to understand how to use this engine by design:
 * ImageBaker: swap colors of fo palette once in header
 * Mapper: need attention! (24)
 * Mapper: mapper render iface layer
-* Mapper: rename FOMapper to just Mapper
   
 ## Repository structure
 

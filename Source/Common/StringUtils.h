@@ -123,12 +123,10 @@ public:
 
     auto formatPath() -> _str&;
     auto extractDir() -> _str&;
-    auto extractLastDir() -> _str&;
     auto extractFileName() -> _str&;
     auto getFileExtension() -> _str&; // Extension without dot
     auto eraseFileExtension() -> _str&; // Erase extension with dot
     auto combinePath(string_view path) -> _str&;
-    auto forwardPath(string_view relative_dir) -> _str&;
     auto normalizePathSlashes() -> _str&;
     auto normalizeLineEndings() -> _str&;
 
@@ -136,9 +134,6 @@ public:
     auto parseWideChar(const wchar_t* str) -> _str&;
     [[nodiscard]] auto toWideChar() const -> std::wstring;
 #endif
-
-    auto parseHash(hash h) -> _str&;
-    [[nodiscard]] auto toHash() -> hash;
 
 private:
     string _s {};
@@ -153,7 +148,7 @@ namespace utf8
     auto Encode(uint ucs, char (&buf)[4]) -> uint;
     auto Lower(uint ucs) -> uint;
     auto Upper(uint ucs) -> uint;
-} // namespace utf8
+}
 
 namespace fmt
 {
@@ -176,4 +171,4 @@ namespace fmt
     };
 
     // ReSharper restore CppInconsistentNaming
-} // namespace fmt
+}

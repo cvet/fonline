@@ -32,14 +32,8 @@
 //
 
 #include "PlayerView.h"
+#include "Client.h"
 
-#define FO_API_PLAYER_VIEW_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(PlayerView, "Player", false);
-#define FO_API_PLAYER_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(PlayerView, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-PlayerView::PlayerView(uint id, const ProtoPlayer* proto) : Entity(id, EntityType::PlayerView, PropertiesRegistrator, proto)
+PlayerView::PlayerView(FOClient* engine, uint id, const ProtoPlayer* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef())
 {
 }

@@ -49,8 +49,8 @@ public:
     [[nodiscard]] auto Get2Bit(uint x, uint y) const -> int;
     [[nodiscard]] auto GetData() -> uchar*;
 
-    void Fill(int fill) const;
-    void Set2Bit(uint x, uint y, int val) const;
+    void Fill(int fill);
+    void Set2Bit(uint x, uint y, int val);
 
 private:
     bool _isAlloc {};

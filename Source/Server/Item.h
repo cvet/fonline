@@ -35,23 +35,23 @@
 
 #include "Common.h"
 
-#include "Entity.h"
-#include "ServerScripting.h"
-
-#define FO_API_ITEM_HEADER 1
-#include "ScriptApi.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
+#include "ScriptSystem.h"
+#include "ServerEntity.h"
 
 class Item;
 class Critter;
+using StaticItem = Item;
 
-class Item final : public Entity
+class Item final : public ServerEntity, public ItemProperties
 {
     friend class Entity;
     friend class ItemManager;
 
 public:
     Item() = delete;
-    Item(uint id, const ProtoItem* proto, ServerScriptSystem& script_sys);
+    Item(FOServer* engine, uint id, const ProtoItem* proto);
     Item(const Item&) = delete;
     Item(Item&&) noexcept = delete;
     auto operator=(const Item&) = delete;
@@ -64,31 +64,29 @@ public:
     [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
     [[nodiscard]] auto RadioIsSendActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_SEND); }
     [[nodiscard]] auto RadioIsRecvActive() const -> bool { return !IsBitSet(GetRadioFlags(), RADIO_DISABLE_RECV); }
-    [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return dynamic_cast<const ProtoItem*>(Proto); }
-    [[nodiscard]] auto ContGetItem(uint item_id, bool skip_hide) -> Item*;
+    [[nodiscard]] auto GetProtoItem() const -> const ProtoItem* { return static_cast<const ProtoItem*>(_proto); }
+    [[nodiscard]] auto ContGetItem(uint item_id, bool skip_hidden) -> Item*;
     [[nodiscard]] auto ContGetAllItems(bool skip_hidden) -> vector<Item*>;
-    [[nodiscard]] auto ContGetItemByPid(hash pid, uint stack_id) -> Item*;
+    [[nodiscard]] auto ContGetItemByPid(hstring pid, uint stack_id) -> Item*;
     [[nodiscard]] auto ContGetItems(uint stack_id) -> vector<Item*>;
     [[nodiscard]] auto ContIsItems() const -> bool;
 
-    auto SetScript(string_view func, bool first_time) -> bool;
     void EvaluateSortValue(const vector<Item*>& items);
     void ChangeCount(int val);
 
+    ///@ ExportEvent
+    ENTITY_EVENT(Finish);
+    ///@ ExportEvent
+    ENTITY_EVENT(Walk, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CheckMove, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
+
     bool ViewPlaceOnMap {};
-    ScriptFunc<bool, Critter*, Item*, bool, int> SceneryScriptFunc {};
-    ScriptFunc<void, Critter*, Item*, bool, uchar> TriggerScriptFunc {};
+    ScriptFunc<bool, Critter*, StaticItem*, bool, int> SceneryScriptFunc {};
+    ScriptFunc<void, Critter*, StaticItem*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 
-#define FO_API_ITEM_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_ITEM_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
-
 private:
-    ServerScriptSystem& _scriptSys;
     vector<Item*>* _childItems {};
     bool _nonConstHelper {};
 };

@@ -35,20 +35,12 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
-#define FO_API_MAP_VIEW_HEADER 1
-#include "ScriptApi.h"
-
-class MapView final : public Entity
+class MapView final : public ClientEntity, public MapProperties
 {
 public:
-    MapView(uint id, const ProtoMap* proto);
-
-#define FO_API_MAP_VIEW_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_MAP_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+    MapView(FOClient* engine, uint id, const ProtoMap* proto);
 };

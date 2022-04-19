@@ -37,58 +37,52 @@
             "env": "mac"
         },
         {
-            "label": "Open in IDE",
-            "group": "Service",
-            "command": "cd $FO_WORKSPACE/maintenance-env && cmake --open .",
-            "env": "win linux mac noremote"
-        },
-        {
             "label": "Generate Engine Todo",
             "group": "Service",
             "command": "cd BuildTools && python todo-generator.py",
-            "env": "wsl linux mac engine"
+            "env": "win linux mac"
         },
         {
             "label": "Format Engine code",
             "group": "Service",
-            "command": "cd Source && clang-format-10 -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.* Tests/*.*",
-            "env": "linux wsl engine"
+            "command": "cd Source && clang-format -i Applications/*.* Client/*.* Common/*.* Common/AngelScriptExt/*.* Server/*.* Tools/*.* Scripting/*.* Scripting/AngelScript/*.fos Tests/*.*",
+            "env": "linux win"
         },
         {
             "label": "Run unit tests",
             "group": "Service",
             "command": "BuildTools/validate.sh unit-tests",
-            "env": "linux engine"
+            "env": "linux"
         },
         {
             "label": "Run code coverage",
             "group": "Service",
             "command": "BuildTools/validate.sh code-coverage",
-            "env": "linux engine"
+            "env": "linux"
         },
         {
             "label": "Client for Windows (x64)",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh win64 client",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win64 client",
+            "env": "win"
         },
         {
             "label": "Client for Windows (x86)",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh win32 client",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win32 client",
+            "env": "win"
         },
         {
             "label": "Client for UWP",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh uwp client",
-            "env": "wsl"
+            "command": "BuildTools/build.bat uwp client",
+            "env": "win"
         },
         {
             "label": "Client for Linux",
             "group": "Multiplayer",
             "command": "BuildTools/build.sh linux client",
-            "env": "wsl"
+            "env": "linux"
         },
         {
             "label": "Client for Web",
@@ -129,8 +123,8 @@
         {
             "label": "Server for Windows",
             "group": "Multiplayer",
-            "command": "BuildTools/build.sh win64 server",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win64 server",
+            "env": "win"
         },
         {
             "label": "Server for Linux",
@@ -141,20 +135,20 @@
         {
             "label": "Debug client for Windows (x64)",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh win64 client debug",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win64 client debug",
+            "env": "win"
         },
         {
             "label": "Debug client for Windows (x86)",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh win32 client debug",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win32 client debug",
+            "env": "win"
         },
         {
             "label": "Debug client for UWP",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh uwp client debug",
-            "env": "wsl"
+            "command": "BuildTools/build.bat uwp client debug",
+            "env": "win"
         },
         {
             "label": "Debug client for Linux",
@@ -201,8 +195,8 @@
         {
             "label": "Debug server for Windows",
             "group": "Multiplayer (Debug)",
-            "command": "BuildTools/build.sh win64 server debug",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win64 server debug",
+            "env": "win"
         },
         {
             "label": "Debug server for Linux",
@@ -213,20 +207,20 @@
         {
             "label": "Single for Windows (x64)",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh win64 single",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win64 single",
+            "env": "win"
         },
         {
             "label": "Single for Windows (x86)",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh win32 single",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win32 single",
+            "env": "win"
         },
         {
             "label": "Single for UWP",
             "group": "Singleplayer",
-            "command": "BuildTools/build.sh uwp single",
-            "env": "wsl"
+            "command": "BuildTools/build.bat uwp single",
+            "env": "win"
         },
         {
             "label": "Single for Linux",
@@ -273,20 +267,20 @@
         {
             "label": "Debug single for Windows (x64)",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh win64 single debug",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win64 single debug",
+            "env": "win"
         },
         {
             "label": "Debug single for Windows (x86)",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh win32 single debug",
-            "env": "wsl"
+            "command": "BuildTools/build.bat win32 single debug",
+            "env": "win"
         },
         {
             "label": "Debug single for UWP",
             "group": "Singleplayer (Debug)",
-            "command": "BuildTools/build.sh uwp single debug",
-            "env": "wsl"
+            "command": "BuildTools/build.bat uwp single debug",
+            "env": "win"
         },
         {
             "label": "Debug single for Linux",
@@ -331,91 +325,121 @@
             "env": "mac"
         },
         {
-            "label": "Generate script API",
+            "label": "Generate scripting code",
             "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh gen-api",
-            "env": "linux wsl"
+            "command": "BuildTools/toolset.sh CodeGeneration",
+            "env": "linux"
         },
         {
             "label": "Compile all scripts",
             "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh",
-            "env": "linux wsl"
+            "command": "BuildTools/toolset.sh CompileAllScripts",
+            "env": "linux"
         },
         {
             "label": "Compile Native scripts",
             "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh native",
-            "env": "linux wsl"
+            "command": "BuildTools/toolset.sh CompileNativeScripts",
+            "env": "linux"
         },
         {
             "label": "Compile AngelScript scripts",
             "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh angelscript",
-            "env": "linux wsl"
+            "command": "BuildTools/toolset.sh CompileAngelScripts",
+            "env": "linux"
         },
         {
             "label": "Compile Mono scripts",
             "group": "Scripts",
-            "command": "BuildTools/compile-scripts.sh mono",
-            "env": "linux wsl"
-        },
-        {
-            "label": "Bake all",
-            "group": "Resources",
-            "command": "BuildTools/bake-resources.sh content",
-            "env": "linux wsl"
-        },
-        {
-            "label": "Bake content",
-            "group": "Resources",
-            "command": "BuildTools/bake-resources.sh resources",
-            "env": "linux wsl"
+            "command": "BuildTools/toolset.sh CompileMonoScripts",
+            "env": "linux"
         },
         {
             "label": "Bake resources",
-            "group": "Resources",
-            "command": "BuildTools/bake-resources.sh",
-            "env": "linux wsl"
+            "group": "Packaging",
+            "command": "BuildTools/toolset.sh BakeResources",
+            "env": "linux"
         },
         {
             "label": "Make packages",
             "group": "Packaging",
-            "command": "BuildTools/make-packages.sh",
-            "env": "linux wsl"
+            "command": "BuildTools/toolset.sh MakeAllPackages",
+            "env": "linux"
+        },
+        {
+            "label": "Generate scripting code",
+            "group": "Scripts",
+            "command": "BuildTools/toolset.bat CodeGeneration",
+            "env": "win"
+        },
+        {
+            "label": "Compile all scripts",
+            "group": "Scripts",
+            "command": "BuildTools/toolset.bat CompileAllScripts",
+            "env": "win"
+        },
+        {
+            "label": "Compile Native scripts",
+            "group": "Scripts",
+            "command": "BuildTools/toolset.bat CompileNativeScripts",
+            "env": "win"
+        },
+        {
+            "label": "Compile AngelScript scripts",
+            "group": "Scripts",
+            "command": "BuildTools/toolset.bat CompileAngelScripts",
+            "env": "win"
+        },
+        {
+            "label": "Compile Mono scripts",
+            "group": "Scripts",
+            "command": "BuildTools/toolset.bat CompileMonoScripts",
+            "env": "win"
+        },
+        {
+            "label": "Bake resources",
+            "group": "Packaging",
+            "command": "BuildTools/toolset.bat BakeResources",
+            "env": "win"
+        },
+        {
+            "label": "Make packages",
+            "group": "Packaging",
+            "command": "BuildTools/toolset.sh MakeAllPackages",
+            "env": "win"
         }
     ],
     "content": [
         {
             "label": "Engine Common Source",
-            "path": "Source/Common",
+            "path": "../Source/Common",
             "type": "engine"
         },
         {
             "label": "Engine Client Source",
-            "path": "Source/Client",
+            "path": "../Source/Client",
             "type": "engine"
         },
         {
             "label": "Engine Server Source",
-            "path": "Source/Client",
+            "path": "../Source/Server",
             "type": "engine"
         },
         {
             "label": "Engine Tools Source",
-            "path": "Source/Tools",
+            "path": "../Source/Tools",
             "type": "engine"
         }
     ],
     "resources": [
         {
             "label": "Embedded",
-            "path": "Resources/Embedded",
+            "path": "../Resources/Embedded",
             "type": "embedded"
         },
         {
             "label": "Core",
-            "path": "Resources/Core",
+            "path": "../Resources/Core",
             "type": "zip"
         }
     ]

@@ -36,45 +36,55 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "FileSystem.h"
 #include "Settings.h"
 
 DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
+DECLARE_EXCEPTION(ScriptInitException);
 
-class NameResolver
+enum class ScriptEnum_uint8 : uchar
 {
-public:
-    [[nodiscard]] virtual auto GetEnumValue(string_view enum_value_name, bool& fail) const -> int = 0;
-    [[nodiscard]] virtual auto GetEnumValue(string_view enum_name, string_view value_name, bool& fail) const -> int = 0;
-    [[nodiscard]] virtual auto GetEnumValueName(string_view enum_name, int value) const -> string = 0;
+};
+enum class ScriptEnum_uint16 : ushort
+{
+};
+enum class ScriptEnum_int : int
+{
+};
+enum class ScriptEnum_uint : uint
+{
 };
 
-template<typename... Args>
-class ScriptEvent final
-{
-public:
-    using Callback = std::function<bool(Args...)>;
+using GameProperty = ScriptEnum_uint16;
+using PlayerProperty = ScriptEnum_uint16;
+using ItemProperty = ScriptEnum_uint16;
+using CritterProperty = ScriptEnum_uint16;
+using MapProperty = ScriptEnum_uint16;
+using LocationProperty = ScriptEnum_uint16;
 
-    ScriptEvent() = default;
+template<typename T>
+using InitFunc = hstring;
+template<int N>
+using ObjInfo = string_view;
+template<typename...>
+using ScriptFuncName = string_view;
 
-    auto operator+=(Callback cb) -> ScriptEvent&
-    {
-        _callbacks.push_back(cb);
-        return *this;
-    }
+class FOEngineBase;
 
-    auto operator()(Args... args) -> bool
-    {
-        for (auto& cb : _callbacks)
-            if (cb(std::forward<Args>(args)...))
-                return true;
-        return false;
-    }
+class ProtoItem;
+class ProtoCritter;
+class ProtoMap;
+class ProtoLocation;
 
-private:
-    vector<Callback> _callbacks {};
-};
+using ItemProto = const ProtoItem;
+using CritterProto = const ProtoCritter;
+using MapProto = const ProtoMap;
+using LocationProto = const ProtoLocation;
+
+using AbstractItem = Entity;
+using AbstractCritter = Entity;
+using AbstractMap = Entity;
+using AbstractLocation = Entity;
 
 template<typename TRet, typename... Args>
 class ScriptFunc final
@@ -101,27 +111,23 @@ public:
 
     ScriptFunc() = default;
     explicit ScriptFunc(Func f) : _func {f} { }
-    explicit operator bool() { return !!_func; }
+    explicit operator bool() const { return !!_func; }
     auto operator()(Args... args) -> bool { return _func(std::forward<Args>(args)...); }
 
 private:
     Func _func {};
 };
 
-class ScriptSystem : public NameResolver
+class ScriptSystem
 {
 public:
     ScriptSystem() = delete;
-    ScriptSystem(void* obj, GlobalSettings& settings, FileManager& file_mngr);
+    explicit ScriptSystem(GlobalSettings& settings);
     ScriptSystem(const ScriptSystem&) = delete;
     ScriptSystem(ScriptSystem&&) noexcept = delete;
     auto operator=(const ScriptSystem&) = delete;
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
-
-    [[nodiscard]] auto GetEnumValue(string_view /*enum_value_name*/, bool& /*fail*/) const -> int override { return 0; }
-    [[nodiscard]] auto GetEnumValue(string_view /*enum_name*/, string_view /*value_name*/, bool& /*fail*/) const -> int override { return 0; }
-    [[nodiscard]] auto GetEnumValueName(string_view /*enum_name*/, int /*value*/) const -> string override { return ""; }
 
     void RemoveEntity(Entity* entity) { }
 
@@ -155,17 +161,15 @@ public:
         return func && func(args...);
     }
 
-protected:
-    void* _mainObj;
-    GlobalSettings& _settings;
-    FileManager& _fileMngr;
-
     struct NativeImpl;
-    shared_ptr<NativeImpl> _pNativeImpl {};
+    shared_ptr<NativeImpl> NativeData {};
     struct AngelScriptImpl;
-    shared_ptr<AngelScriptImpl> _pAngelScriptImpl {};
+    shared_ptr<AngelScriptImpl> AngelScriptData {};
     struct MonoImpl;
-    shared_ptr<MonoImpl> _pMonoImpl {};
+    shared_ptr<MonoImpl> MonoData {};
+
+protected:
+    GlobalSettings& _settings;
 
     /*
 public:
@@ -173,7 +177,6 @@ public:
 
     string GetDeferredCallsStatistics();
     void ProcessDeferredCalls();
-    // Todo: rework FONLINE_
     / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
         bool LoadDeferredCalls();
     #endif* /
@@ -234,4 +237,31 @@ private:
     HashIntMap scriptFuncBinds {}; // Func Num -> Bind Id
     StrIntMap cachedEnums {};
     map<string, IntStrMap> cachedEnumNames {};*/
+};
+
+class ScriptHelpers final
+{
+public:
+    ScriptHelpers() = delete;
+
+    template<typename T, typename U>
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, U prop_index) -> const Property*
+    {
+        return GetIntConvertibleEntityProperty(engine, T::ENTITY_CLASS_NAME, static_cast<int>(prop_index));
+    }
+
+    [[nodiscard]] static auto GetIntConvertibleEntityProperty(const FOEngineBase* engine, string_view class_name, int prop_index) -> const Property*;
+
+    template<typename T>
+    static void CallInitScript(ScriptSystem* script_sys, T* entity, hstring init_script, bool first_time)
+    {
+        if (init_script) {
+            if (auto&& init_func = script_sys->FindFunc<void, T*, bool>(init_script)) {
+                init_func(entity, first_time);
+            }
+            else {
+                throw GenericException("Init func not found or has bas signature", init_script);
+            }
+        }
+    }
 };

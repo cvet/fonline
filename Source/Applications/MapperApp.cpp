@@ -34,6 +34,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "ClientScripting.h"
 #include "Log.h"
 #include "Mapper.h"
 #include "Settings.h"
@@ -49,6 +50,18 @@ struct MapperAppData
     FOMapper* Mapper {};
 };
 GLOBAL_DATA(MapperAppData, Data);
+
+#if !FO_TESTING
+void ClientScriptSystem::InitNativeScripting()
+{
+}
+void ClientScriptSystem::InitAngelScriptScripting()
+{
+}
+void ClientScriptSystem::InitMonoScripting()
+{
+}
+#endif
 
 static void MapperEntry(void*)
 {
@@ -70,7 +83,7 @@ static void MapperEntry(void*)
 
         try {
             App->BeginFrame();
-            Data->Mapper->MainLoop();
+            Data->Mapper->MapperMainLoop();
             App->EndFrame();
         }
         catch (const GenericException& ex) {
@@ -97,7 +110,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         CreateGlobalData();
         LogToFile();
 
-        WriteLog("Starting Mapper ({:#x})...\n", FO_VERSION);
+        WriteLog("Starting Mapper {}...\n", FO_GAME_VERSION);
 
         Data->Settings = new GlobalSettings(argc, argv);
         InitApplication(*Data->Settings);

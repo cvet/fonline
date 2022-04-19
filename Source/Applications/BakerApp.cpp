@@ -59,9 +59,7 @@ int main(int argc, char** argv)
 
         auto settings = GlobalSettings(argc, argv);
 
-        DiskFileSystem::MakeDirTree(settings.ResourcesOutput);
-        auto set_res_dir_ok = DiskFileSystem::SetCurrentDir(settings.ResourcesOutput);
-        RUNTIME_ASSERT(set_res_dir_ok);
+        DiskFileSystem::RemoveBuildHashFile("Resources");
 
         // Content
         if (!settings.ContentEntry.empty()) {
@@ -73,14 +71,14 @@ int main(int argc, char** argv)
                 content_files.AddDataSource(dir, true);
             }
 
-            // Protos
-            ProtoManager proto_mngr(content_files);
-            auto data = proto_mngr.GetProtosBinaryData();
-            RUNTIME_ASSERT(!data.empty());
-            auto protos_file = DiskFileSystem::OpenFile("Protos.fobin", true);
-            RUNTIME_ASSERT(protos_file);
-            auto protos_write_ok = protos_file.Write(data.data(), static_cast<uint>(data.size()));
-            RUNTIME_ASSERT(protos_write_ok);
+            // Todo: bake prototypes?
+            // ProtoManager proto_mngr(content_files, ...);
+            // auto data = proto_mngr.GetProtosBinaryData();
+            // RUNTIME_ASSERT(!data.empty());
+            // auto protos_file = DiskFileSystem::OpenFile("Protos.fobin", true);
+            // RUNTIME_ASSERT(protos_file);
+            // auto protos_write_ok = protos_file.Write(data.data(), static_cast<uint>(data.size()));
+            // RUNTIME_ASSERT(protos_write_ok);
 
             // Dialogs
             // Todo: add dialogs verification during baking
@@ -114,6 +112,10 @@ int main(int argc, char** argv)
             }
 
             for (const auto& [pack_name, paths] : res_packs) {
+                if (pack_name == "Embedded") {
+                    continue;
+                }
+
                 FileManager res_files;
                 for (const auto& path : paths) {
                     WriteLog("Add resource pack '{}' entry '{}'.\n", pack_name, path);
@@ -122,8 +124,8 @@ int main(int argc, char** argv)
 
                 auto resources = res_files.FilterFiles("");
 
-                if (pack_name != "_Raw") {
-                    WriteLog("Create resources '{}' from files {}...\n", pack_name, resources.GetFilesCount());
+                if (pack_name != "Raw") {
+                    WriteLog("Create resource pack '{}' from {} files.\n", pack_name, resources.GetFilesCount());
 
                     // Bake files
                     map<string, vector<uchar>> baked_files;
@@ -151,7 +153,7 @@ int main(int argc, char** argv)
                     }
                 }
                 else {
-                    WriteLog("Copy raw resource files {}...\n", resources.GetFilesCount());
+                    WriteLog("Copy raw {} resource files.\n", resources.GetFilesCount());
 
                     auto del_raw_ok = DiskFileSystem::DeleteDir("Raw");
                     RUNTIME_ASSERT(del_raw_ok);
@@ -167,6 +169,9 @@ int main(int argc, char** argv)
             }
         }
 
+        WriteLog("Bakering complete!\n");
+
+        DiskFileSystem::CreateBuildHashFile("Resources");
         return 0;
     }
     catch (std::exception& ex) {

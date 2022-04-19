@@ -18,10 +18,8 @@ function install_common_packages()
 
     echo "Install clang"
     sudo apt-get -qq -y install clang
-    echo "Install clang-10"
-    sudo apt-get -qq -y install clang-10
-    echo "Install clang-format-10"
-    sudo apt-get -qq -y install clang-format-10
+    echo "Install clang-format-12"
+    sudo apt-get -qq -y install clang-format-12
     echo "Install build-essential"
     sudo apt-get -qq -y install build-essential
     echo "Install git"
@@ -87,14 +85,11 @@ function setup_emscripten()
 {
     echo "Setup Emscripten"
     rm -rf emsdk
-    mkdir emsdk
-    cp -r "$FO_ROOT/BuildTools/emsdk" "./"
+    git clone https://github.com/emscripten-core/emsdk.git
     cd emsdk
-    chmod +x ./emsdk
-    ./emsdk update
     ./emsdk list
     ./emsdk install --build=Release --shallow $EMSCRIPTEN_VERSION
-    ./emsdk activate --build=Release --embedded $EMSCRIPTEN_VERSION
+    ./emsdk activate --build=Release $EMSCRIPTEN_VERSION
 }
 
 function setup_android_ndk()
@@ -110,6 +105,22 @@ function setup_android_ndk()
     unzip -qq -o "$ANDROID_NDK_VERSION-linux.zip" -d "./"
     mv "$ANDROID_NDK_VERSION" "android-ndk"
     rm -f "$ANDROID_NDK_VERSION-linux.zip"
+}
+
+function setup_toolset()
+{
+    echo "Setup Toolset"
+
+    OUTPUT_PATH=$FO_WORKSPACE/output
+
+    export CC=/usr/bin/clang
+    export CXX=/usr/bin/clang++
+
+    rm -rf build-linux-toolset
+    mkdir build-linux-toolset
+    cd build-linux-toolset
+
+    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" -DCMAKE_BUILD_TYPE=Release -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0 -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
 }
 
 function verify_workspace_part()
@@ -146,6 +157,9 @@ if [ ! -z `check_arg android android-arm64 android-x86 all` ]; then
     wait_jobs
 fi
 
+if [ ! -z `check_arg toolset all` ]; then
+    verify_workspace_part toolset 4 setup_toolset
+fi
 if [ ! -z `check_arg web all` ]; then
     verify_workspace_part emscripten $EMSCRIPTEN_VERSION setup_emscripten
 fi

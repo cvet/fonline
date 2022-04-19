@@ -706,10 +706,10 @@ ZipFile::ZipFile(string_view fname)
         };
 
         ffunc.zopen_file = [](voidpf, const char* filename, int) -> voidpf {
-            if (string(filename) == "$Basic") {
+            if (string(filename) == "$Embedded") {
                 auto* mem_stream = new MemStream();
-                mem_stream->Buf = Resource_Basic_zipped;
-                mem_stream->Length = sizeof(Resource_Basic_zipped);
+                mem_stream->Buf = EmbeddedResources;
+                mem_stream->Length = sizeof(EmbeddedResources);
                 mem_stream->Pos = 0;
                 return mem_stream;
             }
@@ -789,7 +789,7 @@ auto ZipFile::ReadTree() -> bool
             return false;
         }
 
-        char buf[TEMP_BUF_SIZE];
+        char buf[4096];
         if (unzGetCurrentFileInfo(_zipHandle, &info, buf, sizeof(buf), nullptr, 0, nullptr, 0) != UNZ_OK) {
             return false;
         }

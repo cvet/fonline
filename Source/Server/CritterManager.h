@@ -41,10 +41,10 @@
 #include "Item.h"
 #include "Map.h"
 #include "Player.h"
-#include "ServerScripting.h"
 #include "Settings.h"
 #include "Timer.h"
 
+class FOServer;
 class ProtoManager;
 class EntityManager;
 class MapManager;
@@ -54,7 +54,7 @@ class CritterManager final
 {
 public:
     CritterManager() = delete;
-    CritterManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, MapManager& map_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time);
+    explicit CritterManager(FOServer* engine);
     CritterManager(const CritterManager&) = delete;
     CritterManager(CritterManager&&) noexcept = delete;
     auto operator=(const CritterManager&) = delete;
@@ -64,17 +64,17 @@ public:
     [[nodiscard]] auto GetAllCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetAllNpc() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayerCritters(bool on_global_map_only) -> vector<Critter*>;
-    [[nodiscard]] auto GetGlobalMapCritters(ushort wx, ushort wy, uint radius, uchar find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetGlobalMapCritters(ushort wx, ushort wy, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritter(uint cr_id) -> Critter*;
     [[nodiscard]] auto GetCritter(uint cr_id) const -> const Critter*;
     [[nodiscard]] auto GetPlayerById(uint id) -> Player*;
     [[nodiscard]] auto GetPlayerByName(string_view name) -> Player*;
-    [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hash item_pid) -> Item*;
+    [[nodiscard]] auto GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*;
     [[nodiscard]] auto PlayersInGame() const -> uint;
     [[nodiscard]] auto NpcInGame() const -> uint;
     [[nodiscard]] auto CrittersInGame() const -> uint;
 
-    [[nodiscard]] auto CreateNpc(hash proto_id, Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
+    [[nodiscard]] auto CreateNpc(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*;
 
     void LinkCritters();
     void InitAfterLoad();
@@ -86,13 +86,6 @@ public:
     void CloseTalk(Critter* cr);
 
 private:
-    ServerSettings& _settings;
-    GeometryHelper _geomHelper;
-    ProtoManager& _protoMngr;
-    EntityManager& _entityMngr;
-    MapManager& _mapMngr;
-    ItemManager& _itemMngr;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
+    FOServer* _engine;
     bool _nonConstHelper {};
 };

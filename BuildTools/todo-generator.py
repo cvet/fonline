@@ -44,7 +44,7 @@ def decideNewLine(fileLines):
 
 def readFileLines(filePath):
     with open(filePath, 'rb') as f:
-        return f.readlines()
+        return [l.decode('utf-8') for l in f.readlines()]
 
 
 def findInList(lst, predicate):
@@ -68,8 +68,7 @@ def processFile(filePath, todoInfo):
                 if len(todoEntry) == 0:
                     todoEntry = '(Unnamed todo)'
 
-                entryIndex = findInList(
-                    todoInfo, lambda x: x[0] == todoEntry and x[1] == filePath)
+                entryIndex = findInList(todoInfo, lambda x: x[0] == todoEntry and x[1] == filePath)
                 if entryIndex == -1:
                     todoInfo.append([todoEntry, filePath, 1])
                 else:
@@ -150,8 +149,7 @@ def injectDesc(path, descList):
     if not dontWriteFile:
         fileLines = readFileLines(path)
 
-        todoBegin = findInList(
-            fileLines, lambda l: l.strip('\r\n') == headLine)
+        todoBegin = findInList(fileLines, lambda l: l.strip('\r\n') == headLine)
         todoEnd = findInList(fileLines, lambda l: l.strip('\r\n') == tailLine)
 
         if todoBegin == -1 and not generateSection:
@@ -168,7 +166,7 @@ def injectDesc(path, descList):
         finalOutput.extend(fileLines[todoBegin:])
 
         with open(path, 'wb') as f:
-            f.writelines(finalOutput)
+            f.writelines([l.encode('utf-8') for l in finalOutput])
 
 
 os.chdir(rootPath)

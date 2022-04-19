@@ -34,25 +34,19 @@
 #pragma once
 
 #include "Common.h"
-#include "Entity.h"
 
-#define FO_API_PLAYER_VIEW_HEADER 1
-#include "ScriptApi.h"
+#include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
-class PlayerView final : public Entity
+class PlayerView final : public ClientEntity, public PlayerProperties
 {
 public:
     PlayerView() = delete;
-    PlayerView(uint id, const ProtoPlayer* proto);
+    PlayerView(FOClient* engine, uint id, const ProtoPlayer* proto);
     PlayerView(const PlayerView&) = delete;
     PlayerView(PlayerView&&) noexcept = delete;
     auto operator=(const PlayerView&) = delete;
     auto operator=(PlayerView&&) noexcept = delete;
-
-#define FO_API_PLAYER_VIEW_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_PLAYER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+    ~PlayerView() override = default;
 };

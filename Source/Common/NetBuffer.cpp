@@ -74,40 +74,13 @@ auto NetBuffer::EncryptKey(int move) -> uchar
     return key;
 }
 
-void NetBuffer::ShrinkReadBuf()
-{
-    if (_isError) {
-        return;
-    }
-
-    if (_bufReadPos > _bufEndPos) {
-        _isError = true;
-        return;
-    }
-
-    if (_bufReadPos >= _bufEndPos) {
-        if (_bufReadPos != 0u) {
-            Reset();
-        }
-    }
-    else if (_bufReadPos != 0u) {
-        for (auto i = _bufReadPos; i < _bufEndPos; i++) {
-            _bufData[i - _bufReadPos] = _bufData[i];
-        }
-
-        _bufEndPos -= _bufReadPos;
-        _bufReadPos = 0;
-    }
-}
-
-void NetBuffer::Reset()
+void NetBuffer::ResetBuf()
 {
     if (_isError) {
         return;
     }
 
     _bufEndPos = 0;
-    _bufReadPos = 0;
 
     if (_bufLen > DEFAULT_BUF_SIZE) {
         _bufLen = DEFAULT_BUF_SIZE;
@@ -137,20 +110,23 @@ auto NetBuffer::GetData() -> uchar*
     return _bufData.get();
 }
 
-auto NetBuffer::GetCurData() -> uchar*
+void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, uint len)
 {
     NON_CONST_METHOD_HINT();
 
-    return _bufData.get() + _bufReadPos;
+    if (_isError) {
+        return;
+    }
+
+    const auto* from_ = static_cast<const uchar*>(from);
+    auto* to_ = static_cast<uchar*>(to);
+
+    for (uint i = 0; i < len; i++, to_++, from_++) {
+        *to_ = *from_ ^ crypt_key;
+    }
 }
 
-void NetBuffer::MoveReadPos(int val)
-{
-    _bufReadPos += val;
-    EncryptKey(val);
-}
-
-void NetBuffer::Push(const void* buf, uint len)
+void NetOutBuffer::Push(const void* buf, uint len)
 {
     if (_isError || len == 0u) {
         return;
@@ -164,7 +140,33 @@ void NetBuffer::Push(const void* buf, uint len)
     _bufEndPos += len;
 }
 
-void NetBuffer::Push(const void* buf, uint len, bool no_crypt)
+void NetOutBuffer::Cut(uint len)
+{
+    if (_isError || len == 0u) {
+        return;
+    }
+
+    if (len > _bufEndPos) {
+        _isError = true;
+        return;
+    }
+
+    auto* buf = _bufData.get();
+    for (uint i = 0; i + len < _bufEndPos; i++) {
+        buf[i] = buf[i + len];
+    }
+
+    _bufEndPos -= len;
+}
+
+void NetInBuffer::ResetBuf()
+{
+    NetBuffer::ResetBuf();
+
+    _bufReadPos = 0;
+}
+
+void NetInBuffer::AddData(const void* buf, uint len)
 {
     if (_isError || len == 0u) {
         return;
@@ -174,11 +176,11 @@ void NetBuffer::Push(const void* buf, uint len, bool no_crypt)
         GrowBuf(len);
     }
 
-    CopyBuf(buf, _bufData.get() + _bufEndPos, no_crypt ? 0 : EncryptKey(len), len);
+    CopyBuf(buf, _bufData.get() + _bufEndPos, 0, len);
     _bufEndPos += len;
 }
 
-void NetBuffer::Pop(void* buf, uint len)
+void NetInBuffer::Pop(void* buf, uint len)
 {
     if (_isError) {
         std::memset(buf, 0, len);
@@ -199,42 +201,51 @@ void NetBuffer::Pop(void* buf, uint len)
     _bufReadPos += len;
 }
 
-void NetBuffer::Cut(uint len)
+void NetInBuffer::ShrinkReadBuf()
 {
-    if (_isError || len == 0u) {
-        return;
-    }
-
-    if (_bufReadPos + len > _bufEndPos) {
-        _isError = true;
-        return;
-    }
-
-    auto* buf = _bufData.get() + _bufReadPos;
-    for (uint i = 0; i + _bufReadPos + len < _bufEndPos; i++) {
-        buf[i] = buf[i + len];
-    }
-
-    _bufEndPos -= len;
-}
-
-void NetBuffer::CopyBuf(const void* from, void* to, uchar crypt_key, uint len)
-{
-    NON_CONST_METHOD_HINT();
-
     if (_isError) {
         return;
     }
 
-    const auto* from_ = static_cast<const uchar*>(from);
-    auto* to_ = static_cast<uchar*>(to);
+    if (_bufReadPos > _bufEndPos) {
+        _isError = true;
+        return;
+    }
 
-    for (uint i = 0; i < len; i++, to_++, from_++) {
-        *to_ = *from_ ^ crypt_key;
+    if (_bufReadPos >= _bufEndPos) {
+        if (_bufReadPos != 0u) {
+            ResetBuf();
+        }
+    }
+    else if (_bufReadPos != 0u) {
+        for (auto i = _bufReadPos; i < _bufEndPos; i++) {
+            _bufData[i - _bufReadPos] = _bufData[i];
+        }
+
+        _bufEndPos -= _bufReadPos;
+        _bufReadPos = 0;
     }
 }
 
-auto NetBuffer::NeedProcess() -> bool
+auto NetInBuffer::ReadHashedString(NameResolver& name_resolver) -> hstring
+{
+    hstring::hash_t h;
+    *this >> h;
+
+    hstring result;
+
+    if (!_isError) {
+        bool failed;
+        result = name_resolver.ResolveHash(h, &failed);
+        if (failed) {
+            _isError = true;
+        }
+    }
+
+    return result;
+}
+
+auto NetInBuffer::NeedProcess() -> bool
 {
     if (_isError) {
         return false;
@@ -416,13 +427,13 @@ auto NetBuffer::NeedProcess() -> bool
         return _bufReadPos + msg_len <= _bufEndPos;
     default:
         // Unknown message
-        Reset();
+        ResetBuf();
         _isError = true;
         return false;
     }
 }
 
-void NetBuffer::SkipMsg(uint msg)
+void NetInBuffer::SkipMsg(uint msg)
 {
     if (_isError) {
         return;
@@ -653,7 +664,7 @@ void NetBuffer::SkipMsg(uint msg)
         size = msg_len;
     } break;
     default:
-        Reset();
+        ResetBuf();
         return;
     }
 

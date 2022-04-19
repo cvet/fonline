@@ -35,19 +35,16 @@
 
 #include "Common.h"
 
-#include "EffectManager.h"
-#include "Entity.h"
 #include "ItemView.h"
 #include "ResourceManager.h"
-#include "Timer.h"
 
 class ItemHexView final : public ItemView
 {
 public:
     ItemHexView() = delete;
-    ItemHexView(uint id, const ProtoItem* proto, Properties& props, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
-    ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
-    ItemHexView(uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, const Properties& props);
+    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data);
+    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
@@ -102,14 +99,11 @@ public:
     vector<pair<ushort, ushort>> EffSteps {};
 
 private:
-    ItemHexView(uint id, const ProtoItem* proto, ResourceManager& res_mngr, EffectManager& effect_mngr, GameTimer& game_time);
+    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto);
 
     void AfterConstruction();
     void SetFade(bool fade_up);
 
-    ResourceManager& _resMngr;
-    EffectManager& _effectMngr;
-    GameTimer& _gameTime;
     uint _curSpr {};
     uint _begSpr {};
     uint _endSpr {};

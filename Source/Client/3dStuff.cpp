@@ -37,7 +37,7 @@
 #include "Settings.h"
 #include "StringUtils.h"
 
-void MeshData::Load(DataReader& reader)
+void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
 {
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
@@ -51,32 +51,42 @@ void MeshData::Load(DataReader& reader)
     reader.ReadPtr(&DiffuseTexture[0], len);
     reader.ReadPtr(&len, sizeof(len));
     SkinBones.resize(len);
-    SkinBoneNameHashes.resize(len);
-    reader.ReadPtr(&SkinBoneNameHashes[0], len * sizeof(SkinBoneNameHashes[0]));
+    SkinBoneNames.resize(len);
+    string tmp;
+    for (uint i = 0, j = len; i < j; i++) {
+        reader.ReadPtr(&len, sizeof(len));
+        tmp.resize(len);
+        reader.ReadPtr(tmp.data(), len);
+        SkinBoneNames[i] = name_resolver.ToHashedString(tmp);
+    }
     reader.ReadPtr(&len, sizeof(len));
     SkinBoneOffsets.resize(len);
     reader.ReadPtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
     SkinBones.resize(SkinBoneOffsets.size());
 }
 
-void ModelBone::Load(DataReader& reader)
+void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
 {
-    reader.ReadPtr(&NameHash, sizeof(NameHash));
+    uint len = 0;
+    reader.ReadPtr(&len, sizeof(len));
+    string tmp;
+    tmp.resize(len);
+    reader.ReadPtr(tmp.data(), len);
+    Name = name_resolver.ToHashedString(tmp);
     reader.ReadPtr(&TransformationMatrix, sizeof(TransformationMatrix));
     reader.ReadPtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
     if (reader.Read<uchar>() != 0u) {
         AttachedMesh = std::make_unique<MeshData>();
-        AttachedMesh->Load(reader);
+        AttachedMesh->Load(reader, name_resolver);
         AttachedMesh->Owner = this;
     }
     else {
         AttachedMesh = nullptr;
     }
-    uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     for (uint i = 0; i < len; i++) {
         auto child = std::make_unique<ModelBone>();
-        child->Load(reader);
+        child->Load(reader, name_resolver);
         Children.push_back(std::move(child));
     }
     CombinedTransformationMatrix = mat44();
@@ -86,9 +96,9 @@ void ModelBone::FixAfterLoad(ModelBone* root_bone)
 {
     if (AttachedMesh) {
         auto* mesh = AttachedMesh.get();
-        for (size_t i = 0, j = mesh->SkinBoneNameHashes.size(); i < j; i++) {
-            if (mesh->SkinBoneNameHashes[i] != 0u) {
-                mesh->SkinBones[i] = root_bone->Find(mesh->SkinBoneNameHashes[i]);
+        for (size_t i = 0, j = mesh->SkinBoneNames.size(); i < j; i++) {
+            if (mesh->SkinBoneNames[i]) {
+                mesh->SkinBones[i] = root_bone->Find(mesh->SkinBoneNames[i]);
             }
             else {
                 mesh->SkinBones[i] = mesh->Owner;
@@ -96,19 +106,19 @@ void ModelBone::FixAfterLoad(ModelBone* root_bone)
         }
     }
 
-    for (auto& child : Children) {
+    for (auto&& child : Children) {
         child->FixAfterLoad(root_bone);
     }
 }
 
-auto ModelBone::Find(hash name_hash) -> ModelBone*
+auto ModelBone::Find(hstring bone_name) -> ModelBone*
 {
-    if (NameHash == name_hash) {
+    if (Name == bone_name) {
         return this;
     }
 
-    for (auto& child : Children) {
-        auto* bone = child->Find(name_hash);
+    for (auto&& child : Children) {
+        auto* bone = child->Find(bone_name);
         if (bone != nullptr) {
             return bone;
         }
@@ -116,12 +126,7 @@ auto ModelBone::Find(hash name_hash) -> ModelBone*
     return nullptr;
 }
 
-auto ModelBone::GetHash(string_view name) -> hash
-{
-    return _str(name).toHash();
-}
-
-ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _scriptSys {script_sys}, _gameTime {game_time}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
+ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _gameTime {game_time}, _nameResolver {name_resolver}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
 {
     RUNTIME_ASSERT(_settings.Enable3dRendering);
 
@@ -140,21 +145,26 @@ ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, Eff
     }
 }
 
+auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
+{
+    return _nameResolver.ToHashedString(name);
+}
+
 auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 {
     // Find already loaded
-    auto name_hash = _str(fname).toHash();
-    for (auto& root_bone : _loadedModels) {
-        if (root_bone->NameHash == name_hash) {
+    auto name_hashed = _nameResolver.ToHashedString(fname);
+    for (const auto& root_bone : _loadedModels) {
+        if (root_bone->Name == name_hashed) {
             return root_bone.get();
         }
     }
 
     // Add to already processed
-    if (_processedFiles.count(name_hash) != 0u) {
+    if (_processedFiles.count(name_hashed) != 0u) {
         return nullptr;
     }
-    _processedFiles.emplace(name_hash);
+    _processedFiles.emplace(name_hashed);
 
     // Load file data
     auto file = _fileMngr.ReadFile(fname);
@@ -166,23 +176,20 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     // Load bones
     auto root_bone = std::make_unique<ModelBone>();
     DataReader reader {file.GetBuf()};
-    root_bone->Load(reader);
+    root_bone->Load(reader, _nameResolver);
     root_bone->FixAfterLoad(root_bone.get());
 
     // Load animations
     const auto anim_sets_count = file.GetBEUInt();
     for (uint i = 0; i < anim_sets_count; i++) {
         auto anim_set = std::make_unique<ModelAnimation>();
-        anim_set->Load(reader);
+        anim_set->Load(reader, _nameResolver);
         _loadedAnimSets.push_back(std::move(anim_set));
     }
 
     // Add to collection
-    root_bone->NameHash = name_hash;
-    _loadedModels.emplace_back(root_bone.release(), [this, &root_bone](ModelBone*) {
-        _processedFiles.erase(root_bone->NameHash);
-        // loadedModels.erase(root_bone);
-    });
+    root_bone->Name = name_hashed;
+    _loadedModels.emplace_back(root_bone.release(), [this, &root_bone](ModelBone*) { _processedFiles.erase(root_bone->Name); });
     return _loadedModels.back().get();
 }
 
@@ -190,18 +197,18 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
 {
     // Find in already loaded
     const auto take_first = (anim_name == "Base");
-    auto name_hash = _str(anim_fname).toHash();
-    for (auto& anim_set : _loadedAnimSets) {
+    const auto name_hashed = _nameResolver.ToHashedString(anim_fname);
+    for (const auto& anim_set : _loadedAnimSets) {
         if (_str(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || _str(anim_set->GetName()).compareIgnoreCase(anim_name))) {
             return anim_set.get();
         }
     }
 
     // Check maybe file already processed and nothing founded
-    if (_processedFiles.count(name_hash) != 0u) {
+    if (_processedFiles.count(name_hashed) != 0u) {
         return nullptr;
     }
-    _processedFiles.emplace(name_hash);
+    _processedFiles.emplace(name_hashed);
 
     // File not processed, load and recheck animations
     if (LoadModel(anim_fname) != nullptr) {
@@ -219,7 +226,7 @@ auto ModelManager::LoadTexture(string_view texture_name, string_view model_path)
     }
 
     // Try find already loaded texture
-    for (auto& mesh_tex : _loadedMeshTextures) {
+    for (auto&& mesh_tex : _loadedMeshTextures) {
         if (_str(mesh_tex->Name).compareIgnoreCase(texture_name)) {
             return mesh_tex->MainTex != nullptr ? mesh_tex.get() : nullptr;
         }
@@ -470,7 +477,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
     _currentLayers[LAYERS3D_COUNT] = anim_pair;
 
     auto mesh_changed = false;
-    vector<hash> fast_transition_bones;
+    vector<hstring> fast_transition_bones;
 
     if (layer_changed) {
         // Store previous cuts
@@ -502,14 +509,14 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
                 continue;
             }
 
-            for (auto& link : _modelInfo->_animData) {
+            for (const auto& link : _modelInfo->_animData) {
                 if (link.Layer == i && link.LayerValue == new_layers[i] && link.ChildName.empty()) {
                     for (auto j : link.DisabledLayer) {
                         unused_layers[j] = true;
                     }
-                    for (auto disabled_mesh_name_hash : link.DisabledMesh) {
+                    for (const auto disabled_mesh_name : link.DisabledMesh) {
                         for (auto* mesh : _allMeshes) {
-                            if ((disabled_mesh_name_hash == 0u) || disabled_mesh_name_hash == mesh->Mesh->Owner->NameHash) {
+                            if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
                                 mesh->Disabled = true;
                             }
                         }
@@ -522,9 +529,9 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
             for (auto j : _animLink.DisabledLayer) {
                 unused_layers[j] = true;
             }
-            for (auto disabled_mesh_name_hash : _animLink.DisabledMesh) {
+            for (auto disabled_mesh_name : _animLink.DisabledMesh) {
                 for (auto* mesh : _allMeshes) {
-                    if ((disabled_mesh_name_hash == 0u) || disabled_mesh_name_hash == mesh->Mesh->Owner->NameHash) {
+                    if (!disabled_mesh_name || disabled_mesh_name == mesh->Mesh->Owner->Name) {
                         mesh->Disabled = true;
                     }
                 }
@@ -557,8 +564,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
                         ModelInstance* model = nullptr;
 
                         // Link to main bone
-                        if (link.LinkBoneHash != 0u) {
-                            auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBoneHash);
+                        if (link.LinkBone) {
+                            auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
                             if (to_bone != nullptr) {
                                 model = _modelMngr.GetModel(link.ChildName, true);
                                 if (model != nullptr) {
@@ -570,8 +577,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
                                     _children.push_back(model);
                                 }
 
-                                if (_modelInfo->_fastTransitionBones.count(link.LinkBoneHash) != 0u) {
-                                    fast_transition_bones.push_back(link.LinkBoneHash);
+                                if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0u) {
+                                    fast_transition_bones.push_back(link.LinkBone);
                                 }
                             }
                         }
@@ -580,7 +587,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
                             model = _modelMngr.GetModel(link.ChildName, true);
                             if (model != nullptr) {
                                 for (auto* child_bone : model->_modelInfo->_hierarchy->_allBones) {
-                                    auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->NameHash);
+                                    auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
                                     if (root_bone != nullptr) {
                                         model->_linkBones.push_back(root_bone);
                                         model->_linkBones.push_back(child_bone);
@@ -871,9 +878,9 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                     if (mesh_name[0] == '_') {
                         mesh_name++;
                     }
-                    const auto mesh_name_hash = (*mesh_name != 0 ? ModelBone::GetHash(mesh_name) : 0);
-                    for (auto* mesh : _parent->_allMeshes) {
-                        if (mesh_name_hash == 0u || mesh_name_hash == mesh->Mesh->Owner->NameHash) {
+                    const auto mesh_name_hashed = (*mesh_name != 0 ? _modelMngr.GetBoneHashedString(mesh_name) : hstring());
+                    for (const auto* mesh : _parent->_allMeshes) {
+                        if (!mesh_name_hashed || mesh_name_hashed == mesh->Mesh->Owner->Name) {
                             texture = mesh->CurTexures[std::get<2>(tex_info)];
                             break;
                         }
@@ -886,9 +893,9 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
             // Assign it
             const auto texture_num = std::get<2>(tex_info);
-            const auto mesh_name_hash = std::get<1>(tex_info);
+            const auto mesh_name = std::get<1>(tex_info);
             for (auto* mesh : _parent->_allMeshes) {
-                if (mesh_name_hash == 0u || mesh_name_hash == mesh->Mesh->Owner->NameHash) {
+                if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
                     mesh->CurTexures[texture_num] = texture;
                 }
             }
@@ -904,7 +911,7 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     }
 
     if (!data.EffectInfo.empty()) {
-        for (auto& eff_info : data.EffectInfo) {
+        for (const auto& eff_info : data.EffectInfo) {
             RenderEffect* effect = nullptr;
 
             // Get effect
@@ -915,9 +922,9 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
                     if (mesh_name[0] == '_') {
                         mesh_name++;
                     }
-                    const auto mesh_name_hash = (*mesh_name != 0 ? ModelBone::GetHash(mesh_name) : 0);
-                    for (auto* mesh : _parent->_allMeshes) {
-                        if (mesh_name_hash == 0u || mesh_name_hash == mesh->Mesh->Owner->NameHash) {
+                    const auto mesh_name_hashed = (*mesh_name != 0 ? _modelMngr.GetBoneHashedString(mesh_name) : hstring());
+                    for (const auto* mesh : _parent->_allMeshes) {
+                        if (!mesh_name_hashed || mesh_name_hashed == mesh->Mesh->Owner->Name) {
                             effect = mesh->CurEffect;
                             break;
                         }
@@ -929,9 +936,9 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
             }
 
             // Assign it
-            const auto mesh_name_hash = std::get<1>(eff_info);
+            const auto mesh_name = std::get<1>(eff_info);
             for (auto* mesh : _allMeshes) {
-                if ((mesh_name_hash == 0u) || mesh_name_hash == mesh->Mesh->Owner->NameHash) {
+                if (!mesh_name || mesh_name == mesh->Mesh->Owner->Name) {
                     mesh->CurEffect = effect;
                 }
             }
@@ -1348,11 +1355,11 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
     }
 
     // Unskin
-    if (cut->UnskinBone != 0u) {
+    if (cut->UnskinBone) {
         // Find unskin bone
         ModelBone* unskin_bone = nullptr;
         for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
-            if (combined_mesh->SkinBones[i]->NameHash == cut->UnskinBone) {
+            if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone) {
                 unskin_bone = combined_mesh->SkinBones[i];
                 break;
             }
@@ -1406,7 +1413,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
                         }
 
                         // Skip equal influence side
-                        auto influence_side = (unskin_bone->Find(combined_mesh->SkinBones[static_cast<int>(v.BlendIndices[b])]->NameHash) != nullptr);
+                        auto influence_side = (unskin_bone->Find(combined_mesh->SkinBones[static_cast<int>(v.BlendIndices[b])]->Name) != nullptr);
                         if (v_side == influence_side) {
                             continue;
                         }
@@ -1576,12 +1583,12 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_
     App->Render.DrawMesh(combined_mesh->DrawMesh, effect);
 }
 
-auto ModelInstance::GetBonePos(hash name_hash) const -> optional<tuple<int, int>>
+auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>
 {
-    auto* bone = _modelInfo->_hierarchy->_rootBone->Find(name_hash);
+    auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
     if (bone == nullptr) {
         for (auto* child : _children) {
-            bone = child->_modelInfo->_hierarchy->_rootBone->Find(name_hash);
+            bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
             if (bone != nullptr) {
                 break;
             }
@@ -1629,7 +1636,7 @@ auto ModelInformation::Load(string_view name) -> bool
         auto disable_animation_interpolation = false;
         auto convert_value_fail = false;
 
-        uint mesh = 0;
+        hstring mesh;
         auto layer = -1;
         auto layer_val = 0;
 
@@ -1726,10 +1733,10 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "Mesh") {
                 (*istr) >> buf;
                 if (buf != "All") {
-                    mesh = ModelBone::GetHash(buf);
+                    mesh = _modelMngr.GetBoneHashedString(buf);
                 }
                 else {
-                    mesh = 0;
+                    mesh = hstring();
                 }
             }
             else if (token == "Subset") {
@@ -1739,14 +1746,14 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "Layer" || token == "Value") {
                 (*istr) >> buf;
                 if (token == "Layer") {
-                    layer = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                    layer = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
                 }
                 else {
-                    layer_val = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                    layer_val = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
                 }
 
                 link = &dummy_link;
-                mesh = 0;
+                mesh = hstring();
             }
             else if (token == "Root") {
                 if (layer == -1) {
@@ -1763,7 +1770,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     link->LayerValue = layer_val;
                 }
 
-                mesh = 0;
+                mesh = hstring();
             }
             else if (token == "Attach") {
                 (*istr) >> buf;
@@ -1779,12 +1786,12 @@ auto ModelInformation::Load(string_view name) -> bool
                 string fname = _str(name).combinePath(buf);
                 link->ChildName = fname;
 
-                mesh = 0;
+                mesh = hstring();
             }
             else if (token == "Link") {
                 (*istr) >> buf;
                 if (link->Id != 0u) {
-                    link->LinkBoneHash = ModelBone::GetHash(buf);
+                    link->LinkBone = _modelMngr.GetBoneHashedString(buf);
                 }
             }
             else if (token == "Cut") {
@@ -1802,7 +1809,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     for (auto& cut_layer_name : cur_layer_names) {
                         if (cut_layer_name != "All") {
-                            const auto cut_layer = GenericUtils::ConvertParamValue(cut_layer_name, convert_value_fail);
+                            const auto cut_layer = _modelMngr._nameResolver.ResolveGenericValue(cut_layer_name, convert_value_fail);
                             cut->Layers.push_back(cut_layer);
                         }
                         else {
@@ -1820,20 +1827,20 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     // Unskin bone
                     (*istr) >> buf;
-                    cut->UnskinBone = ModelBone::GetHash(buf);
+                    cut->UnskinBone = _modelMngr.GetBoneHashedString(buf);
                     if (buf == "-") {
-                        cut->UnskinBone = 0;
+                        cut->UnskinBone = hstring();
                     }
 
                     // Unskin shape
                     (*istr) >> buf;
-                    uint unskin_shape_name = 0;
+                    hstring unskin_shape_name;
                     cut->RevertUnskinShape = false;
-                    if (cut->UnskinBone != 0u) {
+                    if (cut->UnskinBone) {
                         cut->RevertUnskinShape = (!buf.empty() && buf[0] == '~');
-                        unskin_shape_name = ModelBone::GetHash(!buf.empty() && buf[0] == '~' ? buf.substr(1) : buf);
+                        unskin_shape_name = _modelMngr.GetBoneHashedString(!buf.empty() && buf[0] == '~' ? buf.substr(1) : buf);
                         for (auto* bone : area->_allDrawBones) {
-                            if (unskin_shape_name == bone->NameHash) {
+                            if (unskin_shape_name == bone->Name) {
                                 cut->UnskinShape = CreateCutShape(bone->AttachedMesh.get());
                             }
                         }
@@ -1841,12 +1848,12 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     // Parse shapes
                     for (auto& shape : shapes) {
-                        auto shape_name = ModelBone::GetHash(shape);
+                        auto shape_name = _modelMngr.GetBoneHashedString(shape);
                         if (shape == "All") {
-                            shape_name = 0;
+                            shape_name = hstring();
                         }
                         for (auto* bone : area->_allDrawBones) {
-                            if ((shape_name == 0u || shape_name == bone->NameHash) && bone->NameHash != unskin_shape_name) {
+                            if ((!shape_name || shape_name == bone->Name) && bone->Name != unskin_shape_name) {
                                 cut->Shapes.push_back(CreateCutShape(bone->AttachedMesh.get()));
                             }
                         }
@@ -1991,7 +1998,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto disabled_layers = _str(buf).split('-');
 
                 for (const auto& disabled_layer_name : disabled_layers) {
-                    const auto disabled_layer = GenericUtils::ConvertParamValue(disabled_layer_name, convert_value_fail);
+                    const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, convert_value_fail);
                     if (disabled_layer >= 0 && disabled_layer < LAYERS3D_COUNT) {
                         link->DisabledLayer.push_back(disabled_layer);
                     }
@@ -2006,9 +2013,10 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto disabled_mesh_names = _str(buf).split('-');
 
                 for (const auto& disabled_mesh_name : disabled_mesh_names) {
-                    uint disabled_mesh = 0;
+                    hstring disabled_mesh;
+
                     if (disabled_mesh_name != "All") {
-                        disabled_mesh = ModelBone::GetHash(disabled_mesh_name);
+                        disabled_mesh = _modelMngr.GetBoneHashedString(disabled_mesh_name);
                     }
 
                     link->DisabledMesh.push_back(disabled_mesh);
@@ -2016,7 +2024,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Texture") {
                 (*istr) >> buf;
-                auto index = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
 
                 (*istr) >> buf;
                 if (index >= 0 && index < EFFECT_TEXTURES) {
@@ -2031,9 +2039,9 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "Anim" || token == "AnimSpeed" || token == "AnimExt" || token == "AnimSpeedExt") {
                 // Index animation
                 (*istr) >> buf;
-                const auto ind1 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                const auto ind2 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
 
                 if (token == "Anim" || token == "AnimExt") {
                     // Todo: add reverse playing of 3d animation
@@ -2060,14 +2068,14 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "AnimLayerValue") {
                 (*istr) >> buf;
-                const auto ind1 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                const auto ind2 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
 
                 (*istr) >> buf;
-                const auto anim_layer = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                const auto anim_layer = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                const auto anim_layer_value = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
 
                 uint index = (ind1 << 16) | ind2;
                 if (_animLayerValues.count(index) == 0u) {
@@ -2077,7 +2085,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "FastTransitionBone") {
                 (*istr) >> buf;
-                _fastTransitionBones.insert(ModelBone::GetHash(buf));
+                _fastTransitionBones.insert(_modelMngr.GetBoneHashedString(buf));
             }
             else if (token == "AnimEqual") {
                 (*istr) >> valuei;
@@ -2085,9 +2093,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto ind1 = 0;
                 auto ind2 = 0;
                 (*istr) >> buf;
-                ind1 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                ind2 = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
 
                 if (valuei == 1) {
                     _anim1Equals.insert(std::make_pair(ind1, ind2));
@@ -2116,7 +2124,7 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "RenderDir") {
                 (*istr) >> buf;
 
-                _renderAnimDir = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                _renderAnimDir = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
             }
             else if (token == "DisableShadow") {
                 _shadowDisabled = true;
@@ -2125,9 +2133,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto w = 0;
                 auto h = 0;
                 (*istr) >> buf;
-                w = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                w = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
                 (*istr) >> buf;
-                h = GenericUtils::ConvertParamValue(buf, convert_value_fail);
+                h = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
 
                 _drawWidth = w;
                 _drawHeight = h;
@@ -2210,7 +2218,7 @@ auto ModelInformation::Load(string_view name) -> bool
                             auto* child = bone->Find(bone_hierarchy[b]);
                             if (child == nullptr) {
                                 child = new ModelBone();
-                                child->NameHash = bone_hierarchy[b];
+                                child->Name = bone_hierarchy[b];
                                 bone->Children.push_back(unique_ptr<ModelBone>(child));
                             }
                             bone = child;
@@ -2261,14 +2269,14 @@ auto ModelInformation::GetAnimationIndex(uint& anim1, uint& anim2, float* speed,
     }
 
     // Find substitute animation
-    const hash base_model_name = 0;
+    const auto base_model_name = _modelMngr._nameResolver.ToHashedString(_fileName);
     const auto anim1_base = anim1;
     const auto anim2_base = anim2;
     while (index == -1) {
         auto model_name = base_model_name;
         const auto anim1_ = anim1;
         const auto anim2_ = anim2;
-        if (_modelMngr._scriptSys.CritterAnimationSubstituteEvent(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) && (anim1 != anim1_ || anim2 != anim2_)) {
+        if (_modelMngr._animNameResolver.ResolveCritterAnimationSubstitute(base_model_name, anim1_base, anim2_base, model_name, anim1, anim2) && (anim1 != anim1_ || anim2 != anim2_)) {
             index = GetAnimationIndexEx(anim1, anim2, speed);
         }
         else {
@@ -2377,7 +2385,7 @@ void ModelHierarchy::SetupBones()
 
 static void SetupAnimationOutputExt(ModelAnimationController* anim_controller, ModelBone* bone)
 {
-    anim_controller->RegisterAnimationOutput(bone->NameHash, bone->TransformationMatrix);
+    anim_controller->RegisterAnimationOutput(bone->Name, bone->TransformationMatrix);
 
     for (auto& it : bone->Children) {
         SetupAnimationOutputExt(anim_controller, it.get());

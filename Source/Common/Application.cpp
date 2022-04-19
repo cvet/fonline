@@ -200,7 +200,7 @@ auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
-    if (_nameHash != other->_nameHash) {
+    if (_name != other->_name) {
         return false;
     }
     if (MainTex != other->MainTex) {
@@ -349,8 +349,112 @@ Application::Application(GlobalSettings& settings)
     NextFrameEventsQueue = new vector<InputEvent>();
 
     KeysMap = new unordered_map<SDL_Keycode, KeyCode> {
-#define KEY_CODE(name, index, code) {code, KeyCode::name},
-#include "KeyCodes-Include.h"
+        {0, KeyCode::None},
+        {SDL_SCANCODE_ESCAPE, KeyCode::Escape},
+        {SDL_SCANCODE_1, KeyCode::C1},
+        {SDL_SCANCODE_2, KeyCode::C2},
+        {SDL_SCANCODE_3, KeyCode::C3},
+        {SDL_SCANCODE_4, KeyCode::C4},
+        {SDL_SCANCODE_5, KeyCode::C5},
+        {SDL_SCANCODE_6, KeyCode::C6},
+        {SDL_SCANCODE_7, KeyCode::C7},
+        {SDL_SCANCODE_8, KeyCode::C8},
+        {SDL_SCANCODE_9, KeyCode::C9},
+        {SDL_SCANCODE_0, KeyCode::C0},
+        {SDL_SCANCODE_MINUS, KeyCode::Minus},
+        {SDL_SCANCODE_EQUALS, KeyCode::Equals},
+        {SDL_SCANCODE_BACKSPACE, KeyCode::Back},
+        {SDL_SCANCODE_TAB, KeyCode::Tab},
+        {SDL_SCANCODE_Q, KeyCode::Q},
+        {SDL_SCANCODE_W, KeyCode::W},
+        {SDL_SCANCODE_E, KeyCode::E},
+        {SDL_SCANCODE_R, KeyCode::R},
+        {SDL_SCANCODE_T, KeyCode::T},
+        {SDL_SCANCODE_Y, KeyCode::Y},
+        {SDL_SCANCODE_U, KeyCode::U},
+        {SDL_SCANCODE_I, KeyCode::I},
+        {SDL_SCANCODE_O, KeyCode::O},
+        {SDL_SCANCODE_P, KeyCode::P},
+        {SDL_SCANCODE_LEFTBRACKET, KeyCode::Lbracket},
+        {SDL_SCANCODE_RIGHTBRACKET, KeyCode::Rbracket},
+        {SDL_SCANCODE_RETURN, KeyCode::Return},
+        {SDL_SCANCODE_LCTRL, KeyCode::Lcontrol},
+        {SDL_SCANCODE_A, KeyCode::A},
+        {SDL_SCANCODE_S, KeyCode::S},
+        {SDL_SCANCODE_D, KeyCode::D},
+        {SDL_SCANCODE_F, KeyCode::F},
+        {SDL_SCANCODE_G, KeyCode::G},
+        {SDL_SCANCODE_H, KeyCode::H},
+        {SDL_SCANCODE_J, KeyCode::J},
+        {SDL_SCANCODE_K, KeyCode::K},
+        {SDL_SCANCODE_L, KeyCode::L},
+        {SDL_SCANCODE_SEMICOLON, KeyCode::Semicolon},
+        {SDL_SCANCODE_APOSTROPHE, KeyCode::Apostrophe},
+        {SDL_SCANCODE_GRAVE, KeyCode::Grave},
+        {SDL_SCANCODE_LSHIFT, KeyCode::Lshift},
+        {SDL_SCANCODE_BACKSLASH, KeyCode::Backslash},
+        {SDL_SCANCODE_Z, KeyCode::Z},
+        {SDL_SCANCODE_X, KeyCode::X},
+        {SDL_SCANCODE_C, KeyCode::C},
+        {SDL_SCANCODE_V, KeyCode::V},
+        {SDL_SCANCODE_B, KeyCode::B},
+        {SDL_SCANCODE_N, KeyCode::N},
+        {SDL_SCANCODE_M, KeyCode::M},
+        {SDL_SCANCODE_COMMA, KeyCode::Comma},
+        {SDL_SCANCODE_PERIOD, KeyCode::Period},
+        {SDL_SCANCODE_SLASH, KeyCode::Slash},
+        {SDL_SCANCODE_RSHIFT, KeyCode::Rshift},
+        {SDL_SCANCODE_KP_MULTIPLY, KeyCode::Multiply},
+        {SDL_SCANCODE_LALT, KeyCode::Lmenu},
+        {SDL_SCANCODE_SPACE, KeyCode::Space},
+        {SDL_SCANCODE_CAPSLOCK, KeyCode::Capital},
+        {SDL_SCANCODE_F1, KeyCode::F1},
+        {SDL_SCANCODE_F2, KeyCode::F2},
+        {SDL_SCANCODE_F3, KeyCode::F3},
+        {SDL_SCANCODE_F4, KeyCode::F4},
+        {SDL_SCANCODE_F5, KeyCode::F5},
+        {SDL_SCANCODE_F6, KeyCode::F6},
+        {SDL_SCANCODE_F7, KeyCode::F7},
+        {SDL_SCANCODE_F8, KeyCode::F8},
+        {SDL_SCANCODE_F9, KeyCode::F9},
+        {SDL_SCANCODE_F10, KeyCode::F10},
+        {SDL_SCANCODE_NUMLOCKCLEAR, KeyCode::Numlock},
+        {SDL_SCANCODE_SCROLLLOCK, KeyCode::Scroll},
+        {SDL_SCANCODE_KP_7, KeyCode::Numpad7},
+        {SDL_SCANCODE_KP_8, KeyCode::Numpad8},
+        {SDL_SCANCODE_KP_9, KeyCode::Numpad9},
+        {SDL_SCANCODE_KP_MINUS, KeyCode::Subtract},
+        {SDL_SCANCODE_KP_4, KeyCode::Numpad4},
+        {SDL_SCANCODE_KP_5, KeyCode::Numpad5},
+        {SDL_SCANCODE_KP_6, KeyCode::Numpad6},
+        {SDL_SCANCODE_KP_PLUS, KeyCode::Add},
+        {SDL_SCANCODE_KP_1, KeyCode::Numpad1},
+        {SDL_SCANCODE_KP_2, KeyCode::Numpad2},
+        {SDL_SCANCODE_KP_3, KeyCode::Numpad3},
+        {SDL_SCANCODE_KP_0, KeyCode::Numpad0},
+        {SDL_SCANCODE_KP_PERIOD, KeyCode::Decimal},
+        {SDL_SCANCODE_F11, KeyCode::F11},
+        {SDL_SCANCODE_F12, KeyCode::F12},
+        {SDL_SCANCODE_KP_ENTER, KeyCode::Numpadenter},
+        {SDL_SCANCODE_RCTRL, KeyCode::Rcontrol},
+        {SDL_SCANCODE_KP_DIVIDE, KeyCode::Divide},
+        {SDL_SCANCODE_SYSREQ, KeyCode::Sysrq},
+        {SDL_SCANCODE_RALT, KeyCode::Rmenu},
+        {SDL_SCANCODE_PAUSE, KeyCode::Pause},
+        {SDL_SCANCODE_HOME, KeyCode::Home},
+        {SDL_SCANCODE_UP, KeyCode::Up},
+        {SDL_SCANCODE_PAGEUP, KeyCode::Prior},
+        {SDL_SCANCODE_LEFT, KeyCode::Left},
+        {SDL_SCANCODE_RIGHT, KeyCode::Right},
+        {SDL_SCANCODE_END, KeyCode::End},
+        {SDL_SCANCODE_DOWN, KeyCode::Down},
+        {SDL_SCANCODE_PAGEDOWN, KeyCode::Next},
+        {SDL_SCANCODE_INSERT, KeyCode::Insert},
+        {SDL_SCANCODE_DELETE, KeyCode::Delete},
+        {SDL_SCANCODE_LGUI, KeyCode::Lwin},
+        {SDL_SCANCODE_RGUI, KeyCode::Rwin},
+        {510, KeyCode::Text},
+        {511, KeyCode::ClipboardPaste},
     };
 
     MouseButtonsMap = new unordered_map<int, MouseButton> {
@@ -859,20 +963,20 @@ void Application::BeginFrame()
         } break;
         case SDL_TEXTINPUT: {
             InputEvent::KeyDownEvent ev1;
-            ev1.Code = KeyCode::DIK_TEXT;
+            ev1.Code = KeyCode::Text;
             ev1.Text = sdl_event.text.text;
             EventsQueue->emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
-            ev2.Code = KeyCode::DIK_TEXT;
+            ev2.Code = KeyCode::Text;
             EventsQueue->emplace_back(ev2);
         } break;
         case SDL_DROPTEXT: {
             InputEvent::KeyDownEvent ev1;
-            ev1.Code = KeyCode::DIK_TEXT;
+            ev1.Code = KeyCode::Text;
             ev1.Text = sdl_event.drop.file;
             EventsQueue->emplace_back(ev1);
             InputEvent::KeyUpEvent ev2;
-            ev2.Code = KeyCode::DIK_TEXT;
+            ev2.Code = KeyCode::Text;
             EventsQueue->emplace_back(ev2);
             SDL_free(sdl_event.drop.file);
         } break;
@@ -889,11 +993,11 @@ void Application::BeginFrame()
                 if (file.Read(buf, size)) {
                     buf[size] = 0;
                     InputEvent::KeyDownEvent ev1;
-                    ev1.Code = KeyCode::DIK_TEXT;
+                    ev1.Code = KeyCode::Text;
                     ev1.Text = _str("{}\n{}{}", sdl_event.drop.file, buf, stripped ? "..." : "");
                     EventsQueue->emplace_back(ev1);
                     InputEvent::KeyUpEvent ev2;
-                    ev2.Code = KeyCode::DIK_TEXT;
+                    ev2.Code = KeyCode::Text;
                     EventsQueue->emplace_back(ev2);
                 }
             }
@@ -1363,7 +1467,7 @@ void Application::AppRender::DisableScissor()
 #endif
 }
 
-auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*defines*/, const RenderEffectLoader & /*file_loader*/) -> RenderEffect*
+auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*defines*/, const RenderEffectLoader& /*file_loader*/) -> RenderEffect*
 {
     auto effect = unique_ptr<RenderEffect>(new RenderEffect());
 #if FO_HAVE_OPENGL
@@ -1396,7 +1500,7 @@ auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*de
         uint passes = 1;
         for (size_t i = 0; i < commands.size(); i++)
             if (commands[i].size() >= 2 && commands[i][0] == "Passes")
-                passes = GenericUtils::ConvertParamValue(commands[i][1], fail);
+                passes = GenericUtils::ResolveGenericValue(commands[i][1], fail);
 
         // New effect
         auto effect = std::make_unique<Effect>();
@@ -1518,7 +1622,7 @@ auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*de
             StrVec& tokens = commands[i];
             if (tokens[0] == "Pass" && tokens.size() >= 3)
             {
-                uint pass = GenericUtils::ConvertParamValue(tokens[1], fail);
+                uint pass = GenericUtils::ResolveGenericValue(tokens[1], fail);
                 if (pass < passes)
                 {
                     EffectPass& effect_pass = effect->Passes[pass];

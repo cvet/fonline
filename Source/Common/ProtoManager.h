@@ -35,7 +35,8 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "EngineBase.h"
+#include "EntityProtos.h"
 #include "FileSystem.h"
 
 DECLARE_EXCEPTION(ProtoManagerException);
@@ -43,8 +44,9 @@ DECLARE_EXCEPTION(ProtoManagerException);
 class ProtoManager final
 {
 public:
-    ProtoManager(FileManager& file_mngr);
-    ProtoManager(const vector<uchar>& data);
+    ProtoManager() = delete;
+    ProtoManager(FileManager& file_mngr, FOEngineBase& engine); // Load from text
+    ProtoManager(const vector<uchar>& data, FOEngineBase& engine); // Restore from binary
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;
@@ -53,18 +55,19 @@ public:
 
     [[nodiscard]] auto GetProtosBinaryData() const -> vector<uchar>;
     [[nodiscard]] auto ValidateProtoResources(const vector<string>& resource_names) const -> bool;
-    [[nodiscard]] auto GetProtoItem(hash pid) -> const ProtoItem*;
-    [[nodiscard]] auto GetProtoCritter(hash pid) -> const ProtoCritter*;
-    [[nodiscard]] auto GetProtoMap(hash pid) -> const ProtoMap*;
-    [[nodiscard]] auto GetProtoLocation(hash pid) -> const ProtoLocation*;
-    [[nodiscard]] auto GetProtoItems() const -> const map<hash, const ProtoItem*>&;
-    [[nodiscard]] auto GetProtoCritters() const -> const map<hash, const ProtoCritter*>&;
-    [[nodiscard]] auto GetProtoMaps() const -> const map<hash, const ProtoMap*>&;
-    [[nodiscard]] auto GetProtoLocations() const -> const map<hash, const ProtoLocation*>&;
+    [[nodiscard]] auto GetProtoItem(hstring proto_id) -> const ProtoItem*;
+    [[nodiscard]] auto GetProtoCritter(hstring proto_id) -> const ProtoCritter*;
+    [[nodiscard]] auto GetProtoMap(hstring proto_id) -> const ProtoMap*;
+    [[nodiscard]] auto GetProtoLocation(hstring proto_id) -> const ProtoLocation*;
+    [[nodiscard]] auto GetProtoItems() const -> const map<hstring, const ProtoItem*>&;
+    [[nodiscard]] auto GetProtoCritters() const -> const map<hstring, const ProtoCritter*>&;
+    [[nodiscard]] auto GetProtoMaps() const -> const map<hstring, const ProtoMap*>&;
+    [[nodiscard]] auto GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&;
 
 private:
-    map<hash, const ProtoItem*> _itemProtos {};
-    map<hash, const ProtoCritter*> _crProtos {};
-    map<hash, const ProtoMap*> _mapProtos {};
-    map<hash, const ProtoLocation*> _locProtos {};
+    NameResolver& _nameResolver;
+    map<hstring, const ProtoItem*> _itemProtos {};
+    map<hstring, const ProtoCritter*> _crProtos {};
+    map<hstring, const ProtoMap*> _mapProtos {};
+    map<hstring, const ProtoLocation*> _locProtos {};
 };

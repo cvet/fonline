@@ -5020,11 +5020,12 @@ void asCBuilder::WriteInfo(const asCString &scriptname, const asCString &message
 	// Need to store the pre message in a structure
 	if( pre )
 	{
-		engine->preMessage.isSet      = true;
-		engine->preMessage.c          = c;
-		engine->preMessage.r          = r;
-		engine->preMessage.message    = message;
-		engine->preMessage.scriptname = scriptname;
+		// FOnline: remove pre messages to more clear log
+		//engine->preMessage.isSet      = true;
+		//engine->preMessage.c          = c;
+		//engine->preMessage.r          = r;
+		//engine->preMessage.message    = message;
+		//engine->preMessage.scriptname = scriptname;
 	}
 	else
 	{

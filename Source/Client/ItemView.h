@@ -35,16 +35,15 @@
 
 #include "Common.h"
 
-#include "Entity.h"
+#include "ClientEntity.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 
-#define FO_API_ITEM_VIEW_HEADER 1
-#include "ScriptApi.h"
-
-class ItemView : public Entity
+class ItemView : public ClientEntity, public ItemProperties
 {
 public:
     ItemView() = delete;
-    ItemView(uint id, const ProtoItem* proto);
+    ItemView(FOClient* engine, uint id, const ProtoItem* proto);
     ItemView(const ItemView&) = delete;
     ItemView(ItemView&&) noexcept = delete;
     auto operator=(const ItemView&) = delete;
@@ -61,11 +60,4 @@ public:
     [[nodiscard]] auto GetAlpha() const -> uchar;
     [[nodiscard]] auto GetInvColor() const -> uint;
     [[nodiscard]] auto LightGetHash() const -> uint;
-
-#define FO_API_ITEM_VIEW_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_ITEM_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
 };

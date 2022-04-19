@@ -36,7 +36,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-EffectManager::EffectManager(EffectSettings& settings, FileManager& file_mngr, GameTimer& game_time) : _settings {settings}, _fileMngr {file_mngr}, _gameTime {game_time}
+EffectManager::EffectManager(RenderSettings& settings, FileManager& file_mngr, GameTimer& game_time) : _settings {settings}, _fileMngr {file_mngr}, _gameTime {game_time}
 {
     _eventUnsubscriber += App->OnFrameBegin += [this]() {
         for (auto& effect : _loadedEffects) {
@@ -48,7 +48,7 @@ EffectManager::EffectManager(EffectSettings& settings, FileManager& file_mngr, G
 auto EffectManager::LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*
 {
     // Try find already loaded effect
-    for (auto& effect : _loadedEffects) {
+    for (const auto& effect : _loadedEffects) {
         if (effect->IsSame(name, defines)) {
             return effect.get();
         }
@@ -56,7 +56,7 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
 
     // Load new
     auto* effect = App->Render.CreateEffect(name, defines, [this, &base_path](string_view path) -> vector<uchar> {
-        auto file = _fileMngr.ReadFile(_str("{}{}", _str(base_path).extractDir(), path));
+        auto file = _fileMngr.ReadFile(_str("{}/{}", _str(base_path).extractDir(), path));
         if (!file) {
             file = _fileMngr.ReadFile(path);
             if (!file) {

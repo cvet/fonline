@@ -59,7 +59,7 @@ namespace Preprocessor
     class PragmaInstance;
 
     // Preprocess
-    int Preprocess( std::string file_path, OutStream& result, OutStream* errors = NULL, FileLoader* loader = NULL, bool skip_pragmas = false );
+    int Preprocess( std::string file_path, OutStream& result, OutStream* errors = NULL, FileLoader* loader = NULL );
 
     // Pre preprocess settings
     void Define( const std::string& str );

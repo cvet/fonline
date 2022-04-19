@@ -39,7 +39,9 @@
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
+#include "DeferredCalls.h"
 #include "Dialogs.h"
+#include "EngineBase.h"
 #include "EntityManager.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
@@ -51,7 +53,7 @@
 #include "MapManager.h"
 #include "Player.h"
 #include "ProtoManager.h"
-#include "ServerScripting.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
@@ -65,9 +67,133 @@ DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer final // Todo: rename FOServer to just Server
+class FOServer final : public FOEngineBase
 {
+    friend class ServerScriptSystem;
+
 public:
+    FOServer() = delete;
+    explicit FOServer(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
+    FOServer(const FOServer&) = delete;
+    FOServer(FOServer&&) noexcept = delete;
+    auto operator=(const FOServer&) = delete;
+    auto operator=(FOServer&&) noexcept = delete;
+    ~FOServer() override;
+
+#if FO_SINGLEPLAYER
+    void ConnectClient(FOClient* client) { }
+#endif
+
+    [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
+
+    [[nodiscard]] auto IsStarted() const -> bool { return _started; }
+    [[nodiscard]] auto GetIngamePlayersStatistics() const -> string;
+    [[nodiscard]] auto MakePlayerId(string_view player_name) const -> uint;
+
+    void Shutdown();
+    void MainLoop();
+    void DrawGui();
+
+    void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
+    auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
+    void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
+    void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
+    void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
+
+    ///@ ExportEvent
+    ENTITY_EVENT(Init);
+    ///@ ExportEvent
+    ENTITY_EVENT(GenerateWorld);
+    ///@ ExportEvent
+    ENTITY_EVENT(Start);
+    ///@ ExportEvent
+    ENTITY_EVENT(Finish);
+    ///@ ExportEvent
+    ENTITY_EVENT(Loop);
+    ///@ ExportEvent
+    ENTITY_EVENT(PlayerRegistration, uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(PlayerLogin, uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(PlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(PlayerAllowCommand, Player* /*player*/, string /*arg1*/, uchar /*arg2*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(PlayerLogout, Player* /*player*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(GlobalMapCritterIn, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(GlobalMapCritterOut, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(LocationInit, Location* /*location*/, bool /*firstTime*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(LocationFinish, Location* /*location*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(MapInit, Map* /*map*/, bool /*firstTime*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(MapFinish, Map* /*map*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(MapLoop, Map* /*map*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(MapLoopEx, Map* /*map*/, uint /*loopIndex*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(MapCritterIn, Map* /*map*/, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(MapCritterOut, Map* /*map*/, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(MapCheckLook, Map* /*map*/, Critter* /*critter*/, Critter* /*target*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(MapCheckTrapLook, Map* /*map*/, Critter* /*critter*/, Item* /*item*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterInit, Critter* /*critter*/, bool /*firstTime*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterFinish, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterIdle, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterGlobalMapIdle, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterCheckMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterTalk, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterBarter, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterGetAttackDistantion, Critter* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(ItemInit, Item* /*item*/, bool /*firstTime*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(ItemFinish, Item* /*item*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(ItemWalk, Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(ItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(StaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+
+    EventObserver<> OnWillFinish {};
+    EventObserver<> OnDidFinish {};
+
+    ServerSettings& Settings;
+    GeometryHelper GeomHelper;
+    FileManager FileMngr;
+    ScriptSystem* ScriptSys;
+    GameTimer GameTime;
+    ProtoManager ProtoMngr;
+    DeferredCallManager DeferredCallMngr;
+
+    EntityManager EntityMngr;
+    MapManager MapMngr;
+    CritterManager CrMngr;
+    ItemManager ItemMngr;
+    DialogManager DlgMngr;
+
+    DataBase DbStorage {};
+    DataBase DbHistory {}; // Todo: remove history DB system?
+
+private:
     struct ServerStats
     {
         uint ServerStartTick {};
@@ -129,26 +255,10 @@ public:
         string BanInfo {};
     };
 
-    static constexpr auto TEXT_LISTEN_FIRST_STR_MAX_LEN = 63;
     static constexpr auto BANS_FNAME_ACTIVE = "Save/Bans/Active.txt";
     static constexpr auto BANS_FNAME_EXPIRED = "Save/Bans/Expired.txt";
 
-    FOServer() = delete;
-    explicit FOServer(GlobalSettings& settings);
-    FOServer(const FOServer&) = delete;
-    FOServer(FOServer&&) noexcept = delete;
-    auto operator=(const FOServer&) = delete;
-    auto operator=(FOServer&&) noexcept = delete;
-    ~FOServer();
-
-#if FO_SINGLEPLAYER
-    void ConnectClient(FOClient* client) { }
-#endif
-
-    void Shutdown();
-    void MainLoop();
-    void DrawGui();
-    auto GetIngamePlayersStatistics() -> string;
+    void RegisterData();
 
     auto InitLangPacks(vector<LanguagePack>& lang_packs) -> bool;
     auto InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool;
@@ -156,16 +266,15 @@ public:
     auto InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool;
     void GenerateUpdateFiles(bool first_generation, vector<string>* resource_names);
 
-    void EntitySetValue(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSendGlobalValue(Entity* entity, Property* prop);
-    void OnSendPlayerValue(Entity* entity, Property* prop);
-    void OnSendCritterValue(Entity* entity, Property* prop);
-    void OnSendMapValue(Entity* entity, Property* prop);
-    void OnSendLocationValue(Entity* entity, Property* prop);
+    void EntitySetValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSendGlobalValue(Entity* entity, const Property* prop);
+    void OnSendPlayerValue(Entity* entity, const Property* prop);
+    void OnSendCritterValue(Entity* entity, const Property* prop);
+    void OnSendMapValue(Entity* entity, const Property* prop);
+    void OnSendLocationValue(Entity* entity, const Property* prop);
 
     void Send_MapData(Player* player, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery);
     auto Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
-    void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
     auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
     auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
 
@@ -180,28 +289,26 @@ public:
     void Process_Move(Player* player);
     void Process_Dir(Player* player);
     void Process_Text(Player* player);
-    void Process_Command(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
-    void Process_CommandReal(NetBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
+    void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
+    void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_Dialog(Player* player);
     void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
 
-    auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hash pid, uint count, Properties* props, bool check_blocks) -> Item*;
-    void OnSendItemValue(Entity* entity, Property* prop);
-    void OnSetItemCount(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemChangeView(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemRecacheHex(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemBlockLines(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemIsGeck(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemIsRadio(Entity* entity, Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, Property* prop, void* cur_value, void* old_value);
+    void OnSendItemValue(Entity* entity, const Property* prop);
+    void OnSetItemCount(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemRecacheHex(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemBlockLines(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemIsGeck(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemIsRadio(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
 
     void ProcessCritter(Critter* cr);
 
     auto Dialog_Compile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
     auto Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool;
     auto Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint;
-    void Dialog_Begin(Critter* cl, Critter* npc, hash dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
 
     void OnNewConnection(NetConnection* net_connection);
 
@@ -213,8 +320,6 @@ public:
 
     void LogToClients(string_view str);
     void DispatchLogToClients();
-    void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
-    void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
     auto GetBanByName(string_view name) -> ClientBanned*;
     auto GetBanByIp(uint ip) -> ClientBanned*;
@@ -225,47 +330,28 @@ public:
     void SaveBans();
     void LoadBans();
 
-    EventObserver<> OnWillFinish {};
-    EventObserver<> OnDidFinish {};
-    EventDispatcher<> WillFinishDispatcher {OnWillFinish};
-    EventDispatcher<> DidFinishDispatcher {OnDidFinish};
-
-    ServerSettings& Settings;
-    GeometryHelper GeomHelper;
-    FileManager FileMngr;
-    ServerScriptSystem ScriptSys;
-    ProtoManager ProtoMngr;
-    EntityManager EntityMngr;
-    MapManager MapMngr;
-    CritterManager CrMngr;
-    ItemManager ItemMngr;
-    DialogManager DlgMngr;
-    GameTimer GameTime;
-    ServerStats Stats {};
-    ServerGui Gui {};
-    GlobalVars* Globals {};
-    DataBase DbStorage {};
-    DataBase DbHistory {}; // Todo: remove history DB system?
-    std::atomic_bool Started {};
-    map<uint, uint> RegIp {};
-    std::mutex RegIpLocker {};
-    vector<LanguagePack> LangPacks {};
-    uint FpsTick {};
-    uint FpsCounter {};
-    vector<UpdateFile> UpdateFiles {};
-    vector<uchar> UpdateFilesList {};
-    vector<TextListener> TextListeners {};
-    std::mutex TextListenersLocker {};
-    vector<Player*> LogClients {};
-    vector<string> LogLines {};
+    std::atomic_bool _started {};
+    vector<uchar> _restoreInfoBin {};
+    ServerStats _stats {};
+    ServerGui _gui {};
+    map<uint, uint> _regIp {};
+    std::mutex _regIpLocker {};
+    vector<LanguagePack> _langPacks {};
+    uint _fpsTick {};
+    uint _fpsCounter {};
+    vector<UpdateFile> _updateFiles {};
+    vector<uchar> _updateFilesList {};
+    vector<TextListener> _textListeners {};
+    vector<Player*> _logClients {};
+    vector<string> _logLines {};
     // Todo: run network listeners dynamically, without restriction, based on server settings
-    NetServerBase* TcpServer {};
-    NetServerBase* WebSocketsServer {};
-    vector<ClientConnection*> FreeConnections {};
-    std::mutex FreeConnectionsLocker {};
-    vector<ClientBanned> Banned {};
-    std::mutex BannedLocker {};
-
-private:
+    NetServerBase* _tcpServer {};
+    NetServerBase* _webSocketsServer {};
+    vector<ClientConnection*> _freeConnections {};
+    mutable std::mutex _freeConnectionsLocker {};
+    vector<ClientBanned> _banned {};
+    std::mutex _bannedLocker {};
+    EventDispatcher<> _willFinishDispatcher {OnWillFinish};
+    EventDispatcher<> _didFinishDispatcher {OnDidFinish};
     bool _nonConstHelper {};
 };

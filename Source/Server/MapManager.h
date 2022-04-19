@@ -42,7 +42,6 @@
 #include "Item.h"
 #include "Location.h"
 #include "Map.h"
-#include "ServerScripting.h"
 #include "Settings.h"
 #include "Timer.h"
 
@@ -50,6 +49,7 @@ static constexpr auto FPATH_MAX_PATH = 400;
 
 DECLARE_EXCEPTION(MapManagerException);
 
+class FOServer;
 class ProtoManager;
 class EntityManager;
 class ItemManager;
@@ -68,7 +68,7 @@ struct TraceData
     uint Dist {};
     float Angle {};
     Critter* FindCr {};
-    uchar FindType {};
+    CritterFindType FindType {};
     bool LastPassedSkipCritters {};
     HexCallbackFunc HexCallback {};
 
@@ -111,7 +111,7 @@ enum class FindPathResult
     HexBusy = 6,
     HexBusyRing = 7,
     TooFar = 8,
-    DeadLock = 9,
+    Deadlock = 9,
     InternalError = 10,
     InvalidHexes = 11,
     TraceFailed = 12,
@@ -132,7 +132,7 @@ class MapManager final
 {
 public:
     MapManager() = delete;
-    MapManager(ServerSettings& settings, ProtoManager& proto_mngr, EntityManager& entity_mngr, CritterManager& cr_mngr, ItemManager& item_mngr, ServerScriptSystem& script_sys, GameTimer& game_time);
+    explicit MapManager(FOServer* engine);
     MapManager(const MapManager&) = delete;
     MapManager(MapManager&&) noexcept = delete;
     auto operator=(const MapManager&) = delete;
@@ -143,24 +143,23 @@ public:
     [[nodiscard]] auto GetLocation(uint loc_id) -> Location*;
     [[nodiscard]] auto GetLocation(uint loc_id) const -> const Location*;
     [[nodiscard]] auto GetLocationByMap(uint map_id) -> Location*;
-    [[nodiscard]] auto GetLocationByPid(hash loc_pid, uint skip_count) -> Location*;
+    [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*;
     [[nodiscard]] auto GetLocations() -> vector<Location*>;
     [[nodiscard]] auto GetLocationsCount() const -> uint;
     [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
     [[nodiscard]] auto GetMap(uint map_id) -> Map*;
     [[nodiscard]] auto GetMap(uint map_id) const -> const Map*;
-    [[nodiscard]] auto GetMapByPid(hash map_pid, uint skip_count) -> Map*;
+    [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
     [[nodiscard]] auto GetMaps() -> vector<Map*>;
     [[nodiscard]] auto GetMapsCount() const -> uint;
-    [[nodiscard]] auto CheckKnownLocById(Critter* cr, uint loc_id) const -> bool;
-    [[nodiscard]] auto CheckKnownLocByPid(Critter* cr, hash loc_pid) const -> bool;
+    [[nodiscard]] auto CheckKnownLoc(Critter* cr, uint loc_id) const -> bool;
     [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool;
     [[nodiscard]] auto FindPath(const FindPathInput& pfd) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
-    [[nodiscard]] auto CreateLocation(hash proto_id, ushort wx, ushort wy) -> Location*;
-    [[nodiscard]] auto CreateMap(hash proto_id, Location* loc) -> Map*;
+    [[nodiscard]] auto CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*;
+    [[nodiscard]] auto CreateMap(hstring proto_id, Location* loc) -> Map*;
 
     void LinkMaps();
     void LoadStaticMaps(FileManager& file_mngr);
@@ -187,14 +186,7 @@ private:
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 
-    ServerSettings& _settings;
-    GeometryHelper _geomHelper;
-    ProtoManager& _protoMngr;
-    EntityManager& _entityMngr;
-    CritterManager& _crMngr;
-    ItemManager& _itemMngr;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
+    FOServer* _engine;
     bool _runGarbager {true};
     bool _smoothSwitcher {};
     map<const ProtoMap*, StaticMap> _staticMaps {};

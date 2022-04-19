@@ -37,11 +37,11 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
+void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
 {
     // Find file
     auto maps = file_mngr.FilterFiles("fomap");
-    auto map_file = maps.FindFile(name);
+    auto map_file = maps.FindFileByName(name);
     if (!map_file) {
         throw MapLoaderException("Map not found", name);
     }
@@ -54,18 +54,18 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
     }
 
     // Header
-    ConfigFile map_data(buf);
+    ConfigFile map_data(buf, name_resolver);
     if (!map_data.IsApp("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
     }
 
-    Properties props(ProtoMap::PropertiesRegistrator);
+    Properties props(map_property_registrator);
     if (!props.LoadFromText(map_data.GetApp("ProtoMap"))) {
         throw MapLoaderException("Unable to load map properties", name);
     }
 
-    auto width = props.GetValue<ushort>(ProtoMap::PropertyWidth);
-    auto height = props.GetValue<ushort>(ProtoMap::PropertyHeight);
+    const auto width = props.GetValue<ushort>(map_property_registrator->Find("Width"));
+    const auto height = props.GetValue<ushort>(map_property_registrator->Find("Height"));
 
     // Critters
     vector<string> errors;
@@ -76,14 +76,14 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
             continue;
         }
 
-        auto id = _str(kv["$Id"]).toUInt();
-        auto proto_id = _str(kv["$Proto"]).toHash();
-        const auto* proto = proto_mngr.GetProtoCritter(proto_id);
+        const auto id = _str(kv["$Id"]).toUInt();
+        const auto& proto_name = kv["$Proto"];
+        const auto* proto = proto_mngr.GetProtoCritter(name_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
-            errors.emplace_back(_str("Proto critter '{}' not found", _str().parseHash(proto_id)));
+            errors.emplace_back(_str("Proto critter '{}' not found", proto_name));
         }
         else if (!cr_load(id, proto, kv)) {
-            errors.emplace_back(_str("Unable to load critter '{}' properties", _str().parseHash(proto_id)));
+            errors.emplace_back(_str("Unable to load critter '{}' properties", proto_name));
         }
     }
 
@@ -95,14 +95,14 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
             continue;
         }
 
-        auto id = _str(kv["$Id"]).toUInt();
-        auto proto_id = _str(kv["$Proto"]).toHash();
-        const auto* proto = proto_mngr.GetProtoItem(proto_id);
+        const auto id = _str(kv["$Id"]).toUInt();
+        const auto& proto_name = kv["$Proto"];
+        const auto* proto = proto_mngr.GetProtoItem(name_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
-            errors.emplace_back(_str("Proto item '{}' not found", _str().parseHash(proto_id)));
+            errors.emplace_back(_str("Proto item '{}' not found", proto_name));
         }
         else if (!item_load(id, proto, kv)) {
-            errors.emplace_back(_str("Unable to load item '{}' properties", _str().parseHash(proto_id)));
+            errors.emplace_back(_str("Unable to load item '{}' properties", proto_name));
         }
     }
 
@@ -114,7 +114,7 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
             continue;
         }
 
-        const auto tname = _str(kv["PicMap"]).toHash();
+        const auto tname = kv["PicMap"];
         const auto hx = static_cast<int>(_str(kv["HexX"]).toUInt());
         const auto hy = static_cast<int>(_str(kv["HexY"]).toUInt());
         const auto ox = static_cast<int>(kv.count("OffsetX") != 0u ? _str(kv["OffsetX"]).toUInt() : 0);
@@ -123,15 +123,17 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
         const auto is_roof = kv.count("IsRoof") != 0u ? _str(kv["IsRoof"]).toBool() : false;
 
         if (hx < 0 || hx >= width || hy < 0 || hy >= height) {
-            errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", _str().parseHash(tname), hx, hy));
+            errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", tname, hx, hy));
             continue;
         }
         if (layer < 0 || layer > 255) {
-            errors.emplace_back(_str("Tile '{}' have wrong layer value {}", _str().parseHash(tname), layer));
+            errors.emplace_back(_str("Tile '{}' have wrong layer value {}", tname, layer));
             continue;
         }
 
-        tile_load({tname, static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof});
+        const auto htname = name_resolver.ToHashedString(tname);
+
+        tile_load({htname.as_hash(), static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof});
     }
 
     if (!errors.empty()) {

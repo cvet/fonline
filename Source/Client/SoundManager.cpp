@@ -36,7 +36,6 @@
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
-#include "ResourceManager.h"
 #include "StringUtils.h"
 #include "Timer.h"
 

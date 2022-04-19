@@ -74,7 +74,8 @@
 // Todo: temporary entities, disable writing to data base
 // Todo: RUNTIME_ASSERT to assert
 // Todo: move all return values from out refs to return values as tuple and nodiscard (and then use structuured binding)
-// Todo: remove dynamic_cast?
+// Todo: review all SDL_hints.h entries
+// Todo: fix all warnings (especially under clang) and enable threating warnings as errors
 
 // ReSharper disable CppClangTidyCppcoreguidelinesMacroUsage
 
@@ -93,6 +94,7 @@
 
 // Standard API
 #include <algorithm>
+#include <any>
 #include <array>
 #include <atomic>
 #include <cassert>
@@ -157,8 +159,7 @@ using ushort = unsigned short;
 using uint = unsigned int;
 using uint64 = uint64_t;
 using int64 = int64_t;
-using hash = uint;
-using max_t = uint;
+using max_t = uint; // Todo: remove max_t
 
 // Check the sizes of base types
 static_assert(sizeof(char) == 1);
@@ -172,11 +173,11 @@ static_assert(sizeof(uint64) == 8);
 static_assert(sizeof(bool) == 1);
 static_assert(sizeof(void*) == 4 || sizeof(void*) == 8);
 static_assert(sizeof(void*) == sizeof(size_t));
+static_assert(CHAR_BIT == 8);
 
 // Bind to global scope frequently used types
 using std::array;
 using std::deque;
-using std::future;
 using std::initializer_list;
 using std::istringstream;
 using std::list;
@@ -256,12 +257,24 @@ private:
         ~exception_name() override = default; \
     }
 
-#define RUNTIME_ASSERT(expr) \
-    if (!(expr)) \
-    throw AssertationException(#expr, __FILE__, __LINE__)
+#if FO_DEBUG
 #define RUNTIME_ASSERT_STR(expr, str) \
-    if (!(expr)) \
-    throw AssertationException(str, __FILE__, __LINE__)
+    do { \
+        if (!(expr) && !BreakIntoDebugger()) { \
+            throw AssertationException(str, __FILE__, __LINE__); \
+        } \
+    } while (false)
+extern bool BreakIntoDebugger();
+#else
+#define RUNTIME_ASSERT_STR(expr, str) \
+    do { \
+        if (!(expr)) { \
+            throw AssertationException(str, __FILE__, __LINE__); \
+        } \
+    } while (false)
+#endif
+
+#define RUNTIME_ASSERT(expr) RUNTIME_ASSERT_STR(expr, #expr)
 
 // Common exceptions
 DECLARE_EXCEPTION(AssertationException);
@@ -286,7 +299,7 @@ public:
 
 private:
     using Callback = std::function<void()>;
-    explicit EventUnsubscriberCallback(Callback cb) : _unsubscribeCallback {std::move(std::move(cb))} { }
+    explicit EventUnsubscriberCallback(Callback cb) : _unsubscribeCallback {std::move(cb)} { }
     Callback _unsubscribeCallback {};
 };
 
@@ -337,7 +350,13 @@ public:
     EventObserver(EventObserver&&) noexcept = default;
     auto operator=(const EventObserver&) = delete;
     auto operator=(EventObserver&&) noexcept = delete;
-    ~EventObserver() { ThrowException(); }
+
+    ~EventObserver()
+    {
+        if (!_subscriberCallbacks.empty()) {
+            ThrowException();
+        }
+    }
 
     [[nodiscard]] auto operator+=(Callback cb) -> EventUnsubscriberCallback
     {
@@ -348,10 +367,9 @@ public:
 private:
     void ThrowException()
     {
-#if 0
-        if (!std::uncaught_exceptions())
-            throw GenericException("Some of subscriber still alive", subscriberCallbacks.size());
-#endif
+        if (std::uncaught_exceptions() == 0) {
+            throw GenericException("Some of subscriber still alive", _subscriberCallbacks.size());
+        }
     }
 
     list<Callback> _subscriberCallbacks {};
@@ -396,7 +414,7 @@ public:
     RefCounter(const RefCounter&) = delete;
     RefCounter(RefCounter&&) = delete;
     auto operator=(const RefCounter&) -> RefCounter& = delete;
-    auto operator=(RefCounter &&) -> RefCounter& = delete;
+    auto operator=(RefCounter&&) -> RefCounter& = delete;
 
     virtual ~RefCounter()
     {
@@ -408,10 +426,9 @@ public:
 private:
     void ThrowException()
     {
-#if 0
-        if (!std::uncaught_exceptions())
-            throw GenericException("Some of pointer still alive", ptrCounter.load());
-#endif
+        if (std::uncaught_exceptions() == 0) {
+            throw GenericException("Some of pointer still alive", _ptrCounter.load());
+        }
     }
 
     std::atomic_int _ptrCounter {};
@@ -429,8 +446,9 @@ public:
 
     explicit ptr(T* p) : _value {p}
     {
-        if (_value)
+        if (_value) {
             ++_value->ptrCounter;
+        }
     }
 
     ptr(const type& other)
@@ -500,6 +518,77 @@ auto constexpr operator"" _len(const char* str, size_t size) -> size_t
     return size;
 }
 
+// Scriptable object class decorator
+#define SCRIPTABLE_OBJECT() \
+    void AddRef() { ++RefCounter; } \
+    void Release() \
+    { \
+        if (--RefCounter == 0) { \
+            delete this; \
+        } \
+    } \
+    int RefCounter { 1 }
+
+// Ref counted objects scope holder
+template<typename T>
+class RefCountHolder
+{
+public:
+    [[nodiscard]] explicit RefCountHolder(const T& ref) : _ref {ref} { _ref.AddRef(); }
+    [[nodiscard]] RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref.AddRef(); }
+    [[nodiscard]] RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref.AddRef(); }
+    auto operator=(const RefCountHolder& other) = delete;
+    auto operator=(RefCountHolder&& other) = delete;
+    ~RefCountHolder() { _ref.Release(); }
+
+private:
+    const T& _ref;
+};
+
+// Scope callback helpers
+template<typename T>
+class ScopeCallback
+{
+public:
+    static_assert(std::is_nothrow_invocable_v<T>, "T must be noexcept invocable or use ScopeCallbackExt for callbacks that may throw");
+    [[nodiscard]] explicit ScopeCallback(T safe_callback) : _safeCallback {std::move(safe_callback)} { }
+    [[nodiscard]] ScopeCallback(ScopeCallback&& other) noexcept = default;
+    ScopeCallback(const ScopeCallback& other) = delete;
+    auto operator=(const ScopeCallback& other) = delete;
+    auto operator=(ScopeCallback&& other) = delete;
+    ~ScopeCallback() noexcept { _safeCallback(); }
+
+private:
+    T _safeCallback;
+};
+
+template<typename T, typename T2>
+class ScopeCallbackExt
+{
+public:
+    static_assert(std::is_invocable_v<T>, "T must be invocable");
+    static_assert(!std::is_nothrow_invocable_v<T>, "T invocable is safe, use ScopeCallback instead of this");
+    static_assert(std::is_nothrow_invocable_v<T2>, "T2 must be noexcept invocable");
+    [[nodiscard]] ScopeCallbackExt(T unsafe_callback, T2 safe_callback) : _unsafeCallback {std::move(unsafe_callback)}, _safeCallback {std::move(safe_callback)} { }
+    [[nodiscard]] ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
+    ScopeCallbackExt(const ScopeCallbackExt& other) = delete;
+    auto operator=(const ScopeCallbackExt& other) = delete;
+    auto operator=(ScopeCallbackExt&& other) = delete;
+    ~ScopeCallbackExt() noexcept(false)
+    {
+        if (std::uncaught_exceptions() == 0) {
+            _unsafeCallback(); // May throw
+        }
+        else {
+            _safeCallback();
+        }
+    }
+
+private:
+    T _unsafeCallback;
+    T2 _safeCallback;
+};
+
 // Generic helpers
 #define STRINGIFY(x) STRINGIFY2(x)
 #define STRINGIFY2(x) #x
@@ -519,21 +608,27 @@ auto constexpr operator"" _len(const char* str, size_t size) -> size_t
 #define BIN32(bin32, bin24, bin16, bin8) ((BIN8(bin32) << 24) | (BIN8(bin24) << 16) | (BIN8(bin16) << 8) | (BIN8(bin8)))
 
 template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
-constexpr auto IsBitSet(T x, T y) -> bool
+constexpr auto IsBitSet(T x, T y) noexcept -> bool
 {
     return (x & y) != 0;
 }
 
 template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
-constexpr void SetBit(T& x, T y)
+constexpr void SetBit(T& x, T y) noexcept
 {
     x = x | y;
 }
 
 template<typename T, std::enable_if_t<std::is_unsigned_v<T>, int> = 0>
-constexpr void UnsetBit(T& x, T y)
+constexpr void UnsetBit(T& x, T y) noexcept
 {
     x = (x | y) ^ y;
+}
+
+template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
+constexpr bool IsEnumSet(T value, T check) noexcept
+{
+    return (static_cast<int>(value) & static_cast<int>(check)) != 0;
 }
 
 // Float constants
@@ -552,7 +647,7 @@ public:
     MemoryPool(const MemoryPool&) = delete;
     MemoryPool(MemoryPool&&) noexcept = default;
     auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool &&) -> MemoryPool& = delete;
+    auto operator=(MemoryPool&&) -> MemoryPool& = delete;
 
     ~MemoryPool()
     {
@@ -679,7 +774,7 @@ template<class T>
 auto ReadDataArr(const vector<uchar>& vec, uint size, uint& pos) -> const T*
 {
     pos += size;
-    return size ? &vec[pos - size] : nullptr;
+    return size ? reinterpret_cast<const T*>(&vec[pos - size]) : nullptr;
 }
 
 // Flex rect
@@ -817,24 +912,62 @@ struct TPoint
 using IPoint = TPoint<int>;
 using FPoint = TPoint<float>;
 
-// Todo: move NetProperty to more proper place
-class NetProperty
+// Hashing
+// ReSharper disable CppInconsistentNaming
+struct hstring
 {
-public:
-    enum Type
+    using hash_t = uint;
+
+    struct entry
     {
-        None = 0,
-        Global, // No extra args
-        Player, // No extra args
-        Critter, // One extra arg: cr_id
-        Chosen, // No extra args
-        MapItem, // One extra arg: item_id
-        CritterItem, // Two extra args: cr_id item_id
-        ChosenItem, // One extra arg: item_id
-        Map, // No extra args
-        Location, // No extra args
+        hash_t Hash {};
+        string Str {};
     };
+
+    hstring() = default;
+    explicit hstring(entry* static_storage_entry) : _entry {static_storage_entry} { }
+    // ReSharper disable once CppNonExplicitConversionOperator
+    operator string_view() const { return _entry->Str; }
+    explicit operator bool() const { return !(_entry->Hash == 0u); }
+    auto operator==(const hstring& other) const { return _entry->Hash == other._entry->Hash; }
+    auto operator!=(const hstring& other) const { return _entry->Hash != other._entry->Hash; }
+    auto operator<(const hstring& other) const { return _entry->Hash < other._entry->Hash; }
+    [[nodiscard]] auto as_hash() const -> hash_t { return _entry->Hash; }
+    [[nodiscard]] auto as_int() const -> int { return static_cast<int>(_entry->Hash); }
+    [[nodiscard]] auto as_uint() const -> uint { return _entry->Hash; }
+    [[nodiscard]] auto as_str() const -> string_view { return _entry->Str; }
+
+private:
+    static entry _zeroEntry;
+
+    entry* _entry {&_zeroEntry};
 };
+static_assert(sizeof(hstring::hash_t) == 4);
+static_assert(std::is_standard_layout_v<hstring>);
+
+template<>
+struct std::hash<hstring>
+{
+    size_t operator()(const hstring& s) const noexcept { return s.as_hash(); }
+};
+
+template<>
+struct fmt::formatter<hstring>
+{
+    template<typename ParseContext>
+    constexpr auto parse(ParseContext& ctx)
+    {
+        return ctx.begin();
+    }
+
+    template<typename FormatContext>
+    auto format(const hstring& s, FormatContext& ctx)
+    {
+        return format_to(ctx.out(), "{}", s.as_str());
+    }
+};
+
+// ReSharper restore CppInconsistentNaming
 
 // Generic constants
 // Todo: eliminate as much defines as possible
@@ -842,11 +975,6 @@ public:
 // ReSharper disable CppInconsistentNaming
 static constexpr auto CONFIG_NAME = "FOnline.cfg";
 static constexpr auto CLIENT_MAP_FORMAT_VER = 10;
-static constexpr auto TEMP_BUF_SIZE = 8192;
-static constexpr auto UTF8_BUF_SIZE(int count)
-{
-    return count * 4;
-}
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr uint FADING_PERIOD = 1000;
@@ -859,7 +987,6 @@ static constexpr float MAX_ZOOM = 20.0f;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes
-#define MAKE_PLAYER_ID(name) static_cast<uint>((1 << 31) | _str(name).toHash())
 #define DLGID_MASK (0xFFFFC000)
 #define DLG_STR_ID(dlg_id, idx) (((dlg_id)&DLGID_MASK) | ((idx) & ~DLGID_MASK))
 #define LOCPID_MASK (0xFFFFF000)
@@ -869,13 +996,19 @@ static constexpr float MAX_ZOOM = 20.0f;
 #define CRPID_MASK (0xFFFFFFF0)
 #define CR_STR_ID(cr_pid, idx) (((cr_pid)&CRPID_MASK) | ((idx) & ~CRPID_MASK))
 
-// Critter find types
-static constexpr uchar FIND_LIFE = 0x01;
-static constexpr uchar FIND_KO = 0x02;
-static constexpr uchar FIND_DEAD = 0x04;
-static constexpr uchar FIND_ONLY_PLAYERS = 0x10;
-static constexpr uchar FIND_ONLY_NPC = 0x20;
-static constexpr uchar FIND_ALL = 0x0F;
+///@ ExportEnum
+enum class CritterFindType : uchar
+{
+    Any = 0,
+    Alive = 0x01,
+    Dead = 0x02,
+    Players = 0x10,
+    Npc = 0x20,
+    AlivePlayers = 0x11,
+    DeadPlayers = 0x12,
+    AliveNpc = 0x21,
+    DeadNpc = 0x22,
+};
 
 // Ping
 static constexpr uchar PING_PING = 0;
@@ -945,11 +1078,6 @@ static constexpr ushort MAXHEX_MAX = 4000;
 #define ANSWER_END (0xF1)
 #define ANSWER_BARTER (0xF2)
 
-// Crit conditions
-#define COND_ALIVE (1)
-#define COND_KNOCKOUT (2)
-#define COND_DEAD (3)
-
 // Run-time critters flags
 // Todo: remove critter flags
 static constexpr uint FCRIT_PLAYER = 0x00010000;
@@ -1006,11 +1134,6 @@ static constexpr uint LOOK_CHECK_TRACE = 0x08;
 static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
 static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 
-// SendMessage types
-static constexpr auto MESSAGE_TO_VISIBLE_ME = 0;
-static constexpr auto MESSAGE_TO_IAM_VISIBLE = 1;
-static constexpr auto MESSAGE_TO_ALL_ON_MAP = 2;
-
 // Anims
 #define ANIM1_UNARMED (1)
 #define ANIM2_IDLE (1)
@@ -1033,19 +1156,88 @@ static constexpr uint MOVE_PARAM_STEP_ALLOW = 0x8;
 static constexpr uint MOVE_PARAM_STEP_DISALLOW = 0x10;
 static constexpr uint MOVE_PARAM_RUN = 0x80000000;
 
-// Corner type
-static constexpr uchar CORNER_NORTH_SOUTH = 0;
-static constexpr uchar CORNER_WEST = 1;
-static constexpr uchar CORNER_EAST = 2;
-static constexpr uchar CORNER_SOUTH = 3;
-static constexpr uchar CORNER_NORTH = 4;
-static constexpr uchar CORNER_EAST_WEST = 5;
+// Property type in network interaction
+enum class NetProperty : uchar
+{
+    None = 0,
+    Game, // No extra args
+    Player, // No extra args
+    Critter, // One extra arg: cr_id
+    Chosen, // No extra args
+    MapItem, // One extra arg: item_id
+    CritterItem, // Two extra args: cr_id item_id
+    ChosenItem, // One extra arg: item_id
+    Map, // No extra args
+    Location, // No extra args
+};
 
-// Items accessory
-#define ITEM_ACCESSORY_NONE (0)
-#define ITEM_ACCESSORY_CRITTER (1)
-#define ITEM_ACCESSORY_HEX (2)
-#define ITEM_ACCESSORY_CONTAINER (3)
+///@ ExportEnum
+enum class EffectType : uint
+{
+    GenericSprite = 0x00000001,
+    CritterSprite = 0x00000002,
+    TileSprite = 0x00000004,
+    RoofSprite = 0x00000008,
+    RainSprite = 0x00000010,
+    SkinnedMesh = 0x00000400,
+    Interface = 0x00001000,
+    Contour = 0x00002000,
+    Font = 0x00010000,
+    Primitive = 0x00100000,
+    Light = 0x00200000,
+    Fog = 0x00400000,
+    FlushRenderTarget = 0x01000000,
+    FlushPrimitive = 0x04000000,
+    FlushMap = 0x08000000,
+    FlushLight = 0x10000000,
+    FlushFog = 0x20000000,
+    Offscreen = 0x40000000,
+};
+
+///@ ExportEnum
+enum class ItemOwnership : uchar
+{
+    Nowhere = 0,
+    CritterInventory = 1,
+    MapHex = 2,
+    ItemContainer = 3,
+};
+
+///@ ExportEnum
+enum class CornerType : uchar
+{
+    NorthSouth = 0,
+    West = 1,
+    East = 2,
+    South = 3,
+    North = 4,
+    EastWest = 5,
+};
+
+///@ ExportEnum
+enum class CritterCondition : uchar
+{
+    Alive = 0,
+    Knockout = 1,
+    Dead = 2,
+};
+
+///@ ExportEnum
+enum class MovingState : uchar
+{
+    InProgress = 0,
+    Success = 1,
+    TargetNotFound = 2,
+    CantMove = 3,
+    GagCritter = 4,
+    GagItem = 5,
+    InternalError = 6,
+    HexTooFar = 7,
+    HexBusy = 8,
+    HexBusyRing = 9,
+    Deadlock = 10,
+    TraceFail = 11,
+};
 
 // Uses
 #define USE_PRIMARY (0)
@@ -1186,7 +1378,34 @@ constexpr auto xrange(T value)
     return irange_loop<decltype(value.size())> {0, value.size()};
 }
 
+template<typename T>
+constexpr auto copy(T&& value) -> T
+{
+    return T(value);
+}
+
 // ReSharper restore CppInconsistentNaming
+
+class NameResolver
+{
+public:
+    virtual ~NameResolver() = default;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value) const -> string = 0;
+    [[nodiscard]] virtual auto ToHashedString(string_view s) const -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool& failed) -> int = 0;
+};
+
+class AnimationResolver
+{
+public:
+    virtual ~AnimationResolver() = default;
+    [[nodiscard]] virtual auto ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool = 0;
+    [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
+};
 
 extern void SetAppName(const char* name);
 extern auto GetAppName() -> const char*;

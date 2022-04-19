@@ -35,17 +35,14 @@
 
 #include "Common.h"
 
-#include "Entity.h"
-#include "GeometryHelper.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
 #include "MapLoader.h"
-#include "ServerScripting.h"
-#include "Settings.h"
-#include "Timer.h"
-
-#define FO_API_MAP_HEADER 1
-#include "ScriptApi.h"
+#include "ScriptSystem.h"
+#include "ServerEntity.h"
 
 class Item;
+using StaticItem = Item;
 class Critter;
 class Map;
 class Location;
@@ -53,25 +50,25 @@ class Location;
 struct StaticMap
 {
     vector<uchar> SceneryData {};
-    hash HashTiles {};
-    hash HashScen {};
+    uint HashTiles {};
+    uint HashScen {};
     vector<Critter*> CrittersVec {};
     vector<Item*> AllItemsVec {};
     vector<Item*> HexItemsVec {};
     vector<Item*> ChildItemsVec {};
-    vector<Item*> StaticItemsVec {};
-    vector<Item*> TriggerItemsVec {};
+    vector<StaticItem*> StaticItemsVec {};
+    vector<StaticItem*> TriggerItemsVec {};
     uchar* HexFlags {};
     vector<MapTile> Tiles {};
 };
 
-class Map final : public Entity
+class Map final : public ServerEntity, public MapProperties
 {
     friend class MapManager;
 
 public:
     Map() = delete;
-    Map(uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map, MapSettings& settings, ServerScriptSystem& script_sys, GameTimer& game_time);
+    Map(FOServer* engine, uint id, const ProtoMap* proto, Location* location, const StaticMap* static_map);
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;
@@ -81,13 +78,14 @@ public:
     [[nodiscard]] auto GetStaticMap() const -> const StaticMap* { return _staticMap; }
     [[nodiscard]] auto GetProtoMap() const -> const ProtoMap*;
     [[nodiscard]] auto GetLocation() -> Location*;
+    [[nodiscard]] auto GetLocation() const -> const Location*;
     [[nodiscard]] auto GetItem(uint item_id) -> Item*;
-    [[nodiscard]] auto GetItemHex(ushort hx, ushort hy, hash item_pid, Critter* picker) -> Item*;
+    [[nodiscard]] auto GetItemHex(ushort hx, ushort hy, hstring item_pid, Critter* picker) -> Item*;
     [[nodiscard]] auto GetItemGag(ushort hx, ushort hy) -> Item*;
     [[nodiscard]] auto GetItems() -> vector<Item*>;
     [[nodiscard]] auto GetItemsHex(ushort hx, ushort hy) -> vector<Item*>;
-    [[nodiscard]] auto GetItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>;
-    [[nodiscard]] auto GetItemsPid(hash pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<Item*>;
+    [[nodiscard]] auto GetItemsByProto(hstring pid) -> vector<Item*>;
     [[nodiscard]] auto GetItemsTrigger(ushort hx, ushort hy) -> vector<Item*>;
     [[nodiscard]] auto IsPlaceForProtoItem(ushort hx, ushort hy, const ProtoItem* proto_item) const -> bool;
     [[nodiscard]] auto FindStartHex(ushort hx, ushort hy, uint multihex, uint seek_radius, bool skip_unsafe) const -> optional<tuple<ushort, ushort>>;
@@ -102,11 +100,9 @@ public:
     [[nodiscard]] auto IsHexGag(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexStaticTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool;
-    [[nodiscard]] auto GetNpcCount(hash npc_role, uchar find_type) const -> uint;
     [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
-    [[nodiscard]] auto GetNpc(hash npc_role, uchar find_type, uint skip_count) -> Critter*;
     [[nodiscard]] auto GetHexCritter(ushort hx, ushort hy, bool dead) -> Critter*;
-    [[nodiscard]] auto GetCrittersHex(ushort hx, ushort hy, uint radius, uchar find_type) -> vector<Critter*>;
+    [[nodiscard]] auto GetCrittersHex(ushort hx, ushort hy, uint radius, CritterFindType find_type) -> vector<Critter*>;
     [[nodiscard]] auto GetCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetPlayers() -> vector<Critter*>;
     [[nodiscard]] auto GetNpcs() -> vector<Critter*>;
@@ -116,11 +112,11 @@ public:
     [[nodiscard]] auto GetCrittersCount() const -> uint;
     [[nodiscard]] auto GetPlayersCount() const -> uint;
     [[nodiscard]] auto GetNpcsCount() const -> uint;
-    [[nodiscard]] auto GetStaticItemTriggers(ushort hx, ushort hy) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItem(ushort hx, ushort hy, hash pid) -> Item*;
-    [[nodiscard]] auto GetStaticItemsHex(ushort hx, ushort hy) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hash pid) -> vector<Item*>;
-    [[nodiscard]] auto GetStaticItemsByPid(hash pid) -> vector<Item*>;
+    [[nodiscard]] auto GetStaticItemTriggers(ushort hx, ushort hy) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*;
+    [[nodiscard]] auto GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) -> vector<StaticItem*>;
+    [[nodiscard]] auto GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>;
 
     void SetLocation(Location* loc);
     void Process();
@@ -135,30 +131,33 @@ public:
     auto AddItem(Item* item, ushort hx, ushort hy) -> bool;
     void SetItem(Item* item, ushort hx, ushort hy);
     void EraseItem(uint item_id);
-    void SendProperty(NetProperty::Type type, Property* prop, Entity* entity);
+    void SendProperty(NetProperty type, const Property* prop, ServerEntity* entity);
     void ChangeViewItem(Item* item);
     void AnimateItem(Item* item, uchar from_frm, uchar to_frm);
-    void SendEffect(hash eff_pid, ushort hx, ushort hy, ushort radius);
-    void SendFlyEffect(hash eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
-    auto SetScript(string_view func, bool first_time) -> bool;
+    void SendEffect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
+    void SendFlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
     void SetHexFlag(ushort hx, ushort hy, uchar flag);
     void UnsetHexFlag(ushort hx, ushort hy, uchar flag);
     void SetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void UnsetFlagCritter(ushort hx, ushort hy, uint multihex, bool dead);
     void RecacheHexFlags(ushort hx, ushort hy);
 
-#define FO_API_MAP_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_MAP_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+    ///@ ExportEvent
+    ENTITY_EVENT(Finish);
+    ///@ ExportEvent
+    ENTITY_EVENT(Loop);
+    ///@ ExportEvent
+    ENTITY_EVENT(LoopEx, int /*loopIndex*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterIn, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CritterOut, Critter* /*critter*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CheckLook, Critter* /*critter*/, Critter* /*target*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(CheckTrapLook, Critter* /*critter*/, Item* /*item*/);
 
 private:
-    MapSettings& _settings;
-    GeometryHelper _geomHelper;
-    ServerScriptSystem& _scriptSys;
-    GameTimer& _gameTime;
     const StaticMap* _staticMap {};
     uchar* _hexFlags {};
     int _hexFlagsSize {};

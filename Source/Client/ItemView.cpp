@@ -32,25 +32,19 @@
 //
 
 #include "ItemView.h"
+#include "Client.h"
 #include "Timer.h"
 
-#define FO_API_ITEM_VIEW_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(ItemView, "Item", false);
-#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(ItemView, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-ItemView::ItemView(uint id, const ProtoItem* proto) : Entity(id, EntityType::ItemView, PropertiesRegistrator, proto)
+ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
 {
-    RUNTIME_ASSERT(Proto);
+    RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
 auto ItemView::Clone() const -> ItemView*
 {
-    auto* clone = new ItemView(Id, dynamic_cast<const ProtoItem*>(Proto));
-    clone->Props = Props;
+    auto* clone = new ItemView(_engine, GetId(), static_cast<const ProtoItem*>(_proto));
+    clone->SetProperties(GetProperties());
     return clone;
 }
 

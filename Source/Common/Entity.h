@@ -38,162 +38,197 @@
 #include "MsgFiles.h"
 #include "Properties.h"
 
-#define PROPERTIES_HEADER() static PropertyRegistrator* PropertiesRegistrator
+///@ ExportEntity Game FOServer FOClient Global
+///@ ExportEntity Player Player PlayerView
+///@ ExportEntity Item Item ItemView HasProto HasStatics
+///@ ExportEntity Critter Critter CritterView HasProto
+///@ ExportEntity Map Map MapView HasProto
+///@ ExportEntity Location Location LocationView HasProto
 
-#define PROPERTIES_IMPL(class_name, script_name, is_server) PropertyRegistrator* class_name::PropertiesRegistrator = new PropertyRegistrator(is_server)
+#define ENTITY_PROPERTY(access_type, prop_type, prop) \
+    inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \
+    inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
+    inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
+    inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; } \
+    static ushort prop##_RegIndex
 
-#define CLASS_PROPERTY(access_type, prop_type, prop, ...) \
-    static Property* Property##prop; \
-    inline prop_type Get##prop() const { return Props.GetValue<prop_type>(Property##prop); } \
-    inline void Set##prop(prop_type value) { Props.SetValue<prop_type>(Property##prop, value); } \
-    inline bool IsNonEmpty##prop() const { return Props.GetRawDataSize(Property##prop) > 0; }
+#define ENTITY_EVENT(event_name, ...) \
+    EntityEvent<__VA_ARGS__> On##event_name { this, #event_name }
 
-#define CLASS_PROPERTY_IMPL(class_name, access_type, prop_type, prop, ...) Property* class_name::Property##prop = class_name::PropertiesRegistrator->Register(Property::AccessType::access_type, typeid(prop_type), #prop)
-
-// Todo: remove EntityType enum, use dynamic cast
-enum class EntityType
+class EntityProperties
 {
-    Player,
-    PlayerProto,
-    ItemProto,
-    CritterProto,
-    MapProto,
-    LocationProto,
-    Item,
-    Critter,
-    Map,
-    Location,
-    PlayerView,
-    ItemView,
-    ItemHexView,
-    CritterView,
-    MapView,
-    LocationView,
-    Custom,
-    Global,
-    Max,
-};
+protected:
+    explicit EntityProperties(Properties& props);
 
-class ProtoEntity;
+    Properties& _propsRef;
+};
 
 class Entity
 {
+    friend class EntityEventBase;
+
 public:
+    using EventCallback = std::function<bool(const initializer_list<void*>&)>;
+
+    ///@ ExportEnum
+    enum class EventExceptionPolicy
+    {
+        IgnoreAndContinueChain,
+        StopChainAndReturnTrue,
+        StopChainAndReturnFalse,
+        PropogateException,
+    };
+
+    ///@ ExportEnum
+    enum class EventPriority
+    {
+        Lowest,
+        Low,
+        Normal,
+        High,
+        Highest,
+    };
+
+    struct EventCallbackData
+    {
+        EventCallback Callback {};
+        const void* SubscribtionPtr {};
+        EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
+        EventPriority Priority {EventPriority::Normal}; // Todo: improve entity event Priority
+        bool OneShot {}; // Todo: improve entity event OneShot
+        bool Deferred {}; // Todo: improve entity event Deferred
+    };
+
     Entity() = delete;
     Entity(const Entity&) = delete;
-    Entity(Entity&&) noexcept = default;
+    Entity(Entity&&) noexcept = delete;
     auto operator=(const Entity&) = delete;
     auto operator=(Entity&&) noexcept = delete;
 
-    [[nodiscard]] auto GetId() const -> uint;
-    [[nodiscard]] auto GetProtoId() const -> hash;
-    [[nodiscard]] auto GetName() const -> string;
+    [[nodiscard]] virtual auto GetName() const -> string_view = 0;
+    [[nodiscard]] virtual auto IsGlobal() const -> bool { return false; }
+    [[nodiscard]] auto GetClassName() const -> string_view;
+    [[nodiscard]] auto GetProperties() const -> const Properties&;
+    [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
+    [[nodiscard]] auto IsDestroying() const -> bool;
+    [[nodiscard]] auto IsDestroyed() const -> bool;
+    [[nodiscard]] auto GetValueAsInt(const Property* prop) const -> int;
+    [[nodiscard]] auto GetValueAsInt(int prop_index) const -> int;
+    [[nodiscard]] auto GetValueAsFloat(const Property* prop) const -> float;
+    [[nodiscard]] auto GetValueAsFloat(int prop_index) const -> float;
 
-    void SetId(uint id); // Todo: use passkey for SetId
+    void SetProperties(const Properties& props);
+    auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
+    void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
+    void RestoreData(const vector<vector<uchar>>& properties_data);
+    auto LoadFromText(const map<string, string>& key_values) -> bool;
+    void SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send);
+    void SetValueAsInt(const Property* prop, int value);
+    void SetValueAsInt(int prop_index, int value);
+    void SetValueAsFloat(const Property* prop, float value);
+    void SetValueAsFloat(int prop_index, float value);
+    void SubscribeEvent(const string& event_name, EventCallbackData callback);
+    void UnsubscribeEvent(const string& event_name, const void* subscription_ptr);
+    void UnsubscribeAllEvent(const string& event_name);
+    auto FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool;
+
     void AddRef() const;
     void Release() const;
 
-    Properties Props;
-    const uint Id;
-    const EntityType Type;
-    const ProtoEntity* Proto;
-    mutable int RefCounter {1};
-    bool IsDestroyed {};
-    bool IsDestroying {};
+    void MarkAsDestroying();
+    void MarkAsDestroyed();
 
 protected:
-    Entity(uint id, EntityType type, PropertyRegistrator* registartor, const ProtoEntity* proto);
-    virtual ~Entity();
+    explicit Entity(const PropertyRegistrator* registrator);
+    virtual ~Entity() = default;
+
+    auto GetInitRef() -> Properties& { return _props; }
 
     bool _nonConstHelper {};
+
+private:
+    auto GetEventCallbacks(const string& event_name) -> vector<EventCallbackData>*;
+    void SubscribeEvent(vector<EventCallbackData>* callbacks, EventCallbackData callback);
+    void UnsubscribeEvent(vector<EventCallbackData>* callbacks, const void* subscription_ptr);
+    auto FireEvent(vector<EventCallbackData>* callbacks, const initializer_list<void*>& args) -> bool;
+
+    Properties _props;
+    map<string, vector<EventCallbackData>> _events;
+    bool _isDestroying {};
+    bool _isDestroyed {};
+    mutable int _refCounter {1};
 };
 
 class ProtoEntity : public Entity
 {
 public:
-    [[nodiscard]] auto HaveComponent(hash name) const -> bool;
+    [[nodiscard]] auto GetName() const -> string_view override;
+    [[nodiscard]] auto GetProtoId() const -> hstring;
+    [[nodiscard]] auto HaveComponent(hstring name) const -> bool;
+    [[nodiscard]] auto GetComponents() -> unordered_set<hstring>& { return _components; }
+    [[nodiscard]] auto GetComponents() const -> unordered_set<hstring> { return _components; }
 
-    const hash ProtoId;
     vector<uint> TextsLang {};
     vector<FOMsg*> Texts {};
-    set<hash> Components {};
     string CollectionName {};
 
 protected:
-    ProtoEntity(hash proto_id, EntityType type, PropertyRegistrator* registrator);
+    ProtoEntity(hstring proto_id, const PropertyRegistrator* registrator);
+
+    const hstring _protoId;
+    unordered_set<hstring> _components {};
 };
 
-class CustomEntity final : public Entity
+class EntityWithProto : public Entity
 {
 public:
-    CustomEntity(uint id, uint sub_type, PropertyRegistrator* registrator);
+    EntityWithProto() = delete;
+    EntityWithProto(const EntityWithProto&) = delete;
+    EntityWithProto(EntityWithProto&&) noexcept = delete;
+    auto operator=(const EntityWithProto&) = delete;
+    auto operator=(EntityWithProto&&) noexcept = delete;
 
-    const uint SubType;
+    [[nodiscard]] auto GetName() const -> string_view override;
+    [[nodiscard]] auto GetProtoId() const -> hstring;
+    [[nodiscard]] auto GetProto() const -> const ProtoEntity*;
+
+protected:
+    EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto);
+    ~EntityWithProto() override;
+
+    const ProtoEntity* _proto;
 };
 
-class GlobalVars final : public Entity
+class EntityEventBase
 {
 public:
-    GlobalVars();
+    void Subscribe(Entity::EventCallbackData callback);
+    void Unsubscribe(const void* subscription_ptr);
+    void UnsubscribeAll();
 
-    PROPERTIES_HEADER();
-#define FO_API_GLOBAL_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+protected:
+    EntityEventBase(Entity* entity, const char* callback_name);
+
+    auto FireEx(const initializer_list<void*>& args) -> bool;
+
+    Entity* _entity;
+    const char* _callbackName;
+    vector<Entity::EventCallbackData>* _callbacks {};
 };
 
-class ProtoPlayer final : public ProtoEntity
+template<typename... Args>
+class EntityEvent final : public EntityEventBase
 {
 public:
-    explicit ProtoPlayer(hash pid);
+    EntityEvent(Entity* entity, const char* callback_name) : EntityEventBase(entity, callback_name) { }
 
-    PROPERTIES_HEADER();
-#define FO_API_PLAYER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
-};
+    auto Fire(Args... args) -> bool
+    {
+        if (_callbacks == nullptr) {
+            return false;
+        }
 
-class ProtoItem final : public ProtoEntity
-{
-public:
-    explicit ProtoItem(hash pid);
-
-    [[nodiscard]] auto IsStatic() const -> bool { return GetIsStatic(); }
-    [[nodiscard]] auto IsAnyScenery() const -> bool { return IsScenery() || IsWall(); }
-    [[nodiscard]] auto IsScenery() const -> bool { return GetIsScenery(); }
-    [[nodiscard]] auto IsWall() const -> bool { return GetIsWall(); }
-
-    mutable int64 InstanceCount {};
-
-    PROPERTIES_HEADER();
-#define FO_API_ITEM_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
-};
-
-class ProtoCritter final : public ProtoEntity
-{
-public:
-    explicit ProtoCritter(hash pid);
-
-    PROPERTIES_HEADER();
-#define FO_API_CRITTER_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
-};
-
-class ProtoMap final : public ProtoEntity
-{
-public:
-    explicit ProtoMap(hash pid);
-
-    PROPERTIES_HEADER();
-#define FO_API_MAP_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
-};
-
-class ProtoLocation final : public ProtoEntity
-{
-public:
-    explicit ProtoLocation(hash pid);
-
-    PROPERTIES_HEADER();
-#define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
+        const initializer_list<void*> args_list = {&args...};
+        return FireEx(args_list);
+    }
 };

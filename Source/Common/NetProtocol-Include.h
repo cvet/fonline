@@ -487,12 +487,12 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_SET_ANIMS MAKE_NETMSG_HEADER(96)
-#define NETMSG_CRITTER_SET_ANIMS_SIZE (sizeof(uint) + sizeof(int) + sizeof(uint) * 3)
+#define NETMSG_CRITTER_SET_ANIMS_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uchar) + sizeof(uint) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
 // uint crid
-// int cond
+// CritterCondition cond
 // uint ind1
 // uint ind2
 // ////////////////////////////////////////////////////////////////////////
@@ -503,7 +503,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_EFFECT MAKE_NETMSG_HEADER(98)
-#define NETMSG_EFFECT_SIZE (sizeof(uint) + sizeof(hash) + sizeof(ushort) * 3)
+#define NETMSG_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(ushort) * 3)
 // ////////////////////////////////////////////////////////////////////////
 // explode
 // Params:
@@ -514,7 +514,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_FLY_EFFECT MAKE_NETMSG_HEADER(99)
-#define NETMSG_FLY_EFFECT_SIZE (sizeof(uint) + sizeof(hash) + sizeof(uint) * 2 + sizeof(ushort) * 4)
+#define NETMSG_FLY_EFFECT_SIZE (sizeof(uint) + sizeof(hstring::hash_t) + sizeof(uint) * 2 + sizeof(ushort) * 4)
 // ////////////////////////////////////////////////////////////////////////
 // shoot
 // Params:
@@ -631,7 +631,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_SEND_GIVE_MAP MAKE_NETMSG_HEADER(123)
-#define NETMSG_SEND_GIVE_MAP_SIZE (sizeof(uint) + sizeof(bool) + sizeof(hash) + sizeof(uint) + sizeof(hash) * 2)
+#define NETMSG_SEND_GIVE_MAP_SIZE (sizeof(uint) + sizeof(bool) + sizeof(hstring::hash_t) + sizeof(uint) + sizeof(hstring::hash_t) * 2)
 // ////////////////////////////////////////////////////////////////////////
 // Request on map data, on map loading or for automap
 // bool automap
@@ -704,7 +704,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 #define NETMSG_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(uint) * (x) + sizeof(ushort) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Property changed
-// NetProperty::Type type
+// NetProperty type
 // uint vars[x]
 // ushort property_index
 // uchar data[b]
@@ -714,7 +714,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // Property changed
 // uint msg_len
-// NetProperty::Type type
+// NetProperty type
 // uint vars[x]
 // ushort property_index
 // uchar data[msg_len - ...]
@@ -724,7 +724,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 #define NETMSG_SEND_POD_PROPERTY_SIZE(b, x) (sizeof(uint) + sizeof(char) + sizeof(uint) * (x) + sizeof(ushort) + (b))
 // ////////////////////////////////////////////////////////////////////////
 // Client change property
-// NetProperty::Type type
+// NetProperty type
 // uint vars[x]
 // ushort property_index
 // uchar data[b]
@@ -734,7 +734,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // Client change property
 // uint msg_len
-// NetProperty::Type type
+// NetProperty type
 // uint vars[x]
 // ushort property_index
 // uchar data[msg_len - ...]
@@ -763,10 +763,10 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
         (data_vec).resize(data_count_); \
         for (ushort i_ = 0; i_ < data_count_; i_++) { \
             uint data_size_; \
-            Bin >> data_size_; \
+            (bin) >> data_size_; \
             (data_vec)[i_].resize(data_size_); \
             if (data_size_ > 0u) { \
-                Bin.Pop(&(data_vec)[i_][0], data_size_); \
+                (bin).Pop(&(data_vec)[i_][0], data_size_); \
             } \
         } \
     } while (0)

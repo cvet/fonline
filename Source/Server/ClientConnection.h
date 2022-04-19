@@ -81,9 +81,9 @@ public:
     void Send_TextMsg(uint num_str);
     void Send_TextMsgLex(uint num_str, string_view lexems);
 
-    NetBuffer& Bin;
+    NetInBuffer& Bin;
     std::mutex& BinLocker;
-    NetBuffer& Bout;
+    NetOutBuffer& Bout;
     std::mutex& BoutLocker;
 
     uint PingNextTick {};

@@ -41,7 +41,6 @@
 
 #include "3dStuff.h"
 #include "Application.h"
-#include "ClientScripting.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "Settings.h"
@@ -206,7 +205,7 @@ struct AnyFrames
     uint Ticks {}; // Time of playing animation
     uint Anim1 {};
     uint Anim2 {};
-    hash NameHash {};
+    hstring Name {};
     int DirCount {1};
     AnyFrames* Dirs[7] {}; // 7 additional for square hexes, 5 for hexagonal
 };
@@ -234,7 +233,7 @@ class SpriteManager final
 {
 public:
     SpriteManager() = delete;
-    SpriteManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, ClientScriptSystem& script_sys, GameTimer& game_time);
+    SpriteManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;

@@ -34,45 +34,12 @@
 #include "Item.h"
 #include "CritterManager.h"
 #include "ItemManager.h"
-#include "Log.h"
-#include "MapManager.h"
-#include "ProtoManager.h"
-#include "StringUtils.h"
+#include "Server.h"
 
-#define FO_API_ITEM_IMPL 1
-#include "ScriptApi.h"
-
-PROPERTIES_IMPL(Item, "Item", true);
-#define FO_API_ITEM_PROPERTY(access, type, name, ...) CLASS_PROPERTY_IMPL(Item, access, type, name, __VA_ARGS__);
-#include "ScriptApi.h"
-
-Item::Item(uint id, const ProtoItem* proto, ServerScriptSystem& script_sys) : Entity(id, EntityType::Item, PropertiesRegistrator, proto), _scriptSys {script_sys}
+Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
     RUNTIME_ASSERT(GetCount() > 0);
-}
-
-auto Item::SetScript(string_view /*func*/, bool /*first_time*/) -> bool
-{
-    /*if (func)
-    {
-        hash func_num = scriptSys.BindScriptFuncNumByFunc(func);
-        if (!func_num)
-        {
-            WriteLog("Script bind fail, item '{}'.\n", GetName());
-            return false;
-        }
-        SetScriptId(func_num);
-    }
-
-    if (GetScriptId())
-    {
-        scriptSys.PrepareScriptFuncContext(GetScriptId(), _str("Item '{}' ({})", GetName(), GetId()));
-        scriptSys.SetArgEntity(this);
-        scriptSys.SetArgBool(first_time);
-        scriptSys.RunPrepared();
-    }*/
-    return true;
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)
@@ -117,7 +84,7 @@ auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*
     return nullptr;
 }
 
-auto Item::ContGetAllItems(bool skip_hide) -> vector<Item*>
+auto Item::ContGetAllItems(bool skip_hidden) -> vector<Item*>
 {
     NON_CONST_METHOD_HINT();
 
@@ -129,14 +96,14 @@ auto Item::ContGetAllItems(bool skip_hide) -> vector<Item*>
     items.reserve(_childItems->size());
 
     for (auto* item : *_childItems) {
-        if (!skip_hide || !item->GetIsHidden()) {
+        if (!skip_hidden || !item->GetIsHidden()) {
             items.push_back(item);
         }
     }
     return items;
 }
 
-auto Item::ContGetItemByPid(hash pid, uint stack_id) -> Item*
+auto Item::ContGetItemByPid(hstring pid, uint stack_id) -> Item*
 {
     NON_CONST_METHOD_HINT();
 

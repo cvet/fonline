@@ -35,20 +35,18 @@
 
 #include "Common.h"
 
-#include "Entity.h"
-#include "ServerScripting.h"
-
-#define FO_API_LOCATION_HEADER 1
-#include "ScriptApi.h"
+#include "EntityProperties.h"
+#include "EntityProtos.h"
+#include "ServerEntity.h"
 
 class Map;
 class Location;
 
-class Location final : public Entity
+class Location final : public ServerEntity, public LocationProperties
 {
 public:
     Location() = delete;
-    Location(uint id, const ProtoLocation* proto, ServerScriptSystem& script_sys);
+    Location(FOServer* engine, uint id, const ProtoLocation* proto);
     Location(const Location&) = delete;
     Location(Location&&) noexcept = delete;
     auto operator=(const Location&) = delete;
@@ -59,29 +57,25 @@ public:
     auto GetProtoLoc() const -> const ProtoLocation*;
     auto IsLocVisible() const -> bool;
     auto GetMapsRaw() -> vector<Map*>&;
-    auto GetMaps() const -> vector<Map*>;
+    auto GetMaps() -> vector<Map*>;
+    auto GetMaps() const -> vector<const Map*>;
     auto GetMapsCount() const -> uint;
     auto GetMapByIndex(uint index) -> Map*;
-    auto GetMapByPid(hash map_pid) -> Map*;
-    auto GetMapIndex(hash map_pid) -> uint;
+    auto GetMapByPid(hstring map_pid) -> Map*;
+    auto GetMapIndex(hstring map_pid) -> uint;
     auto IsCanEnter(uint players_count) -> bool;
     auto IsNoCrit() -> bool;
     auto IsNoPlayer() -> bool;
     auto IsNoNpc() -> bool;
     auto IsCanDelete() -> bool;
 
+    ///@ ExportEvent
+    ENTITY_EVENT(Finish);
+
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};
     int GeckCount {};
 
-#define FO_API_LOCATION_CLASS 1
-#include "ScriptApi.h"
-
-    PROPERTIES_HEADER();
-#define FO_API_LOCATION_PROPERTY CLASS_PROPERTY
-#include "ScriptApi.h"
-
 private:
-    ServerScriptSystem& _scriptSys;
     vector<Map*> _locMaps {};
 };

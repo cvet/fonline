@@ -32,14 +32,14 @@ if [%1] == [win32-client] (
 ) else if [%1] == [win64-clang-client] (
     set BUILD_TARGET=FONLINE_BUILD_CLIENT
     set BUILD_ARCH=x64
-    set BUILD_TOOLSET=LLVM_v142
+    set BUILD_TOOLSET=ClangCL
 ) else if [%1] == [win64-server] (
     set BUILD_TARGET=FONLINE_BUILD_SERVER
     set BUILD_ARCH=x64
 ) else if [%1] == [win64-clang-server] (
     set BUILD_TARGET=FONLINE_BUILD_SERVER
     set BUILD_ARCH=x64
-    set BUILD_TOOLSET=LLVM_v142
+    set BUILD_TOOLSET=ClangCL
 ) else if [%1] == [win32-single] (
     set BUILD_TARGET=FONLINE_BUILD_SINGLE
     set BUILD_ARCH=Win32
@@ -53,7 +53,7 @@ if [%1] == [win32-client] (
 ) else if [%1] == [win64-clang-single] (
     set BUILD_TARGET=FONLINE_BUILD_SINGLE
     set BUILD_ARCH=x64
-    set BUILD_TOOLSET=LLVM_v142
+    set BUILD_TOOLSET=ClangCL
 ) else if [%1] == [win64-mapper] (
     set BUILD_TARGET=FONLINE_BUILD_MAPPER
     set BUILD_ARCH=x64
@@ -63,14 +63,14 @@ if [%1] == [win32-client] (
 ) else if [%1] == [win64-clang-ascompiler] (
     set BUILD_TARGET=FONLINE_BUILD_ASCOMPILER
     set BUILD_ARCH=x64
-    set BUILD_TOOLSET=LLVM_v142
+    set BUILD_TOOLSET=ClangCL
 ) else if [%1] == [win64-baker] (
     set BUILD_TARGET=FONLINE_BUILD_BAKER
     set BUILD_ARCH=x64
 ) else if [%1] == [win64-clang-baker] (
     set BUILD_TARGET=FONLINE_BUILD_BAKER
     set BUILD_ARCH=x64
-    set BUILD_TOOLSET=LLVM_v142
+    set BUILD_TOOLSET=ClangCL
 ) else (
     echo Invalid build argument
     exit /b 1
@@ -81,10 +81,10 @@ if not exist %BUILD_DIR% mkdir %BUILD_DIR%
 cd %BUILD_DIR%
 
 if not [%BUILD_TOOLSET%] == [] (
-    cmake -A %BUILD_ARCH% -T %BUILD_TOOLSET% -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
+    cmake -A %BUILD_ARCH% -T %BUILD_TOOLSET% -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
 ) else if [%BUILD_CACHE%] == [] (
-    cmake -A %BUILD_ARCH% -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
+    cmake -A %BUILD_ARCH% -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
 ) else (
-    cmake -A %BUILD_ARCH% -C "%FO_ROOT%\BuildTool\%BUILD_CACHE%" -DCMAKE_BUILD_TYPE=Debug -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
+    cmake -A %BUILD_ARCH% -C "%FO_ROOT%\BuildTool\%BUILD_CACHE%" -D%BUILD_TARGET%=1 -DFONLINE_UNIT_TESTS=0 "%FO_ROOT%"
 )
 cmake --build . --config Debug

@@ -25,6 +25,8 @@ elif [ "$2" = "unit-tests" ]; then
     BUILD_TARGET="-DFONLINE_UNIT_TESTS=1"
 elif [ "$2" = "code-coverage" ]; then
     BUILD_TARGET="--DFONLINE_CODE_COVERAGE=1 -DFONLINE_UNIT_TESTS=0"
+elif [ "$2" = "toolset" ]; then
+    BUILD_TARGET="-DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0"
 elif [ "$2" = "full" ]; then
     BUILD_TARGET="-DFONLINE_BUILD_CLIENT=1 -DFONLINE_BUILD_SERVER=1 -DFONLINE_BUILD_SINGLE=1 -DFONLINE_BUILD_MAPPER=1 -DFONLINE_BUILD_BAKER=1 -DFONLINE_BUILD_ASCOMPILER=1 -DFONLINE_UNIT_TESTS=0"
 else
@@ -38,41 +40,25 @@ if [ "$3" = "debug" ]; then
     CONFIG="Debug"
     BUILD_DIR="$BUILD_DIR-debug"
 fi
-BUILD_TARGET=" -DCMAKE_BUILD_TYPE=$CONFIG $BUILD_TARGET"
 
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
+rm -rf ready
+
 OUTPUT_PATH=$FO_WORKSPACE/output
-mkdir -p $OUTPUT_PATH
 
-if [ "$1" = "win64" ] || [ "$1" = "win32" ] || [ "$1" = "uwp" ]; then
-    FO_ROOT_WIN=`wsl_path_to_windows "$FO_ROOT"`
-    OUTPUT_PATH_WIN=`wsl_path_to_windows "$OUTPUT_PATH"`
-    FO_CMAKE_CONTRIBUTION_WIN=`wsl_path_to_windows "$FO_CMAKE_CONTRIBUTION"`
+if [ "$1" = "linux" ]; then
+    export CC=/usr/bin/clang
+    export CXX=/usr/bin/clang++
 
-    if [ "$1" = "win64" ]; then
-        cmake.exe -G "Visual Studio 16 2019" -A x64 -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
-        cmake.exe --build . --config $CONFIG --parallel
-    elif [ "$1" = "win32" ]; then
-        cmake.exe -G "Visual Studio 16 2019" -A Win32 -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
-        cmake.exe --build . --config $CONFIG --parallel
-    elif [ "$1" = "uwp" ]; then
-        cmake.exe -G "Visual Studio 16 2019" -A x64 -C "$FO_ROOT_WIN/BuildTools/uwp.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH_WIN" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION_WIN" "$FO_ROOT_WIN"
-        cmake.exe --build . --config $CONFIG --parallel
-    fi
-
-elif [ "$1" = "linux" ]; then
-    export CC=/usr/bin/clang-10
-    export CXX=/usr/bin/clang++-10
-
-    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
     cmake --build . --config $CONFIG --parallel
 
 elif [ "$1" = "web" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
     cmake --build . --config $CONFIG --parallel
 
 elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86" ]; then
@@ -86,7 +72,7 @@ elif [ "$1" = "android" ] || [ "$1" = "android-arm64" ] || [ "$1" = "android-x86
         export ANDROID_ABI=x86
     fi
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
     cmake --build . --config $CONFIG --parallel
 
 elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
@@ -105,10 +91,12 @@ elif [ "$1" = "mac" ] || [ "$1" = "ios" ]; then
     fi
 
 elif [ "$1" = "ps4" ]; then
-    cmake.exe -G "Unix Makefiles" -A x64 -C "$FO_ROOT/BuildTools/ps4.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
+    cmake.exe -G "Unix Makefiles" -A x64 -C "$FO_ROOT/BuildTools/ps4.cache.cmake" -DFONLINE_OUTPUT_PATH="$OUTPUT_PATH" $BUILD_TARGET -DCMAKE_BUILD_TYPE=$CONFIG -DFONLINE_CMAKE_CONTRIBUTION="$FO_CMAKE_CONTRIBUTION" "$FO_ROOT"
     cmake.exe --build . --config $CONFIG --parallel
 
 else
     echo "Invalid first command arg"
     exit 1
 fi
+
+touch ready
