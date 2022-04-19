@@ -33,6 +33,7 @@
 
 #include "Properties.h"
 #include "Log.h"
+#include "PropertiesSerializator.h"
 #include "ScriptSystem.h"
 #include "StringUtils.h"
 
@@ -210,373 +211,6 @@ void Properties::RestoreData(const vector<vector<uchar>>& all_data)
     RestoreData(all_data_ext, all_data_sizes);
 }
 
-static auto ReadToken(const char* str, string& result) -> const char*
-{
-    if (*str == 0) {
-        return nullptr;
-    }
-
-    const char* begin;
-    const auto* s = str;
-
-    uint length = 0;
-    utf8::Decode(s, &length);
-    while (length == 1 && (*s == ' ' || *s == '\t')) {
-        utf8::Decode(++s, &length);
-    }
-
-    if (*s == 0) {
-        return nullptr;
-    }
-
-    if (length == 1 && *s == '{') {
-        s++;
-        begin = s;
-
-        auto braces = 1;
-        while (*s != 0) {
-            if (length == 1 && *s == '\\') {
-                ++s;
-                if (*s != 0) {
-                    utf8::Decode(s, &length);
-                    s += length;
-                }
-            }
-            else if (length == 1 && *s == '{') {
-                braces++;
-                s++;
-            }
-            else if (length == 1 && *s == '}') {
-                braces--;
-                if (braces == 0) {
-                    break;
-                }
-                s++;
-            }
-            else {
-                s += length;
-            }
-            utf8::Decode(s, &length);
-        }
-    }
-    else {
-        begin = s;
-        while (*s != 0) {
-            if (length == 1 && *s == '\\') {
-                utf8::Decode(++s, &length);
-                s += length;
-            }
-            else if (length == 1 && (*s == ' ' || *s == '\t')) {
-                break;
-            }
-            else {
-                s += length;
-            }
-            utf8::Decode(s, &length);
-        }
-    }
-
-    result.assign(begin, static_cast<uint>(s - begin));
-    return *s != 0 ? s + 1 : s;
-}
-
-static auto CodeString(string_view str, int deep) -> string
-{
-    auto need_braces = false;
-    if (deep > 0 && (str.empty() || str.find_first_of(" \t") != string::npos)) {
-        need_braces = true;
-    }
-    if (!need_braces && deep == 0 && !str.empty() && (str.find_first_of(" \t") == 0 || str.find_last_of(" \t") == str.length() - 1)) {
-        need_braces = true;
-    }
-    if (!need_braces && str.length() >= 2 && str.back() == '\\' && str[str.length() - 2] == ' ') {
-        need_braces = true;
-    }
-
-    string result;
-    result.reserve(str.length() * 2);
-
-    if (need_braces) {
-        result.append("{");
-    }
-
-    const auto* s = str.data();
-    uint length = 0;
-    while (*s != 0) {
-        utf8::Decode(s, &length);
-        if (length == 1) {
-            switch (*s) {
-            case '\r':
-                break;
-            case '\n':
-                result.append("\\n");
-                break;
-            case '{':
-                result.append("\\{");
-                break;
-            case '}':
-                result.append("\\}");
-                break;
-            case '\\':
-                result.append("\\\\");
-                break;
-            default:
-                result.append(s, 1);
-                break;
-            }
-        }
-        else {
-            result.append(s, length);
-        }
-
-        s += length;
-    }
-
-    if (need_braces) {
-        result.append("}");
-    }
-
-    return result;
-}
-
-static auto DecodeString(string_view str) -> string
-{
-    if (str.empty()) {
-        return string();
-    }
-
-    string result;
-    result.reserve(str.length());
-
-    const auto* s = str.data();
-    uint length = 0;
-
-    utf8::Decode(s, &length);
-    const auto is_braces = length == 1 && *s == '{';
-    if (is_braces) {
-        s++;
-    }
-
-    while (*s != 0) {
-        utf8::Decode(s, &length);
-        if (length == 1 && *s == '\\') {
-            utf8::Decode(++s, &length);
-
-            switch (*s) {
-            case 'n':
-                result.append("\n");
-                break;
-            case '{':
-                result.append("{");
-                break;
-            case '}':
-                result.append("\n");
-                break;
-            case '\\':
-                result.append("\\");
-                break;
-            default:
-                result.append(1, '\\');
-                result.append(s, length);
-                break;
-            }
-        }
-        else {
-            result.append(s, length);
-        }
-
-        s += length;
-    }
-
-    if (is_braces && length == 1 && result.back() == '}') {
-        result.pop_back();
-    }
-
-    return result;
-}
-
-/*string WriteValue(void* ptr, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep)
-{
-    if (!(type_id & asTYPEID_MASK_OBJECT))
-    {
-        RUNTIME_ASSERT(type_id != asTYPEID_VOID);
-
-#define VALUE_AS(ctype) (*(ctype*)(ptr))
-#define CHECK_PRIMITIVE(astype, ctype) \
-    if (type_id == astype) \
-    return _str("{}", VALUE_AS(ctype))
-#define CHECK_PRIMITIVE_EXT(astype, ctype, ctype_str) \
-    if (type_id == astype) \
-    return _str("{}", (ctype_str)VALUE_AS(ctype))
-
-        if (is_hashes[deep])
-        {
-            RUNTIME_ASSERT(type_id == asTYPEID_UINT32);
-            return VALUE_AS(hash) ? CodeString(_str().parseHash(VALUE_AS(hash)), deep) : CodeString("", deep);
-        }
-
-        CHECK_PRIMITIVE(asTYPEID_BOOL, bool);
-        CHECK_PRIMITIVE_EXT(asTYPEID_INT8, char, int);
-        CHECK_PRIMITIVE(asTYPEID_INT16, short);
-        CHECK_PRIMITIVE(asTYPEID_INT32, int);
-        CHECK_PRIMITIVE(asTYPEID_INT64, int64);
-        CHECK_PRIMITIVE(asTYPEID_UINT8, uchar);
-        CHECK_PRIMITIVE(asTYPEID_UINT16, ushort);
-        CHECK_PRIMITIVE(asTYPEID_UINT32, uint);
-        CHECK_PRIMITIVE(asTYPEID_UINT64, uint64);
-        CHECK_PRIMITIVE(asTYPEID_DOUBLE, double);
-        CHECK_PRIMITIVE(asTYPEID_FLOAT, float);
-        // return Script::ResolveEnumValueName(Script::GetEngine()->GetTypeDeclaration(type_id), VALUE_AS(int));
-        return "";
-
-#undef VALUE_AS
-#undef CHECK_PRIMITIVE
-#undef CHECK_PRIMITIVE_EXT
-    }
-    else if (Str::Compare(as_obj_type->GetName(), "string"))
-    {
-        string& str = *(string*)ptr;
-        return CodeString(str, deep);
-    }
-    else if (Str::Compare(as_obj_type->GetName(), "array"))
-    {
-        string result = (deep > 0 ? "{" : "");
-        CScriptArray* arr = (CScriptArray*)ptr;
-        if (deep > 0)
-            arr = *(CScriptArray**)ptr;
-        asUINT arr_size = arr->GetSize();
-        if (arr_size > 0)
-        {
-            int value_type_id = as_obj_type->GetSubTypeId(0);
-            asITypeInfo* value_type = as_obj_type->GetSubType(0);
-            for (asUINT i = 0; i < arr_size; i++)
-                result.append(WriteValue(arr->At(i), value_type_id, value_type, is_hashes, deep + 1)).append(" ");
-            result.pop_back();
-        }
-        if (deep > 0)
-            result.append("}");
-        return result;
-    }
-    else if (Str::Compare(as_obj_type->GetName(), "dict"))
-    {
-        string result = (deep > 0 ? "{" : "");
-        CScriptDict* dict = (CScriptDict*)ptr;
-        if (dict->GetSize() > 0)
-        {
-            int key_type_id = as_obj_type->GetSubTypeId(0);
-            int value_type_id = as_obj_type->GetSubTypeId(1);
-            asITypeInfo* key_type = as_obj_type->GetSubType(0);
-            asITypeInfo* value_type = as_obj_type->GetSubType(1);
-            vector<pair<void*, void*>> dict_map;
-            dict->GetMap(dict_map);
-            for (const auto& dict_kv : dict_map)
-            {
-                result.append(WriteValue(dict_kv.first, key_type_id, key_type, is_hashes, deep + 1)).append(" ");
-                result.append(WriteValue(dict_kv.second, value_type_id, value_type, is_hashes, deep + 2)).append(" ");
-            }
-            result.pop_back();
-        }
-        if (deep > 0)
-            result.append("}");
-        return result;
-    }
-    throw UnreachablePlaceException(LINE_STR);
-    return "";
-}
-
-void* ReadValue(
-    const char* value, int type_id, asITypeInfo* as_obj_type, bool* is_hashes, int deep, void* pod_buf, bool& is_error)
-{
-    RUNTIME_ASSERT(deep <= 3);
-
-    if (!(type_id & asTYPEID_MASK_OBJECT))
-    {
-        RUNTIME_ASSERT(type_id != asTYPEID_VOID);
-
-#define CHECK_PRIMITIVE(astype, ctype, ato) \
-    if (type_id == astype) \
-    { \
-        ctype v = (ctype)_str(value).ato(); \
-        std::memcpy(pod_buf, &v, sizeof(ctype)); \
-        return pod_buf; \
-    }
-
-        if (is_hashes[deep])
-        {
-            RUNTIME_ASSERT(type_id == asTYPEID_UINT32);
-            hash v = _str(DecodeString(value)).toHash();
-            std::memcpy(pod_buf, &v, sizeof(v));
-            return pod_buf;
-        }
-
-        CHECK_PRIMITIVE(asTYPEID_BOOL, bool, toBool);
-        CHECK_PRIMITIVE(asTYPEID_INT8, char, toInt);
-        CHECK_PRIMITIVE(asTYPEID_INT16, short, toInt);
-        CHECK_PRIMITIVE(asTYPEID_INT32, int, toInt);
-        CHECK_PRIMITIVE(asTYPEID_INT64, int64, toInt64);
-        CHECK_PRIMITIVE(asTYPEID_UINT8, uchar, toUInt);
-        CHECK_PRIMITIVE(asTYPEID_UINT16, ushort, toUInt);
-        CHECK_PRIMITIVE(asTYPEID_UINT32, uint, toUInt);
-        CHECK_PRIMITIVE(asTYPEID_UINT64, uint64, toUInt64);
-        CHECK_PRIMITIVE(asTYPEID_DOUBLE, double, toDouble);
-        CHECK_PRIMITIVE(asTYPEID_FLOAT, float, toFloat);
-
-        // int v = Script::ResolveEnumValue(Script::GetEngine()->GetTypeDeclaration(type_id), value, is_error);
-        // std::memcpy(pod_buf, &v, sizeof(v));
-        // return pod_buf;
-        return 0;
-
-#undef CHECK_PRIMITIVE
-    }
-    else if (Str::Compare(as_obj_type->GetName(), "string"))
-    {
-        // string* str = (string*)Script::GetEngine()->CreateScriptObject(as_obj_type);
-        // *str = DecodeString(value);
-        // return str;
-        return 0;
-    }
-    else if (Str::Compare(as_obj_type->GetName(), "array"))
-    {
-        CScriptArray* arr = CScriptArray::Create(as_obj_type);
-        int value_type_id = as_obj_type->GetSubTypeId(0);
-        asITypeInfo* value_type = as_obj_type->GetSubType(0);
-        string str;
-        uchar arr_pod_buf[8];
-        while ((value = ReadToken(value, str)))
-        {
-            void* v = ReadValue(str.c_str(), value_type_id, value_type, is_hashes, deep + 1, arr_pod_buf, is_error);
-            arr->InsertLast(value_type_id & asTYPEID_OBJHANDLE ? &v : v);
-            // if (v != arr_pod_buf)
-            //    Script::GetEngine()->ReleaseScriptObject(v, value_type);
-        }
-        return arr;
-    }
-    else if (Str::Compare(as_obj_type->GetName(), "dict"))
-    {
-        CScriptDict* dict = CScriptDict::Create(as_obj_type);
-        int key_type_id = as_obj_type->GetSubTypeId(0);
-        int value_type_id = as_obj_type->GetSubTypeId(1);
-        asITypeInfo* key_type = as_obj_type->GetSubType(0);
-        asITypeInfo* value_type = as_obj_type->GetSubType(1);
-        string str1, str2;
-        uchar dict_pod_buf1[8];
-        uchar dict_pod_buf2[8];
-        while ((value = ReadToken(value, str1)) && (value = ReadToken(value, str2)))
-        {
-            void* v1 = ReadValue(str1.c_str(), key_type_id, key_type, is_hashes, deep + 1, dict_pod_buf1, is_error);
-            void* v2 = ReadValue(str2.c_str(), value_type_id, value_type, is_hashes, deep + 2, dict_pod_buf2, is_error);
-            dict->Set(key_type_id & asTYPEID_OBJHANDLE ? &v1 : v1, value_type_id & asTYPEID_OBJHANDLE ? &v2 : v2);
-            // if (v1 != dict_pod_buf1)
-            //    Script::GetEngine()->ReleaseScriptObject(v1, key_type);
-            // if (v2 != dict_pod_buf2)
-            //    Script::GetEngine()->ReleaseScriptObject(v2, value_type);
-        }
-        return dict;
-    }
-    throw UnreachablePlaceException(LINE_STR);
-    return nullptr;
-}*/
-
 auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
 {
     bool is_error = false;
@@ -670,33 +304,28 @@ auto Properties::LoadPropertyFromText(const Property* prop, string_view text) ->
     RUNTIME_ASSERT(_registrator == prop->_registrator);
     RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
 
-    bool is_error = false;
+    const auto is_dict = prop->_dataType == Property::DataType::Dict;
+    const auto is_array = prop->_dataType == Property::DataType::Array || prop->_isDictOfArray;
 
-    /*// Parse
-    uchar pod_buf[8];
-    bool is_hashes[] = { prop->_isHash || prop->_isResource, prop->_isHashSubType0, prop->_isHashSubType1, prop->_isHashSubType2};
-    void* value = ReadValue(text, prop->asObjTypeId, prop->asObjType, is_hashes, 0, pod_buf, is_error);
-
-    // Assign
-    if (prop->_podDataOffset != static_cast<uint>(-1))
-    {
-        RUNTIME_ASSERT(value == pod_buf);
-        SetRawData(prop, pod_buf, prop->_baseSize);
+    int value_type;
+    if (prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfArrayOfString || prop->_isHash || prop->_isEnum) {
+        value_type = AnyData::STRING_VALUE;
     }
-    else if (prop->_complexDataIndex != static_cast<uint>(-1))
-    {
-        bool need_delete;
-        uint data_size;
-        uchar* data = prop->ExpandComplexValueData(value, data_size, need_delete);
-        SetRawData(prop, data, data_size);
+    else if (prop->_isInt64 || prop->_isUInt64) {
+        value_type = AnyData::INT64_VALUE;
+    }
+    else if (prop->_isBool) {
+        value_type = AnyData::BOOL_VALUE;
+    }
+    else if (prop->_isFloat) {
+        value_type = AnyData::DOUBLE_VALUE;
+    }
+    else {
+        throw UnreachablePlaceException(LINE_STR);
+    }
 
-        if (need_delete) {
-            delete[] data;
-        }
-        // Script::GetEngine()->ReleaseScriptObject(value, prop->asObjType);
-    }*/
-
-    return !is_error;
+    const auto value = AnyData::ParseValue(string(text), is_dict, is_array, value_type);
+    return PropertiesSerializator::LoadPropertyFromValue(this, prop, value, _registrator->_nameResolver);
 }
 
 auto Properties::SavePropertyToText(const Property* prop) const -> string
@@ -705,31 +334,8 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
     RUNTIME_ASSERT(_registrator == prop->_registrator);
     RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1) || prop->_complexDataIndex != static_cast<uint>(-1));
 
-    uint data_size = 0;
-    // void* data = GetRawData(prop, data_size);
-
-    /*void* value = data;
-    string str;
-    if (prop->dataType == Property::String)
-    {
-        value = &str;
-        if (data_size)
-            str.assign((char*)data, data_size);
-    }
-    else if (prop->dataType == Property::Array || prop->dataType == Property::Dict)
-    {
-        value = prop->CreateRefValue((uchar*)data, data_size);
-    }
-
-    bool is_hashes[] = {
-        prop->isHash || prop->isResource, prop->isHashSubType0, prop->isHashSubType1, prop->isHashSubType2};
-    string text = WriteValue(value, prop->asObjTypeId, prop->asObjType, is_hashes, 0);
-
-    if (prop->dataType == Property::Array || prop->dataType == Property::Dict)
-        prop->ReleaseRefValue(value);*/
-
-    // return text;
-    return "";
+    const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
+    return AnyData::ValueToString(value);
 }
 
 void Properties::SetSendIgnore(const Property* prop, const Entity* entity)
@@ -1174,7 +780,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     }
 }
 
-PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server) : _className {class_name}, _isServer {is_server}
+PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server, NameResolver& name_resolver) : _className {class_name}, _isServer {is_server}, _nameResolver {name_resolver}
 {
 }
 

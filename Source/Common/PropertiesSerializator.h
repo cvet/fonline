@@ -35,16 +35,16 @@
 
 #include "Common.h"
 
-#include "DataBase.h"
+#include "AnyData.h"
 #include "Properties.h"
-#include "ScriptSystem.h"
 
 class PropertiesSerializator final
 {
 public:
     PropertiesSerializator() = delete;
 
-    [[nodiscard]] static auto SaveToDbDocument(const Properties* props, const Properties* base, NameResolver& name_resolver) -> DataBase::Document;
-    [[nodiscard]] static auto LoadFromDbDocument(Properties* props, const DataBase::Document& doc, NameResolver& name_resolver) -> bool;
-    [[nodiscard]] static auto SavePropertyToDbValue(const Properties* props, const Property* prop, NameResolver& name_resolver) -> DataBase::Value;
+    [[nodiscard]] static auto SaveToDocument(const Properties* props, const Properties* base, NameResolver& name_resolver) -> AnyData::Document;
+    [[nodiscard]] static auto LoadFromDocument(Properties* props, const AnyData::Document& doc, NameResolver& name_resolver) -> bool;
+    [[nodiscard]] static auto SavePropertyToValue(const Properties* props, const Property* prop, NameResolver& name_resolver) -> AnyData::Value;
+    [[nodiscard]] static auto LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, NameResolver& name_resolver) -> bool;
 };

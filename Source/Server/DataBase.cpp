@@ -59,18 +59,18 @@ public:
     virtual ~DataBaseImpl() = default;
 
     [[nodiscard]] virtual auto GetAllIds(string_view collection_name) const -> vector<uint> = 0;
-    [[nodiscard]] auto Get(string_view collection_name, uint id) const -> DataBase::Document;
+    [[nodiscard]] auto Get(string_view collection_name, uint id) const -> AnyData::Document;
 
     void StartChanges();
-    void Insert(string_view collection_name, uint id, const DataBase::Document& doc);
-    void Update(string_view collection_name, uint id, string_view key, const DataBase::Value& value);
+    void Insert(string_view collection_name, uint id, const AnyData::Document& doc);
+    void Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value);
     void Delete(string_view collection_name, uint id);
     void CommitChanges();
 
 protected:
-    [[nodiscard]] virtual auto GetRecord(string_view collection_name, uint id) const -> DataBase::Document = 0;
-    virtual void InsertRecord(string_view collection_name, uint id, const DataBase::Document& doc) = 0;
-    virtual void UpdateRecord(string_view collection_name, uint id, const DataBase::Document& doc) = 0;
+    [[nodiscard]] virtual auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document = 0;
+    virtual void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) = 0;
+    virtual void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) = 0;
     virtual void DeleteRecord(string_view collection_name, uint id) = 0;
     virtual void CommitRecords() = 0;
 
@@ -100,7 +100,7 @@ auto DataBase::GetAllIds(string_view collection_name) const -> vector<uint>
     return _impl->GetAllIds(collection_name);
 }
 
-auto DataBase::Get(string_view collection_name, uint id) const -> Document
+auto DataBase::Get(string_view collection_name, uint id) const -> AnyData::Document
 {
     return _impl->Get(collection_name, id);
 }
@@ -117,14 +117,14 @@ void DataBase::StartChanges()
     _impl->StartChanges();
 }
 
-void DataBase::Insert(string_view collection_name, uint id, const Document& doc)
+void DataBase::Insert(string_view collection_name, uint id, const AnyData::Document& doc)
 {
     NON_CONST_METHOD_HINT();
 
     _impl->Insert(collection_name, id, doc);
 }
 
-void DataBase::Update(string_view collection_name, uint id, string_view key, const Value& value)
+void DataBase::Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value)
 {
     NON_CONST_METHOD_HINT();
 
@@ -145,70 +145,70 @@ void DataBase::CommitChanges()
     _impl->CommitChanges();
 }
 
-static void ValueToBson(string_view key, const DataBase::Value& value, bson_t* bson)
+static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bson)
 {
     const auto value_index = value.index();
-    if (value_index == DataBase::INT_VALUE) {
-        if (!bson_append_int32(bson, key.data(), static_cast<int>(key.length()), std::get<DataBase::INT_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_int32", key, std::get<DataBase::INT_VALUE>(value));
+    if (value_index == AnyData::INT_VALUE) {
+        if (!bson_append_int32(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::INT_VALUE>(value))) {
+            throw DataBaseException("ValueToBson bson_append_int32", key, std::get<AnyData::INT_VALUE>(value));
         }
     }
-    else if (value_index == DataBase::INT64_VALUE) {
-        if (!bson_append_int64(bson, key.data(), static_cast<int>(key.length()), std::get<DataBase::INT64_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_int64", key, std::get<DataBase::INT64_VALUE>(value));
+    else if (value_index == AnyData::INT64_VALUE) {
+        if (!bson_append_int64(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::INT64_VALUE>(value))) {
+            throw DataBaseException("ValueToBson bson_append_int64", key, std::get<AnyData::INT64_VALUE>(value));
         }
     }
-    else if (value_index == DataBase::DOUBLE_VALUE) {
-        if (!bson_append_double(bson, key.data(), static_cast<int>(key.length()), std::get<DataBase::DOUBLE_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_double", key, std::get<DataBase::DOUBLE_VALUE>(value));
+    else if (value_index == AnyData::DOUBLE_VALUE) {
+        if (!bson_append_double(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::DOUBLE_VALUE>(value))) {
+            throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::DOUBLE_VALUE>(value));
         }
     }
-    else if (value_index == DataBase::BOOL_VALUE) {
-        if (!bson_append_bool(bson, key.data(), static_cast<int>(key.length()), std::get<DataBase::BOOL_VALUE>(value))) {
-            throw DataBaseException("ValueToBson bson_append_double", key, std::get<DataBase::BOOL_VALUE>(value));
+    else if (value_index == AnyData::BOOL_VALUE) {
+        if (!bson_append_bool(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::BOOL_VALUE>(value))) {
+            throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::BOOL_VALUE>(value));
         }
     }
-    else if (value_index == DataBase::STRING_VALUE) {
-        if (!bson_append_utf8(bson, key.data(), static_cast<int>(key.length()), std::get<DataBase::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<DataBase::STRING_VALUE>(value).length()))) {
-            throw DataBaseException("ValueToBson bson_append_double", key, std::get<DataBase::STRING_VALUE>(value));
+    else if (value_index == AnyData::STRING_VALUE) {
+        if (!bson_append_utf8(bson, key.data(), static_cast<int>(key.length()), std::get<AnyData::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(value).length()))) {
+            throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::STRING_VALUE>(value));
         }
     }
-    else if (value_index == DataBase::ARRAY_VALUE) {
+    else if (value_index == AnyData::ARRAY_VALUE) {
         bson_t bson_arr;
         if (!bson_append_array_begin(bson, key.data(), static_cast<int>(key.length()), &bson_arr)) {
             throw DataBaseException("ValueToBson bson_append_array_begin", key);
         }
 
-        const auto& arr = std::get<DataBase::ARRAY_VALUE>(value);
+        const auto& arr = std::get<AnyData::ARRAY_VALUE>(value);
         auto arr_key_index = 0;
         for (const auto& arr_value : arr) {
             string arr_key = _str("{}", arr_key_index);
             arr_key_index++;
 
             const auto arr_value_index = arr_value.index();
-            if (arr_value_index == DataBase::INT_VALUE) {
-                if (!bson_append_int32(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::INT_VALUE>(arr_value))) {
-                    throw DataBaseException("ValueToBson bson_append_int32", arr_key, std::get<DataBase::INT_VALUE>(arr_value));
+            if (arr_value_index == AnyData::INT_VALUE) {
+                if (!bson_append_int32(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT_VALUE>(arr_value))) {
+                    throw DataBaseException("ValueToBson bson_append_int32", arr_key, std::get<AnyData::INT_VALUE>(arr_value));
                 }
             }
-            else if (arr_value_index == DataBase::INT64_VALUE) {
-                if (!bson_append_int64(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::INT64_VALUE>(arr_value))) {
-                    throw DataBaseException("ValueToBson bson_append_int64", arr_key, std::get<DataBase::INT64_VALUE>(arr_value));
+            else if (arr_value_index == AnyData::INT64_VALUE) {
+                if (!bson_append_int64(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT64_VALUE>(arr_value))) {
+                    throw DataBaseException("ValueToBson bson_append_int64", arr_key, std::get<AnyData::INT64_VALUE>(arr_value));
                 }
             }
-            else if (arr_value_index == DataBase::DOUBLE_VALUE) {
-                if (!bson_append_double(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::DOUBLE_VALUE>(arr_value))) {
-                    throw DataBaseException("ValueToBson bson_append_double", arr_key, std::get<DataBase::DOUBLE_VALUE>(arr_value));
+            else if (arr_value_index == AnyData::DOUBLE_VALUE) {
+                if (!bson_append_double(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::DOUBLE_VALUE>(arr_value))) {
+                    throw DataBaseException("ValueToBson bson_append_double", arr_key, std::get<AnyData::DOUBLE_VALUE>(arr_value));
                 }
             }
-            else if (arr_value_index == DataBase::BOOL_VALUE) {
-                if (!bson_append_bool(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::BOOL_VALUE>(arr_value))) {
-                    throw DataBaseException("ValueToBson bson_append_bool", arr_key, std::get<DataBase::BOOL_VALUE>(arr_value));
+            else if (arr_value_index == AnyData::BOOL_VALUE) {
+                if (!bson_append_bool(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::BOOL_VALUE>(arr_value))) {
+                    throw DataBaseException("ValueToBson bson_append_bool", arr_key, std::get<AnyData::BOOL_VALUE>(arr_value));
                 }
             }
-            else if (arr_value_index == DataBase::STRING_VALUE) {
-                if (!bson_append_utf8(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::STRING_VALUE>(arr_value).c_str(), static_cast<int>(std::get<DataBase::STRING_VALUE>(arr_value).length()))) {
-                    throw DataBaseException("ValueToBson bson_append_utf8", arr_key, std::get<DataBase::STRING_VALUE>(arr_value));
+            else if (arr_value_index == AnyData::STRING_VALUE) {
+                if (!bson_append_utf8(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::STRING_VALUE>(arr_value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(arr_value).length()))) {
+                    throw DataBaseException("ValueToBson bson_append_utf8", arr_key, std::get<AnyData::STRING_VALUE>(arr_value));
                 }
             }
             else {
@@ -220,76 +220,76 @@ static void ValueToBson(string_view key, const DataBase::Value& value, bson_t* b
             throw DataBaseException("ValueToBson bson_append_array_end");
         }
     }
-    else if (value_index == DataBase::DICT_VALUE) {
+    else if (value_index == AnyData::DICT_VALUE) {
         bson_t bson_doc;
         if (!bson_append_document_begin(bson, key.data(), static_cast<int>(key.length()), &bson_doc)) {
             throw DataBaseException("ValueToBson bson_append_bool", key);
         }
 
-        const auto& dict = std::get<DataBase::DICT_VALUE>(value);
+        const auto& dict = std::get<AnyData::DICT_VALUE>(value);
         for (const auto& [key, value] : dict) {
             const auto dict_value_index = value.index();
-            if (dict_value_index == DataBase::INT_VALUE) {
-                if (!bson_append_int32(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::INT_VALUE>(value))) {
-                    throw DataBaseException("ValueToBson bson_append_int32", key, std::get<DataBase::INT_VALUE>(value));
+            if (dict_value_index == AnyData::INT_VALUE) {
+                if (!bson_append_int32(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::INT_VALUE>(value))) {
+                    throw DataBaseException("ValueToBson bson_append_int32", key, std::get<AnyData::INT_VALUE>(value));
                 }
             }
-            else if (dict_value_index == DataBase::INT64_VALUE) {
-                if (!bson_append_int64(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::INT64_VALUE>(value))) {
-                    throw DataBaseException("ValueToBson bson_append_int64", key, std::get<DataBase::INT64_VALUE>(value));
+            else if (dict_value_index == AnyData::INT64_VALUE) {
+                if (!bson_append_int64(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::INT64_VALUE>(value))) {
+                    throw DataBaseException("ValueToBson bson_append_int64", key, std::get<AnyData::INT64_VALUE>(value));
                 }
             }
-            else if (dict_value_index == DataBase::DOUBLE_VALUE) {
-                if (!bson_append_double(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::DOUBLE_VALUE>(value))) {
-                    throw DataBaseException("ValueToBson bson_append_double", key, std::get<DataBase::DOUBLE_VALUE>(value));
+            else if (dict_value_index == AnyData::DOUBLE_VALUE) {
+                if (!bson_append_double(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::DOUBLE_VALUE>(value))) {
+                    throw DataBaseException("ValueToBson bson_append_double", key, std::get<AnyData::DOUBLE_VALUE>(value));
                 }
             }
-            else if (dict_value_index == DataBase::BOOL_VALUE) {
-                if (!bson_append_bool(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::BOOL_VALUE>(value))) {
-                    throw DataBaseException("ValueToBson bson_append_bool", key, std::get<DataBase::BOOL_VALUE>(value));
+            else if (dict_value_index == AnyData::BOOL_VALUE) {
+                if (!bson_append_bool(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::BOOL_VALUE>(value))) {
+                    throw DataBaseException("ValueToBson bson_append_bool", key, std::get<AnyData::BOOL_VALUE>(value));
                 }
             }
-            else if (dict_value_index == DataBase::STRING_VALUE) {
-                if (!bson_append_utf8(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<DataBase::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<DataBase::STRING_VALUE>(value).length()))) {
-                    throw DataBaseException("ValueToBson bson_append_utf8", key, std::get<DataBase::STRING_VALUE>(value));
+            else if (dict_value_index == AnyData::STRING_VALUE) {
+                if (!bson_append_utf8(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::STRING_VALUE>(value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(value).length()))) {
+                    throw DataBaseException("ValueToBson bson_append_utf8", key, std::get<AnyData::STRING_VALUE>(value));
                 }
             }
-            else if (dict_value_index == DataBase::ARRAY_VALUE) {
+            else if (dict_value_index == AnyData::ARRAY_VALUE) {
                 bson_t bson_arr;
                 if (!bson_append_array_begin(&bson_doc, key.c_str(), static_cast<int>(key.length()), &bson_arr)) {
                     throw DataBaseException("ValueToBson bson_append_array_begin", key);
                 }
 
-                const auto& arr = std::get<DataBase::ARRAY_VALUE>(value);
+                const auto& arr = std::get<AnyData::ARRAY_VALUE>(value);
                 auto arr_key_index = 0;
                 for (const auto& arr_value : arr) {
                     string arr_key = _str("{}", arr_key_index);
                     arr_key_index++;
 
                     const auto arr_value_index = arr_value.index();
-                    if (arr_value_index == DataBase::INT_VALUE) {
-                        if (!bson_append_int32(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::INT_VALUE>(arr_value))) {
-                            throw DataBaseException("ValueToBson bson_append_int32", arr_key, std::get<DataBase::INT_VALUE>(arr_value));
+                    if (arr_value_index == AnyData::INT_VALUE) {
+                        if (!bson_append_int32(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT_VALUE>(arr_value))) {
+                            throw DataBaseException("ValueToBson bson_append_int32", arr_key, std::get<AnyData::INT_VALUE>(arr_value));
                         }
                     }
-                    else if (arr_value_index == DataBase::INT64_VALUE) {
-                        if (!bson_append_int64(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::INT64_VALUE>(arr_value))) {
-                            throw DataBaseException("ValueToBson bson_append_int64", arr_key, std::get<DataBase::INT64_VALUE>(arr_value));
+                    else if (arr_value_index == AnyData::INT64_VALUE) {
+                        if (!bson_append_int64(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::INT64_VALUE>(arr_value))) {
+                            throw DataBaseException("ValueToBson bson_append_int64", arr_key, std::get<AnyData::INT64_VALUE>(arr_value));
                         }
                     }
-                    else if (arr_value_index == DataBase::DOUBLE_VALUE) {
-                        if (!bson_append_double(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::DOUBLE_VALUE>(arr_value))) {
-                            throw DataBaseException("ValueToBson bson_append_double", arr_key, std::get<DataBase::DOUBLE_VALUE>(arr_value));
+                    else if (arr_value_index == AnyData::DOUBLE_VALUE) {
+                        if (!bson_append_double(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::DOUBLE_VALUE>(arr_value))) {
+                            throw DataBaseException("ValueToBson bson_append_double", arr_key, std::get<AnyData::DOUBLE_VALUE>(arr_value));
                         }
                     }
-                    else if (arr_value_index == DataBase::BOOL_VALUE) {
-                        if (!bson_append_bool(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::BOOL_VALUE>(arr_value))) {
-                            throw DataBaseException("ValueToBson bson_append_bool", arr_key, std::get<DataBase::BOOL_VALUE>(arr_value));
+                    else if (arr_value_index == AnyData::BOOL_VALUE) {
+                        if (!bson_append_bool(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::BOOL_VALUE>(arr_value))) {
+                            throw DataBaseException("ValueToBson bson_append_bool", arr_key, std::get<AnyData::BOOL_VALUE>(arr_value));
                         }
                     }
-                    else if (arr_value_index == DataBase::STRING_VALUE) {
-                        if (!bson_append_utf8(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<DataBase::STRING_VALUE>(arr_value).c_str(), static_cast<int>(std::get<DataBase::STRING_VALUE>(arr_value).length()))) {
-                            throw DataBaseException("ValueToBson bson_append_utf8", arr_key, std::get<DataBase::STRING_VALUE>(arr_value));
+                    else if (arr_value_index == AnyData::STRING_VALUE) {
+                        if (!bson_append_utf8(&bson_arr, arr_key.c_str(), static_cast<int>(arr_key.length()), std::get<AnyData::STRING_VALUE>(arr_value).c_str(), static_cast<int>(std::get<AnyData::STRING_VALUE>(arr_value).length()))) {
+                            throw DataBaseException("ValueToBson bson_append_utf8", arr_key, std::get<AnyData::STRING_VALUE>(arr_value));
                         }
                     }
                     else {
@@ -315,14 +315,14 @@ static void ValueToBson(string_view key, const DataBase::Value& value, bson_t* b
     }
 }
 
-static void DocumentToBson(const DataBase::Document& doc, bson_t* bson)
+static void DocumentToBson(const AnyData::Document& doc, bson_t* bson)
 {
     for (const auto& [key, value] : doc) {
         ValueToBson(key, value, bson);
     }
 }
 
-static auto BsonToValue(bson_iter_t* iter) -> DataBase::Value
+static auto BsonToValue(bson_iter_t* iter) -> AnyData::Value
 {
     const auto* value = bson_iter_value(iter);
 
@@ -347,7 +347,7 @@ static auto BsonToValue(bson_iter_t* iter) -> DataBase::Value
             throw DataBaseException("BsonToValue bson_iter_recurse");
         }
 
-        DataBase::Array arr;
+        AnyData::Array arr;
         while (bson_iter_next(&arr_iter)) {
             const auto* arr_value = bson_iter_value(&arr_iter);
             if (arr_value->value_type == BSON_TYPE_INT32) {
@@ -378,7 +378,7 @@ static auto BsonToValue(bson_iter_t* iter) -> DataBase::Value
             throw DataBaseException("BsonToValue bson_iter_recurse");
         }
 
-        DataBase::Dict dict;
+        AnyData::Dict dict;
         while (bson_iter_next(&doc_iter)) {
             const auto* key = bson_iter_key(&doc_iter);
             const auto* dict_value = bson_iter_value(&doc_iter);
@@ -403,7 +403,7 @@ static auto BsonToValue(bson_iter_t* iter) -> DataBase::Value
                     throw DataBaseException("BsonToValue bson_iter_recurse");
                 }
 
-                DataBase::Array dict_array;
+                AnyData::Array dict_array;
                 while (bson_iter_next(&doc_arr_iter)) {
                     const auto* doc_arr_value = bson_iter_value(&doc_arr_iter);
                     if (doc_arr_value->value_type == BSON_TYPE_INT32) {
@@ -440,7 +440,7 @@ static auto BsonToValue(bson_iter_t* iter) -> DataBase::Value
     }
 }
 
-static void BsonToDocument(const bson_t* bson, DataBase::Document& doc)
+static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
 {
     bson_iter_t iter;
     if (!bson_iter_init(&iter, bson)) {
@@ -459,12 +459,12 @@ static void BsonToDocument(const bson_t* bson, DataBase::Document& doc)
     }
 }
 
-auto DataBaseImpl::Get(string_view collection_name, uint id) const -> DataBase::Document
+auto DataBaseImpl::Get(string_view collection_name, uint id) const -> AnyData::Document
 {
     const auto collection_name_str = string(collection_name);
 
     if (_deletedRecords.at(collection_name_str).count(id) != 0u) {
-        return DataBase::Document();
+        return AnyData::Document();
     }
 
     if (_newRecords.at(collection_name_str).count(id) != 0u) {
@@ -492,7 +492,7 @@ void DataBaseImpl::StartChanges()
     _changesStarted = true;
 }
 
-void DataBaseImpl::Insert(string_view collection_name, uint id, const DataBase::Document& doc)
+void DataBaseImpl::Insert(string_view collection_name, uint id, const AnyData::Document& doc)
 {
     const auto collection_name_str = string(collection_name);
 
@@ -506,7 +506,7 @@ void DataBaseImpl::Insert(string_view collection_name, uint id, const DataBase::
     }
 }
 
-void DataBaseImpl::Update(string_view collection_name, uint id, string_view key, const DataBase::Value& value)
+void DataBaseImpl::Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value)
 {
     const auto collection_name_str = string(collection_name);
 
@@ -588,7 +588,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> DataBase::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document override
     {
         const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -602,7 +602,7 @@ protected:
             }
         }
         else {
-            return DataBase::Document();
+            return AnyData::Document();
         }
 
         bson_t bson;
@@ -613,14 +613,14 @@ protected:
 
         delete[] json;
 
-        DataBase::Document doc;
+        AnyData::Document doc;
         BsonToDocument(&bson, doc);
 
         bson_destroy(&bson);
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, uint id, const DataBase::Document& doc) override
+    void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -656,7 +656,7 @@ protected:
         }
     }
 
-    void UpdateRecord(string_view collection_name, uint id, const DataBase::Document& doc) override
+    void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -813,14 +813,14 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> DataBase::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document override
     {
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
             throw DataBaseException("DbUnQLite Can't open collection", collection_name);
         }
 
-        DataBase::Document doc;
+        AnyData::Document doc;
         const auto kv_fetch_callback = unqlite_kv_fetch_callback(
             db, &id, sizeof(id),
             [](const void* output, unsigned int output_len, void* user_data) {
@@ -829,7 +829,7 @@ protected:
                     throw DataBaseException("DbUnQLite bson_init_static");
                 }
 
-                auto& doc2 = *static_cast<DataBase::Document*>(user_data);
+                auto& doc2 = *static_cast<AnyData::Document*>(user_data);
                 BsonToDocument(&bson, doc2);
 
                 return UNQLITE_OK;
@@ -843,7 +843,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, uint id, const DataBase::Document& doc) override
+    void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -876,7 +876,7 @@ protected:
         bson_destroy(&bson);
     }
 
-    void UpdateRecord(string_view collection_name, uint id, const DataBase::Document& doc) override
+    void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -996,7 +996,7 @@ public:
         }
 
         // Ping
-        auto* ping = BCON_NEW("ping", BCON_INT32(1));
+        const auto* ping = BCON_NEW("ping", BCON_INT32(1));
         bson_t reply;
         if (!mongoc_client_command_simple(client, "admin", ping, nullptr, &reply, &error)) {
             throw DataBaseException("DbMongo Can't ping database", error.message);
@@ -1070,7 +1070,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> DataBase::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document override
     {
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1093,10 +1093,10 @@ protected:
         if (!mongoc_cursor_next(cursor, &bson)) {
             mongoc_cursor_destroy(cursor);
             bson_destroy(&query);
-            return DataBase::Document();
+            return AnyData::Document();
         }
 
-        DataBase::Document doc;
+        AnyData::Document doc;
         BsonToDocument(bson, doc);
 
         mongoc_cursor_destroy(cursor);
@@ -1104,7 +1104,7 @@ protected:
         return doc;
     }
 
-    void InsertRecord(string_view collection_name, uint id, const DataBase::Document& doc) override
+    void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1130,7 +1130,7 @@ protected:
         bson_destroy(&insert);
     }
 
-    void UpdateRecord(string_view collection_name, uint id, const DataBase::Document& doc) override
+    void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1249,15 +1249,15 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> DataBase::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document override
     {
         const auto& collection = _collections.at(string(collection_name));
 
         const auto it = collection.find(id);
-        return it != collection.end() ? it->second : DataBase::Document();
+        return it != collection.end() ? it->second : AnyData::Document();
     }
 
-    void InsertRecord(string_view collection_name, uint id, const DataBase::Document& doc) override
+    void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
@@ -1267,13 +1267,13 @@ protected:
         collection.insert(std::make_pair(id, doc));
     }
 
-    void UpdateRecord(string_view collection_name, uint id, const DataBase::Document& doc) override
+    void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) override
     {
         RUNTIME_ASSERT(!doc.empty());
 
         auto& collection = _collections[string(collection_name)];
 
-        auto it = collection.find(id);
+        const auto it = collection.find(id);
         RUNTIME_ASSERT(it != collection.end());
 
         for (const auto& [key, value] : doc) {
@@ -1302,7 +1302,7 @@ private:
 
 auto ConnectToDataBase(string_view connection_info) -> DataBase
 {
-    if (auto options = _str(connection_info).split(' '); !options.empty()) {
+    if (const auto options = _str(connection_info).split(' '); !options.empty()) {
 #if FO_HAVE_JSON
         if (options[0] == "JSON" && options.size() == 2) {
             return DataBase(new DbJson(options[1]));

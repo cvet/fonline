@@ -35,43 +35,24 @@
 
 #include "Common.h"
 
-#include "AnyData.h"
-
-DECLARE_EXCEPTION(DataBaseException);
-
-class DataBaseImpl;
-
-class DataBase
+class AnyData final
 {
-    friend auto ConnectToDataBase(string_view connection_info) -> DataBase;
-
 public:
-    using Collection = map<uint, AnyData::Document>;
-    using Collections = map<string, Collection>;
-    using RecordsState = map<string, set<uint>>;
+    AnyData() = delete;
 
-    DataBase();
-    DataBase(const DataBase&) = delete;
-    DataBase(DataBase&&) noexcept;
-    auto operator=(const DataBase&) = delete;
-    auto operator=(DataBase&&) noexcept -> DataBase&;
-    explicit operator bool() const;
-    ~DataBase();
+    static constexpr auto INT_VALUE = 0;
+    static constexpr auto INT64_VALUE = 1;
+    static constexpr auto DOUBLE_VALUE = 2;
+    static constexpr auto BOOL_VALUE = 3;
+    static constexpr auto STRING_VALUE = 4;
+    static constexpr auto ARRAY_VALUE = 5;
+    static constexpr auto DICT_VALUE = 6;
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint>;
-    [[nodiscard]] auto Get(string_view collection_name, uint id) const -> AnyData::Document;
-    [[nodiscard]] auto Valid(string_view collection_name, uint id) const -> bool;
+    using Array = vector<std::variant<int, int64, double, bool, string>>;
+    using Dict = map<string, std::variant<int, int64, double, bool, string, Array>>;
+    using Value = std::variant<int, int64, double, bool, string, Array, Dict>;
+    using Document = map<string, Value>;
 
-    void StartChanges();
-    void Insert(string_view collection_name, uint id, const AnyData::Document& doc);
-    void Update(string_view collection_name, uint id, string_view key, const AnyData::Value& value);
-    void Delete(string_view collection_name, uint id);
-    void CommitChanges();
-
-private:
-    explicit DataBase(DataBaseImpl* impl);
-    unique_ptr<DataBaseImpl> _impl {};
-    bool _nonConstHelper {};
+    [[nodiscard]] static auto ValueToString(const Value& value) -> string;
+    [[nodiscard]] static auto ParseValue(const string& str, bool as_dict, bool as_array, int value_type) -> Value;
 };
-
-extern auto ConnectToDataBase(string_view connection_info) -> DataBase;

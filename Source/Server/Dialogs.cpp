@@ -116,7 +116,7 @@ static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, 
         return -1;
     }
 
-    is_hash = prop->IsHash();
+    is_hash = prop->IsBaseTypeHash();
     return static_cast<int>(prop->GetRegIndex());
 }
 

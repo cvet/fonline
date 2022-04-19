@@ -895,7 +895,7 @@
 
     player = new Player(server, id, name, nullptr, player_proto);
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->GetPropertiesForEdit(), doc, *server)) {
+    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server)) {
         throw ScriptException("Player data db read failed");
     }
 

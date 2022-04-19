@@ -106,9 +106,10 @@ public:
     [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
     [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
     [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
-    [[nodiscard]] auto IsHash() const -> bool { return _isHash; }
-    [[nodiscard]] auto IsResource() const -> bool { return _isResourceHash; }
-    [[nodiscard]] auto IsEnum() const -> bool { return _isEnum; }
+
+    [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHash; }
+    [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
+    [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnum; }
 
     [[nodiscard]] auto IsReadable() const -> bool { return _isReadable; }
     [[nodiscard]] auto IsWritable() const -> bool { return _isWritable; }
@@ -335,7 +336,7 @@ class PropertyRegistrator final
 
 public:
     PropertyRegistrator() = delete;
-    PropertyRegistrator(string_view class_name, bool is_server);
+    PropertyRegistrator(string_view class_name, bool is_server, NameResolver& name_resolver);
     PropertyRegistrator(const PropertyRegistrator&) = delete;
     PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
     auto operator=(const PropertyRegistrator&) = delete;
@@ -356,6 +357,7 @@ public:
 private:
     string _className;
     bool _isServer;
+    NameResolver& _nameResolver;
     vector<Property*> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};
     unordered_set<hstring> _registeredComponents {};

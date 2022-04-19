@@ -52,7 +52,7 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
         entity->SetId(id);
 
         const auto proto = entity->GetProto();
-        auto doc = PropertiesSerializator::SaveToDbDocument(&entity->GetProperties(), proto != nullptr ? &proto->GetProperties() : nullptr, *_engine);
+        auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), proto != nullptr ? &proto->GetProperties() : nullptr, *_engine);
         doc["_Proto"] = string(proto != nullptr ? proto->GetName() : "");
         _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
     }
@@ -298,7 +298,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
             if (proto_it == doc.end()) {
                 throw EntitiesLoadException("'_Proto' section not found in entity", collection_name, id);
             }
-            if (proto_it->second.index() != DataBase::STRING_VALUE) {
+            if (proto_it->second.index() != AnyData::STRING_VALUE) {
                 throw EntitiesLoadException("'_Proto' section is not string type", collection_name, id, proto_it->second.index());
             }
 
@@ -316,7 +316,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 }
 
                 auto* loc = loc_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&loc->GetPropertiesForEdit(), doc, *_engine)) {
+                if (!PropertiesSerializator::LoadFromDocument(&loc->GetPropertiesForEdit(), doc, *_engine)) {
                     throw EntitiesLoadException("Failed to restore location properties", proto_name, id);
                 }
 
@@ -331,7 +331,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 }
 
                 auto* map = map_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&map->GetPropertiesForEdit(), doc, *_engine)) {
+                if (!PropertiesSerializator::LoadFromDocument(&map->GetPropertiesForEdit(), doc, *_engine)) {
                     throw EntitiesLoadException("Failed to restore map properties", proto_name, id);
                 }
 
@@ -344,7 +344,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 }
 
                 auto* npc = npc_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&npc->GetPropertiesForEdit(), doc, *_engine)) {
+                if (!PropertiesSerializator::LoadFromDocument(&npc->GetPropertiesForEdit(), doc, *_engine)) {
                     throw EntitiesLoadException("Failed to restore critter properties", proto_name, id);
                 }
 
@@ -357,7 +357,7 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
                 }
 
                 auto* item = item_fabric(id, proto);
-                if (!PropertiesSerializator::LoadFromDbDocument(&item->GetPropertiesForEdit(), doc, *_engine)) {
+                if (!PropertiesSerializator::LoadFromDocument(&item->GetPropertiesForEdit(), doc, *_engine)) {
                     throw EntitiesLoadException("Failed to restore item properties", proto_name, id);
                 }
 

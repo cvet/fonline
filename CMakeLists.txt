@@ -431,7 +431,7 @@ set( FO_SINGLE_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Single-${FO_BUILD_PLATFOR
 set( FO_MAPPER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_BAKER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_ASCOMPILER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
-set( FO_TESTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Tests" )
+set( FO_TESTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Tests$<$<CONFIG:Debug>:>" )
 set( FO_SCRIPTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Scripts" )
 set( FO_RESOURCES_OUTPUT "${FONLINE_OUTPUT_PATH}/Resources" )
 set( FO_PACKAGES_OUTPUT "${FONLINE_OUTPUT_PATH}/Packages" )
@@ -1134,6 +1134,8 @@ endif()
 
 # Engine sources
 list( APPEND FO_COMMON_SOURCE
+	"Source/Common/AnyData.cpp"
+	"Source/Common/AnyData.h"
 	"Source/Common/Application.cpp"
 	"Source/Common/Application.h"
 	"Source/Common/ApplicationHeadless.cpp"
@@ -1176,6 +1178,8 @@ list( APPEND FO_COMMON_SOURCE
 	"Source/Common/NetProtocol-Include.h"
 	"Source/Common/Properties.cpp"
 	"Source/Common/Properties.h"
+	"Source/Common/PropertiesSerializator.cpp"
+	"Source/Common/PropertiesSerializator.h"
 	"Source/Common/ProtoManager.cpp"
 	"Source/Common/ProtoManager.h"
 	"Source/Common/ScriptSystem.cpp"
@@ -1236,8 +1240,6 @@ list( APPEND FO_SERVER_SOURCE
 	"Source/Server/Networking.h"
 	"Source/Server/Player.cpp"
 	"Source/Server/Player.h"
-	"Source/Server/PropertiesSerializator.cpp"
-	"Source/Server/PropertiesSerializator.h"
 	"Source/Server/Server.cpp"
 	"Source/Server/Server.h"
 	"Source/Server/ServerEntity.cpp"
@@ -1354,7 +1356,8 @@ list( APPEND FO_ADDITIONAL_META_FILES
 	"Source/Scripting/CommonGlobalScriptMethods.cpp" )
 	
 list( APPEND FO_TESTS_SOURCE
-	"Source/Tests/UnitTest1.cpp" )
+	"Source/Tests/Test_AnyData.cpp"
+	"Source/Tests/Test_GenericUtils.cpp" )
 
 # Code generation
 include( FindPython3 )

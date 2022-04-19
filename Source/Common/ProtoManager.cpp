@@ -361,7 +361,7 @@ static auto ValidateProtoResourcesExt(NameResolver& name_resolver, const map<hst
         const auto* registrator = proto->GetProperties().GetRegistrator();
         for (uint i = 0; i < registrator->GetCount(); i++) {
             auto* prop = registrator->GetByIndex(i);
-            if (prop->IsResource()) {
+            if (prop->IsBaseTypeResource()) {
                 const auto h = proto->GetProperties().template GetValue<hstring>(prop);
                 if (h && !hashes.count(h)) {
                     WriteLog("Resource '{}' not found for property '{}' in prototype '{}'.\n", h, prop->GetName(), proto->GetName());

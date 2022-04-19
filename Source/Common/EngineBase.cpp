@@ -36,7 +36,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FOEngineBase::FOEngineBase(bool is_server) : Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, is_server)), GameProperties(GetInitRef()), _isServer {is_server}
+FOEngineBase::FOEngineBase(bool is_server) : Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, is_server, *this)), GameProperties(GetInitRef()), _isServer {is_server}
 {
     _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());
 }
@@ -54,7 +54,7 @@ auto FOEngineBase::CreatePropertyRegistrator(string_view class_name) -> Property
         return const_cast<PropertyRegistrator*>(it->second);
     }
 
-    auto* registrator = new PropertyRegistrator(class_name, _isServer);
+    auto* registrator = new PropertyRegistrator(class_name, _isServer, *this);
     _registrators.emplace(class_name, registrator);
     return registrator;
 }

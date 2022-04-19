@@ -33,6 +33,7 @@
 
 #include "Server.h"
 #include "AdminPanel.h"
+#include "AnyData.h"
 #include "GenericUtils.h"
 #include "Networking.h"
 #include "PropertiesSerializator.h"
@@ -100,7 +101,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngin
         DbStorage.Insert("Game", 1, {{"_Proto", string("")}});
     }
     else {
-        if (!PropertiesSerializator::LoadFromDbDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
+        if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
             throw ServerInitException("Failed to load globals document");
         }
 
@@ -1997,7 +1998,7 @@ void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_
         entry_id = 1u;
     }
 
-    const auto value = PropertiesSerializator::SavePropertyToDbValue(&entity->GetProperties(), prop, *this);
+    const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
     DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
 
     if (DbHistory && prop->IsHistorical()) {
@@ -2006,7 +2007,7 @@ void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_
 
         const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 
-        DataBase::Document doc;
+        AnyData::Document doc;
         doc["Time"] = static_cast<int64>(time.count());
         doc["EntityId"] = static_cast<int>(entry_id);
         doc["Property"] = prop->GetName();
@@ -2409,9 +2410,9 @@ void FOServer::Process_Register(ClientConnection* connection)
 #endif
 
     // Register
-    auto reg_ip = DataBase::Array();
+    auto reg_ip = AnyData::Array();
     reg_ip.push_back(static_cast<int>(connection->GetIp()));
-    auto reg_port = DataBase::Array();
+    auto reg_port = AnyData::Array();
     reg_port.push_back(static_cast<int>(connection->GetPort()));
 
     DbStorage.Insert("Players", player_id, {{"_Proto", string("Player")}, {"Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
@@ -2505,7 +2506,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     // Check password
     const auto player_id = MakePlayerId(name);
     auto doc = DbStorage.Get("Players", player_id);
-    if (doc.count("Password") == 0u || doc["Password"].index() != DataBase::STRING_VALUE || std::get<string>(doc["Password"]).length() != password.length() || std::get<string>(doc["Password"]) != password) {
+    if (doc.count("Password") == 0u || doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(doc["Password"]).length() != password.length() || std::get<string>(doc["Password"]) != password) {
         connection->Send_TextMsg(STR_NET_LOGINPASS_WRONG);
         connection->GracefulDisconnect();
         return;
@@ -2564,7 +2565,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     auto* player = new Player(this, player_id, name, connection, player_proto);
 
-    if (!PropertiesSerializator::LoadFromDbDocument(&player->GetPropertiesForEdit(), doc, *this)) {
+    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *this)) {
         player->Release();
         connection->Send_TextMsg(STR_NET_WRONG_DATA);
         connection->GracefulDisconnect();
