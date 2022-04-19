@@ -11,7 +11,6 @@
 ## Table of Content
 
 - [Features](#features)
-- [Media](#media)
 - [Usage](#usage)
   * [Workflow](#workflow)
   * [Public API](#public-api)
@@ -58,10 +57,6 @@
   + And common graphics formats like PNG or TGA
 
 Important note: *Not all from described above features are already implemented, for additional information look at 'Work in progress' section below*.
-
-## Media
-
-[![https://img.youtube.com/vi/DzCTz7HjuOM/0.jpg](http://img.youtube.com/vi/DzCTz7HjuOM/0.jpg)](http://www.youtube.com/watch?v=DzCTz7HjuOM "FOnline Intro")
 
 ## Usage
 
@@ -367,6 +362,8 @@ Please follow these instructions to understand how to use this engine by design:
 * Entity: improve entity event Priority
 * Entity: improve entity event OneShot
 * Entity: improve entity event Deferred
+* EntityProperties: implement Player InitScript
+* EntityProperties: implement Location InitScript
 * FileSystem: handle apply file writing
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
@@ -388,16 +385,19 @@ Please follow these instructions to understand how to use this engine by design:
 * Testing: fix script system
 * Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
 * Testing: send client dumps to server
+* ClientCritterScriptMethods: handle AbstractItem in Animate
 * ClientItemScriptMethods: solve recursion in GetMapPos
 * ClientItemScriptMethods: need attention!
 * CommonGlobalScriptMethods: fix script system
 * MapperGlobalScriptMethods: need attention! (4)
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
-* ServerItemScriptMethods: fix ItemOwnership::ItemContainer recursion
+* ServerCritterScriptMethods: handle AbstractItem in Action
+* ServerCritterScriptMethods: handle AbstractItem in Animate
 * AdminPanel: admin panel network to Asio
 * Critter: rename to IsOwnedByPlayer
 * Critter: replace to !IsOwnedByPlayer
+* Critter: move Flags to properties
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * Dialogs: check item name on DR_ITEM
