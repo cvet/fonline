@@ -13,9 +13,9 @@
 - [Features](#features)
 - [Usage](#usage)
   * [Workflow](#workflow)
-  * [Public API](#public-api)
-  * [Setup](#setup)
+    + [Public API](#public-api)
     + [Visual Studio Code](#visual-studio-code)
+  * [Setup](#setup)
     + [Package dependencies](#package-dependencies)
     + [Statically linked packages](#statically-linked-packages)
   * [Footprint](#footprint)
@@ -23,17 +23,16 @@
 - [Work in progress](#work-in-progress)
   * [Roadmap](#roadmap)
   * [Roadmap for Visual Studio Code extension](#roadmap-for-visual-studio-code-extension)
-  * [Code refactoring plans](#code-refactoring-plans)
   * [Todo list *(generated from source code)*](#todo-list---generated-from-source-code--)
 - [Repository structure](#repository-structure)
 - [Frequently Asked Questions](frequently-asked-questions)
-- [Help and support](#help-and-support)
+- [About](#about)
 
 ## Features
 
 * Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
 * Multiplayer mode with authoritative server
-* Singleplayer mode *(work without distinguish between server and client sides)*
+* Singleplayer mode (one binary, no network connections)
 * Supporting of hexagonal and square map tiling
 * Perendered sprites for environment but with possibility of using 3D models for characters
 * Engine core written in C++ (favored C++17 standard)
@@ -60,58 +59,46 @@ Important note: *Not all from described above features are already implemented, 
 
 ## Usage
 
-Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
-You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
-Shell scripts targeted for work under Windows 10 / Ubuntu-22.04 / macOS 12.  
+Engine doesn't targeting to use directly but by as part (submodule) to your own project (git repo).  
+Repository contains source code of engine, third-party sources and build tools for composing all this and your stuff into final platform-specific bundles.  
+You may work on your game either using shell scripts manually or custom Visual Studio Code extension for simplify these things.  
+Shell scripts targeted for work under (at least) Windows 10 / Ubuntu-22.04 / macOS 12.  
 You build your game fully from source, there is no prebuilt binaries, full control over the process.
 
 ### Workflow
 
 Process of creating your game in two words looks like this:
 * Once prepare workspace where all intermediate build files will be stored
+* Manage game content and resources
 * Build executables from source to platforms that you needed
 * Compile scripts (AngelScript and/or Mono; but Native were compiled with built executables)
-* Bake all resources (shaders, images and etc) to special formats that will be loaded super fast by server/client
+* Bake all resources (shaders, images and etc) to special formats that will be loaded without overhead by server/client
 * Package built executables and baked resources from steps above to final platform specific bundle (zip, msi, app, apk and etc)
-* Enjoy your shipped game and iterate development
 
-There are couple of shell scripts that help us to do it:  
-* `BuildTools/prepare-workspace.sh` - prepare our linux workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
-* `BuildTools/prepare-win-workspace.ps1` - windows version of prepare workspace, that helps prepare to work
-* `BuildTools/prepare-mac-workspace.sh` - mac version of prepare workspace, that helps prepare to work
-* `BuildTools/build.sh/bat` - build executable for specific platform
-* `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
+#### Public API
 
-Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in [BuildTools/README.md](https://github.com/cvet/fonline/blob/master/BuildTools/README.md).
-
-### Public API
-
-*Todo: write about versioning SemVer https://semver.org and what public API included to itself*  
 Documents related to public API:
 * [Public API](https://fonline.ru/PUBLIC_API)
-* [Multiplayer Script API](https://fonline.ru/MULTIPLAYER_SCRIPT_API)
-* [Singleplayer Script API](https://fonline.ru/SINGLEPLAYER_SCRIPT_API)
-* [Mapper Script API](https://fonline.ru/MAPPER_SCRIPT_API)
+* [Scripting API](https://fonline.ru/SCRIPTING_API)
 
-### Setup
-
-Clone with git this repository.  
-Open repository root in Visual Studio Code, install recommended extensions.  
-*Todo: write about project generation*
-
-#### Windows Subsystem for Linux
-
-Main point of WSL2 for us that we can run Windows programs from Linux.  
-That feature allows unify almost all our build scripts into one environment.  
-Recommended Linux distro is [Ununtu-20.04](https://ubuntu.com) on which all build scripts tested.  
-You may use other distro but there is no guarantee that it will work out of the box.
+Also you must understand that scripting api automaticly generated for each project individually and api described in [Scripting API](https://fonline.ru/SCRIPTING_API) is only basic.  
+See example of extended scripting api at [FOnline TLA Scripting API](https://tla.fonline.ru/SCRIPTING_API).
 
 #### Visual Studio Code
 
 Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
 In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
-Extension activates automatically when editor finds any file that contains `fonline` in name of any file at workspace root.  
 More about extension usage you can find in [Tutorial](https://fonline.ru/TUTORIAL) document.
+
+### Setup
+
+General steps:
+* Create your own project repo and link this repo as submodule
+* Setup your game in cmake extension file (see CMake contribution at [Public API](https://fonline.ru/PUBLIC_API))
+* Manage your project with Visual Studio Code + FOnline extension (see Visual Studio Code extension at [Public API](https://fonline.ru/PUBLIC_API))
+
+Reference project:
+* FOnline: The Life After https://guthub.com/cvet/fonline-tla
 
 #### Package dependencies
 
@@ -140,6 +127,7 @@ List of tools for Windows operating system *(some optional)*:
 
 List of tools for Mac operating system:
 * [CMake](https://cmake.org)
+* [Python](https://python.org) - needed for additional game code generation
 * [Xcode](https://developer.apple.com/xcode)
 
 Other stuff used in build pipeline:
@@ -162,8 +150,7 @@ They are located in ThirdParty directory.
 * [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
 * [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
 * [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
-* SHA1 by Steve Reid - hash generator
-* SHA2 by Olivier Gay - hash generator
+* SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
 * [Theora](https://www.theora.org/downloads/) - video library
 * [Vorbis](https://xiph.org/vorbis/) - audio library
@@ -198,8 +185,12 @@ Please follow these instructions to understand how to use this engine by design:
 
 **First release version:**
 
-* [FOnline TLA]((https://github.com/cvet/fonline-tla)) as demo game
-* Code refactoring *(see separate section below)*
+* [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game
+* Code refactoring
+  + Clean up errors handling (error code based + exception based)
+  + Preprocessor defines to constants and enums
+  + Eliminate raw pointers, use raii and smart pointers for control objects lifetime
+  + Fix all warnings from PVS Studio and other static analyzer tools
 * Native C++ and AngelScript scripting layers
 * Documentation for public API
 * API freezing and continuing development with it's backward compatibility
@@ -214,38 +205,19 @@ Please follow these instructions to understand how to use this engine by design:
 * Particle system
 * Metal rendering for macOS/iOS
 
-**Research plans:**
+### Roadmap for Visual Studio Code extension
 
-* Supporting of PlayStation
-* Integration with Unity engine
-
-### Visual Studio Code extension
-
-* Integrate mapper (as javascript module) for editing .fomap
+* Integrate mapper for editing .fomap
 * Integrate dialog editor for editing .fodlg
 * Integrate some property grid for protos editing
-* Integrate server (as separate process but render ui in editor)
-* Integrate client (as javascript module)
+* Integrate server
+* Integrate client
 * Improve viewers for supported graphic formats (frm, spr, png, fofrm and etc)
-* Add supporting of AngelScript language (highlight, auto-completion, compilation)
-* Take and tune some of extensions for C# and C++ scripting
+* Add supporting of AngelScript language (highlight, auto-completion)
 * Improve debugging of code (core and scripting)
 * Improve debugging of game logic (like run game on this map with these scripts)
 * Integrate gui editor for editing .fogui
 * Add snippets for common tasks (like create map, create script, create proto)
-
-### Code refactoring plans
-
-* Move errors handling model from error code based to exception based
-* Eliminate singletons, statics, global functions
-* Preprocessor defines to constants and enums
-* Eliminate raw pointers, use raii and smart pointers for control objects lifetime
-* Hide implementation details from headers using abstraction and pimpl idiom
-* Fix all warnings from PVS Studio and other static analyzer tools
-* Improve more new C++ features like std::array, std::filesystem, std::string_view and etc
-* Decrease platform specific code to minimum (we can leave this work to portable C++ or SDL)
-* C-style casts to C++-style casts
-* Add constness as much as necessary
 
 ### Todo list *(generated from source code)*
 
@@ -436,7 +408,7 @@ Please follow these instructions to understand how to use this engine by design:
 Following document contains some issues thats give additional information about this engine:
 * [FAQ document](https://fonline.ru/FAQ)
 
-## Help and support
+## About
 
 * Site: [fonline.ru](https://fonline.ru)
 * GitHub: [github.com/cvet/fonline](https://github.com/cvet/fonline)
