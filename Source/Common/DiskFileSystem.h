@@ -59,9 +59,10 @@ public:
     [[nodiscard]] auto GetWriteTime() const -> uint64;
     [[nodiscard]] auto GetSize() const -> uint;
 
-    auto Read(void* buf, uint len) -> bool;
-    auto Write(const void* buf, uint len) -> bool;
+    auto Read(void* buf, size_t len) -> bool;
+    auto Write(const void* buf, size_t len) -> bool;
     auto Write(string_view str) -> bool;
+    auto Write(const_span<uchar> data) -> bool;
     auto SetPos(int offset, DiskFileSeek origin) -> bool;
 
 private:

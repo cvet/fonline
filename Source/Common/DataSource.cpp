@@ -658,11 +658,11 @@ ZipFile::ZipFile(string_view fname)
         ffunc.zopen_file = [](voidpf opaque, const char*, int) -> voidpf { return opaque; };
         ffunc.zread_file = [](voidpf, voidpf stream, void* buf, uLong size) -> uLong {
             auto* file = static_cast<DiskFile*>(stream);
-            return file->Read(buf, static_cast<uint>(size)) ? size : 0;
+            return file->Read(buf, size) ? size : 0;
         };
         ffunc.zwrite_file = [](voidpf, voidpf, const void*, uLong) -> uLong { return 0; };
         ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-            auto* file = static_cast<DiskFile*>(stream);
+            const auto* file = static_cast<DiskFile*>(stream);
             return static_cast<long>(file->GetPos());
         };
         ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int origin) -> long {
@@ -683,7 +683,7 @@ ZipFile::ZipFile(string_view fname)
             return 0;
         };
         ffunc.zclose_file = [](voidpf, voidpf stream) -> int {
-            auto* file = static_cast<DiskFile*>(stream);
+            const auto* file = static_cast<DiskFile*>(stream);
             delete file;
             return 0;
         };

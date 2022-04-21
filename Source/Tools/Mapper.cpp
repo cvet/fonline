@@ -4064,8 +4064,7 @@ auto FOMapper::SaveLogFile() -> bool
         fmt_log += i.Time + _str(i.Mess).erase('|', ' ').str();
     }
 
-    f.Write(fmt_log.c_str(), static_cast<uint>(fmt_log.length()));
-    return true;
+    return f.Write(fmt_log);
 }
 
 void FOMapper::RunStartScript()

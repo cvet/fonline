@@ -647,7 +647,7 @@ protected:
         bson_free(json);
 
         if (auto f = DiskFileSystem::OpenFile(path, true)) {
-            if (!f.Write(pretty_json_dump.c_str(), static_cast<uint>(pretty_json_dump.length()))) {
+            if (!f.Write(pretty_json_dump)) {
                 throw DataBaseException("DbJson Can't write file", path);
             }
         }
@@ -698,7 +698,7 @@ protected:
         bson_free(new_json);
 
         if (auto f_write = DiskFileSystem::OpenFile(path, true)) {
-            if (!f_write.Write(pretty_json_dump.c_str(), static_cast<uint>(pretty_json_dump.length()))) {
+            if (!f_write.Write(pretty_json_dump)) {
                 throw DataBaseException("DbJson Can't write file", path);
             }
         }

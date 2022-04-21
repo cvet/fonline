@@ -2178,7 +2178,7 @@
         throw ScriptException("Can't open file for writing", filePath);
     }
 
-    if (text.length() > 0 && !f.Write(text.data(), static_cast<uint>(text.length()))) {
+    if (!f.Write(text)) {
         throw ScriptException("Can't write file", filePath, text.length());
     }
 }

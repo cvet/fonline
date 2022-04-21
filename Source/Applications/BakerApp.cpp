@@ -149,7 +149,7 @@ int main(int argc, char** argv)
                     for (const auto& [name, data] : baked_files) {
                         auto res_file = DiskFileSystem::OpenFile(_str("Pack_{}/{}", pack_name, name), true);
                         RUNTIME_ASSERT(res_file);
-                        auto res_file_write_ok = res_file.Write(data.data(), static_cast<uint>(data.size()));
+                        auto res_file_write_ok = res_file.Write(data);
                         RUNTIME_ASSERT(res_file_write_ok);
                     }
                 }

@@ -130,7 +130,7 @@ void WriteLogMessage(string_view message)
 
     // Write logs
     if (Data->LogFileHandle) {
-        Data->LogFileHandle->Write(result.c_str(), static_cast<uint>(result.length()));
+        Data->LogFileHandle->Write(result);
     }
 
     if (Data->LogBufferStr != nullptr) {

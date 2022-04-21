@@ -136,7 +136,7 @@ DiskFile::operator bool() const
     return !!_pImpl;
 }
 
-auto DiskFile::Read(void* buf, uint len) -> bool
+auto DiskFile::Read(void* buf, size_t len) -> bool
 {
     NON_CONST_METHOD_HINT();
 
@@ -148,32 +148,19 @@ auto DiskFile::Read(void* buf, uint len) -> bool
     return ::ReadFile(_pImpl->FileHandle, buf, len, &br, nullptr) != 0 && br == len;
 }
 
-auto DiskFile::Write(const void* buf, uint len) -> bool
-{
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
-
-    DWORD bw = 0;
-    return ::WriteFile(_pImpl->FileHandle, buf, len, &bw, nullptr) != 0 && bw == len;
-}
-
-auto DiskFile::Write(string_view str) -> bool
+auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
 
-    if (str.empty()) {
+    if (len == 0u) {
         return true;
     }
 
-    const auto len = static_cast<DWORD>(str.length());
     DWORD bw = 0;
-    return ::WriteFile(_pImpl->FileHandle, str.data(), len, &bw, nullptr) != 0 && bw == len;
+    return ::WriteFile(_pImpl->FileHandle, buf, static_cast<DWORD>(len), &bw, nullptr) != 0 && bw == len;
 }
 
 auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
@@ -271,13 +258,16 @@ bool DiskFile::Read(void* buf, uint len)
     return static_cast<uint>(SDL_RWread(_pImpl->Ops, buf, sizeof(char), len)) == len;
 }
 
-bool DiskFile::Write(const void* buf, uint len)
+bool DiskFile::Write(const void* buf, size_t len)
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
+
+    if (len == 0u) {
+        return true;
+    }
 
     SDL_RWops* ops = _pImpl->Ops;
     bool result = (static_cast<uint>(SDL_RWwrite(ops, buf, sizeof(char), len)) == len);
@@ -294,19 +284,6 @@ bool DiskFile::Write(const void* buf, uint len)
         }
     }
     return result;
-}
-
-bool DiskFile::Write(string_view str)
-{
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(_openedForWriting);
-
-    if (!str.empty()) {
-        return Write(str.data(), static_cast<uint>(str.length()));
-    }
-    return true;
 }
 
 bool DiskFile::SetPos(int offset, DiskFileSeek origin)
@@ -419,32 +396,22 @@ bool DiskFile::Read(void* buf, uint len)
     return ::fread(buf, sizeof(char), len, _pImpl->File) == len;
 }
 
-bool DiskFile::Write(const void* buf, uint len)
+bool DiskFile::Write(const void* buf, size_t len)
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
+
+    if (len == 0u) {
+        return true;
+    }
 
     bool result = (::fwrite(buf, len, 1, _pImpl->File) == 1);
     if (result && _pImpl->WriteThrough) {
         ::fflush(_pImpl->File);
     }
     return result;
-}
-
-bool DiskFile::Write(string_view str)
-{
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(_openedForWriting);
-
-    if (!str.empty()) {
-        return Write(str.data(), (uint)str.length());
-    }
-    return true;
 }
 
 bool DiskFile::SetPos(int offset, DiskFileSeek origin)
@@ -707,6 +674,32 @@ uint64 DiskFind::GetWriteTime() const
 }
 #endif
 
+bool DiskFile::Write(string_view str)
+{
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_pImpl);
+    RUNTIME_ASSERT(_openedForWriting);
+
+    if (!str.empty()) {
+        return Write(str.data(), str.length());
+    }
+    return true;
+}
+
+bool DiskFile::Write(const_span<uchar> data)
+{
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_pImpl);
+    RUNTIME_ASSERT(_openedForWriting);
+
+    if (!data.empty()) {
+        return Write(data.data(), data.size());
+    }
+    return true;
+}
+
 #if !FO_IOS
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {
@@ -869,6 +862,6 @@ void DiskFileSystem::CreateBuildHashFile(string_view hash_name)
     auto build_hash_file = OpenFile(_str("{}.build-hash", hash_name), true, true);
     RUNTIME_ASSERT(build_hash_file);
     const auto build_hash = string(FO_BUILD_HASH);
-    const auto build_hash_writed = build_hash_file.Write(build_hash.c_str(), static_cast<uint>(build_hash.length()));
+    const auto build_hash_writed = build_hash_file.Write(build_hash);
     RUNTIME_ASSERT(build_hash_writed);
 }
