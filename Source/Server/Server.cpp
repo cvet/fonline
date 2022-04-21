@@ -1900,6 +1900,8 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
         }
     }
 
+    auto writer = DataWriter(_updateFilesList);
+
     // Clear collections
     for (auto& update_file : _updateFiles) {
         delete[] update_file.Data;
@@ -1920,10 +1922,10 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
             std::memcpy(update_file.Data, &msg_data[0], update_file.Size);
             _updateFiles.push_back(update_file);
 
-            WriteData(_updateFilesList, static_cast<short>(msg_cache_name.length()));
-            WriteDataArr(_updateFilesList, msg_cache_name.c_str(), msg_cache_name.length());
-            WriteData(_updateFilesList, update_file.Size);
-            WriteData(_updateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
+            writer.Write<short>(static_cast<short>(msg_cache_name.length()));
+            writer.WritePtr(msg_cache_name.c_str(), msg_cache_name.length());
+            writer.Write<uint>(update_file.Size);
+            writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
         }
     }
 
@@ -1937,10 +1939,10 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
     _updateFiles.push_back(update_file);
 
     const string protos_cache_name = "$protos.cache";
-    WriteData(_updateFilesList, static_cast<short>(protos_cache_name.length()));
-    WriteDataArr(_updateFilesList, protos_cache_name.c_str(), protos_cache_name.length());
-    WriteData(_updateFilesList, update_file.Size);
-    WriteData(_updateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
+    writer.Write<short>(static_cast<short>(protos_cache_name.length()));
+    writer.WritePtr(protos_cache_name.c_str(), protos_cache_name.length());
+    writer.Write<uint>(update_file.Size);
+    writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
 
     // Fill files
     auto files = FileMngr.FilterFiles("", "Update/", true);
@@ -1948,15 +1950,15 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
         auto file = files.GetCurFile();
 
         std::memset(&update_file, 0, sizeof(update_file));
-        update_file.Size = file.GetFsize();
+        update_file.Size = file.GetSize();
         update_file.Data = file.ReleaseBuffer();
         _updateFiles.push_back(update_file);
 
         auto file_path = file.GetName().substr("Update/"_len);
-        WriteData(_updateFilesList, static_cast<short>(file_path.length()));
-        WriteDataArr(_updateFilesList, file_path.data(), file_path.length());
-        WriteData(_updateFilesList, update_file.Size);
-        WriteData(_updateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
+        writer.Write<short>(static_cast<short>(file_path.length()));
+        writer.WritePtr(file_path.data(), file_path.length());
+        writer.Write<uint>(update_file.Size);
+        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
 
     WriteLog("Generate update files complete.\n");
@@ -1967,19 +1969,19 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
         auto file = binaries.GetCurFile();
 
         std::memset(&update_file, 0, sizeof(update_file));
-        update_file.Size = file.GetFsize();
+        update_file.Size = file.GetSize();
         update_file.Data = file.ReleaseBuffer();
         _updateFiles.push_back(update_file);
 
         auto file_path = file.GetName().substr("Binaries/"_len);
-        WriteData(_updateFilesList, static_cast<short>(file_path.length()));
-        WriteDataArr(_updateFilesList, file_path.data(), file_path.length());
-        WriteData(_updateFilesList, update_file.Size);
-        WriteData(_updateFilesList, Hashing::MurmurHash2(update_file.Data, update_file.Size));
+        writer.Write<short>(static_cast<short>(file_path.length()));
+        writer.WritePtr(file_path.data(), file_path.length());
+        writer.Write<uint>(update_file.Size);
+        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
     }
 
     // Complete files list
-    WriteData(_updateFilesList, static_cast<short>(-1));
+    writer.Write<short>(static_cast<short>(-1));
 }
 
 void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)

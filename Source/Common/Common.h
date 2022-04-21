@@ -718,14 +718,20 @@ private:
 };
 
 // Data serialization helpers
+DECLARE_EXCEPTION(DataReadingException);
+
 class DataReader
 {
 public:
     explicit DataReader(const_span<uchar> buf) : _dataBuf {buf} { }
 
-    template<class T>
+    template<class T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     auto Read() -> T
     {
+        if (_readPos + sizeof(T) > _dataBuf.size()) {
+            throw DataReadingException("Unexpected end of buffer");
+        }
+
         T data;
         std::memcpy(&data, &_dataBuf[_readPos], sizeof(T));
         _readPos += sizeof(T);
@@ -736,15 +742,22 @@ public:
     auto ReadPtr(size_t size) -> const T*
     {
         _readPos += size;
-        return size ? &_dataBuf[_readPos - size] : nullptr;
+        return size ? reinterpret_cast<const T*>(&_dataBuf[_readPos - size]) : nullptr;
     }
 
     template<class T>
     void ReadPtr(T* ptr, size_t size)
     {
-        _readPos += size;
-        if (size) {
+        if (size > 0u) {
+            _readPos += size;
             std::memcpy(ptr, &_dataBuf[_readPos - size], size);
+        }
+    }
+
+    void VerifyEnd() const
+    {
+        if (_readPos != _dataBuf.size()) {
+            throw DataReadingException("Not all data readed");
         }
     }
 
@@ -756,10 +769,17 @@ private:
 class DataWriter
 {
 public:
-    explicit DataWriter(vector<uchar>& buf) : _dataBuf {buf} { }
+    static constexpr size_t BUF_RESERVE_SIZE = 1024;
 
-    template<class T>
-    void Write(T data)
+    explicit DataWriter(vector<uchar>& buf) : _dataBuf {buf}
+    {
+        if (_dataBuf.capacity() < BUF_RESERVE_SIZE) {
+            _dataBuf.reserve(BUF_RESERVE_SIZE);
+        }
+    }
+
+    template<class T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    void Write(std::enable_if_t<true, T> data)
     {
         const auto cur = _dataBuf.size();
         _dataBuf.resize(cur + sizeof(data));
@@ -767,10 +787,11 @@ public:
     }
 
     template<class T>
-    void WritePtr(T* data, size_t size)
+    void WritePtr(const T* data, size_t size)
     {
-        if (!size)
+        if (size == 0u) {
             return;
+        }
 
         const auto cur = _dataBuf.size();
         _dataBuf.resize(cur + size);
@@ -780,41 +801,6 @@ public:
 private:
     vector<uchar>& _dataBuf;
 };
-
-// Todo: move WriteData/ReadData to DataWriter/DataReader
-template<class T>
-void WriteData(vector<uchar>& vec, T data)
-{
-    const auto cur = vec.size();
-    vec.resize(cur + sizeof(data));
-    std::memcpy(&vec[cur], &data, sizeof(data));
-}
-
-template<class T, class U>
-void WriteDataArr(vector<uchar>& vec, T* data, U size)
-{
-    if (size > 0) {
-        const auto cur = static_cast<uint>(vec.size());
-        vec.resize(cur + static_cast<uint>(size));
-        std::memcpy(&vec[cur], data, size);
-    }
-}
-
-template<class T>
-auto ReadData(const vector<uchar>& vec, uint& pos) -> T
-{
-    T data;
-    std::memcpy(&data, &vec[pos], sizeof(T));
-    pos += sizeof(T);
-    return data;
-}
-
-template<class T>
-auto ReadDataArr(const vector<uchar>& vec, uint size, uint& pos) -> const T*
-{
-    pos += size;
-    return size ? reinterpret_cast<const T*>(&vec[pos - size]) : nullptr;
-}
 
 // Flex rect
 template<typename T>

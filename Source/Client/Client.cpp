@@ -3487,7 +3487,7 @@ void FOClient::Net_OnMap()
     auto* cache = Cache.GetRawData(map_name, cache_len);
     if (cache != nullptr) {
         const auto compressed_file = File(cache, cache_len);
-        const auto buf = Compressor::Uncompress({compressed_file.GetBuf(), compressed_file.GetFsize()}, 50);
+        const auto buf = Compressor::Uncompress({compressed_file.GetBuf(), compressed_file.GetSize()}, 50);
         if (!buf.empty()) {
             auto file = File(buf);
 
@@ -3518,14 +3518,14 @@ void FOClient::Net_OnMap()
 
     if (tiles && scen) {
         vector<uchar> buf;
-        DataWriter buf_writer {buf};
+        auto buf_writer = DataWriter(buf);
 
-        buf_writer.Write(CLIENT_MAP_FORMAT_VER);
-        buf_writer.Write(map_pid.as_uint());
-        buf_writer.Write(maxhx);
-        buf_writer.Write(maxhy);
-        buf_writer.Write(tiles_len);
-        buf_writer.Write(scen_len);
+        buf_writer.Write<int>(CLIENT_MAP_FORMAT_VER);
+        buf_writer.Write<uint>(map_pid.as_uint());
+        buf_writer.Write<ushort>(maxhx);
+        buf_writer.Write<ushort>(maxhy);
+        buf_writer.Write<uint>(tiles_len);
+        buf_writer.Write<uint>(scen_len);
         buf_writer.WritePtr(tiles_data, tiles_len);
         buf_writer.WritePtr(scen_data, scen_len);
 
@@ -3731,9 +3731,9 @@ void FOClient::Net_OnUpdateFilesList()
         if (name[0] != '$') {
             // Real file, human can disturb file consistency, make base recheck
             auto file_header = FileMngr.ReadFileHeader(name);
-            if (file_header && file_header.GetFsize() == size) {
+            if (file_header && file_header.GetSize() == size) {
                 auto file2 = FileMngr.ReadFile(name);
-                if (cached_hash_same || (file2 && hash == Hashing::MurmurHash2(file2.GetBuf(), file2.GetFsize()))) {
+                if (cached_hash_same || (file2 && hash == Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize()))) {
                     if (!cached_hash_same) {
                         Cache.SetRawData(_str("{}.hash", name), reinterpret_cast<uchar*>(&hash), sizeof(hash));
                     }
@@ -3802,7 +3802,7 @@ void FOClient::Net_OnUpdateFileData()
                 return;
             }
 
-            Cache.SetRawData(update_file.Name, temp_file.GetBuf(), temp_file.GetFsize());
+            Cache.SetRawData(update_file.Name, temp_file.GetBuf(), temp_file.GetSize());
             Cache.SetRawData(update_file.Name + ".hash", reinterpret_cast<uchar*>(&update_file.Hash), sizeof(update_file.Hash));
             DiskFileSystem::DeleteFile(UPDATE_TEMP_FILE);
         }

@@ -703,7 +703,7 @@ auto HexManager::RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, usho
         TraceBullet(from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, nullptr, &item->EffSteps, false);
         auto [x, y] = _engine->GeomHelper.GetHexInterval(from_hx, from_hy, to_hx, to_hy);
         y += GenericUtils::Random(5, 25); // Center of body
-        std::tie(sx, sy) = GenericUtils::GetStepsXY(0, 0, x, y);
+        std::tie(sx, sy) = GenericUtils::GetStepsCoords(0, 0, x, y);
         dist = GenericUtils::DistSqrt(0, 0, x, y);
     }
 
@@ -1549,7 +1549,7 @@ void HexManager::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ush
 
 void HexManager::TraceLight(ushort from_hx, ushort from_hy, ushort& hx, ushort& hy, int dist, uint inten)
 {
-    const auto [base_sx, base_sy] = GenericUtils::GetStepsXY(from_hx, from_hy, hx, hy);
+    const auto [base_sx, base_sy] = GenericUtils::GetStepsCoords(from_hx, from_hy, hx, hy);
     const auto sx1_f = base_sx;
     const auto sy1_f = base_sy;
     auto curx1_f = static_cast<float>(from_hx);
@@ -1777,7 +1777,7 @@ void HexManager::ParseLightTriangleFan(LightSource& ls)
             _lightSoftPoints.push_back({cur.PointX, cur.PointY, cur.PointColor, cur.PointOffsX, cur.PointOffsY});
             auto x = static_cast<float>(dist_comp ? next.PointX - cur.PointX : cur.PointX - next.PointX);
             auto y = static_cast<float>(dist_comp ? next.PointY - cur.PointY : cur.PointY - next.PointY);
-            std::tie(x, y) = GenericUtils::ChangeStepsXY(x, y, dist_comp ? -2.5f : 2.5f);
+            std::tie(x, y) = GenericUtils::ChangeStepsCoords(x, y, dist_comp ? -2.5f : 2.5f);
             if (dist_comp) {
                 _lightSoftPoints.push_back({cur.PointX + static_cast<int>(x), cur.PointY + static_cast<int>(y), cur.PointColor, cur.PointOffsX, cur.PointOffsY});
             }
@@ -3957,7 +3957,7 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
     }
 
     // Header
-    auto data_reader = DataReader {{data, data_len}};
+    auto data_reader = DataReader({data, data_len});
 
     if (data_reader.Read<int>() != CLIENT_MAP_FORMAT_VER) {
         WriteLog("Map format is not supported.\n");
@@ -3974,9 +3974,10 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
     const auto maxhy = data_reader.Read<ushort>();
     const auto tiles_len = data_reader.Read<uint>();
     const auto scen_len = data_reader.Read<uint>();
-
     const auto* tiles_buf = data_reader.ReadPtr<uchar>(tiles_len);
     const auto* scen_buf = data_reader.ReadPtr<uchar>(scen_len);
+
+    data_reader.VerifyEnd();
 
     // Create field
     ResizeField(maxhx, maxhy);
@@ -3984,7 +3985,7 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
     // Tiles
     _curHashTiles = (tiles_len != 0u ? Hashing::MurmurHash2(tiles_buf, tiles_len) : maxhx * maxhy);
 
-    auto tiles_reader = DataReader {{tiles_buf, tiles_len}};
+    auto tiles_reader = DataReader({tiles_buf, tiles_len});
     for (uint i = 0; i < tiles_len / sizeof(MapTile); i++) {
         MapTile tile;
         tiles_reader.ReadPtr(&tile, sizeof(tile));
@@ -4000,6 +4001,8 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
         }
     }
 
+    tiles_reader.VerifyEnd();
+
     // Roof indexes
     auto roof_num = 1;
     for (const auto hx : xrange(_maxHexX)) {
@@ -4014,7 +4017,7 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
     // Scenery
     _curHashScen = (scen_len != 0u ? Hashing::MurmurHash2(scen_buf, scen_len) : maxhx * maxhy);
 
-    auto scen_reader = DataReader {{tiles_buf, tiles_len}};
+    auto scen_reader = DataReader({tiles_buf, tiles_len});
     auto scen_count = scen_reader.Read<uint>();
     for (uint i = 0; i < scen_count; i++) {
         const auto id = scen_reader.Read<uint>();
@@ -4038,6 +4041,8 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
 
         GenerateItem(id, proto_id, props);
     }
+
+    scen_reader.VerifyEnd();
 
     // Scroll blocks borders
     for (const auto hx : xrange(_maxHexX)) {
@@ -4161,7 +4166,7 @@ void HexManager::GetMapHash(CacheStorage& cache, hstring map_pid, uint& hash_til
         return;
     }
 
-    auto data_reader = DataReader {{data, data_len}};
+    auto data_reader = DataReader({data, data_len});
 
     if (data_reader.Read<int>() != CLIENT_MAP_FORMAT_VER) {
         WriteLog("Map format is not supported.\n");
@@ -4178,9 +4183,10 @@ void HexManager::GetMapHash(CacheStorage& cache, hstring map_pid, uint& hash_til
     const auto maxhy = data_reader.Read<ushort>();
     const auto tiles_len = data_reader.Read<uint>();
     const auto scen_len = data_reader.Read<uint>();
-
     const auto* tiles_buf = data_reader.ReadPtr<uchar>(tiles_len);
     const auto* scen_buf = data_reader.ReadPtr<uchar>(scen_len);
+
+    data_reader.VerifyEnd();
 
     hash_tiles = (tiles_len != 0u ? Hashing::MurmurHash2(tiles_buf, tiles_len) : maxhx * maxhy);
     hash_scen = (scen_len != 0u ? Hashing::MurmurHash2(scen_buf, scen_len) : maxhx * maxhy);

@@ -1499,10 +1499,10 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     Preprocessor::StoreLineNumberTranslator(lnt, lnt_data);
 
     vector<uchar> data;
-    DataWriter writer {data};
-    writer.Write(static_cast<uint>(buf.size()));
+    auto writer = DataWriter(data);
+    writer.Write<uint>(static_cast<uint>(buf.size()));
     writer.WritePtr(buf.data(), buf.size());
-    writer.Write(static_cast<uint>(lnt_data.size()));
+    writer.Write<uint>(static_cast<uint>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
     auto file = DiskFileSystem::OpenFile(string(script_path) + "b", true);
@@ -1520,11 +1520,12 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
     RUNTIME_ASSERT(script_file);
 
-    DataReader reader {{script_file.GetBuf(), script_file.GetFsize()}};
+    auto reader = DataReader({script_file.GetBuf(), script_file.GetSize()});
     vector<asBYTE> buf(reader.Read<uint>());
     std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
     vector<uchar> lnt_data(reader.Read<uint>());
     std::memcpy(lnt_data.data(), reader.ReadPtr<uchar>(lnt_data.size()), lnt_data.size());
+    reader.VerifyEnd();
     RUNTIME_ASSERT(!buf.empty());
     RUNTIME_ASSERT(!lnt_data.empty());
 

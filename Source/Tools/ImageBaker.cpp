@@ -138,38 +138,39 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     RUNTIME_ASSERT(!_bakedFiles.count(string(fname)));
 
     vector<uchar> data;
-    DataWriter writer {data};
+    auto writer = DataWriter(data);
+
     const auto check_number = static_cast<ushort>(42);
     const auto dirs = static_cast<uchar>(collection.HaveDirs ? _settings.MapDirCount : 1);
 
-    writer.Write(check_number);
-    writer.Write(collection.SequenceSize);
-    writer.Write(collection.AnimTicks);
-    writer.Write(dirs);
+    writer.Write<ushort>(check_number);
+    writer.Write<ushort>(collection.SequenceSize);
+    writer.Write<ushort>(collection.AnimTicks);
+    writer.Write<uchar>(dirs);
 
     for (const auto dir : xrange(dirs)) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        writer.Write(sequence.OffsX);
-        writer.Write(sequence.OffsY);
+        writer.Write<short>(sequence.OffsX);
+        writer.Write<short>(sequence.OffsY);
 
         for (uint i = 0; i < collection.SequenceSize; i++) {
             const auto& shot = sequence.Frames[i];
-            writer.Write(shot.Shared);
+            writer.Write<bool>(shot.Shared);
             if (!shot.Shared) {
-                writer.Write(shot.Width);
-                writer.Write(shot.Height);
-                writer.Write(shot.NextX);
-                writer.Write(shot.NextY);
+                writer.Write<ushort>(shot.Width);
+                writer.Write<ushort>(shot.Height);
+                writer.Write<short>(shot.NextX);
+                writer.Write<short>(shot.NextY);
                 writer.WritePtr(shot.Data.data(), shot.Data.size());
                 RUNTIME_ASSERT(shot.Data.size() == shot.Width * shot.Height * 4);
             }
             else {
-                writer.Write(shot.SharedIndex);
+                writer.Write<ushort>(shot.SharedIndex);
             }
         }
     }
 
-    writer.Write(check_number);
+    writer.Write<ushort>(check_number);
 
     if (!collection.NewExtension.empty()) {
         _bakedFiles.emplace(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), std::move(data));
@@ -1327,7 +1328,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
             data_len = file.GetCurPos() - cur_pos;
         }
         else {
-            data_len = file.GetFsize() - cur_pos;
+            data_len = file.GetSize() - cur_pos;
         }
         file.SetCurPos(cur_pos);
 
@@ -1364,7 +1365,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
         // Index data offsets
         vector<uint> image_indices;
         image_indices.resize(frame_cnt * dir_cnt * 4);
-        for (uint cur = 0; fm_images.GetCurPos() != fm_images.GetFsize();) {
+        for (uint cur = 0; fm_images.GetCurPos() != fm_images.GetSize();) {
             auto tag = fm_images.GetUChar();
             if (tag == 1) {
                 // Valid index
@@ -1782,12 +1783,12 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
     // Packed
     if (head[3] == 'C') {
         const auto unpacked_len = file.GetLEUInt();
-        auto data_len = file.GetFsize() - 12;
+        auto data_len = file.GetSize() - 12;
 
         auto* buf = file.ReleaseBuffer();
         *reinterpret_cast<ushort*>(buf) = 0x9C78;
 
-        const auto data = Compressor::Uncompress({buf, data_len}, unpacked_len / file.GetFsize() + 1);
+        const auto data = Compressor::Uncompress({buf, data_len}, unpacked_len / file.GetSize() + 1);
         delete[] buf;
 
         if (data.empty()) {
@@ -1900,12 +1901,12 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
     // Packed
     if (head[3] == 'C') {
         auto unpacked_len = file.GetLEUInt();
-        auto data_len = file.GetFsize() - 12;
+        auto data_len = file.GetSize() - 12;
 
         auto* buf = file.ReleaseBuffer();
         *reinterpret_cast<ushort*>(buf) = 0x9C78;
 
-        auto data = Compressor::Uncompress({buf, data_len}, unpacked_len / file.GetFsize() + 1);
+        auto data = Compressor::Uncompress({buf, data_len}, unpacked_len / file.GetSize() + 1);
         delete[] buf;
 
         if (data.empty()) {
@@ -2046,7 +2047,7 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
 
     uint w = 0;
     uint h = 0;
-    auto* tga_data = TgaLoad(file.GetBuf(), file.GetFsize(), w, h);
+    auto* tga_data = TgaLoad(file.GetBuf(), file.GetSize(), w, h);
     if (tga_data == nullptr) {
         throw ImageBakerException("Can't read TGA", fname);
     }

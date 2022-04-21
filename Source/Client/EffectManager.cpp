@@ -66,7 +66,7 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
         }
 
         const auto* buf = file.GetBuf();
-        const auto len = file.GetFsize();
+        const auto len = file.GetSize();
         vector<uchar> result(len);
         std::memcpy(&result[0], buf, len);
         return result;

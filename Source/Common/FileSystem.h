@@ -56,7 +56,7 @@ public:
 
     [[nodiscard]] auto GetName() const -> string_view;
     [[nodiscard]] auto GetPath() const -> string_view;
-    [[nodiscard]] auto GetFsize() const -> uint;
+    [[nodiscard]] auto GetSize() const -> uint;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
 
 protected:

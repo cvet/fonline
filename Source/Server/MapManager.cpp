@@ -93,7 +93,7 @@ void MapManager::LoadStaticMaps(FileManager& file_mngr)
 
 void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
 {
-    StaticMap static_map {};
+    StaticMap static_map;
 
     MapLoader::Load(
         pmap->GetName(), file_mngr, _engine->ProtoMngr, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME),
@@ -188,6 +188,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
 
     uint scenery_count = 0;
     vector<uchar> scenery_data;
+    auto writer = DataWriter(scenery_data);
     for (auto* item : static_map.AllItemsVec) {
         if (!item->IsStatic()) {
             item->AddRef();
@@ -254,34 +255,28 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
         // Data for client
         if (!item->GetIsHidden()) {
             scenery_count++;
-            WriteData(scenery_data, item->GetId());
-            WriteData(scenery_data, item->GetProtoId());
+            writer.Write<uint>(item->GetId());
+            writer.Write<uint>(item->GetProtoId().as_uint());
             vector<uchar*>* all_data = nullptr;
             vector<uint>* all_data_sizes = nullptr;
             item->StoreData(false, &all_data, &all_data_sizes);
-            WriteData(scenery_data, static_cast<uint>(all_data->size()));
+            writer.Write<uint>(static_cast<uint>(all_data->size()));
             for (size_t i = 0; i < all_data->size(); i++) {
-                WriteData(scenery_data, all_data_sizes->at(i));
-                WriteDataArr(scenery_data, all_data->at(i), all_data_sizes->at(i));
+                writer.Write<uint>(all_data_sizes->at(i));
+                writer.WritePtr(all_data->at(i), all_data_sizes->at(i));
             }
         }
     }
 
-    static_map.SceneryData.clear();
-    WriteData(static_map.SceneryData, scenery_count);
-    if (!scenery_data.empty()) {
-        WriteDataArr(static_map.SceneryData, &scenery_data[0], scenery_data.size());
-    }
+    auto final_writer = DataWriter(static_map.SceneryData);
+    final_writer.Write<uint>(scenery_count);
+    final_writer.WritePtr(scenery_data.data(), scenery_data.size());
 
     // Generate hashes
     static_map.HashTiles = maxhx * maxhy;
-    if (!static_map.Tiles.empty()) {
-        static_map.HashTiles = Hashing::MurmurHash2(reinterpret_cast<uchar*>(&static_map.Tiles[0]), static_cast<uint>(static_map.Tiles.size()) * sizeof(MapTile));
-    }
+    static_map.HashTiles = Hashing::MurmurHash2(static_map.Tiles.data(), static_map.Tiles.size() * sizeof(MapTile));
     static_map.HashScen = maxhx * maxhy;
-    if (!static_map.SceneryData.empty()) {
-        static_map.HashScen = Hashing::MurmurHash2(static_cast<uchar*>(&static_map.SceneryData[0]), static_cast<uint>(static_map.SceneryData.size()));
-    }
+    static_map.HashScen = Hashing::MurmurHash2(static_map.SceneryData.data(), static_map.SceneryData.size());
 
     // Shrink the vector capacities to fit their contents and reduce memory use
     static_map.SceneryData.shrink_to_fit();

@@ -191,7 +191,7 @@ void EffectBaker::AutoBakeEffects()
         }
 
         auto file = _allFiles.GetCurFile();
-        string content(file.GetCStr(), file.GetFsize());
+        string content(file.GetCStr(), file.GetSize());
 
 #if FO_ASYNC_BAKE
         futs.emplace_back(std::async(std::launch::async | std::launch::deferred, &EffectBaker::BakeShaderProgram, this, relative_path, content));

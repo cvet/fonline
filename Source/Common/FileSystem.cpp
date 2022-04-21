@@ -61,7 +61,7 @@ auto FileHeader::GetPath() const -> string_view
     return _filePath;
 }
 
-auto FileHeader::GetFsize() const -> uint
+auto FileHeader::GetSize() const -> uint
 {
     RUNTIME_ASSERT(_isLoaded);
 

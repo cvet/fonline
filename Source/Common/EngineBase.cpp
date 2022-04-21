@@ -144,13 +144,13 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value) const 
 
 auto FOEngineBase::ToHashedString(string_view s) const -> hstring
 {
-    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2(nullptr, 0))>);
+    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
     if (s.empty()) {
         return hstring();
     }
 
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(s.data()), static_cast<uint>(s.length()));
+    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
     RUNTIME_ASSERT(hash_value != 0u);
 
     if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {

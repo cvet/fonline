@@ -309,7 +309,7 @@ public:
             _file->GoForward(static_cast<uint>(offset));
         }
         else if (seek_pos == FbxFile::eEnd) {
-            _file->SetCurPos(_file->GetFsize() - static_cast<uint>(offset));
+            _file->SetCurPos(_file->GetSize() - static_cast<uint>(offset));
         }
     }
 
@@ -490,9 +490,10 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
     fbx_scene->Destroy(true);
 
     vector<uchar> data;
-    DataWriter writer {data};
+    auto writer = DataWriter(data);
+
     root_bone->Save(writer);
-    writer.Write(static_cast<uint>(loaded_animations.size()));
+    writer.Write<uint>(static_cast<uint>(loaded_animations.size()));
     for (auto& loaded_animation : loaded_animations) {
         loaded_animation->Save(writer);
     }

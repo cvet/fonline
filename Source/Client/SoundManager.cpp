@@ -317,7 +317,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), file.GetFsize(), channels, freq, samples);
+    auto acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), file.GetSize(), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
@@ -359,7 +359,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
             file2->GoForward(static_cast<uint>(offset));
             break;
         case SEEK_END:
-            file2->SetCurPos(file2->GetFsize() - static_cast<uint>(offset));
+            file2->SetCurPos(file2->GetSize() - static_cast<uint>(offset));
             break;
         default:
             return -1;

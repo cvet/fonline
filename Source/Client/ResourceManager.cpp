@@ -134,7 +134,7 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
 static auto AnimMapId(hstring model_name, uint anim1, uint anim2, bool is_fallout) -> uint
 {
     uint dw[4] = {model_name.as_uint(), anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
-    return Hashing::MurmurHash2(reinterpret_cast<uchar*>(&dw[0]), sizeof(dw));
+    return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
 auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*

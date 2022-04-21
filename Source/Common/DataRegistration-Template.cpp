@@ -205,6 +205,8 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
         restoreInfo.emplace(std::move(name), std::move(data));
     }
 
+    reader.VerifyEnd();
+
     // Restore enums
     for (const auto& info : restoreInfo["Enums"]) {
         static unordered_map<string, const type_info*> enum_type_map = {

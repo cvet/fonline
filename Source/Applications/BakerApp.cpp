@@ -90,7 +90,7 @@ int main(int argc, char** argv)
                 auto file = dialogs.GetCurFile();
                 auto dlg_file = DiskFileSystem::OpenFile(_str("Dialogs/{}.fodlg", file.GetName()), true);
                 RUNTIME_ASSERT(dlg_file);
-                auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetFsize());
+                auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetSize());
                 RUNTIME_ASSERT(dlg_file_write_ok);
             }
 
@@ -163,7 +163,7 @@ int main(int argc, char** argv)
                         auto file = resources.GetCurFile();
                         auto raw_file = DiskFileSystem::OpenFile(_str("Raw/{}", file.GetPath()), true);
                         RUNTIME_ASSERT(raw_file);
-                        auto raw_file_write_ok = raw_file.Write(file.GetBuf(), file.GetFsize());
+                        auto raw_file_write_ok = raw_file.Write(file.GetBuf(), file.GetSize());
                         RUNTIME_ASSERT(raw_file_write_ok);
                     }
                 }

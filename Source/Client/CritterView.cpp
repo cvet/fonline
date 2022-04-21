@@ -967,7 +967,7 @@ void CritterView::AddOffsExt(short ox, short oy)
     _oyExtI = oy;
     _oxExtF = static_cast<float>(ox);
     _oyExtF = static_cast<float>(oy);
-    std::tie(_oxExtSpeed, _oyExtSpeed) = GenericUtils::GetStepsXY(0, 0, ox, oy);
+    std::tie(_oxExtSpeed, _oyExtSpeed) = GenericUtils::GetStepsCoords(0, 0, ox, oy);
     _oxExtSpeed = -_oxExtSpeed;
     _oyExtSpeed = -_oyExtSpeed;
     _offsExtNextTick = _engine->GameTime.GameTick() + 30;

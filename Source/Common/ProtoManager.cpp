@@ -40,64 +40,66 @@
 template<class T>
 static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, T*>& protos)
 {
-    WriteData(data, static_cast<uint>(protos.size()));
+    auto writer = DataWriter(data);
+    writer.Write<uint>(static_cast<uint>(protos.size()));
+
     for (auto& kv : protos) {
         auto* proto_item = kv.second;
 
         const auto proto_id = kv.first;
-        WriteData(data, proto_id);
+        writer.Write<uint>(proto_id.as_uint());
 
         const auto proto_name = proto_item->GetName();
-        WriteData(data, static_cast<ushort>(proto_name.length()));
-        WriteDataArr(data, proto_name.data(), proto_name.length());
+        writer.Write<ushort>(static_cast<ushort>(proto_name.length()));
+        writer.WritePtr(proto_name.data(), proto_name.length());
 
-        WriteData(data, static_cast<ushort>(proto_item->GetComponents().size()));
+        writer.Write<ushort>(static_cast<ushort>(proto_item->GetComponents().size()));
         for (auto component : proto_item->GetComponents()) {
             const auto component_str = component.as_str();
-            WriteData(data, static_cast<ushort>(component_str.length()));
-            WriteDataArr(data, component_str.data(), component_str.length());
+            writer.Write<ushort>(static_cast<ushort>(component_str.length()));
+            writer.WritePtr(component_str.data(), component_str.length());
         }
 
         vector<uchar*>* props_data = nullptr;
         vector<uint>* props_data_sizes = nullptr;
         proto_item->StoreData(true, &props_data, &props_data_sizes);
 
-        WriteData(data, static_cast<ushort>(props_data->size()));
+        writer.Write<uint>(static_cast<ushort>(props_data->size()));
         for (size_t i = 0; i < props_data->size(); i++) {
             const auto cur_size = props_data_sizes->at(i);
-            WriteData(data, cur_size);
-            WriteDataArr(data, props_data->at(i), cur_size);
+            writer.Write<uint>(cur_size);
+            writer.WritePtr(props_data->at(i), cur_size);
         }
     }
 }
 
 template<class T>
-static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, const vector<uchar>& data, uint& pos, map<hstring, T*>& protos)
+static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, map<hstring, T*>& protos)
 {
     vector<const uchar*> props_data;
     vector<uint> props_data_sizes;
-    const auto protos_count = ReadData<uint>(data, pos);
+    const auto protos_count = reader.Read<uint>();
     for (uint i = 0; i < protos_count; i++) {
-        const auto proto_name_len = ReadData<ushort>(data, pos);
-        const auto proto_name = string(ReadDataArr<char>(data, proto_name_len, pos), proto_name_len);
+        const auto proto_name_len = reader.Read<ushort>();
+        const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
         const auto proto_id = name_resolver.ToHashedString(proto_name);
 
         auto* proto = new std::remove_const_t<T>(proto_id, property_registrator);
 
-        const auto components_count = ReadData<ushort>(data, pos);
+        const auto components_count = reader.Read<ushort>();
         for (ushort j = 0; j < components_count; j++) {
-            const auto component_name_len = ReadData<ushort>(data, pos);
-            const auto component_name = string(ReadDataArr<char>(data, component_name_len, pos), component_name_len);
+            const auto component_name_len = reader.Read<ushort>();
+            const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
             const auto component_name_hashed = name_resolver.ToHashedString(component_name);
             proto->GetComponents().insert(component_name_hashed);
         }
 
-        const uint data_count = ReadData<ushort>(data, pos);
+        const uint data_count = reader.Read<ushort>();
         props_data.resize(data_count);
         props_data_sizes.resize(data_count);
         for (uint j = 0; j < data_count; j++) {
-            props_data_sizes[j] = ReadData<uint>(data, pos);
-            const auto* const_props_data = ReadDataArr<uchar>(data, props_data_sizes[j], pos);
+            props_data_sizes[j] = reader.Read<uint>();
+            const auto* const_props_data = reader.ReadPtr<uchar>(props_data_sizes[j]);
             props_data[j] = const_cast<uchar*>(const_props_data);
         }
         proto->RestoreData(props_data, props_data_sizes);
@@ -335,11 +337,12 @@ ProtoManager::ProtoManager(const vector<uchar>& data, FOEngineBase& engine) : _n
         throw ProtoManagerException("Unable to uncompress data");
     }
 
-    uint pos = 0;
-    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _itemProtos);
-    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _crProtos);
-    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _mapProtos);
-    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), uncompressed_data, pos, _locProtos);
+    auto reader = DataReader(uncompressed_data);
+    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), reader, _itemProtos);
+    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), reader, _crProtos);
+    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), reader, _mapProtos);
+    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), reader, _locProtos);
+    reader.VerifyEnd();
 }
 
 auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>

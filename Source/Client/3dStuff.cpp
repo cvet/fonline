@@ -175,7 +175,8 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     // Load bones
     auto root_bone = std::make_unique<ModelBone>();
-    DataReader reader {{file.GetBuf(), file.GetFsize()}};
+    auto reader = DataReader({file.GetBuf(), file.GetSize()});
+
     root_bone->Load(reader, _nameResolver);
     root_bone->FixAfterLoad(root_bone.get());
 
@@ -186,6 +187,8 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
         anim_set->Load(reader, _nameResolver);
         _loadedAnimSets.push_back(std::move(anim_set));
     }
+
+    reader.VerifyEnd();
 
     // Add to collection
     root_bone->Name = name_hashed;
