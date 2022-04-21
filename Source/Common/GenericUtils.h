@@ -57,10 +57,8 @@ class Compressor final
 public:
     Compressor() = delete;
 
-    [[nodiscard]] static auto Compress(const uchar* data, uint& data_len) -> uchar*;
-    [[nodiscard]] static auto Compress(const vector<uchar>& data) -> vector<uchar>;
-    [[nodiscard]] static auto Uncompress(const uchar* data, uint& data_len, uint mul_approx) -> uchar*;
-    [[nodiscard]] static auto Uncompress(const vector<uchar>& data, uint mul_approx) -> vector<uchar>;
+    [[nodiscard]] static auto Compress(const_span<uchar> data) -> vector<uchar>;
+    [[nodiscard]] static auto Uncompress(const_span<uchar> data, uint mul_approx) -> vector<uchar>;
 };
 
 class GenericUtils final

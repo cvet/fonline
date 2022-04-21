@@ -40,6 +40,8 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
+static const string UPDATE_TEMP_FILE = "Update.fobin";
+
 #define CHECK_IN_BUFF_ERROR() \
     do { \
         if (_netIn.IsError()) { \
@@ -278,7 +280,7 @@ void FOClient::UpdateFilesLoop()
             _updateData->FileListReceived = false;
             _updateData->FileList.clear();
             _updateData->FileDownloading = false;
-            FileMngr.DeleteFile("Update.fobin");
+            DiskFileSystem::DeleteFile(UPDATE_TEMP_FILE);
             _updateData->Duration = GameTime.FrameTick();
 
             Net_SendUpdate();
@@ -305,7 +307,7 @@ void FOClient::UpdateFilesLoop()
                 }
 
                 if (update_file.Name[0] == '$') {
-                    _updateData->TempFile.reset(new OutputFile {FileMngr.WriteFile("Update.fobin", false)});
+                    _updateData->TempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(UPDATE_TEMP_FILE, true));
                     _updateData->CacheChanged = true;
                 }
                 else {
@@ -317,8 +319,8 @@ void FOClient::UpdateFilesLoop()
                     return;
 #endif
 
-                    FileMngr.DeleteFile(update_file.Name);
-                    _updateData->TempFile.reset(new OutputFile {FileMngr.WriteFile("Update.fobin", false)});
+                    DiskFileSystem::DeleteFile(update_file.Name);
+                    _updateData->TempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(UPDATE_TEMP_FILE, true));
                     _updateData->FilesChanged = true;
                 }
 
@@ -3485,11 +3487,9 @@ void FOClient::Net_OnMap()
     auto* cache = Cache.GetRawData(map_name, cache_len);
     if (cache != nullptr) {
         const auto compressed_file = File(cache, cache_len);
-        auto buf_len = compressed_file.GetFsize();
-        auto* buf = Compressor::Uncompress(compressed_file.GetBuf(), buf_len, 50);
-        if (buf != nullptr) {
-            auto file = File(buf, buf_len);
-            delete[] buf;
+        const auto buf = Compressor::Uncompress({compressed_file.GetBuf(), compressed_file.GetFsize()}, 50);
+        if (!buf.empty()) {
+            auto file = File(buf);
 
             if (file.GetBEUInt() == CLIENT_MAP_FORMAT_VER) {
                 file.GoForward(4);
@@ -3517,26 +3517,19 @@ void FOClient::Net_OnMap()
     delete[] cache;
 
     if (tiles && scen) {
-        OutputBuffer output_buf;
-        output_buf.SetBEUInt(CLIENT_MAP_FORMAT_VER);
-        output_buf.SetBEUInt(map_pid.as_uint());
-        output_buf.SetBEUShort(maxhx);
-        output_buf.SetBEUShort(maxhy);
-        output_buf.SetBEUInt(tiles_len);
-        output_buf.SetBEUInt(scen_len);
-        output_buf.SetData(tiles_data, tiles_len);
-        output_buf.SetData(scen_data, scen_len);
+        vector<uchar> buf;
+        DataWriter buf_writer {buf};
 
-        uint obuf_len = output_buf.GetOutBufLen();
-        uchar* buf = Compressor::Compress(output_buf.GetOutBuf(), obuf_len);
-        if (!buf) {
-            WriteLog("Failed to compress data '{}', disconnect.\n", map_name);
-            NetDisconnect();
-            return;
-        }
+        buf_writer.Write(CLIENT_MAP_FORMAT_VER);
+        buf_writer.Write(map_pid.as_uint());
+        buf_writer.Write(maxhx);
+        buf_writer.Write(maxhy);
+        buf_writer.Write(tiles_len);
+        buf_writer.Write(scen_len);
+        buf_writer.WritePtr(tiles_data, tiles_len);
+        buf_writer.WritePtr(scen_data, scen_len);
 
-        Cache.SetRawData(map_name, buf, obuf_len);
-        delete[] buf;
+        Cache.SetRawData(map_name, buf.data(), static_cast<uint>(buf.size()));
     }
     else {
         WriteLog("Not for all data of map, disconnect.\n");
@@ -3786,8 +3779,10 @@ void FOClient::Net_OnUpdateFileData()
     auto& update_file = _updateData->FileList.front();
 
     // Write data to temp file
-    _updateData->TempFile->SetData(data, std::min(update_file.RemaningSize, static_cast<uint>(sizeof(data))));
-    _updateData->TempFile->Save();
+    if (!_updateData->TempFile->Write(data, std::min(update_file.RemaningSize, static_cast<uint>(sizeof(data))))) {
+        UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't write temp file!");
+        return;
+    }
 
     // Get next portion or finalize data
     update_file.RemaningSize -= std::min(update_file.RemaningSize, static_cast<uint>(sizeof(data)));
@@ -3797,12 +3792,11 @@ void FOClient::Net_OnUpdateFileData()
     }
     else {
         // Finalize received data
-        _updateData->TempFile->Save();
         _updateData->TempFile = nullptr;
 
         // Cache
         if (update_file.Name[0] == '$') {
-            const auto temp_file = FileMngr.ReadFile("Update.fobin");
+            const auto temp_file = FileMngr.ReadFile(UPDATE_TEMP_FILE);
             if (!temp_file) {
                 UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't load update file!");
                 return;
@@ -3810,12 +3804,12 @@ void FOClient::Net_OnUpdateFileData()
 
             Cache.SetRawData(update_file.Name, temp_file.GetBuf(), temp_file.GetFsize());
             Cache.SetRawData(update_file.Name + ".hash", reinterpret_cast<uchar*>(&update_file.Hash), sizeof(update_file.Hash));
-            FileMngr.DeleteFile("Update.fobin");
+            DiskFileSystem::DeleteFile(UPDATE_TEMP_FILE);
         }
         // File
         else {
-            FileMngr.DeleteFile(update_file.Name);
-            FileMngr.RenameFile("Update.fobin", update_file.Name);
+            DiskFileSystem::DeleteFile(update_file.Name);
+            DiskFileSystem::RenameFile(UPDATE_TEMP_FILE, update_file.Name);
         }
 
         _updateData->FileList.erase(_updateData->FileList.begin());

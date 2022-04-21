@@ -147,80 +147,41 @@ auto Hashing::MurmurHash2_64(const uchar* data, uint len) -> uint64
     return h;
 }
 
-auto Compressor::Compress(const uchar* data, uint& data_len) -> uchar*
+auto Compressor::Compress(const_span<uchar> data) -> vector<uchar>
 {
-    uLongf buf_len = data_len * 110 / 100 + 12;
-    auto* buf = new uchar[buf_len];
+    auto buf_len = static_cast<uLongf>(data.size() * 110 / 100 + 12);
+    auto buf = vector<uchar>(buf_len);
 
-    if (compress2(buf, &buf_len, data, data_len, Z_BEST_SPEED) != Z_OK) {
-        delete[] buf;
-        return nullptr;
-    }
-
-    data_len = static_cast<uint>(buf_len);
-    return buf;
-}
-
-auto Compressor::Compress(const vector<uchar>& data) -> vector<uchar>
-{
-    auto result_len = static_cast<uint>(data.size());
-    auto* result = Compress(&data[0], result_len);
-    if (result == nullptr) {
+    if (compress2(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()), Z_BEST_SPEED) != Z_OK) {
         return {};
     }
 
-    vector<uchar> compressed_data;
-    compressed_data.resize(result_len);
-    compressed_data.shrink_to_fit();
-    std::memcpy(&compressed_data[0], result, result_len);
-    delete[] result;
-    return compressed_data;
+    buf.resize(buf_len);
+    return buf;
 }
 
-auto Compressor::Uncompress(const uchar* data, uint& data_len, uint mul_approx) -> uchar*
+auto Compressor::Uncompress(const_span<uchar> data, uint mul_approx) -> vector<uchar>
 {
-    uLongf buf_len = data_len * mul_approx;
-    if (buf_len > 100000000) // 100mb
-    {
-        WriteLog("Unpack buffer length is too large, data length {}, multiplier {}.\n", data_len, mul_approx);
-        return nullptr;
-    }
+    auto buf_len = static_cast<uLongf>(data.size() * mul_approx);
+    auto buf = vector<uchar>(buf_len);
 
-    auto* buf = new uchar[buf_len];
     while (true) {
-        const auto result = uncompress(buf, &buf_len, data, data_len);
+        const auto result = uncompress(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()));
         if (result == Z_BUF_ERROR) {
             buf_len *= 2;
-            delete[] buf;
-            buf = new uchar[buf_len];
+            buf.resize(buf_len);
         }
         else if (result != Z_OK) {
-            delete[] buf;
             WriteLog("Unpack error {}.\n", result);
-            return nullptr;
+            return {};
         }
         else {
             break;
         }
     }
 
-    data_len = static_cast<uint>(buf_len);
+    buf.resize(buf_len);
     return buf;
-}
-
-auto Compressor::Uncompress(const vector<uchar>& data, uint mul_approx) -> vector<uchar>
-{
-    auto result_len = static_cast<uint>(data.size());
-    auto* result = Uncompress(&data[0], result_len, mul_approx);
-    if (result == nullptr) {
-        return {};
-    }
-
-    vector<uchar> uncompressed_data;
-    uncompressed_data.resize(result_len);
-    std::memcpy(&uncompressed_data[0], result, result_len);
-    delete[] result;
-    return uncompressed_data;
 }
 
 // Default randomizer

@@ -37,7 +37,6 @@
 
 #include "ConfigFile.h"
 #include "DataSource.h"
-#include "DiskFileSystem.h"
 
 DECLARE_EXCEPTION(FileSystemExeption);
 
@@ -80,6 +79,7 @@ class File final : public FileHeader
 public:
     File() = default;
     File(uchar* buf, uint size);
+    explicit File(const vector<uchar>& buf);
     File(const File&) = delete;
     File(File&&) noexcept = default;
     auto operator=(const File&) = delete;
@@ -118,56 +118,6 @@ private:
 
     unique_ptr<uchar[]> _fileBuf {};
     uint _curPos {};
-};
-
-class OutputBuffer
-{
-public:
-    OutputBuffer() = default;
-    OutputBuffer(const OutputBuffer&) = delete;
-    OutputBuffer(OutputBuffer&&) noexcept = default;
-    auto operator=(const OutputBuffer&) = delete;
-    auto operator=(OutputBuffer&&) noexcept = delete;
-    ~OutputBuffer() = default;
-
-    [[nodiscard]] auto GetOutBuf() const -> const uchar*;
-    [[nodiscard]] auto GetOutBufLen() const -> uint;
-
-    void SetData(const void* data, uint len);
-    void SetStr(string_view str);
-    // ReSharper disable CppInconsistentNaming
-    void SetStrNT(string_view str);
-    void SetUChar(uchar data);
-    void SetBEUShort(ushort data);
-    void SetBEShort(short data) { SetBEUShort(static_cast<ushort>(data)); }
-    void SetLEUShort(ushort data);
-    void SetBEUInt(uint data);
-    void SetLEUInt(uint data);
-    // ReSharper restore CppInconsistentNaming
-    void Clear();
-
-private:
-    vector<uchar> _dataBuf {};
-    DataWriter _dataWriter {_dataBuf};
-};
-
-class OutputFile final : public OutputBuffer
-{
-    friend class FileManager;
-
-public:
-    OutputFile(const OutputFile&) = delete;
-    OutputFile(OutputFile&&) noexcept = default;
-    auto operator=(const OutputFile&) = delete;
-    auto operator=(OutputFile&&) noexcept = delete;
-    ~OutputFile() = default;
-
-    void Save();
-
-private:
-    explicit OutputFile(DiskFile file);
-
-    DiskFile _diskFile;
 };
 
 class FileCollection final
@@ -215,18 +165,10 @@ public:
     [[nodiscard]] auto ReadFile(string_view path) -> File;
     [[nodiscard]] auto ReadFileHeader(string_view path) -> FileHeader;
     [[nodiscard]] auto ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile;
-    [[nodiscard]] auto WriteFile(string_view path, bool apply) -> OutputFile;
 
     void AddDataSource(string_view path, bool cache_dirs);
-    void DeleteFile(string_view path);
-    void DeleteDir(string_view path);
-    void RenameFile(string_view from_path, string_view to_path);
-
-    EventObserver<DataSource*> OnDataSourceAdded {};
 
 private:
     string _rootPath {};
     vector<DataSource> _dataSources {};
-    EventDispatcher<DataSource*> _dataSourceAddedDispatcher {OnDataSourceAdded};
-    bool _nonConstHelper {};
 };

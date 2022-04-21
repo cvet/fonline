@@ -1051,6 +1051,9 @@ if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	DisableLibWarnings( spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl )
 endif()
 
+# span
+include_directories( "ThirdParty/span/include/tcb" )
+
 # Native scripting
 if( FO_NATIVE_SCRIPTING )
 	# Generated native scripting files placed here

@@ -117,6 +117,7 @@
 #include <optional>
 #include <random>
 #include <set>
+#include <span.hpp>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -197,6 +198,10 @@ using std::unordered_map;
 using std::unordered_set;
 using std::variant;
 using std::vector;
+using tcb::span;
+
+template<typename T>
+using const_span = span<const T>;
 
 // Math types
 // Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
@@ -205,6 +210,40 @@ using vec3 = aiVector3D;
 using mat44 = aiMatrix4x4;
 using quaternion = aiQuaternion;
 using color4 = aiColor4D;
+
+// Template helpers
+// ReSharper disable CppInconsistentNaming
+template<typename T>
+class has_size
+{
+    using one = char;
+    struct two
+    {
+        char x[2];
+    };
+
+    template<typename C>
+    static auto test(decltype(&C::size)) -> one;
+    template<typename C>
+    static auto test(...) -> two;
+
+public:
+    enum
+    {
+        value = sizeof(test<T>(0)) == sizeof(char)
+    };
+};
+
+template<typename Test, template<typename...> class Ref>
+struct is_specialization : std::false_type
+{
+};
+
+template<template<typename...> class Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type
+{
+};
+// ReSharper restore CppInconsistentNaming
 
 // Engine exception handling
 extern auto GetStackTrace() -> string;
@@ -682,8 +721,7 @@ private:
 class DataReader
 {
 public:
-    explicit DataReader(const uchar* buf) : _dataBuf {buf} { }
-    explicit DataReader(const vector<uchar>& buf) : _dataBuf {!buf.empty() ? &buf[0] : nullptr} { }
+    explicit DataReader(const_span<uchar> buf) : _dataBuf {buf} { }
 
     template<class T>
     auto Read() -> T
@@ -705,12 +743,13 @@ public:
     void ReadPtr(T* ptr, size_t size)
     {
         _readPos += size;
-        if (size)
+        if (size) {
             std::memcpy(ptr, &_dataBuf[_readPos - size], size);
+        }
     }
 
 private:
-    const uchar* _dataBuf;
+    const_span<uchar> _dataBuf;
     size_t _readPos {};
 };
 
@@ -1303,37 +1342,6 @@ static constexpr auto ANIMRUN_SET_FRM(int frm) -> uint
 {
     return static_cast<uint>(frm + 1) << 16;
 }
-
-template<typename T>
-class has_size
-{
-    using one = char;
-    struct two
-    {
-        char x[2];
-    };
-
-    template<typename C>
-    static auto test(decltype(&C::size)) -> one;
-    template<typename C>
-    static auto test(...) -> two;
-
-public:
-    enum
-    {
-        value = sizeof(test<T>(0)) == sizeof(char)
-    };
-};
-
-template<typename Test, template<typename...> class Ref>
-struct is_specialization : std::false_type
-{
-};
-
-template<template<typename...> class Ref, typename... Args>
-struct is_specialization<Ref<Args...>, Ref> : std::true_type
-{
-};
 
 template<typename T>
 class irange_iterator final

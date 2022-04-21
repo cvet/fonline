@@ -175,7 +175,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     // Load bones
     auto root_bone = std::make_unique<ModelBone>();
-    DataReader reader {file.GetBuf()};
+    DataReader reader {{file.GetBuf(), file.GetFsize()}};
     root_bone->Load(reader, _nameResolver);
     root_bone->FixAfterLoad(root_bone.get());
 

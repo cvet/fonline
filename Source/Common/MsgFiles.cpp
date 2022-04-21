@@ -263,7 +263,7 @@ auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
     Clear();
 
     // Uncompress
-    auto uncompressed_data = Compressor::Uncompress(data, 10);
+    const auto uncompressed_data = Compressor::Uncompress(data, 10);
     if (uncompressed_data.empty()) {
         return false;
     }

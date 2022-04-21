@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "DiskFileSystem.h"
 #include "EffectBaker.h"
 #include "FileSystem.h"
 #include "ImageBaker.h"

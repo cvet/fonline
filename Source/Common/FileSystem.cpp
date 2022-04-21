@@ -34,7 +34,6 @@
 #include "FileSystem.h"
 
 #include "Log.h"
-#include "Settings.h"
 #include "StringUtils.h"
 
 FileHeader::FileHeader(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {name}, _filePath {path}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
@@ -83,6 +82,11 @@ File::File(string_view name, string_view path, uint size, uint64 write_time, Dat
 
 File::File(uchar* buf, uint size) : FileHeader("", "", size, 0, nullptr), _fileBuf {buf}
 {
+}
+
+File::File(const vector<uchar>& buf) : FileHeader("", "", static_cast<uint>(buf.size()), 0, nullptr), _fileBuf(new uchar[buf.size()])
+{
+    memcpy(_fileBuf.get(), buf.data(), buf.size());
 }
 
 auto File::GetCStr() const -> const char*
@@ -380,100 +384,6 @@ auto File::GetLEFloat() -> float
     return res;
 }
 
-auto OutputBuffer::GetOutBuf() const -> const uchar*
-{
-    RUNTIME_ASSERT(!_dataBuf.empty());
-
-    return &_dataBuf[0];
-}
-
-auto OutputBuffer::GetOutBufLen() const -> uint
-{
-    RUNTIME_ASSERT(!_dataBuf.empty());
-
-    return static_cast<uint>(_dataBuf.size());
-}
-
-void OutputBuffer::SetData(const void* data, uint len)
-{
-    if (len == 0u) {
-        return;
-    }
-
-    _dataWriter.WritePtr(data, len);
-}
-
-void OutputBuffer::SetStr(string_view str)
-{
-    SetData(str.data(), static_cast<uint>(str.length()));
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetStrNT(string_view str)
-{
-    SetData(str.data(), static_cast<uint>(str.length()) + 1);
-}
-
-void OutputBuffer::SetUChar(uchar data)
-{
-    _dataWriter.Write(data);
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetBEUShort(ushort data)
-{
-    auto* pdata = reinterpret_cast<uchar*>(&data);
-    _dataWriter.Write(pdata[1]);
-    _dataWriter.Write(pdata[0]);
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetLEUShort(ushort data)
-{
-    auto* pdata = reinterpret_cast<uchar*>(&data);
-    _dataWriter.Write(pdata[0]);
-    _dataWriter.Write(pdata[1]);
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetBEUInt(uint data)
-{
-    auto* pdata = reinterpret_cast<uchar*>(&data);
-    _dataWriter.Write(pdata[3]);
-    _dataWriter.Write(pdata[2]);
-    _dataWriter.Write(pdata[1]);
-    _dataWriter.Write(pdata[0]);
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetLEUInt(uint data)
-{
-    auto* pdata = reinterpret_cast<uchar*>(&data);
-    _dataWriter.Write(pdata[0]);
-    _dataWriter.Write(pdata[1]);
-    _dataWriter.Write(pdata[2]);
-    _dataWriter.Write(pdata[3]);
-}
-
-void OutputBuffer::Clear()
-{
-    _dataBuf.clear();
-}
-
-OutputFile::OutputFile(DiskFile file) : _diskFile {std::move(file)}
-{
-    RUNTIME_ASSERT(_diskFile);
-}
-
-void OutputFile::Save()
-{
-    if (GetOutBufLen() > 0u) {
-        const auto save_ok = _diskFile.Write(GetOutBuf(), GetOutBufLen());
-        RUNTIME_ASSERT(save_ok);
-        Clear();
-    }
-}
-
 FileCollection::FileCollection(string_view path, vector<FileHeader> files) : _filterPath {path}, _allFiles {std::move(files)}
 {
 }
@@ -531,10 +441,10 @@ auto FileCollection::FindFileByName(string_view name) const -> File
     return File();
 }
 
-auto FileCollection::FindFileByPath(string_view name) const -> File
+auto FileCollection::FindFileByPath(string_view path) const -> File
 {
     for (const auto& fh : _allFiles) {
-        if (fh._filePath == name) {
+        if (fh._filePath == path) {
             auto fs = fh._fileSize;
             auto wt = fh._writeTime;
             auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
@@ -553,7 +463,6 @@ auto FileCollection::GetFilesCount() const -> uint
 void FileManager::AddDataSource(string_view path, bool cache_dirs)
 {
     _dataSources.emplace_back(path, cache_dirs);
-    _dataSourceAddedDispatcher(&_dataSources.back());
 }
 
 auto FileManager::FilterFiles(string_view ext) -> FileCollection
@@ -620,39 +529,7 @@ auto FileManager::ReadFileHeader(string_view path) -> FileHeader
 auto FileManager::ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile
 {
     if (const auto file = ReadFile(path)) {
-        return ConfigFile(file.GetCStr(), name_resolver);
+        return {file.GetCStr(), name_resolver};
     }
-    return ConfigFile("", name_resolver);
-}
-
-auto FileManager::WriteFile(string_view path, bool apply) -> OutputFile
-{
-    NON_CONST_METHOD_HINT();
-
-    auto file = DiskFileSystem::OpenFile(_str("{}/{}", _rootPath, path), true); // Todo: handle apply file writing
-    if (!file) {
-        throw FileSystemExeption("Can't open file for writing", path, apply);
-    }
-    return OutputFile(std::move(file));
-}
-
-void FileManager::DeleteFile(string_view path)
-{
-    NON_CONST_METHOD_HINT();
-
-    DiskFileSystem::DeleteFile(_str("{}/{}", _rootPath, path));
-}
-
-void FileManager::DeleteDir(string_view path)
-{
-    NON_CONST_METHOD_HINT();
-
-    DiskFileSystem::DeleteDir(_str("{}/{}", _rootPath, path));
-}
-
-void FileManager::RenameFile(string_view from_path, string_view to_path)
-{
-    NON_CONST_METHOD_HINT();
-
-    DiskFileSystem::RenameFile(_str("{}/{}", _rootPath, from_path), _str("{}/{}", _rootPath, to_path));
+    return {"", name_resolver};
 }

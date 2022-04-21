@@ -486,9 +486,7 @@ void FOServer::DrawGui()
         if (ImGui::Button("Save log", _gui.ButtonSize)) {
             const auto dt = Timer::GetCurrentDateTime();
             const string log_name = _str("Logs/FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-            auto log_file = FileMngr.WriteFile(log_name, false);
-            log_file.SetStr(_gui.WholeLog);
-            log_file.Save();
+            DiskFileSystem::OpenFile(log_name, true).Write(_gui.WholeLog);
         }
     }
     ImGui::End();
@@ -1778,54 +1776,61 @@ void FOServer::SaveBan(ClientBanned& ban, bool expired)
 {
     std::lock_guard locker(_bannedLocker);
 
-    const string ban_file_name = (expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE);
-    auto out_ban_file = FileMngr.WriteFile(ban_file_name, true);
+    string content = "[Ban]\n";
 
-    out_ban_file.SetStr("[Ban]\n");
     if (ban.ClientName[0] != 0) {
-        out_ban_file.SetStr(_str("User = {}\n", ban.ClientName));
+        content += _str("User = {}\n", ban.ClientName).str();
     }
     if (ban.ClientIp != 0u) {
-        out_ban_file.SetStr(_str("UserIp = {}\n", ban.ClientIp));
+        content += _str("UserIp = {}\n", ban.ClientIp).str();
     }
-    out_ban_file.SetStr(_str("BeginTime = {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute));
-    out_ban_file.SetStr(_str("EndTime = {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute));
+    content += _str("BeginTime = {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute).str();
+    content += _str("EndTime = {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute).str();
     if (ban.BannedBy[0] != 0) {
-        out_ban_file.SetStr(_str("BannedBy = {}\n", ban.BannedBy));
+        content += _str("BannedBy = {}\n", ban.BannedBy).str();
     }
     if (ban.BanInfo[0] != 0) {
-        out_ban_file.SetStr(_str("Comment = {}\n", ban.BanInfo));
+        content += _str("Comment = {}\n", ban.BanInfo).str();
     }
-    out_ban_file.SetStr("\n");
+    content += "\n";
 
-    out_ban_file.Save();
+    {
+        auto file = DiskFileSystem::OpenFile(expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE, false);
+        string cur_content;
+        cur_content.resize(file.GetSize());
+        file.Read(cur_content.data(), file.GetSize());
+        content = cur_content + content;
+    }
+
+    DiskFileSystem::OpenFile(expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE, true).Write(content);
 }
 
 void FOServer::SaveBans()
 {
     std::lock_guard locker(_bannedLocker);
 
-    auto out_ban_file = FileMngr.WriteFile(BANS_FNAME_ACTIVE, false);
-    for (auto& ban : _banned) {
-        out_ban_file.SetStr("[Ban]\n");
+    string content;
+
+    for (const auto& ban : _banned) {
+        content += "[Ban]\n";
         if (ban.ClientName[0] != 0) {
-            out_ban_file.SetStr(_str("User = {}\n", ban.ClientName));
+            content += _str("User = {}\n", ban.ClientName).str();
         }
         if (ban.ClientIp != 0u) {
-            out_ban_file.SetStr(_str("UserIp = {}\n", ban.ClientIp));
+            content += _str("UserIp = {}\n", ban.ClientIp).str();
         }
-        out_ban_file.SetStr(_str("BeginTime = {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute));
-        out_ban_file.SetStr(_str("EndTime = {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute));
+        content += _str("BeginTime = {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute).str();
+        content += _str("EndTime = {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute).str();
         if (ban.BannedBy[0] != 0) {
-            out_ban_file.SetStr(_str("BannedBy = {}\n", ban.BannedBy));
+            content += _str("BannedBy = {}\n", ban.BannedBy).str();
         }
         if (ban.BanInfo[0] != 0) {
-            out_ban_file.SetStr(_str("Comment = {}\n", ban.BanInfo));
+            content += _str("Comment = {}\n", ban.BanInfo).str();
         }
-        out_ban_file.SetStr("\n");
+        content += "\n";
     }
 
-    out_ban_file.Save();
+    DiskFileSystem::OpenFile(BANS_FNAME_ACTIVE, true).Write(content);
 }
 
 void FOServer::LoadBans()

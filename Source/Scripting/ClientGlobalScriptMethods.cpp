@@ -1304,14 +1304,6 @@
 }
 
 ///# ...
-///# param datName ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Game_AddDataSource(FOClient* client, string_view datName)
-{
-    client->FileMngr.AddDataSource(datName, true);
-}
-
-///# ...
 ///# param sprName ...
 ///# return ...
 ///@ ExportMethod
@@ -2261,9 +2253,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetUserConfig(FOClient* client, const map<string, string>& keyValues)
 {
-    auto cfg_user = client->FileMngr.WriteFile(CONFIG_NAME, false);
+    string cfg_user;
     for (const auto& [key, value] : keyValues) {
-        cfg_user.SetStr(_str("{} = {}\n", key, value));
+        cfg_user += _str("{} = {}\n", key, value).str();
     }
-    cfg_user.Save();
+
+    client->Cache.SetString(CONFIG_NAME, cfg_user);
 }

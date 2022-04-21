@@ -43,47 +43,34 @@ static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
 ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileMngr {file_mngr}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
 {
-    _eventUnsubscriber += _fileMngr.OnDataSourceAdded += [this](DataSource* ds) {
-        // Hash all files
-        for (const auto& name : ds->GetFileNames("", true, "")) {
-            const auto h1 = _nameResolver.ToHashedString(name);
+    {
+        auto allFiles = _fileMngr.FilterFiles("", "", true);
+        while (allFiles.MoveNext()) {
+            auto file_header = allFiles.GetCurFileHeader();
+            const auto h1 = _nameResolver.ToHashedString(file_header.GetPath());
             UNUSED_VARIABLE(h1);
-            const auto h2 = _nameResolver.ToHashedString(_str(name).lower());
+            const auto h2 = _nameResolver.ToHashedString(file_header.GetName());
             UNUSED_VARIABLE(h2);
-            const auto h3 = _nameResolver.ToHashedString(_str(name).extractFileName());
-            UNUSED_VARIABLE(h3);
-            const auto h4 = _nameResolver.ToHashedString(_str(name).extractFileName().lower());
-            UNUSED_VARIABLE(h4);
         }
+    }
 
-        // Splashes
-        for (const auto& splash : ds->GetFileNames("Splash/", true, "rix")) {
-            if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
-                _splashNames.push_back(splash);
+    for (const auto* splash_ext : {"rix", "png", "jpg"}) {
+        auto splashes = _fileMngr.FilterFiles(splash_ext, "Splash/", true);
+        while (splashes.MoveNext()) {
+            auto file_header = splashes.GetCurFileHeader();
+            if (std::find(_splashNames.begin(), _splashNames.end(), file_header.GetPath()) == _splashNames.end()) {
+                _splashNames.emplace_back(file_header.GetPath());
             }
         }
-        for (const auto& splash : ds->GetFileNames("Splash/", true, "png")) {
-            if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
-                _splashNames.push_back(splash);
-            }
-        }
-        for (const auto& splash : ds->GetFileNames("Splash/", true, "jpg")) {
-            if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
-                _splashNames.push_back(splash);
-            }
-        }
+    }
 
-        // Sound names
-        for (const auto& sound : ds->GetFileNames("", true, "wav")) {
-            _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
+    for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
+        auto sounds = _fileMngr.FilterFiles(sound_ext, "", true);
+        while (sounds.MoveNext()) {
+            auto file_header = sounds.GetCurFileHeader();
+            _soundNames.emplace(_str("{}", file_header.GetName()).lower().str(), file_header.GetPath());
         }
-        for (const auto& sound : ds->GetFileNames("", true, "acm")) {
-            _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
-        }
-        for (const auto& sound : ds->GetFileNames("", true, "ogg")) {
-            _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
-        }
-    };
+    }
 }
 
 void ResourceManager::FreeResources(AtlasType atlas_type)

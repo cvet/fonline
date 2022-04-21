@@ -139,7 +139,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 #define PARSE_VALUE(is, t, ret_t) \
     do { \
         if (prop->is) { \
-            return static_cast<ret_t>(*reinterpret_cast<t*>(&props->_podData[prop->_podDataOffset])); \
+            return static_cast<ret_t>(*static_cast<t*>(reinterpret_cast<void*>(&props->_podData[prop->_podDataOffset]))); \
         } \
     } while (false)
 
@@ -208,7 +208,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                 else {
 #define PARSE_VALUE(t, db_t) \
     RUNTIME_ASSERT(sizeof(t) == prop->_baseSize); \
-    arr.push_back(static_cast<db_t>(*reinterpret_cast<const t*>(data + i * prop->_baseSize)))
+    arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + i * prop->_baseSize))))
 
                     if (prop->_isInt8) {
                         PARSE_VALUE(char, int);
@@ -501,37 +501,37 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 #define PARSE_VALUE(t) \
     do { \
         if (prop->_isInt8) { \
-            *reinterpret_cast<char*>(pod_data) = static_cast<char>(std::get<t>(value)); \
+            *static_cast<char*>(reinterpret_cast<void*>(pod_data)) = static_cast<char>(std::get<t>(value)); \
         } \
         else if (prop->_isInt16) { \
-            *reinterpret_cast<short*>(pod_data) = static_cast<short>(std::get<t>(value)); \
+            *static_cast<short*>(reinterpret_cast<void*>(pod_data)) = static_cast<short>(std::get<t>(value)); \
         } \
         else if (prop->_isInt32) { \
-            *reinterpret_cast<int*>(pod_data) = static_cast<int>(std::get<t>(value)); \
+            *static_cast<int*>(reinterpret_cast<void*>(pod_data)) = static_cast<int>(std::get<t>(value)); \
         } \
         else if (prop->_isInt64) { \
-            *reinterpret_cast<int64*>(pod_data) = static_cast<int64>(std::get<t>(value)); \
+            *static_cast<int64*>(reinterpret_cast<void*>(pod_data)) = static_cast<int64>(std::get<t>(value)); \
         } \
         else if (prop->_isUInt8) { \
-            *reinterpret_cast<uchar*>(pod_data) = static_cast<uchar>(std::get<t>(value)); \
+            *static_cast<uchar*>(reinterpret_cast<void*>(pod_data)) = static_cast<uchar>(std::get<t>(value)); \
         } \
         else if (prop->_isUInt16) { \
-            *reinterpret_cast<short*>(pod_data) = static_cast<short>(std::get<t>(value)); \
+            *static_cast<short*>(reinterpret_cast<void*>(pod_data)) = static_cast<short>(std::get<t>(value)); \
         } \
         else if (prop->_isUInt32) { \
-            *reinterpret_cast<uint*>(pod_data) = static_cast<uint>(std::get<t>(value)); \
+            *static_cast<uint*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint>(std::get<t>(value)); \
         } \
         else if (prop->_isUInt64) { \
-            *reinterpret_cast<uint64*>(pod_data) = static_cast<uint64>(std::get<t>(value)); \
+            *static_cast<uint64*>(reinterpret_cast<void*>(pod_data)) = static_cast<uint64>(std::get<t>(value)); \
         } \
         else if (prop->_isSingleFloat) { \
-            *reinterpret_cast<float*>(pod_data) = static_cast<float>(std::get<t>(value)); \
+            *static_cast<float*>(reinterpret_cast<void*>(pod_data)) = static_cast<float>(std::get<t>(value)); \
         } \
         else if (prop->_isDoubleFloat) { \
-            *reinterpret_cast<double*>(pod_data) = static_cast<double>(std::get<t>(value)); \
+            *static_cast<double*>(reinterpret_cast<void*>(pod_data)) = static_cast<double>(std::get<t>(value)); \
         } \
         else if (prop->_isBool) { \
-            *reinterpret_cast<bool*>(pod_data) = (std::get<t>(value) != static_cast<t>(0)); \
+            *static_cast<bool*>(reinterpret_cast<void*>(pod_data)) = (std::get<t>(value) != static_cast<t>(0)); \
         } \
         else { \
             throw UnreachablePlaceException(LINE_STR); \
@@ -593,18 +593,16 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
 
             uint data_size = static_cast<uint>(arr.size()) * sizeof(hstring::hash_t);
-            auto* data = new uchar[data_size];
+            auto data = unique_ptr<uchar>(new uchar[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
                 RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
 
                 const auto h = name_resolver.ToHashedString(std::get<string>(arr[i])).as_hash();
-                *reinterpret_cast<hstring::hash_t*>(data + i * sizeof(hstring::hash_t)) = h;
+                *reinterpret_cast<hstring::hash_t*>(data.get() + i * sizeof(hstring::hash_t)) = h;
             }
 
-            props->SetRawData(prop, data, data_size);
-
-            delete[] data;
+            props->SetRawData(prop, data.get(), data_size);
         }
         else if (prop->_isEnum) {
             if (arr[0].index() != AnyData::STRING_VALUE) {
@@ -613,23 +611,21 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
 
             uint data_size = static_cast<uint>(arr.size()) * prop->_baseSize;
-            auto* data = new uchar[data_size];
+            auto data = unique_ptr<uchar>(new uchar[data_size]);
 
             for (size_t i = 0; i < arr.size(); i++) {
                 RUNTIME_ASSERT(arr[i].index() == AnyData::STRING_VALUE);
 
                 auto is_error = false;
                 int e = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(arr[i]), is_error);
-                memcpy(data + i * prop->_baseSize, &e, prop->_baseSize);
+                memcpy(data.get() + i * prop->_baseSize, &e, prop->_baseSize);
 
                 if (is_error) {
                     return false;
                 }
             }
 
-            props->SetRawData(prop, data, data_size);
-
-            delete[] data;
+            props->SetRawData(prop, data.get(), data_size);
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
             if (arr[0].index() == AnyData::STRING_VALUE || arr[0].index() == AnyData::ARRAY_VALUE || arr[0].index() == AnyData::DICT_VALUE) {
@@ -638,7 +634,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
 
             uint data_size = prop->_baseSize * static_cast<uint>(arr.size());
-            auto* data = new uchar[data_size];
+            auto data = unique_ptr<uchar>(new uchar[data_size]);
             const auto arr_element_index = arr[0].index();
 
 #define PARSE_VALUE(t) \
@@ -646,16 +642,16 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         for (size_t i = 0; i < arr.size(); i++) { \
             RUNTIME_ASSERT(arr[i].index() == arr_element_index); \
             if (arr_element_index == AnyData::INT_VALUE) { \
-                *reinterpret_cast<t*>(data + i * prop->_baseSize) = static_cast<t>(std::get<int>(arr[i])); \
+                *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->_baseSize)) = static_cast<t>(std::get<int>(arr[i])); \
             } \
             else if (arr_element_index == AnyData::INT64_VALUE) { \
-                *reinterpret_cast<t*>(data + i * prop->_baseSize) = static_cast<t>(std::get<int64>(arr[i])); \
+                *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->_baseSize)) = static_cast<t>(std::get<int64>(arr[i])); \
             } \
             else if (arr_element_index == AnyData::DOUBLE_VALUE) { \
-                *reinterpret_cast<t*>(data + i * prop->_baseSize) = static_cast<t>(std::get<double>(arr[i])); \
+                *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->_baseSize)) = static_cast<t>(std::get<double>(arr[i])); \
             } \
             else if (arr_element_index == AnyData::BOOL_VALUE) { \
-                *reinterpret_cast<t*>(data + i * prop->_baseSize) = static_cast<t>(std::get<bool>(arr[i])); \
+                *static_cast<t*>(reinterpret_cast<void*>(data.get() + i * prop->_baseSize)) = static_cast<t>(std::get<bool>(arr[i])); \
             } \
             else { \
                 throw UnreachablePlaceException(LINE_STR); \
@@ -702,9 +698,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
 #undef PARSE_VALUE
 
-            props->SetRawData(prop, data, data_size);
-
-            delete[] data;
+            props->SetRawData(prop, data.get(), data_size);
         }
         else {
             RUNTIME_ASSERT(prop->_isArrayOfString);
@@ -722,23 +716,21 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 data_size += sizeof(uint) + static_cast<uint>(str.length());
             }
 
-            auto* data = new uchar[data_size];
-            *reinterpret_cast<uint*>(data) = static_cast<uint>(arr.size());
+            auto data = unique_ptr<uchar>(new uchar[data_size]);
+            *reinterpret_cast<uint*>(data.get()) = static_cast<uint>(arr.size());
 
             size_t data_pos = sizeof(uint);
             for (size_t i = 0; i < arr.size(); i++) {
                 const auto& str = std::get<string>(arr[i]);
-                *reinterpret_cast<uint*>(data + data_pos) = static_cast<uint>(str.length());
+                *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
                 if (!str.empty()) {
-                    std::memcpy(data + data_pos + sizeof(uint), str.c_str(), str.length());
+                    std::memcpy(data.get() + data_pos + sizeof(uint), str.c_str(), str.length());
                 }
                 data_pos += sizeof(uint) + str.length();
             }
             RUNTIME_ASSERT(data_pos == data_size);
 
-            props->SetRawData(prop, data, data_size);
-
-            delete[] data;
+            props->SetRawData(prop, data.get(), data_size);
         }
     }
     else if (prop->_dataType == Property::DataType::Dict) {
@@ -863,34 +855,34 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
 
         // Write data
-        auto* data = new uchar[data_size];
+        auto data = unique_ptr<uchar>(new uchar[data_size]);
         size_t data_pos = 0;
 
         for (const auto& [key2, value2] : dict) {
             // Key
             if (prop->_isDictKeyHash) {
-                *reinterpret_cast<hstring::hash_t*>(data + data_pos) = name_resolver.ToHashedString(key2).as_hash();
+                *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = name_resolver.ToHashedString(key2).as_hash();
             }
             else if (prop->_isDictKeyEnum) {
                 auto is_error = false;
                 int enum_value = name_resolver.ResolveEnumValue(prop->_dictKeyTypeName, key2, is_error);
-                memcpy(data + data_pos, &enum_value, prop->_baseSize);
+                memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
 
                 if (is_error) {
                     return false;
                 }
             }
             else if (prop->_dictKeySize == 1u) {
-                *reinterpret_cast<char*>(data + data_pos) = static_cast<char>(_str(key2).toInt64());
+                *reinterpret_cast<char*>(data.get() + data_pos) = static_cast<char>(_str(key2).toInt64());
             }
             else if (prop->_dictKeySize == 2u) {
-                *reinterpret_cast<short*>(data + data_pos) = static_cast<short>(_str(key2).toInt64());
+                *reinterpret_cast<short*>(data.get() + data_pos) = static_cast<short>(_str(key2).toInt64());
             }
             else if (prop->_dictKeySize == 4u) {
-                *reinterpret_cast<int*>(data + data_pos) = static_cast<int>(_str(key2).toInt64());
+                *reinterpret_cast<int*>(data.get() + data_pos) = static_cast<int>(_str(key2).toInt64());
             }
             else if (prop->_dictKeySize == 8u) {
-                *reinterpret_cast<int64*>(data + data_pos) = _str(key2).toInt64();
+                *reinterpret_cast<int64*>(data.get() + data_pos) = _str(key2).toInt64();
             }
             else {
                 throw UnreachablePlaceException(LINE_STR);
@@ -902,14 +894,14 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             if (prop->_isDictOfArray) {
                 const auto& arr = std::get<AnyData::Array>(value2);
 
-                *reinterpret_cast<uint*>(data + data_pos) = static_cast<uint>(arr.size());
+                *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(arr.size());
                 data_pos += sizeof(uint);
 
                 if (prop->_isEnum) {
                     for (const auto& e : arr) {
                         auto is_error = false;
                         const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(e), is_error);
-                        memcpy(data + data_pos, &enum_value, prop->_baseSize);
+                        memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
                         data_pos += prop->_baseSize;
 
                         if (is_error) {
@@ -919,17 +911,17 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
                 else if (prop->_isHash) {
                     for (const auto& e : arr) {
-                        *reinterpret_cast<hstring::hash_t*>(data + data_pos) = name_resolver.ToHashedString(std::get<string>(e)).as_hash();
+                        *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = name_resolver.ToHashedString(std::get<string>(e)).as_hash();
                         data_pos += sizeof(hstring::hash_t);
                     }
                 }
                 else if (prop->_isDictOfArrayOfString) {
                     for (const auto& e : arr) {
                         const auto& str = std::get<string>(e);
-                        *reinterpret_cast<uint*>(data + data_pos) = static_cast<uint>(str.length());
+                        *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
                         data_pos += sizeof(uint);
                         if (!str.empty()) {
-                            std::memcpy(data + data_pos, str.c_str(), str.length());
+                            std::memcpy(data.get() + data_pos, str.c_str(), str.length());
                             data_pos += static_cast<uint>(str.length());
                         }
                     }
@@ -940,16 +932,16 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     do { \
         RUNTIME_ASSERT(sizeof(t) == prop->_baseSize); \
         if (e.index() == AnyData::INT_VALUE) { \
-            *reinterpret_cast<t*>(data + data_pos) = static_cast<t>(std::get<int>(e)); \
+            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int>(e)); \
         } \
         else if (e.index() == AnyData::INT64_VALUE) { \
-            *reinterpret_cast<t*>(data + data_pos) = static_cast<t>(std::get<int64>(e)); \
+            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int64>(e)); \
         } \
         else if (e.index() == AnyData::DOUBLE_VALUE) { \
-            *reinterpret_cast<t*>(data + data_pos) = static_cast<t>(std::get<double>(e)); \
+            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<double>(e)); \
         } \
         else if (e.index() == AnyData::BOOL_VALUE) { \
-            *reinterpret_cast<t*>(data + data_pos) = static_cast<t>(std::get<bool>(e)); \
+            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<bool>(e)); \
         } \
         else { \
             throw UnreachablePlaceException(LINE_STR); \
@@ -1002,22 +994,22 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             else if (prop->_isDictOfString) {
                 const auto& str = std::get<string>(value2);
 
-                *reinterpret_cast<uint*>(data + data_pos) = static_cast<uint>(str.length());
+                *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(str.length());
                 data_pos += sizeof(uint);
 
                 if (!str.empty()) {
-                    std::memcpy(data + data_pos, str.c_str(), str.length());
+                    std::memcpy(data.get() + data_pos, str.c_str(), str.length());
                     data_pos += str.length();
                 }
             }
             else {
                 if (prop->_isHash) {
-                    *reinterpret_cast<hstring::hash_t*>(data + data_pos) = name_resolver.ToHashedString(std::get<string>(value2)).as_hash();
+                    *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = name_resolver.ToHashedString(std::get<string>(value2)).as_hash();
                 }
                 else if (prop->_isEnum) {
                     auto is_error = false;
                     const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value2), is_error);
-                    memcpy(data + data_pos, &enum_value, prop->_baseSize);
+                    memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
 
                     if (is_error) {
                         return false;
@@ -1028,16 +1020,16 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     do { \
         RUNTIME_ASSERT(sizeof(t) == prop->_baseSize); \
         if (value2.index() == AnyData::INT_VALUE) { \
-            *reinterpret_cast<t*>(data + data_pos) = static_cast<t>(std::get<int>(value2)); \
+            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int>(value2)); \
         } \
         else if (value2.index() == AnyData::INT64_VALUE) { \
-            *reinterpret_cast<t*>(data + data_pos) = static_cast<t>(std::get<int64>(value2)); \
+            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<int64>(value2)); \
         } \
         else if (value2.index() == AnyData::DOUBLE_VALUE) { \
-            *reinterpret_cast<t*>(data + data_pos) = static_cast<t>(std::get<double>(value2)); \
+            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<double>(value2)); \
         } \
         else if (value2.index() == AnyData::BOOL_VALUE) { \
-            *reinterpret_cast<t*>(data + data_pos) = static_cast<t>(std::get<bool>(value2)); \
+            *reinterpret_cast<t*>(data.get() + data_pos) = static_cast<t>(std::get<bool>(value2)); \
         } \
         else { \
             throw UnreachablePlaceException(LINE_STR); \
@@ -1094,9 +1086,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
         RUNTIME_ASSERT(data_pos == data_size);
 
-        props->SetRawData(prop, data, data_size);
-
-        delete[] data;
+        props->SetRawData(prop, data.get(), data_size);
     }
     else {
         throw UnreachablePlaceException(LINE_STR);

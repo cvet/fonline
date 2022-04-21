@@ -338,7 +338,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     si.cb = sizeof(STARTUPINFO);
     si.hStdError = out_write;
     si.hStdOutput = out_write;
-    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+    si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION pi;

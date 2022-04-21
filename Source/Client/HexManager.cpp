@@ -3951,46 +3951,43 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
     // Find in cache
     uint data_len = 0;
     auto* data = cache.GetRawData(map_name, data_len);
-    if (data == nullptr) {
-        WriteLog("Load map '{}' from cache fail.\n", map_name);
+    if (data == nullptr || data_len < 4) {
+        WriteLog("Load map '{}' from cache failed.\n", map_name);
         return false;
     }
 
     // Header
-    auto cache_file = File(data, data_len);
-    auto buf_len = cache_file.GetFsize();
-    auto* buf = Compressor::Uncompress(cache_file.GetBuf(), buf_len, 50);
-    if (buf == nullptr) {
-        WriteLog("Uncompress map fail.\n");
+    auto data_reader = DataReader {{data, data_len}};
+
+    if (data_reader.Read<int>() != CLIENT_MAP_FORMAT_VER) {
+        WriteLog("Map format is not supported.\n");
         return false;
     }
 
-    auto map_file = File(buf, buf_len);
-    if (map_file.GetBEUInt() != CLIENT_MAP_FORMAT_VER) {
-        WriteLog("Map format is deprecated.\n");
-        return false;
-    }
-
-    if (map_file.GetBEUInt() != map_pid.as_uint()) {
-        WriteLog("Data truncated.\n");
+    if (data_reader.Read<uint>() != map_pid.as_uint()) {
+        WriteLog("Invalid proto number.\n");
         return false;
     }
 
     // Data
-    auto maxhx = map_file.GetBEUShort();
-    auto maxhy = map_file.GetBEUShort();
-    auto tiles_len = map_file.GetBEUInt();
-    auto scen_len = map_file.GetBEUInt();
+    const auto maxhx = data_reader.Read<ushort>();
+    const auto maxhy = data_reader.Read<ushort>();
+    const auto tiles_len = data_reader.Read<uint>();
+    const auto scen_len = data_reader.Read<uint>();
+
+    const auto* tiles_buf = data_reader.ReadPtr<uchar>(tiles_len);
+    const auto* scen_buf = data_reader.ReadPtr<uchar>(scen_len);
 
     // Create field
     ResizeField(maxhx, maxhy);
 
     // Tiles
-    _curHashTiles = (tiles_len != 0u ? Hashing::MurmurHash2(map_file.GetCurBuf(), tiles_len) : maxhx * maxhy);
+    _curHashTiles = (tiles_len != 0u ? Hashing::MurmurHash2(tiles_buf, tiles_len) : maxhx * maxhy);
 
+    auto tiles_reader = DataReader {{tiles_buf, tiles_len}};
     for (uint i = 0; i < tiles_len / sizeof(MapTile); i++) {
         MapTile tile;
-        map_file.CopyMem(&tile, sizeof(tile));
+        tiles_reader.ReadPtr(&tile, sizeof(tile));
         if (tile.HexX >= _maxHexX || tile.HexY >= _maxHexY) {
             continue;
         }
@@ -4015,23 +4012,24 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
     }
 
     // Scenery
-    _curHashScen = (scen_len != 0u ? Hashing::MurmurHash2(map_file.GetCurBuf(), scen_len) : maxhx * maxhy);
+    _curHashScen = (scen_len != 0u ? Hashing::MurmurHash2(scen_buf, scen_len) : maxhx * maxhy);
 
-    auto scen_count = map_file.GetLEUInt();
+    auto scen_reader = DataReader {{tiles_buf, tiles_len}};
+    auto scen_count = scen_reader.Read<uint>();
     for (uint i = 0; i < scen_count; i++) {
-        const auto id = map_file.GetLEUInt();
+        const auto id = scen_reader.Read<uint>();
 
         static_assert(sizeof(hstring::hash_t) == 4);
-        const auto proto_hash = hstring::hash_t {map_file.GetLEUInt()};
+        const auto proto_hash = hstring::hash_t {scen_reader.Read<uint>()};
         const auto proto_id = _engine->ResolveHash(proto_hash);
 
-        auto datas_size = map_file.GetLEUInt();
+        const auto datas_size = scen_reader.Read<uint>();
         vector<vector<uchar>> props_data(datas_size);
         for (uint i2 = 0; i2 < datas_size; i2++) {
-            auto data_size = map_file.GetLEUInt();
+            auto data_size = scen_reader.Read<uint>();
             if (data_size != 0u) {
                 props_data[i2].resize(data_size);
-                map_file.CopyMem(&props_data[i2][0], data_size);
+                scen_reader.ReadPtr(&props_data[i2][0], data_size);
             }
         }
 
@@ -4158,39 +4156,34 @@ void HexManager::GetMapHash(CacheStorage& cache, hstring map_pid, uint& hash_til
 
     uint data_len = 0;
     auto* data = cache.GetRawData(map_name, data_len);
-    if (data == nullptr) {
+    if (data == nullptr || data_len < 4) {
         WriteLog("Load map '{}' from cache fail.\n", map_name);
         return;
     }
 
-    const auto cache_file = File(data, data_len);
-    auto buf_len = cache_file.GetFsize();
-    auto* buf = Compressor::Uncompress(cache_file.GetBuf(), buf_len, 50);
-    if (buf == nullptr) {
-        WriteLog("Uncompress map fail.\n");
-        return;
-    }
+    auto data_reader = DataReader {{data, data_len}};
 
-    auto map_file = File(buf, buf_len);
-    if (map_file.GetBEUInt() != CLIENT_MAP_FORMAT_VER) {
+    if (data_reader.Read<int>() != CLIENT_MAP_FORMAT_VER) {
         WriteLog("Map format is not supported.\n");
         return;
     }
 
-    if (map_file.GetBEUInt() != map_pid.as_uint()) {
+    if (data_reader.Read<uint>() != map_pid.as_uint()) {
         WriteLog("Invalid proto number.\n");
         return;
     }
 
     // Data
-    const auto maxhx = map_file.GetBEUShort();
-    const auto maxhy = map_file.GetBEUShort();
-    const auto tiles_len = map_file.GetBEUInt();
-    const auto scen_len = map_file.GetBEUInt();
+    const auto maxhx = data_reader.Read<ushort>();
+    const auto maxhy = data_reader.Read<ushort>();
+    const auto tiles_len = data_reader.Read<uint>();
+    const auto scen_len = data_reader.Read<uint>();
 
-    hash_tiles = (tiles_len != 0u ? Hashing::MurmurHash2(map_file.GetCurBuf(), tiles_len) : maxhx * maxhy);
-    map_file.GoForward(tiles_len);
-    hash_scen = (scen_len != 0u ? Hashing::MurmurHash2(map_file.GetCurBuf(), scen_len) : maxhx * maxhy);
+    const auto* tiles_buf = data_reader.ReadPtr<uchar>(tiles_len);
+    const auto* scen_buf = data_reader.ReadPtr<uchar>(scen_len);
+
+    hash_tiles = (tiles_len != 0u ? Hashing::MurmurHash2(tiles_buf, tiles_len) : maxhx * maxhy);
+    hash_scen = (scen_len != 0u ? Hashing::MurmurHash2(scen_buf, scen_len) : maxhx * maxhy);
 
     WriteLog("complete.\n");
 }

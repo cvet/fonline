@@ -83,7 +83,6 @@ private:
     SpriteManager& _sprMngr;
     AnimationResolver& _animNameResolver;
     NameResolver& _nameResolver;
-    EventUnsubscriber _eventUnsubscriber {};
     map<uint, string> _namesHash {};
     map<hstring, LoadedAnim> _loadedAnims {};
     map<uint, AnyFrames*> _critterFrames {};

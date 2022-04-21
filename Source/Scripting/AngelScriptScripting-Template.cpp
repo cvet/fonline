@@ -81,6 +81,7 @@
 #endif
 
 #include "Application.h"
+#include "DiskFileSystem.h"
 #include "EngineBase.h"
 #include "Entity.h"
 #include "EntityProperties.h"
@@ -1390,7 +1391,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     class ScriptLoader : public Preprocessor::FileLoader
     {
     public:
-        ScriptLoader(vector<uchar>& root) : _rootScript {&root} { }
+        explicit ScriptLoader(vector<uchar>& root) : _rootScript {&root} { }
 
         auto LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) -> bool override
         {
@@ -1519,7 +1520,7 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
     RUNTIME_ASSERT(script_file);
 
-    DataReader reader {script_file.GetBuf()};
+    DataReader reader {{script_file.GetBuf(), script_file.GetFsize()}};
     vector<asBYTE> buf(reader.Read<uint>());
     std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
     vector<uchar> lnt_data(reader.Read<uint>());
@@ -1532,7 +1533,7 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
         throw ScriptException("Create root module fail");
     }
 
-    Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
+    // Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
 
     BinaryStream binary {buf};
     int as_result = mod->LoadByteCode(&binary);

@@ -41,6 +41,7 @@
 #include "DataBase.h"
 #include "DeferredCalls.h"
 #include "Dialogs.h"
+#include "DiskFileSystem.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
 #include "FileSystem.h"

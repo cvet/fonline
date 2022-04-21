@@ -13,6 +13,7 @@
 * PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
 * SDL2 - [SDL2-2.0.20](https://github.com/libsdl-org/SDL)
 * SHA - SHA-1 & SHA-2 hash generators
+* span - [span](https://github.com/tcbrindle/span)
 * SPIRV-Cross - [SPIRV-Cross-30.08.2021](https://github.com/KhronosGroup/SPIRV-Cross)
 * Theora - [libtheora-1.1.1](https://www.theora.org/downloads/)
 * Vorbis - [libvorbis-1.3.3](https://xiph.org/vorbis/)

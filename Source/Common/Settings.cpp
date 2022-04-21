@@ -314,10 +314,6 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
 void GlobalSettings::SetValue(string_view setting_name, string value)
 {
-    if (setting_name == "ServerDir") {
-        DiskFileSystem::ResolvePath(value);
-    }
-
 #define FIXED_SETTING(type, name, ...) \
     if (setting_name == #name) { \
         SetEntry(const_cast<type&>(name), value); \

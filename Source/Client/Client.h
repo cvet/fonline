@@ -40,6 +40,7 @@
 #include "3dStuff.h"
 #include "CacheStorage.h"
 #include "CritterView.h"
+#include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
@@ -318,7 +319,7 @@ private:
         vector<UpdateFile> FileList {};
         uint FilesWholeSize {};
         bool FileDownloading {};
-        unique_ptr<OutputFile> TempFile {};
+        unique_ptr<DiskFile> TempFile {};
     };
 
     struct IfaceAnim
