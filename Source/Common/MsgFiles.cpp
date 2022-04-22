@@ -439,14 +439,8 @@ void LanguagePack::LoadFromCache(const CacheStorage& cache, NameResolver& name_r
 
     auto errors = 0;
     for (auto i = 0; i < TEXTMSG_COUNT; i++) {
-        uint buf_len = 0;
-        auto* buf = cache.GetRawData(GetMsgCacheName(i), buf_len);
-        if (buf != nullptr) {
-            vector<uchar> data;
-            data.resize(buf_len);
-            std::memcpy(&data[0], buf, buf_len);
-            delete[] buf;
-
+        auto data = cache.GetData(GetMsgCacheName(i));
+        if (!data.empty()) {
             if (!Msg[i].LoadFromBinaryData(data)) {
                 errors++;
             }

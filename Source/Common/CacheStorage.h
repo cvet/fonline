@@ -40,10 +40,12 @@
 
 DECLARE_EXCEPTION(CacheStorageException);
 
-class CacheStorage final
+class CacheStorageImpl;
+
+class CacheStorage
 {
 public:
-    explicit CacheStorage(string_view real_path);
+    explicit CacheStorage(string_view path);
     CacheStorage(const CacheStorage&) = delete;
     CacheStorage(CacheStorage&&) noexcept;
     auto operator=(const CacheStorage&) = delete;
@@ -51,18 +53,14 @@ public:
     ~CacheStorage();
 
     [[nodiscard]] auto HasEntry(string_view entry_name) const -> bool;
-    [[nodiscard]] auto GetRawData(string_view entry_name, uint& data_len) const -> uchar*;
     [[nodiscard]] auto GetString(string_view entry_name) const -> string;
     [[nodiscard]] auto GetData(string_view entry_name) const -> vector<uchar>;
 
-    void SetRawData(string_view entry_name, const uchar* data, uint data_len);
     void SetString(string_view entry_name, string_view str);
-    void SetData(string_view entry_name, const vector<uchar>& data);
+    void SetData(string_view entry_name, const_span<uchar> data);
     void EraseEntry(string_view entry_name);
 
 private:
-    struct Impl;
-    unique_ptr<Impl> _pImpl {};
-    string _workPath {};
+    unique_ptr<CacheStorageImpl> _impl {};
     bool _nonConstHelper {};
 };

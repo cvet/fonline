@@ -3483,38 +3483,36 @@ void FOClient::Net_OnMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    auto cache_len = 0u;
-    auto* cache = Cache.GetRawData(map_name, cache_len);
-    if (cache != nullptr) {
-        const auto compressed_file = File(cache, cache_len);
-        const auto buf = Compressor::Uncompress({compressed_file.GetBuf(), compressed_file.GetSize()}, 50);
-        if (!buf.empty()) {
-            auto file = File(buf);
+    if (auto compressed_cache = Cache.GetData(map_name); !compressed_cache.empty()) {
+        if (const auto cache = Compressor::Uncompress(compressed_cache, 50); !cache.empty()) {
+            auto caqche_reader = DataReader(cache);
 
-            if (file.GetBEUInt() == CLIENT_MAP_FORMAT_VER) {
-                file.GoForward(4);
-                file.GoForward(2);
-                file.GoForward(2);
-                const auto old_tiles_len = file.GetBEUInt();
-                const auto old_scen_len = file.GetBEUInt();
+            if (caqche_reader.Read<int>() == CLIENT_MAP_FORMAT_VER) {
+                caqche_reader.Read<uint>();
+                caqche_reader.Read<ushort>();
+                caqche_reader.Read<ushort>();
+                const auto old_tiles_len = caqche_reader.Read<uint>();
+                const auto old_scen_len = caqche_reader.Read<uint>();
 
                 if (!tiles) {
                     tiles_len = old_tiles_len;
                     tiles_data = new char[tiles_len];
-                    file.CopyMem(tiles_data, tiles_len);
+                    caqche_reader.ReadPtr(tiles_data, tiles_len);
                     tiles = true;
+                }
+                else {
+                    caqche_reader.ReadPtr<uchar>(tiles_len);
                 }
 
                 if (!scen) {
                     scen_len = old_scen_len;
                     scen_data = new char[scen_len];
-                    file.CopyMem(scen_data, scen_len);
+                    caqche_reader.ReadPtr(scen_data, scen_len);
                     scen = true;
                 }
             }
         }
     }
-    delete[] cache;
 
     if (tiles && scen) {
         vector<uchar> buf;
@@ -3529,7 +3527,7 @@ void FOClient::Net_OnMap()
         buf_writer.WritePtr(tiles_data, tiles_len);
         buf_writer.WritePtr(scen_data, scen_len);
 
-        Cache.SetRawData(map_name, buf.data(), static_cast<uint>(buf.size()));
+        Cache.SetData(map_name, buf);
     }
     else {
         WriteLog("Not for all data of map, disconnect.\n");
@@ -3725,9 +3723,8 @@ void FOClient::Net_OnUpdateFilesList()
 #endif
 
         // Check hash
-        uint cur_hash_len = 0;
-        auto cur_hash = reinterpret_cast<uint*>(Cache.GetRawData(_str("{}.hash", name), cur_hash_len));
-        auto cached_hash_same = ((cur_hash != nullptr) && cur_hash_len == sizeof(hash) && *cur_hash == hash);
+        const auto cache_data = Cache.GetData(_str("{}.hash", name));
+        auto cached_hash_same = (cache_data.size() == sizeof(hash) && *reinterpret_cast<const uint*>(cache_data.data()) == hash);
         if (name[0] != '$') {
             // Real file, human can disturb file consistency, make base recheck
             auto file_header = FileMngr.ReadFileHeader(name);
@@ -3735,7 +3732,7 @@ void FOClient::Net_OnUpdateFilesList()
                 auto file2 = FileMngr.ReadFile(name);
                 if (cached_hash_same || (file2 && hash == Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize()))) {
                     if (!cached_hash_same) {
-                        Cache.SetRawData(_str("{}.hash", name), reinterpret_cast<uchar*>(&hash), sizeof(hash));
+                        Cache.SetData(_str("{}.hash", name), {reinterpret_cast<uchar*>(&hash), sizeof(hash)});
                     }
                     continue;
                 }
@@ -3802,8 +3799,8 @@ void FOClient::Net_OnUpdateFileData()
                 return;
             }
 
-            Cache.SetRawData(update_file.Name, temp_file.GetBuf(), temp_file.GetSize());
-            Cache.SetRawData(update_file.Name + ".hash", reinterpret_cast<uchar*>(&update_file.Hash), sizeof(update_file.Hash));
+            Cache.SetData(update_file.Name, {temp_file.GetBuf(), temp_file.GetSize()});
+            Cache.SetData(update_file.Name + ".hash", {reinterpret_cast<uchar*>(&update_file.Hash), sizeof(update_file.Hash)});
             DiskFileSystem::DeleteFile(UPDATE_TEMP_FILE);
         }
         // File

@@ -938,7 +938,7 @@ if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLI
 endif()
 
 # Unqlite
-if( NOT EMSCRIPTEN )
+if( FALSE AND NOT EMSCRIPTEN )
 	StatusMessage( "+ Unqlite" )
 	set( FO_UNQLITE_DIR "ThirdParty/unqlite" )
 	add_subdirectory( "${FO_UNQLITE_DIR}" )

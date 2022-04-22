@@ -3945,19 +3945,17 @@ auto HexManager::LoadMap(CacheStorage& cache, hstring map_pid) -> bool
         ReloadSprites();
     }
 
-    // Make name
-    string map_name = _str("{}.map", map_pid);
-
     // Find in cache
-    uint data_len = 0;
-    auto* data = cache.GetRawData(map_name, data_len);
-    if (data == nullptr || data_len < 4) {
-        WriteLog("Load map '{}' from cache failed.\n", map_name);
+    string map_name = _str("{}.map", map_pid);
+    const auto data = cache.GetData(map_name);
+
+    if (data.empty()) {
+        WriteLog("Map '{}' not cached.\n", map_name);
         return false;
     }
 
     // Header
-    auto data_reader = DataReader({data, data_len});
+    auto data_reader = DataReader(data);
 
     if (data_reader.Read<int>() != CLIENT_MAP_FORMAT_VER) {
         WriteLog("Map format is not supported.\n");
@@ -4158,15 +4156,14 @@ void HexManager::GetMapHash(CacheStorage& cache, hstring map_pid, uint& hash_til
     }
 
     const string map_name = _str("{}.map", map_pid);
+    const auto data = cache.GetData(map_name);
 
-    uint data_len = 0;
-    auto* data = cache.GetRawData(map_name, data_len);
-    if (data == nullptr || data_len < 4) {
-        WriteLog("Load map '{}' from cache fail.\n", map_name);
+    if (data.empty()) {
+        WriteLog("Map '{}' not cached.\n", map_name);
         return;
     }
 
-    auto data_reader = DataReader({data, data_len});
+    auto data_reader = DataReader(data);
 
     if (data_reader.Read<int>() != CLIENT_MAP_FORMAT_VER) {
         WriteLog("Map format is not supported.\n");
