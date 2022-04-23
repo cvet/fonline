@@ -37,7 +37,7 @@ parser.add_argument('-monosinglesource', dest='monosinglesource', action='append
 parser.add_argument('-monomappersource', dest='monomappersource', action='append', default=[], help='csharp mapper file path')
 parser.add_argument('-content', dest='content', action='append', default=[], help='content file path')
 parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
-parser.add_argument('-config', dest='config', required=True, action='append', default=[], help='debugging config')
+parser.add_argument('-config', dest='config', action='append', default=[], help='debugging config')
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
 parser.add_argument('-output', dest='output', required=True, help='scripts output dir')
 args = parser.parse_args()
