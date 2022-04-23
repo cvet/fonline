@@ -187,6 +187,17 @@ static void DrawEditableEntry(string_view name, vector<bool>& entry)
 
 GlobalSettings::GlobalSettings(int argc, char** argv)
 {
+    // Default config
+    static char default_config[] =
+#include "SettingsDefault-Include.h"
+        ;
+
+    if (const auto config = ConfigFile(default_config, nullptr)) {
+        for (const auto& [key, value] : config.GetApp("")) {
+            SetValue(key, value);
+        }
+    }
+
     // Injected config
     static char internal_config[5022] = {"###InternalConfig###\0"
                                          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"

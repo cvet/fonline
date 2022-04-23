@@ -38,6 +38,7 @@
 #include "Log.h"
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #if FO_ANDROID
@@ -66,7 +67,7 @@ void LogToFile()
 {
     std::lock_guard locker(Data->LogLocker);
 
-    const auto fname = _str("{}.log", GetAppName()).str();
+    const auto fname = _str("{}{}{}.log", FO_DEV_NAME, GetAppName()[0] != '\0' ? "_" : "", GetAppName()).str();
     Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
 }
 

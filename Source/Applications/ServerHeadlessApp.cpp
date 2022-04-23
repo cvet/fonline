@@ -44,7 +44,7 @@ extern "C" int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("FOnlineServerHeadless");
+        SetAppName("ServerHeadless");
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();

@@ -88,7 +88,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
 
     const auto dt = Timer::GetCurrentDateTime();
     const auto* dump_str = (except != nullptr ? "CrashDump" : ManualDumpAppendix);
-    string dump_path = _str("{}_{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, GetAppName(), FO_GAME_VERSION, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    string dump_path = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", dump_str, FO_DEV_NAME, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     if (auto file = DiskFileSystem::OpenFile(dump_path, true)) {
         // Generic info
@@ -96,7 +96,7 @@ static LONG WINAPI TopLevelFilterReadableDump(EXCEPTION_POINTERS* except)
         file.Write(_str("{}\n", message));
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", GetAppName()));
+        file.Write(_str("\tName        {}{}\n", FO_DEV_NAME, GetAppName()));
         file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
         file.Write(_str("\tOS          Windows\n"));
         file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));

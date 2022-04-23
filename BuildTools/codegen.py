@@ -14,6 +14,7 @@ startTime = time.time()
 
 parser = argparse.ArgumentParser(description='FOnline code generator', fromfile_prefix_chars='@')
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
+parser.add_argument('-devname', dest='devname', required=True, help='dev game name and version')
 parser.add_argument('-gamename', dest='gamename', required=True, help='game name and version')
 parser.add_argument('-meta', dest='meta', required=True, action='append', help='path to script api metadata (///@ tags)')
 parser.add_argument('-multiplayer', dest='multiplayer', action='store_true', help='generate multiplayer api')
@@ -36,6 +37,7 @@ parser.add_argument('-monosinglesource', dest='monosinglesource', action='append
 parser.add_argument('-monomappersource', dest='monomappersource', action='append', default=[], help='csharp mapper file path')
 parser.add_argument('-content', dest='content', action='append', default=[], help='content file path')
 parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
+parser.add_argument('-config', dest='config', required=True, action='append', default=[], help='debugging config')
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
 parser.add_argument('-output', dest='output', required=True, help='scripts output dir')
 args = parser.parse_args()
@@ -89,6 +91,7 @@ def checkErrors():
             
             writeStub('EmbeddedResources-Include.h')
             writeStub('Version-Include.h')
+            writeStub('SettingsDefault-Include.h')
             writeStub('EntityProperties-Common.cpp')
             writeStub('DataRegistration-Server.cpp')
             writeStub('DataRegistration-Client.cpp')
@@ -2766,9 +2769,18 @@ except Exception as ex:
 
 checkErrors()
 
+# Default settings
+createFile('SettingsDefault-Include.h', args.genoutput)
+writeFile('R"CONFIG(')
+for cfg in args.config:
+    k, v = cfg.split(',', 1)
+    writeFile(k + ' = ' + v)
+writeFile(')CONFIG"')
+
 # Version info
 createFile('Version-Include.h', args.genoutput)
 writeFile('static constexpr auto FO_BUILD_HASH = "' + args.buildhash + '";')
+writeFile('static constexpr auto FO_DEV_NAME = "' + args.devname + '";')
 writeFile('static constexpr auto FO_GAME_VERSION = "' + args.gamename + '";')
 writeFile('static constexpr auto FO_COMPATIBILITY_VERSION = 0x12345678;') # Todo: FO_COMPATIBILITY_VERSION
 

@@ -136,7 +136,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
-        SetAppName("FOnline");
+        SetAppName("");
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();

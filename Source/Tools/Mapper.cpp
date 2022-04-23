@@ -38,19 +38,11 @@
 #include "Log.h"
 #include "MapperScripting.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
 #include "WinApi-Include.h"
-
-#include "sha1.h"
-#include "sha2.h"
 
 FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScriptSystem(this, settings)), IfaceIni("", *this)
 {
     HexMngr.EnableMapperMode();
-
-    ProtoMngr = std::make_unique<ProtoManager>(ServerFileMngr, *this);
-
-    Animations.resize(10000);
 
     // Mouse
     const auto [w, h] = SprMngr.GetWindowSize();
@@ -58,15 +50,11 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     Settings.MouseX = std::clamp(x, 0, w - 1);
     Settings.MouseY = std::clamp(y, 0, h - 1);
 
-    // Setup write paths
-    ServerWritePath = Settings.ServerDir;
-    ClientWritePath = Settings.WorkDir;
-
     // Resources
     FileMngr.AddDataSource("$Embedded", false);
-    FileMngr.AddDataSource(ClientWritePath + "Data/", false);
-    ServerFileMngr.AddDataSource("$Embedded", false);
-    ServerFileMngr.AddDataSource(ServerWritePath, false);
+    FileMngr.AddDataSource(Settings.ResourcesDir, false);
+
+    ProtoMngr = std::make_unique<ProtoManager>(FileMngr, *this);
 
     // Default effects
     EffectMngr.LoadDefaultEffects();

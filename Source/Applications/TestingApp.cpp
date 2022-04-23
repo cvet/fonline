@@ -48,7 +48,7 @@
 
 extern "C" int main(int argc, char** argv) // Handled by SDL
 {
-    SetAppName("FOnlineTesting");
+    SetAppName("Testing");
     CatchSystemExceptions();
     CreateGlobalData();
     LogToFile();

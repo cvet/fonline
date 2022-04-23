@@ -508,11 +508,12 @@
 {
     vector<string> names;
 
-    auto map_files = mapper->ServerFileMngr.FilterFiles("fomap", dir, false);
-    while (map_files.MoveNext()) {
-        auto file_header = map_files.GetCurFileHeader();
-        names.emplace_back(file_header.GetName());
-    }
+    // Todo: Settings.MapsDir
+    // auto map_files = mapper->ServerFileMngr.FilterFiles("fomap", dir, false);
+    // while (map_files.MoveNext()) {
+    //    auto file_header = map_files.GetCurFileHeader();
+    //    names.emplace_back(file_header.GetName());
+    // }
 
     return names;
 }

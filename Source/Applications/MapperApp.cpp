@@ -105,7 +105,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
-        SetAppName("FOnlineMapper");
+        SetAppName("Mapper");
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();

@@ -50,9 +50,9 @@ set( FO_GIT_HASH_RESULT "" )
 set( FO_GIT_DIFF_RESULT "" )
 set( FO_GIT_HASH "" )
 set( FO_HEADLESS_ONLY YES )
-set( FO_DEV_NAME "Unknown" )
-set( FO_NICE_NAME "Unknown" )
-set( FO_AUTHOR_NAME "Unknown" )
+set( FO_DEV_NAME "FOnline" )
+set( FO_NICE_NAME "FOnline" )
+set( FO_AUTHOR_NAME "FOnline" )
 set( FO_GAME_VERSION "0.0.1" )
 set( FO_SINGLEPLAYER NO )
 set( FO_NATIVE_SCRIPTING NO )
@@ -70,7 +70,6 @@ set( FO_ASCOMPILER_OUTPUT "" )
 set( FO_TESTS_OUTPUT "" )
 set( FO_SCRIPTS_OUTPUT "" )
 set( FO_RESOURCES_OUTPUT "" )
-set( FO_PACKAGES_OUTPUT "" )
 set( FO_BUILD_PLATFORM "" )
 set( FO_COMMON_SYSTEM_LIBS "" )
 set( FO_COMMON_LIBS "" )
@@ -151,6 +150,7 @@ set( FO_ANGELSCRIPT_EXTENSION_ENTRIES "" )
 set( FO_MONO_ASSEMBLIES "" )
 set( FO_MONO_SOURCE "" )
 set( FO_CONFIGS "" )
+set( FO_DEBUGGING_CONFIG "" )
 set( FO_PACKAGES "" )
 
 # Evaluate build hash
@@ -432,13 +432,11 @@ set( FO_MAPPER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFOR
 set( FO_BAKER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_ASCOMPILER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_TESTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Tests$<$<CONFIG:Debug>:>" )
-set( FO_SCRIPTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Scripts" )
 set( FO_RESOURCES_OUTPUT "${FONLINE_OUTPUT_PATH}/Resources" )
-set( FO_PACKAGES_OUTPUT "${FONLINE_OUTPUT_PATH}/Packages" )
+set( FO_SCRIPTS_OUTPUT "${FO_RESOURCES_OUTPUT}/Scripts" )
 file( MAKE_DIRECTORY "${FONLINE_OUTPUT_PATH}/Binaries" )
-file( MAKE_DIRECTORY ${FO_SCRIPTS_OUTPUT} )
 file( MAKE_DIRECTORY ${FO_RESOURCES_OUTPUT} )
-file( MAKE_DIRECTORY ${FO_PACKAGES_OUTPUT} )
+file( MAKE_DIRECTORY ${FO_SCRIPTS_OUTPUT} )
 
 # Contributions
 macro( ResolveContributedFiles )
@@ -583,14 +581,26 @@ endmacro()
 macro( CreateConfig config inheritenConfig )
 	list( APPEND FO_CONFIGS ${config} )
 	set( Config_${config}_Inheriten ${inheritenConfig} )
-	set( LastCreatedConfig ${config} )
+	TweakConfig( ${config} ${ARGN} )
 endmacro()
-macro( TweakConfig option value )
-	list( FIND Config_${LastCreatedConfig}_Options ${option} optionIndex )
-	if( optionIndex EQUAL -1 )
-		list( APPEND Config_${LastCreatedConfig}_Options ${option} )
-	endif()
-	set( Config_${LastCreatedConfig}___${option} ${value} )
+macro( TweakConfig config )
+	unset( opt )
+	foreach( arg ${ARGN} )
+		if( NOT opt )
+			set( opt ${arg} )
+			continue()
+		endif()
+		list( FIND Config_${config}_Options ${opt} optionIndex )
+		if( optionIndex EQUAL -1 )
+			list( APPEND Config_${config}_Options ${opt} )
+		endif()
+		set( Config_${config}___${opt} ${arg} )
+		unset( opt )
+	endforeach()
+endmacro()
+macro( SetConfigForDebugging config )
+	StatusMessage( "+ IDE debugging config is ${config}" )
+	set( FO_DEBUGGING_CONFIG ${config} )
 endmacro()
 macro( CreatePackage package config debug )
 	list( APPEND FO_PACKAGES ${package} )
@@ -1202,6 +1212,7 @@ list( APPEND FO_COMMON_SOURCE
 	"Source/Common/WinApi-Include.h"
 	"Source/Scripting/CommonGlobalScriptMethods.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/SettingsDefault-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
 
@@ -1369,6 +1380,7 @@ find_package( Python3 REQUIRED COMPONENTS Interpreter )
 list( APPEND FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}" )
 list( APPEND FO_CODEGEN_COMMAND_ARGS -output "${FO_SCRIPTS_OUTPUT}" )
 list( APPEND FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_BINARY_DIR}/GeneratedSource" )
+list( APPEND FO_CODEGEN_COMMAND_ARGS -devname "${FO_DEV_NAME}" )
 list( APPEND FO_CODEGEN_COMMAND_ARGS -gamename "${FO_NICE_NAME} ${FO_GAME_VERSION}" )
 
 list( APPEND FO_CODEGEN_COMMAND_ARGS -markdown )
@@ -1449,7 +1461,23 @@ foreach( entry ${FO_RESOURCES} )
 	list( APPEND FO_CODEGEN_COMMAND_ARGS -resource "${entry}" )
 endforeach()
 
+if( FO_DEBUGGING_CONFIG )
+	set( curConfig ${FO_DEBUGGING_CONFIG} )
+	set( processedOptions "" )
+	while( curConfig )
+		foreach( option ${Config_${curConfig}_Options} )
+			list( FIND processedOptions ${option} optionIndex )
+			if( optionIndex EQUAL -1 )
+				list( APPEND processedOptions ${option} )
+				list( APPEND FO_CODEGEN_COMMAND_ARGS -config "${option},${Config_${curConfig}___${option}}" )
+			endif()
+		endforeach()
+		set( curConfig ${Config_${curConfig}_Inheriten} )
+	endwhile()
+endif()
+
 list( APPEND FO_CODEGEN_META_SOURCE
+	${FONLINE_CMAKE_CONTRIBUTION}
 	${FO_ADDITIONAL_META_FILES}
 	${FO_COMMON_SOURCE}
 	${FO_SERVER_SOURCE}
@@ -1458,6 +1486,7 @@ list( APPEND FO_CODEGEN_META_SOURCE
 	${FO_ANGELSCRIPT_SOURCE}
 	${FO_MONO_SOURCE} )
 list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h" )
+list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/SettingsDefault-Include.h" )
 list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h" )
 list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
 list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" )
@@ -1469,6 +1498,7 @@ endforeach()
 
 list( APPEND FO_CODEGEN_OUTPUT
 	"${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/SettingsDefault-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
@@ -1897,7 +1927,7 @@ StatusMessage( "Packages:" )
 
 add_custom_target( MakeAllPackages
 	DEPENDS CodeGeneration
-	WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
+	WORKING_DIRECTORY ${FONLINE_OUTPUT_PATH}
 	COMMENT "Make all packages" )
 list( APPEND FO_COMMANDS_GROUP "MakeAllPackages" )
 
@@ -1910,7 +1940,7 @@ foreach( package ${FO_PACKAGES} )
 
 	add_custom_target( MakePackage-${package}
 		DEPENDS CodeGeneration
-		WORKING_DIRECTORY ${FO_PACKAGES_OUTPUT}
+		WORKING_DIRECTORY ${FONLINE_OUTPUT_PATH}
 		COMMENT "Make package ${package}" )
 	list( APPEND FO_COMMANDS_GROUP "MakePackage-${package}" )
 
@@ -1940,6 +1970,7 @@ foreach( package ${FO_PACKAGES} )
 		else()
 			set( config ${Package_${package}_Config} )
 		endif()
+		list( APPEND packageCommands -configname "${config}" )
 		set( curConfig ${config} )
 		set( processedOptions "" )
 		while( curConfig )
@@ -1953,12 +1984,19 @@ foreach( package ${FO_PACKAGES} )
 			set( curConfig ${Config_${curConfig}_Inheriten} )
 		endwhile()
 
+		if( FO_ANGELSCRIPT_SCRIPTING )
+			list( APPEND packageCommands -angelscript )
+		endif()
+		if( FO_MONO_SCRIPTING )
+			list( APPEND packageCommands -mono )
+		endif()
+
 		if( ${Package_${package}_Debug} )
 			list( APPEND packageCommands -debug )
 		endif()
 
 		list( APPEND packageCommands -input ${FONLINE_OUTPUT_PATH} )
-		list( APPEND packageCommands -output ${FO_PACKAGES_OUTPUT} )
+		list( APPEND packageCommands -output ${FONLINE_OUTPUT_PATH}/${FO_DEV_NAME}-${package} )
 
 		StatusMessage( "  ${target} for ${platform}-${arch} in ${pack} with ${config} config" )
 		add_custom_command( TARGET MakePackage-${package} POST_BUILD COMMAND ${packageCommands} )

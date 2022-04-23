@@ -62,7 +62,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("FOnlineASCompiler");
+        SetAppName("ASCompiler");
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();

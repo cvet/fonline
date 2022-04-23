@@ -7,7 +7,7 @@ import shutil
 import zipfile
 import subprocess
 import tarfile
-#import PIL
+import glob
 
 parser = argparse.ArgumentParser(description='FOnline packager')
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
@@ -15,7 +15,7 @@ parser.add_argument('-devname', dest='devname', required=True, help='Dev game na
 parser.add_argument('-nicename', dest='nicename', required=True, help='Representable game name')
 parser.add_argument('-authorname', dest='authorname', required=True, help='Author name')
 parser.add_argument('-gameversion', dest='gameversion', required=True, help='Game version')
-parser.add_argument('-target', dest='target', required=True, choices=['Server', 'Client', 'Single'], help='package target type')
+parser.add_argument('-target', dest='target', required=True, choices=['Server', 'Client', 'Single', 'Mapper'], help='package target type')
 parser.add_argument('-platform', dest='platform', required=True, choices=['Windows', 'Linux', 'Android', 'macOS', 'iOS', 'Web'], help='platform type')
 parser.add_argument('-arch', dest='arch', required=True, help='architectures to include (divided by +)')
 # Windows: win32 win64
@@ -32,76 +32,78 @@ parser.add_argument('-pack', dest='pack', required=True, help='package type')
 # iOS: Raw Bundle
 # Web: Raw
 parser.add_argument('-debug', dest='debug', action='store_true', help='debug mode')
+parser.add_argument('-configname', dest='configname', required=True, help='config name')
 parser.add_argument('-config', dest='config', required=True, action='append', default=[], help='config tweaks')
-
+parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='attach angelscript scripts')
+parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
 parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FONLINE_OUTPUT_PATH)')
-#parser.add_argument('-binaries', dest='binaries', required=True, help='directory where to find binaries')
-#parser.add_argument('-scripts', dest='scripts', required=True, help='directory to generated scripts')
-#parser.add_argument('-resources', dest='resources', required=True, help='directory to generated resources')
-
 parser.add_argument('-output', dest='output', required=True, help='output dir')
 args = parser.parse_args()
 
-print('[Package]', f'Make {args.target} for {args.platform}-{args.arch} in {args.pack} to {args.output}')
+print('[Package]', f'Make {args.configname} {args.target} for {args.platform} to {args.output}')
 
-# Validate input
-for input in args.input:
-	pass
-	# Check 'version' in Scripts, Resources, Client/.., Server/.., Single/.., Tools/..
-
-# Dev build.hash runs inplace, without resources packing
-
-# Copy files
-
-# Patch files
-
-# Make packs
-
-# ========================================================================================
-
-sys.exit(1)
-
-"""
 outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
-
-for a in sys.argv:
-	print(a)
+buildToolsPath = os.path.dirname(os.path.realpath(__file__))
 
 curPath = os.path.dirname(sys.argv[0])
 gameName = sys.argv[1]
-binariesPath = sys.argv[2]
-resourcesPath = sys.argv[3]
-configPath = sys.argv[4]
-outputPath = sys.argv[5]
-os.environ['JAVA_HOME'] = sys.argv[6]
-os.environ['ANDROID_HOME'] = sys.argv[7]
-os.environ['EMSCRIPTEN'] = sys.argv[8]
-buildTarget = sys.argv[9]
+
+#os.environ['JAVA_HOME'] = sys.argv[6]
+#os.environ['ANDROID_HOME'] = sys.argv[7]
+#os.environ['EMSCRIPTEN'] = sys.argv[8]
+
+# Generate config
+config = {}
+configStr = ''
+for cfg in args.config:
+	k, v = cfg.split(',', 1)
+	#print(k, v)
+	configStr += k + '=' + v + '\n'
+
+# Find files
+def getInput(subdir, inputType):
+	for i in args.input:
+		absDir = os.path.abspath(i)
+		absDir = os.path.join(absDir, subdir)
+		if os.path.isdir(absDir):
+			buildHashPath = os.path.join(absDir, inputType + '.build-hash')
+			if os.path.isfile(buildHashPath):
+				with open(buildHashPath, 'r', encoding='utf-8-sig') as f:
+					buildHash = f.read()
+				
+				if buildHash == args.buildhash:
+					return absDir
+				
+				else:
+					assert False, 'Build hash file ' + buildHashPath + ' has wrong hash'
+			else:
+				assert False, 'Build hash file ' + buildHashPath + ' not found'
+	else:
+		assert False, 'Input dir ' + subdir + ' not found for ' + inputType
+
+def getLogo():
+	logoPath = os.path.join(outputPath, 'Logo.png')
+	if not os.path.isfile(logoPath):
+		logoPath = os.path.join(binariesPath, 'DefaultLogo.png')
+	import PIL
+	return PIL.Image.open(logoPath)
 
 def patchConfig(filePath):
-	with open(configPath, 'rb') as f:
-		config = f.read()
-	config = config.replace('\r\n', '\n')
-	while '#' in config:
-		commBegin = config.find('#')
-		commEnd = config.find('\n', commBegin)
-		config = config[:commBegin] + config[commEnd if commEnd != -1 else len(config):]
-	while '\n\n' in config:
-		config = config.replace('\n\n', '\n')
 	with open(filePath, 'rb') as f:
 		file = f.read()
 	fileSize = os.path.getsize(filePath)
-	pos1 = file.find('###InternalConfig###')
+	pos1 = file.find(b'###InternalConfig###')
 	assert pos1 != -1
-	pos2 = file.find('\0', pos1)
+	pos2 = file.find(b'\0', pos1)
 	assert pos2 != -1
-	pos3 = file.find('\0', pos2 + 1)
+	pos3 = file.find(b'\0', pos2 + 1)
 	assert pos3 != -1
 	size = pos3 - pos1
 	assert size + 1 == 5022 # Magic
-	assert len(config) <= size
-	padding = '#' * (size - len(config))
-	file = file[0:pos1] + config + padding + file[pos3:]
+	configBytes = str.encode(configStr)
+	assert len(configBytes) <= size
+	padding = b'#' * (size - len(configBytes))
+	file = file[0:pos1] + configBytes + padding + file[pos3:]
 	with open(filePath, 'wb') as f:
 		f.write(file)
 	assert fileSize == os.path.getsize(filePath)
@@ -122,7 +124,7 @@ def makeZip(name, path):
 
 def makeTar(name, path, mode):
 	def filter(tarinfo):
-		tarinfo.mode = 0777
+		#tarinfo.mode = 0777
 		return tarinfo
 	tar = tarfile.open(name, mode)
 	dir = os.getcwd()
@@ -133,34 +135,40 @@ def makeTar(name, path, mode):
 	tar.close()
 
 def build():
-	gameOutputPath = targetOutputPath + '/' + gameName
-
-	if buildTarget == 'Windows':
+	if args.platform == 'Windows':
 		# Raw files
-		os.makedirs(gameOutputPath)
-		shutil.copytree(resourcesPath, gameOutputPath + '/Data')
-		shutil.copy(binariesPath + '/Windows/FOnline.exe', gameOutputPath + '/' + gameName + '.exe')
-		shutil.copy(binariesPath + '/Windows/FOnline.pdb', gameOutputPath + '/' + gameName + '.pdb')
-		patchConfig(gameOutputPath + '/' + gameName + '.exe')
+		os.makedirs(os.path.join(targetOutputPath, 'Resources'))
 
-		# Patch icon
-		if os.name == 'nt':
-			icoPath = os.path.join(gameOutputPath, 'Windows.ico')
-			logo.save(icoPath, 'ico')
-			resHackPath = os.path.abspath(os.path.join(curPath, 'other', 'ReplaceVistaIcon.exe'))
-			r = subprocess.call([resHackPath, gameOutputPath + '/' + gameName + '.exe', icoPath], shell = True)
-			os.remove(icoPath)
-			assert r == 0
+		resourcesPath = getInput('Resources', 'Resources')
+		for f in glob.glob(os.path.join(resourcesPath, '*.zip')):
+			shutil.copy(os.path.join(resourcesPath, f), os.path.join(targetOutputPath, 'Resources'))
+		for f in glob.glob(os.path.join(resourcesPath, 'Raw', '*')):
+			shutil.copy(os.path.join(resourcesPath, f), os.path.join(targetOutputPath, 'Resources'))
+
+		for arch in args.arch.split('+'):
+			binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch + ('-Debug' if args.debug else '')), 'FOnline' + args.target)
+			binAppendix = '_' + args.target if args.target != 'Client' and args.target != 'Single' else ''
+			shutil.copy(os.path.join(binPath, 'FOnline' + args.target + '.exe'), os.path.join(targetOutputPath, args.devname + binAppendix + '.exe'))
+			shutil.copy(os.path.join(binPath, 'FOnline' + args.target + '.pdb'), os.path.join(targetOutputPath, args.devname + binAppendix + '.pdb'))
+			patchConfig(os.path.join(targetOutputPath, args.devname + binAppendix + '.exe'))
+
+		if args.angelscript:
+			scriptsPath = getInput('Scripts', 'AngelScript')
+			shutil.copy(os.path.join(scriptsPath, args.target + 'RootModule.fosb'), os.path.join(targetOutputPath, 'Resources'))
+			if args.target == 'Server':
+				shutil.copy(os.path.join(scriptsPath, 'ClientRootModule.fosb'), os.path.join(targetOutputPath, 'Resources'))
 
 		# Zip
-		makeZip(targetOutputPath + '/' + gameName + '.zip', gameOutputPath)
+		"""
+		if 'Zip' in args.pack:
+			makeZip(targetOutputPath + '/' + gameName + '.zip', targetOutputPath)
 
 		# MSI Installer
 		sys.path.insert(0, os.path.join(curPath, 'msicreator'))
 		import createmsi
 		import uuid
 
-		msiConfig = " "" \
+		msiConfig = "" " \
 		{
 			"upgrade_guid": "%s",
 			"version": "%s",
@@ -181,7 +189,7 @@ def build():
 					"absent": "%s",
 					"staged_dir": "%s"
 			} ]
-		}" "" % (uuid.uuid3(uuid.NAMESPACE_OID, gameName), '1.0.0', \
+		}"" " % (uuid.uuid3(uuid.NAMESPACE_OID, gameName), '1.0.0', \
 				gameName, 'Dream', gameName, gameName, 'The game', \
 				gameName, 'License.rtf', 'false', 32, \
 				gameName, gameName, 'MMORPG', 'disallow', gameName)
@@ -216,8 +224,8 @@ def build():
 			os.remove(gameName + '.wixobj')
 			os.remove(gameName + '.wxs')
 
-		except Exception, e:
-			print str(e)
+		except Exception as e:
+			print(str(e))
 		finally:
 			os.chdir(cwd)
 
@@ -227,8 +235,9 @@ def build():
 			os.makedirs(binPath)
 		shutil.copy(gameOutputPath + '/' + gameName + '.exe', binPath + '/' + gameName + '.exe')
 		shutil.copy(gameOutputPath + '/' + gameName + '.pdb', binPath + '/' + gameName + '.pdb')
+		"""
 
-	elif buildTarget == 'Linux':
+	elif args.platform == 'Linux':
 		# Raw files
 		os.makedirs(gameOutputPath)
 		shutil.copytree(resourcesPath, gameOutputPath + '/Data')
@@ -241,7 +250,7 @@ def build():
 		makeTar(targetOutputPath + '/' + gameName + '.tar', gameOutputPath, 'w')
 		makeTar(targetOutputPath + '/' + gameName + '.tar.gz', gameOutputPath, 'w:gz')
 
-	elif buildTarget == 'Mac':
+	elif args.platform == 'Mac':
 		# Raw files
 		os.makedirs(gameOutputPath)
 		shutil.copytree(resourcesPath, gameOutputPath + '/Data')
@@ -252,7 +261,7 @@ def build():
 		makeTar(targetOutputPath + '/' + gameName + '.tar', gameOutputPath, 'w')
 		makeTar(targetOutputPath + '/' + gameName + '.tar.gz', gameOutputPath, 'w:gz')
 
-	elif buildTarget == 'Android':
+	elif args.platform == 'Android':
 		shutil.copytree(binariesPath + '/Android', gameOutputPath)
 		patchConfig(gameOutputPath + '/libs/armeabi-v7a/libFOnline.so')
 		# No x86 build
@@ -260,6 +269,7 @@ def build():
 		patchFile(gameOutputPath + '/res/values/strings.xml', 'FOnline', gameName)
 
 		# Icons
+		logo = getLogo()
 		logo.resize((48, 48)).save(gameOutputPath + '/res/drawable-mdpi/ic_launcher.png', 'png')
 		logo.resize((72, 72)).save(gameOutputPath + '/res/drawable-hdpi/ic_launcher.png', 'png')
 		logo.resize((96, 96)).save(gameOutputPath + '/res/drawable-xhdpi/ic_launcher.png', 'png')
@@ -276,7 +286,7 @@ def build():
 		assert r == 0
 		shutil.copy(gameOutputPath + '/bin/SDLActivity-debug.apk', targetOutputPath + '/' + gameName + '.apk')
 
-	elif buildTarget == 'Web':
+	elif args.platform == 'Web':
 		# Release version
 		os.makedirs(gameOutputPath)
 
@@ -310,24 +320,20 @@ def build():
 		patchFile(gameOutputPath + '/debug.html', '$LOADING$', gameName + ' Debug')
 
 		# Favicon
+		logo = getLogo()
 		logo.save(os.path.join(gameOutputPath, 'favicon.ico'), 'ico')
 
 	else:
 		assert False, 'Unknown build target'
 
 try:
-	targetOutputPath = outputPath + '/' + buildTarget
+	targetOutputPath = os.path.join(outputPath, args.devname + '-' + args.configname + '-' + args.target + '-' + args.platform + ('-Debug' if args.debug else ''))
 	shutil.rmtree(targetOutputPath, True)
 	os.makedirs(targetOutputPath)
 
-	logoPath = os.path.join(outputPath, 'Logo.png')
-	if not os.path.isfile(logoPath):
-		logoPath = os.path.join(binariesPath, 'DefaultLogo.png')
-	logo = PIL.Image.open(logoPath)
-
 	build()
+	
 except:
 	if targetOutputPath:
 		shutil.rmtree(targetOutputPath, True)
 	raise
-"""

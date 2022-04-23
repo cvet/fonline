@@ -51,7 +51,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("FOnlineServerDaemon");
+        SetAppName("ServerDaemon");
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();

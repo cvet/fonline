@@ -46,6 +46,8 @@
 #include "StringUtils.h"
 #include "Testing.h"
 
+#include "minizip/zip.h"
+
 #if !FO_TESTING
 int main(int argc, char** argv)
 #else
@@ -53,7 +55,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("FOnlineBaker");
+        SetAppName("Baker");
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();
@@ -105,6 +107,10 @@ int main(int argc, char** argv)
         if (!settings.ResourcesEntry.empty()) {
             WriteLog("Bake resources.\n");
 
+            auto del_raw_ok = DiskFileSystem::DeleteDir("Raw");
+            RUNTIME_ASSERT(del_raw_ok);
+            DiskFileSystem::MakeDirTree("Raw");
+
             map<string, vector<string>> res_packs;
             for (const auto& re : settings.ResourcesEntry) {
                 auto re_splitted = _str(re).split(',');
@@ -128,6 +134,12 @@ int main(int argc, char** argv)
                 if (pack_name != "Raw") {
                     WriteLog("Create resource pack '{}' from {} files.\n", pack_name, resources.GetFilesCount());
 
+                    // Cleanup previous
+                    const auto del_res_ok = DiskFileSystem::DeleteDir(pack_name);
+                    RUNTIME_ASSERT(del_res_ok);
+                    const auto del_zip_res_ok = DiskFileSystem::DeleteFile(_str("{}.zip", pack_name));
+                    RUNTIME_ASSERT(del_zip_res_ok);
+
                     // Bake files
                     map<string, vector<uchar>> baked_files;
                     {
@@ -143,21 +155,39 @@ int main(int argc, char** argv)
                     }
 
                     // Write to disk
-                    const auto del_res_ok = DiskFileSystem::DeleteDir(_str("Pack_{}", pack_name));
-                    RUNTIME_ASSERT(del_res_ok);
+                    DiskFileSystem::MakeDirTree(pack_name);
 
-                    for (const auto& [name, data] : baked_files) {
-                        auto res_file = DiskFileSystem::OpenFile(_str("Pack_{}/{}", pack_name, name), true);
+                    for (const auto& [path, data] : baked_files) {
+                        auto res_file = DiskFileSystem::OpenFile(_str("{}/{}", pack_name, path), true);
                         RUNTIME_ASSERT(res_file);
                         auto res_file_write_ok = res_file.Write(data);
                         RUNTIME_ASSERT(res_file_write_ok);
                     }
+
+                    // Make zip
+                    zipFile zip = zipOpen(_str("{}.zip", pack_name).c_str(), APPEND_STATUS_CREATE);
+                    RUNTIME_ASSERT(zip);
+
+                    for (const auto& [path, data] : baked_files) {
+                        zip_fileinfo zfi = {};
+#if FO_DEBUG
+                        constexpr int level = Z_BEST_SPEED;
+#else
+                        constexpr int level = Z_BEST_COMPRESSION;
+#endif
+                        const auto zip_new_file = zipOpenNewFileInZip(zip, path.c_str(), &zfi, nullptr, 0, nullptr, 0, nullptr, Z_DEFLATED, level);
+                        RUNTIME_ASSERT(zip_new_file == ZIP_OK);
+                        const auto zip_write_file = zipWriteInFileInZip(zip, data.data(), static_cast<unsigned>(data.size()));
+                        RUNTIME_ASSERT(zip_write_file == ZIP_OK);
+                        const auto zip_close_file = zipCloseFileInZip(zip);
+                        RUNTIME_ASSERT(zip_close_file == ZIP_OK);
+                    }
+
+                    const auto zip_close = zipClose(zip, nullptr);
+                    RUNTIME_ASSERT(zip_close == ZIP_OK);
                 }
                 else {
                     WriteLog("Copy raw {} resource files.\n", resources.GetFilesCount());
-
-                    auto del_raw_ok = DiskFileSystem::DeleteDir("Raw");
-                    RUNTIME_ASSERT(del_raw_ok);
 
                     while (resources.MoveNext()) {
                         auto file = resources.GetCurFile();

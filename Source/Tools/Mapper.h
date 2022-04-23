@@ -280,11 +280,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(InspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
-    FileManager ServerFileMngr;
-
     ConfigFile IfaceIni;
-    string ServerWritePath {};
-    string ClientWritePath {};
     PropertyVec ShowProps {};
     MapView* ClientCurMap {};
     LocationView* ClientCurLocation {};

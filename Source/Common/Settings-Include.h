@@ -39,7 +39,7 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual DummySettings);
-FIXED_SETTING(string, WorkDir, "");
+FIXED_SETTING(string, ResourcesDir, "Resources");
 FIXED_SETTING(string, CommandLine, "");
 FIXED_SETTING(vector<string>, CommandLineArgs);
 VARIABLE_SETTING(bool, Quit, false); // Todo: rework global Quit setting
@@ -260,7 +260,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Mapper
 SETTING_GROUP(MapperSettings, virtual DummySettings);
-FIXED_SETTING(string, ServerDir, "");
+FIXED_SETTING(string, MapsDir, "");
 FIXED_SETTING(string, StartMap, "");
 VARIABLE_SETTING(int, StartHexX, -1);
 VARIABLE_SETTING(int, StartHexY, -1);

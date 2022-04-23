@@ -216,7 +216,7 @@ int main(int argc, char** argv)
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
-        SetAppName("FOnlineServerService");
+        SetAppName("ServerService");
         CatchSystemExceptions();
         CreateGlobalData();
         LogToFile();
