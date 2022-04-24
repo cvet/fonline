@@ -948,13 +948,14 @@ if( FONLINE_BUILD_SERVER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE OR FONLI
 endif()
 
 # Unqlite
-if( FALSE AND NOT EMSCRIPTEN )
+if( NOT EMSCRIPTEN )
 	StatusMessage( "+ Unqlite" )
 	set( FO_UNQLITE_DIR "ThirdParty/unqlite" )
 	add_subdirectory( "${FO_UNQLITE_DIR}" )
 	include_directories( "${FO_UNQLITE_DIR}" )
 	list( APPEND FO_COMMON_LIBS "unqlite" )
 	DisableLibWarnings( unqlite )
+	target_compile_definitions( unqlite PRIVATE "JX9_DISABLE_BUILTIN_FUNC" )
 	add_compile_definitions( FO_HAVE_UNQLITE=1 )
 else()
 	add_compile_definitions( FO_HAVE_UNQLITE=0 )

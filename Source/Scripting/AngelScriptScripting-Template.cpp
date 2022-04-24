@@ -1085,7 +1085,17 @@ static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
 
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
-    FOEngine* game_engine = nullptr;
+#if !COMPILER_MODE
+    FOEngine* game_engine = _engine;
+#else
+#if SERVER_SCRIPTING
+    FOEngine* game_engine = new AngelScriptServerCompilerData();
+#elif CLIENT_SCRIPTING
+    FOEngine* game_engine = new AngelScriptClientCompilerData();
+#elif MAPPER_SCRIPTING
+    FOEngine* game_engine = new AngelScriptMapperCompilerData();
+#endif
+#endif
 
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
     RUNTIME_ASSERT(engine);
@@ -1107,16 +1117,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
     storage->Global.self = game_engine;
-
-#if COMPILER_MODE
-#if SERVER_SCRIPTING
-    game_engine = new AngelScriptServerCompilerData();
-#elif CLIENT_SCRIPTING
-    game_engine = new AngelScriptClientCompilerData();
-#elif MAPPER_SCRIPTING
-    game_engine = new AngelScriptMapperCompilerData();
-#endif
-#endif
 
     int as_result;
     AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
@@ -1339,7 +1339,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
-    File script_file = _engine->FileMngr.ReadFile("...");
+    File script_file = _engine->FileMngr.ReadFile("ServerRootModule.fosb");
     RestoreRootModule(engine, script_file);
 #endif
 

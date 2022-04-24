@@ -290,12 +290,16 @@ static void ParseProtos(FileManager& file_mngr, NameResolver& name_resolver, con
     }
 }
 
-ProtoManager::ProtoManager(FileManager& file_mngr, FOEngineBase& engine) : _nameResolver {engine}
+ProtoManager::ProtoManager(FOEngineBase* engine) : _engine {engine}
 {
-    ParseProtos(file_mngr, _nameResolver, engine.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
-    ParseProtos(file_mngr, _nameResolver, engine.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
-    ParseProtos(file_mngr, _nameResolver, engine.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
-    ParseProtos(file_mngr, _nameResolver, engine.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
+}
+
+void ProtoManager::Load(FileManager& file_mngr)
+{
+    ParseProtos(file_mngr, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
+    ParseProtos(file_mngr, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
+    ParseProtos(file_mngr, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
+    ParseProtos(file_mngr, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
 
     // Mapper collections
     for (auto [pid, proto] : _itemProtos) {
@@ -312,7 +316,7 @@ ProtoManager::ProtoManager(FileManager& file_mngr, FOEngineBase& engine) : _name
     }
 
     // Check player proto
-    if (_crProtos.count(_nameResolver.ToHashedString("Player")) == 0u) {
+    if (_crProtos.count(_engine->ToHashedString("Player")) == 0u) {
         throw ProtoManagerException("Player proto 'Player.focr' not loaded");
     }
 
@@ -326,7 +330,7 @@ ProtoManager::ProtoManager(FileManager& file_mngr, FOEngineBase& engine) : _name
     }
 }
 
-ProtoManager::ProtoManager(const vector<uchar>& data, FOEngineBase& engine) : _nameResolver {engine}
+void ProtoManager::Load(const vector<uchar>& data)
 {
     if (data.empty()) {
         return;
@@ -338,10 +342,10 @@ ProtoManager::ProtoManager(const vector<uchar>& data, FOEngineBase& engine) : _n
     }
 
     auto reader = DataReader(uncompressed_data);
-    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), reader, _itemProtos);
-    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), reader, _crProtos);
-    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), reader, _mapProtos);
-    ReadProtosFromBinary(_nameResolver, engine.GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), reader, _locProtos);
+    ReadProtosFromBinary(*_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), reader, _itemProtos);
+    ReadProtosFromBinary(*_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), reader, _crProtos);
+    ReadProtosFromBinary(*_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), reader, _mapProtos);
+    ReadProtosFromBinary(*_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), reader, _locProtos);
     reader.VerifyEnd();
 }
 
@@ -380,14 +384,14 @@ auto ProtoManager::ValidateProtoResources(const vector<string>& resource_names) 
 {
     set<hstring> hashes;
     for (const auto& name : resource_names) {
-        hashes.insert(_nameResolver.ToHashedString(name));
+        hashes.insert(_engine->ToHashedString(name));
     }
 
     auto errors = 0;
-    errors += ValidateProtoResourcesExt(_nameResolver, _itemProtos, hashes);
-    errors += ValidateProtoResourcesExt(_nameResolver, _crProtos, hashes);
-    errors += ValidateProtoResourcesExt(_nameResolver, _mapProtos, hashes);
-    errors += ValidateProtoResourcesExt(_nameResolver, _locProtos, hashes);
+    errors += ValidateProtoResourcesExt(*_engine, _itemProtos, hashes);
+    errors += ValidateProtoResourcesExt(*_engine, _crProtos, hashes);
+    errors += ValidateProtoResourcesExt(*_engine, _mapProtos, hashes);
+    errors += ValidateProtoResourcesExt(*_engine, _locProtos, hashes);
     return errors == 0;
 }
 

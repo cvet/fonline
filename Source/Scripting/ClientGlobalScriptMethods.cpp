@@ -50,7 +50,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ItemProto* Client_Game_GetItemProto(FOClient* client, hstring pid)
 {
-    return client->ProtoMngr->GetProtoItem(pid);
+    return client->ProtoMngr.GetProtoItem(pid);
 }
 
 ///# ...
@@ -1655,7 +1655,7 @@
     auto contour_color = mapSpr->ContourColor;
 
     if (mapSpr->ProtoId) {
-        const auto* const proto_item = client->ProtoMngr->GetProtoItem(mapSpr->ProtoId);
+        const auto* const proto_item = client->ProtoMngr.GetProtoItem(mapSpr->ProtoId);
         if (!proto_item) {
             return;
         }

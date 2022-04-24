@@ -54,7 +54,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr->GetProtoItem(pid);
+    const auto* proto = mapper->ProtoMngr.GetProtoItem(pid);
     if (!proto) {
         throw ScriptException("Invalid item prototype");
     }
@@ -74,7 +74,7 @@
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr->GetProtoCritter(pid);
+    const auto* proto = mapper->ProtoMngr.GetProtoCritter(pid);
     if (!proto) {
         throw ScriptException("Invalid critter prototype");
     }

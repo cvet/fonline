@@ -408,7 +408,7 @@ void HexManager::AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_add
     RUNTIME_ASSERT(IsMapLoaded());
     RUNTIME_ASSERT(!(hx >= _maxHexX || hy >= _maxHexY));
 
-    const auto* proto = _engine->ProtoMngr->GetProtoItem(pid);
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     RUNTIME_ASSERT(proto);
 
     // Change
@@ -688,7 +688,7 @@ auto HexManager::RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, usho
 
     RUNTIME_ASSERT(!(from_hx >= _maxHexX || from_hy >= _maxHexY || to_hx >= _maxHexX || to_hy >= _maxHexY));
 
-    const auto* proto = _engine->ProtoMngr->GetProtoItem(eff_pid);
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(eff_pid);
     RUNTIME_ASSERT(proto);
 
     auto& field = GetField(from_hx, from_hy);
@@ -4193,7 +4193,7 @@ void HexManager::GetMapHash(CacheStorage& cache, hstring map_pid, uint& hash_til
 
 void HexManager::GenerateItem(uint id, hstring proto_id, Properties& props)
 {
-    const auto* proto = _engine->ProtoMngr->GetProtoItem(proto_id);
+    const auto* proto = _engine->ProtoMngr.GetProtoItem(proto_id);
     RUNTIME_ASSERT(proto);
 
     auto* scenery = new ItemHexView(_engine, id, proto, props);

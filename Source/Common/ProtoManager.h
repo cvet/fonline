@@ -44,9 +44,7 @@ DECLARE_EXCEPTION(ProtoManagerException);
 class ProtoManager final
 {
 public:
-    ProtoManager() = delete;
-    ProtoManager(FileManager& file_mngr, FOEngineBase& engine); // Load from text
-    ProtoManager(const vector<uchar>& data, FOEngineBase& engine); // Restore from binary
+    explicit ProtoManager(FOEngineBase* engine);
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;
@@ -64,8 +62,11 @@ public:
     [[nodiscard]] auto GetProtoMaps() const -> const map<hstring, const ProtoMap*>&;
     [[nodiscard]] auto GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&;
 
+    void Load(FileManager& file_mngr);
+    void Load(const vector<uchar>& data);
+
 private:
-    NameResolver& _nameResolver;
+    FOEngineBase* _engine;
     map<hstring, const ProtoItem*> _itemProtos {};
     map<hstring, const ProtoCritter*> _crProtos {};
     map<hstring, const ProtoMap*> _mapProtos {};

@@ -109,11 +109,14 @@ private:
 
 CacheStorage::CacheStorage(string_view path)
 {
+    if (_str(path).startsWith("unqlite:/")) {
 #if FO_HAVE_UNQLITE
-    _impl = std::make_unique<UnqliteCacheStorage>(path);
-#else
-    _impl = std::make_unique<FileCacheStorage>(path);
+        _impl = std::make_unique<UnqliteCacheStorage>(_str(path).replace("unqlite:/", ""));
+        return;
 #endif
+    }
+
+    _impl = std::make_unique<FileCacheStorage>(_str(path).replace("unqlite:/", ""));
 }
 
 CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;

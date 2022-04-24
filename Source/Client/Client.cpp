@@ -51,7 +51,7 @@ static const string UPDATE_TEMP_FILE = "Update.fobin";
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this, *this), ResMngr(FileMngr, SprMngr, *this, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), ProtoMngr(this), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this, *this), ResMngr(FileMngr, SprMngr, *this, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
     _netSock = INVALID_SOCKET;
@@ -1998,7 +1998,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         WriteLog("Invalid positions hx {}, hy {}, dir {}.\n", hx, hy, dir);
     }
     else {
-        const auto* proto = ProtoMngr->GetProtoCritter(is_npc ? npc_pid : ToHashedString("Player"));
+        const auto* proto = ProtoMngr.GetProtoCritter(is_npc ? npc_pid : ToHashedString("Player"));
         RUNTIME_ASSERT(proto);
 
         auto* cr = new CritterView(this, crid, proto, false);
@@ -2437,7 +2437,7 @@ void FOClient::Net_OnSomeItem()
         _someItem = nullptr;
     }
 
-    const auto* proto_item = ProtoMngr->GetProtoItem(item_pid);
+    const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
     RUNTIME_ASSERT(proto_item);
     _someItem = new ItemView(this, item_id, proto_item);
     _someItem->RestoreData(_tempPropertiesData);
@@ -2517,7 +2517,7 @@ void FOClient::Net_OnCritterMoveItem()
         cr->DeleteAllItems();
 
         for (ushort i = 0; i < slots_data_count; i++) {
-            const auto* proto_item = ProtoMngr->GetProtoItem(slots_data_pid[i]);
+            const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
             if (proto_item != nullptr) {
                 auto* item = new ItemView(this, slots_data_id[i], proto_item);
                 item->RestoreData(slots_data_data[i]);
@@ -2816,7 +2816,7 @@ void FOClient::Net_OnChosenAddItem()
         _chosen->DeleteItem(prev_item, false);
     }
 
-    const auto* proto_item = ProtoMngr->GetProtoItem(pid);
+    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
     RUNTIME_ASSERT(proto_item);
 
     auto* item = new ItemView(this, item_id, proto_item);
@@ -3384,9 +3384,9 @@ void FOClient::Net_OnLoadMap()
     }
 
     if (map_pid) {
-        _curLocation = new LocationView(this, 0, ProtoMngr->GetProtoLocation(loc_pid));
+        _curLocation = new LocationView(this, 0, ProtoMngr.GetProtoLocation(loc_pid));
         _curLocation->RestoreData(_tempPropertiesDataExt);
-        _curMap = new MapView(this, 0, ProtoMngr->GetProtoMap(map_pid));
+        _curMap = new MapView(this, 0, ProtoMngr.GetProtoMap(map_pid));
         _curMap->RestoreData(_tempPropertiesData);
     }
 
@@ -3647,7 +3647,7 @@ void FOClient::Net_OnSomeItems()
         item_pid = _netIn.ReadHashedString(*this);
         NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
 
-        const auto* proto_item = ProtoMngr->GetProtoItem(item_pid);
+        const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
         if (item_id != 0u && proto_item != nullptr) {
             auto* item = new ItemView(this, item_id, proto_item);
             item->RestoreData(_tempPropertiesData);

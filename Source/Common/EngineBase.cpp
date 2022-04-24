@@ -33,7 +33,6 @@
 
 #include "EngineBase.h"
 #include "GenericUtils.h"
-#include "Log.h"
 #include "StringUtils.h"
 
 FOEngineBase::FOEngineBase(bool is_server) : Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, is_server, *this)), GameProperties(GetInitRef()), _isServer {is_server}

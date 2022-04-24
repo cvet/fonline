@@ -320,7 +320,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                                 else {
 #define PARSE_VALUE(t, db_t) \
     RUNTIME_ASSERT(sizeof(t) == prop->_baseSize); \
-    arr.push_back(static_cast<db_t>(*reinterpret_cast<const t*>(data + i * prop->_baseSize)))
+    arr.push_back(static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(data + i * prop->_baseSize))))
 
                                     if (prop->_isInt8) {
                                         PARSE_VALUE(char, int);

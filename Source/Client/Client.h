@@ -268,6 +268,7 @@ public:
     ScriptSystem* ScriptSys;
     GameTimer GameTime;
 
+    ProtoManager ProtoMngr;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     ResourceManager ResMngr;
@@ -276,7 +277,6 @@ public:
     Keyboard Keyb;
     CacheStorage Cache;
 
-    unique_ptr<ProtoManager> ProtoMngr {};
     hstring CurMapPid {};
     vector<MapText> GameMapTexts {};
     bool CanDrawInScripts {};

@@ -148,7 +148,7 @@ auto DiskFile::Read(void* buf, size_t len) -> bool
     }
 
     DWORD br = 0;
-    return ::ReadFile(_pImpl->FileHandle, buf, len, &br, nullptr) != 0 && static_cast<size_t>(br) == len;
+    return ::ReadFile(_pImpl->FileHandle, buf, static_cast<DWORD>(len), &br, nullptr) != 0 && static_cast<size_t>(br) == len;
 }
 
 auto DiskFile::Write(const void* buf, size_t len) -> bool

@@ -54,8 +54,6 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     FileMngr.AddDataSource("$Embedded", false);
     FileMngr.AddDataSource(Settings.ResourcesDir, false);
 
-    ProtoMngr = std::make_unique<ProtoManager>(FileMngr, *this);
-
     // Default effects
     EffectMngr.LoadDefaultEffects();
 
@@ -83,7 +81,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     // RUNTIME_ASSERT(protos_ok);
 
     // Initialize tabs
-    const auto& cr_protos = ProtoMngr->GetProtoCritters();
+    const auto& cr_protos = ProtoMngr.GetProtoCritters();
     for (const auto& [pid, proto] : cr_protos) {
         Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.push_back(proto);
         Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.push_back(proto);
@@ -92,7 +90,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
         std::sort(proto.NpcProtos.begin(), proto.NpcProtos.end(), [](const ProtoCritter* a, const ProtoCritter* b) { return a->GetName().compare(b->GetName()); });
     }
 
-    const auto& item_protos = ProtoMngr->GetProtoItems();
+    const auto& item_protos = ProtoMngr.GetProtoItems();
     for (const auto& [pid, proto] : item_protos) {
         Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.push_back(proto);
         Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.push_back(proto);
@@ -3134,7 +3132,7 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 {
     RUNTIME_ASSERT(ActiveMap);
 
-    const auto* proto = ProtoMngr->GetProtoCritter(pid);
+    const auto* proto = ProtoMngr.GetProtoCritter(pid);
     if (proto == nullptr) {
         return nullptr;
     }
@@ -3169,7 +3167,7 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
     RUNTIME_ASSERT(ActiveMap);
 
     // Checks
-    const auto* proto_item = ProtoMngr->GetProtoItem(pid);
+    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
     if (proto_item == nullptr) {
         return nullptr;
     }

@@ -202,7 +202,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, hstring protoId)
 {
-    const auto* proto_item = self->GetEngine()->ProtoMngr->GetProtoItem(protoId);
+    const auto* proto_item = self->GetEngine()->ProtoMngr.GetProtoItem(protoId);
     if (proto_item == nullptr) {
         throw ScriptException("Invalid proto id", protoId);
     }
