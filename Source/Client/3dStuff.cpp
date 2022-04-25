@@ -1727,7 +1727,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 // Insert new buffer
-                file_buf = _str("{}\n{}", new_content, !istr->eof() ? file_buf.substr(istr->tellg()) : "");
+                file_buf = _str("{}\n{}", new_content, !istr->eof() ? file_buf.substr(static_cast<size_t>(istr->tellg())) : "");
 
                 // Reinitialize stream
                 delete istr;

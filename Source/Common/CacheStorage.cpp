@@ -317,7 +317,7 @@ auto UnqliteCacheStorage::GetString(string_view entry_name) const -> string
     }
 
     string str;
-    str.resize(size);
+    str.resize(static_cast<size_t>(size));
 
     r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), str.data(), &size);
     if (r != UNQLITE_OK) {
@@ -339,7 +339,7 @@ auto UnqliteCacheStorage::GetData(string_view entry_name) const -> vector<uchar>
     }
 
     vector<uchar> data;
-    data.resize(size);
+    data.resize(static_cast<size_t>(size));
 
     r = unqlite_kv_fetch(_db.get(), entry_name.data(), static_cast<int>(entry_name.length()), data.data(), &size);
     if (r != UNQLITE_OK) {
