@@ -1539,7 +1539,6 @@ add_custom_command( OUTPUT ${FO_CODEGEN_OUTPUT}
 	COMMENT "Code generation" )
 
 add_custom_target( CodeGeneration
-	SOURCES ${FO_CODEGEN_META_SOURCE}
 	DEPENDS ${FO_CODEGEN_OUTPUT}
 	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" )
 list( APPEND FO_COMMANDS_GROUP "CodeGeneration" )

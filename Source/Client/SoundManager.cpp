@@ -63,7 +63,7 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-SoundManager::SoundManager(AudioSettings& settings, FileManager& file_mngr) : _settings {settings}, _fileMngr {file_mngr}
+SoundManager::SoundManager(AudioSettings& settings, FileSystem& file_sys) : _settings {settings}, _fileSys {file_sys}
 {
     UNUSED_VARIABLE(OV_CALLBACKS_DEFAULT);
     UNUSED_VARIABLE(OV_CALLBACKS_NOCLOSE);
@@ -217,7 +217,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
     NON_CONST_METHOD_HINT();
 
-    auto file = _fileMngr.ReadFile(fname);
+    auto file = _fileSys.ReadFile(fname);
     if (!file) {
         return false;
     }
@@ -309,7 +309,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 {
     NON_CONST_METHOD_HINT();
 
-    const auto file = _fileMngr.ReadFile(fname);
+    const auto file = _fileSys.ReadFile(fname);
     if (!file) {
         return false;
     }
@@ -338,7 +338,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 
 auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 {
-    auto file = _fileMngr.ReadFile(fname);
+    auto file = _fileSys.ReadFile(fname);
     if (!file) {
         return false;
     }

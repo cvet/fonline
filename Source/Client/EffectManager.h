@@ -85,7 +85,7 @@ struct EffectCollection
 class EffectManager final
 {
 public:
-    EffectManager(RenderSettings& settings, FileManager& file_mngr, GameTimer& game_time);
+    EffectManager(RenderSettings& settings, FileSystem& file_sys, GameTimer& game_time);
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;
@@ -104,7 +104,7 @@ private:
     void PerFrameEffectUpdate(RenderEffect* effect) const;
 
     RenderSettings& _settings;
-    FileManager& _fileMngr;
+    FileSystem& _fileSys;
     GameTimer& _gameTime;
     vector<unique_ptr<RenderEffect>> _loadedEffects {};
     EventUnsubscriber _eventUnsubscriber {};

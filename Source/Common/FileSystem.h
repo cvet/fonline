@@ -37,12 +37,13 @@
 
 #include "ConfigFile.h"
 #include "DataSource.h"
+#include "Settings.h"
 
 DECLARE_EXCEPTION(FileSystemExeption);
 
 class FileHeader
 {
-    friend class FileManager;
+    friend class FileSystem;
     friend class FileCollection;
     friend class File;
 
@@ -73,12 +74,11 @@ protected:
 
 class File final : public FileHeader
 {
-    friend class FileManager;
+    friend class FileSystem;
     friend class FileCollection;
 
 public:
     File() = default;
-    File(uchar* buf, uint size);
     explicit File(const vector<uchar>& buf);
     File(const File&) = delete;
     File(File&&) noexcept = default;
@@ -86,7 +86,7 @@ public:
     auto operator=(File&&) noexcept -> File& = default;
     ~File() = default;
 
-    [[nodiscard]] auto GetCStr() const -> const char*;
+    [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetBuf() const -> const uchar*;
     [[nodiscard]] auto GetCurBuf() const -> const uchar*;
     [[nodiscard]] auto GetCurPos() const -> uint;
@@ -102,7 +102,6 @@ public:
     [[nodiscard]] auto GetLEShort() -> short { return static_cast<short>(GetLEUShort()); }
     [[nodiscard]] auto GetBEUInt() -> uint;
     [[nodiscard]] auto GetLEUInt() -> uint;
-    [[nodiscard]] auto GetLE3UChar() -> uint;
     [[nodiscard]] auto GetBEFloat() -> float;
     [[nodiscard]] auto GetLEFloat() -> float;
     // ReSharper restore CppInconsistentNaming
@@ -122,7 +121,7 @@ private:
 
 class FileCollection final
 {
-    friend class FileManager;
+    friend class FileSystem;
 
 public:
     FileCollection(const FileCollection&) = delete;
@@ -150,15 +149,15 @@ private:
     int _curFileIndex {-1};
 };
 
-class FileManager final
+class FileSystem final
 {
 public:
-    FileManager() = default;
-    FileManager(const FileManager&) = delete;
-    FileManager(FileManager&&) noexcept = default;
-    auto operator=(const FileManager&) = delete;
-    auto operator=(FileManager&&) noexcept = delete;
-    ~FileManager() = default;
+    FileSystem() = default;
+    FileSystem(const FileSystem&) = delete;
+    FileSystem(FileSystem&&) noexcept = default;
+    auto operator=(const FileSystem&) = delete;
+    auto operator=(FileSystem&&) noexcept = delete;
+    ~FileSystem() = default;
 
     [[nodiscard]] auto FilterFiles(string_view ext) -> FileCollection;
     [[nodiscard]] auto FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection;

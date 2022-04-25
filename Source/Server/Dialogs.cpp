@@ -130,7 +130,7 @@ auto DialogManager::LoadDialogs() -> bool
 
     _dialogPacks.clear();
 
-    auto files = _engine->FileMngr.FilterFiles("fodlg");
+    auto files = _engine->FileSys.FilterFiles("fodlg");
     uint files_loaded = 0;
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
@@ -139,7 +139,7 @@ auto DialogManager::LoadDialogs() -> bool
             continue;
         }
 
-        string pack_data = file.GetCStr();
+        string pack_data = file.GetStr();
         auto* pack = ParseDialog(file.GetName(), pack_data);
         if (pack == nullptr) {
             WriteLog("Unable to parse dialog '{}'.\n", file.GetName());

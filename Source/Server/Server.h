@@ -179,7 +179,6 @@ public:
 
     ServerSettings& Settings;
     GeometryHelper GeomHelper;
-    FileManager FileMngr;
     ScriptSystem* ScriptSys;
     GameTimer GameTime;
     ProtoManager ProtoMngr;

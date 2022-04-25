@@ -233,7 +233,7 @@ class SpriteManager final
 {
 public:
     SpriteManager() = delete;
-    SpriteManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
+    SpriteManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -327,7 +327,7 @@ private:
     void CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr);
 
     RenderSettings& _settings;
-    FileManager& _fileMngr;
+    FileSystem& _fileSys;
     EffectManager& _effectMngr;
     GameTimer& _gameTime;
     unique_ptr<ModelManager> _modelMngr {};

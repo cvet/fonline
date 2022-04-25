@@ -264,7 +264,6 @@ public:
 
     ClientSettings& Settings;
     GeometryHelper GeomHelper;
-    FileManager FileMngr;
     ScriptSystem* ScriptSys;
     GameTimer GameTime;
 
@@ -491,7 +490,7 @@ private:
     uint _fpsTick {};
     uint _fpsCounter {};
     optional<ClientUpdate> _updateData {};
-    int _screenModeMain {};
+    int _screenModeMain {SCREEN_WAIT};
     vector<uchar> _incomeBuf {};
     NetInBuffer _netIn {};
     NetOutBuffer _netOut {};
@@ -501,7 +500,7 @@ private:
     uint _bytesSend {};
     sockaddr_in _sockAddr {};
     sockaddr_in _proxyAddr {};
-    SOCKET _netSock {};
+    SOCKET _netSock {INVALID_SOCKET};
     fd_set _netSockSet {};
     ItemView* _someItem {};
     bool _isConnecting {};
@@ -530,7 +529,7 @@ private:
     CritterView* _chosen {};
     bool _noLogOut {};
     bool _rebuildLookBordersRequest {};
-    bool _drawLookBorders;
+    bool _drawLookBorders {true};
     bool _drawShootBorders {};
     PrimitivePoints _lookBorders {};
     PrimitivePoints _shootBorders {};
@@ -546,7 +545,7 @@ private:
     GmapLocation _worldmapTownLoc {};
     PrimitivePoints _lmapPrepPix {};
     IRect _lmapWMap {};
-    int _lmapZoom {};
+    int _lmapZoom {2};
     bool _lmapSwitchHi {};
     uint _lmapPrepareNextTick {};
     uchar _dlgIsNpc {};

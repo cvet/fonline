@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "Entity.h"
 #include "ProtoManager.h"
 
 DECLARE_EXCEPTION(MapLoaderException);
@@ -61,5 +60,5 @@ public:
 
     MapLoader() = delete;
 
-    static void Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
+    static void Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
 };

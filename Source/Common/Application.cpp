@@ -1669,7 +1669,7 @@ auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*de
     GLuint program = 0;
 
     // Get version
-    string file_content = _str(file.GetCStr()).normalizeLineEndings();
+    string file_content = _str(file.GetStr()).normalizeLineEndings();
     string version;
     size_t ver_begin = file_content.find("#version");
     if (ver_begin != string::npos)

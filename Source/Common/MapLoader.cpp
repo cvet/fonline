@@ -37,18 +37,18 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
+void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
 {
     // Find file
-    auto maps = file_mngr.FilterFiles("fomap");
+    auto maps = file_sys.FilterFiles("fomap");
     auto map_file = maps.FindFileByName(name);
     if (!map_file) {
         throw MapLoaderException("Map not found", name);
     }
 
     // Load from file
-    const auto* buf = map_file.GetCStr();
-    const auto is_old_format = strstr(buf, "[Header]") != nullptr && strstr(buf, "[Tiles]") != nullptr && strstr(buf, "[Objects]") != nullptr;
+    const auto buf = map_file.GetStr();
+    const auto is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;
     if (is_old_format) {
         throw MapLoaderException("Unable to load map from old map format", name);
     }
@@ -126,7 +126,7 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
             errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", tname, hx, hy));
             continue;
         }
-        if (layer < 0 || layer > 255) {
+        if (layer < 0 || layer > std::numeric_limits<uchar>::max()) {
             errors.emplace_back(_str("Tile '{}' have wrong layer value {}", tname, layer));
             continue;
         }

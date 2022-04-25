@@ -407,7 +407,7 @@
 {
     auto* pmap = new ProtoMap(mapper->ToHashedString(fileName), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
     // Todo: need attention!
-    // if (!pmap->EditorLoad(mapper->ServerFileMngr, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
+    // if (!pmap->EditorLoad(mapper->ServerFileSys, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
     //     return nullptr;
 
     // auto* map = new MapView(0, pmap);
@@ -454,7 +454,7 @@
     }
 
     // Todo: need attention!
-    //((ProtoMap*)map->Proto)->EditorSave(mapper->ServerFileMngr, customName);
+    //((ProtoMap*)map->Proto)->EditorSave(mapper->ServerFileSys, customName);
     mapper->RunMapSaveScript(map);
     return true;
 }
@@ -509,7 +509,7 @@
     vector<string> names;
 
     // Todo: Settings.MapsDir
-    // auto map_files = mapper->ServerFileMngr.FilterFiles("fomap", dir, false);
+    // auto map_files = mapper->ServerFileSys.FilterFiles("fomap", dir, false);
     // while (map_files.MoveNext()) {
     //    auto file_header = map_files.GetCurFileHeader();
     //    names.emplace_back(file_header.GetName());

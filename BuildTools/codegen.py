@@ -2761,8 +2761,8 @@ try:
     with zipfile.ZipFile(zipData, 'w', compression=zipfile.ZIP_DEFLATED) as zip:
         for res in resources['Embedded']:
             zip.write(res[1], res[0])
-        createFile('EmbeddedResources-Include.h', args.genoutput)
-        writeFile('const unsigned char EmbeddedResources[] = {0x' + ', 0x'.join(zipData.getvalue().hex(' ').split(' ')) + '};')
+    createFile('EmbeddedResources-Include.h', args.genoutput)
+    writeFile('const unsigned char EmbeddedResources[] = {0x' + ', 0x'.join(zipData.getvalue().hex(' ').split(' ')) + '};')
 
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)

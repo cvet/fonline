@@ -40,7 +40,11 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScriptSystem(this, settings)), IfaceIni("", *this)
+// clang-format off
+FOMapper::FOMapper(GlobalSettings& settings) :
+    FOClient(settings, new MapperScriptSystem(this, settings)),
+    IfaceIni("", *this)
+// clang-format on
 {
     HexMngr.EnableMapperMode();
 
@@ -49,10 +53,6 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     const auto [x, y] = SprMngr.GetMousePosition();
     Settings.MouseX = std::clamp(x, 0, w - 1);
     Settings.MouseY = std::clamp(y, 0, h - 1);
-
-    // Resources
-    FileMngr.AddDataSource("$Embedded", false);
-    FileMngr.AddDataSource(Settings.ResourcesDir, false);
 
     // Default effects
     EffectMngr.LoadDefaultEffects();
@@ -74,10 +74,10 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     RUNTIME_ASSERT(init_face_ok);
 
     // Language Packs
-    CurLang.LoadFromFiles(FileMngr, *this, Settings.Language);
+    CurLang.LoadFromFiles(FileSys, *this, Settings.Language);
 
     // Prototypes
-    // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileMngr);
+    // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileSys);
     // RUNTIME_ASSERT(protos_ok);
 
     // Initialize tabs
@@ -129,7 +129,7 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
         const auto map_name = Settings.StartMap;
         auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
         const bool initialized = 0;
-        // pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
+        // pmap->EditorLoad(ServerFileSys, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
 
         if (initialized && HexMngr.SetProtoMap(*pmap)) {
             auto hexX = Settings.StartHexX;
@@ -182,7 +182,7 @@ auto FOMapper::InitIface() -> int
 
     auto& ini = IfaceIni;
 
-    // ini = FileMngr.ReadConfigFile("mapper_default.ini", *this);
+    // ini = FileSys.ReadConfigFile("mapper_default.ini", *this);
 
     if (!ini) {
         WriteLog("File 'mapper_default.ini' not found.\n");
@@ -725,7 +725,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                 {
                     HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
                     // Todo: need attention!
-                    // ((ProtoMap*)ActiveMap->Proto)->EditorSave(FileMngr, "");
+                    // ((ProtoMap*)ActiveMap->Proto)->EditorSave(FileSys, "");
                     AddMess("Map saved.");
                     RunMapSaveScript(ActiveMap);
                 }
@@ -1260,7 +1260,7 @@ void FOMapper::RefreshTiles(int tab)
         bool include_subdirs = ttab.TileSubDirs[t];
 
         vector<string> tiles;
-        auto tile_files = FileMngr.FilterFiles("", path, include_subdirs);
+        auto tile_files = FileSys.FilterFiles("", path, include_subdirs);
         while (tile_files.MoveNext()) {
             tiles.emplace_back(tile_files.GetCurFileHeader().GetPath());
         }
@@ -3778,7 +3778,7 @@ void FOMapper::ParseCommand(string_view command)
 
         auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
         // Todo: need attention!
-        /*if (!pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr))
+        /*if (!pmap->EditorLoad(ServerFileSys, ProtoMngr, SprMngr, ResMngr))
         {
             AddMess("File not found or truncated.");
             return;
@@ -3820,7 +3820,7 @@ void FOMapper::ParseCommand(string_view command)
 
         // Todo: need attention!
         // HexMngr.GetProtoMap(*dynamic_cast<ProtoMap*>(ActiveMap->Proto));
-        // ((ProtoMap*)ActiveMap->Proto)->EditorSave(ServerFileMngr, map_name);
+        // ((ProtoMap*)ActiveMap->Proto)->EditorSave(ServerFileSys, map_name);
 
         AddMess("Save map success.");
         RunMapSaveScript(ActiveMap);

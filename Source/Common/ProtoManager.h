@@ -62,7 +62,7 @@ public:
     [[nodiscard]] auto GetProtoMaps() const -> const map<hstring, const ProtoMap*>&;
     [[nodiscard]] auto GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&;
 
-    void Load(FileManager& file_mngr);
+    void Load(FileSystem& file_sys);
     void Load(const vector<uchar>& data);
 
 private:

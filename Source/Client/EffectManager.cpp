@@ -36,7 +36,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-EffectManager::EffectManager(RenderSettings& settings, FileManager& file_mngr, GameTimer& game_time) : _settings {settings}, _fileMngr {file_mngr}, _gameTime {game_time}
+EffectManager::EffectManager(RenderSettings& settings, FileSystem& file_sys, GameTimer& game_time) : _settings {settings}, _fileSys {file_sys}, _gameTime {game_time}
 {
     _eventUnsubscriber += App->OnFrameBegin += [this]() {
         for (auto& effect : _loadedEffects) {
@@ -56,9 +56,9 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
 
     // Load new
     auto* effect = App->Render.CreateEffect(name, defines, [this, &base_path](string_view path) -> vector<uchar> {
-        auto file = _fileMngr.ReadFile(_str("{}/{}", _str(base_path).extractDir(), path));
+        auto file = _fileSys.ReadFile(_str("{}/{}", _str(base_path).extractDir(), path));
         if (!file) {
-            file = _fileMngr.ReadFile(path);
+            file = _fileSys.ReadFile(path);
             if (!file) {
                 WriteLog("Effect file '{}' not found.\n", path);
                 return {};

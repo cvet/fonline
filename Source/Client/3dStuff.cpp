@@ -126,7 +126,7 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _gameTime {game_time}, _nameResolver {name_resolver}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}, _gameTime {game_time}, _nameResolver {name_resolver}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
 {
     RUNTIME_ASSERT(_settings.Enable3dRendering);
 
@@ -167,7 +167,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     _processedFiles.emplace(name_hashed);
 
     // Load file data
-    auto file = _fileMngr.ReadFile(fname);
+    auto file = _fileSys.ReadFile(fname);
     if (!file) {
         WriteLog("3d file '{}' not found.\n", fname);
         return nullptr;
@@ -1626,13 +1626,13 @@ auto ModelInformation::Load(string_view name) -> bool
     // Load fonline 3d file
     if (ext == "fo3d") {
         // Load main fo3d file
-        auto fo3d = _modelMngr._fileMngr.ReadFile(name);
+        auto fo3d = _modelMngr._fileSys.ReadFile(name);
         if (!fo3d) {
             return false;
         }
 
         // Parse
-        string file_buf = fo3d.GetCStr();
+        string file_buf = fo3d.GetStr();
         string model;
         string render_fname;
         string render_anim;
@@ -1712,14 +1712,14 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 // Include file path
                 string fname = _str(name).combinePath(templates[0]);
-                auto fo3d_ex = _modelMngr._fileMngr.ReadFile(fname);
+                auto fo3d_ex = _modelMngr._fileSys.ReadFile(fname);
                 if (!fo3d_ex) {
                     WriteLog("Include file '{}' not found.\n", fname);
                     continue;
                 }
 
                 // Words swapping
-                string new_content = fo3d_ex.GetCStr();
+                string new_content = fo3d_ex.GetStr();
                 if (templates.size() > 2) {
                     for (size_t i = 1; i < templates.size() - 1; i += 2) {
                         new_content = _str(new_content).replace(templates[i], templates[i + 1]);

@@ -162,7 +162,7 @@ public:
     [[nodiscard]] auto CreateMap(hstring proto_id, Location* loc) -> Map*;
 
     void LinkMaps();
-    void LoadStaticMaps(FileManager& file_mngr);
+    void LoadStaticMaps(FileSystem& file_sys);
     void DeleteLocation(Location* loc, vector<Critter*>* gmap_player_critters);
     void LocationGarbager();
     void RegenerateMap(Map* map);
@@ -182,7 +182,7 @@ public:
 private:
     [[nodiscard]] auto FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher) const -> uchar;
 
-    void LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap);
+    void LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap);
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 

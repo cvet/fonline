@@ -51,15 +51,39 @@ static const string UPDATE_TEMP_FILE = "Update.fobin";
         } \
     } while (0)
 
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(false), Settings {settings}, GeomHelper(Settings), ScriptSys {script_sys}, GameTime(Settings), ProtoMngr(this), EffectMngr(Settings, FileMngr, GameTime), SprMngr(Settings, FileMngr, EffectMngr, GameTime, *this, *this), ResMngr(FileMngr, SprMngr, *this, *this), HexMngr(this), SndMngr(Settings, FileMngr), Keyb(Settings, SprMngr), Cache("Data/Cache.fobin"), _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+// clang-format off
+FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
+    FOEngineBase(false),
+    Settings {settings},
+    GeomHelper(Settings),
+    ScriptSys {script_sys},
+    GameTime(Settings),
+    ProtoMngr(this),
+    EffectMngr(Settings, FileSys, GameTime),
+    SprMngr(Settings, FileSys, EffectMngr, GameTime, *this, *this),
+    ResMngr(FileSys, SprMngr, *this, *this),
+    HexMngr(this), SndMngr(Settings, FileSys), Keyb(Settings, SprMngr),
+    Cache("Data/Cache.fobin"),
+    _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
+// clang-format on
 {
+    FileSys.AddDataSource("$Embedded", true);
+    for (const auto& entry : Settings.ResourceEntries) {
+        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry), true);
+    }
+
+#if FO_IOS
+    FileSys.AddDataSource("../../Documents", true);
+#elif FO_ANDROID
+    FileSys.AddDataSource("$AndroidAssets", true);
+    // AddDataSource(SDL_AndroidGetInternalStoragePath(), true);
+    // AddDataSource(SDL_AndroidGetExternalStoragePath(), true);
+#elif FO_WEB
+    FileSys.AddDataSource("PersistentData", true);
+#endif
+
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
-    _netSock = INVALID_SOCKET;
-    _initNetReason = INIT_NET_REASON_NONE;
     _ifaceAnimations.resize(10000);
-    _lmapZoom = 2;
-    _screenModeMain = SCREEN_WAIT;
-    _drawLookBorders = true;
     _fpsTick = GameTime.FrameTick();
 
     const auto [w, h] = SprMngr.GetWindowSize();
@@ -68,21 +92,6 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngin
     Settings.MouseY = std::clamp(y, 0, h - 1);
 
     SetGameColor(COLOR_IFACE);
-
-    // Data sources
-    FileMngr.AddDataSource("$Embedded", true);
-#if FO_IOS
-    FileMngr.AddDataSource("../../Documents/", true);
-#elif FO_ANDROID
-    FileMngr.AddDataSource("$AndroidAssets", true);
-    // FileMngr.AddDataSource(SDL_AndroidGetInternalStoragePath(), true);
-    // FileMngr.AddDataSource(SDL_AndroidGetExternalStoragePath(), true);
-#elif FO_WEB
-    FileMngr.AddDataSource("Data/", true);
-    FileMngr.AddDataSource("PersistentData/", true);
-#else
-    FileMngr.AddDataSource("Data/", true);
-#endif
 
     EffectMngr.LoadDefaultEffects();
 
@@ -3683,8 +3692,6 @@ void FOClient::Net_OnUpdateFilesList()
 
     CHECK_IN_BUFF_ERROR();
 
-    File file(data.data(), data_size);
-
     _updateData->FileList.clear();
     _updateData->FilesWholeSize = 0;
     _updateData->ClientOutdated = outdated;
@@ -3692,21 +3699,23 @@ void FOClient::Net_OnUpdateFilesList()
 #if FO_WINDOWS
     /*bool have_exe = false;
     string exe_name;
-    if (outdated)
-        exe_name = _str(File::GetExePath()).extractFileName();*/
+    if (outdated) {
+        exe_name = _str(File::GetExePath()).extractFileName();
+    }*/
 #endif
 
+    auto reader = DataReader(data);
+
     for (uint file_index = 0;; file_index++) {
-        auto name_len = file.GetLEShort();
+        auto name_len = reader.Read<short>();
         if (name_len == -1) {
             break;
         }
 
         RUNTIME_ASSERT(name_len > 0);
-        auto name = string(reinterpret_cast<const char*>(file.GetCurBuf()), name_len);
-        file.GoForward(name_len);
-        auto size = file.GetLEUInt();
-        auto hash = file.GetLEUInt();
+        auto name = string(reader.ReadPtr<char>(name_len), name_len);
+        auto size = reader.Read<uint>();
+        auto hash = reader.Read<uint>();
 
         // Skip platform depended
 #if FO_WINDOWS
@@ -3727,9 +3736,9 @@ void FOClient::Net_OnUpdateFilesList()
         auto cached_hash_same = (cache_data.size() == sizeof(hash) && *reinterpret_cast<const uint*>(cache_data.data()) == hash);
         if (name[0] != '$') {
             // Real file, human can disturb file consistency, make base recheck
-            auto file_header = FileMngr.ReadFileHeader(name);
+            auto file_header = FileSys.ReadFileHeader(name);
             if (file_header && file_header.GetSize() == size) {
-                auto file2 = FileMngr.ReadFile(name);
+                auto file2 = FileSys.ReadFile(name);
                 if (cached_hash_same || (file2 && hash == Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize()))) {
                     if (!cached_hash_same) {
                         Cache.SetData(_str("{}.hash", name), {reinterpret_cast<uchar*>(&hash), sizeof(hash)});
@@ -3793,7 +3802,7 @@ void FOClient::Net_OnUpdateFileData()
 
         // Cache
         if (update_file.Name[0] == '$') {
-            const auto temp_file = FileMngr.ReadFile(UPDATE_TEMP_FILE);
+            const auto temp_file = FileSys.ReadFile(UPDATE_TEMP_FILE);
             if (!temp_file) {
                 UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't load update file!");
                 return;

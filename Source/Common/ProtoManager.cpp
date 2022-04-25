@@ -133,15 +133,15 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
 }
 
 template<class T>
-static void ParseProtos(FileManager& file_mngr, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view app_name, map<hstring, T*>& protos)
+static void ParseProtos(FileSystem& file_sys, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view app_name, map<hstring, T*>& protos)
 {
     // Collect data
-    auto files = file_mngr.FilterFiles(ext);
+    auto files = file_sys.FilterFiles(ext);
     map<hstring, map<string, string>> files_protos;
     map<hstring, map<string, map<string, string>>> files_texts;
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
-        ConfigFile fopro(file.GetCStr(), name_resolver);
+        ConfigFile fopro(file.GetStr(), name_resolver);
 
         auto protos_data = fopro.GetApps(app_name);
         if (std::is_same_v<T, ProtoMap> && protos_data.empty()) {
@@ -294,12 +294,12 @@ ProtoManager::ProtoManager(FOEngineBase* engine) : _engine {engine}
 {
 }
 
-void ProtoManager::Load(FileManager& file_mngr)
+void ProtoManager::Load(FileSystem& file_sys)
 {
-    ParseProtos(file_mngr, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
-    ParseProtos(file_mngr, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
-    ParseProtos(file_mngr, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
-    ParseProtos(file_mngr, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
+    ParseProtos(file_sys, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
+    ParseProtos(file_sys, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
+    ParseProtos(file_sys, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
+    ParseProtos(file_sys, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
 
     // Mapper collections
     for (auto [pid, proto] : _itemProtos) {

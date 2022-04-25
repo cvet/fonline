@@ -77,7 +77,7 @@ static void ServerEntry()
         }
 
         try {
-            auto* server = Data->Server;
+            const auto* server = Data->Server;
             Data->Server = nullptr;
             delete server;
         }
@@ -107,7 +107,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #if FO_HAVE_DIRECT_3D
         const auto use_dx = !Data->Settings->ForceOpenGL;
 #else
-        bool use_dx = false;
+        const auto use_dx = false;
 #endif
         if (!AppGui::Init("FOnline Server", use_dx, false, false)) {
             return -1;
@@ -137,7 +137,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
 
             if (!Data->StartServer) {
-                auto& io = ImGui::GetIO();
+                const auto& io = ImGui::GetIO();
                 ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y / 2.0f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
                 if (ImGui::Begin("---", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
                     if (ImGui::Button("Start server", ImVec2(200, 30))) {

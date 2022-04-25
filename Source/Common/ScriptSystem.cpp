@@ -110,7 +110,7 @@ bool ScriptSystem::ReloadScripts(string_view target)
         ScriptEntry entry;
         entry.Name = file.GetName();
         entry.Path = file.GetPath();
-        entry.Content = _str("namespace {}{{{}\n}}\n", file.GetName(), file.GetCStr());
+        entry.Content = _str("namespace {}{{{}\n}}\n", file.GetName(), file.GetStr());
         entry.SortValue = sort_value;
         entry.SortValueExt = ++file_index;
         scripts.push_back(entry);

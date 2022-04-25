@@ -103,7 +103,7 @@ public:
 
     [[nodiscard]] auto GetMsgCacheName(int msg_num) const -> string;
 
-    void LoadFromFiles(FileManager& file_mngr, NameResolver& name_resolver, string_view lang_name);
+    void LoadFromFiles(FileSystem& file_sys, NameResolver& name_resolver, string_view lang_name);
     void LoadFromCache(const CacheStorage& cache, NameResolver& name_resolver, string_view lang_name);
 
     string Name {};

@@ -723,7 +723,7 @@ ZipFile::ZipFile(string_view fname)
         };
         ffunc.zwrite_file = [](voidpf, voidpf, const void* buf, uLong size) -> uLong { return 0; };
         ffunc.ztell_file = [](voidpf, voidpf stream) -> long {
-            auto* mem_stream = static_cast<MemStream*>(stream);
+            const auto* mem_stream = static_cast<MemStream*>(stream);
             return static_cast<long>(mem_stream->Pos);
         };
         ffunc.zseek_file = [](voidpf, voidpf stream, uLong offset, int origin) -> long {
@@ -744,7 +744,7 @@ ZipFile::ZipFile(string_view fname)
             return 0;
         };
         ffunc.zclose_file = [](voidpf, voidpf stream) -> int {
-            auto* mem_stream = static_cast<MemStream*>(stream);
+            const auto* mem_stream = static_cast<MemStream*>(stream);
             delete mem_stream;
             return 0;
         };

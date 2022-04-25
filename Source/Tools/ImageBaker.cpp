@@ -257,7 +257,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
     FrameCollection collection;
 
     // Load ini parser
-    ConfigFile fofrm(file.GetCStr(), nullptr);
+    ConfigFile fofrm(file.GetStr(), nullptr);
 
     auto frm_fps = fofrm.GetInt("", "fps", 0);
     if (frm_fps <= 0) {
@@ -1333,7 +1333,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
         file.SetCurPos(cur_pos);
 
         auto packed = type == 0x32;
-        uchar* data = nullptr;
+        vector<uchar> data;
         if (packed) {
             // Unpack with zlib
             auto unpacked_len = file.GetLEUInt();
@@ -1342,15 +1342,14 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
                 throw ImageBakerException("Can't unpack SPR data", fname);
             }
 
-            data = new uchar[unpacked_len];
-            memcpy(data, unpacked_data.data(), unpacked_len);
-            data_len = unpacked_len;
+            data = unpacked_data;
         }
         else {
-            data = file.ReleaseBuffer();
+            data.resize(data_len);
+            std::memcpy(data.data(), file.GetCurBuf(), data_len);
         }
 
-        File fm_images(data, data_len);
+        File fm_images(data);
 
         // Read palette
         typedef uint Palette[256];

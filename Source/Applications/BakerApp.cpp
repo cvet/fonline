@@ -68,7 +68,7 @@ int main(int argc, char** argv)
         if (!settings.ContentEntry.empty()) {
             WriteLog("Bake content.\n");
 
-            FileManager content_files;
+            FileSystem content_files;
             for (const auto& dir : settings.ContentEntry) {
                 WriteLog("Add content entry '{}'.\n", dir);
                 content_files.AddDataSource(dir, true);
@@ -123,7 +123,7 @@ int main(int argc, char** argv)
                     continue;
                 }
 
-                FileManager res_files;
+                FileSystem res_files;
                 for (const auto& path : paths) {
                     WriteLog("Add resource pack '{}' entry '{}'.\n", pack_name, path);
                     res_files.AddDataSource(path, true);

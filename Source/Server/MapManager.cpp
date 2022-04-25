@@ -84,19 +84,19 @@ void MapManager::LinkMaps()
     WriteLog("Link maps complete.\n");
 }
 
-void MapManager::LoadStaticMaps(FileManager& file_mngr)
+void MapManager::LoadStaticMaps(FileSystem& file_sys)
 {
     for (const auto& [pid, proto] : _engine->ProtoMngr.GetProtoMaps()) {
-        LoadStaticMap(file_mngr, proto);
+        LoadStaticMap(file_sys, proto);
     }
 }
 
-void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
+void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
 {
     StaticMap static_map;
 
     MapLoader::Load(
-        pmap->GetName(), file_mngr, _engine->ProtoMngr, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME),
+        pmap->GetName(), file_sys, _engine->ProtoMngr, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME),
         [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
             auto* cr = new Critter(_engine, id, nullptr, proto);
             if (!cr->LoadFromText(kv)) {

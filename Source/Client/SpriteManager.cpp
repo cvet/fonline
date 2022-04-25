@@ -105,7 +105,7 @@ auto AnyFrames::GetDir(int dir) -> AnyFrames*
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _gameTime {game_time}
+SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}, _gameTime {game_time}
 {
     _baseColor = COLOR_RGBA(255, 128, 128, 128);
     _drawQuadCount = 1024;
@@ -130,7 +130,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileManager& file_mngr, E
     DummyAnimation->Ticks = 100;
 
     if (_settings.Enable3dRendering) {
-        _modelMngr = std::make_unique<ModelManager>(_settings, _fileMngr, _effectMngr, _gameTime, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
+        _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, _gameTime, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
             PushAtlasType(AtlasType::MeshTextures);
             auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
             PopAtlasType();
@@ -790,7 +790,7 @@ auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy, bool /*frm_
 
 auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
 {
-    auto file = _fileMngr.ReadFile(fname);
+    auto file = _fileSys.ReadFile(fname);
     if (!file) {
         return nullptr;
     }
@@ -2185,7 +2185,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
 
     // Load font data
     string fname = _str("Fonts/{}.fofnt", font_name);
-    auto file = _fileMngr.ReadFile(fname);
+    auto file = _fileSys.ReadFile(fname);
     if (!file) {
         WriteLog("File '{}' not found.\n", fname);
         return false;
@@ -2195,7 +2195,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
     string image_name;
 
     // Parse data
-    istringstream str(file.GetCStr());
+    istringstream str(file.GetStr());
     string key;
     string letter_buf;
     FontData::Letter* cur_letter = nullptr;
@@ -2335,7 +2335,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     }
 
     FontData font {_effectMngr.Effects.Font};
-    auto file = _fileMngr.ReadFile(_str("Fonts/{}.fnt", font_name));
+    auto file = _fileSys.ReadFile(_str("Fonts/{}.fnt", font_name));
     if (!file) {
         WriteLog("Font file '{}.fnt' not found.\n", font_name);
         return false;

@@ -41,10 +41,10 @@
 static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
-ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileMngr {file_mngr}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
+ResourceManager::ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileSys {file_sys}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
 {
     {
-        auto allFiles = _fileMngr.FilterFiles("", "", true);
+        auto allFiles = _fileSys.FilterFiles("", "", true);
         while (allFiles.MoveNext()) {
             auto file_header = allFiles.GetCurFileHeader();
             const auto h1 = _nameResolver.ToHashedString(file_header.GetPath());
@@ -55,7 +55,7 @@ ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr
     }
 
     for (const auto* splash_ext : {"rix", "png", "jpg"}) {
-        auto splashes = _fileMngr.FilterFiles(splash_ext, "Splash/", true);
+        auto splashes = _fileSys.FilterFiles(splash_ext, "Splash/", true);
         while (splashes.MoveNext()) {
             auto file_header = splashes.GetCurFileHeader();
             if (std::find(_splashNames.begin(), _splashNames.end(), file_header.GetPath()) == _splashNames.end()) {
@@ -65,7 +65,7 @@ ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr
     }
 
     for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
-        auto sounds = _fileMngr.FilterFiles(sound_ext, "", true);
+        auto sounds = _fileSys.FilterFiles(sound_ext, "", true);
         while (sounds.MoveNext()) {
             auto file_header = sounds.GetCurFileHeader();
             _soundNames.emplace(_str("{}", file_header.GetName()).lower().str(), file_header.GetPath());

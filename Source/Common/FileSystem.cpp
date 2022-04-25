@@ -32,7 +32,6 @@
 //
 
 #include "FileSystem.h"
-
 #include "Log.h"
 #include "StringUtils.h"
 
@@ -77,11 +76,6 @@ auto FileHeader::GetWriteTime() const -> uint64
 
 File::File(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds, uchar* buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {buf}
 {
-    RUNTIME_ASSERT(_fileBuf[_fileSize] == 0);
-}
-
-File::File(uchar* buf, uint size) : FileHeader("", "", size, 0, nullptr), _fileBuf {buf}
-{
 }
 
 File::File(const vector<uchar>& buf) : FileHeader("", "", static_cast<uint>(buf.size()), 0, nullptr), _fileBuf(new uchar[buf.size()])
@@ -89,12 +83,12 @@ File::File(const vector<uchar>& buf) : FileHeader("", "", static_cast<uint>(buf.
     memcpy(_fileBuf.get(), buf.data(), buf.size());
 }
 
-auto File::GetCStr() const -> const char*
+auto File::GetStr() const -> string
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
-    return reinterpret_cast<const char*>(_fileBuf.get());
+    return {reinterpret_cast<const char*>(_fileBuf.get()), _fileSize};
 }
 
 auto File::GetBuf() const -> const uchar*
@@ -331,24 +325,6 @@ auto File::GetLEUInt() -> uint
 }
 
 // ReSharper disable once CppInconsistentNaming
-auto File::GetLE3UChar() -> uint
-{
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(uchar) * 3 > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
-    }
-
-    uint res = 0;
-    auto* cres = reinterpret_cast<uchar*>(&res);
-    for (auto i = 0; i <= 2; i++) {
-        cres[i] = _fileBuf[_curPos++];
-    }
-    return res;
-}
-
-// ReSharper disable once CppInconsistentNaming
 auto File::GetBEFloat() -> float
 {
     RUNTIME_ASSERT(_isLoaded);
@@ -415,7 +391,7 @@ auto FileCollection::GetCurFile() const -> File
     auto wt = fh._writeTime;
     auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
     RUNTIME_ASSERT(buf);
-    return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
+    return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf};
 }
 
 auto FileCollection::GetCurFileHeader() const -> FileHeader
@@ -424,7 +400,7 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
     RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
-    return FileHeader(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource);
+    return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource};
 }
 
 auto FileCollection::FindFileByName(string_view name) const -> File
@@ -435,10 +411,10 @@ auto FileCollection::FindFileByName(string_view name) const -> File
             auto wt = fh._writeTime;
             auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
             RUNTIME_ASSERT(buf);
-            return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
+            return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf};
         }
     }
-    return File();
+    return {};
 }
 
 auto FileCollection::FindFileByPath(string_view path) const -> File
@@ -449,10 +425,10 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
             auto wt = fh._writeTime;
             auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
             RUNTIME_ASSERT(buf);
-            return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
+            return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf};
         }
     }
-    return File();
+    return {};
 }
 
 auto FileCollection::GetFilesCount() const -> uint
@@ -460,17 +436,17 @@ auto FileCollection::GetFilesCount() const -> uint
     return static_cast<uint>(_allFiles.size());
 }
 
-void FileManager::AddDataSource(string_view path, bool cache_dirs)
+void FileSystem::AddDataSource(string_view path, bool cache_dirs)
 {
-    _dataSources.emplace_back(path, cache_dirs);
+    _dataSources.emplace(_dataSources.begin(), path, cache_dirs);
 }
 
-auto FileManager::FilterFiles(string_view ext) -> FileCollection
+auto FileSystem::FilterFiles(string_view ext) -> FileCollection
 {
     return FilterFiles(ext, "", true);
 }
 
-auto FileManager::FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection
+auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection
 {
     vector<FileHeader> files;
 
@@ -486,10 +462,10 @@ auto FileManager::FilterFiles(string_view ext, string_view dir, bool include_sub
         }
     }
 
-    return FileCollection(dir, std::move(files));
+    return {dir, std::move(files)};
 }
 
-auto FileManager::ReadFile(string_view path) -> File
+auto FileSystem::ReadFile(string_view path) -> File
 {
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
@@ -502,13 +478,13 @@ auto FileManager::ReadFile(string_view path) -> File
         uint64 write_time = 0;
         auto* buf = ds.OpenFile(path, path_lower, file_size, write_time);
         if (buf != nullptr) {
-            return File(name, path, file_size, write_time, &ds, buf);
+            return {name, path, file_size, write_time, &ds, buf};
         }
     }
-    return File(name, path, 0, 0, nullptr, nullptr);
+    return {};
 }
 
-auto FileManager::ReadFileHeader(string_view path) -> FileHeader
+auto FileSystem::ReadFileHeader(string_view path) -> FileHeader
 {
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
@@ -520,16 +496,16 @@ auto FileManager::ReadFileHeader(string_view path) -> FileHeader
         uint file_size = 0;
         uint64 write_time = 0;
         if (ds.IsFilePresent(path, path_lower, file_size, write_time)) {
-            return FileHeader(name, path, file_size, write_time, &ds);
+            return {name, path, file_size, write_time, &ds};
         }
     }
-    return FileHeader(name, path, 0, 0, nullptr);
+    return {};
 }
 
-auto FileManager::ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile
+auto FileSystem::ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile
 {
     if (const auto file = ReadFile(path)) {
-        return {file.GetCStr(), name_resolver};
+        return {file.GetStr(), name_resolver};
     }
     return {"", name_resolver};
 }

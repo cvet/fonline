@@ -65,6 +65,8 @@ public:
 
     void FinalizeDataRegistration();
 
+    FileSystem FileSys {};
+
 protected:
     explicit FOEngineBase(bool is_server);
     ~FOEngineBase() override = default;

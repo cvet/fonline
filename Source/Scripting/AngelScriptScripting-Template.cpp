@@ -1339,7 +1339,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
-    File script_file = _engine->FileMngr.ReadFile("ServerRootModule.fosb");
+    File script_file = _engine->FileSys.ReadFile("ServerRootModule.fosb");
     RestoreRootModule(engine, script_file);
 #endif
 

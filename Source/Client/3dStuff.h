@@ -163,7 +163,7 @@ public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator);
+    ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -191,7 +191,7 @@ private:
     [[nodiscard]] auto GetHierarchy(string_view xname) -> ModelHierarchy*;
 
     RenderSettings& _settings;
-    FileManager& _fileMngr;
+    FileSystem& _fileSys;
     EffectManager& _effectMngr;
     GameTimer& _gameTime;
     NameResolver& _nameResolver;

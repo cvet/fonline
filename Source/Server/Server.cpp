@@ -42,12 +42,27 @@
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngineBase(true), Settings {settings}, GeomHelper(Settings), GameTime(Settings), ProtoMngr(this), DeferredCallMngr(this), EntityMngr(this), MapMngr(this), CrMngr(this), ItemMngr(this), DlgMngr(this)
+// clang-format off
+FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
+    FOEngineBase(true),
+    Settings {settings},
+    GeomHelper(Settings),
+    GameTime(Settings),
+    ProtoMngr(this),
+    DeferredCallMngr(this),
+    EntityMngr(this),
+    MapMngr(this),
+    CrMngr(this),
+    ItemMngr(this),
+    DlgMngr(this)
+// clang-format on
 {
-    WriteLog("***   Starting initialization   ***\n");
+    WriteLog("Starting server initialization.\n");
 
-    FileMngr.AddDataSource("$Embedded", true);
-    FileMngr.AddDataSource(Settings.ResourcesDir, true);
+    FileSys.AddDataSource("$Embedded", true);
+    for (const auto& entry : Settings.ResourceEntries) {
+        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry), true);
+    }
 
     RegisterData();
     ScriptSys = (script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys);
@@ -85,7 +100,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) : FOEngin
     if (!DlgMngr.LoadDialogs()) {
         throw ServerInitException("Can't load dialogs");
     }
-    // if (!ProtoMngr.LoadProtosFromFiles(FileMngr))
+    // if (!ProtoMngr.LoadProtosFromFiles(FileSys))
     //    return false;
 
     // Language packs
@@ -1584,7 +1599,7 @@ auto FOServer::InitLangPacks(vector<LanguagePack>& lang_packs) -> bool
         }
 
         LanguagePack lang;
-        lang.LoadFromFiles(FileMngr, *this, lang_name);
+        lang.LoadFromFiles(FileSys, *this, lang_name);
 
         lang_packs.push_back(lang);
         cur_lang++;
@@ -1842,7 +1857,7 @@ void FOServer::LoadBans()
 
     _banned.clear();
 
-    auto bans = FileMngr.ReadConfigFile(BANS_FNAME_ACTIVE, *this);
+    auto bans = FileSys.ReadConfigFile(BANS_FNAME_ACTIVE, *this);
     if (!bans) {
         return;
     }
@@ -1948,7 +1963,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
     writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
 
     // Fill files
-    auto files = FileMngr.FilterFiles("", "Update/", true);
+    auto files = FileSys.FilterFiles("", "Update/", true);
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
 
@@ -1967,7 +1982,7 @@ void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resour
     WriteLog("Generate update files complete.\n");
 
     // Append binaries
-    auto binaries = FileMngr.FilterFiles("", "Binaries/", true);
+    auto binaries = FileSys.FilterFiles("", "Binaries/", true);
     while (binaries.MoveNext()) {
         auto file = binaries.GetCurFile();
 

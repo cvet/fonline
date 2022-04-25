@@ -397,7 +397,7 @@ auto FOMsg::GetMsgType(string_view type_name) -> int
     return -1;
 }
 
-void LanguagePack::LoadFromFiles(FileManager& file_mngr, NameResolver& name_resolver, string_view lang_name)
+void LanguagePack::LoadFromFiles(FileSystem& file_sys, NameResolver& name_resolver, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
@@ -405,7 +405,7 @@ void LanguagePack::LoadFromFiles(FileManager& file_mngr, NameResolver& name_reso
 
     auto fail = false;
 
-    auto msg_files = file_mngr.FilterFiles("msg");
+    auto msg_files = file_sys.FilterFiles("msg");
     while (msg_files.MoveNext()) {
         auto msg_file = msg_files.GetCurFile();
 
@@ -414,7 +414,7 @@ void LanguagePack::LoadFromFiles(FileManager& file_mngr, NameResolver& name_reso
         if (dirs.size() >= 3 && dirs[dirs.size() - 3] == "Texts" && dirs[dirs.size() - 2] == lang_name) {
             for (auto i = 0; i < TEXTMSG_COUNT; i++) {
                 if (_str(Data->TextMsgFileName[i]).compareIgnoreCase(msg_file.GetName())) {
-                    if (!Msg[i].LoadFromString(msg_file.GetCStr(), name_resolver)) {
+                    if (!Msg[i].LoadFromString(msg_file.GetStr(), name_resolver)) {
                         WriteLog("Invalid MSG file '{}'.\n", msg_file.GetPath());
                         fail = true;
                     }
