@@ -281,7 +281,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: recursion guard for EventDispatcher
 * Common: improve ptr<> system for leng term pointer observing
 * Common: add _hash c-string literal helper
-* Common: move WriteData/ReadData to DataWriter/DataReader
 * Common: fix TRect Width/Height
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
@@ -327,6 +326,8 @@ Please follow these instructions to understand how to use this engine by design:
 * Application: fix workaround for strange behaviour of button focus
 * Application: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
 * ApplicationHeadless: move different renderers to separate modules
+* ApplicationHeadless: implement effect CanBatch
+* ApplicationHeadless: app settings
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * Entity: events array may be modified during call, need take it into account here
@@ -337,7 +338,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Entity: improve entity event Deferred
 * EntityProperties: implement Player InitScript
 * EntityProperties: implement Location InitScript
-* FileSystem: handle apply file writing
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: delete \n appendix from WriteLog
@@ -346,23 +346,31 @@ Please follow these instructions to understand how to use this engine by design:
 * MapLoader: remove mapper specific IsSelected from MapTile
 * MsgFiles: pass default to fomsg gets
 * MsgFiles: move loading to constructors
+* Properties: SetValueFromData
 * Properties: convert to hstring
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
 * Properties: ResolveHash
 * ScriptSystem: fill settings to scripts
+* ScriptSystem: RemoveEntity
+* ScriptSystem: FindFunc
 * Settings-Include: rework global Quit setting
+* Settings: improve editable entry for arrays
 * StringUtils: make isNumber const
 * Testing: improve global exceptions handlers for mobile os
 * Testing: fix script system
 * Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
 * Testing: send client dumps to server
+* AngelScriptScripting-Template: MarshalDict
+* AngelScriptScripting-Template: MarshalBackScalarDict
+* AngelScriptScripting-Template: GetASObjectInfo
 * ClientCritterScriptMethods: handle AbstractItem in Animate
 * ClientItemScriptMethods: solve recursion in GetMapPos
 * ClientItemScriptMethods: need attention!
 * CommonGlobalScriptMethods: fix script system
 * MapperGlobalScriptMethods: need attention! (4)
+* MapperGlobalScriptMethods: Settings.MapsDir
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
 * ServerCritterScriptMethods: handle AbstractItem in Action
@@ -373,6 +381,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Critter: move Flags to properties
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
+* DeferredCalls: improve deferred calls
 * Dialogs: check item name on DR_ITEM
 * EntityManager: load locations -> theirs maps -> critters/items on map -> items in critters/containers
 * Location: encapsulate Location data
@@ -386,6 +395,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: attach critter to player
 * Server: control max size explicitly, add option to property registration
 * Server: disable send changing field by client to this client
+* Server: restore Dialog_UseResult
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime

@@ -54,5 +54,5 @@ private:
     void InitAngelScriptScripting();
     void InitMonoScripting();
 
-    FOClient* _engine;
+    [[maybe_unused]] FOClient* _engine;
 };

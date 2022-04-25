@@ -201,6 +201,8 @@ using std::vector;
 using tcb::span;
 
 template<typename T>
+using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
+template<typename T>
 using const_span = span<const T>;
 
 // Math types

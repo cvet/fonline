@@ -575,7 +575,10 @@ public:
     [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint> override
     {
         vector<uint> ids;
-        DiskFileSystem::IterateDir(_str("{}/{}/", _storageDir, collection_name), "json", false, [&ids](string_view path, uint /*size*/, uint64 /*write_time*/) {
+        DiskFileSystem::IterateDir(_str("{}/{}/", _storageDir, collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
+            UNUSED_VARIABLE(size);
+            UNUSED_VARIABLE(write_time);
+
             const string id_str = _str(path).extractFileName().eraseFileExtension();
             const auto id = _str(id_str).toUInt();
             if (id == 0) {
@@ -592,7 +595,7 @@ protected:
     {
         const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
 
-        uint length;
+        size_t length;
         char* json;
         if (auto f = DiskFileSystem::OpenFile(path, false)) {
             length = f.GetSize();
@@ -607,7 +610,7 @@ protected:
 
         bson_t bson;
         bson_error_t error;
-        if (!bson_init_from_json(&bson, json, length, &error)) {
+        if (!bson_init_from_json(&bson, json, static_cast<ssize_t>(length), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
 
@@ -662,7 +665,7 @@ protected:
 
         const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
 
-        uint length;
+        size_t length;
         char* json;
         if (auto f_read = DiskFileSystem::OpenFile(path, false)) {
             length = f_read.GetSize();
@@ -677,7 +680,7 @@ protected:
 
         bson_t bson;
         bson_error_t error;
-        if (!bson_init_from_json(&bson, json, length, &error)) {
+        if (!bson_init_from_json(&bson, json, static_cast<ssize_t>(length), &error)) {
             throw DataBaseException("DbJson bson_init_from_json", path);
         }
 

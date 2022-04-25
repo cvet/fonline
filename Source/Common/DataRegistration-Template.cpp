@@ -184,6 +184,8 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
 
     const auto info_size = reader.Read<uint>();
     for (const auto i : xrange(info_size)) {
+        UNUSED_VARIABLE(i);
+
         const auto name_size = reader.Read<uint>();
         auto name = string();
         name.resize(name_size);
@@ -194,6 +196,8 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
         data.reserve(data_size);
 
         for (const auto e : xrange(data_size)) {
+            UNUSED_VARIABLE(e);
+
             const auto entry_size = reader.Read<uint>();
             auto entry = string();
             entry.resize(entry_size);

@@ -4916,7 +4916,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
                     buf += s;
                     buf += separator;
                 },
-                GetChosen()->AlternateName, *this)) {
+                *this)) {
             return "UNKNOWN";
         }
 

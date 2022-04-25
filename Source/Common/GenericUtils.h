@@ -58,7 +58,7 @@ public:
     Compressor() = delete;
 
     [[nodiscard]] static auto Compress(const_span<uchar> data) -> vector<uchar>;
-    [[nodiscard]] static auto Uncompress(const_span<uchar> data, uint mul_approx) -> vector<uchar>;
+    [[nodiscard]] static auto Uncompress(const_span<uchar> data, size_t mul_approx) -> vector<uchar>;
 };
 
 class GenericUtils final

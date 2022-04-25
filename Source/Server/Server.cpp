@@ -132,7 +132,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 
     // Update files
     vector<string> resource_names;
-    GenerateUpdateFiles(true, &resource_names);
+    GenerateUpdateFiles(&resource_names);
 
     // Validate protos resources
     if (!ProtoMngr.ValidateProtoResources(resource_names)) {
@@ -1897,109 +1897,81 @@ void FOServer::LoadBans()
     ProcessBans();
 }
 
-void FOServer::GenerateUpdateFiles(bool first_generation, vector<string>* resource_names)
+void FOServer::GenerateUpdateFiles(vector<string>* resource_names)
 {
-    if (!first_generation && _updateFiles.empty()) {
-        return;
-    }
-
-    WriteLog("Generate update files...\n");
-
-    // Disconnect all connected clients to force data updating
-    if (!first_generation) {
-        for (auto* player : EntityMngr.GetPlayers()) {
-            player->Connection->HardDisconnect();
-        }
-
-        std::lock_guard locker(_freeConnectionsLocker);
-
-        for (auto* free_connection : _freeConnections) {
-            free_connection->HardDisconnect();
-        }
-    }
-
-    auto writer = DataWriter(_updateFilesList);
-
-    // Clear collections
-    for (auto& update_file : _updateFiles) {
-        delete[] update_file.Data;
-    }
     _updateFiles.clear();
     _updateFilesList.clear();
 
-    // Fill MSG
-    UpdateFile update_file {};
+    auto writer = DataWriter(_updateFilesList);
+
+    // Fill texts
     for (auto& lang_pack : _langPacks) {
         for (auto i = 0; i < TEXTMSG_COUNT; i++) {
-            const auto msg_data = lang_pack.Msg[i].GetBinaryData();
-            auto msg_cache_name = lang_pack.GetMsgCacheName(i);
+            const auto msg_cache_name = lang_pack.GetMsgCacheName(i);
+            auto msg_data = lang_pack.Msg[i].GetBinaryData();
 
-            std::memset(&update_file, 0, sizeof(update_file));
-            update_file.Size = static_cast<uint>(msg_data.size());
-            update_file.Data = new uchar[update_file.Size];
-            std::memcpy(update_file.Data, &msg_data[0], update_file.Size);
-            _updateFiles.push_back(update_file);
+            UpdateFile update_file = {};
+            update_file.Data = std::move(msg_data);
+            _updateFiles.emplace_back(update_file);
 
             writer.Write<short>(static_cast<short>(msg_cache_name.length()));
             writer.WritePtr(msg_cache_name.c_str(), msg_cache_name.length());
-            writer.Write<uint>(update_file.Size);
-            writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
+            writer.Write<uint>(static_cast<uint>(update_file.Data.size()));
+            writer.Write<uint>(Hashing::MurmurHash2(update_file.Data.data(), update_file.Data.size()));
         }
     }
 
     // Fill prototypes
-    auto proto_items_data = ProtoMngr.GetProtosBinaryData();
+    {
+        const auto protos_cache_name = string("$protos.cache");
+        auto proto_items_data = ProtoMngr.GetProtosBinaryData();
 
-    std::memset(&update_file, 0, sizeof(update_file));
-    update_file.Size = static_cast<uint>(proto_items_data.size());
-    update_file.Data = new uchar[update_file.Size];
-    std::memcpy(update_file.Data, &proto_items_data[0], update_file.Size);
-    _updateFiles.push_back(update_file);
+        UpdateFile update_file = {};
+        update_file.Data = std::move(proto_items_data);
+        _updateFiles.push_back(update_file);
 
-    const string protos_cache_name = "$protos.cache";
-    writer.Write<short>(static_cast<short>(protos_cache_name.length()));
-    writer.WritePtr(protos_cache_name.c_str(), protos_cache_name.length());
-    writer.Write<uint>(update_file.Size);
-    writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
+        writer.Write<short>(static_cast<short>(protos_cache_name.length()));
+        writer.WritePtr(protos_cache_name.c_str(), protos_cache_name.length());
+        writer.Write<uint>(static_cast<uint>(update_file.Data.size()));
+        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data.data(), update_file.Data.size()));
+    }
 
     // Fill files
     auto files = FileSys.FilterFiles("", "Update/", true);
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
+        const auto file_path = string(file.GetName().substr("Update/"_len));
 
-        std::memset(&update_file, 0, sizeof(update_file));
-        update_file.Size = file.GetSize();
-        update_file.Data = file.ReleaseBuffer();
+        UpdateFile update_file = {};
+        update_file.Data.resize(file.GetSize());
+        std::memcpy(update_file.Data.data(), file.GetBuf(), file.GetSize());
         _updateFiles.push_back(update_file);
 
-        auto file_path = file.GetName().substr("Update/"_len);
         writer.Write<short>(static_cast<short>(file_path.length()));
         writer.WritePtr(file_path.data(), file_path.length());
-        writer.Write<uint>(update_file.Size);
-        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
+        writer.Write<uint>(static_cast<uint>(update_file.Data.size()));
+        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data.data(), update_file.Data.size()));
     }
-
-    WriteLog("Generate update files complete.\n");
 
     // Append binaries
     auto binaries = FileSys.FilterFiles("", "Binaries/", true);
     while (binaries.MoveNext()) {
         auto file = binaries.GetCurFile();
 
-        std::memset(&update_file, 0, sizeof(update_file));
-        update_file.Size = file.GetSize();
-        update_file.Data = file.ReleaseBuffer();
+        UpdateFile update_file = {};
+        update_file.Data.resize(file.GetSize());
+        std::memcpy(update_file.Data.data(), file.GetBuf(), file.GetSize());
         _updateFiles.push_back(update_file);
 
         auto file_path = file.GetName().substr("Binaries/"_len);
         writer.Write<short>(static_cast<short>(file_path.length()));
         writer.WritePtr(file_path.data(), file_path.length());
-        writer.Write<uint>(update_file.Size);
-        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data, update_file.Size));
+        writer.Write<uint>(static_cast<uint>(update_file.Data.size()));
+        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data.data(), update_file.Data.size()));
     }
 
     // Complete files list
-    writer.Write<short>(static_cast<short>(-1));
+    writer.Write<short>(-1);
 }
 
 void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
@@ -2285,7 +2257,7 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
         return;
     }
 
-    connection->UpdateFileIndex = file_index;
+    connection->UpdateFileIndex = static_cast<int>(file_index);
     connection->UpdateFilePortion = 0;
 
     Process_UpdateFileData(connection);
@@ -2299,10 +2271,10 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
         return;
     }
 
-    auto& update_file = _updateFiles[connection->UpdateFileIndex];
+    const auto& update_file = _updateFiles[connection->UpdateFileIndex];
     const auto offset = connection->UpdateFilePortion * FILE_UPDATE_PORTION;
 
-    if (offset + FILE_UPDATE_PORTION < update_file.Size) {
+    if (offset + FILE_UPDATE_PORTION < update_file.Data.size()) {
         connection->UpdateFilePortion++;
     }
     else {
@@ -2310,7 +2282,7 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
     }
 
     uchar data[FILE_UPDATE_PORTION];
-    const auto remaining_size = update_file.Size - offset;
+    const auto remaining_size = update_file.Data.size() - offset;
     if (remaining_size >= sizeof(data)) {
         std::memcpy(data, &update_file.Data[offset], sizeof(data));
     }
@@ -3173,7 +3145,6 @@ void FOServer::ProcessMove(Critter* cr)
         uint cut = 0;
         uint trace = 0;
         Critter* trace_cr = nullptr;
-        auto check_cr = false;
 
         if (cr->Moving.TargId != 0u) {
             auto* targ = cr->GetCrSelf(cr->Moving.TargId);
@@ -3188,7 +3159,6 @@ void FOServer::ProcessMove(Critter* cr)
             cut = cr->Moving.Cut;
             trace = cr->Moving.Trace;
             trace_cr = targ;
-            check_cr = true;
         }
         else {
             hx = cr->Moving.HexX;
@@ -3616,6 +3586,8 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
                 break;
             }
 
+            // Todo: restore Dialog_UseResult
+            UNUSED_VARIABLE(prop_registrator);
             /*const auto* prop = prop_registrator->GetByIndex(index);
             int val = 0;
             CScriptDict* dict = nullptr;
@@ -4230,9 +4202,10 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSetItemCount(Entity* entity, const Property* /*prop*/, void* cur_value, void* old_value)
+void FOServer::OnSetItemCount(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
     NON_CONST_METHOD_HINT();
+    UNUSED_VARIABLE(prop);
 
     auto* item = dynamic_cast<Item*>(entity);
     const auto cur = *static_cast<uint*>(cur_value);
@@ -4251,8 +4224,10 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* /*prop*/, void* cu
     }
 }
 
-void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
+    UNUSED_VARIABLE(old_value);
+
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
 
@@ -4280,11 +4255,13 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, void* c
     }
 }
 
-void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
+void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, void* cur_value, void* old_value)
 {
+    UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(old_value);
+
     // IsNoBlock, IsShootThru, IsGag, IsTrigger
-    auto* item = dynamic_cast<Item*>(entity);
-    auto value = *static_cast<bool*>(cur_value);
+    const auto* item = dynamic_cast<Item*>(entity);
 
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
@@ -4297,7 +4274,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* /*prop*/, voi
 void FOServer::OnSetItemBlockLines(Entity* entity, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
 {
     // BlockLines
-    auto* item = dynamic_cast<Item*>(entity);
+    const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {

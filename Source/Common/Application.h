@@ -244,11 +244,11 @@ private:
     string _effectName {};
     string _effectDefines {};
     hstring _name {};
-    uint _passCount {};
-    bool _isShadow[EFFECT_MAX_PASSES] {};
-    BlendFuncType _blendFuncParam1[EFFECT_MAX_PASSES] {};
-    BlendFuncType _blendFuncParam2[EFFECT_MAX_PASSES] {};
-    BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
+    // uint _passCount {};
+    // bool _isShadow[EFFECT_MAX_PASSES] {};
+    // BlendFuncType _blendFuncParam1[EFFECT_MAX_PASSES] {};
+    // BlendFuncType _blendFuncParam2[EFFECT_MAX_PASSES] {};
+    // BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
 };
 
 class RenderMesh final : public RefCounter

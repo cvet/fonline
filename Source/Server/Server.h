@@ -233,8 +233,7 @@ private:
 
     struct UpdateFile
     {
-        uint Size {};
-        uchar* Data {};
+        vector<uchar> Data {};
     };
 
     struct TextListener
@@ -264,7 +263,7 @@ private:
     auto InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool;
     auto InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool;
     auto InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool;
-    void GenerateUpdateFiles(bool first_generation, vector<string>* resource_names);
+    void GenerateUpdateFiles(vector<string>* resource_names);
 
     void EntitySetValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSendGlobalValue(Entity* entity, const Property* prop);

@@ -187,5 +187,4 @@ private:
     uint _startTick {};
     string _nameOnHead {};
     vector<tuple<ushort, ushort>> _lastHexes {};
-    uint _nameColor {};
 };

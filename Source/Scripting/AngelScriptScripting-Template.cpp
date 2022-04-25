@@ -45,12 +45,6 @@
 
 ///@ CodeGen Defines
 
-#ifdef __clang__
-#pragma clang diagnostic ignored "-Wunused-variable"
-#pragma clang diagnostic ignored "-Wunused-function"
-#pragma clang diagnostic ignored "-Wunused-lambda-capture"
-#endif
-
 #include "Common.h"
 
 #if !COMPILER_MODE
@@ -121,10 +115,8 @@ struct FOServer;
 struct FOClient;
 struct FOMapper;
 
-struct BaseEntity
+struct BaseEntity : Entity
 {
-    void AddRef() { }
-    void Release() { }
 };
 
 #define INIT_ARGS const char* script_path
@@ -173,7 +165,6 @@ public:
         throw ScriptInitException(#expr); \
     }
 
-#if !COMPILER_MODE
 #ifdef AS_MAX_PORTABILITY
 #define SCRIPT_FUNC(name) WRAP_FN(name)
 #define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
@@ -192,19 +183,6 @@ public:
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
 #define SCRIPT_FUNC_FUNCTOR_CONV asCALL_THISCALL_ASGLOBAL
 #define SCRIPT_METHOD_FUNCTOR_CONV asCALL_THISCALL_OBJFIRST
-#endif
-#else
-#define SCRIPT_FUNC(...) asFUNCTION(DummyFunc)
-#define SCRIPT_FUNC_THIS(...) asFUNCTION(DummyFunc)
-#define SCRIPT_METHOD(...) asFUNCTION(DummyFunc)
-#define SCRIPT_FUNC_CONV asCALL_GENERIC
-#define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
-#define SCRIPT_METHOD_CONV asCALL_GENERIC
-#define SCRIPT_FUNC_FUNCTOR_CONV asCALL_GENERIC
-#define SCRIPT_METHOD_FUNCTOR_CONV asCALL_GENERIC
-static void DummyFunc(asIScriptGeneric* gen)
-{
-}
 #endif
 
 #if !COMPILER_MODE
@@ -280,7 +258,6 @@ struct ScriptSystem::AngelScriptImpl
         RUNTIME_ASSERT(func);
 
         auto* ctx = RequestContext();
-        auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
 
         const auto as_result = ctx->Prepare(func);
         if (as_result < 0) {
@@ -339,8 +316,9 @@ static T* ScriptableObject_Factory()
     return new T();
 }
 
+#if !COMPILER_MODE
 // Arrays stuff
-static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> CScriptArray*
+[[maybe_unused]] static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> CScriptArray*
 {
     RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
@@ -353,16 +331,21 @@ static auto CreateASArray(asIScriptEngine* as_engine, const char* type) -> CScri
 }
 
 template<typename T>
-static void VerifyEntityArray(asIScriptEngine* as_engine, CScriptArray* as_array)
+[[maybe_unused]] static void VerifyEntityArray(asIScriptEngine* as_engine, CScriptArray* as_array)
 {
+    UNUSED_VARIABLE(as_engine);
+
     for (const auto i : xrange(as_array->GetSize())) {
+        UNUSED_VARIABLE(i); // ENTITY_VERIFY may expand to none
         ENTITY_VERIFY(*reinterpret_cast<T*>(as_array->At(i)));
     }
 }
 
 template<typename T>
-static auto MarshalArray(asIScriptEngine* as_engine, CScriptArray* as_array) -> vector<T>
+[[maybe_unused]] static auto MarshalArray(asIScriptEngine* as_engine, CScriptArray* as_array) -> vector<T>
 {
+    UNUSED_VARIABLE(as_engine);
+
     if (as_array == nullptr || as_array->GetSize() == 0u) {
         return {};
     }
@@ -377,7 +360,7 @@ static auto MarshalArray(asIScriptEngine* as_engine, CScriptArray* as_array) -> 
 }
 
 template<typename T>
-static auto MarshalBackScalarArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
+[[maybe_unused]] static auto MarshalBackScalarArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
 {
     auto* as_array = CreateASArray(as_engine, type);
 
@@ -392,7 +375,7 @@ static auto MarshalBackScalarArray(asIScriptEngine* as_engine, const char* type,
 }
 
 template<typename T>
-static auto MarshalBackRefArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
+[[maybe_unused]] static auto MarshalBackRefArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
 {
     auto* as_array = CreateASArray(as_engine, type);
 
@@ -409,7 +392,7 @@ static auto MarshalBackRefArray(asIScriptEngine* as_engine, const char* type, co
     return as_array;
 }
 
-static auto CreateASDict(asIScriptEngine* as_engine, const char* type) -> CScriptDict*
+[[maybe_unused]] static auto CreateASDict(asIScriptEngine* as_engine, const char* type) -> CScriptDict*
 {
     RUNTIME_ASSERT(as_engine);
     const auto type_id = as_engine->GetTypeIdByDecl(type);
@@ -422,14 +405,18 @@ static auto CreateASDict(asIScriptEngine* as_engine, const char* type) -> CScrip
 }
 
 template<typename T, typename U>
-static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
+[[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
 {
+    // Todo: MarshalDict
+    UNUSED_VARIABLE(as_engine);
+
     if (as_dict == nullptr || as_dict->GetSize() == 0u) {
         return {};
     }
 
     map<T, U> map;
     for (const auto i : xrange(as_dict->GetSize())) {
+        UNUSED_VARIABLE(i);
         // vec[i] = *reinterpret_cast<Type*>(as_array->At(i));
     }
 
@@ -437,8 +424,9 @@ static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map
 }
 
 template<typename T, typename U>
-static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
+[[maybe_unused]] static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
+    // Todo: MarshalBackScalarDict
     auto* as_dict = CreateASDict(as_engine, type);
 
     if (!map.empty()) {
@@ -452,12 +440,15 @@ static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, 
     return as_dict;
 }
 
-static auto GetASObjectInfo(void* ptr, int type_id) -> string
+[[maybe_unused]] static auto GetASObjectInfo(void* ptr, int type_id) -> string
 {
+    // Todo: GetASObjectInfo
+    UNUSED_VARIABLE(ptr);
+    UNUSED_VARIABLE(type_id);
     return "";
 }
 
-static auto GetASFuncName(asIScriptFunction* func) -> string
+[[maybe_unused]] static auto GetASFuncName(asIScriptFunction* func) -> string
 {
     if (func == nullptr) {
         return "";
@@ -465,6 +456,7 @@ static auto GetASFuncName(asIScriptFunction* func) -> string
 
     return _str("AngelScript.{}", func->GetName());
 }
+#endif
 
 static auto Entity_IsDestroyed(Entity* self) -> bool
 {
@@ -472,6 +464,7 @@ static auto Entity_IsDestroyed(Entity* self) -> bool
     // May call on destroyed entity
     return self->IsDestroyed();
 #else
+    UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -482,6 +475,7 @@ static auto Entity_IsDestroying(Entity* self) -> bool
     // May call on destroyed entity
     return self->IsDestroying();
 #else
+    UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -492,6 +486,7 @@ static auto Entity_Name(Entity* self) -> string
     ENTITY_VERIFY(self);
     return string(self->GetName());
 #else
+    UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -502,6 +497,7 @@ static auto Entity_Id(BaseEntity* self) -> uint
     ENTITY_VERIFY(self);
     return self->GetId();
 #else
+    UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -512,6 +508,7 @@ static auto Entity_ProtoId(BaseEntity* self) -> hstring
     ENTITY_VERIFY(self);
     return self->GetProtoId();
 #else
+    UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -522,6 +519,7 @@ static auto Entity_Proto(BaseEntity* self) -> const ProtoEntity*
     ENTITY_VERIFY(self);
     return self->GetProto();
 #else
+    UNUSED_VARIABLE(self);
     throw ScriptCompilerException("Stub");
 #endif
 }
@@ -550,6 +548,8 @@ static void Property_GetValueAsInt(asIScriptGeneric* gen)
     }
 
     new (gen->GetAddressOfReturnLocation()) int(entity->GetValueAsInt(prop));
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -575,6 +575,8 @@ static void Property_SetValueAsInt(asIScriptGeneric* gen)
     }
 
     entity->SetValueAsInt(prop, *static_cast<int*>(gen->GetAddressOfArg(1)));
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -600,6 +602,8 @@ static void Property_GetValueAsFloat(asIScriptGeneric* gen)
     }
 
     new (gen->GetAddressOfReturnLocation()) float(entity->GetValueAsFloat(prop));
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -625,6 +629,8 @@ static void Property_SetValueAsFloat(asIScriptGeneric* gen)
     }
 
     entity->SetValueAsFloat(prop, *static_cast<float*>(gen->GetAddressOfArg(1)));
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -753,6 +759,8 @@ static void Property_GetValue(asIScriptGeneric* gen)
     else {
         throw UnreachablePlaceException(LINE_STR);
     }
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -965,6 +973,8 @@ static void Property_SetValue(asIScriptGeneric* gen)
     else {
         throw UnreachablePlaceException(LINE_STR);
     }
+#else
+    UNUSED_VARIABLE(gen);
 #endif
 }
 
@@ -1054,6 +1064,8 @@ struct StorageData
 
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
+    UNUSED_VARIABLE(param);
+
     const char* type = "error";
     if (msg->type == asMSGTYPE_WARNING) {
         type = "warning";
@@ -1311,7 +1323,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 prop_enums.push_back(static_cast<ScriptEnum_uint16>(prop->GetRegIndex()));
             }
 
-            auto* as_prop_enums = MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums);
+            void* as_prop_enums = nullptr;
+#if !COMPILER_MODE
+            as_prop_enums = MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums);
+#endif
             AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[] {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), as_prop_enums));
         }
     }

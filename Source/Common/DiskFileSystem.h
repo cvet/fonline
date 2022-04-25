@@ -55,9 +55,9 @@ public:
     explicit operator bool() const;
     ~DiskFile();
 
-    [[nodiscard]] auto GetPos() const -> uint;
+    [[nodiscard]] auto GetPos() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
-    [[nodiscard]] auto GetSize() const -> uint;
+    [[nodiscard]] auto GetSize() const -> size_t;
 
     auto Read(void* buf, size_t len) -> bool;
     auto Write(const void* buf, size_t len) -> bool;
@@ -90,7 +90,7 @@ public:
 
     [[nodiscard]] auto IsDir() const -> bool;
     [[nodiscard]] auto GetPath() const -> string;
-    [[nodiscard]] auto GetFileSize() const -> uint;
+    [[nodiscard]] auto GetFileSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
 
 private:
@@ -104,7 +104,7 @@ private:
 class DiskFileSystem final
 {
 public:
-    using FileVisitor = std::function<void(string_view, uint, uint64)>;
+    using FileVisitor = std::function<void(string_view, size_t, uint64)>;
 
     DiskFileSystem() = delete;
 

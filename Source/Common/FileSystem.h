@@ -57,17 +57,17 @@ public:
 
     [[nodiscard]] auto GetName() const -> string_view;
     [[nodiscard]] auto GetPath() const -> string_view;
-    [[nodiscard]] auto GetSize() const -> uint;
+    [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
 
 protected:
     FileHeader() = default;
-    FileHeader(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds);
+    FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds);
 
     bool _isLoaded {};
     string _fileName {};
     string _filePath {};
-    uint _fileSize {};
+    size_t _fileSize {};
     uint64 _writeTime {};
     DataSource* _dataSource {};
 };
@@ -89,34 +89,33 @@ public:
     [[nodiscard]] auto GetStr() const -> string;
     [[nodiscard]] auto GetBuf() const -> const uchar*;
     [[nodiscard]] auto GetCurBuf() const -> const uchar*;
-    [[nodiscard]] auto GetCurPos() const -> uint;
+    [[nodiscard]] auto GetCurPos() const -> size_t;
 
-    [[nodiscard]] auto FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs) -> bool;
-    [[nodiscard]] auto GetNonEmptyLine() -> string;
+    [[nodiscard]] auto FindFragment(string_view fragment) -> bool;
     // ReSharper disable CppInconsistentNaming
     [[nodiscard]] auto GetStrNT() -> string; // Null terminated
     [[nodiscard]] auto GetUChar() -> uchar;
+    [[nodiscard]] auto GetChar() -> char { return static_cast<char>(GetUChar()); }
     [[nodiscard]] auto GetBEUShort() -> ushort;
     [[nodiscard]] auto GetBEShort() -> short { return static_cast<short>(GetBEUShort()); }
     [[nodiscard]] auto GetLEUShort() -> ushort;
     [[nodiscard]] auto GetLEShort() -> short { return static_cast<short>(GetLEUShort()); }
     [[nodiscard]] auto GetBEUInt() -> uint;
+    [[nodiscard]] auto GetBEInt() -> int { return static_cast<int>(GetBEUInt()); }
     [[nodiscard]] auto GetLEUInt() -> uint;
-    [[nodiscard]] auto GetBEFloat() -> float;
-    [[nodiscard]] auto GetLEFloat() -> float;
+    [[nodiscard]] auto GetLEInt() -> int { return static_cast<int>(GetLEUInt()); }
     // ReSharper restore CppInconsistentNaming
-    [[nodiscard]] auto ReleaseBuffer() -> uchar*;
 
-    void CopyMem(void* ptr, uint size);
-    void SetCurPos(uint pos);
-    void GoForward(uint offs);
-    void GoBack(uint offs);
+    void CopyData(void* ptr, size_t size);
+    void SetCurPos(size_t pos);
+    void GoForward(size_t offs);
+    void GoBack(size_t offs);
 
 private:
-    File(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds, uchar* buf);
+    File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<uchar>&& buf);
 
-    unique_ptr<uchar[]> _fileBuf {};
-    uint _curPos {};
+    unique_del_ptr<uchar> _fileBuf {};
+    size_t _curPos {};
 };
 
 class FileCollection final
@@ -135,7 +134,7 @@ public:
     [[nodiscard]] auto GetCurFileHeader() const -> FileHeader;
     [[nodiscard]] auto FindFileByName(string_view name) const -> File;
     [[nodiscard]] auto FindFileByPath(string_view path) const -> File;
-    [[nodiscard]] auto GetFilesCount() const -> uint;
+    [[nodiscard]] auto GetFilesCount() const -> size_t;
 
     [[nodiscard]] auto MoveNext() -> bool;
 
@@ -147,6 +146,8 @@ private:
     string _filterPath {};
     vector<FileHeader> _allFiles {};
     int _curFileIndex {-1};
+    mutable unordered_map<string, size_t> _nameToIndex {};
+    mutable unordered_map<string, size_t> _pathToIndex {};
 };
 
 class FileSystem final

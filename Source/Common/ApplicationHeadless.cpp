@@ -76,6 +76,8 @@ auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
+    // Todo: implement effect CanBatch
+    UNUSED_VARIABLE(other);
     return false;
 }
 
@@ -107,6 +109,9 @@ Application::Application(GlobalSettings& settings)
 #if FO_WINDOWS && FO_DEBUG
     ::_CrtMemCheckpoint(&CrtMemState);
 #endif
+
+    // Todo: app settings
+    UNUSED_VARIABLE(settings);
 }
 
 #if FO_IOS
@@ -134,6 +139,8 @@ auto Application::AppWindow::GetSize() const -> tuple<int, int>
 
 void Application::AppWindow::SetSize(int w, int h)
 {
+    UNUSED_VARIABLE(w);
+    UNUSED_VARIABLE(h);
 }
 
 auto Application::AppWindow::GetPosition() const -> tuple<int, int>
@@ -145,6 +152,8 @@ auto Application::AppWindow::GetPosition() const -> tuple<int, int>
 
 void Application::AppWindow::SetPosition(int x, int y)
 {
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
 }
 
 auto Application::AppWindow::GetMousePosition() const -> tuple<int, int>
@@ -156,6 +165,8 @@ auto Application::AppWindow::GetMousePosition() const -> tuple<int, int>
 
 void Application::AppWindow::SetMousePosition(int x, int y)
 {
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
 }
 
 auto Application::AppWindow::IsFocused() const -> bool
@@ -176,6 +187,8 @@ auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
 {
     NON_CONST_METHOD_HINT();
 
+    UNUSED_VARIABLE(enable);
+
     return false;
 }
 
@@ -185,22 +198,38 @@ void Application::AppWindow::Blink()
 
 void Application::AppWindow::AlwaysOnTop(bool enable)
 {
+    UNUSED_VARIABLE(enable);
 }
 
 auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     NON_CONST_METHOD_HINT();
 
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
+    UNUSED_VARIABLE(linear_filtered);
+    UNUSED_VARIABLE(with_depth);
+
     return nullptr;
 }
 
 auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) const -> uint
 {
+    UNUSED_VARIABLE(tex);
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
+
     return 0;
 }
 
 auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) const -> vector<uint>
 {
+    UNUSED_VARIABLE(tex);
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(w);
+    UNUSED_VARIABLE(h);
+
     RUNTIME_ASSERT(w && h);
     const auto size = w * h;
     vector<uint> result(size);
@@ -210,10 +239,14 @@ auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, 
 
 void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data)
 {
+    UNUSED_VARIABLE(tex);
+    UNUSED_VARIABLE(r);
+    UNUSED_VARIABLE(data);
 }
 
 void Application::AppRender::SetRenderTarget(RenderTexture* tex)
 {
+    UNUSED_VARIABLE(tex);
 }
 
 auto Application::AppRender::GetRenderTarget() -> RenderTexture*
@@ -223,6 +256,7 @@ auto Application::AppRender::GetRenderTarget() -> RenderTexture*
 
 void Application::AppRender::ClearRenderTarget(uint color)
 {
+    UNUSED_VARIABLE(color);
 }
 
 void Application::AppRender::ClearRenderTargetDepth()
@@ -231,40 +265,63 @@ void Application::AppRender::ClearRenderTargetDepth()
 
 void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
 {
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
+    UNUSED_VARIABLE(w);
+    UNUSED_VARIABLE(h);
 }
 
 void Application::AppRender::DisableScissor()
 {
 }
 
-auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*defines*/, const RenderEffectLoader& /*file_loader*/) -> RenderEffect*
+auto Application::AppRender::CreateEffect(string_view name, string_view defines, const RenderEffectLoader& file_loader) -> RenderEffect*
 {
+    UNUSED_VARIABLE(name);
+    UNUSED_VARIABLE(defines);
+    UNUSED_VARIABLE(file_loader);
+
     return nullptr;
 }
 
 void Application::AppRender::DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, uint pos, RenderEffect* effect, RenderTexture* tex)
 {
+    UNUSED_VARIABLE(vbuf);
+    UNUSED_VARIABLE(ibuf);
+    UNUSED_VARIABLE(pos);
+    UNUSED_VARIABLE(effect);
+    UNUSED_VARIABLE(tex);
 }
 
-void Application::AppRender::DrawPrimitive(const Vertex2DVec& /*vbuf*/, const vector<ushort>& /*ibuf*/, RenderEffect* /*effect*/, RenderPrimitiveType /*prim*/)
+void Application::AppRender::DrawPrimitive(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, RenderEffect* effect, RenderPrimitiveType prim)
 {
+    UNUSED_VARIABLE(vbuf);
+    UNUSED_VARIABLE(ibuf);
+    UNUSED_VARIABLE(effect);
+    UNUSED_VARIABLE(prim);
 }
 
-void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* /*effect*/)
+void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* effect)
 {
+    UNUSED_VARIABLE(mesh);
+    UNUSED_VARIABLE(effect);
 }
 
 auto Application::AppInput::PollEvent(InputEvent& event) -> bool
 {
+    UNUSED_VARIABLE(event);
+
     return false;
 }
 
 void Application::AppInput::PushEvent(const InputEvent& event)
 {
+    UNUSED_VARIABLE(event);
 }
 
 void Application::AppInput::SetClipboardText(string_view text)
 {
+    UNUSED_VARIABLE(text);
 }
 
 auto Application::AppInput::GetClipboardText() -> string
@@ -293,11 +350,18 @@ auto Application::AppAudio::GetSilence() -> uchar
 
 void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
+    UNUSED_VARIABLE(stream_callback);
+
     RUNTIME_ASSERT(IsEnabled());
 }
 
 auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
+    UNUSED_VARIABLE(format);
+    UNUSED_VARIABLE(channels);
+    UNUSED_VARIABLE(rate);
+    UNUSED_VARIABLE(buf);
+
     RUNTIME_ASSERT(IsEnabled());
 
     return true;
@@ -305,6 +369,10 @@ auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vec
 
 void Application::AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
+    UNUSED_VARIABLE(output);
+    UNUSED_VARIABLE(buf);
+    UNUSED_VARIABLE(volume);
+
     RUNTIME_ASSERT(IsEnabled());
 }
 
@@ -320,4 +388,7 @@ void Application::AppAudio::UnlockDevice()
 
 void MessageBox::ShowErrorMessage(string_view title, string_view message, string_view traceback)
 {
+    UNUSED_VARIABLE(title);
+    UNUSED_VARIABLE(message);
+    UNUSED_VARIABLE(traceback);
 }

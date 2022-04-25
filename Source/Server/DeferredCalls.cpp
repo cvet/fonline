@@ -40,6 +40,7 @@
 
 DeferredCallManager::DeferredCallManager(FOServer* engine) : _engine {engine}
 {
+    UNUSED_VARIABLE(_engine);
 }
 
 auto DeferredCallManager::AddDeferredCall(uint delay, bool saved, string_view func_name, int* value, const vector<int>* values, uint* value2, const vector<uint>* values2) -> uint

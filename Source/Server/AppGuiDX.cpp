@@ -130,9 +130,10 @@ bool AppGui::InitDX(string_view app_name, bool docking, bool maximized)
     // Create application window
     WndClassName = _str(app_name).toWideChar();
     WndSubClassName = WndClassName + L" Sub";
-    WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProcHandler, 0L, 0L, GetModuleHandleW(nullptr), nullptr, nullptr, nullptr, nullptr, _str(app_name).toWideChar().c_str(), nullptr};
+    const auto class_name = _str(app_name).toWideChar();
+    const WNDCLASSEX wc = {sizeof(WNDCLASSEX), CS_CLASSDC, WndProcHandler, 0L, 0L, GetModuleHandleW(nullptr), nullptr, nullptr, nullptr, nullptr, class_name.c_str(), nullptr};
     RegisterClassExW(&wc);
-    HWND hwnd = CreateWindowExW(0u, wc.lpszClassName, WndClassName.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, wc.hInstance, nullptr);
+    const HWND hwnd = CreateWindowExW(0u, wc.lpszClassName, WndClassName.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top, nullptr, nullptr, wc.hInstance, nullptr);
 
     // Initialize Direct3D
     if (!CreateDevice(hwnd)) {
@@ -142,7 +143,7 @@ bool AppGui::InitDX(string_view app_name, bool docking, bool maximized)
     }
 
     // Performance counters
-    if (!QueryPerformanceFrequency((LARGE_INTEGER*)&TicksPerSecond) || !QueryPerformanceCounter((LARGE_INTEGER*)&CurTime)) {
+    if (!QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&TicksPerSecond)) || !QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&CurTime))) {
         WriteLog("Failed to call QueryPerformanceFrequency.\n");
         return false;
     }

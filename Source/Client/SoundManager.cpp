@@ -259,7 +259,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         ushort CbSize; // Bytes of extra data appended to this struct
     } waveformatex {};
 
-    file.CopyMem(&waveformatex, 16);
+    file.CopyData(&waveformatex, 16);
 
     if (waveformatex.WFormatTag != 1) {
         WriteLog("Compressed files not supported.\n");
@@ -300,7 +300,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     }
 
     // Convert
-    file.CopyMem(&sound->BaseBuf[0], static_cast<uint>(sound->BaseBufLen));
+    file.CopyData(&sound->BaseBuf[0], sound->BaseBufLen);
 
     return ConvertData(sound);
 }
@@ -317,7 +317,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), file.GetSize(), channels, freq, samples);
+    auto acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
@@ -346,7 +346,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     ov_callbacks callbacks;
     callbacks.read_func = [](void* ptr, size_t size, size_t, void* datasource) -> size_t {
         auto* file2 = static_cast<File*>(datasource);
-        file2->CopyMem(ptr, static_cast<uint>(size));
+        file2->CopyData(ptr, size);
         return size;
     };
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int whence) -> int {
@@ -367,13 +367,13 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return 0;
     };
     callbacks.close_func = [](void* datasource) -> int {
-        auto* file2 = static_cast<File*>(datasource);
+        const auto* file2 = static_cast<File*>(datasource);
         delete file2;
         return 0;
     };
     callbacks.tell_func = [](void* datasource) -> long {
-        auto* file2 = static_cast<File*>(datasource);
-        return file2->GetCurPos();
+        const auto* file2 = static_cast<File*>(datasource);
+        return static_cast<long>(file2->GetCurPos());
     };
 
     sound->OggStream = unique_ptr<OggVorbis_File, std::function<void(OggVorbis_File*)>>(new OggVorbis_File(), [](auto* vf) {
@@ -407,11 +407,8 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return false;
     }
 
-    auto* vi = ov_info(sound->OggStream.get(), -1);
-    if (vi == nullptr) {
-        WriteLog("Ogg info error.\n");
-        return false;
-    }
+    const auto* vi = ov_info(sound->OggStream.get(), -1);
+    RUNTIME_ASSERT(vi != nullptr);
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;

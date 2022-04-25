@@ -40,6 +40,10 @@
 #include "Testing.h"
 
 #if FO_HAVE_FBXSDK
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wnull-dereference"
+#pragma clang diagnostic ignored "-Wuninitialized-const-reference"
+#endif
 #include "fbxsdk.h"
 #endif
 
@@ -294,7 +298,7 @@ public:
             }
         }
         if (len != 0) {
-            _file->CopyMem(buffer, len);
+            _file->CopyData(buffer, len);
         }
         buffer[len] = 0;
         return buffer;
@@ -315,7 +319,7 @@ public:
 
     auto Read(void* data, int size) const -> int override
     {
-        _file->CopyMem(data, size);
+        _file->CopyData(data, size);
         return size;
     }
 
@@ -324,7 +328,7 @@ public:
     auto Write(const void* /*data*/, int /*size*/) -> int override { return 0; }
     [[nodiscard]] auto GetReaderID() const -> int override { return 0; }
     [[nodiscard]] auto GetWriterID() const -> int override { return -1; }
-    [[nodiscard]] auto GetPosition() const -> long override { return _file->GetCurPos(); }
+    [[nodiscard]] auto GetPosition() const -> long override { return static_cast<long>(_file->GetCurPos()); }
     void SetPosition(long position) override { _file->SetCurPos(static_cast<uint>(position)); }
     [[nodiscard]] auto GetError() const -> int override { return 0; }
     void ClearError() override { }

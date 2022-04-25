@@ -117,23 +117,43 @@ static void DrawEntry(string_view name, const float& entry)
 }
 static void DrawEntry(string_view name, const vector<string>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += e;
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 static void DrawEntry(string_view name, const vector<int>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += std::to_string(e);
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 static void DrawEntry(string_view name, const vector<uint>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += std::to_string(e);
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 static void DrawEntry(string_view name, const vector<float>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += std::to_string(e);
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 static void DrawEntry(string_view name, const vector<bool>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += e ? "True" : "False";
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 
 static void DrawEditableEntry(string_view name, string& entry)
@@ -166,22 +186,28 @@ static void DrawEditableEntry(string_view name, float& entry)
 }
 static void DrawEditableEntry(string_view name, vector<string>& entry)
 {
+    // Todo: improve editable entry for arrays
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<int>& entry)
 {
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<uint>& entry)
 {
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<float>& entry)
 {
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<bool>& entry)
 {
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 

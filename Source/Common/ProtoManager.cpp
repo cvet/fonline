@@ -360,7 +360,7 @@ auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>
 }
 
 template<typename T>
-static auto ValidateProtoResourcesExt(NameResolver& name_resolver, const map<hstring, T*>& protos, set<hstring>& hashes) -> int
+static auto ValidateProtoResourcesExt(const map<hstring, T*>& protos, set<hstring>& hashes) -> int
 {
     auto errors = 0;
     for (auto& kv : protos) {
@@ -388,10 +388,10 @@ auto ProtoManager::ValidateProtoResources(const vector<string>& resource_names) 
     }
 
     auto errors = 0;
-    errors += ValidateProtoResourcesExt(*_engine, _itemProtos, hashes);
-    errors += ValidateProtoResourcesExt(*_engine, _crProtos, hashes);
-    errors += ValidateProtoResourcesExt(*_engine, _mapProtos, hashes);
-    errors += ValidateProtoResourcesExt(*_engine, _locProtos, hashes);
+    errors += ValidateProtoResourcesExt(_itemProtos, hashes);
+    errors += ValidateProtoResourcesExt(_crProtos, hashes);
+    errors += ValidateProtoResourcesExt(_mapProtos, hashes);
+    errors += ValidateProtoResourcesExt(_locProtos, hashes);
     return errors == 0;
 }
 

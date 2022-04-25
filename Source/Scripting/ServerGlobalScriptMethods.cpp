@@ -40,6 +40,7 @@
 #include "ScriptSystem.h"
 #include "Server.h"
 #include "StringUtils.h"
+#include "TwoBitMask.h"
 
 // ReSharper disable CppInconsistentNaming
 
@@ -814,21 +815,22 @@
             cr->Send_AutomapsInfo(nullptr, loc);
         }
 
-        ushort zx = loc->GetWorldX() / server->Settings.GlobalMapZoneLength;
-        ushort zy = loc->GetWorldY() / server->Settings.GlobalMapZoneLength;
+        const ushort zx = loc->GetWorldX() / server->Settings.GlobalMapZoneLength;
+        const ushort zy = loc->GetWorldY() / server->Settings.GlobalMapZoneLength;
 
         auto gmap_fog = cr->GetGlobalMapFog();
         if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
             gmap_fog.resize(GM_ZONES_FOG_SIZE);
         }
 
-        /*TwoBitMask gmap_mask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
+        auto gmap_mask = TwoBitMask(GM_MAXZONEX, GM_MAXZONEY, gmap_fog.data());
         if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL) {
             gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
             cr->SetGlobalMapFog(gmap_fog);
-            if (!cr->GetMapId())
+            if (cr->GetMapId() == 0u) {
                 cr->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
-        }*/
+            }
+        }
     }
 
     return loc;

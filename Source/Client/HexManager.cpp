@@ -231,8 +231,6 @@ void Field::ProcessCache()
 
     if (Items != nullptr) {
         for (const auto* item : *Items) {
-            auto pid = item->GetProtoId();
-
             if (item->IsWall()) {
                 Flags.IsWall = true;
                 Flags.IsWallTransp = item->GetIsLightThru();
@@ -296,7 +294,7 @@ void Field::UnvalidateSpriteChain() const
     }
 }
 
-HexManager::HexManager(FOClient* engine) : _engine {engine}, _mainTree(engine->Settings, engine->SprMngr, _spritesPool), _tilesTree(engine->Settings, engine->SprMngr, _spritesPool), _roofTree(engine->Settings, engine->SprMngr, _spritesPool), _roofRainTree(engine->Settings, engine->SprMngr, _spritesPool)
+HexManager::HexManager(FOClient* engine) : _engine {engine}, _mainTree(engine->SprMngr, _spritesPool), _tilesTree(engine->SprMngr, _spritesPool), _roofTree(engine->SprMngr, _spritesPool), _roofRainTree(engine->SprMngr, _spritesPool)
 {
     _rtScreenOx = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
     _rtScreenOy = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
@@ -4465,7 +4463,6 @@ void HexManager::ClearSelTiles()
 
 void HexManager::ParseSelTiles()
 {
-    auto borders_changed = false;
     for (const auto hx : xrange(_maxHexX)) {
         for (const auto hy : xrange(_maxHexY)) {
             for (auto r = 0; r <= 1; r++) {

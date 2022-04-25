@@ -192,7 +192,7 @@
 ///@ ExportMethod AngelScriptOnly
 [[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4)
 {
-    throw ScriptException(message, obj1, obj2, obj3);
+    throw ScriptException(message, obj1, obj2, obj3, obj4);
 }
 
 ///# ...
@@ -200,7 +200,7 @@
 ///@ ExportMethod AngelScriptOnly
 [[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5)
 {
-    throw ScriptException(message, obj1, obj2, obj3, obj4);
+    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5);
 }
 
 ///# ...
@@ -208,7 +208,7 @@
 ///@ ExportMethod AngelScriptOnly
 [[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6)
 {
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5);
+    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6);
 }
 
 ///# ...
@@ -216,7 +216,7 @@
 ///@ ExportMethod AngelScriptOnly
 [[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7)
 {
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6);
+    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7);
 }
 
 ///# ...
@@ -224,7 +224,7 @@
 ///@ ExportMethod AngelScriptOnly
 [[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8)
 {
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7);
+    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8);
 }
 
 ///# ...
@@ -232,7 +232,7 @@
 ///@ ExportMethod AngelScriptOnly
 [[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9)
 {
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8);
+    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9);
 }
 
 ///# ...
@@ -240,7 +240,7 @@
 ///@ ExportMethod AngelScriptOnly
 [[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9, ObjInfo<10> obj10)
 {
-    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9);
+    throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10);
 }
 
 ///# ...
@@ -249,6 +249,7 @@
 [[maybe_unused]] void Common_Game_Yield([[maybe_unused]] FOEngineBase* engine, uint time)
 {
     // Todo: fix script system
+    UNUSED_VARIABLE(time);
     // Script::SuspendCurrentContext(time);
 }
 

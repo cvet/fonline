@@ -131,7 +131,7 @@ auto DialogManager::LoadDialogs() -> bool
     _dialogPacks.clear();
 
     auto files = _engine->FileSys.FilterFiles("fodlg");
-    uint files_loaded = 0;
+    size_t files_loaded = 0u;
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
         if (!file) {

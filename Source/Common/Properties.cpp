@@ -406,6 +406,10 @@ void Properties::SetRawData(const Property* prop, const uchar* data, uint data_s
 
 void Properties::SetValueFromData(const Property* prop, const uchar* data, uint data_size)
 {
+    // Todo: SetValueFromData
+    UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(data);
+    UNUSED_VARIABLE(data_size);
     /*if (dataType == Property::String)
     {
         string str;

@@ -43,6 +43,10 @@
 #include "Timer.h"
 
 #if FO_HAVE_ASIO
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wreorder-ctor"
+#pragma clang diagnostic ignored "-Wunused-local-typedef"
+#endif
 #define ASIO_STANDALONE 1
 #define _WIN32_WINNT 0x0601
 #include "asio.hpp"

@@ -162,7 +162,6 @@ FOMapper::FOMapper(GlobalSettings& settings) :
     const auto history_str = Cache.GetString("mapper_console.txt");
     size_t pos = 0;
     size_t prev = 0;
-    size_t count = 0;
     while ((pos = history_str.find('\n', prev)) != std::string::npos) {
         string history_part;
         history_part.assign(&history_str.c_str()[prev], pos - prev);
@@ -1129,8 +1128,6 @@ void FOMapper::MapperMainLoop()
 
             if (cr->IsNeedMove()) {
                 const auto err_move = ((!cr->IsRunning && cr->GetIsNoWalk()) || (cr->IsRunning && cr->GetIsNoRun()));
-                auto old_hx = cr->GetHexX();
-                auto old_hy = cr->GetHexY();
                 if (!err_move && HexMngr.TransitCritter(cr, cr->MoveSteps[0].first, cr->MoveSteps[0].second, true, false)) {
                     cr->MoveSteps.erase(cr->MoveSteps.begin());
                 }
@@ -1531,7 +1528,6 @@ void FOMapper::IntDraw()
             auto* proto_item = (*CurItemProtos)[GetTabIndex()];
             auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.NameCode);
             if (it != proto_item->TextsLang.end()) {
-                auto index = static_cast<uint>(std::distance(proto_item->TextsLang.begin(), it));
                 auto info = proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
                 info += " - ";
                 info += proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
@@ -1600,8 +1596,8 @@ void FOMapper::IntDraw()
         }
     }
     else if (IntMode == INT_MODE_INCONT && !SelectedEntities.empty()) {
-        auto* entity = SelectedEntities[0];
         vector<Entity*> children; // Todo: need attention!
+        // auto* entity = SelectedEntities[0];
         // = entity->GetChildren();
         uint i = InContScroll;
         auto j = i + ProtosOnScreen;
@@ -1724,7 +1720,6 @@ void FOMapper::ObjDraw()
     const auto x = r.Left;
     const auto y = r.Top;
     const auto w = r.Width();
-    auto h = r.Height();
 
     SprMngr.DrawSprite(ObjWMainPic, ObjX, ObjY, 0);
     if (ObjToAll) {
@@ -1925,7 +1920,6 @@ void FOMapper::IntLMouseDown()
                     continue;
                 }
 
-                const auto& name = fst;
                 auto& stab = snd;
 
                 auto r = IRect(SubTabsRect.Left + SubTabsX + 5, SubTabsRect.Top + SubTabsY + posy, SubTabsRect.Left + SubTabsX + 5 + SubTabsRect.Width(), SubTabsRect.Top + SubTabsY + posy + line_height - 1);
@@ -3233,8 +3227,8 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 {
     RUNTIME_ASSERT(ActiveMap);
 
-    int hx;
-    int hy;
+    int hx = 0;
+    int hy = 0;
     if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
         hx = cr->GetHexX();
         hy = cr->GetHexY();
@@ -3295,6 +3289,8 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
     auto* pmap = static_cast<const ProtoMap*>(ActiveMap->GetProto());
     std::function<void(Entity*, Entity*)> add_entity_children = [&add_entity_children, &pmap](Entity* from, Entity* to) {
         // Todo: need attention!
+        UNUSED_VARIABLE(add_entity_children);
+        UNUSED_VARIABLE(pmap);
         /*for (auto* from_child : from->GetChildren())
         {
             RUNTIME_ASSERT(from_child->Type == EntityType::Item);
@@ -3330,8 +3326,8 @@ void FOMapper::BufferCopy()
 
     // Add entities to buffer
     std::function<void(EntityBuf*, Entity*)> add_entity = [&add_entity](EntityBuf* entity_buf, Entity* entity) {
-        ushort hx;
-        ushort hy;
+        ushort hx = 0u;
+        ushort hy = 0u;
         if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
             hx = cr->GetHexX();
             hy = cr->GetHexY();
@@ -3348,6 +3344,7 @@ void FOMapper::BufferCopy()
         entity_buf->Proto = (dynamic_cast<EntityWithProto*>(entity) != nullptr ? dynamic_cast<EntityWithProto*>(entity)->GetProto() : nullptr);
         entity_buf->Props = new Properties(entity->GetProperties());
         // Todo: need attention!
+        UNUSED_VARIABLE(add_entity);
         /*for (auto* child : entity->GetChildren())
         {
             EntityBuf* child_buf = new EntityBuf();
@@ -3444,6 +3441,7 @@ void FOMapper::BufferPaste(int, int)
         }
 
         // Todo: need attention!
+        UNUSED_VARIABLE(owner);
         /*auto* pmap = dynamic_cast<ProtoMap*>(ActiveMap->Proto);
         std::function<void(EntityBuf*, Entity*)> add_entity_children = [&add_entity_children, &pmap](EntityBuf* entity_buf) {
             for (auto& child_buf : entity_buf->Children) {

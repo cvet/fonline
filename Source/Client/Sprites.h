@@ -139,7 +139,7 @@ class Sprites final
 
 public:
     Sprites() = delete;
-    Sprites(HexSettings& settings, SpriteManager& spr_mngr, SpriteVec& pool) : _settings {settings}, _sprMngr {spr_mngr}, _spritesPool {pool} { }
+    Sprites(SpriteManager& spr_mngr, SpriteVec& pool) : _sprMngr {spr_mngr}, _spritesPool {pool} { }
     Sprites(const Sprites&) = delete;
     Sprites(Sprites&&) noexcept = delete;
     auto operator=(const Sprites&) = delete;
@@ -161,7 +161,6 @@ private:
 
     void GrowPool();
 
-    HexSettings& _settings;
     SpriteManager& _sprMngr;
     SpriteVec& _spritesPool;
     Sprite* _rootSprite {};

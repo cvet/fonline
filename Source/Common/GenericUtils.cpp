@@ -167,7 +167,7 @@ auto Compressor::Compress(const_span<uchar> data) -> vector<uchar>
     return buf;
 }
 
-auto Compressor::Uncompress(const_span<uchar> data, uint mul_approx) -> vector<uchar>
+auto Compressor::Uncompress(const_span<uchar> data, size_t mul_approx) -> vector<uchar>
 {
     auto buf_len = static_cast<uLongf>(data.size() * mul_approx);
     auto buf = vector<uchar>(buf_len);

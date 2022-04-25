@@ -311,6 +311,7 @@ public:
     template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
     void SetValue(const Property* prop, T new_value)
     {
+        (void)new_value;
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
     }

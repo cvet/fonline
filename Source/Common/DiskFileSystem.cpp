@@ -176,13 +176,12 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
     return ::SetFilePointer(_pImpl->FileHandle, offset, nullptr, static_cast<DWORD>(origin)) != INVALID_SET_FILE_POINTER;
 }
 
-auto DiskFile::GetPos() const -> uint
+auto DiskFile::GetPos() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    const auto pos = ::SetFilePointer(_pImpl->FileHandle, 0, nullptr, FILE_CURRENT);
-    return static_cast<uint>(pos);
+    return ::SetFilePointer(_pImpl->FileHandle, 0, nullptr, FILE_CURRENT);
 }
 
 auto DiskFile::GetWriteTime() const -> uint64
@@ -198,7 +197,7 @@ auto DiskFile::GetWriteTime() const -> uint64
     return ::FileTimeToUInt64(tw);
 }
 
-auto DiskFile::GetSize() const -> uint
+auto DiskFile::GetSize() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
 
@@ -276,7 +275,7 @@ auto DiskFile::Write(const void* buf, size_t len) -> bool
     }
 
     SDL_RWops* ops = _pImpl->Ops;
-    bool result = (static_cast<uint>(SDL_RWwrite(ops, buf, sizeof(char), len)) == len);
+    bool result = SDL_RWwrite(ops, buf, sizeof(char), len) == len;
     if (result && _pImpl->WriteThrough) {
         if (ops->type == SDL_RWOPS_WINFILE) {
 #ifdef __WIN32__
@@ -302,12 +301,12 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
     return SDL_RWseek(_pImpl->Ops, offset, static_cast<int>(origin)) != -1;
 }
 
-auto DiskFile::GetPos() const -> uint
+auto DiskFile::GetPos() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    return static_cast<uint>(SDL_RWtell(_pImpl->Ops));
+    return SDL_RWtell(_pImpl->Ops);
 }
 
 auto DiskFile::GetWriteTime() const -> uint64
@@ -338,10 +337,10 @@ auto DiskFile::GetWriteTime() const -> uint64
     throw UnreachablePlaceException(LINE_STR);
 }
 
-auto DiskFile::GetSize() const -> uint
+auto DiskFile::GetSize() const -> size_t
 {
     Sint64 size = SDL_RWsize(_pImpl->Ops);
-    return size <= 0 ? 0u : static_cast<uint>(size);
+    return size <= 0 ? 0u : static_cast<size_t>(size);
 }
 
 #else
@@ -433,12 +432,12 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
     return ::fseek(_pImpl->File, offset, (int)origin) == 0;
 }
 
-auto DiskFile::GetPos() const -> uint
+auto DiskFile::GetPos() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    return static_cast<uint>(::ftell(_pImpl->File));
+    return static_cast<size_t>(::ftell(_pImpl->File));
 }
 
 auto DiskFile::GetWriteTime() const -> uint64
@@ -451,14 +450,14 @@ auto DiskFile::GetWriteTime() const -> uint64
     return static_cast<uint64>(st.st_mtime);
 }
 
-auto DiskFile::GetSize() const -> uint
+auto DiskFile::GetSize() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
 
     int fd = ::fileno(_pImpl->File);
     struct stat st;
     ::fstat(fd, &st);
-    return static_cast<uint>(st.st_size);
+    return static_cast<size_t>(st.st_size);
 }
 #endif
 
@@ -538,7 +537,7 @@ auto DiskFind::GetPath() const -> string
     return WinWideCharToMultiByte(_pImpl->FindData.cFileName);
 }
 
-auto DiskFind::GetFileSize() const -> uint
+auto DiskFind::GetFileSize() const -> size_t
 {
     RUNTIME_ASSERT(_findDataValid);
     RUNTIME_ASSERT(!(_pImpl->FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY));
@@ -562,7 +561,7 @@ struct DiskFind::Impl
     string Ext {};
     dirent* Ent {};
     bool IsDir {};
-    uint Size {};
+    size_t Size {};
     uint64 WriteTime {};
 };
 
@@ -642,7 +641,7 @@ auto DiskFind::operator++(int) -> DiskFind&
     }
 
     _pImpl->IsDir = S_ISDIR(st.st_mode);
-    _pImpl->Size = (uint)st.st_size;
+    _pImpl->Size = st.st_size;
     _pImpl->WriteTime = (uint64)st.st_mtime;
     _findDataValid = true;
     return *this;
@@ -667,7 +666,7 @@ auto DiskFind::GetPath() const -> string
     return _pImpl->Ent->d_name;
 }
 
-auto DiskFind::GetFileSize() const -> uint
+auto DiskFind::GetFileSize() const -> size_t
 {
     RUNTIME_ASSERT(_findDataValid);
     RUNTIME_ASSERT(!_pImpl->IsDir);

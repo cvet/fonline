@@ -433,6 +433,8 @@ void LanguagePack::LoadFromFiles(FileSystem& file_sys, NameResolver& name_resolv
 
 void LanguagePack::LoadFromCache(const CacheStorage& cache, NameResolver& name_resolver, string_view lang_name)
 {
+    UNUSED_VARIABLE(name_resolver);
+
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
     NameCode = *reinterpret_cast<const uint*>(lang_name.data());

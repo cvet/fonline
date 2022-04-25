@@ -1245,7 +1245,7 @@ def genCode(lang, target, isASCompiler=False):
                         return 'ScriptEnum_' + e[1]
                 assert False, 'Enum not found ' + tt[0]
             elif tt[0] == 'ObjInfo':
-                return 'void* obj' + tt[1] + 'Ptr, int'
+                return '[[maybe_unused]] void* obj' + tt[1] + 'Ptr, int'
             elif tt[0] == 'ScriptFuncName':
                 return 'asIScriptFunction*'
             else:
@@ -1355,6 +1355,8 @@ def genCode(lang, target, isASCompiler=False):
                 if targ in allowedTargets:
                     globalLines.append('struct ' + objName)
                     globalLines.append('{')
+                    globalLines.append('    void AddRef() { }')
+                    globalLines.append('    void Release() { }')
                     globalLines.append('    int RefCounter;')
                     for f in fields:
                         globalLines.append('    ' + metaTypeToEngineType(f[0], target, False) + ' ' + f[1] + ';')
@@ -1398,8 +1400,11 @@ def genCode(lang, target, isASCompiler=False):
                     globalLines.append(ident + '    return ' + marshalBack(ret, 'out_result') + ';')
             else:
                 # Stub for compiler
+                globalLines.append(ident + '    UNUSED_VARIABLE(self);')
+                for p in params:
+                    globalLines.append(ident + '    UNUSED_VARIABLE(' + p[1] + ');')
                 globalLines.append(ident + '    throw ScriptCompilerException("Stub");')
-                    
+            
             globalLines.append(ident + '}')
             globalLines.append('')
             
@@ -1475,6 +1480,7 @@ def genCode(lang, target, isASCompiler=False):
                         globalLines.append('        if (script_sys->RunContext(ctx, func->GetReturnTypeId() == asTYPEID_VOID)) {')
                         globalLines.append('            event_result = (func->GetReturnTypeId() == asTYPEID_VOID || (func->GetReturnTypeId() == asTYPEID_BOOL && ctx->GetReturnByte() != 0));')
                         globalLines.append('            // Todo: marshal back before context returned')
+                        globalLines.append('            UNUSED_VARIABLE(self);')
                         globalLines.append('            script_sys->ReturnContext(ctx);')
                         globalLines.append('        }')
                         globalLines.append('        return event_result;')
@@ -1484,6 +1490,8 @@ def genCode(lang, target, isASCompiler=False):
                         else:
                             globalLines.append('    self->SubscribeEvent(' + funcEntry + '_Name, std::move(event_data));')
                     else:
+                        globalLines.append('    UNUSED_VARIABLE(self);')
+                        globalLines.append('    UNUSED_VARIABLE(func);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('static void ' + funcEntry + '_Unsubscribe(' + entityArg + ', asIScriptFunction* func)')
@@ -1495,6 +1503,8 @@ def genCode(lang, target, isASCompiler=False):
                         else:
                             globalLines.append('    self->UnsubscribeEvent(' + funcEntry + '_Name, func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                     else:
+                        globalLines.append('    UNUSED_VARIABLE(self);')
+                        globalLines.append('    UNUSED_VARIABLE(func);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('static void ' + funcEntry + '_UnsubscribeAll(' + entityArg + ')')
@@ -1506,6 +1516,7 @@ def genCode(lang, target, isASCompiler=False):
                         else:
                             globalLines.append('    self->UnsubscribeAllEvent(' + funcEntry + '_Name);')
                     else:
+                        globalLines.append('    UNUSED_VARIABLE(self);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     if not isExported:
@@ -1523,6 +1534,9 @@ def genCode(lang, target, isASCompiler=False):
                             else:
                                 globalLines.append('    return self->FireEvent(' + funcEntry + '_Name, {' + ', '.join(['&in_' + p[1] for p in evArgs]) + '});')
                         else:
+                            globalLines.append('    UNUSED_VARIABLE(self);')
+                            for p in evArgs:
+                                globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
                             globalLines.append('    throw ScriptCompilerException("Stub");')
                         globalLines.append('}')
                     globalLines.append('')
@@ -1540,6 +1554,7 @@ def genCode(lang, target, isASCompiler=False):
                     if not isASCompiler:
                         globalLines.append('    return ' + marshalBack(keyType, 'self->Settings.' + keyName) + ';')
                     else:
+                        globalLines.append('    UNUSED_VARIABLE(self);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     if fixOrVar == 'var':
@@ -1548,6 +1563,8 @@ def genCode(lang, target, isASCompiler=False):
                         if not isASCompiler:
                             globalLines.append('    self->Settings.' + keyName + ' = ' + marshalIn(keyType, 'value') + ';')
                         else:
+                            globalLines.append('    UNUSED_VARIABLE(self);')
+                            globalLines.append('    UNUSED_VARIABLE(value);')
                             globalLines.append('    throw ScriptCompilerException("Stub");')
                         globalLines.append('}')
                     globalLines.append('')
@@ -1558,6 +1575,7 @@ def genCode(lang, target, isASCompiler=False):
             if not isASCompiler:
                 globalLines.append('    return ' + marshalBack(type, 'std::any_cast<' + metaTypeToEngineType(type, target, False) + '&>(GET_SCRIPT_SYS_FROM_SELF()->SettingsStorage["' + name + '"])') + ';')
             else:
+                globalLines.append('    UNUSED_VARIABLE(self);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')
             globalLines.append('}')
             globalLines.append('static void ASSetting_Set_' + name + '(' + settEntity + ', ' + metaTypeToASEngineType(type, False) + ' value)')
@@ -1565,6 +1583,8 @@ def genCode(lang, target, isASCompiler=False):
             if not isASCompiler:
                 globalLines.append('    GET_SCRIPT_SYS_FROM_SELF()->SettingsStorage["' + name + '"] = ' + marshalIn(type, 'value') + ';')
             else:
+                globalLines.append('    UNUSED_VARIABLE(self);')
+                globalLines.append('    UNUSED_VARIABLE(value);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')
             globalLines.append('}')
             globalLines.append('')
@@ -1578,6 +1598,13 @@ def genCode(lang, target, isASCompiler=False):
                     selfArg = 'Player* self' if target == 'Server' else 'FOClient* self'
                     globalLines.append('static void ASRemoteCall_' + rcName + '(' + selfArg + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
                     globalLines.append('{')
+                    if not isASCompiler:
+                        pass
+                    else:
+                        globalLines.append('    UNUSED_VARIABLE(self);')
+                        for p in rcArgs:
+                            globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                        globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('')
             globalLines.append('')

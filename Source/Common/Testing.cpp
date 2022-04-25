@@ -344,6 +344,7 @@ auto GetStackTrace() -> string
 static void DumpAngelScript(DiskFile& file)
 {
     // Todo: fix script system
+    UNUSED_VARIABLE(file);
     // string tb = Script::GetTraceback();
     // if (!tb.empty())
     //    file.Write(_str("AngelScript\n{}", tb));

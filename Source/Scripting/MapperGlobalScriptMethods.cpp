@@ -405,8 +405,8 @@
 ///@ ExportMethod
 [[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
-    auto* pmap = new ProtoMap(mapper->ToHashedString(fileName), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
     // Todo: need attention!
+    // auto* pmap = new ProtoMap(mapper->ToHashedString(fileName), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
     // if (!pmap->EditorLoad(mapper->ServerFileSys, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
     //     return nullptr;
 
@@ -606,8 +606,7 @@
     }
 
     auto& ttab = mapper->TabsTiles[tab];
-    // return ttab.TileSubDirs;
-    return vector<string>();
+    return ttab.TileDirs;
 }
 
 ///# ...
@@ -624,9 +623,12 @@
         return vector<hstring>();
     }
 
-    auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
-    // return stab.ItemProtos;
-    return vector<hstring>();
+    vector<hstring> pids;
+    const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
+    for (const auto* proto : stab.ItemProtos) {
+        pids.push_back(proto->GetProtoId());
+    }
+    return pids;
 }
 
 ///# ...
@@ -643,9 +645,12 @@
         return vector<hstring>();
     }
 
-    auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
-    // return stab.NpcProtos;
-    return vector<hstring>();
+    vector<hstring> pids;
+    const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
+    for (const auto* proto : stab.NpcProtos) {
+        pids.push_back(proto->GetProtoId());
+    }
+    return pids;
 }
 
 ///# ...
