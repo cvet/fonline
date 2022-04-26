@@ -1109,6 +1109,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 #endif
 
+#if COMPILER_MODE
+    int dummy = 0;
+#endif
+
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
     RUNTIME_ASSERT(engine);
 
@@ -1323,9 +1327,10 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 prop_enums.push_back(static_cast<ScriptEnum_uint16>(prop->GetRegIndex()));
             }
 
-            void* as_prop_enums = nullptr;
 #if !COMPILER_MODE
-            as_prop_enums = MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums);
+            void* as_prop_enums = MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums);
+#else
+            void* as_prop_enums = &dummy;
 #endif
             AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[] {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), as_prop_enums));
         }
@@ -1344,7 +1349,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", game_engine->_curMap));
     AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", game_engine->_curLocation));
 #else
-    int dummy = 0;
     AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &dummy));
     AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &dummy));
 #endif
