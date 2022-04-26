@@ -3245,17 +3245,19 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
             }
         }
 
-        CritterView* cr = 0; // Todo: need attention!
-                             // new CritterView(
-                             //--((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity->Proto, Settings,
-                             // SprMngr, ResMngr);
-        cr->SetProperties(entity->GetProperties());
-        cr->SetHexX(hx);
-        cr->SetHexY(hy);
-        cr->Init();
-        HexMngr.AddCritter(cr);
-        SelectAdd(cr);
-        owner = cr;
+        UNUSED_VARIABLE(hx);
+        UNUSED_VARIABLE(hy);
+        // CritterView* cr = 0; // Todo: need attention!
+        //  new CritterView(
+        //--((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity->Proto, Settings,
+        //  SprMngr, ResMngr);
+        // cr->SetProperties(entity->GetProperties());
+        // cr->SetHexX(hx);
+        // cr->SetHexY(hy);
+        // cr->Init();
+        // HexMngr.AddCritter(cr);
+        // SelectAdd(cr);
+        // owner = cr;
     }
     else if (dynamic_cast<ItemHexView*>(entity) != nullptr) {
         const uint id = 0; // Todo: need attention!
@@ -3402,16 +3404,18 @@ void FOMapper::BufferPaste(int, int)
                 }
             }
 
-            CritterView* cr = 0; // Todo: need attention!
-            // new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
-            //  (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
-            cr->SetProperties(*entity_buf.Props);
-            cr->SetHexX(hx);
-            cr->SetHexY(hy);
-            cr->Init();
-            HexMngr.AddCritter(cr);
-            SelectAdd(cr);
-            owner = cr;
+            UNUSED_VARIABLE(hx);
+            UNUSED_VARIABLE(hy);
+            // CritterView* cr = 0; // Todo: need attention!
+            //  new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
+            //   (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
+            // cr->SetProperties(*entity_buf.Props);
+            // cr->SetHexX(hx);
+            // cr->SetHexY(hy);
+            // cr->Init();
+            // HexMngr.AddCritter(cr);
+            // SelectAdd(cr);
+            // owner = cr;
         }
         else if (entity_buf.IsItem) {
             const uint id = 0; // Todo: need attention!

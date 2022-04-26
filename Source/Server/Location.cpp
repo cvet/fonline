@@ -47,6 +47,7 @@ void Location::BindScript()
     EntranceScriptBindId = 0;
 
     if (const auto func_name = GetEntranceScript()) {
+        UNUSED_VARIABLE(func_name);
         /*EntranceScriptBindId =
             scriptSys.BindByFuncName(GetEntranceScript(), "bool %s(Location, Critter[], uint8 entranceIndex)", false);*/
     }

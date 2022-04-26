@@ -162,10 +162,8 @@ auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view dat
     return _str("{}/{}", work_path, _str(data_name).replace('/', '_').replace('\\', '_'));
 }
 
-FileCacheStorage::FileCacheStorage(string_view real_path)
+FileCacheStorage::FileCacheStorage(string_view real_path) : _workPath {_str(real_path).eraseFileExtension()}
 {
-    _workPath = _str(real_path).eraseFileExtension();
-
     DiskFileSystem::ResolvePath(_workPath);
     DiskFileSystem::MakeDirTree(_workPath);
 
@@ -174,7 +172,7 @@ FileCacheStorage::FileCacheStorage(string_view real_path)
         throw CacheStorageException("Can't init ping file", _workPath);
     }
 
-    if (!file.Write("Ping", 4u)) {
+    if (!file.Write("Ping")) {
         throw CacheStorageException("Can't write ping file", _workPath);
     }
 }

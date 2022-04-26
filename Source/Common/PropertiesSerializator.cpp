@@ -410,7 +410,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     else {
 #define PARSE_VALUE(t, db_t) \
     RUNTIME_ASSERT(sizeof(t) == prop->_baseSize); \
-    dict.insert(std::make_pair(std::move(key_str), static_cast<db_t>(*reinterpret_cast<const t*>(pvalue))))
+    dict.insert(std::make_pair(std::move(key_str), static_cast<db_t>(*static_cast<const t*>(reinterpret_cast<const void*>(pvalue)))))
 
                         if (prop->_isInt8) {
                             PARSE_VALUE(char, int);

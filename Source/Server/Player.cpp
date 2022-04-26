@@ -41,10 +41,8 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef()), _name {name}
+Player::Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef()), Connection {connection}, _name {name}, _talkNextTick {_engine->GameTime.GameTick() + PROCESS_TALK_TICK}
 {
-    Connection = connection;
-    _talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
 }
 
 Player::~Player()
