@@ -248,7 +248,7 @@ public:
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
     [[nodiscard]] auto GetSpritesColor() const -> uint { return _baseColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
-    [[nodiscard]] auto GetSpriteInfo(uint id) -> const SpriteInfo* { return _sprData[id]; }
+    [[nodiscard]] auto GetSpriteInfo(uint id) const -> const SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { return _sprData[id]; }
     [[nodiscard]] auto GetDrawRect(Sprite* prep) const -> IRect;
     [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;

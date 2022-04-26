@@ -292,7 +292,7 @@ public:
     vector<bool> DrawCritterModelFailedToLoad {};
     int DrawCritterModelLayers[LAYERS3D_COUNT] {};
 
-private:
+protected:
     struct ClientUpdate
     {
         struct UpdateFile
@@ -374,7 +374,6 @@ private:
     void WaitDraw();
 
     void SetDayTime(bool refresh);
-    void SetGameColor(uint color);
     void LookBordersPrepare();
     void LmapPrepareMap();
     void GmapNullParams();

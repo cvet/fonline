@@ -474,9 +474,10 @@
     }
 
     mapper->SelectClear();
-    if (!mapper->HexMngr.SetProtoMap(*static_cast<const ProtoMap*>(map->GetProto()))) {
-        return false;
-    }
+    // Todo: need attention!
+    // if (!mapper->HexMngr.SetProtoMap(*static_cast<const ProtoMap*>(map->GetProto()))) {
+    //  return false;
+    //}
 
     mapper->HexMngr.FindSetCenter(map->GetWorkHexX(), map->GetWorkHexY());
     mapper->ActiveMap = map;
@@ -529,10 +530,11 @@
     }
 
     RUNTIME_ASSERT(mapper->ActiveMap);
-    auto* pmap = const_cast<ProtoMap*>(static_cast<const ProtoMap*>(mapper->ActiveMap->GetProto()));
+    auto* pmap = const_cast<ProtoMap*>(dynamic_cast<const ProtoMap*>(mapper->ActiveMap->GetProto()));
 
     // Unload current
-    mapper->HexMngr.GetProtoMap(*pmap);
+    // Todo: need attention!
+    // mapper->HexMngr.GetProtoMap(*pmap);
     mapper->SelectClear();
     mapper->HexMngr.UnloadMap();
 
@@ -591,7 +593,7 @@
     }
 
     // Update visibility
-    mapper->HexMngr.SetProtoMap(*pmap);
+    // mapper->HexMngr.SetProtoMap(*pmap);
     mapper->HexMngr.FindSetCenter(pmap->GetWorkHexX(), pmap->GetWorkHexY());
 }
 

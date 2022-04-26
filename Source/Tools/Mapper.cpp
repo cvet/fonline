@@ -129,9 +129,11 @@ FOMapper::FOMapper(GlobalSettings& settings) :
         const auto map_name = Settings.StartMap;
         auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
         const bool initialized = 0;
+        UNUSED_VARIABLE(pmap);
+        UNUSED_VARIABLE(initialized);
         // pmap->EditorLoad(ServerFileSys, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
 
-        if (initialized && HexMngr.SetProtoMap(*pmap)) {
+        /*if (initialized && HexMngr.SetProtoMap(*pmap)) {
             auto hexX = Settings.StartHexX;
             auto hexY = Settings.StartHexY;
             if (hexX < 0 || hexX >= pmap->GetWidth()) {
@@ -146,7 +148,7 @@ FOMapper::FOMapper(GlobalSettings& settings) :
             ActiveMap = map;
             LoadedMaps.push_back(map);
             RunMapLoadScript(map);
-        }
+        }*/
     }
 
     // Start script
@@ -459,25 +461,6 @@ void FOMapper::AnimFree(AtlasType res_type)
         if (anim != nullptr && anim->ResType == res_type) {
             delete anim;
         }
-    }
-}
-
-void FOMapper::ProcessInputEvents()
-{
-    // Stop processing if window not active
-    if (!SprMngr.IsWindowFocused()) {
-        InputEvent event;
-        while (App->Input.PollEvent(event)) {
-        }
-
-        Keyb.Lost();
-        OnInputLost.Fire();
-        return;
-    }
-
-    InputEvent event;
-    while (App->Input.PollEvent(event)) {
-        ProcessInputEvent(event);
     }
 }
 

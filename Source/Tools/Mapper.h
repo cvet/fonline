@@ -186,7 +186,6 @@ public:
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ChangeGameTime();
-    void ProcessInputEvents();
     void ProcessInputEvent(const InputEvent& event);
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;

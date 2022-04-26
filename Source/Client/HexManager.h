@@ -173,8 +173,8 @@ public:
     [[nodiscard]] auto GetLightHex(ushort hx, ushort hy) -> uchar* { NON_CONST_METHOD_HINT_ONELINE() return &_hexLight[hy * _maxHexX * 3 + hx * 3]; }
     [[nodiscard]] auto GetWidth() const -> ushort { return _maxHexX; }
     [[nodiscard]] auto GetHeight() const -> ushort { return _maxHexY; }
-    [[nodiscard]] auto GetDayTime() -> int;
-    [[nodiscard]] auto GetMapTime() -> int;
+    [[nodiscard]] auto GetDayTime() const -> int;
+    [[nodiscard]] auto GetMapTime() const -> int;
     [[nodiscard]] auto GetMapDayTime() -> int*;
     [[nodiscard]] auto GetMapDayColor() -> uchar*;
     [[nodiscard]] auto GetDrawTree() -> Sprites& { return _mainTree; }
@@ -259,8 +259,6 @@ public:
     [[nodiscard]] auto IsIgnorePid(hstring pid) const -> bool;
     [[nodiscard]] auto GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushort>>;
 
-    auto SetProtoMap(const ProtoMap& pmap) -> bool;
-    void GetProtoMap(ProtoMap& pmap);
     void ClearSelTiles();
     void ParseSelTiles();
     void SetTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof, bool select);

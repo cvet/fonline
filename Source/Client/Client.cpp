@@ -91,7 +91,7 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     Settings.MouseX = std::clamp(x, 0, w - 1);
     Settings.MouseY = std::clamp(y, 0, h - 1);
 
-    SetGameColor(COLOR_IFACE);
+    SprMngr.SetSpritesColor(COLOR_IFACE);
 
     EffectMngr.LoadDefaultEffects();
 
@@ -3913,15 +3913,6 @@ void FOClient::Net_OnViewMap()
     dict->Release();*/
 }
 
-void FOClient::SetGameColor(uint color)
-{
-    SprMngr.SetSpritesColor(color);
-
-    if (HexMngr.IsMapLoaded()) {
-        HexMngr.RefreshMap();
-    }
-}
-
 void FOClient::SetDayTime(bool refresh)
 {
     if (refresh) {
@@ -3937,7 +3928,8 @@ void FOClient::SetDayTime(bool refresh)
 
     if (!_prevDayTimeColor.has_value() || _prevDayTimeColor != color) {
         _prevDayTimeColor = color;
-        SetGameColor(color);
+        SprMngr.SetSpritesColor(color);
+        HexMngr.RefreshMap();
     }
 }
 

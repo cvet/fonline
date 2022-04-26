@@ -4211,14 +4211,12 @@ void HexManager::GenerateItem(uint id, hstring proto_id, Properties& props)
     }
 }
 
-auto HexManager::GetDayTime() -> int
+auto HexManager::GetDayTime() const -> int
 {
-    // Todo: need attention!
-    // return Globals->GetHour() * 60 + Globals->GetMinute();
-    return 0;
+    return _engine->GetHour() * 60 + _engine->GetMinute();
 }
 
-auto HexManager::GetMapTime() -> int
+auto HexManager::GetMapTime() const -> int
 {
     if (_curMapTime < 0) {
         return GetDayTime();
@@ -4239,73 +4237,70 @@ auto HexManager::GetMapDayColor() -> uchar*
 void HexManager::OnResolutionChanged()
 {
     _fogForceRerender = true;
+
     ResizeView();
     RefreshMap();
 }
 
-auto HexManager::SetProtoMap(const ProtoMap& /*pmap*/) -> bool
+/*void HexManager::SetMap(const MapView* map)
 {
-    // Todo: need attention!
-    /*WriteLog("Create map from prototype.\n");
+    WriteLog("Create map from prototype.\n");
 
     UnloadMap();
 
-    if (curDataPrefix != settings.MapDataPrefix)
+    if (_curDataPrefix != _engine->Settings.MapDataPrefix) {
         ReloadSprites();
+    }
 
-    ResizeField(pmap.GetWidth(), pmap.GetHeight());
+    ResizeField(map->GetWidth(), map->GetHeight());
 
-    curPidMap = 1;
+    _curPidMap = map->GetProtoId();
 
-    int day_time = pmap.GetCurDayTime();
-    Globals->SetMinute(day_time % 60);
-    Globals->SetHour(day_time / 60 % 24);
+    const int day_time = map->GetCurDayTime();
+    _engine->SetMinute(day_time % 60);
+    _engine->SetHour(day_time / 60 % 24);
     uint color = GenericUtils::GetColorDay(GetMapDayTime(), GetMapDayColor(), GetMapTime(), nullptr);
-    sprMngr.SetSpritesColor(COLOR_GAME_RGB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF));
+    _engine->SprMngr.SetSpritesColor(COLOR_GAME_RGB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF));
 
-    CScriptArray* dt = pmap.GetDayTime();
-    CScriptArray* dc = pmap.GetDayColor();
-    for (int i = 0; i < 4; i++)
-        dayTime[i] = *(int*)dt->At(i);
-    for (int i = 0; i < 12; i++)
-        dayColor[i] = *(uchar*)dc->At(i);
-    dt->Release();
-    dc->Release();
+    const auto dt = map->GetDayTime();
+    for (int i = 0; i < 4; i++) {
+        _dayTime[i] = dt[i];
+    }
+
+    const auto dc = map->GetDayColor();
+    for (int i = 0; i < 12; i++) {
+        _dayColor[i] = dc[i];
+    }
 
     // Tiles
-    ushort width = pmap.GetWidth();
-    ushort height = pmap.GetHeight();
+    const ushort width = map->GetWidth();
+    const ushort height = map->GetHeight();
     TilesField.resize(width * height);
     RoofsField.resize(width * height);
-    for (auto& tile : pmap.Tiles)
-    {
-        if (!tile.IsRoof)
-        {
+
+    for (auto& tile : map->Tiles) {
+        if (!tile.IsRoof) {
             TilesField[tile.HexY * width + tile.HexX].push_back(tile);
             TilesField[tile.HexY * width + tile.HexX].back().IsSelected = false;
         }
-        else
-        {
+        else {
             RoofsField[tile.HexY * width + tile.HexX].push_back(tile);
             RoofsField[tile.HexY * width + tile.HexX].back().IsSelected = false;
         }
     }
-    for (ushort hy = 0; hy < height; hy++)
-    {
-        for (ushort hx = 0; hx < width; hx++)
-        {
+
+    for (ushort hy = 0; hy < height; hy++) {
+        for (ushort hx = 0; hx < width; hx++) {
             Field& f = GetField(hx, hy);
 
             for (int r = 0; r <= 1; r++) // Tile/roof
             {
                 MapTileVec& tiles = GetTiles(hx, hy, r != 0);
 
-                for (uint i = 0, j = (uint)tiles.size(); i < j; i++)
-                {
+                for (uint i = 0, j = (uint)tiles.size(); i < j; i++) {
                     MapTile& tile = tiles[i];
                     AnyFrames* anim = resMngr.GetItemAnim(tile.Name);
-                    if (anim)
-                    {
+                    if (anim) {
                         Field::Tile& ftile = f.AddTile(anim, tile.OffsX, tile.OffsY, tile.Layer, tile.IsRoof);
                         ProcessTileBorder(ftile, tile.IsRoof);
                     }
@@ -4315,72 +4310,61 @@ auto HexManager::SetProtoMap(const ProtoMap& /*pmap*/) -> bool
     }
 
     // Entities
-    for (auto& entity : pmap.AllEntities)
-    {
-        if (entity->Type == EntityType::Item)
-        {
+    for (auto& entity : map->AllEntities) {
+        if (entity->Type == EntityType::Item) {
             ItemView* entity_item = (ItemView*)entity;
-            if (entity_item->GetOwnership() == ItemOwnership::MapHex)
-            {
+            if (entity_item->GetOwnership() == ItemOwnership::MapHex) {
                 GenerateItem(entity_item->Id, entity_item->GetProtoId(), entity_item->_props);
             }
-            else if (entity_item->GetOwnership() == ItemOwnership::CritterInventory)
-            {
+            else if (entity_item->GetOwnership() == ItemOwnership::CritterInventory) {
                 CritterView* cr = GetCritter(entity_item->GetCritId());
                 if (cr)
                     cr->AddItem(entity_item->Clone());
             }
-            else if (entity_item->GetOwnership() == ItemOwnership::ItemContainer)
-            {
+            else if (entity_item->GetOwnership() == ItemOwnership::ItemContainer) {
                 ItemView* cont = GetItemById(entity_item->GetContainerId());
                 if (cont)
                     cont->ContSetItem(entity_item->Clone());
             }
-            else
-            {
+            else {
                 throw UnreachablePlaceException(LINE_STR);
             }
         }
-        else if (entity->Type == EntityType::CritterView)
-        {
+        else if (entity->Type == EntityType::CritterView) {
             CritterView* entity_cr = (CritterView*)entity;
-            CritterView* cr =
-                new CritterView(entity_cr->Id, (ProtoCritter*)entity_cr->Proto, settings, sprMngr, resMngr);
+            CritterView* cr = new CritterView(entity_cr->Id, (ProtoCritter*)entity_cr->Proto, settings, sprMngr, resMngr);
             cr->_props = entity_cr->_props;
             cr->Init();
             AddCritter(cr);
         }
-        else
-        {
+        else {
             throw UnreachablePlaceException(LINE_STR);
         }
     }
 
     ResizeView();
 
-    curHashTiles = hash(-1);
-    curHashScen = hash(-1);
-    WriteLog("Create map from prototype complete.\n");*/
-    return true;
+    _curHashTiles = static_cast<uint>(-1);
+    _curHashScen = static_cast<uint>(-1);
+
+    WriteLog("Create map from prototype complete.\n");
 }
 
-void HexManager::GetProtoMap(ProtoMap& pmap)
+void HexManager::GetMap(MapView* map)
 {
-    // Todo: need attention!
-    /*pmap.SetWorkHexX(screenHexX);
-    pmap.SetWorkHexY(screenHexY);
-    pmap.SetCurDayTime(GetDayTime());
+    map->SetWorkHexX(_screenHexX);
+    map->SetWorkHexY(_screenHexY);
+    map->SetCurDayTime(GetDayTime());
 
     // Fill entities
-    for (auto& entity : pmap.AllEntities)
+    for (auto& entity : map->AllEntities)
         entity->Release();
-    pmap.AllEntities.clear();
+    map->AllEntities.clear();
 
     auto* spr_mngr = &sprMngr;
     auto* res_mngr = &resMngr;
     auto* sett = &settings;
-    std::function<void(Entity*)> fill_recursively = [&fill_recursively, &pmap, sett, spr_mngr, res_mngr](
-                                                        Entity* entity) {
+    std::function<void(Entity*)> fill_recursively = [&fill_recursively, &pmap, sett, spr_mngr, res_mngr](Entity* entity) {
         Entity* store_entity = nullptr;
         if (entity->Type == EntityType::ItemHexView || entity->Type == EntityType::Item)
             store_entity = new ItemView(entity->Id, (ProtoItem*)entity->Proto);
@@ -4390,9 +4374,8 @@ void HexManager::GetProtoMap(ProtoMap& pmap)
             throw UnreachablePlaceException(LINE_STR);
 
         store_entity->_props = entity->_props;
-        pmap.AllEntities.push_back(store_entity);
-        for (auto& child : entity->GetChildren())
-        {
+        map->AllEntities.push_back(store_entity);
+        for (auto& child : entity->GetChildren()) {
             RUNTIME_ASSERT(child->Type == EntityType::Item);
             fill_recursively(child);
         }
@@ -4404,24 +4387,22 @@ void HexManager::GetProtoMap(ProtoMap& pmap)
         fill_recursively(item);
 
     // Fill tiles
-    pmap.Tiles.clear();
+    map->Tiles.clear();
     ushort width = GetWidth();
     ushort height = GetHeight();
     TilesField.resize(width * height);
     RoofsField.resize(width * height);
-    for (ushort hy = 0; hy < height; hy++)
-    {
-        for (ushort hx = 0; hx < width; hx++)
-        {
+    for (ushort hy = 0; hy < height; hy++) {
+        for (ushort hx = 0; hx < width; hx++) {
             MapTileVec& tiles = TilesField[hy * width + hx];
             for (uint i = 0, j = (uint)tiles.size(); i < j; i++)
-                pmap.Tiles.push_back(tiles[i]);
+                map->Tiles.push_back(tiles[i]);
             MapTileVec& roofs = RoofsField[hy * width + hx];
             for (uint i = 0, j = (uint)roofs.size(); i < j; i++)
-                pmap.Tiles.push_back(roofs[i]);
+                map->Tiles.push_back(roofs[i]);
         }
-    }*/
-}
+    }
+}*/
 
 auto HexManager::GetTiles(ushort hx, ushort hy, bool is_roof) -> vector<MapTile>&
 {
