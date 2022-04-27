@@ -72,7 +72,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] int Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
     if (cr1 == nullptr) {
@@ -169,7 +169,7 @@
 
     // On other critters
     if (item == nullptr) {
-        for (auto it = client->HexMngr.GetCritters().begin(); !item && it != client->HexMngr.GetCritters().end(); ++it) {
+        for (auto it = client->CurMap->GetCritters().begin(); !item && it != client->CurMap->GetCritters().end(); ++it) {
             if (!it->second->IsChosen()) {
                 item = it->second->GetItem(itemId);
             }
@@ -188,8 +188,8 @@
 [[maybe_unused]] vector<ItemView*> Client_Game_GetVisibleItems(FOClient* client)
 {
     vector<ItemView*> items;
-    if (client->HexMngr.IsMapLoaded()) {
-        auto& items_ = client->HexMngr.GetItems();
+    if (client->CurMap != nullptr) {
+        auto& items_ = client->CurMap->GetItems();
         for (auto it = items_.begin(); it != items_.end();) {
             it = ((*it)->IsFinishing() ? items_.erase(it) : ++it);
         }
@@ -208,8 +208,8 @@
 [[maybe_unused]] vector<ItemView*> Client_Game_GetVisibleItemsOnHex(FOClient* client, ushort hx, ushort hy)
 {
     vector<ItemHexView*> hex_items;
-    if (client->HexMngr.IsMapLoaded()) {
-        client->HexMngr.GetItems(hx, hy, hex_items);
+    if (client->CurMap != nullptr) {
+        client->CurMap->GetItems(hx, hy, hex_items);
         for (auto it = hex_items.begin(); it != hex_items.end();) {
             it = ((*it)->IsFinishing() ? hex_items.erase(it) : ++it);
         }
@@ -249,11 +249,11 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersAroundHex(FOClient* client, ushort hx, ushort hy, uint radius, CritterFindType findType)
 {
-    if (hx >= client->HexMngr.GetWidth() || hy >= client->HexMngr.GetHeight()) {
+    if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid hexes args");
     }
 
-    auto& crits = client->HexMngr.GetCritters();
+    auto& crits = client->CurMap->GetCritters();
     vector<CritterView*> critters;
     for (auto it = crits.begin(), end = crits.end(); it != end; ++it) {
         auto* cr = it->second;
@@ -277,14 +277,14 @@
     vector<CritterView*> critters;
 
     if (!pid) {
-        for (const auto& [id, cr] : client->HexMngr.GetCritters()) {
+        for (const auto& [id, cr] : client->CurMap->GetCritters()) {
             if (cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }
         }
     }
     else {
-        for (const auto& [id, cr] : client->HexMngr.GetCritters()) {
+        for (const auto& [id, cr] : client->CurMap->GetCritters()) {
             if (cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }
@@ -307,7 +307,7 @@
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
 {
     vector<CritterView*> critters;
-    client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, nullptr, nullptr, nullptr, true);
+    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, nullptr, nullptr, nullptr, true);
     return critters;
 }
 
@@ -330,7 +330,7 @@
     vector<CritterView*> critters;
     pair<ushort, ushort> block;
     pair<ushort, ushort> pre_block;
-    client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, &block, &pre_block, nullptr, true);
+    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, &block, &pre_block, nullptr, true);
     preBlockHx = pre_block.first;
     preBlockHy = pre_block.second;
     blockHx = block.first;
@@ -350,7 +350,7 @@
 {
     pair<ushort, ushort> pre_block;
     pair<ushort, ushort> block;
-    client->HexMngr.TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
+    client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
     toHx = pre_block.first;
     toHy = pre_block.second;
 }
@@ -365,22 +365,22 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<uchar> Client_Game_GetPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
-    if (fromHx >= client->HexMngr.GetWidth() || fromHy >= client->HexMngr.GetHeight()) {
+    if (fromHx >= client->CurMap->GetWidth() || fromHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid from hexes args");
     }
-    if (toHx >= client->HexMngr.GetWidth() || toHy >= client->HexMngr.GetHeight()) {
+    if (toHx >= client->CurMap->GetWidth() || toHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid to hexes args");
     }
 
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (cut > 0 && !client->HexMngr.CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
+    if (cut > 0 && !client->CurMap->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
         return vector<uchar>();
     }
 
     vector<uchar> steps;
-    if (!client->HexMngr.FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
+    if (!client->CurMap->FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
         return vector<uchar>();
     }
 
@@ -396,19 +396,19 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<uchar> Client_Game_GetPath(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
 {
-    if (toHx >= client->HexMngr.GetWidth() || toHy >= client->HexMngr.GetHeight()) {
+    if (toHx >= client->CurMap->GetWidth() || toHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid to hexes args");
     }
 
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (cut > 0 && !client->HexMngr.CutPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut)) {
+    if (cut > 0 && !client->CurMap->CutPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut)) {
         return vector<uchar>();
     }
 
     vector<uchar> steps;
-    if (!client->HexMngr.FindPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1)) {
+    if (!client->CurMap->FindPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1)) {
         return vector<uchar>();
     }
 
@@ -425,22 +425,22 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Game_GetPathLength(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, uint cut)
 {
-    if (fromHx >= client->HexMngr.GetWidth() || fromHy >= client->HexMngr.GetHeight()) {
+    if (fromHx >= client->CurMap->GetWidth() || fromHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid from hexes args");
     }
-    if (toHx >= client->HexMngr.GetWidth() || toHy >= client->HexMngr.GetHeight()) {
+    if (toHx >= client->CurMap->GetWidth() || toHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid to hexes args");
     }
 
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (cut > 0 && !client->HexMngr.CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
+    if (cut > 0 && !client->CurMap->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
         return 0;
     }
 
     vector<uchar> steps;
-    if (!client->HexMngr.FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
+    if (!client->CurMap->FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
         steps.clear();
     }
 
@@ -456,19 +456,19 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Game_GetPathLength(FOClient* client, CritterView* cr, ushort toHx, ushort toHy, uint cut)
 {
-    if (toHx >= client->HexMngr.GetWidth() || toHy >= client->HexMngr.GetHeight()) {
+    if (toHx >= client->CurMap->GetWidth() || toHy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid to hexes args");
     }
 
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (cut > 0 && !client->HexMngr.CutPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut)) {
+    if (cut > 0 && !client->CurMap->CutPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut)) {
         return 0;
     }
 
     vector<uchar> steps;
-    if (!client->HexMngr.FindPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1)) {
+    if (!client->CurMap->FindPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1)) {
         steps.clear();
     }
 
@@ -534,7 +534,7 @@
 ///@ ExportMethod
 [[maybe_unused]] hstring Client_Game_GetCurMapPid(FOClient* client)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         return hstring();
     }
     return client->CurMapPid;
@@ -604,7 +604,7 @@
     map_text.StartTick = client->GameTime.GameTick();
     map_text.Tick = ms;
     map_text.Text = text;
-    map_text.Pos = client->HexMngr.GetRectForText(hx, hy);
+    map_text.Pos = client->CurMap->GetRectForText(hx, hy);
     map_text.EndPos = IRect(map_text.Pos, ox, oy);
 
     const auto it = std::find_if(client->GameMapTexts.begin(), client->GameMapTexts.end(), [&map_text](const FOClient::MapText& t) { return t.HexX == map_text.HexX && t.HexY == map_text.HexY; });
@@ -729,18 +729,18 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_MoveScreenToHex(FOClient* client, ushort hx, ushort hy, uint speed, bool canStop)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
-    if (hx >= client->HexMngr.GetWidth() || hy >= client->HexMngr.GetHeight()) {
+    if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex args");
     }
 
     if (speed == 0u) {
-        client->HexMngr.FindSetCenter(hx, hy);
+        client->CurMap->FindSetCenter(hx, hy);
     }
     else {
-        client->HexMngr.ScrollToHex(hx, hy, static_cast<float>(speed) / 1000.0f, canStop);
+        client->CurMap->ScrollToHex(hx, hy, static_cast<float>(speed) / 1000.0f, canStop);
     }
 }
 
@@ -752,11 +752,11 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_MoveScreenOffset(FOClient* client, int ox, int oy, uint speed, bool canStop)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 
-    client->HexMngr.ScrollOffset(ox, oy, static_cast<float>(speed) / 1000.0f, canStop);
+    client->CurMap->ScrollOffset(ox, oy, static_cast<float>(speed) / 1000.0f, canStop);
 }
 
 ///# ...
@@ -768,22 +768,22 @@
 {
     const auto id = (cr != nullptr ? cr->GetId() : 0);
     if (softLock) {
-        if (unlockIfSame && id == client->HexMngr.AutoScroll.SoftLockedCritter) {
-            client->HexMngr.AutoScroll.SoftLockedCritter = 0;
+        if (unlockIfSame && id == client->CurMap->AutoScroll.SoftLockedCritter) {
+            client->CurMap->AutoScroll.SoftLockedCritter = 0;
         }
         else {
-            client->HexMngr.AutoScroll.SoftLockedCritter = id;
+            client->CurMap->AutoScroll.SoftLockedCritter = id;
         }
 
-        client->HexMngr.AutoScroll.CritterLastHexX = (cr ? cr->GetHexX() : 0);
-        client->HexMngr.AutoScroll.CritterLastHexY = (cr ? cr->GetHexY() : 0);
+        client->CurMap->AutoScroll.CritterLastHexX = (cr ? cr->GetHexX() : 0);
+        client->CurMap->AutoScroll.CritterLastHexY = (cr ? cr->GetHexY() : 0);
     }
     else {
-        if (unlockIfSame && id == client->HexMngr.AutoScroll.HardLockedCritter) {
-            client->HexMngr.AutoScroll.HardLockedCritter = 0;
+        if (unlockIfSame && id == client->CurMap->AutoScroll.HardLockedCritter) {
+            client->CurMap->AutoScroll.HardLockedCritter = 0;
         }
         else {
-            client->HexMngr.AutoScroll.HardLockedCritter = id;
+            client->CurMap->AutoScroll.HardLockedCritter = id;
         }
     }
 }
@@ -811,8 +811,8 @@
         throw ScriptException("Invalid day part arg");
     }
 
-    if (client->HexMngr.IsMapLoaded()) {
-        return client->HexMngr.GetMapDayTime()[dayPart];
+    if (client->CurMap != nullptr) {
+        return client->CurMap->GetMapDayTime()[dayPart];
     }
     return 0;
 }
@@ -830,8 +830,8 @@
         throw ScriptException("Invalid day part arg");
     }
 
-    if (client->HexMngr.IsMapLoaded()) {
-        auto* const col = client->HexMngr.GetMapDayColor();
+    if (client->CurMap != nullptr) {
+        auto* const col = client->CurMap->GetMapDayColor();
         r = col[0 + dayPart];
         g = col[4 + dayPart];
         b = col[8 + dayPart];
@@ -936,7 +936,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Game_MoveHexByDir(FOClient* client, ushort& hx, ushort& hy, uchar dir, uint steps)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
     if (dir >= client->Settings.MapDirCount) {
@@ -952,11 +952,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= client->GeomHelper.MoveHexByDir(hx_, hy_, dir, client->HexMngr.GetWidth(), client->HexMngr.GetHeight());
+            result |= client->GeomHelper.MoveHexByDir(hx_, hy_, dir, client->CurMap->GetWidth(), client->CurMap->GetHeight());
         }
     }
     else {
-        result = client->GeomHelper.MoveHexByDir(hx_, hy_, dir, client->HexMngr.GetWidth(), client->HexMngr.GetHeight());
+        result = client->GeomHelper.MoveHexByDir(hx_, hy_, dir, client->CurMap->GetWidth(), client->CurMap->GetHeight());
     }
 
     hx = hx_;
@@ -973,22 +973,22 @@
 ///@ ExportMethod
 [[maybe_unused]] hstring Client_Game_GetTileName(FOClient* client, ushort hx, ushort hy, bool roof, int layer)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (hx >= client->HexMngr.GetWidth()) {
+    if (hx >= client->CurMap->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
     }
-    if (hy >= client->HexMngr.GetHeight()) {
+    if (hy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex y arg");
     }
 
-    const auto* simply_tile = client->HexMngr.GetField(hx, hy).SimplyTile[roof ? 1 : 0];
+    const auto* simply_tile = client->CurMap->GetField(hx, hy).SimplyTile[roof ? 1 : 0];
     if (simply_tile != nullptr && layer == 0) {
         return simply_tile->Name;
     }
 
-    const auto* tiles = client->HexMngr.GetField(hx, hy).Tiles[roof ? 1 : 0];
+    const auto* tiles = client->CurMap->GetField(hx, hy).Tiles[roof ? 1 : 0];
     if (tiles == nullptr || tiles->empty()) {
         return hstring();
     }
@@ -1163,18 +1163,18 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_RedrawMap(FOClient* client, bool onlyTiles, bool onlyRoof, bool onlyLight)
 {
-    if (client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap != nullptr) {
         if (onlyTiles) {
-            client->HexMngr.RebuildTiles();
+            client->CurMap->RebuildTiles();
         }
         else if (onlyRoof) {
-            client->HexMngr.RebuildRoof();
+            client->CurMap->RebuildRoof();
         }
         else if (onlyLight) {
-            client->HexMngr.RebuildLight();
+            client->CurMap->RebuildLight();
         }
         else {
-            client->HexMngr.RefreshMap();
+            client->CurMap->RefreshMap();
         }
     }
 }
@@ -1240,7 +1240,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetRainAnimation(FOClient* client, string_view fallAnimName, string_view dropAnimName)
 {
-    client->HexMngr.SetRainAnimation(fallAnimName, dropAnimName);
+    client->CurMap->SetRainAnimation(fallAnimName, dropAnimName);
 }
 
 ///# ...
@@ -1254,12 +1254,12 @@
 
     const auto init_zoom = client->Settings.SpritesZoom;
     if (targetZoom == 1.0f) {
-        client->HexMngr.ChangeZoom(0);
+        client->CurMap->ChangeZoom(0);
     }
     else if (targetZoom > client->Settings.SpritesZoom) {
         while (targetZoom > client->Settings.SpritesZoom) {
             const auto old_zoom = client->Settings.SpritesZoom;
-            client->HexMngr.ChangeZoom(1);
+            client->CurMap->ChangeZoom(1);
             if (client->Settings.SpritesZoom == old_zoom) {
                 break;
             }
@@ -1268,7 +1268,7 @@
     else if (targetZoom < client->Settings.SpritesZoom) {
         while (targetZoom < client->Settings.SpritesZoom) {
             const auto old_zoom = client->Settings.SpritesZoom;
-            client->HexMngr.ChangeZoom(-1);
+            client->CurMap->ChangeZoom(-1);
             if (client->Settings.SpritesZoom == old_zoom) {
                 break;
             }
@@ -1630,13 +1630,13 @@
         throw ScriptException("Map sprite arg is null");
     }
 
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         return;
     }
-    if (mapSpr->HexX >= client->HexMngr.GetWidth() || mapSpr->HexY >= client->HexMngr.GetHeight()) {
+    if (mapSpr->HexX >= client->CurMap->GetWidth() || mapSpr->HexY >= client->CurMap->GetHeight()) {
         return;
     }
-    if (!client->HexMngr.IsHexToDraw(mapSpr->HexX, mapSpr->HexY)) {
+    if (!client->CurMap->IsHexToDraw(mapSpr->HexX, mapSpr->HexY)) {
         return;
     }
 
@@ -1671,15 +1671,15 @@
         contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
     }
 
-    auto& f = client->HexMngr.GetField(mapSpr->HexX, mapSpr->HexY);
-    auto& tree = client->HexMngr.GetDrawTree();
+    auto& f = client->CurMap->GetField(mapSpr->HexX, mapSpr->HexY);
+    auto& tree = client->CurMap->GetDrawTree();
     auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, (client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();
 
     if (!no_light) {
-        spr.SetLight(corner, client->HexMngr.GetLightHex(0, 0), client->HexMngr.GetWidth(), client->HexMngr.GetHeight());
+        spr.SetLight(corner, client->CurMap->GetLightHex(0, 0), client->CurMap->GetWidth(), client->CurMap->GetHeight());
     }
 
     if (!is_flat && !disable_egg) {
@@ -2029,8 +2029,8 @@
 [[maybe_unused]] bool Client_Game_GetHexMonitorPos(FOClient* client, ushort hx, ushort hy, int& x, int& y)
 {
     x = y = 0;
-    if (client->HexMngr.IsMapLoaded() && hx < client->HexMngr.GetWidth() && hy < client->HexMngr.GetHeight()) {
-        client->HexMngr.GetHexCurrentPosition(hx, hy, x, y);
+    if (client->CurMap != nullptr && hx < client->CurMap->GetWidth() && hy < client->CurMap->GetHeight()) {
+        client->CurMap->GetHexCurrentPosition(hx, hy, x, y);
         x += client->Settings.ScrOx + (client->Settings.MapHexWidth / 2);
         y += client->Settings.ScrOy + (client->Settings.MapHexHeight / 2);
         x = static_cast<int>(static_cast<float>(x) / client->Settings.SpritesZoom);
@@ -2055,7 +2055,7 @@
     client->Settings.MouseY = y;
     ushort hx_ = 0;
     ushort hy_ = 0;
-    const auto result = client->HexMngr.GetHexPixel(x, y, hx_, hy_);
+    const auto result = client->CurMap->GetHexPixel(x, y, hx_, hy_);
     client->Settings.MouseX = old_x;
     client->Settings.MouseY = old_y;
     if (result) {
@@ -2074,7 +2074,7 @@
 [[maybe_unused]] ItemView* Client_Game_GetItemByMonitorPos(FOClient* client, int x, int y)
 {
     bool item_egg;
-    return client->HexMngr.GetItemPixel(x, y, item_egg);
+    return client->CurMap->GetItemPixel(x, y, item_egg);
 }
 
 ///# ...
@@ -2084,7 +2084,7 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Game_GetCritterByMonitorPos(FOClient* client, int x, int y)
 {
-    return client->HexMngr.GetCritterPixel(x, y, false);
+    return client->CurMap->GetCritterPixel(x, y, false);
 }
 
 ///# ...
@@ -2096,7 +2096,7 @@
 {
     ItemHexView* item = nullptr;
     CritterView* cr = nullptr;
-    client->HexMngr.GetSmthPixel(x, y, item, cr);
+    client->CurMap->GetSmthPixel(x, y, item, cr);
     return item ? static_cast<ClientEntity*>(item) : static_cast<ClientEntity*>(cr);
 }
 
@@ -2105,11 +2105,11 @@
 ///@ ExportMethod
 [[maybe_unused]] ushort Client_Game_GetMapWidth(FOClient* client)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 
-    return client->HexMngr.GetWidth();
+    return client->CurMap->GetWidth();
 }
 
 ///# ...
@@ -2117,11 +2117,11 @@
 ///@ ExportMethod
 [[maybe_unused]] ushort Client_Game_GetMapHeight(FOClient* client)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 
-    return client->HexMngr.GetHeight();
+    return client->CurMap->GetHeight();
 }
 
 ///# ...
@@ -2131,14 +2131,14 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsMapHexPassed(FOClient* client, ushort hx, ushort hy)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
-    if (hx >= client->HexMngr.GetWidth() || hy >= client->HexMngr.GetHeight()) {
+    if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex args");
     }
 
-    return !client->HexMngr.GetField(hx, hy).Flags.IsNotPassed;
+    return !client->CurMap->GetField(hx, hy).Flags.IsNotPassed;
 }
 
 ///# ...
@@ -2148,14 +2148,14 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsMapHexRaked(FOClient* client, ushort hx, ushort hy)
 {
-    if (!client->HexMngr.IsMapLoaded()) {
+    if (client->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
-    if (hx >= client->HexMngr.GetWidth() || hy >= client->HexMngr.GetHeight()) {
+    if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex args");
     }
 
-    return !client->HexMngr.GetField(hx, hy).Flags.IsNotRaked;
+    return !client->CurMap->GetField(hx, hy).Flags.IsNotRaked;
 }
 
 ///# ...

@@ -1346,7 +1346,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if CLIENT_SCRIPTING
 #if !COMPILER_MODE
-    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", game_engine->_curMap));
+    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", game_engine->CurMap));
     AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", game_engine->_curLocation));
 #else
     AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &dummy));

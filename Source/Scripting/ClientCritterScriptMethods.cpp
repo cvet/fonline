@@ -283,7 +283,7 @@
 [[maybe_unused]] void Client_Critter_SetVisibility(CritterView* self, bool visible)
 {
     self->Visible = visible;
-    self->GetEngine()->HexMngr.RefreshMap();
+    self->GetEngine()->CurMap->RefreshMap();
 }
 
 ///# ...

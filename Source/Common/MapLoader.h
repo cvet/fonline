@@ -56,9 +56,9 @@ class MapLoader final
 public:
     using CrLoadFunc = std::function<bool(uint id, const ProtoCritter* proto, const map<string, string>& kv)>;
     using ItemLoadFunc = std::function<bool(uint id, const ProtoItem* proto, const map<string, string>& kv)>;
-    using TileLoadFunc = std::function<void(MapTile&& tile)>;
+    using TileLoadFunc = std::function<bool(MapTile&& tile)>;
 
     MapLoader() = delete;
 
-    static void Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
+    static auto Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load) -> Properties;
 };

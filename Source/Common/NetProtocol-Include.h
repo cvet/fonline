@@ -600,8 +600,10 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // uint mag_len
-// hash map_pid
+// uint loc_id
+// uint map_id
 // hash loc_pid
+// hash map_pid
 // uchar map_index_in_loc
 // int map_time
 // uchar map_rain

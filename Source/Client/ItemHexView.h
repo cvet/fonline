@@ -42,6 +42,7 @@ class ItemHexView final : public ItemView
 {
 public:
     ItemHexView() = delete;
+    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto);
     ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, const Properties& props);
     ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data);
     ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
@@ -99,8 +100,6 @@ public:
     vector<pair<ushort, ushort>> EffSteps {};
 
 private:
-    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto);
-
     void AfterConstruction();
     void SetFade(bool fade_up);
 

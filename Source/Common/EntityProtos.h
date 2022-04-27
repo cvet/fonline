@@ -67,6 +67,8 @@ class ProtoMap final : public ProtoEntity, public MapProperties
 {
 public:
     ProtoMap(hstring proto_id, const PropertyRegistrator* registrator);
+
+    uint LastEntityId {0xFFFFFFFF};
 };
 
 class ProtoLocation final : public ProtoEntity, public LocationProperties

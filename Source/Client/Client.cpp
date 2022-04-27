@@ -62,7 +62,8 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     EffectMngr(Settings, FileSys, GameTime),
     SprMngr(Settings, FileSys, EffectMngr, GameTime, *this, *this),
     ResMngr(FileSys, SprMngr, *this, *this),
-    HexMngr(this), SndMngr(Settings, FileSys), Keyb(Settings, SprMngr),
+    SndMngr(Settings, FileSys),
+    Keyb(Settings, SprMngr),
     Cache("Data/Cache.fobin"),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 // clang-format on
@@ -410,7 +411,7 @@ void FOClient::UpdateFilesAbort(uint num_str, string_view num_str_str)
 
 void FOClient::DeleteCritters()
 {
-    HexMngr.DeleteCritters();
+    CurMap->DeleteCritters();
     _chosen = nullptr;
 }
 
@@ -424,8 +425,8 @@ void FOClient::AddCritter(CritterView* cr)
 
     DeleteCritter(cr->GetId());
 
-    if (HexMngr.IsMapLoaded()) {
-        auto& f = HexMngr.GetField(cr->GetHexX(), cr->GetHexY());
+    if (CurMap != nullptr) {
+        auto& f = CurMap->GetField(cr->GetHexX(), cr->GetHexY());
         if (f.Crit != nullptr && f.Crit->IsFinishing()) {
             DeleteCritter(f.Crit->GetId());
         }
@@ -435,7 +436,7 @@ void FOClient::AddCritter(CritterView* cr)
         _chosen = cr;
     }
 
-    HexMngr.AddCritter(cr);
+    CurMap->AddCritter(cr);
     cr->FadingTick = GameTime.GameTick() + FADING_PERIOD - (fading > GameTime.GameTick() ? fading - GameTime.GameTick() : 0);
 }
 
@@ -445,7 +446,7 @@ void FOClient::DeleteCritter(uint crid)
         _chosen = nullptr;
     }
 
-    HexMngr.DeleteCritter(crid);
+    CurMap->DeleteCritter(crid);
 }
 
 void FOClient::LookBordersPrepare()
@@ -453,8 +454,8 @@ void FOClient::LookBordersPrepare()
     _lookBorders.clear();
     _shootBorders.clear();
 
-    if (_chosen == nullptr || !HexMngr.IsMapLoaded() || (!_drawLookBorders && !_drawShootBorders)) {
-        HexMngr.SetFog(_lookBorders, _shootBorders, nullptr, nullptr);
+    if (_chosen == nullptr || CurMap == nullptr || (!_drawLookBorders && !_drawShootBorders)) {
+        CurMap->SetFog(_lookBorders, _shootBorders, nullptr, nullptr);
         return;
     }
 
@@ -465,8 +466,8 @@ void FOClient::LookBordersPrepare()
     int hy = base_hy;
     const int chosen_dir = _chosen->GetDir();
     const auto dist_shoot = _chosen->GetAttackDist();
-    const auto maxhx = HexMngr.GetWidth();
-    const auto maxhy = HexMngr.GetHeight();
+    const auto maxhx = CurMap->GetWidth();
+    const auto maxhy = CurMap->GetHeight();
     auto seek_start = true;
     for (auto i = 0; i < (Settings.MapHexagonal ? 6 : 4); i++) {
         const auto dir = (Settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
@@ -495,14 +496,14 @@ void FOClient::LookBordersPrepare()
                 }
                 const auto dist_ = dist - dist * Settings.LookDir[ii] / 100;
                 pair<ushort, ushort> block;
-                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, false);
+                CurMap->TraceBullet(base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, false);
                 hx_ = block.first;
                 hy_ = block.second;
             }
 
             if (IsBitSet(Settings.LookChecks, LOOK_CHECK_TRACE)) {
                 pair<ushort, ushort> block;
-                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
+                CurMap->TraceBullet(base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
                 hx_ = block.first;
                 hy_ = block.second;
             }
@@ -511,7 +512,7 @@ void FOClient::LookBordersPrepare()
             if (_drawLookBorders) {
                 auto x = 0;
                 auto y = 0;
-                HexMngr.GetHexCurrentPosition(hx_, hy_, x, y);
+                CurMap->GetHexCurrentPosition(hx_, hy_, x, y);
                 auto* ox = (dist_look == dist ? &_chosen->SprOx : nullptr);
                 auto* oy = (dist_look == dist ? &_chosen->SprOy : nullptr);
                 _lookBorders.push_back({x + (Settings.MapHexWidth / 2), y + (Settings.MapHexHeight / 2), COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
@@ -520,13 +521,13 @@ void FOClient::LookBordersPrepare()
             if (_drawShootBorders) {
                 pair<ushort, ushort> block;
                 const auto max_shoot_dist = std::max(std::min(dist_look, dist_shoot), 0u) + 1u;
-                HexMngr.TraceBullet(base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
+                CurMap->TraceBullet(base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
                 const auto hx_2 = block.first;
                 const auto hy_2 = block.second;
 
                 auto x_ = 0;
                 auto y_ = 0;
-                HexMngr.GetHexCurrentPosition(hx_2, hy_2, x_, y_);
+                CurMap->GetHexCurrentPosition(hx_2, hy_2, x_, y_);
                 const auto result_shoot_dist = GeomHelper.DistGame(base_hx, base_hy, hx_2, hy_2);
                 auto* ox = (result_shoot_dist == max_shoot_dist ? &_chosen->SprOx : nullptr);
                 auto* oy = (result_shoot_dist == max_shoot_dist ? &_chosen->SprOy : nullptr);
@@ -537,7 +538,7 @@ void FOClient::LookBordersPrepare()
 
     auto base_x = 0;
     auto base_y = 0;
-    HexMngr.GetHexCurrentPosition(base_hx, base_hy, base_x, base_y);
+    CurMap->GetHexCurrentPosition(base_hx, base_hy, base_x, base_y);
     if (!_lookBorders.empty()) {
         _lookBorders.push_back(*_lookBorders.begin());
         _lookBorders.insert(_lookBorders.begin(), {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(0, 0, 0, 0), &_chosen->SprOx, &_chosen->SprOy});
@@ -547,7 +548,7 @@ void FOClient::LookBordersPrepare()
         _shootBorders.insert(_shootBorders.begin(), {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(255, 0, 0, 0), &_chosen->SprOx, &_chosen->SprOy});
     }
 
-    HexMngr.SetFog(_lookBorders, _shootBorders, &_chosen->SprOx, &_chosen->SprOy);
+    CurMap->SetFog(_lookBorders, _shootBorders, &_chosen->SprOx, &_chosen->SprOy);
 }
 
 void FOClient::MainLoop()
@@ -680,13 +681,13 @@ void FOClient::MainLoop()
     if (IsMainScreen(SCREEN_GLOBAL_MAP)) {
         CrittersProcess();
     }
-    else if (IsMainScreen(SCREEN_GAME) && HexMngr.IsMapLoaded()) {
-        if (HexMngr.Scroll()) {
+    else if (IsMainScreen(SCREEN_GAME) && CurMap != nullptr) {
+        if (CurMap->Scroll()) {
             LookBordersPrepare();
         }
         CrittersProcess();
-        HexMngr.ProcessItems();
-        HexMngr.ProcessRain();
+        CurMap->ProcessItems();
+        CurMap->ProcessRain();
     }
 
     // Start render
@@ -701,7 +702,7 @@ void FOClient::MainLoop()
     ProcessScreenEffectQuake();
 
     // Render
-    if (GetMainScreen() == SCREEN_GAME && HexMngr.IsMapLoaded()) {
+    if (GetMainScreen() == SCREEN_GAME && CurMap != nullptr) {
         GameDraw();
     }
 
@@ -1286,8 +1287,14 @@ void FOClient::NetDisconnect()
 
         WriteLog("Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}.\n", _bytesSend, _bytesReceive, _bytesReceive + _bytesSend, _bytesRealReceive);
 
-        HexMngr.UnloadMap();
+        if (CurMap != nullptr) {
+            CurMap->MarkAsDestroyed();
+            CurMap->Release();
+            CurMap = nullptr;
+        }
+
         DeleteCritters();
+
         _netIn.ResetBuf();
         _netOut.ResetBuf();
         _netIn.SetEncryptKey(0);
@@ -2003,7 +2010,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     if (crid == 0u) {
         WriteLog("Critter id is zero.\n");
     }
-    else if (HexMngr.IsMapLoaded() && (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= Settings.MapDirCount)) {
+    else if (CurMap != nullptr && (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight() || dir >= Settings.MapDirCount)) {
         WriteLog("Invalid positions hx {}, hy {}, dir {}.\n", hx, hy, dir);
     }
     else {
@@ -2252,7 +2259,7 @@ void FOClient::OnMapText(string_view str, ushort hx, ushort hy, uint color)
     map_text.StartTick = GameTime.GameTick();
     map_text.Tick = text_delay;
     map_text.Text = sstr;
-    map_text.Pos = HexMngr.GetRectForText(hx, hy);
+    map_text.Pos = CurMap->GetRectForText(hx, hy);
     map_text.EndPos = map_text.Pos;
 
     const auto it = std::find_if(GameMapTexts.begin(), GameMapTexts.end(), [&map_text](const MapText& t) { return map_text.HexX == t.HexX && map_text.HexY == t.HexY; });
@@ -2282,7 +2289,7 @@ void FOClient::Net_OnMapText()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
+    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         WriteLog("Invalid coords, hx {}, hy {}, text '{}'.\n", hx, hy, text);
         return;
     }
@@ -2381,7 +2388,7 @@ void FOClient::Net_OnCritterMove()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (new_hx >= HexMngr.GetWidth() || new_hy >= HexMngr.GetHeight()) {
+    if (new_hx >= CurMap->GetWidth() || new_hy >= CurMap->GetHeight()) {
         return;
     }
 
@@ -2405,13 +2412,13 @@ void FOClient::Net_OnCritterMove()
             const auto disallow = (!IsBitSet(step, MOVE_PARAM_STEP_ALLOW) || IsBitSet(step, MOVE_PARAM_STEP_DISALLOW));
             if (disallow) {
                 if (j <= 0 && (cr->GetHexX() != new_hx || cr->GetHexY() != new_hy)) {
-                    HexMngr.TransitCritter(cr, new_hx, new_hy, true, true);
+                    CurMap->TransitCritter(cr, new_hx, new_hy, true, true);
                     cr->CurMoveStep = -1;
                 }
                 break;
             }
 
-            GeomHelper.MoveHexByDir(new_hx, new_hy, dir, HexMngr.GetWidth(), HexMngr.GetHeight());
+            GeomHelper.MoveHexByDir(new_hx, new_hy, dir, CurMap->GetWidth(), CurMap->GetHeight());
 
             if (j < 0) {
                 continue;
@@ -2424,7 +2431,7 @@ void FOClient::Net_OnCritterMove()
     else {
         cr->MoveSteps.clear();
         cr->CurMoveStep = 0;
-        HexMngr.TransitCritter(cr, new_hx, new_hy, true, true);
+        CurMap->TransitCritter(cr, new_hx, new_hy, true, true);
     }
 }
 
@@ -2540,7 +2547,7 @@ void FOClient::Net_OnCritterMoveItem()
             hash_sum += item->LightGetHash();
         }
         if (hash_sum != prev_hash_sum) {
-            HexMngr.RebuildLight();
+            CurMap->RebuildLight();
         }
     }
 
@@ -2651,35 +2658,35 @@ void FOClient::Net_OnCustomCommand()
             _chosen->Flags = value;
         } break;
         case OTHER_CLEAR_MAP: {
-            auto crits = HexMngr.GetCritters();
+            auto crits = CurMap->GetCritters();
             for (auto& [id, cr] : crits) {
                 if (cr != _chosen) {
                     DeleteCritter(cr->GetId());
                 }
             }
-            auto items = HexMngr.GetItems();
+            auto items = CurMap->GetItems();
             for (auto* item : items) {
                 if (!item->IsStatic()) {
-                    HexMngr.DeleteItem(item, true, nullptr);
+                    CurMap->DeleteItem(item, true, nullptr);
                 }
             }
         } break;
         case OTHER_TELEPORT: {
             const ushort hx = (value >> 16) & 0xFFFF;
             const ushort hy = value & 0xFFFF;
-            if (hx < HexMngr.GetWidth() && hy < HexMngr.GetHeight()) {
-                auto* hex_cr = HexMngr.GetField(hx, hy).Crit;
+            if (hx < CurMap->GetWidth() && hy < CurMap->GetHeight()) {
+                auto* hex_cr = CurMap->GetField(hx, hy).Crit;
                 if (_chosen == hex_cr) {
                     break;
                 }
                 if (!_chosen->IsDead() && hex_cr != nullptr) {
                     DeleteCritter(hex_cr->GetId());
                 }
-                HexMngr.RemoveCritter(_chosen);
+                CurMap->RemoveCritter(_chosen);
                 _chosen->SetHexX(hx);
                 _chosen->SetHexY(hy);
-                HexMngr.SetCritter(_chosen);
-                HexMngr.ScrollToHex(_chosen->GetHexX(), _chosen->GetHexY(), 0.1f, true);
+                CurMap->SetCritter(_chosen);
+                CurMap->ScrollToHex(_chosen->GetHexX(), _chosen->GetHexY(), 0.1f, true);
             }
         } break;
         default:
@@ -2713,7 +2720,7 @@ void FOClient::Net_OnCritterXY()
         AddMess(SAY_NETMSG, _str(" - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir));
     }
 
-    if (!HexMngr.IsMapLoaded()) {
+    if (CurMap == nullptr) {
         return;
     }
 
@@ -2722,7 +2729,7 @@ void FOClient::Net_OnCritterXY()
         return;
     }
 
-    if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight() || dir >= Settings.MapDirCount) {
+    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight() || dir >= Settings.MapDirCount) {
         WriteLog("Error data, hx {}, hy {}, dir {}.\n", hx, hy, dir);
         return;
     }
@@ -2732,12 +2739,12 @@ void FOClient::Net_OnCritterXY()
     }
 
     if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-        auto& f = HexMngr.GetField(hx, hy);
+        auto& f = CurMap->GetField(hx, hy);
         if (f.Crit != nullptr && f.Crit->IsFinishing()) {
             DeleteCritter(f.Crit->GetId());
         }
 
-        HexMngr.TransitCritter(cr, hx, hy, false, true);
+        CurMap->TransitCritter(cr, hx, hy, false, true);
         cr->AnimateStay();
         if (cr == _chosen) {
             // Chosen->TickStart(Settings.Breaktime);
@@ -2790,7 +2797,7 @@ void FOClient::Net_OnChosenClearItems()
     }
 
     if (_chosen->IsHaveLightSources()) {
-        HexMngr.RebuildLight();
+        CurMap->RebuildLight();
     }
 
     _chosen->DeleteAllItems();
@@ -2841,7 +2848,7 @@ void FOClient::Net_OnChosenAddItem()
 
     _rebuildLookBordersRequest = true;
     if (item->LightGetHash() != prev_light_hash && (slot != 0u || prev_slot != 0u)) {
-        HexMngr.RebuildLight();
+        CurMap->RebuildLight();
     }
 
     if (!_initialItemsSend) {
@@ -2874,7 +2881,7 @@ void FOClient::Net_OnChosenEraseItem()
     const auto rebuild_light = (item->GetIsLight() && item->GetCritSlot() != 0u);
     _chosen->DeleteItem(item, true);
     if (rebuild_light) {
-        HexMngr.RebuildLight();
+        CurMap->RebuildLight();
     }
 
     OnItemInvOut.Fire(item_clone);
@@ -2916,17 +2923,17 @@ void FOClient::Net_OnAddItemOnMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (HexMngr.IsMapLoaded()) {
-        HexMngr.AddItem(item_id, item_pid, item_hx, item_hy, is_added, &_tempPropertiesData);
-    }
+    if (CurMap != nullptr) {
+        CurMap->AddItem(item_id, item_pid, item_hx, item_hy, is_added, &_tempPropertiesData);
 
-    ItemView* item = HexMngr.GetItemById(item_id);
-    if (item != nullptr) {
-        OnItemMapIn.Fire(item);
+        ItemView* item = CurMap->GetItemById(item_id);
+        if (item != nullptr) {
+            OnItemMapIn.Fire(item);
 
-        // Refresh borders
-        if (!item->GetIsShootThru()) {
-            _rebuildLookBordersRequest = true;
+            // Refresh borders
+            if (!item->GetIsShootThru()) {
+                _rebuildLookBordersRequest = true;
+            }
         }
     }
 }
@@ -2940,7 +2947,7 @@ void FOClient::Net_OnEraseItemFromMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    ItemView* item = HexMngr.GetItemById(item_id);
+    ItemView* item = CurMap->GetItemById(item_id);
     if (item != nullptr) {
         OnItemMapOut.Fire(item);
 
@@ -2950,7 +2957,7 @@ void FOClient::Net_OnEraseItemFromMap()
         }
     }
 
-    HexMngr.FinishItem(item_id, is_deleted);
+    CurMap->FinishItem(item_id, is_deleted);
 }
 
 void FOClient::Net_OnAnimateItem()
@@ -2964,7 +2971,7 @@ void FOClient::Net_OnAnimateItem()
 
     CHECK_IN_BUFF_ERROR();
 
-    auto* item = HexMngr.GetItemById(item_id);
+    auto* item = CurMap->GetItemById(item_id);
     if (item != nullptr) {
         item->SetAnim(from_frm, to_frm);
     }
@@ -3002,7 +3009,7 @@ void FOClient::Net_OnEffect()
     CHECK_IN_BUFF_ERROR();
 
     // Base hex effect
-    HexMngr.RunEffect(eff_pid, hx, hy, hx, hy);
+    CurMap->RunEffect(eff_pid, hx, hy, hx, hy);
 
     // Radius hexes effect
     if (radius > MAX_HEX_OFFSET) {
@@ -3010,15 +3017,15 @@ void FOClient::Net_OnEffect()
     }
 
     const auto [sx, sy] = GeomHelper.GetHexOffsets((hx % 2) != 0);
-    const auto maxhx = HexMngr.GetWidth();
-    const auto maxhy = HexMngr.GetHeight();
+    const auto maxhx = CurMap->GetWidth();
+    const auto maxhy = CurMap->GetHeight();
     const auto count = GenericUtils::NumericalNumber(radius) * Settings.MapDirCount;
 
     for (uint i = 0; i < count; i++) {
         const auto ex = static_cast<short>(hx) + sx[i];
         const auto ey = static_cast<short>(hy) + sy[i];
         if (ex >= 0 && ey >= 0 && ex < maxhx && ey < maxhy) {
-            HexMngr.RunEffect(eff_pid, static_cast<ushort>(ex), static_cast<ushort>(ey), static_cast<ushort>(ex), static_cast<ushort>(ey));
+            CurMap->RunEffect(eff_pid, static_cast<ushort>(ex), static_cast<ushort>(ey), static_cast<ushort>(ex), static_cast<ushort>(ey));
         }
     }
 }
@@ -3055,7 +3062,7 @@ void FOClient::Net_OnFlyEffect()
         eff_cr2_hy = cr2->GetHexY();
     }
 
-    if (!HexMngr.RunEffect(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
+    if (!CurMap->RunEffect(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
         WriteLog("Run effect '{}' failed.\n", eff_pid);
     }
 }
@@ -3106,11 +3113,11 @@ void FOClient::Net_OnEndParseToGame()
     ScreenFadeOut();
 
     if (CurMapPid) {
-        HexMngr.SkipItemsFade();
-        HexMngr.FindSetCenter(_chosen->GetHexX(), _chosen->GetHexY());
+        CurMap->SkipItemsFade();
+        CurMap->FindSetCenter(_chosen->GetHexX(), _chosen->GetHexY());
         _chosen->AnimateStay();
         ShowMainScreen(SCREEN_GAME, {});
-        HexMngr.RebuildLight();
+        CurMap->RebuildLight();
     }
     else {
         ShowMainScreen(SCREEN_GLOBAL_MAP, {});
@@ -3191,7 +3198,7 @@ void FOClient::Net_OnProperty(uint data_size)
         entity = _chosen;
         break;
     case NetProperty::MapItem:
-        entity = HexMngr.GetItemById(item_id);
+        entity = CurMap->GetItemById(item_id);
         break;
     case NetProperty::CritterItem:
         if (auto* cr = GetCritter(cr_id); cr != nullptr) {
@@ -3202,7 +3209,7 @@ void FOClient::Net_OnProperty(uint data_size)
         entity = (_chosen != nullptr ? _chosen->GetItem(item_id) : nullptr);
         break;
     case NetProperty::Map:
-        entity = _curMap;
+        entity = CurMap;
         break;
     case NetProperty::Location:
         entity = _curLocation;
@@ -3330,8 +3337,8 @@ void FOClient::Net_OnGameInfo()
 
     CHECK_IN_BUFF_ERROR();
 
-    auto* day_time = HexMngr.GetMapDayTime();
-    auto* day_color = HexMngr.GetMapDayColor();
+    auto* day_time = CurMap->GetMapDayTime();
+    auto* day_color = CurMap->GetMapDayColor();
     _netIn.Pop(day_time, sizeof(int) * 4);
     _netIn.Pop(day_color, sizeof(uchar) * 12);
 
@@ -3347,7 +3354,7 @@ void FOClient::Net_OnGameInfo()
     SetSecond(second);
     SetTimeMultiplier(multiplier);
 
-    HexMngr.SetWeather(time, rain);
+    CurMap->SetWeather(time, rain);
     SetDayTime(true);
     _noLogOut = no_log_out;
 }
@@ -3357,14 +3364,19 @@ void FOClient::Net_OnLoadMap()
     WriteLog("Change map...\n");
 
     uint msg_len;
+    uint loc_id;
+    uint map_id;
     uchar map_index_in_loc;
     int map_time;
     uchar map_rain;
     uint hash_tiles;
     uint hash_scen;
+
     _netIn >> msg_len;
-    const auto map_pid = _netIn.ReadHashedString(*this);
+    _netIn >> loc_id;
+    _netIn >> map_id;
     const auto loc_pid = _netIn.ReadHashedString(*this);
+    const auto map_pid = _netIn.ReadHashedString(*this);
     _netIn >> map_index_in_loc;
     _netIn >> map_time;
     _netIn >> map_rain;
@@ -3380,10 +3392,10 @@ void FOClient::Net_OnLoadMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (_curMap != nullptr) {
-        _curMap->MarkAsDestroyed();
-        _curMap->Release();
-        _curMap = nullptr;
+    if (CurMap != nullptr) {
+        CurMap->MarkAsDestroyed();
+        CurMap->Release();
+        CurMap = nullptr;
     }
 
     if (_curLocation != nullptr) {
@@ -3393,10 +3405,10 @@ void FOClient::Net_OnLoadMap()
     }
 
     if (map_pid) {
-        _curLocation = new LocationView(this, 0, ProtoMngr.GetProtoLocation(loc_pid));
+        _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
         _curLocation->RestoreData(_tempPropertiesDataExt);
-        _curMap = new MapView(this, 0, ProtoMngr.GetProtoMap(map_pid));
-        _curMap->RestoreData(_tempPropertiesData);
+        CurMap = new MapView(this, map_id, ProtoMngr.GetProtoMap(map_pid));
+        CurMap->RestoreData(_tempPropertiesData);
     }
 
     Settings.SpritesZoom = 1.0f;
@@ -3405,16 +3417,15 @@ void FOClient::Net_OnLoadMap()
     _curMapLocPid = loc_pid;
     _curMapIndexInLoc = map_index_in_loc;
     GameMapTexts.clear();
-    HexMngr.UnloadMap();
     SndMngr.StopSounds();
     ShowMainScreen(SCREEN_WAIT, {});
     DeleteCritters();
     ResMngr.ReinitializeDynamicAtlas();
 
     if (map_pid) {
-        uint hash_tiles_cl;
+        /*uint hash_tiles_cl;
         uint hash_scen_cl;
-        HexMngr.GetMapHash(Cache, map_pid, hash_tiles_cl, hash_scen_cl);
+        CurMap->GetMapHash(Cache, map_pid, hash_tiles_cl, hash_scen_cl);
 
         if (hash_tiles != hash_tiles_cl || hash_scen != hash_scen_cl) {
             WriteLog("Obsolete map data (hashes {}:{}, {}:{}).\n", hash_tiles, hash_tiles_cl, hash_scen, hash_scen_cl);
@@ -3422,13 +3433,14 @@ void FOClient::Net_OnLoadMap()
             return;
         }
 
-        if (!HexMngr.LoadMap(Cache, map_pid)) {
+        CurMap = new MapView(this, )
+        if (!CurMap->LoadMap(Cache, map_pid)) {
             WriteLog("Map not loaded. Disconnect.\n");
             NetDisconnect();
             return;
-        }
+        }*/
 
-        HexMngr.SetWeather(map_time, map_rain);
+        CurMap->SetWeather(map_time, map_rain);
         SetDayTime(true);
         _lookBorders.clear();
         _shootBorders.clear();
@@ -3897,14 +3909,14 @@ void FOClient::Net_OnViewMap()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (!HexMngr.IsMapLoaded()) {
+    if (CurMap == nullptr) {
         return;
     }
 
-    HexMngr.FindSetCenter(hx, hy);
+    CurMap->FindSetCenter(hx, hy);
     ShowMainScreen(SCREEN_GAME, {});
     ScreenFadeOut();
-    HexMngr.RebuildLight();
+    CurMap->RebuildLight();
 
     /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
     dict->Set("LocationId", &loc_id, asTYPEID_UINT32);
@@ -3919,17 +3931,17 @@ void FOClient::SetDayTime(bool refresh)
         _prevDayTimeColor.reset();
     }
 
-    if (!HexMngr.IsMapLoaded()) {
+    if (CurMap == nullptr) {
         return;
     }
 
-    auto color = GenericUtils::GetColorDay(HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr);
+    auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
     color = COLOR_GAME_RGB(static_cast<int>((color >> 16) & 0xFF), static_cast<int>((color >> 8) & 0xFF), static_cast<int>(color & 0xFF));
 
     if (!_prevDayTimeColor.has_value() || _prevDayTimeColor != color) {
         _prevDayTimeColor = color;
         SprMngr.SetSpritesColor(color);
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
 }
 
@@ -3943,16 +3955,16 @@ void FOClient::WaitPing()
 void FOClient::CrittersProcess()
 {
     auto need_delete = false;
-    for (auto& [id, cr] : HexMngr.GetCritters()) {
+    for (auto& [id, cr] : CurMap->GetCritters()) {
         cr->Process();
 
         if (cr->IsNeedReset()) {
-            HexMngr.RemoveCritter(cr);
-            HexMngr.SetCritter(cr);
+            CurMap->RemoveCritter(cr);
+            CurMap->SetCritter(cr);
             cr->ResetOk();
         }
 
-        if (!cr->IsChosen() && cr->IsNeedMove() && HexMngr.TransitCritter(cr, cr->MoveSteps[0].first, cr->MoveSteps[0].second, true, cr->CurMoveStep > 0)) {
+        if (!cr->IsChosen() && cr->IsNeedMove() && CurMap->TransitCritter(cr, cr->MoveSteps[0].first, cr->MoveSteps[0].second, true, cr->CurMoveStep > 0)) {
             cr->MoveSteps.erase(cr->MoveSteps.begin());
             cr->CurMoveStep--;
         }
@@ -3963,7 +3975,7 @@ void FOClient::CrittersProcess()
     }
 
     if (need_delete) {
-        const auto critters = HexMngr.GetCritters(); // Make copy
+        const auto critters = CurMap->GetCritters(); // Make copy
         for (auto& [id, cr] : critters) {
             if (cr->IsFinish()) {
                 DeleteCritter(cr->GetId());
@@ -4243,7 +4255,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, void* cur_va
     UNUSED_VARIABLE(old_value);
 
     auto* item = dynamic_cast<ItemView*>(entity);
-    if (item->GetOwnership() == ItemOwnership::MapHex && HexMngr.IsMapLoaded()) {
+    if (item->GetOwnership() == ItemOwnership::MapHex && CurMap != nullptr) {
         auto* hex_item = dynamic_cast<ItemHexView*>(item);
         auto rebuild_cache = false;
         if (prop == hex_item->GetPropertyIsColorize()) {
@@ -4257,14 +4269,14 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, void* cur_va
             rebuild_cache = true;
         }
         else if (prop == hex_item->GetPropertyIsLightThru()) {
-            HexMngr.RebuildLight();
+            CurMap->RebuildLight();
             rebuild_cache = true;
         }
         else if (prop == hex_item->GetPropertyIsNoBlock()) {
             rebuild_cache = true;
         }
         if (rebuild_cache) {
-            HexMngr.GetField(hex_item->GetHexX(), hex_item->GetHexY()).ProcessCache();
+            CurMap->GetField(hex_item->GetHexX(), hex_item->GetHexY()).ProcessCache();
         }
     }
 }
@@ -4278,8 +4290,8 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop, void* cu
     UNUSED_VARIABLE(cur_value);
     UNUSED_VARIABLE(old_value);
 
-    if (HexMngr.IsMapLoaded()) {
-        HexMngr.RebuildLight();
+    if (CurMap != nullptr) {
+        CurMap->RebuildLight();
     }
 }
 
@@ -4307,10 +4319,10 @@ void FOClient::OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur
 
     auto* item = dynamic_cast<ItemView*>(entity);
 
-    if (item->GetOwnership() == ItemOwnership::MapHex && HexMngr.IsMapLoaded()) {
-        auto hex_item = dynamic_cast<ItemHexView*>(item);
+    if (item->GetOwnership() == ItemOwnership::MapHex && CurMap != nullptr) {
+        auto* hex_item = dynamic_cast<ItemHexView*>(item);
         hex_item->SetAnimOffs();
-        HexMngr.ProcessHexBorders(hex_item);
+        CurMap->ProcessHexBorders(hex_item);
     }
 }
 
@@ -4335,11 +4347,10 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop, void* cur_v
 
 void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(entity);
-    RUNTIME_ASSERT(entity == _curMap);
+    RUNTIME_ASSERT(entity == CurMap);
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Map, prop, _curMap);
+        Net_SendProperty(NetProperty::Map, prop, CurMap);
     }
     else {
         throw GenericException("Unable to send map modifiable property", prop->GetName());
@@ -4363,7 +4374,7 @@ void FOClient::GameDraw()
 {
     // Move cursor
     if (Settings.ShowMoveCursor) {
-        HexMngr.SetCursorPos(Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
+        CurMap->SetCursorPos(Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
     }
 
     // Look borders
@@ -4373,10 +4384,10 @@ void FOClient::GameDraw()
     }
 
     // Map
-    HexMngr.DrawMap();
+    CurMap->DrawMap();
 
     // Text on head
-    for (auto& [id, cr] : HexMngr.GetCritters()) {
+    for (auto& [id, cr] : CurMap->GetCritters()) {
         cr->DrawTextOnHead();
     }
 
@@ -4388,7 +4399,7 @@ void FOClient::GameDraw()
             const auto dt = tick - mt.StartTick;
             const auto procent = GenericUtils::Percent(mt.Tick, dt);
             const auto r = mt.Pos.Interpolate(mt.EndPos, procent);
-            auto& f = HexMngr.GetField(mt.HexX, mt.HexY);
+            auto& f = CurMap->GetField(mt.HexX, mt.HexY);
             const auto half_hex_width = Settings.MapHexWidth / 2;
             const auto half_hex_height = Settings.MapHexHeight / 2;
             const auto x = static_cast<int>(static_cast<float>(f.ScrX + half_hex_width + Settings.ScrOx) / Settings.SpritesZoom - 100.0f - static_cast<float>(mt.Pos.Left - r.Left));
@@ -4665,7 +4676,7 @@ void FOClient::LmapPrepareMap()
     for (auto i1 = bx; i1 < ex; i1++) {
         for (auto i2 = by; i2 < ey; i2++) {
             pix_y += _lmapZoom;
-            if (i1 < 0 || i2 < 0 || i1 >= HexMngr.GetWidth() || i2 >= HexMngr.GetHeight()) {
+            if (i1 < 0 || i2 < 0 || i1 >= CurMap->GetWidth() || i2 >= CurMap->GetHeight()) {
                 continue;
             }
 
@@ -4675,7 +4686,7 @@ void FOClient::LmapPrepareMap()
                 is_far = true;
             }
 
-            auto& f = HexMngr.GetField(static_cast<ushort>(i1), static_cast<ushort>(i2));
+            auto& f = CurMap->GetField(static_cast<ushort>(i1), static_cast<ushort>(i2));
             uint cur_color;
 
             if (f.Crit != nullptr) {
@@ -4772,10 +4783,10 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         SprMngr.DumpAtlases();
     }
     else if (cmd == "SwitchShowTrack") {
-        HexMngr.SwitchShowTrack();
+        CurMap->SwitchShowTrack();
     }
     else if (cmd == "SwitchShowHex") {
-        HexMngr.SwitchShowHex();
+        CurMap->SwitchShowHex();
     }
     else if (cmd == "SwitchFullscreen") {
         if (!Settings.FullScreen) {
@@ -4836,8 +4847,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 #endif
     }
     else if (cmd == "SetCursorPos") {
-        if (HexMngr.IsMapLoaded()) {
-            HexMngr.SetCursorPos(Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, true);
+        if (CurMap != nullptr) {
+            CurMap->SetCursorPos(Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, true);
         }
     }
     else if (cmd == "NetDisconnect") {
@@ -4887,8 +4898,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
 
         SprMngr.OnResolutionChanged();
-        if (HexMngr.IsMapLoaded()) {
-            HexMngr.OnResolutionChanged();
+        if (CurMap != nullptr) {
+            CurMap->OnResolutionChanged();
         }
     }
     else if (cmd == "RefreshAlwaysOnTop") {
@@ -4977,7 +4988,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SetCrittersContour" && args.size() == 2) {
         auto countour_type = _str(args[1]).toInt();
-        HexMngr.SetCrittersContour(countour_type);
+        CurMap->SetCrittersContour(countour_type);
     }
     else if (cmd == "DrawWait") {
         WaitDraw();
@@ -5024,7 +5035,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         // Light
         _rebuildLookBordersRequest = true;
         if (is_light && (!to_slot || (!from_slot && to_slot != -1))) {
-            HexMngr.RebuildLight();
+            CurMap->RebuildLight();
         }
 
         // Notify scripts about item changing
@@ -5034,7 +5045,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "SkipRoof" && args.size() == 3) {
         auto hx = _str(args[1]).toUInt();
         auto hy = _str(args[2]).toUInt();
-        HexMngr.SetSkipRoof(hx, hy);
+        CurMap->SetSkipRoof(hx, hy);
     }
     else if (cmd == "RebuildLookBorders") {
         _rebuildLookBordersRequest = true;
@@ -5045,7 +5056,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto animate = _str(args[3]).toBool();
         auto force = _str(args[4]).toBool();
 
-        HexMngr.TransitCritter(GetChosen(), hx, hy, animate, force);
+        CurMap->TransitCritter(GetChosen(), hx, hy, animate, force);
     }
     else if (cmd == "SendMove") {
         vector<uchar> dirs;

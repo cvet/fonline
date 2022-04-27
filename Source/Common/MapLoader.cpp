@@ -37,7 +37,7 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
+auto MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load) -> Properties
 {
     // Find file
     auto maps = file_sys.FilterFiles("fomap");
@@ -63,9 +63,6 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
     if (!props.LoadFromText(map_data.GetApp("ProtoMap"))) {
         throw MapLoaderException("Unable to load map properties", name);
     }
-
-    const auto width = props.GetValue<ushort>(map_property_registrator->Find("Width"));
-    const auto height = props.GetValue<ushort>(map_property_registrator->Find("Height"));
 
     // Critters
     vector<string> errors;
@@ -122,10 +119,10 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
         const auto layer = static_cast<int>(kv.count("Layer") != 0u ? _str(kv["Layer"]).toUInt() : 0);
         const auto is_roof = kv.count("IsRoof") != 0u ? _str(kv["IsRoof"]).toBool() : false;
 
-        if (hx < 0 || hx >= width || hy < 0 || hy >= height) {
-            errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", tname, hx, hy));
-            continue;
-        }
+        // if (hx < 0 || hx >= width || hy < 0 || hy >= height) {
+        //     errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", tname, hx, hy));
+        //     continue;
+        // }
         if (layer < 0 || layer > std::numeric_limits<uchar>::max()) {
             errors.emplace_back(_str("Tile '{}' have wrong layer value {}", tname, layer));
             continue;
@@ -133,10 +130,14 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
 
         const auto htname = name_resolver.ToHashedString(tname);
 
-        tile_load({htname.as_hash(), static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof});
+        if (!tile_load({htname.as_hash(), static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof})) {
+            errors.emplace_back("Unable to load tile");
+        }
     }
 
     if (!errors.empty()) {
         throw MapLoaderException("Map load error"); // Todo: pass errors vector to MapLoaderException
     }
+
+    return props;
 }

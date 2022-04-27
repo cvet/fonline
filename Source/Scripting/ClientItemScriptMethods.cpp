@@ -63,7 +63,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Item_GetMapPos(ItemView* self, ushort& hx, ushort& hy)
 {
-    if (!self->GetEngine()->HexMngr.IsMapLoaded()) {
+    if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 

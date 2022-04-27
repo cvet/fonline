@@ -186,8 +186,10 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
 
     Connection->Bout << NETMSG_LOADMAP;
     Connection->Bout << msg_len;
-    Connection->Bout << pid_map;
+    Connection->Bout << (loc != nullptr ? loc->GetId() : 0u);
+    Connection->Bout << (map != nullptr ? map->GetId() : 0u);
     Connection->Bout << pid_loc;
+    Connection->Bout << pid_map;
     Connection->Bout << map_index_in_loc;
     Connection->Bout << map_time;
     Connection->Bout << map_rain;

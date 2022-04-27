@@ -1284,8 +1284,6 @@ list( APPEND FO_CLIENT_SOURCE
 	"Source/Client/CritterView.h"
 	"Source/Client/EffectManager.cpp"
 	"Source/Client/EffectManager.h"
-	"Source/Client/HexManager.cpp"
-	"Source/Client/HexManager.h"
 	"Source/Client/ItemHexView.cpp"
 	"Source/Client/ItemHexView.h"
 	"Source/Client/ItemView.cpp"

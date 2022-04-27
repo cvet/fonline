@@ -41,7 +41,6 @@
 #include "EffectManager.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
-#include "HexManager.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"
@@ -253,6 +252,8 @@ public:
     void ConsoleKeyUp(KeyCode dik);
     void ConsoleProcess();
     void ParseCommand(string_view command);
+    void LoadMap(string_view map_name, int start_hx, int start_hy);
+    void UnloadMap();
 
     void MessBoxGenerate();
     void AddMess(string_view message_text);
@@ -279,10 +280,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(InspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
+    vector<MapView*> LoadedMaps {};
     ConfigFile IfaceIni;
     PropertyVec ShowProps {};
-    MapView* ClientCurMap {};
-    LocationView* ClientCurLocation {};
     int DrawCrExtInfo {};
     LanguagePack CurLang {};
     vector<IfaceAnim*> Animations {};
@@ -331,8 +331,6 @@ public:
     IRect IntBShowTile {};
     IRect IntBShowRoof {};
     IRect IntBShowFast {};
-    vector<MapView*> LoadedMaps {};
-    MapView* ActiveMap {};
     map<string, SubTab> Tabs[TAB_COUNT] {};
     SubTab* TabsActive[TAB_COUNT] {};
     TileTab TabsTiles[TAB_COUNT] {};

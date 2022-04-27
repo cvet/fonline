@@ -117,11 +117,15 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
             static_map.AllItemsVec.push_back(item);
             return true;
         },
-        [&static_map](MapTile&& tile) { static_map.Tiles.emplace_back(std::move(tile)); });
+        [&static_map](MapTile&& tile) -> bool {
+            static_map.Tiles.emplace_back(tile);
+            return true;
+        });
 
     // Bind scripts
     auto errors = 0;
 
+    // Todo: need attention!
     if (pmap->GetInitScript()) {
         /*hstring func_num =
             scriptSys.BindScriptFuncNumByFuncName(pmap->GetInitScript(), "void %s(Map, bool)");

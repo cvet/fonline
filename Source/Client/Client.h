@@ -46,7 +46,6 @@
 #include "Entity.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
-#include "HexManager.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"
@@ -145,8 +144,8 @@ public:
 
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
-    [[nodiscard]] auto GetCritter(uint crid) -> CritterView* { return HexMngr.GetCritter(crid); }
-    [[nodiscard]] auto GetItem(uint item_id) -> ItemHexView* { return HexMngr.GetItemById(item_id); }
+    [[nodiscard]] auto GetCritter(uint crid) -> CritterView* { return CurMap->GetCritter(crid); }
+    [[nodiscard]] auto GetItem(uint item_id) -> ItemHexView* { return CurMap->GetItemById(item_id); }
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
 
@@ -271,11 +270,11 @@ public:
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     ResourceManager ResMngr;
-    HexManager HexMngr;
     SoundManager SndMngr;
     Keyboard Keyb;
     CacheStorage Cache;
 
+    MapView* CurMap {};
     hstring CurMapPid {};
     vector<MapText> GameMapTexts {};
     bool CanDrawInScripts {};
@@ -484,7 +483,6 @@ protected:
     string _loginPassword {};
     bool _isAutoLogin {};
     PlayerView* _curPlayer {};
-    MapView* _curMap {};
     LocationView* _curLocation {};
     uint _fpsTick {};
     uint _fpsCounter {};
