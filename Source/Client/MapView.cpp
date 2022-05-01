@@ -38,8 +38,6 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-#include <autowrapper/aswrappedcall.h>
-
 static constexpr auto MAX_LIGHT_VALUE = 10000;
 static constexpr auto MAX_LIGHT_HEX = 200;
 static constexpr auto MAX_LIGHT_ALPHA = 255;
