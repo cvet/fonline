@@ -1133,7 +1133,6 @@ static constexpr uint FCRIT_CHOSEN = 0x00100000;
 #define OTHER_BREAK_TIME (0)
 #define OTHER_WAIT_TIME (1)
 #define OTHER_FLAGS (2)
-#define OTHER_CLEAR_MAP (6)
 #define OTHER_TELEPORT (7)
 
 // Critter actions

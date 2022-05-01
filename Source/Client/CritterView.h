@@ -42,19 +42,22 @@
 #include "EntityProtos.h"
 #include "SpriteManager.h"
 
+class MapView;
 class ItemView;
 
 class CritterView final : public ClientEntity, public CritterProperties
 {
 public:
     CritterView() = delete;
-    CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode);
+    CritterView(MapView* map, uint id, const ProtoCritter* proto);
     CritterView(const CritterView&) = delete;
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;
     auto operator=(CritterView&&) noexcept = delete;
     ~CritterView() override;
 
+    [[nodiscard]] auto GetMap() -> MapView* { return _map; }
+    [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
     [[nodiscard]] auto IsNpc() const -> bool { return IsBitSet(Flags, FCRIT_NPC); }
     [[nodiscard]] auto IsPlayer() const -> bool { return IsBitSet(Flags, FCRIT_PLAYER); }
     [[nodiscard]] auto IsChosen() const -> bool { return IsBitSet(Flags, FCRIT_CHOSEN); }
@@ -80,7 +83,7 @@ public:
     [[nodiscard]] auto IsWalkAnim() const -> bool;
     [[nodiscard]] auto GetWalkHexOffsets(uchar dir) const -> tuple<short, short>;
     [[nodiscard]] auto IsFinishing() const -> bool;
-    [[nodiscard]] auto IsFinish() const -> bool;
+    [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetTextRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
     [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
@@ -113,13 +116,12 @@ public:
     void AddOffsExt(short ox, short oy);
     void SetText(string_view str, uint color, uint text_delay);
     void DrawTextOnHead();
-    void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines);
+    void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
     void NextAnim(bool erase_front);
 
     uint Flags {};
     RenderEffect* DrawEffect {};
     string AlternateName {};
-    string Avatar {};
     vector<ItemView*> InvItems {};
     bool IsRunning {};
     vector<pair<ushort, ushort>> MoveSteps {};
@@ -154,7 +156,7 @@ private:
 
     void SetFade(bool fade_up);
 
-    bool _mapperMode;
+    MapView* _map;
     bool _needReset {};
     uint _resetTick {};
     uint _curSpr {};

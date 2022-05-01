@@ -58,6 +58,8 @@
 #include "SpriteManager.h"
 #include "Timer.h"
 
+DECLARE_EXCEPTION(MapperException);
+
 class FOMapper final : public FOClient
 {
     friend class MapperScriptSystem;
@@ -128,7 +130,6 @@ public:
     static constexpr auto FONT_BIG_NUM = 2;
     static constexpr auto FONT_SAND_NUM = 3;
     static constexpr auto FONT_SPECIAL = 4;
-    static constexpr auto FONT_DEFAULT = 5;
     static constexpr auto FONT_THIN = 6;
     static constexpr auto FONT_FAT = 7;
     static constexpr auto FONT_BIG = 8;
@@ -283,7 +284,6 @@ public:
     vector<MapView*> LoadedMaps {};
     ConfigFile IfaceIni;
     PropertyVec ShowProps {};
-    int DrawCrExtInfo {};
     LanguagePack CurLang {};
     vector<IfaceAnim*> Animations {};
     int CurMode {};

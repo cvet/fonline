@@ -51,13 +51,13 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
         entity->SetId(id);
 
-        const auto proto = entity->GetProto();
+        const auto* proto = entity->GetProto();
         auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), proto != nullptr ? &proto->GetProperties() : nullptr, *_engine);
         doc["_Proto"] = string(proto != nullptr ? proto->GetName() : "");
         _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
     }
 
-    const auto [it, inserted] = _allEntities.insert(std::make_pair(entity->GetId(), entity));
+    const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
 }
 
@@ -67,7 +67,6 @@ void EntityManager::UnregisterEntity(ServerEntity* entity)
     RUNTIME_ASSERT(it != _allEntities.end());
     _allEntities.erase(it);
 
-    _engine->ScriptSys->RemoveEntity(entity);
     _engine->DbStorage.Delete(_str("{}s", entity->GetClassName()), entity->GetId());
 
     entity->SetId(0);
@@ -87,7 +86,7 @@ auto EntityManager::GetEntities() -> vector<ServerEntity*>
     vector<ServerEntity*> entities;
     entities.reserve(_allEntities.size());
 
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         entities.push_back(entity);
     }
 
@@ -108,7 +107,7 @@ auto EntityManager::GetPlayers() -> vector<Player*>
     vector<Player*> players;
     players.reserve(_allEntities.size());
 
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (auto* player = dynamic_cast<Player*>(entity); player != nullptr) {
             players.push_back(player);
         }
@@ -122,7 +121,7 @@ auto EntityManager::GetPlayers() const -> vector<const Player*>
     vector<const Player*> players;
     players.reserve(_allEntities.size());
 
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (const auto* player = dynamic_cast<const Player*>(entity); player != nullptr) {
             players.push_back(player);
         }
@@ -145,7 +144,7 @@ auto EntityManager::GetItems() -> vector<Item*>
     vector<Item*> items;
     items.reserve(_allEntities.size());
 
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
             items.push_back(item);
         }
@@ -158,7 +157,7 @@ auto EntityManager::FindCritterItems(uint crid) -> vector<Item*>
 {
     vector<Item*> items;
 
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
             if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritId() == crid) {
                 items.push_back(item);
@@ -185,7 +184,7 @@ auto EntityManager::GetCritters() -> vector<Critter*>
     vector<Critter*> critters;
     critters.reserve(_allEntities.size());
 
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
             critters.push_back(cr);
         }
@@ -205,7 +204,7 @@ auto EntityManager::GetMap(uint id) -> Map*
 
 auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
 {
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
             if (map->GetProtoId() == pid) {
                 if (skip_count == 0u) {
@@ -224,7 +223,7 @@ auto EntityManager::GetMaps() -> vector<Map*>
     vector<Map*> maps;
     maps.reserve(_allEntities.size());
 
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
             maps.push_back(map);
         }
@@ -244,7 +243,7 @@ auto EntityManager::GetLocation(uint id) -> Location*
 
 auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
 {
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
             if (loc->GetProtoId() == pid) {
                 if (skip_count == 0u) {
@@ -263,7 +262,7 @@ auto EntityManager::GetLocations() -> vector<Location*>
     vector<Location*> locations;
     locations.reserve(_allEntities.size());
 
-    for (auto [id, entity] : _allEntities) {
+    for (auto&& [id, entity] : _allEntities) {
         if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
             locations.push_back(loc);
         }
@@ -274,8 +273,6 @@ auto EntityManager::GetLocations() -> vector<Location*>
 
 void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric)
 {
-    NON_CONST_METHOD_HINT();
-
     WriteLog("Load entities...\n");
 
     // Todo: load locations -> theirs maps -> critters/items on map -> items in critters/containers
@@ -374,17 +371,13 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
 void EntityManager::InitAfterLoad()
 {
-    NON_CONST_METHOD_HINT();
-
     WriteLog("Init entities after load...\n");
 
-    auto entities = _allEntities;
-
-    for (auto [id, entity] : entities) {
+    for (auto&& [id, entity] : _allEntities) {
         entity->AddRef();
     }
 
-    for (auto [id, entity] : entities) {
+    for (auto&& [id, entity] : copy(_allEntities)) {
         if (entity->IsDestroyed()) {
             entity->Release();
             continue;
@@ -423,10 +416,8 @@ void EntityManager::FinalizeEntities()
     auto recursion_fuse = 0;
 
     while (!_allEntities.empty()) {
-        auto entities_copy = _allEntities;
-        for (auto [id, entity] : entities_copy) {
+        for (auto&& [id, entity] : copy(_allEntities)) {
             entity->MarkAsDestroyed();
-            _engine->ScriptSys->RemoveEntity(entity);
             entity->Release();
             _allEntities.erase(id);
         }

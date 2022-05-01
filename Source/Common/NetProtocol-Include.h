@@ -573,7 +573,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_GAME_INFO MAKE_NETMSG_HEADER(117)
-#define NETMSG_GAME_INFO_SIZE (sizeof(uint) + sizeof(ushort) * 8 + sizeof(int) + sizeof(uchar) + sizeof(bool) + sizeof(int) * 4 + sizeof(uchar) * 12)
+#define NETMSG_GAME_INFO_SIZE (sizeof(uint) + sizeof(ushort) * 8 + sizeof(int) * 4 + sizeof(uchar) * 12)
 // ////////////////////////////////////////////////////////////////////////
 // Generic game info
 // ushort GameOpt.YearStart;
@@ -584,10 +584,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ushort GameOpt.Minute;
 // ushort GameOpt.Second;
 // ushort GameOpt.TimeMultiplier;
-// int time
-// uchar rain
-// bool turn_based
-// bool no_log_out
 // int day_time[4]
 // uchar day_color[12]
 // ////////////////////////////////////////////////////////////////////////
@@ -605,8 +601,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // hash loc_pid
 // hash map_pid
 // uchar map_index_in_loc
-// int map_time
-// uchar map_rain
 // uint ver_tiles
 // uint ver_walls
 // uint ver_scen

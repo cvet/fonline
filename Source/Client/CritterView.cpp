@@ -37,12 +37,13 @@
 #include "GenericUtils.h"
 #include "GeometryHelper.h"
 #include "ItemView.h"
+#include "MapView.h"
 #include "ResourceManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
 
-CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto, bool mapper_mode) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), CritterProperties(GetInitRef()), _mapperMode {mapper_mode}
+CritterView::CritterView(MapView* map, uint id, const ProtoCritter* proto) : ClientEntity(map->GetEngine(), id, map->GetEngine()->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), CritterProperties(GetInitRef()), _map {map}
 {
     _tickFidget = _engine->GameTime.GameTick() + GenericUtils::Random(_engine->Settings.CritterFidgetTime, _engine->Settings.CritterFidgetTime * 2u);
     DrawEffect = _engine->EffectMngr.Effects.Critter;
@@ -85,7 +86,7 @@ auto CritterView::IsFinishing() const -> bool
     return _finishingTime != 0;
 }
 
-auto CritterView::IsFinish() const -> bool
+auto CritterView::IsFinished() const -> bool
 {
     return _finishingTime != 0u && _engine->GameTime.GameTick() > _finishingTime;
 }
@@ -135,7 +136,6 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
     InvItems.erase(it);
 
     item->MarkAsDestroyed();
-    _engine->ScriptSys->RemoveEntity(item);
     item->Release();
 
     if (animate && !IsAnim()) {
@@ -261,9 +261,9 @@ void CritterView::FixLastHexes()
 
 auto CritterView::PopLastHex() -> tuple<ushort, ushort>
 {
-    const auto [hx, hy] = _lastHexes.back();
+    auto back = _lastHexes.back();
     _lastHexes.pop_back();
-    return {hx, hy};
+    return back;
 }
 
 void CritterView::Move(uchar dir)
@@ -725,33 +725,29 @@ void CritterView::RefreshModel()
         _modelStay = nullptr;
     }
 
-    // Check 3d availability
+    // Load new
     const string ext = _str(GetModelName()).getFileExtension();
-    if (ext != "fo3d") {
-        return;
-    }
+    if (ext == "fo3d") {
+        _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
 
-    // Try load
-    _engine->SprMngr.PushAtlasType(AtlasType::Dynamic);
+        auto* model = _engine->SprMngr.LoadModel(GetModelName(), true);
+        if (model != nullptr) {
+            _model = model;
+            _modelStay = _engine->SprMngr.LoadModel(GetModelName(), false);
 
-    auto* model = _engine->SprMngr.LoadModel(GetModelName(), true);
-    if (model != nullptr) {
-        _model = model;
-        _modelStay = _engine->SprMngr.LoadModel(GetModelName(), false);
+            _model->SetDir(GetDir());
+            SprId = _model->SprId;
 
-        _model->SetDir(GetDir());
-        SprId = _model->SprId;
+            _model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0);
 
-        _model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0);
-
-        // Start mesh generation for Mapper
-        if (_mapperMode) {
-            _model->StartMeshGeneration();
-            _modelStay->StartMeshGeneration();
+            if (_map->IsMapperMode()) {
+                _model->StartMeshGeneration();
+                _modelStay->StartMeshGeneration();
+            }
         }
-    }
 
-    _engine->SprMngr.PopAtlasType();
+        _engine->SprMngr.PopAtlasType();
+    }
 }
 
 void CritterView::ChangeDir(uchar dir, bool animate /* = true */)
@@ -990,7 +986,7 @@ void CritterView::SetText(string_view str, uint color, uint text_delay)
     _textOnHeadColor = color;
 }
 
-void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines)
+void CritterView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const
 {
     name_visible = false;
 

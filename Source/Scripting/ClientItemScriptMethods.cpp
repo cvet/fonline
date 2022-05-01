@@ -69,7 +69,7 @@
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->GetCritter(self->GetCritId());
+        const auto* cr = self->GetEngine()->CurMap->GetCritter(self->GetCritId());
         if (!cr) {
             throw ScriptException("CritterCl accessory, CritterCl not found");
         }
@@ -85,7 +85,7 @@
             throw ScriptException("Container accessory, crosslinks");
         }
 
-        ItemView* cont = self->GetEngine()->GetItem(self->GetContainerId());
+        ItemView* cont = self->GetEngine()->CurMap->GetItem(self->GetContainerId());
         if (!cont) {
             throw ScriptException("Container accessory, container not found");
         }

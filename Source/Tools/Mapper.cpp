@@ -1110,25 +1110,7 @@ void FOMapper::MapperMainLoop()
     AnimProcess();
 
     if (CurMap != nullptr) {
-        for (auto it = CurMap->GetCritters().begin(), end = CurMap->GetCritters().end(); it != end; ++it) {
-            auto* cr = it->second;
-            cr->Process();
-
-            if (cr->IsNeedMove()) {
-                const auto err_move = ((!cr->IsRunning && cr->GetIsNoWalk()) || (cr->IsRunning && cr->GetIsNoRun()));
-                if (!err_move && CurMap->TransitCritter(cr, cr->MoveSteps[0].first, cr->MoveSteps[0].second, true, false)) {
-                    cr->MoveSteps.erase(cr->MoveSteps.begin());
-                }
-                else {
-                    cr->MoveSteps.clear();
-                }
-                CurMap->RebuildLight();
-            }
-        }
-
-        CurMap->Scroll();
-        CurMap->ProcessItems();
-        CurMap->ProcessRain();
+        CurMap->Process();
     }
 
     // Start render
@@ -1137,48 +1119,6 @@ void FOMapper::MapperMainLoop()
     DrawIfaceLayer(0);
     if (CurMap != nullptr) {
         CurMap->DrawMap();
-
-        // Texts on heads
-        if (DrawCrExtInfo != 0) {
-            for (auto [id, cr] : CurMap->GetCritters()) {
-                if (cr->SprDrawValid) {
-                    if (DrawCrExtInfo == 1) {
-                        cr->SetText(_str("|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId()), COLOR_TEXT_WHITE, 60000000);
-                    }
-                    else {
-                        cr->SetText("", COLOR_TEXT_WHITE, 60000000);
-                    }
-                    cr->DrawTextOnHead();
-                }
-            }
-        }
-
-        // Texts on map
-        const auto tick = GameTime.FrameTick();
-        for (auto it = GameMapTexts.begin(); it != GameMapTexts.end();) {
-            auto& map_text = *it;
-
-            if (tick >= map_text.StartTick + map_text.Tick) {
-                it = GameMapTexts.erase(it);
-            }
-            else {
-                const auto percent = GenericUtils::Percent(map_text.Tick, tick - map_text.StartTick);
-                const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, percent);
-                const auto& field = CurMap->GetField(map_text.HexX, map_text.HexY);
-
-                const auto x = static_cast<int>((field.ScrX + Settings.MapHexWidth / 2 + Settings.ScrOx) / Settings.SpritesZoom - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
-                const auto y = static_cast<int>((field.ScrY + Settings.MapHexLineHeight / 2 - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + Settings.ScrOy) / Settings.SpritesZoom - 70.0f);
-
-                auto color = map_text.Color;
-                if (map_text.Fade) {
-                    color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
-                }
-
-                SprMngr.DrawStr(IRect(x, y, x + 200, y + 70), map_text.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, FONT_DEFAULT);
-
-                ++it;
-            }
-        }
     }
 
     // Iface
@@ -1675,7 +1615,7 @@ void FOMapper::IntDraw()
         auto hex_thru = false;
         ushort hx = 0;
         ushort hy = 0;
-        if (CurMap->GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+        if (CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
             hex_thru = true;
         }
         auto day_time = CurMap->GetDayTime();
@@ -1936,7 +1876,7 @@ void FOMapper::IntLMouseDown()
     if ((!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) && (!ObjVisible || SelectedEntities.empty() || !IsCurInRect(ObjWMain, ObjX, ObjY))) {
         InContItem = nullptr;
 
-        if (!CurMap->GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX1, SelectHY1)) {
+        if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHX1, SelectHY1)) {
             return;
         }
         SelectHX2 = SelectHX1;
@@ -2110,7 +2050,7 @@ void FOMapper::IntLMouseDown()
                         owner->DeleteItem(InContItem, true);
                     }
                     else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
-                        ItemView* owner = CurMap->GetItemById(InContItem->GetContainerId());
+                        ItemView* owner = CurMap->GetItem(InContItem->GetContainerId());
                         RUNTIME_ASSERT(owner);
                         // owner->ContEraseItem(InContItem); // Todo: need attention!
                         InContItem->Release();
@@ -2371,7 +2311,7 @@ void FOMapper::IntLMouseDown()
 
 void FOMapper::IntLMouseUp()
 {
-    if (IntHold == INT_SELECT && CurMap->GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2)) {
+    if (IntHold == INT_SELECT && CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2)) {
         if (CurMode == CUR_MODE_DEFAULT) {
             if (SelectHX1 != SelectHX2 || SelectHY1 != SelectHY2) {
                 CurMap->ClearHexTrack();
@@ -2385,7 +2325,7 @@ void FOMapper::IntLMouseUp()
 
                     for (auto i = fx; i <= tx; i++) {
                         for (auto j = fy; j <= ty; j++) {
-                            hexes.push_back(std::make_pair(i, j));
+                            hexes.emplace_back(i, j);
                         }
                     }
                 }
@@ -2395,10 +2335,12 @@ void FOMapper::IntLMouseUp()
 
                 vector<ItemHexView*> items;
                 vector<CritterView*> critters;
-                for (auto [hx, hy] : hexes) {
+                for (auto&& [hx, hy] : hexes) {
                     // Items, critters
-                    CurMap->GetItems(hx, hy, items);
-                    CurMap->GetCritters(hx, hy, critters, CritterFindType::Any);
+                    auto hex_items = CurMap->GetItems(hx, hy);
+                    items.insert(items.end(), hex_items.begin(), hex_items.end());
+                    auto hex_critters = CurMap->GetCritters(hx, hy, CritterFindType::Any);
+                    critters.insert(critters.end(), hex_critters.begin(), hex_critters.end());
 
                     // Tile, roof
                     if (IsSelectTile && Settings.ShowTile) {
@@ -2439,16 +2381,14 @@ void FOMapper::IntLMouseUp()
                 }
             }
             else {
-                ItemHexView* item = nullptr;
-                CritterView* cr = nullptr;
-                CurMap->GetSmthPixel(Settings.MouseX, Settings.MouseY, item, cr);
+                auto* entity = CurMap->GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
 
-                if (item != nullptr) {
+                if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
                     if (!CurMap->IsIgnorePid(item->GetProtoId())) {
                         SelectAddItem(item);
                     }
                 }
-                else if (cr != nullptr) {
+                else if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
                     SelectAddCrit(cr);
                 }
             }
@@ -2469,7 +2409,7 @@ void FOMapper::IntMouseMove()
 {
     if (IntHold == INT_SELECT) {
         CurMap->ClearHexTrack();
-        if (!CurMap->GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2)) {
+        if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2)) {
             if ((SelectHX2 != 0u) || (SelectHY2 != 0u)) {
                 CurMap->RefreshMap();
                 SelectHX2 = SelectHY2 = 0;
@@ -2660,23 +2600,17 @@ void FOMapper::IntSetMode(int mode)
 
 void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
 {
+    NON_CONST_METHOD_HINT();
+
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return;
     }
 
     if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
-        if (cr->IsDead() || (CurMap->GetField(hx, hy).Crit == nullptr)) {
-            CurMap->RemoveCritter(cr);
-            cr->SetHexX(hx);
-            cr->SetHexY(hy);
-            CurMap->SetCritter(cr);
-        }
+        CurMap->MoveCritter(cr, hx, hy);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        CurMap->DeleteItem(item, false, nullptr);
-        item->SetHexX(hx);
-        item->SetHexY(hy);
-        CurMap->PushItem(item);
+        CurMap->MoveItem(item, hx, hy);
     }
 }
 
@@ -2688,10 +2622,10 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
     }
 
     if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
-        CurMap->DeleteCritter(cr->GetId());
+        CurMap->DestroyCritter(cr);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        CurMap->FinishItem(item->GetId(), false);
+        CurMap->DestroyItem(item);
     }
 }
 
@@ -2814,7 +2748,7 @@ void FOMapper::SelectAll()
     }
 
     if (IsSelectCrit && Settings.ShowCrit) {
-        for (auto [id, cr] : CurMap->GetCritters()) {
+        for (auto* cr : CurMap->GetCritters()) {
             SelectAddCrit(cr);
         }
     }
@@ -2989,16 +2923,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             hy = std::clamp(hy, 0, CurMap->GetHeight() - 1);
 
             if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                CurMap->DeleteItem(item, false, nullptr);
-                item->SetHexX(static_cast<ushort>(hx));
-                item->SetHexY(static_cast<ushort>(hy));
-                CurMap->PushItem(item);
+                CurMap->MoveItem(item, static_cast<ushort>(hx), static_cast<ushort>(hy));
             }
             else if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
-                CurMap->RemoveCritter(cr);
-                cr->SetHexX(static_cast<ushort>(hx));
-                cr->SetHexY(static_cast<ushort>(hy));
-                CurMap->SetCritter(cr);
+                CurMap->MoveCritter(cr, static_cast<ushort>(hx), static_cast<ushort>(hy));
             }
         }
     }
@@ -3128,14 +3056,8 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 
     SelectClear();
 
-    CritterView* cr = 0; // Todo: need attention!
-    // new CritterView(--((ProtoMap*)CurMap->Proto)->LastEntityId, proto, Settings, SprMngr, ResMngr);
-    cr->SetHexX(hx);
-    cr->SetHexY(hy);
+    CritterView* cr = CurMap->AddCritter(0, proto, hx, hy, {});
     cr->SetDir(NpcDir);
-    cr->Init();
-
-    CurMap->AddCritter(cr);
     SelectAdd(cr);
 
     CurMap->RefreshMap();
@@ -3178,7 +3100,7 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
     else {
         // Todo: need attention!
         // uint id = CurMap->AddItem(--((ProtoMap*)CurMap->Proto)->LastEntityId, pid, hx, hy, 0, nullptr);
-        // item = CurMap->GetItemById(id);
+        // item = CurMap->GetItem(id);
     }
 
     // Select
@@ -3267,7 +3189,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
     else if (dynamic_cast<ItemHexView*>(entity) != nullptr) {
         // const uint id = 0; // Todo: need attention!
         // CurMap->AddItem(--CurMap->GetProtoMap()->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr);
-        // auto* item = CurMap->GetItemById(id);
+        // auto* item = CurMap->GetItem(id);
         // SelectAdd(item);
         // owner = item;
     }
@@ -3425,7 +3347,7 @@ void FOMapper::BufferPaste(int, int)
             const uint id = 0; // Todo: need attention!
             // CurMap->AddItem(
             //  --((ProtoMap*)CurMap->Proto)->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr);
-            ItemHexView* item = CurMap->GetItemById(id);
+            ItemHexView* item = CurMap->GetItem(id);
             item->SetProperties(*entity_buf.Props);
             SelectAdd(item);
             owner = item;
@@ -3489,7 +3411,7 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!CurMap->GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
                 break;
             }
 
@@ -3509,7 +3431,7 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!CurMap->GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
                 break;
             }
 
@@ -3540,7 +3462,7 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!CurMap->GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
                 break;
             }
 
@@ -3640,7 +3562,7 @@ auto FOMapper::GetCurHex(ushort& hx, ushort& hy, bool ignore_interface) -> bool
     if (!ignore_interface && IsCurInInterface()) {
         return false;
     }
-    return CurMap->GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy);
+    return CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy);
 }
 
 void FOMapper::ConsoleDraw()
@@ -3766,6 +3688,7 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+        UNUSED_VARIABLE(pmap);
         // Todo: need attention!
         /*if (!pmap->EditorLoad(ServerFileSys, ProtoMngr, SprMngr, ResMngr))
         {
@@ -3853,7 +3776,7 @@ void FOMapper::ParseCommand(string_view command)
             }
         }
         else {
-            for (auto [id, cr] : CurMap->GetCritters()) {
+            for (auto* cr : CurMap->GetCritters()) {
                 cr->ClearAnim();
                 for (uint j = 0; j < anims.size() / 2; j++) {
                     cr->Animate(anims[j * 2], anims[j * 2 + 1], nullptr);
@@ -3948,82 +3871,49 @@ void FOMapper::ParseCommand(string_view command)
 
 void FOMapper::LoadMap(string_view map_name, int start_hx, int start_hy)
 {
+    const auto* pmap = ProtoMngr.GetProtoMap(ToHashedString(map_name));
+    if (pmap == nullptr) {
+        AddMess("Map prototype not found");
+        return;
+    }
+
+    auto new_map_holder = std::make_unique<MapView>(this, 0u, pmap);
+    auto* new_map = new_map_holder.get();
+    new_map->EnableMapperMode();
+
     try {
-        // auto* pmap = ProtoMngr.GetProtoMap(ToHashedString(map_name));
-        // if (pmap == nullptr) {
-
-        //}
-
-        vector<CritterView*> critters;
-        vector<ItemHexView*> hex_items;
-        vector<MapTile> map_tiles;
-
-        const auto map_properties = MapLoader::Load(
-            map_name, FileSys, ProtoMngr, *this, GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME),
-            [this, &critters](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
-                auto* cr = new CritterView(this, id, proto, true);
-                if (!cr->LoadFromText(kv)) {
-                    cr->Release();
-                    return false;
-                }
-
-                critters.emplace_back(cr);
-                return true;
+        MapLoader::Load(
+            map_name, FileSys, ProtoMngr, *this,
+            [new_map](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+                const auto* new_critter = new_map->AddCritter(id, proto, kv);
+                return new_critter != nullptr;
             },
-            [this, &hex_items](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
-                auto* item = new ItemHexView(this, id, proto);
-                if (!item->LoadFromText(kv)) {
-                    item->Release();
-                    return false;
-                }
-
-                hex_items.emplace_back(item);
-                return true;
+            [new_map](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+                const auto* new_item = new_map->AddItem(id, proto, kv);
+                return new_item != nullptr;
             },
-            [this, &map_tiles](MapTile&& tile) -> bool {
-                map_tiles.emplace_back(tile);
+            [new_map](MapTile&& tile) -> bool {
+                new_map->AddTile(tile);
                 return true;
             });
-
-        auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
-
-        auto* map = new MapView(this, 0, pmap);
-        map->SetProperties(map_properties);
-
-        SelectClear();
-
-        if (CurMap != nullptr) {
-            // CurMap->GetProtoMap(*CurMap->GetProtoForEdit());
-        }
-
-        CurMap = nullptr;
-
-        CurMap->EnableMapperMode();
-
-        // if (!CurMap->SetProtoMap(*pmap)) {
-        //     AddMess("Load map fail.");
-        //     return;
-        // }
-
-        CurMap = map;
-        LoadedMaps.push_back(map);
-
-        if (start_hx < 0 || start_hx >= map->GetWidth()) {
-            start_hx = map->GetWorkHexX();
-        }
-        if (start_hy < 0 || start_hy >= map->GetHeight()) {
-            start_hy = map->GetWorkHexY();
-        }
-
-        CurMap->FindSetCenter(start_hx, start_hy);
-
-        AddMess("Load map complete.");
-
-        RunMapLoadScript(map);
     }
-    catch (MapLoaderException& ex) {
-        ReportExceptionAndContinue(ex);
+    catch (const MapLoaderException& ex) {
+        AddMess(_str("Map truncated: {}", ex.what()));
+        return;
     }
+
+    start_hx = std::clamp<int>(start_hx, 0, new_map->GetWidth());
+    start_hy = std::clamp<int>(start_hy, 0, new_map->GetHeight());
+    new_map->FindSetCenter(start_hx, start_hy);
+
+    AddMess("Load map complete.");
+
+    SelectClear();
+
+    CurMap = new_map_holder.release();
+    LoadedMaps.push_back(CurMap);
+
+    RunMapLoadScript(CurMap);
 }
 
 void FOMapper::UnloadMap()

@@ -36,22 +36,23 @@
 #include "EffectManager.h"
 #include "GenericUtils.h"
 #include "Log.h"
+#include "MapView.h"
 #include "Sprites.h"
 #include "Timer.h"
 
-ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto) : ItemView(engine, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto) : ItemView(map->GetEngine(), id, proto)
 {
     DrawEffect = _engine->EffectMngr.Effects.Generic;
 }
 
-ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, const Properties& props) : ItemHexView(engine, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props) : ItemHexView(map, id, proto)
 {
     SetProperties(props);
 
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data) : ItemHexView(engine, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data) : ItemHexView(map, id, proto)
 {
     RUNTIME_ASSERT(props_data);
     RestoreData(*props_data);
@@ -59,7 +60,7 @@ ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vect
     AfterConstruction();
 }
 
-ItemHexView::ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y) : ItemHexView(engine, id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y) : ItemHexView(map, id, proto)
 {
     if (props_data != nullptr) {
         RestoreData(*props_data);
@@ -107,9 +108,9 @@ auto ItemHexView::IsFinishing() const -> bool
     return _finishing;
 }
 
-auto ItemHexView::IsFinish() const -> bool
+auto ItemHexView::IsFinished() const -> bool
 {
-    return _finishing && _engine->GameTime.GameTick() > _finishingTime;
+    return _finishing && _engine->GameTime.GameTick() >= _finishingTime;
 }
 
 void ItemHexView::StopFinishing()

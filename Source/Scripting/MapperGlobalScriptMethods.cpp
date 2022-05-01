@@ -99,11 +99,11 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, ushort hx, ushort hy)
 {
-    vector<ItemHexView*> hex_items;
-    mapper->CurMap->GetItems(hx, hy, hex_items);
+    const auto hex_items = mapper->CurMap->GetItems(hx, hy);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
+
     for (auto* item : hex_items) {
         items.push_back(item);
     }
@@ -119,9 +119,8 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Mapper_Game_GetCritter(FOMapper* mapper, ushort hx, ushort hy, CritterFindType findType)
 {
-    vector<CritterView*> critters_;
-    mapper->CurMap->GetCritters(hx, hy, critters_, findType);
-    return !critters_.empty() ? critters_[0] : nullptr;
+    const auto critters = mapper->CurMap->GetCritters(hx, hy, findType);
+    return !critters.empty() ? critters.front() : nullptr;
 }
 
 ///# ...
@@ -132,9 +131,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, ushort hx, ushort hy, CritterFindType findType)
 {
-    vector<CritterView*> critters;
-    mapper->CurMap->GetCritters(hx, hy, critters, findType);
-    return critters;
+    return mapper->CurMap->GetCritters(hx, hy, findType);
 }
 
 ///# ...

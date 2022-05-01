@@ -129,12 +129,6 @@ public:
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    void RemoveEntity(Entity* entity)
-    {
-        // Todo: RemoveEntity
-        UNUSED_VARIABLE(entity);
-    }
-
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
     auto FindFunc(string_view func_name) -> ScriptFunc<TRet, Args...>
     {

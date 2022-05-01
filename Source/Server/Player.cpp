@@ -150,8 +150,6 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     hstring pid_map;
     hstring pid_loc;
     uchar map_index_in_loc = 0;
-    auto map_time = -1;
-    uchar map_rain = 0;
     uint hash_tiles = 0;
     uint hash_scen = 0;
 
@@ -165,8 +163,6 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
         pid_map = map->GetProtoId();
         pid_loc = loc->GetProtoId();
         map_index_in_loc = static_cast<uchar>(loc->GetMapIndex(pid_map));
-        map_time = map->GetCurDayTime();
-        map_rain = map->GetRainCapacity();
         hash_tiles = map->GetStaticMap()->HashTiles;
         hash_scen = map->GetStaticMap()->HashScen;
     }
@@ -191,8 +187,6 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     Connection->Bout << pid_loc;
     Connection->Bout << pid_map;
     Connection->Bout << map_index_in_loc;
-    Connection->Bout << map_time;
-    Connection->Bout << map_rain;
     Connection->Bout << hash_tiles;
     Connection->Bout << hash_scen;
     if (map != nullptr) {
@@ -773,11 +767,7 @@ void Player::Send_GameInfo(Map* map)
     if (IsSendDisabled()) {
     }
 
-    /*int time = (map ? map->GetCurDayTime() : -1);
-    uchar rain = (map ? map->GetRainCapacity() : 0);
-    bool no_log_out = (map ? map->GetIsNoLogOut() : true);
-
-    int day_time[4];
+    /*int day_time[4];
     uchar day_color[12];
     CScriptArray* day_time_arr = (map ? map->GetDayTime() : nullptr);
     CScriptArray* day_color_arr = (map ? map->GetDayColor() : nullptr);
@@ -806,8 +796,6 @@ void Player::Send_GameInfo(Map* map)
     Connection->Bout << Globals->GetMinute();
     Connection->Bout << Globals->GetSecond();
     Connection->Bout << Globals->GetTimeMultiplier();
-    Connection->Bout << time;
-    Connection->Bout << rain;
     Connection->Bout << no_log_out;
     Connection->Bout.Push(day_time, sizeof(day_time));
     Connection->Bout.Push(day_color, sizeof(day_color));

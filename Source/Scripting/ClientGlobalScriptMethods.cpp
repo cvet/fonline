@@ -35,6 +35,7 @@
 
 #include "Client.h"
 #include "FileSystem.h"
+#include "GenericUtils.h"
 #include "GeometryHelper.h"
 #include "Log.h"
 #include "NetCommand.h"
@@ -160,18 +161,18 @@
     }
 
     // On map
-    ItemView* item = client->GetItem(itemId);
+    ItemView* item = client->CurMap->GetItem(itemId);
 
     // On Chosen
-    if (!item && client->GetChosen()) {
+    if (item == nullptr && client->GetChosen() != nullptr) {
         item = client->GetChosen()->GetItem(itemId);
     }
 
     // On other critters
     if (item == nullptr) {
-        for (auto it = client->CurMap->GetCritters().begin(); !item && it != client->CurMap->GetCritters().end(); ++it) {
-            if (!it->second->IsChosen()) {
-                item = it->second->GetItem(itemId);
+        for (auto* cr : client->CurMap->GetCritters()) {
+            if (!cr->IsChosen()) {
+                item = cr->GetItem(itemId);
             }
         }
     }
@@ -189,7 +190,7 @@
 {
     vector<ItemView*> items;
     if (client->CurMap != nullptr) {
-        auto& items_ = client->CurMap->GetItems();
+        auto items_ = client->CurMap->GetItems();
         for (auto it = items_.begin(); it != items_.end();) {
             it = ((*it)->IsFinishing() ? items_.erase(it) : ++it);
         }
@@ -209,7 +210,7 @@
 {
     vector<ItemHexView*> hex_items;
     if (client->CurMap != nullptr) {
-        client->CurMap->GetItems(hx, hy, hex_items);
+        hex_items = client->CurMap->GetItems(hx, hy);
         for (auto it = hex_items.begin(); it != hex_items.end();) {
             it = ((*it)->IsFinishing() ? hex_items.erase(it) : ++it);
         }
@@ -231,12 +232,14 @@
 [[maybe_unused]] CritterView* Client_Game_GetCritter(FOClient* client, uint critterId)
 {
     if (critterId == 0u) {
-        return static_cast<CritterView*>(nullptr); // throw ScriptException("Critter id arg is zero";
+        return nullptr;
     }
-    auto* const cr = client->GetCritter(critterId);
-    if (!cr || cr->IsDestroyed()) {
-        return static_cast<CritterView*>(nullptr);
+
+    auto* cr = client->CurMap->GetCritter(critterId);
+    if (!cr || cr->IsDestroyed() || cr->IsDestroying()) {
+        return nullptr;
     }
+
     return cr;
 }
 
@@ -253,10 +256,9 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    auto& crits = client->CurMap->GetCritters();
     vector<CritterView*> critters;
-    for (auto it = crits.begin(), end = crits.end(); it != end; ++it) {
-        auto* cr = it->second;
+
+    for (auto* cr : client->CurMap->GetCritters()) {
         if (cr->CheckFind(findType) && client->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
             critters.push_back(cr);
         }
@@ -277,14 +279,14 @@
     vector<CritterView*> critters;
 
     if (!pid) {
-        for (const auto& [id, cr] : client->CurMap->GetCritters()) {
+        for (auto* cr : client->CurMap->GetCritters()) {
             if (cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }
         }
     }
     else {
-        for (const auto& [id, cr] : client->CurMap->GetCritters()) {
+        for (auto* cr : client->CurMap->GetCritters()) {
             if (cr->IsNpc() && cr->GetProtoId() == pid && cr->CheckFind(findType)) {
                 critters.push_back(cr);
             }
@@ -328,8 +330,8 @@
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersWithBlockInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
 {
     vector<CritterView*> critters;
-    pair<ushort, ushort> block;
-    pair<ushort, ushort> pre_block;
+    pair<ushort, ushort> block = {};
+    pair<ushort, ushort> pre_block = {};
     client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, &block, &pre_block, nullptr, true);
     preBlockHx = pre_block.first;
     preBlockHy = pre_block.second;
@@ -348,8 +350,8 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Client_Game_GetHexInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort& toHx, ushort& toHy, float angle, uint dist)
 {
-    pair<ushort, ushort> pre_block;
-    pair<ushort, ushort> block;
+    pair<ushort, ushort> pre_block = {};
+    pair<ushort, ushort> block = {};
     client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, nullptr, CritterFindType::Any, &block, &pre_block, nullptr, true);
     toHx = pre_block.first;
     toHy = pre_block.second;
@@ -588,31 +590,15 @@
 ///# param text ...
 ///# param hx ...
 ///# param hy ...
-///# param ms ...
+///# param showTime ...
 ///# param color ...
 ///# param fade ...
-///# param ox ...
-///# param oy ...
+///# param endOx ...
+///# param endOy ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_MapMessage(FOClient* client, string_view text, ushort hx, ushort hy, uint ms, uint color, bool fade, int ox, int oy)
+[[maybe_unused]] void Client_Game_MapMessage(FOClient* client, string_view text, ushort hx, ushort hy, uint showTime, uint color, bool fade, int endOx, int endOy)
 {
-    FOClient::MapText map_text;
-    map_text.HexX = hx;
-    map_text.HexY = hy;
-    map_text.Color = (color != 0u ? color : COLOR_TEXT);
-    map_text.Fade = fade;
-    map_text.StartTick = client->GameTime.GameTick();
-    map_text.Tick = ms;
-    map_text.Text = text;
-    map_text.Pos = client->CurMap->GetRectForText(hx, hy);
-    map_text.EndPos = IRect(map_text.Pos, ox, oy);
-
-    const auto it = std::find_if(client->GameMapTexts.begin(), client->GameMapTexts.end(), [&map_text](const FOClient::MapText& t) { return t.HexX == map_text.HexX && t.HexY == map_text.HexY; });
-    if (it != client->GameMapTexts.end()) {
-        client->GameMapTexts.erase(it);
-    }
-
-    client->GameMapTexts.push_back(map_text);
+    client->CurMap->AddMapText(text, hx, hy, color, showTime, fade, endOx, endOy);
 }
 
 ///# ...
@@ -1074,13 +1060,13 @@
     const auto eff_type = static_cast<uint>(effectType);
 
     if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype != 0) {
-        auto* item = client->GetItem(static_cast<uint>(effectSubtype));
+        auto* item = client->CurMap->GetItem(static_cast<uint>(effectSubtype));
         if (item) {
             item->DrawEffect = (effect ? effect : client->EffectMngr.Effects.Generic);
         }
     }
     if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype != 0) {
-        auto* cr = client->GetCritter(static_cast<uint>(effectSubtype));
+        auto* cr = client->CurMap->GetCritter(static_cast<uint>(effectSubtype));
         if (cr) {
             cr->DrawEffect = (effect ? effect : client->EffectMngr.Effects.Critter);
         }
@@ -1235,20 +1221,11 @@
 }
 
 ///# ...
-///# param fallAnimName ...
-///# param dropAnimName ...
-///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetRainAnimation(FOClient* client, string_view fallAnimName, string_view dropAnimName)
-{
-    client->CurMap->SetRainAnimation(fallAnimName, dropAnimName);
-}
-
-///# ...
 ///# param targetZoom ...
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_ChangeZoom(FOClient* client, float targetZoom)
 {
-    if (targetZoom == client->Settings.SpritesZoom) {
+    if (Math::FloatCompare(targetZoom, client->Settings.SpritesZoom)) {
         return;
     }
 
@@ -2055,7 +2032,7 @@
     client->Settings.MouseY = y;
     ushort hx_ = 0;
     ushort hy_ = 0;
-    const auto result = client->CurMap->GetHexPixel(x, y, hx_, hy_);
+    const auto result = client->CurMap->GetHexScreenPos(x, y, hx_, hy_);
     client->Settings.MouseX = old_x;
     client->Settings.MouseY = old_y;
     if (result) {
@@ -2074,7 +2051,7 @@
 [[maybe_unused]] ItemView* Client_Game_GetItemByMonitorPos(FOClient* client, int x, int y)
 {
     bool item_egg;
-    return client->CurMap->GetItemPixel(x, y, item_egg);
+    return client->CurMap->GetItemAtScreenPos(x, y, item_egg);
 }
 
 ///# ...
@@ -2084,7 +2061,7 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Game_GetCritterByMonitorPos(FOClient* client, int x, int y)
 {
-    return client->CurMap->GetCritterPixel(x, y, false);
+    return client->CurMap->GetCritterAtScreenPos(x, y, false);
 }
 
 ///# ...
@@ -2094,10 +2071,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ClientEntity* Client_Game_GetEntityByMonitorPos(FOClient* client, int x, int y)
 {
-    ItemHexView* item = nullptr;
-    CritterView* cr = nullptr;
-    client->CurMap->GetSmthPixel(x, y, item, cr);
-    return item ? static_cast<ClientEntity*>(item) : static_cast<ClientEntity*>(cr);
+    return client->CurMap->GetEntityAtScreenPos(x, y);
 }
 
 ///# ...

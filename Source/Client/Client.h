@@ -115,19 +115,6 @@ class FOClient : public FOEngineBase, public AnimationResolver
     friend class ClientScriptSystem;
 
 public:
-    struct MapText
-    {
-        ushort HexX {};
-        ushort HexY {};
-        uint StartTick {};
-        uint Tick {};
-        string Text;
-        uint Color {};
-        bool Fade {};
-        IRect Pos {};
-        IRect EndPos {};
-    };
-
     FOClient() = delete;
     explicit FOClient(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
     FOClient(const FOClient&) = delete;
@@ -144,8 +131,6 @@ public:
 
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
-    [[nodiscard]] auto GetCritter(uint crid) -> CritterView* { return CurMap->GetCritter(crid); }
-    [[nodiscard]] auto GetItem(uint item_id) -> ItemHexView* { return CurMap->GetItemById(item_id); }
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
 
@@ -276,7 +261,6 @@ public:
 
     MapView* CurMap {};
     hstring CurMapPid {};
-    vector<MapText> GameMapTexts {};
     bool CanDrawInScripts {};
     vector<string> Preload3dFiles {};
 
@@ -358,13 +342,12 @@ protected:
         uint CurMap {};
     };
 
-    static constexpr auto FONT_DEFAULT = 5;
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
     void RegisterData(const vector<uchar>& restore_info_bin);
 
     void ProcessAutoLogin();
-    void CrittersProcess();
+    void ProcessGlobalMap();
     void ProcessInputEvents();
     void TryExit();
     void FlashGameWindow();
@@ -430,7 +413,7 @@ protected:
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
     void Net_OnCustomCommand();
-    void Net_OnCritterXY();
+    void Net_OnCritterCoords();
     void Net_OnAllProperties();
     void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();
@@ -459,7 +442,7 @@ protected:
     void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSendMapValue(Entity* entity, const Property* prop);
     void OnSendLocationValue(Entity* entity, const Property* prop);
@@ -468,10 +451,6 @@ protected:
 
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
-
-    void AddCritter(CritterView* cr);
-    void DeleteCritters();
-    void DeleteCritter(uint crid);
 
     int _initCalls {};
     vector<uchar> _restoreInfoBin {};
@@ -524,7 +503,6 @@ protected:
     uint _gameMouseStay {};
     uint _daySumRGB {};
     CritterView* _chosen {};
-    bool _noLogOut {};
     bool _rebuildLookBordersRequest {};
     bool _drawLookBorders {true};
     bool _drawShootBorders {};
@@ -536,6 +514,7 @@ protected:
     hstring _pupContPid {};
     uint _holoInfo[MAX_HOLO_INFO] {};
     vector<Automap> _automaps {};
+    vector<CritterView*> _worldmapCritters {};
     TwoBitMask _worldmapFog {};
     PrimitivePoints _worldmapFogPix {};
     vector<GmapLocation> _worldmapLoc {};

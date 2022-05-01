@@ -136,7 +136,7 @@ public:
     void Release() const;
 
     void MarkAsDestroying();
-    void MarkAsDestroyed();
+    virtual void MarkAsDestroyed();
 
 protected:
     explicit Entity(const PropertyRegistrator* registrator);

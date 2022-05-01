@@ -37,7 +37,7 @@
 
 // Todo: restore supporting of the map old text format
 
-auto MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load) -> Properties
+void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
 {
     // Find file
     auto maps = file_sys.FilterFiles("fomap");
@@ -57,11 +57,6 @@ auto MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
     ConfigFile map_data(buf, name_resolver);
     if (!map_data.IsApp("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
-    }
-
-    Properties props(map_property_registrator);
-    if (!props.LoadFromText(map_data.GetApp("ProtoMap"))) {
-        throw MapLoaderException("Unable to load map properties", name);
     }
 
     // Critters
@@ -138,6 +133,4 @@ auto MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
     if (!errors.empty()) {
         throw MapLoaderException("Map load error"); // Todo: pass errors vector to MapLoaderException
     }
-
-    return props;
 }

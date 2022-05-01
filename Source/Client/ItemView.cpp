@@ -33,7 +33,6 @@
 
 #include "ItemView.h"
 #include "Client.h"
-#include "Timer.h"
 
 ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
 {
