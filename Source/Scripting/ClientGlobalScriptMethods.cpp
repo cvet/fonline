@@ -250,7 +250,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersAroundHex(FOClient* client, ushort hx, ushort hy, uint radius, CritterFindType findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, ushort hx, ushort hy, uint radius, CritterFindType findType)
 {
     if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
         throw ScriptException("Invalid hexes args");
@@ -274,7 +274,7 @@
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersByPids(FOClient* client, hstring pid, CritterFindType findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, hstring pid, CritterFindType findType)
 {
     vector<CritterView*> critters;
 
@@ -308,9 +308,9 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType)
 {
-    vector<CritterView*> critters;
+    vector<CritterHexView*> critters;
     client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, nullptr, nullptr, nullptr, true);
-    return critters;
+    return vec_downcast<CritterView*>(critters);
 }
 
 ///# ...
@@ -329,7 +329,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<CritterView*> Client_Game_GetCrittersWithBlockInPath(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float angle, uint dist, CritterFindType findType, ushort& preBlockHx, ushort& preBlockHy, ushort& blockHx, ushort& blockHy)
 {
-    vector<CritterView*> critters;
+    vector<CritterHexView*> critters;
     pair<ushort, ushort> block = {};
     pair<ushort, ushort> pre_block = {};
     client->CurMap->TraceBullet(fromHx, fromHy, toHx, toHy, dist, angle, nullptr, false, &critters, findType, &block, &pre_block, nullptr, true);
@@ -337,7 +337,7 @@
     preBlockHy = pre_block.second;
     blockHx = block.first;
     blockHy = block.second;
-    return critters;
+    return vec_downcast<CritterView*>(critters);
 }
 
 ///# ...
@@ -402,15 +402,20 @@
         throw ScriptException("Invalid to hexes args");
     }
 
+    auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (cut > 0 && !client->CurMap->CutPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut)) {
+    if (cut > 0 && !client->CurMap->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, cut)) {
         return vector<uchar>();
     }
 
     vector<uchar> steps;
-    if (!client->CurMap->FindPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1)) {
+    if (!client->CurMap->FindPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, steps, -1)) {
         return vector<uchar>();
     }
 
@@ -462,15 +467,20 @@
         throw ScriptException("Invalid to hexes args");
     }
 
+    auto* hex_cr = dynamic_cast<CritterHexView*>(cr);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
     auto to_hx = toHx;
     auto to_hy = toHy;
 
-    if (cut > 0 && !client->CurMap->CutPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, cut)) {
+    if (cut > 0 && !client->CurMap->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, cut)) {
         return 0;
     }
 
     vector<uchar> steps;
-    if (!client->CurMap->FindPath(cr, cr->GetHexX(), cr->GetHexY(), to_hx, to_hy, steps, -1)) {
+    if (!client->CurMap->FindPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, steps, -1)) {
         steps.clear();
     }
 

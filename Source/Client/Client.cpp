@@ -163,7 +163,17 @@ auto FOClient::GetChosen() -> CritterView*
 {
     NON_CONST_METHOD_HINT();
 
+    if (_chosen != nullptr && _chosen->IsDestroyed()) {
+        _chosen->Release();
+        _chosen = nullptr;
+    }
+
     return _chosen;
+}
+
+auto FOClient::GetMapChosen() -> CritterHexView*
+{
+    return dynamic_cast<CritterHexView*>(GetChosen());
 }
 
 void FOClient::ProcessAutoLogin()
@@ -414,18 +424,19 @@ void FOClient::LookBordersPrepare()
     _lookBorders.clear();
     _shootBorders.clear();
 
-    if (_chosen == nullptr || CurMap == nullptr || (!_drawLookBorders && !_drawShootBorders)) {
+    auto* chosen = GetMapChosen();
+    if (chosen == nullptr || CurMap == nullptr || (!_drawLookBorders && !_drawShootBorders)) {
         CurMap->SetFog(_lookBorders, _shootBorders, nullptr, nullptr);
         return;
     }
 
-    const auto dist = _chosen->GetLookDistance();
-    const auto base_hx = _chosen->GetHexX();
-    const auto base_hy = _chosen->GetHexY();
+    const auto dist = chosen->GetLookDistance();
+    const auto base_hx = chosen->GetHexX();
+    const auto base_hy = chosen->GetHexY();
     int hx = base_hx;
     int hy = base_hy;
-    const int chosen_dir = _chosen->GetDir();
-    const auto dist_shoot = _chosen->GetAttackDist();
+    const int chosen_dir = chosen->GetDir();
+    const auto dist_shoot = chosen->GetAttackDist();
     const auto maxhx = CurMap->GetWidth();
     const auto maxhy = CurMap->GetHeight();
     auto seek_start = true;
@@ -473,8 +484,8 @@ void FOClient::LookBordersPrepare()
                 auto x = 0;
                 auto y = 0;
                 CurMap->GetHexCurrentPosition(hx_, hy_, x, y);
-                auto* ox = (dist_look == dist ? &_chosen->SprOx : nullptr);
-                auto* oy = (dist_look == dist ? &_chosen->SprOy : nullptr);
+                auto* ox = (dist_look == dist ? &chosen->SprOx : nullptr);
+                auto* oy = (dist_look == dist ? &chosen->SprOy : nullptr);
                 _lookBorders.push_back({x + (Settings.MapHexWidth / 2), y + (Settings.MapHexHeight / 2), COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
             }
 
@@ -489,8 +500,8 @@ void FOClient::LookBordersPrepare()
                 auto y_ = 0;
                 CurMap->GetHexCurrentPosition(hx_2, hy_2, x_, y_);
                 const auto result_shoot_dist = GeomHelper.DistGame(base_hx, base_hy, hx_2, hy_2);
-                auto* ox = (result_shoot_dist == max_shoot_dist ? &_chosen->SprOx : nullptr);
-                auto* oy = (result_shoot_dist == max_shoot_dist ? &_chosen->SprOy : nullptr);
+                auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->SprOx : nullptr);
+                auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->SprOy : nullptr);
                 _shootBorders.push_back({x_ + (Settings.MapHexWidth / 2), y_ + (Settings.MapHexHeight / 2), COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
             }
         }
@@ -501,14 +512,14 @@ void FOClient::LookBordersPrepare()
     CurMap->GetHexCurrentPosition(base_hx, base_hy, base_x, base_y);
     if (!_lookBorders.empty()) {
         _lookBorders.push_back(*_lookBorders.begin());
-        _lookBorders.insert(_lookBorders.begin(), {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(0, 0, 0, 0), &_chosen->SprOx, &_chosen->SprOy});
+        _lookBorders.insert(_lookBorders.begin(), {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(0, 0, 0, 0), &chosen->SprOx, &chosen->SprOy});
     }
     if (!_shootBorders.empty()) {
         _shootBorders.push_back(*_shootBorders.begin());
-        _shootBorders.insert(_shootBorders.begin(), {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(255, 0, 0, 0), &_chosen->SprOx, &_chosen->SprOy});
+        _shootBorders.insert(_shootBorders.begin(), {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(255, 0, 0, 0), &chosen->SprOx, &chosen->SprOy});
     }
 
-    CurMap->SetFog(_lookBorders, _shootBorders, &_chosen->SprOx, &_chosen->SprOy);
+    CurMap->SetFog(_lookBorders, _shootBorders, &chosen->SprOx, &chosen->SprOy);
 }
 
 void FOClient::MainLoop()
@@ -1716,17 +1727,19 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
 
 void FOClient::Net_SendDir()
 {
-    if (_chosen == nullptr) {
+    const auto* chosen = GetMapChosen();
+    if (chosen == nullptr) {
         return;
     }
 
     _netOut << NETMSG_DIR;
-    _netOut << _chosen->GetDir();
+    _netOut << chosen->GetDir();
 }
 
 void FOClient::Net_SendMove(vector<uchar> steps)
 {
-    if (_chosen == nullptr) {
+    const auto* chosen = GetMapChosen();
+    if (chosen == nullptr) {
         return;
     }
 
@@ -1741,17 +1754,17 @@ void FOClient::Net_SendMove(vector<uchar> steps)
         SetBit(move_params, MOVE_PARAM_STEP_ALLOW << (i * MOVE_PARAM_STEP_BITS));
     }
 
-    if (_chosen->IsRunning) {
+    if (chosen->IsRunning) {
         SetBit(move_params, MOVE_PARAM_RUN);
     }
     if (steps.empty()) {
         SetBit(move_params, MOVE_PARAM_STEP_DISALLOW); // Inform about stopping
     }
 
-    _netOut << (_chosen->IsRunning ? NETMSG_SEND_MOVE_RUN : NETMSG_SEND_MOVE_WALK);
+    _netOut << (chosen->IsRunning ? NETMSG_SEND_MOVE_RUN : NETMSG_SEND_MOVE_WALK);
     _netOut << move_params;
-    _netOut << _chosen->GetHexX();
-    _netOut << _chosen->GetHexY();
+    _netOut << chosen->GetHexX();
+    _netOut << chosen->GetHexY();
 }
 
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
@@ -1991,6 +2004,11 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         cr->AlternateName = cl_name;
     }
 
+    if (cr->IsChosen()) {
+        _chosen = cr;
+        _chosen->AddRef();
+    }
+
     OnCritterIn.Fire(cr);
 
     if (cr->IsChosen()) {
@@ -2081,7 +2099,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     auto& msg = _curLang.Msg[msg_num];
     if (msg.Count(num_str) != 0u) {
         auto str = msg.GetStr(num_str);
-        FormatTags(str, _chosen, CurMap != nullptr ? CurMap->GetCritter(crid) : nullptr, lexems);
+        FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(crid) : nullptr, lexems);
         OnText(str, crid, how_say);
     }
 }
@@ -2171,8 +2189,8 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
         }
         else if (how_say == SAY_RADIO) {
             ushort channel = 0u;
-            if (_chosen != nullptr) {
-                const auto* radio = _chosen->GetItem(crid);
+            if (auto* chosen = GetChosen(); chosen != nullptr) {
+                const auto* radio = chosen->GetItem(crid);
                 if (radio != nullptr) {
                     channel = radio->GetRadioChannel();
                 }
@@ -2250,7 +2268,7 @@ void FOClient::Net_OnMapTextMsg()
     }
 
     auto str = _curLang.Msg[msg_num].GetStr(num_str);
-    FormatTags(str, _chosen, nullptr, "");
+    FormatTags(str, GetChosen(), nullptr, "");
     OnMapText(str, hx, hy, color);
 }
 
@@ -2279,7 +2297,7 @@ void FOClient::Net_OnMapTextMsgLex()
     }
 
     auto str = _curLang.Msg[msg_num].GetStr(num_str);
-    FormatTags(str, _chosen, nullptr, lexems);
+    FormatTags(str, GetChosen(), nullptr, lexems);
     OnMapText(str, hx, hy, color);
 }
 
@@ -2334,7 +2352,7 @@ void FOClient::Net_OnCritterMove()
 
     cr->IsRunning = IsBitSet(move_params, MOVE_PARAM_RUN);
 
-    if (cr != _chosen) {
+    if (cr->IsChosen()) {
         cr->MoveSteps.resize(cr->CurMoveStep > 0 ? cr->CurMoveStep : 0);
         if (cr->CurMoveStep >= 0) {
             cr->MoveSteps.push_back(std::make_pair(new_hx, new_hy));
@@ -2467,7 +2485,7 @@ void FOClient::Net_OnCritterMoveItem()
         return;
     }
 
-    if (cr != _chosen) {
+    if (!cr->IsChosen()) {
         int64 prev_hash_sum = 0;
         for (const auto* item : cr->InvItems) {
             prev_hash_sum += item->LightGetHash();
@@ -2601,26 +2619,26 @@ void FOClient::Net_OnCustomCommand()
             if (value < 0) {
                 value = 0;
             }
-            _chosen->TickStart(value);
-            _chosen->MoveSteps.clear();
-            _chosen->CurMoveStep = 0;
+            cr->TickStart(value);
+            cr->MoveSteps.clear();
+            cr->CurMoveStep = 0;
         } break;
         case OTHER_FLAGS: {
-            _chosen->Flags = value;
+            cr->Flags = value;
         } break;
         case OTHER_TELEPORT: {
             const ushort hx = (value >> 16) & 0xFFFF;
             const ushort hy = value & 0xFFFF;
             if (hx < CurMap->GetWidth() && hy < CurMap->GetHeight()) {
                 auto* hex_cr = CurMap->GetField(hx, hy).Crit;
-                if (_chosen == hex_cr) {
+                if (cr == hex_cr) {
                     break;
                 }
-                if (!_chosen->IsDead() && hex_cr != nullptr) {
+                if (!cr->IsDead() && hex_cr != nullptr) {
                     CurMap->DestroyCritter(hex_cr);
                 }
-                CurMap->MoveCritter(_chosen, hx, hy);
-                CurMap->ScrollToHex(_chosen->GetHexX(), _chosen->GetHexY(), 0.1f, true);
+                CurMap->MoveCritter(cr, hx, hy);
+                CurMap->ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.1f, true);
             }
         } break;
         default:
@@ -2679,12 +2697,13 @@ void FOClient::Net_OnCritterCoords()
 
         CurMap->TransitCritter(cr, hx, hy, false, true);
         cr->AnimateStay();
-        if (cr == _chosen) {
+
+        if (cr->IsChosen()) {
             // Chosen->TickStart(Settings.Breaktime);
-            _chosen->TickStart(200);
+            cr->TickStart(200);
             // SetAction(CHOSEN_NONE);
-            _chosen->MoveSteps.clear();
-            _chosen->CurMoveStep = 0;
+            cr->MoveSteps.clear();
+            cr->CurMoveStep = 0;
             _rebuildLookBordersRequest = true;
         }
     }
@@ -2704,16 +2723,17 @@ void FOClient::Net_OnAllProperties()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (_chosen == nullptr) {
+    auto* chosen = GetChosen();
+    if (chosen == nullptr) {
         WriteLog("Chosen not created, skip.\n");
         return;
     }
 
-    _chosen->RestoreData(_tempPropertiesData);
+    chosen->RestoreData(_tempPropertiesData);
 
     // Animate
-    if (!_chosen->IsAnim()) {
-        _chosen->AnimateStay();
+    if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && !hex_chosen->IsAnim()) {
+        hex_chosen->AnimateStay();
     }
 
     // Refresh borders
@@ -2724,16 +2744,17 @@ void FOClient::Net_OnChosenClearItems()
 {
     _initialItemsSend = true;
 
-    if (_chosen == nullptr) {
+    auto* chosen = GetChosen();
+    if (chosen == nullptr) {
         WriteLog("Chosen is not created in clear items.\n");
         return;
     }
 
-    if (_chosen->IsHaveLightSources()) {
+    if (const auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && hex_chosen->IsHaveLightSources()) {
         CurMap->RebuildLight();
     }
 
-    _chosen->DeleteAllItems();
+    chosen->DeleteAllItems();
 }
 
 void FOClient::Net_OnChosenAddItem()
@@ -2751,18 +2772,19 @@ void FOClient::Net_OnChosenAddItem()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (_chosen == nullptr) {
+    auto* chosen = GetChosen();
+    if (chosen == nullptr) {
         WriteLog("Chosen is not created in add item.\n");
         return;
     }
 
-    auto* prev_item = _chosen->GetItem(item_id);
+    auto* prev_item = chosen->GetItem(item_id);
     uchar prev_slot = 0;
     uint prev_light_hash = 0;
     if (prev_item != nullptr) {
         prev_slot = prev_item->GetCritSlot();
         prev_light_hash = prev_item->LightGetHash();
-        _chosen->DeleteItem(prev_item, false);
+        chosen->DeleteItem(prev_item, false);
     }
 
     const auto* proto_item = ProtoMngr.GetProtoItem(pid);
@@ -2771,13 +2793,13 @@ void FOClient::Net_OnChosenAddItem()
     auto* item = new ItemView(this, item_id, proto_item);
     item->RestoreData(_tempPropertiesData);
     item->SetOwnership(ItemOwnership::CritterInventory);
-    item->SetCritId(_chosen->GetId());
+    item->SetCritId(chosen->GetId());
     item->SetCritSlot(slot);
     RUNTIME_ASSERT(!item->GetIsHidden());
 
     item->AddRef();
 
-    _chosen->AddItem(item);
+    chosen->AddItem(item);
 
     _rebuildLookBordersRequest = true;
     if (item->LightGetHash() != prev_light_hash && (slot != 0u || prev_slot != 0u)) {
@@ -2798,12 +2820,13 @@ void FOClient::Net_OnChosenEraseItem()
 
     CHECK_IN_BUFF_ERROR();
 
-    if (_chosen == nullptr) {
+    auto* chosen = GetChosen();
+    if (chosen == nullptr) {
         WriteLog("Chosen is not created in erase item.\n");
         return;
     }
 
-    auto* item = _chosen->GetItem(item_id);
+    auto* item = chosen->GetItem(item_id);
     if (item == nullptr) {
         WriteLog("Item not found, id {}.\n", item_id);
         return;
@@ -2812,7 +2835,7 @@ void FOClient::Net_OnChosenEraseItem()
     auto* item_clone = item->Clone();
 
     const auto rebuild_light = (item->GetIsLight() && item->GetCritSlot() != 0u);
-    _chosen->DeleteItem(item, true);
+    chosen->DeleteItem(item, true);
     if (rebuild_light) {
         CurMap->RebuildLight();
     }
@@ -2825,13 +2848,14 @@ void FOClient::Net_OnAllItemsSend()
 {
     _initialItemsSend = false;
 
-    if (_chosen == nullptr) {
+    auto* chosen = GetChosen();
+    if (chosen == nullptr) {
         WriteLog("Chosen is not created in all items send.\n");
         return;
     }
 
-    if (_chosen->IsModel()) {
-        _chosen->GetModel()->StartMeshGeneration();
+    if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && hex_chosen->IsModel()) {
+        hex_chosen->GetModel()->StartMeshGeneration();
     }
 
     OnItemInvAllIn.Fire();
@@ -3048,7 +3072,8 @@ void FOClient::Net_OnPing()
 
 void FOClient::Net_OnEndParseToGame()
 {
-    if (_chosen == nullptr) {
+    auto* chosen = GetChosen();
+    if (chosen == nullptr) {
         WriteLog("Chosen is not created in end parse to game.\n");
         return;
     }
@@ -3058,8 +3083,8 @@ void FOClient::Net_OnEndParseToGame()
 
     if (CurMapPid) {
         CurMap->SkipItemsFade();
-        CurMap->FindSetCenter(_chosen->GetHexX(), _chosen->GetHexY());
-        _chosen->AnimateStay();
+        CurMap->FindSetCenter(chosen->GetHexX(), chosen->GetHexY());
+        dynamic_cast<CritterHexView*>(chosen)->AnimateStay();
         ShowMainScreen(SCREEN_GAME, {});
         CurMap->RebuildLight();
     }
@@ -3139,7 +3164,7 @@ void FOClient::Net_OnProperty(uint data_size)
         entity = CurMap != nullptr ? CurMap->GetCritter(cr_id) : nullptr;
         break;
     case NetProperty::Chosen:
-        entity = _chosen;
+        entity = GetChosen();
         break;
     case NetProperty::MapItem:
         entity = CurMap->GetItem(item_id);
@@ -3152,7 +3177,9 @@ void FOClient::Net_OnProperty(uint data_size)
         }
         break;
     case NetProperty::ChosenItem:
-        entity = (_chosen != nullptr ? _chosen->GetItem(item_id) : nullptr);
+        if (auto* chosen = GetChosen(); chosen != nullptr) {
+            entity = chosen->GetItem(item_id);
+        }
         break;
     case NetProperty::Map:
         entity = CurMap;
@@ -3238,12 +3265,12 @@ void FOClient::Net_OnChosenTalk()
     CHECK_IN_BUFF_ERROR();
 
     auto str = _curLang.Msg[TEXTMSG_DLG].GetStr(text_id);
-    FormatTags(str, _chosen, npc, lexems);
+    FormatTags(str, GetChosen(), npc, lexems);
     auto text_to_script = str;
     vector<string> answers_to_script;
     for (auto answers_text : answers_texts) {
         str = _curLang.Msg[TEXTMSG_DLG].GetStr(answers_text);
-        FormatTags(str, _chosen, npc, lexems);
+        FormatTags(str, GetChosen(), npc, lexems);
         answers_to_script.push_back(str);
     }
 
@@ -4113,7 +4140,7 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, void*
     UNUSED_VARIABLE(cur_value);
     UNUSED_VARIABLE(old_value);
 
-    auto* cr = dynamic_cast<CritterView*>(entity);
+    auto* cr = dynamic_cast<CritterHexView*>(entity);
     cr->RefreshModel();
     cr->Action(ACTION_REFRESH, 0, nullptr, false);
 }
@@ -4123,7 +4150,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop, vo
     UNUSED_VARIABLE(prop);
     UNUSED_VARIABLE(old_value);
 
-    auto* cr = dynamic_cast<CritterView*>(entity);
+    auto* cr = dynamic_cast<CritterHexView*>(entity);
     if (cr->SprDrawValid) {
         cr->SprDraw->SetContour(cr->SprDraw->ContourType, *static_cast<uint*>(cur_value));
     }
@@ -4246,7 +4273,7 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop, void* cur_v
     const auto old = *static_cast<bool*>(old_value);
 
     if (item->GetIsCanOpen()) {
-        auto hex_item = dynamic_cast<ItemHexView*>(item);
+        auto* hex_item = dynamic_cast<ItemHexView*>(item);
         if (!old && cur) {
             hex_item->SetAnimFromStart();
         }
@@ -4285,7 +4312,7 @@ void FOClient::GameDraw()
 {
     // Move cursor
     if (Settings.ShowMoveCursor) {
-        CurMap->SetCursorPos(GetChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
+        CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
     }
 
     // Look borders
@@ -4529,18 +4556,19 @@ void FOClient::LmapPrepareMap()
 {
     _lmapPrepPix.clear();
 
-    if (_chosen == nullptr) {
+    const auto* chosen = GetMapChosen();
+    if (chosen == nullptr) {
         return;
     }
 
     const auto maxpixx = (_lmapWMap[2] - _lmapWMap[0]) / 2 / _lmapZoom;
     const auto maxpixy = (_lmapWMap[3] - _lmapWMap[1]) / 2 / _lmapZoom;
-    const auto bx = _chosen->GetHexX() - maxpixx;
-    const auto by = _chosen->GetHexY() - maxpixy;
-    const auto ex = _chosen->GetHexX() + maxpixx;
-    const auto ey = _chosen->GetHexY() + maxpixy;
+    const auto bx = chosen->GetHexX() - maxpixx;
+    const auto by = chosen->GetHexY() - maxpixy;
+    const auto ex = chosen->GetHexX() + maxpixx;
+    const auto ey = chosen->GetHexY() + maxpixy;
 
-    const auto vis = _chosen->GetLookDistance();
+    const auto vis = chosen->GetLookDistance();
     auto pix_x = _lmapWMap[2] - _lmapWMap[0];
     auto pix_y = 0;
 
@@ -4552,7 +4580,7 @@ void FOClient::LmapPrepareMap()
             }
 
             auto is_far = false;
-            const auto dist = GeomHelper.DistGame(_chosen->GetHexX(), _chosen->GetHexY(), i1, i2);
+            const auto dist = GeomHelper.DistGame(chosen->GetHexX(), chosen->GetHexY(), i1, i2);
             if (dist > vis) {
                 is_far = true;
             }
@@ -4561,7 +4589,7 @@ void FOClient::LmapPrepareMap()
             uint cur_color;
 
             if (f.Crit != nullptr) {
-                cur_color = (f.Crit == _chosen ? 0xFF0000FF : 0xFFFF0000);
+                cur_color = (f.Crit == chosen ? 0xFF0000FF : 0xFFFF0000);
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x + (_lmapZoom - 1), _lmapWMap[1] + pix_y, cur_color});
                 _lmapPrepPix.push_back({_lmapWMap[0] + pix_x, _lmapWMap[1] + pix_y + ((_lmapZoom - 1) / 2), cur_color});
             }
@@ -4724,7 +4752,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SetCursorPos") {
         if (CurMap != nullptr) {
-            CurMap->SetCursorPos(GetChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, true);
+            CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, true);
         }
     }
     else if (cmd == "NetDisconnect") {
@@ -4871,7 +4899,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "ChangeDir" && args.size() == 2) {
         auto dir = _str(args[1]).toInt();
-        GetChosen()->ChangeDir(static_cast<uchar>(dir), true);
+        GetMapChosen()->ChangeDir(static_cast<uchar>(dir), true);
         Net_SendDir();
     }
     else if (cmd == "MoveItem" && args.size() == 5) {
@@ -4887,12 +4915,12 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         // Move
         auto is_light = item->GetIsLight();
         if (to_slot == -1) {
-            GetChosen()->Action(ACTION_DROP_ITEM, from_slot, item, true);
+            GetMapChosen()->Action(ACTION_DROP_ITEM, from_slot, item, true);
             if (item->GetStackable() && item_count < item->GetCount()) {
                 item->SetCount(item->GetCount() - item_count);
             }
             else {
-                GetChosen()->DeleteItem(item, true);
+                GetMapChosen()->DeleteItem(item, true);
                 item = nullptr;
             }
         }
@@ -4902,9 +4930,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
                 item_swap->SetCritSlot(static_cast<uchar>(from_slot));
             }
 
-            GetChosen()->Action(ACTION_MOVE_ITEM, from_slot, item, true);
+            GetMapChosen()->Action(ACTION_MOVE_ITEM, from_slot, item, true);
             if (item_swap) {
-                GetChosen()->Action(ACTION_MOVE_ITEM_SWAP, to_slot, item_swap, true);
+                GetMapChosen()->Action(ACTION_MOVE_ITEM_SWAP, to_slot, item_swap, true);
             }
         }
 
@@ -4932,7 +4960,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto animate = _str(args[3]).toBool();
         auto force = _str(args[4]).toBool();
 
-        CurMap->TransitCritter(GetChosen(), hx, hy, animate, force);
+        CurMap->TransitCritter(GetMapChosen(), hx, hy, animate, force);
     }
     else if (cmd == "SendMove") {
         vector<uchar> dirs;
@@ -4943,19 +4971,19 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         Net_SendMove(dirs);
 
         if (dirs.size() > 1) {
-            GetChosen()->MoveSteps.resize(1);
+            GetMapChosen()->MoveSteps.resize(1);
         }
         else {
-            GetChosen()->MoveSteps.resize(0);
-            if (!GetChosen()->IsAnim()) {
-                GetChosen()->AnimateStay();
+            GetMapChosen()->MoveSteps.resize(0);
+            if (!GetMapChosen()->IsAnim()) {
+                GetMapChosen()->AnimateStay();
             }
         }
     }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {
         auto alpha = _str(args[1]).toInt();
 
-        GetChosen()->Alpha = static_cast<uchar>(alpha);
+        GetMapChosen()->Alpha = static_cast<uchar>(alpha);
     }
     else if (cmd == "SetScreenKeyboard" && args.size() == 2) {
         /*if (SDL_HasScreenKeyboardSupport())

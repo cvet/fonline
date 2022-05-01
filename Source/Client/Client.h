@@ -39,6 +39,7 @@
 
 #include "3dStuff.h"
 #include "CacheStorage.h"
+#include "CritterHexView.h"
 #include "CritterView.h"
 #include "DiskFileSystem.h"
 #include "EffectManager.h"
@@ -130,6 +131,7 @@ public:
     [[nodiscard]] auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
 
     [[nodiscard]] auto GetChosen() -> CritterView*;
+    [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }

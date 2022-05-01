@@ -114,7 +114,12 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_IsModel(CritterView* self)
 {
-    return self->IsModel();
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return hex_cr->IsModel();
 }
 
 ///# ...
@@ -124,7 +129,12 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_IsAnimAvailable(CritterView* self, uint anim1, uint anim2)
 {
-    return self->IsAnimAvailable(anim1, anim2);
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return hex_cr->IsAnimAvailable(anim1, anim2);
 }
 
 ///# ...
@@ -132,7 +142,12 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_IsAnimPlaying(CritterView* self)
 {
-    return self->IsAnim();
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return hex_cr->IsAnim();
 }
 
 ///# ...
@@ -140,7 +155,12 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Critter_GetAnim1(CritterView* self)
 {
-    return self->GetAnim1();
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return hex_cr->GetAnim1();
 }
 
 ///# ...
@@ -149,7 +169,12 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_Animate(CritterView* self, uint anim1, uint anim2)
 {
-    self->Animate(anim1, anim2, nullptr);
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->Animate(anim1, anim2, nullptr);
 }
 
 ///# ...
@@ -167,7 +192,12 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_StopAnim(CritterView* self)
 {
-    self->ClearAnim();
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->ClearAnim();
 }
 
 ///# ...
@@ -282,8 +312,13 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_SetVisibility(CritterView* self, bool visible)
 {
-    self->Visible = visible;
-    self->GetEngine()->CurMap->RefreshMap();
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->Visible = visible;
+    hex_cr->GetEngine()->CurMap->RefreshMap();
 }
 
 ///# ...
@@ -291,7 +326,12 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_GetVisibility(CritterView* self)
 {
-    return self->Visible;
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    return hex_cr->Visible;
 }
 
 ///# ...
@@ -304,7 +344,12 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_GetNameTextInfo(CritterView* self, bool& nameVisible, int& x, int& y, int& w, int& h, int& lines)
 {
-    self->GetNameTextInfo(nameVisible, x, y, w, h, lines);
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->GetNameTextInfo(nameVisible, x, y, w, h, lines);
 }
 
 ///# ...
@@ -315,18 +360,23 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, uint anim1, uint anim2, float normalizedTime, const std::function<void(CritterView*)>& animCallback)
 {
-    if (!self->IsModel()) {
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    if (!hex_cr->IsModel()) {
         throw ScriptException("Critter is not 3D model");
     }
     if (normalizedTime < 0.0f || normalizedTime > 1.0f) {
         throw ScriptException("Normalized time is not in range 0..1", normalizedTime);
     }
 
-    self->GetModel()->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [self, animCallback] {
-                                                        if (!self->IsDestroyed()) {
-                                                            animCallback(self);
-                                                        }
-                                                    }});
+    hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [hex_cr, animCallback] {
+                                                          if (!hex_cr->IsDestroyed()) {
+                                                              animCallback(hex_cr);
+                                                          }
+                                                      }});
 }
 
 ///# ...
@@ -337,16 +387,21 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, int& boneX, int& boneY)
 {
-    if (!self->IsModel()) {
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    if (!hex_cr->IsModel()) {
         throw ScriptException("Critter is not 3d");
     }
 
-    const auto bone_pos = self->GetModel()->GetBonePos(boneName);
+    const auto bone_pos = hex_cr->GetModel()->GetBonePos(boneName);
     if (!bone_pos) {
         return false;
     }
 
-    boneX = std::get<0>(*bone_pos) + self->SprOx;
-    boneY = std::get<1>(*bone_pos) + self->SprOy;
+    boneX = std::get<0>(*bone_pos) + hex_cr->SprOx;
+    boneY = std::get<1>(*bone_pos) + hex_cr->SprOy;
     return true;
 }

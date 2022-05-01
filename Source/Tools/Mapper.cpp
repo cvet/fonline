@@ -1887,7 +1887,7 @@ void FOMapper::IntLMouseDown()
         if (CurMode == CUR_MODE_DEFAULT) {
             if (Keyb.ShiftDwn) {
                 for (auto* entity : SelectedEntities) {
-                    if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+                    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                         const auto is_run = (!cr->MoveSteps.empty() && cr->MoveSteps[cr->MoveSteps.size() - 1].first == SelectHX1 && cr->MoveSteps[cr->MoveSteps.size() - 1].second == SelectHY1);
 
                         cr->MoveSteps.clear();
@@ -1901,7 +1901,7 @@ void FOMapper::IntLMouseDown()
                         if (CurMap->FindPath(nullptr, hx, hy, SelectHX1, SelectHY1, steps, -1)) {
                             for (const auto step : steps) {
                                 if (GeomHelper.MoveHexByDir(hx, hy, step, CurMap->GetWidth(), CurMap->GetHeight())) {
-                                    cr->MoveSteps.push_back(pair<ushort, ushort>(hx, hy));
+                                    cr->MoveSteps.emplace_back(hx, hy);
                                 }
                                 else {
                                     break;
@@ -2067,7 +2067,7 @@ void FOMapper::IntLMouseDown()
                 }
                 // Change child slot
                 else if (Keyb.ShiftDwn && InContItem != nullptr) {
-                    if (auto* cr = dynamic_cast<CritterView*>(SelectedEntities[0]); cr != nullptr) {
+                    if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
                         auto to_slot = InContItem->GetCritSlot() + 1;
                         // while (to_slot >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
                         //    to_slot++;
@@ -2606,7 +2606,7 @@ void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
         return;
     }
 
-    if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         CurMap->MoveCritter(cr, hx, hy);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -2621,7 +2621,7 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
         SelectedEntities.erase(it);
     }
 
-    if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
         CurMap->DestroyCritter(cr);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -2636,7 +2636,7 @@ void FOMapper::SelectClear()
         if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
             item->RestoreAlpha();
         }
-        else if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+        else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
             cr->Alpha = 0xFF;
         }
     }
@@ -2692,7 +2692,7 @@ void FOMapper::SelectAdd(ClientEntity* entity)
     if (it == SelectedEntities.end()) {
         SelectedEntities.push_back(entity);
 
-        if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+        if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
             cr->Alpha = CurMap->SelectAlpha;
         }
         else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -2707,7 +2707,7 @@ void FOMapper::SelectErase(ClientEntity* entity)
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
 
-        if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+        if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
             cr->Alpha = 0xFF;
         }
         else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -2925,7 +2925,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
                 CurMap->MoveItem(item, static_cast<ushort>(hx), static_cast<ushort>(hy));
             }
-            else if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+            else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                 CurMap->MoveCritter(cr, static_cast<ushort>(hx), static_cast<ushort>(hy));
             }
         }
@@ -3516,7 +3516,7 @@ void FOMapper::CurMMouseDown()
     }
     else {
         for (auto* entity : SelectedEntities) {
-            if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+            if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                 auto dir = cr->GetDir() + 1;
                 if (dir >= Settings.MapDirCount) {
                     dir = 0;
@@ -3767,7 +3767,7 @@ void FOMapper::ParseCommand(string_view command)
 
         if (!SelectedEntities.empty()) {
             for (auto* entity : SelectedEntities) {
-                if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+                if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                     cr->ClearAnim();
                     for (uint j = 0; j < anims.size() / 2; j++) {
                         cr->Animate(anims[j * 2], anims[j * 2 + 1], nullptr);

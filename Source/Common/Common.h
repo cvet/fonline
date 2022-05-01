@@ -1379,6 +1379,17 @@ constexpr auto copy(T&& value) -> T
     return T(value);
 }
 
+template<typename T, typename T2>
+constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
+{
+    vector<T> result;
+    result.reserve(value.size());
+    for (auto&& v : value) {
+        result.emplace_back(static_cast<T>(v));
+    }
+    return result;
+}
+
 // ReSharper restore CppInconsistentNaming
 
 class NameResolver

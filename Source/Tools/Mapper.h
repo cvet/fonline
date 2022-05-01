@@ -37,6 +37,7 @@
 
 #include "CacheStorage.h"
 #include "Client.h"
+#include "CritterHexView.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"

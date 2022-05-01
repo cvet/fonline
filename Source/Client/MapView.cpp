@@ -44,12 +44,12 @@ static constexpr auto MAX_LIGHT_VALUE = 10000;
 static constexpr auto MAX_LIGHT_HEX = 200;
 static constexpr auto MAX_LIGHT_ALPHA = 255;
 
-static auto EvaluateItemDrawOrder(const ItemView* item)
+static auto EvaluateItemDrawOrder(const ItemHexView* item)
 {
     return item->GetIsFlat() ? (!item->IsAnyScenery() ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY) : (!item->IsAnyScenery() ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY);
 }
 
-static auto EvaluateCritterDrawOrder(const CritterView* cr)
+static auto EvaluateCritterDrawOrder(const CritterHexView* cr)
 {
     return cr->IsDead() && !cr->GetIsNoFlatten() ? DRAW_ORDER_DEAD_CRITTER : DRAW_ORDER_CRITTER;
 }
@@ -192,10 +192,10 @@ auto Field::GetTile(uint index, bool is_roof) -> Field::Tile&
     return tiles_vec->at(index - (stile != nullptr ? 1 : 0));
 }
 
-void Field::AddDeadCrit(CritterView* cr)
+void Field::AddDeadCrit(CritterHexView* cr)
 {
     if (DeadCrits == nullptr) {
-        DeadCrits = new vector<CritterView*>();
+        DeadCrits = new vector<CritterHexView*>();
     }
 
     if (std::find(DeadCrits->begin(), DeadCrits->end(), cr) == DeadCrits->end()) {
@@ -203,7 +203,7 @@ void Field::AddDeadCrit(CritterView* cr)
     }
 }
 
-void Field::EraseDeadCrit(CritterView* cr)
+void Field::EraseDeadCrit(CritterHexView* cr)
 {
     if (DeadCrits == nullptr) {
         return;
@@ -805,7 +805,7 @@ auto MapView::RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, ushort 
     return true;
 }
 
-void MapView::SetCursorPos(CritterView* cr, int x, int y, bool show_steps, bool refresh)
+void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh)
 {
     ushort hx = 0;
     ushort hy = 0;
@@ -2777,7 +2777,7 @@ void MapView::ScrollOffset(int ox, int oy, float speed, bool can_stop)
     AutoScroll.OffsY += -static_cast<float>(oy);
 }
 
-void MapView::AddCritterToField(CritterView* cr)
+void MapView::AddCritterToField(CritterHexView* cr)
 {
     const auto hx = cr->GetHexX();
     const auto hy = cr->GetHexY();
@@ -2819,7 +2819,7 @@ void MapView::AddCritterToField(CritterView* cr)
     field.ProcessCache();
 }
 
-void MapView::RemoveCritterFromField(CritterView* cr)
+void MapView::RemoveCritterFromField(CritterHexView* cr)
 {
     const auto hx = cr->GetHexX();
     const auto hy = cr->GetHexY();
@@ -2843,7 +2843,7 @@ void MapView::RemoveCritterFromField(CritterView* cr)
     field.ProcessCache();
 }
 
-auto MapView::GetCritter(uint id) -> CritterView*
+auto MapView::GetCritter(uint id) -> CritterHexView*
 {
     if (id == 0u) {
         return nullptr;
@@ -2853,13 +2853,13 @@ auto MapView::GetCritter(uint id) -> CritterView*
     return it != _crittersMap.end() ? it->second : nullptr;
 }
 
-auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterView*
+auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*
 {
     if (id != 0u && _crittersMap.count(id) != 0u) {
         return nullptr;
     }
 
-    auto* cr = new CritterView(this, id, proto);
+    auto* cr = new CritterHexView(this, id, proto);
     if (!cr->LoadFromText(props_kv)) {
         cr->Release();
         return nullptr;
@@ -2869,9 +2869,9 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, s
     return cr;
 }
 
-auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, const vector<vector<uchar>>& data) -> CritterView*
+auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, const vector<vector<uchar>>& data) -> CritterHexView*
 {
-    auto* cr = new CritterView(this, id, proto);
+    auto* cr = new CritterHexView(this, id, proto);
     cr->RestoreData(data);
     cr->SetHexX(hx);
     cr->SetHexY(hy);
@@ -2880,7 +2880,7 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort h
     return cr;
 }
 
-void MapView::AddCritter(CritterView* cr)
+void MapView::AddCritter(CritterHexView* cr)
 {
     uint fading_tick = 0u;
 
@@ -2903,7 +2903,7 @@ void MapView::AddCritter(CritterView* cr)
     cr->FadingTick = game_tick + FADING_PERIOD - (fading_tick > game_tick ? fading_tick - game_tick : 0);
 }
 
-void MapView::DestroyCritter(CritterView* cr)
+void MapView::DestroyCritter(CritterHexView* cr)
 {
     RUNTIME_ASSERT(cr->GetMap() == this);
 
@@ -2923,14 +2923,14 @@ void MapView::DestroyCritter(CritterView* cr)
     cr->Release();
 }
 
-auto MapView::GetCritters() -> const vector<CritterView*>&
+auto MapView::GetCritters() -> const vector<CritterHexView*>&
 {
     return _critters;
 }
 
-auto MapView::GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterView*>
+auto MapView::GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>
 {
-    vector<CritterView*> crits;
+    vector<CritterHexView*> crits;
     auto& field = GetField(hx, hy);
 
     if (field.Crit != nullptr && field.Crit->CheckFind(find_type)) {
@@ -2988,7 +2988,7 @@ void MapView::SetCrittersContour(int contour)
     }
 }
 
-void MapView::MoveCritter(CritterView* cr, ushort hx, ushort hy)
+void MapView::MoveCritter(CritterHexView* cr, ushort hx, ushort hy)
 {
     RUNTIME_ASSERT(cr->GetMap() == this);
 
@@ -3002,7 +3002,7 @@ void MapView::MoveCritter(CritterView* cr, ushort hx, ushort hy)
     AddCritterToField(cr);
 }
 
-auto MapView::TransitCritter(CritterView* cr, ushort hx, ushort hy, bool animate, bool force) -> bool
+auto MapView::TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool animate, bool force) -> bool
 {
     RUNTIME_ASSERT(cr->GetMap() == this);
 
@@ -3239,7 +3239,7 @@ auto MapView::GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*
     return pix_item[0];
 }
 
-auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen) -> CritterView*
+auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen) -> CritterHexView*
 {
     NON_CONST_METHOD_HINT();
 
@@ -3247,7 +3247,7 @@ auto MapView::GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen) -
         return nullptr;
     }
 
-    vector<CritterView*> crits;
+    vector<CritterHexView*> crits;
     for (auto* cr : _critters) {
         if (!cr->Visible || cr->IsFinishing() || !cr->SprDrawValid) {
             continue;
@@ -3281,7 +3281,7 @@ auto MapView::GetEntityAtScreenPos(int x, int y) -> ClientEntity*
 {
     auto item_egg = false;
     ItemHexView* item = GetItemAtScreenPos(x, y, item_egg);
-    CritterView* cr = GetCritterAtScreenPos(x, y, false);
+    CritterHexView* cr = GetCritterAtScreenPos(x, y, false);
 
     if (cr != nullptr && item != nullptr) {
         if (item->IsTransparent() || item_egg || item->SprDraw->TreeIndex <= cr->SprDraw->TreeIndex) {
@@ -3295,7 +3295,7 @@ auto MapView::GetEntityAtScreenPos(int x, int y) -> ClientEntity*
     return cr != nullptr ? static_cast<ClientEntity*>(cr) : static_cast<ClientEntity*>(item);
 }
 
-auto MapView::FindPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool
+auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool
 {
 #define GRID(x, y) _findPathGrid[((MAX_FIND_PATH + 1) + (y)-grid_oy) * (MAX_FIND_PATH * 2 + 2) + ((MAX_FIND_PATH + 1) + (x)-grid_ox)]
 
@@ -3755,13 +3755,13 @@ auto MapView::FindPath(CritterView* cr, ushort start_x, ushort start_y, ushort& 
 #undef GRID
 }
 
-auto MapView::CutPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool
+auto MapView::CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool
 {
     vector<uchar> dummy;
     return FindPath(cr, start_x, start_y, end_x, end_y, dummy, cut);
 }
 
-auto MapView::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool
+auto MapView::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterHexView* find_cr, bool find_cr_safe, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool
 {
     if (_isShowTrack) {
         ClearHexTrack();

@@ -2105,10 +2105,9 @@ def genApi(target):
         # Generate source
         def parseType(t):
             def mapType(t):
-                typeMap = {'char': 'int8_t', 'uchar': 'uint8_t', 'short': 'int16_t', 'ushort': 'uint16_t',
-                        'int64': 'int64_t', 'uint64': 'uint64_t', 'ItemView': 'ScriptItem*', 'ItemHexView': 'ScriptItem*',
-                        'PlayerView': 'ScriptPlayer*', 'Player': 'ScriptPlayer*',
-                        'CritterView': 'ScriptCritter*', 'MapView': 'ScriptMap*', 'LocationView': 'ScriptLocation*',
+                typeMap = {'char': 'int8_t', 'uchar': 'uint8_t', 'short': 'int16_t', 'ushort': 'uint16_t', 'int64': 'int64_t', 'uint64': 'uint64_t',
+                        'ItemView': 'ScriptItem*', 'ItemHexView': 'ScriptItem*', 'PlayerView': 'ScriptPlayer*', 'Player': 'ScriptPlayer*',
+                        'CritterView': 'ScriptCritter*', 'CritterHexView': 'ScriptCritter*', 'MapView': 'ScriptMap*', 'LocationView': 'ScriptLocation*',
                         'Item': 'ScriptItem*', 'Critter': 'ScriptCritter*', 'Map': 'ScriptMap*', 'Location': 'ScriptLocation*',
                         'string': 'std::string', 'Entity': 'ScriptEntity*'}
                 return typeMap[t] if t in typeMap else t

@@ -37,14 +37,13 @@
 
 #include "CacheStorage.h"
 #include "ClientEntity.h"
-#include "CritterView.h"
+#include "CritterHexView.h"
 #include "EffectManager.h"
 #include "Entity.h"
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 #include "GeometryHelper.h"
 #include "ItemHexView.h"
-#include "ItemView.h"
 #include "MapLoader.h"
 #include "ProtoManager.h"
 #include "ResourceManager.h"
@@ -57,9 +56,8 @@ static constexpr auto FONT_DEFAULT = 5;
 static constexpr auto MAX_FIND_PATH = 600;
 
 class FOClient;
-class ItemView;
 class ItemHexView;
-class CritterView;
+class CritterHexView;
 
 struct ViewField
 {
@@ -123,16 +121,16 @@ public:
     void AddItem(ItemHexView* item, ItemHexView* block_lines_item);
     void EraseItem(ItemHexView* item, ItemHexView* block_lines_item);
     void EraseTile(uint index, bool is_roof);
-    void AddDeadCrit(CritterView* cr);
-    void EraseDeadCrit(CritterView* cr);
+    void AddDeadCrit(CritterHexView* cr);
+    void EraseDeadCrit(CritterHexView* cr);
     void ProcessCache();
     void AddSpriteToChain(Sprite* spr);
     void UnvalidateSpriteChain() const;
 
     bool IsView {};
     Sprite* SpriteChain {};
-    CritterView* Crit {};
-    vector<CritterView*>* DeadCrits {};
+    CritterHexView* Crit {};
+    vector<CritterHexView*>* DeadCrits {};
     int ScrX {};
     int ScrY {};
     AnyFrames* SimplyTile[2] {};
@@ -192,9 +190,9 @@ public:
     void AddMapText(string_view str, ushort hx, ushort hy, uint color, uint show_time, bool fade, int ox, int oy);
     auto GetRectForText(ushort hx, ushort hy) -> IRect;
 
-    auto FindPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool;
-    auto CutPath(CritterView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
-    auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterView* find_cr, bool find_cr_safe, vector<CritterView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
+    auto FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool;
+    auto CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
+    auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterHexView* find_cr, bool find_cr_safe, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
     void ClearHexTrack();
     void SwitchShowTrack();
@@ -223,14 +221,14 @@ public:
     void SwitchShowHex();
 
     // Critters
-    auto AddCritter(uint id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterView*;
-    auto AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, const vector<vector<uchar>>& data) -> CritterView*;
-    auto GetCritter(uint id) -> CritterView*;
-    auto GetCritters() -> const vector<CritterView*>&;
-    auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterView*>;
-    void MoveCritter(CritterView* cr, ushort hx, ushort hy);
-    auto TransitCritter(CritterView* cr, ushort hx, ushort hy, bool animate, bool force) -> bool;
-    void DestroyCritter(CritterView* cr);
+    auto AddCritter(uint id, const ProtoCritter* proto, const map<string, string>& props_kv) -> CritterHexView*;
+    auto AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort hy, const vector<vector<uchar>>& data) -> CritterHexView*;
+    auto GetCritter(uint id) -> CritterHexView*;
+    auto GetCritters() -> const vector<CritterHexView*>&;
+    auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;
+    void MoveCritter(CritterHexView* cr, ushort hx, ushort hy);
+    auto TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool animate, bool force) -> bool;
+    void DestroyCritter(CritterHexView* cr);
 
     void SetCritterContour(uint crid, int contour);
     void SetCrittersContour(int contour);
@@ -251,7 +249,7 @@ public:
 
     auto GetHexScreenPos(int x, int y, ushort& hx, ushort& hy) const -> bool;
     auto GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*; // With transparent egg
-    auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen) -> CritterView*;
+    auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen) -> CritterHexView*;
     auto GetEntityAtScreenPos(int x, int y) -> ClientEntity*;
 
     void ClearHexLight();
@@ -265,7 +263,7 @@ public:
 
     auto RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy) -> bool;
 
-    void SetCursorPos(CritterView* cr, int x, int y, bool show_steps, bool refresh);
+    void SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bool refresh);
     void DrawCursor(uint spr_id);
     void DrawCursor(string_view text);
 
@@ -313,9 +311,9 @@ private:
 
     void ProcessItems();
 
-    void AddCritter(CritterView* cr);
-    void AddCritterToField(CritterView* cr);
-    void RemoveCritterFromField(CritterView* cr);
+    void AddCritter(CritterHexView* cr);
+    void AddCritterToField(CritterHexView* cr);
+    void RemoveCritterFromField(CritterHexView* cr);
 
     void AddItem(ItemHexView* item);
     void AddItemToField(ItemHexView* item);
@@ -340,8 +338,8 @@ private:
     void RealRebuildLight();
     void CollectLightSources();
 
-    vector<CritterView*> _critters {};
-    map<uint, CritterView*> _crittersMap {};
+    vector<CritterHexView*> _critters {};
+    map<uint, CritterHexView*> _crittersMap {};
     vector<ItemHexView*> _items {};
     map<uint, ItemHexView*> _itemsMap {};
     vector<MapText> _mapTexts {};
