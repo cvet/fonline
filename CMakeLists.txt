@@ -38,6 +38,11 @@ else()
 	set( CMAKE_VERBOSE_MAKEFILE OFF CACHE BOOL "Forced by FOnline" FORCE )
 endif()
 
+# Skip all install rules
+function( install )
+endfunction()
+set( CMAKE_SKIP_INSTALL_RULES ON CACHE BOOL "Forced by FOnline" FORCE )
+
 # Global options
 StatusMessage( "Start project generation" )
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Forced by FOnline" FORCE ) # Generate compile_commands.json
