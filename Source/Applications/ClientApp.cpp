@@ -42,6 +42,10 @@
 #include "Timer.h"
 #include "Version-Include.h"
 
+#if !FO_SINGLEPLAYER
+#include "Updater.h"
+#endif
+
 #if FO_SINGLEPLAYER
 #include "ClientScripting.h"
 #include "Server.h"
@@ -57,6 +61,10 @@ struct ClientAppData
     FOClient* Client {};
 #if FO_SINGLEPLAYER
     FOServer* Server {};
+#endif
+#if !FO_SINGLEPLAYER
+    bool FilesSynced {};
+    Updater* FilesSync {};
 #endif
 };
 GLOBAL_DATA(ClientAppData, Data);
@@ -82,47 +90,61 @@ void ServerScriptSystem::InitMonoScripting()
 }
 #endif
 
-static void ClientEntry(void*)
+static void MainEntry(const void* ptr)
 {
-    try {
-        if (Data->Client == nullptr) {
+    UNUSED_VARIABLE(ptr);
+
+    if (Data->Client == nullptr) {
+        try {
 #if FO_WEB
             // Wait file system synchronization
-            if (EM_ASM_INT(return Module.syncfsDone) != 1)
+            if (EM_ASM_INT(return Module.syncfsDone) != 1) {
                 return;
+            }
 #endif
 
-            try {
+#if !FO_SINGLEPLAYER
+            // Synchronize files
+            if (!Data->FilesSynced) {
+                if (Data->FilesSync == nullptr) {
+                    Data->FilesSync = new Updater(*Data->Settings);
+                }
+
+                if (!Data->FilesSync->Process()) {
+                    return;
+                }
+
+                delete Data->FilesSync;
+                Data->FilesSync = nullptr;
+                Data->FilesSynced = true;
+            }
+#endif
+
+            // Create game module
 #if FO_SINGLEPLAYER
-                auto* script_sys = new SingleScriptSystem(*Data->Settings);
-                Data->Server = new FOServer(*Data->Settings, script_sys);
-                Data->Client = new FOClient(*Data->Settings, script_sys);
+            auto* script_sys = new SingleScriptSystem(*Data->Settings);
+            Data->Server = new FOServer(*Data->Settings, script_sys);
+            Data->Client = new FOClient(*Data->Settings, script_sys);
 #else
-                Data->Client = new FOClient(*Data->Settings);
+            Data->Client = new FOClient(*Data->Settings);
 #endif
 #if FO_SINGLEPLAYER
-                Data->Server->ConnectClient(Data->Client);
+            Data->Server->ConnectClient(Data->Client);
 #endif
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
-            }
-        }
-
-        try {
-            App->BeginFrame();
-#if FO_SINGLEPLAYER
-            Data->Server->MainLoop();
-#endif
-            Data->Client->MainLoop();
-            App->EndFrame();
-        }
-        catch (const GenericException& ex) {
-            ReportExceptionAndContinue(ex);
         }
         catch (const std::exception& ex) {
             ReportExceptionAndExit(ex);
         }
+    }
+
+    // Main loop
+    try {
+        App->BeginFrame();
+#if FO_SINGLEPLAYER
+        Data->Server->MainLoop();
+#endif
+        Data->Client->MainLoop();
+        App->EndFrame();
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
@@ -146,16 +168,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         Data->Settings = new GlobalSettings(argc, argv);
         InitApplication(*Data->Settings);
 
-        // Hard restart, need wait before lock event dissapeared
-#if FO_WINDOWS
-        if (::wcsstr(GetCommandLineW(), L"--restart") != nullptr) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-        }
-#endif
-
 #if FO_IOS
-        ClientEntry(nullptr);
-        App->SetMainLoopCallback(ClientEntry);
+        MainEntry(nullptr);
+        App->SetMainLoopCallback(MainEntry);
 
 #elif FO_WEB
         EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
@@ -163,18 +178,18 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 assert(!err);
                 Module.syncfsDone = 1;
             }););
-        emscripten_set_main_loop_arg(ClientEntry, nullptr, 0, 1);
+        emscripten_set_main_loop_arg(MainEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
         while (!Data->Settings->Quit) {
-            ClientEntry(nullptr);
+            MainEntry(nullptr);
         }
 
 #else
         while (!Data->Settings->Quit) {
             const auto start_loop = Timer::RealtimeTick();
 
-            ClientEntry(nullptr);
+            MainEntry(nullptr);
 
             if (!Data->Settings->VSync && Data->Settings->FixedFPS != 0) {
                 if (Data->Settings->FixedFPS > 0) {

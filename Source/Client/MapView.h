@@ -52,7 +52,6 @@
 #include "Sprites.h"
 #include "Timer.h"
 
-static constexpr auto FONT_DEFAULT = 5;
 static constexpr auto MAX_FIND_PATH = 600;
 
 class FOClient;

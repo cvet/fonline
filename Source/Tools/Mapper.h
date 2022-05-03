@@ -80,7 +80,7 @@ public:
         vector<const ProtoItem*> ItemProtos {};
         vector<const ProtoCritter*> NpcProtos {};
         vector<hstring> TileNames {};
-        int Index {};
+        uint Index {};
         int Scroll {};
     };
 
@@ -177,7 +177,7 @@ public:
     FOMapper(FOMapper&&) noexcept = delete;
     auto operator=(const FOMapper&) = delete;
     auto operator=(FOMapper&&) noexcept = delete;
-    ~FOMapper() = default;
+    ~FOMapper() override = default;
 
     void RegisterData();
 
@@ -188,15 +188,6 @@ public:
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ChangeGameTime();
     void ProcessInputEvent(const InputEvent& event);
-
-    auto AnimLoad(hstring name, AtlasType res_type) -> uint;
-    auto AnimGetCurSpr(uint anim_id) -> uint;
-    auto AnimGetCurSprCnt(uint anim_id) -> uint;
-    auto AnimGetSprCount(uint anim_id) -> uint;
-    auto AnimGetFrames(uint anim_id) -> AnyFrames*;
-    void AnimRun(uint anim_id, uint flags);
-    void AnimProcess();
-    void AnimFree(AtlasType res_type);
 
     void CurDraw();
     void CurRMouseUp();
@@ -214,7 +205,7 @@ public:
     void IntMouseMove();
     void IntSetMode(int mode);
 
-    auto GetTabIndex() -> uint;
+    auto GetTabIndex() const -> uint;
     void SetTabIndex(uint index);
     void RefreshCurProtos();
     auto IsObjectMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
@@ -267,12 +258,6 @@ public:
     void RunMapSaveScript(MapView* map);
     void DrawIfaceLayer(uint layer);
 
-    void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-
     ///@ ExportEvent
     ENTITY_EVENT(ConsoleMessage, string& /*text*/);
     ///@ ExportEvent
@@ -286,7 +271,6 @@ public:
     ConfigFile IfaceIni;
     PropertyVec ShowProps {};
     LanguagePack CurLang {};
-    vector<IfaceAnim*> Animations {};
     int CurMode {};
     AnyFrames* CurPDef {};
     AnyFrames* CurPHand {};
@@ -300,10 +284,10 @@ public:
     int IntY {};
     int IntVectX {};
     int IntVectY {};
-    ushort SelectHX1 {};
-    ushort SelectHY1 {};
-    ushort SelectHX2 {};
-    ushort SelectHY2 {};
+    ushort SelectHexX1 {};
+    ushort SelectHexY1 {};
+    ushort SelectHexX2 {};
+    ushort SelectHexY2 {};
     int SelectX {};
     int SelectY {};
     int SelectType {};

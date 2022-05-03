@@ -85,7 +85,7 @@ struct EffectCollection
 class EffectManager final
 {
 public:
-    EffectManager(RenderSettings& settings, FileSystem& file_sys, GameTimer& game_time);
+    EffectManager(RenderSettings& settings, FileSystem& file_sys);
     EffectManager(const EffectManager&) = delete;
     EffectManager(EffectManager&&) = delete;
     auto operator=(const EffectManager&) -> EffectManager& = delete;
@@ -97,15 +97,16 @@ public:
     void LoadMinimalEffects();
     void LoadDefaultEffects();
     void Load3dEffects();
+    void UpdateEffects(const GameTimer& game_time);
 
     EffectCollection Effects {};
 
 private:
-    void PerFrameEffectUpdate(RenderEffect* effect) const;
+    void PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time);
 
     RenderSettings& _settings;
     FileSystem& _fileSys;
-    GameTimer& _gameTime;
     vector<unique_ptr<RenderEffect>> _loadedEffects {};
     EventUnsubscriber _eventUnsubscriber {};
+    bool _nonConstHelper {};
 };

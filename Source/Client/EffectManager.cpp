@@ -36,13 +36,8 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-EffectManager::EffectManager(RenderSettings& settings, FileSystem& file_sys, GameTimer& game_time) : _settings {settings}, _fileSys {file_sys}, _gameTime {game_time}
+EffectManager::EffectManager(RenderSettings& settings, FileSystem& file_sys) : _settings {settings}, _fileSys {file_sys}
 {
-    _eventUnsubscriber += App->OnFrameBegin += [this]() {
-        for (auto& effect : _loadedEffects) {
-            PerFrameEffectUpdate(effect.get());
-        }
-    };
 }
 
 auto EffectManager::LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*
@@ -72,17 +67,24 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
         return result;
     });
 
-    PerFrameEffectUpdate(effect);
-
     _loadedEffects.push_back(unique_ptr<RenderEffect>(effect));
     return effect;
 }
 
-void EffectManager::PerFrameEffectUpdate(RenderEffect* effect) const
+void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
+    for (auto& effect : _loadedEffects) {
+        PerFrameEffectUpdate(effect.get(), game_time);
+    }
+}
+
+void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time)
+{
+    NON_CONST_METHOD_HINT();
+
     if (effect->TimeBuf) {
-        effect->TimeBuf->GameTime = static_cast<float>(_gameTime.GameTick());
-        effect->TimeBuf->RealTime = static_cast<float>(_gameTime.FrameTick());
+        effect->TimeBuf->GameTime = static_cast<float>(game_time.GameTick());
+        effect->TimeBuf->RealTime = static_cast<float>(game_time.FrameTick());
     }
 
     if (effect->RandomValueBuf) {

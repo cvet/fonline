@@ -1153,11 +1153,12 @@ endif()
 
 # Engine sources
 list( APPEND FO_COMMON_SOURCE
+	# These files included manually per target:
+	# "Source/Common/Application.cpp"
+	# "Source/Common/ApplicationHeadless.cpp"
 	"Source/Common/AnyData.cpp"
 	"Source/Common/AnyData.h"
-	"Source/Common/Application.cpp"
 	"Source/Common/Application.h"
-	"Source/Common/ApplicationHeadless.cpp"
 	"Source/Common/CacheStorage.cpp"
 	"Source/Common/CacheStorage.h"
 	"Source/Common/Common.cpp"
@@ -1221,9 +1222,6 @@ list( APPEND FO_COMMON_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/SettingsDefault-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
-
-list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/Application.cpp" )
-list( REMOVE_ITEM FO_COMMON_SOURCE "Source/Common/ApplicationHeadless.cpp" )
 
 list( APPEND FO_SERVER_SOURCE
 	"Source/Server/AdminPanel.cpp"
@@ -1305,12 +1303,16 @@ list( APPEND FO_CLIENT_SOURCE
 	"Source/Client/PlayerView.h"
 	"Source/Client/ResourceManager.cpp"
 	"Source/Client/ResourceManager.h"
+	"Source/Client/ServerConnection.cpp"
+	"Source/Client/ServerConnection.h"
 	"Source/Client/SoundManager.cpp"
 	"Source/Client/SoundManager.h"
 	"Source/Client/SpriteManager.cpp"
 	"Source/Client/SpriteManager.h"
 	"Source/Client/Sprites.cpp"
 	"Source/Client/Sprites.h"
+	"Source/Client/Updater.cpp"
+	"Source/Client/Updater.h"
 	"Source/Scripting/ClientGlobalScriptMethods.cpp"
 	"Source/Scripting/ClientPlayerScriptMethods.cpp"
 	"Source/Scripting/ClientItemScriptMethods.cpp"

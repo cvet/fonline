@@ -35,65 +35,57 @@
 
 #include "Common.h"
 
-#include "NetBuffer.h"
+#include "DiskFileSystem.h"
+#include "EffectManager.h"
+#include "FileSystem.h"
+#include "ServerConnection.h"
+#include "Settings.h"
+#include "SpriteManager.h"
 
-#define CHECK_IN_BUF_ERROR(conn) \
-    do { \
-        if ((conn)->Bin.IsError()) { \
-            WriteLog("Wrong network data from host '{}'.\n", (conn)->GetHost()); \
-            (conn)->HardDisconnect(); \
-            return; \
-        } \
-    } while (0)
-
-#define CONNECTION_OUTPUT_BEGIN(conn) \
-    { \
-        std::lock_guard locker((conn)->BoutLocker)
-#define CONNECTION_OUTPUT_END(conn) \
-    } \
-    (conn)->Dispatch()
-
-class NetConnection;
-
-class ClientConnection final
+class Updater final
 {
 public:
-    ClientConnection() = delete;
-    explicit ClientConnection(NetConnection* net_connection);
-    ClientConnection(const ClientConnection&) = delete;
-    ClientConnection(ClientConnection&&) noexcept = delete;
-    auto operator=(const ClientConnection&) = delete;
-    auto operator=(ClientConnection&&) noexcept = delete;
-    ~ClientConnection();
+    Updater() = delete;
+    explicit Updater(GlobalSettings& settings);
+    Updater(const Updater&) = delete;
+    Updater(Updater&&) noexcept = delete;
+    auto operator=(const Updater&) = delete;
+    auto operator=(Updater&&) noexcept = delete;
+    ~Updater() = default;
 
-    [[nodiscard]] auto GetIp() const -> uint;
-    [[nodiscard]] auto GetHost() const -> string_view;
-    [[nodiscard]] auto GetPort() const -> ushort;
-    [[nodiscard]] auto IsHardDisconnected() const -> bool;
-    [[nodiscard]] auto IsGracefulDisconnected() const -> bool;
-
-    void DisableCompression();
-    void Dispatch();
-    void HardDisconnect();
-    void GracefulDisconnect();
-
-    void Send_CustomMessage(uint msg);
-    void Send_TextMsg(uint num_str);
-    void Send_TextMsgLex(uint num_str, string_view lexems);
-
-    NetInBuffer& Bin;
-    std::mutex& BinLocker;
-    NetOutBuffer& Bout;
-    std::mutex& BoutLocker;
-
-    uint PingNextTick {};
-    bool PingOk {true};
-    uint LastActivityTime {};
-    int UpdateFileIndex {-1};
-    uint UpdateFilePortion {};
+    [[nodiscard]] auto Process() -> bool;
 
 private:
-    NetConnection* _netConnection;
-    bool _gracefulDisconnected {};
-    bool _nonConstHelper {};
+    struct UpdateFile
+    {
+        uint Index {};
+        string Name;
+        size_t Size {};
+        size_t RemaningSize {};
+        uint Hash {};
+    };
+
+    void AddText(uint num_str, string_view num_str_str);
+    void Abort(uint num_str, string_view num_str_str);
+    void GetNextFile();
+
+    void Net_OnConnect(bool success);
+    void Net_OnDisconnect();
+    void Net_OnUpdateFilesResponse();
+    void Net_OnUpdateFileData();
+
+    ClientSettings& _settings;
+    ServerConnection _conn;
+    FileSystem _fileSys {};
+    EffectManager _effectMngr;
+    SpriteManager _sprMngr;
+    vector<vector<uchar>> _globalsPropertiesData {};
+    double _startTick {};
+    bool _aborted {};
+    vector<string> _messages {};
+    bool _fileListReceived {};
+    vector<UpdateFile> _filesToUpdate {};
+    uint _filesWholeSize {};
+    unique_ptr<DiskFile> _tempFile {};
+    AnyFrames* _splashPic {};
 };

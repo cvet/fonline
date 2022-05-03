@@ -128,8 +128,6 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
 
 ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}, _gameTime {game_time}, _nameResolver {name_resolver}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
 {
-    RUNTIME_ASSERT(_settings.Enable3dRendering);
-
     // Check effects
     _effectMngr.Load3dEffects();
 
@@ -779,7 +777,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 {
     auto period = 0.0f;
     if (_animController != nullptr) {
-        auto* set = _animController->GetAnimationSet(_modelInfo->_renderAnim);
+        const auto* set = _animController->GetAnimationSet(_modelInfo->_renderAnim);
         if (set != nullptr) {
             period = set->GetDuration();
         }
@@ -2061,11 +2059,11 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
                 else {
                     (*istr) >> valuef;
-                    _animSpeed.insert(std::make_pair((ind1 << 16) | ind2, valuef));
+                    _animSpeed.emplace((ind1 << 16) | ind2, valuef);
 
                     if (token == "AnimSpeedExt") {
                         (*istr) >> valuef;
-                        _animSpeed.insert(std::make_pair((ind1 << 16) | (ind2 | 0x8000), valuef));
+                        _animSpeed.emplace((ind1 << 16) | (ind2 | 0x8000), valuef);
                     }
                 }
             }
@@ -2082,9 +2080,9 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 uint index = (ind1 << 16) | ind2;
                 if (_animLayerValues.count(index) == 0u) {
-                    _animLayerValues.insert(std::make_pair(index, vector<pair<int, int>>()));
+                    _animLayerValues.emplace(index, vector<pair<int, int>>());
                 }
-                _animLayerValues[index].push_back(pair<int, int>(anim_layer, anim_layer_value));
+                _animLayerValues[index].emplace_back(anim_layer, anim_layer_value);
             }
             else if (token == "FastTransitionBone") {
                 (*istr) >> buf;
@@ -2101,10 +2099,10 @@ auto ModelInformation::Load(string_view name) -> bool
                 ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
 
                 if (valuei == 1) {
-                    _anim1Equals.insert(std::make_pair(ind1, ind2));
+                    _anim1Equals.emplace(ind1, ind2);
                 }
                 else if (valuei == 2) {
-                    _anim2Equals.insert(std::make_pair(ind1, ind2));
+                    _anim2Equals.emplace(ind1, ind2);
                 }
             }
             else if (token == "RenderFrame" || token == "RenderFrames") {
@@ -2203,7 +2201,7 @@ auto ModelInformation::Load(string_view name) -> bool
                         _renderAnim = set_index;
                     }
                     else if (anim.Index != 0) {
-                        _animIndexes.insert(std::make_pair(anim.Index, set_index));
+                        _animIndexes.emplace(anim.Index, set_index);
                     }
                 }
             }
@@ -2367,7 +2365,8 @@ ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) : _modelMngr {model_mng
 
 void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint depth)
 {
-    bones.insert(std::make_pair(depth, bone));
+    bones.emplace(depth, bone);
+
     for (auto& i : bone->Children) {
         SetupBonesExt(bones, i.get(), depth + 1);
     }

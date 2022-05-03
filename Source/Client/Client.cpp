@@ -40,17 +40,6 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
-static const string UPDATE_TEMP_FILE = "Update.fobin";
-
-#define CHECK_IN_BUFF_ERROR() \
-    do { \
-        if (_netIn.IsError()) { \
-            WriteLog("Wrong network data!\n"); \
-            NetDisconnect(); \
-            return; \
-        } \
-    } while (0)
-
 // clang-format off
 FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     FOEngineBase(false),
@@ -59,12 +48,13 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     ScriptSys {script_sys},
     GameTime(Settings),
     ProtoMngr(this),
-    EffectMngr(Settings, FileSys, GameTime),
-    SprMngr(Settings, FileSys, EffectMngr, GameTime, *this, *this),
+    EffectMngr(Settings, FileSys),
+    SprMngr(Settings, FileSys, EffectMngr),
     ResMngr(FileSys, SprMngr, *this, *this),
     SndMngr(Settings, FileSys),
     Keyb(Settings, SprMngr),
     Cache("Data/Cache.fobin"),
+    _conn(Settings),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 // clang-format on
 {
@@ -83,8 +73,6 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     FileSys.AddDataSource("PersistentData", true);
 #endif
 
-    _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
-    _ifaceAnimations.resize(10000);
     _fpsTick = GameTime.FrameTick();
 
     const auto [w, h] = SprMngr.GetWindowSize();
@@ -119,14 +107,81 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     SprMngr.BuildFonts();
     SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
-    // Preload 3d files
-    if (Settings.Enable3dRendering && !Preload3dFiles.empty()) {
-        WriteLog("Preload 3d files...\n");
-        for (const auto& name : Preload3dFiles) {
-            SprMngr.Preload3dModel(name);
+    // Init 3d subsystem
+    if (Settings.Enable3dRendering) {
+        SprMngr.Init3dSubsystem(GameTime, *this, *this);
+
+        if (!Preload3dFiles.empty()) {
+            WriteLog("Preload 3d files...\n");
+            for (const auto& name : Preload3dFiles) {
+                SprMngr.Preload3dModel(name);
+            }
+            WriteLog("Preload 3d files complete.\n");
         }
-        WriteLog("Preload 3d files complete.\n");
     }
+
+    // Connection handlers
+    _conn.AddConnectHandler(std::bind(&FOClient::Net_OnConnect, this, std::placeholders::_1));
+    _conn.AddDisconnectHandler(std::bind(&FOClient::Net_OnDisconnect, this));
+    _conn.AddMessageHandler(NETMSG_WRONG_NET_PROTO, std::bind(&FOClient::Net_OnWrongNetProto, this));
+    _conn.AddMessageHandler(NETMSG_LOGIN_SUCCESS, std::bind(&FOClient::Net_OnLoginSuccess, this));
+    _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [] { WriteLog("Registration success.\n"); });
+    _conn.AddMessageHandler(NETMSG_END_PARSE_TO_GAME, std::bind(&FOClient::Net_OnEndParseToGame, this));
+    _conn.AddMessageHandler(NETMSG_ADD_PLAYER, std::bind(&FOClient::Net_OnAddCritter, this, false));
+    _conn.AddMessageHandler(NETMSG_ADD_NPC, std::bind(&FOClient::Net_OnAddCritter, this, true));
+    _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, std::bind(&FOClient::Net_OnRemoveCritter, this));
+    _conn.AddMessageHandler(NETMSG_SOME_ITEM, std::bind(&FOClient::Net_OnSomeItem, this));
+    _conn.AddMessageHandler(NETMSG_CRITTER_ACTION, std::bind(&FOClient::Net_OnCritterAction, this));
+    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_ITEM, std::bind(&FOClient::Net_OnCritterMoveItem, this));
+    _conn.AddMessageHandler(NETMSG_CRITTER_ANIMATE, std::bind(&FOClient::Net_OnCritterAnimate, this));
+    _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, std::bind(&FOClient::Net_OnCritterSetAnims, this));
+    _conn.AddMessageHandler(NETMSG_CUSTOM_COMMAND, std::bind(&FOClient::Net_OnCustomCommand, this));
+    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, std::bind(&FOClient::Net_OnCritterMove, this));
+    _conn.AddMessageHandler(NETMSG_CRITTER_DIR, std::bind(&FOClient::Net_OnCritterDir, this));
+    _conn.AddMessageHandler(NETMSG_CRITTER_XY, std::bind(&FOClient::Net_OnCritterCoords, this));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 0), std::bind(&FOClient::Net_OnProperty, this, 1));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 1), std::bind(&FOClient::Net_OnProperty, this, 1));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 2), std::bind(&FOClient::Net_OnProperty, this, 1));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 0), std::bind(&FOClient::Net_OnProperty, this, 2));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 1), std::bind(&FOClient::Net_OnProperty, this, 2));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 2), std::bind(&FOClient::Net_OnProperty, this, 2));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 0), std::bind(&FOClient::Net_OnProperty, this, 4));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 1), std::bind(&FOClient::Net_OnProperty, this, 4));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 2), std::bind(&FOClient::Net_OnProperty, this, 4));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 0), std::bind(&FOClient::Net_OnProperty, this, 8));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 1), std::bind(&FOClient::Net_OnProperty, this, 8));
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 2), std::bind(&FOClient::Net_OnProperty, this, 8));
+    _conn.AddMessageHandler(NETMSG_COMPLEX_PROPERTY, std::bind(&FOClient::Net_OnProperty, this, 0));
+    _conn.AddMessageHandler(NETMSG_CRITTER_TEXT, std::bind(&FOClient::Net_OnText, this));
+    _conn.AddMessageHandler(NETMSG_MSG, std::bind(&FOClient::Net_OnTextMsg, this, false));
+    _conn.AddMessageHandler(NETMSG_MSG_LEX, std::bind(&FOClient::Net_OnTextMsg, this, true));
+    _conn.AddMessageHandler(NETMSG_MAP_TEXT, std::bind(&FOClient::Net_OnMapText, this));
+    _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG, std::bind(&FOClient::Net_OnMapTextMsg, this));
+    _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG_LEX, std::bind(&FOClient::Net_OnMapTextMsgLex, this));
+    _conn.AddMessageHandler(NETMSG_ALL_PROPERTIES, std::bind(&FOClient::Net_OnAllProperties, this));
+    _conn.AddMessageHandler(NETMSG_CLEAR_ITEMS, std::bind(&FOClient::Net_OnChosenClearItems, this));
+    _conn.AddMessageHandler(NETMSG_ADD_ITEM, std::bind(&FOClient::Net_OnChosenAddItem, this));
+    _conn.AddMessageHandler(NETMSG_REMOVE_ITEM, std::bind(&FOClient::Net_OnChosenEraseItem, this));
+    _conn.AddMessageHandler(NETMSG_ALL_ITEMS_SEND, std::bind(&FOClient::Net_OnAllItemsSend, this));
+    _conn.AddMessageHandler(NETMSG_TALK_NPC, std::bind(&FOClient::Net_OnChosenTalk, this));
+    _conn.AddMessageHandler(NETMSG_GAME_INFO, std::bind(&FOClient::Net_OnGameInfo, this));
+    _conn.AddMessageHandler(NETMSG_AUTOMAPS_INFO, std::bind(&FOClient::Net_OnAutomapsInfo, this));
+    _conn.AddMessageHandler(NETMSG_VIEW_MAP, std::bind(&FOClient::Net_OnViewMap, this));
+    _conn.AddMessageHandler(NETMSG_LOADMAP, std::bind(&FOClient::Net_OnLoadMap, this));
+    _conn.AddMessageHandler(NETMSG_MAP, std::bind(&FOClient::Net_OnMap, this));
+    _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, std::bind(&FOClient::Net_OnGlobalInfo, this));
+    _conn.AddMessageHandler(NETMSG_SOME_ITEMS, std::bind(&FOClient::Net_OnSomeItems, this));
+    // _conn.AddMessageHandler(NETMSG_RPC, // ScriptSys.HandleRpc(&Bin);
+    _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, std::bind(&FOClient::Net_OnAddItemOnMap, this));
+    _conn.AddMessageHandler(NETMSG_ERASE_ITEM_FROM_MAP, std::bind(&FOClient::Net_OnEraseItemFromMap, this));
+    _conn.AddMessageHandler(NETMSG_ANIMATE_ITEM, std::bind(&FOClient::Net_OnAnimateItem, this));
+    _conn.AddMessageHandler(NETMSG_COMBAT_RESULTS, std::bind(&FOClient::Net_OnCombatResult, this));
+    _conn.AddMessageHandler(NETMSG_EFFECT, std::bind(&FOClient::Net_OnEffect, this));
+    _conn.AddMessageHandler(NETMSG_FLY_EFFECT, std::bind(&FOClient::Net_OnFlyEffect, this));
+    _conn.AddMessageHandler(NETMSG_PLAY_SOUND, std::bind(&FOClient::Net_OnPlaySound, this));
+    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, std::bind(&FOClient::Net_OnUpdateFilesResponse, this));
+
+    ScreenFadeOut();
 
     // Auto login
     ProcessAutoLogin();
@@ -134,13 +189,6 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
 
 FOClient::~FOClient()
 {
-    if (_netSock != INVALID_SOCKET) {
-        ::closesocket(_netSock);
-    }
-    if (_zStream != nullptr) {
-        ::inflateEnd(_zStream);
-    }
-
     delete ScriptSys;
 }
 
@@ -220,203 +268,6 @@ void FOClient::ProcessAutoLogin()
         _initNetReason = INIT_NET_REASON_LOGIN;
     }
 #endif
-}
-
-void FOClient::UpdateFilesLoop()
-{
-    // Was aborted
-    if (_updateData->Aborted) {
-        return;
-    }
-
-    // Update indication
-    if (_initCalls < 2) {
-        // Load font
-        if (!_updateData->FontLoaded) {
-            SprMngr.PushAtlasType(AtlasType::Static);
-            _updateData->FontLoaded = SprMngr.LoadFontFO(FONT_DEFAULT, "Default", false, true);
-            if (!_updateData->FontLoaded) {
-                _updateData->FontLoaded = SprMngr.LoadFontBmf(FONT_DEFAULT, "Default");
-            }
-            if (_updateData->FontLoaded) {
-                SprMngr.BuildFonts();
-            }
-            SprMngr.PopAtlasType();
-        }
-
-        // Running dots
-        string dots_str;
-        const auto dots = (GameTime.FrameTick() - _updateData->Duration) / 100u % 50u + 1u;
-        for ([[maybe_unused]] const auto i : xrange(dots)) {
-            dots_str += ".";
-        }
-
-        // State
-        SprMngr.BeginScene(COLOR_RGB(50, 50, 50));
-        const auto update_text = _updateData->Messages + _updateData->Progress + dots_str;
-        SprMngr.DrawStr(IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), update_text, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
-        SprMngr.EndScene();
-    }
-    else {
-        // Wait screen
-        SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
-        DrawIface();
-        SprMngr.EndScene();
-    }
-
-    // Logic
-    if (!_isConnected) {
-        if (_updateData->Connecting) {
-            _updateData->Connecting = false;
-            UpdateFilesAddText(STR_CANT_CONNECT_TO_SERVER, "Can't connect to server!");
-        }
-
-        if (GameTime.FrameTick() < _updateData->ConnectionTimeout) {
-            return;
-        }
-        _updateData->ConnectionTimeout = GameTime.FrameTick() + 5000;
-
-        // Connect to server
-        UpdateFilesAddText(STR_CONNECT_TO_SERVER, "Connect to server...");
-        NetConnect(Settings.ServerHost, static_cast<ushort>(Settings.ServerPort));
-        _updateData->Connecting = true;
-    }
-    else {
-        if (_updateData->Connecting) {
-            _updateData->Connecting = false;
-            UpdateFilesAddText(STR_CONNECTION_ESTABLISHED, "Connection established.");
-
-            // Update
-            UpdateFilesAddText(STR_CHECK_UPDATES, "Check updates...");
-            _updateData->Messages = "";
-
-            // Data synchronization
-            UpdateFilesAddText(STR_DATA_SYNCHRONIZATION, "Data synchronization...");
-
-            // Clean up
-            _updateData->ClientOutdated = false;
-            _updateData->CacheChanged = false;
-            _updateData->FilesChanged = false;
-            _updateData->FileListReceived = false;
-            _updateData->FileList.clear();
-            _updateData->FileDownloading = false;
-            DiskFileSystem::DeleteFile(UPDATE_TEMP_FILE);
-            _updateData->Duration = GameTime.FrameTick();
-
-            Net_SendUpdate();
-        }
-
-        _updateData->Progress = "";
-        if (!_updateData->FileList.empty()) {
-            _updateData->Progress += "\n";
-            for (const auto& update_file : _updateData->FileList) {
-                const auto cur = static_cast<float>(update_file.Size - update_file.RemaningSize) / (1024.0f * 1024.0f);
-                const auto max = std::max(static_cast<float>(update_file.Size) / (1024.0f * 1024.0f), 0.01f);
-                const string name = _str(update_file.Name).formatPath();
-                _updateData->Progress += _str("{} {:.2f} / {:.2f} MB\n", name, cur, max);
-            }
-            _updateData->Progress += "\n";
-        }
-
-        if (_updateData->FileListReceived && !_updateData->FileDownloading) {
-            if (!_updateData->FileList.empty()) {
-                const auto& update_file = _updateData->FileList.front();
-
-                if (_updateData->TempFile) {
-                    _updateData->TempFile = nullptr;
-                }
-
-                if (update_file.Name[0] == '$') {
-                    _updateData->TempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(UPDATE_TEMP_FILE, true));
-                    _updateData->CacheChanged = true;
-                }
-                else {
-                    // Web client can receive only cache updates
-                    // Resources must be packed in main bundle
-#if FO_WEB
-                    UpdateFilesAddText(STR_CLIENT_OUTDATED, "Client outdated!");
-                    NetDisconnect();
-                    return;
-#endif
-
-                    DiskFileSystem::DeleteFile(update_file.Name);
-                    _updateData->TempFile = std::make_unique<DiskFile>(DiskFileSystem::OpenFile(UPDATE_TEMP_FILE, true));
-                    _updateData->FilesChanged = true;
-                }
-
-                if (!_updateData->TempFile) {
-                    UpdateFilesAddText(STR_FILESYSTEM_ERROR, "File system error!");
-                    NetDisconnect();
-                    return;
-                }
-
-                _updateData->FileDownloading = true;
-
-                _netOut << NETMSG_GET_UPDATE_FILE;
-                _netOut << _updateData->FileList.front().Index;
-            }
-            else {
-                // Done
-                _updateData.reset();
-
-                // Disconnect
-                if (_initCalls < 2) {
-                    NetDisconnect();
-                }
-
-                // Update binaries
-                if (_updateData->ClientOutdated) {
-                    throw GenericException("Client outdated");
-                }
-
-                // Reinitialize data
-                if (_initCalls >= 2 && (_updateData->CacheChanged || _updateData->FilesChanged)) {
-                    throw ClientRestartException("Restart");
-                }
-
-                if (_updateData->CacheChanged) {
-                    _curLang.LoadFromCache(Cache, *this, _curLang.Name);
-                }
-
-                // if (Update->FilesChanged)
-                //    Settings.Init(0, {});
-
-                // ScriptSys = new ClientScriptSystem(this, Settings);
-
-                return;
-            }
-        }
-
-        ProcessSocket();
-
-        if (!_isConnected && !_updateData->Aborted) {
-            UpdateFilesAddText(STR_CONNECTION_FAILTURE, "Connection failure!");
-        }
-    }
-}
-
-void FOClient::UpdateFilesAddText(uint num_str, string_view num_str_str)
-{
-    if (_updateData->FontLoaded) {
-        const auto text = (_curLang.Msg[TEXTMSG_GAME].Count(num_str) != 0u ? _curLang.Msg[TEXTMSG_GAME].GetStr(num_str) : string(num_str_str));
-        _updateData->Messages += _str("{}\n", text);
-    }
-}
-
-void FOClient::UpdateFilesAbort(uint num_str, string_view num_str_str)
-{
-    _updateData->Aborted = true;
-
-    UpdateFilesAddText(num_str, num_str_str);
-    NetDisconnect();
-
-    if (_updateData->TempFile) {
-        _updateData->TempFile = nullptr;
-    }
-
-    SprMngr.BeginScene(COLOR_RGB(255, 0, 0));
-    SprMngr.DrawStr(IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), _updateData->Messages, FT_CENTERX | FT_CENTERY | FT_BORDERED, COLOR_TEXT_WHITE, FONT_DEFAULT);
-    SprMngr.EndScene();
 }
 
 void FOClient::LookBordersPrepare()
@@ -536,44 +387,8 @@ void FOClient::MainLoop()
         _fpsCounter++;
     }
 
-    // Poll pending events
-    if (_initCalls < 2) {
-        InputEvent event;
-        while (App->Input.PollEvent(event)) {
-        }
-    }
-
     // Game end
     if (Settings.Quit) {
-        return;
-    }
-
-    // Network connection
-    if (_isConnecting) {
-        if (!CheckSocketStatus(true)) {
-            return;
-        }
-    }
-
-    if (_updateData) {
-        UpdateFilesLoop();
-        return;
-    }
-
-    if (_initCalls < 2) {
-        if (_initCalls == 0) {
-            _initCalls = 1;
-        }
-
-        _initCalls++;
-
-        if (_initCalls == 1) {
-            _updateData = ClientUpdate();
-        }
-        else if (_initCalls == 2) {
-            ScreenFadeOut();
-        }
-
         return;
     }
 
@@ -590,42 +405,14 @@ void FOClient::MainLoop()
     }
 
     // Network
-    if (_initNetReason != INIT_NET_REASON_NONE && !_updateData) {
-        // Connect to server
-        if (!_isConnected) {
-            if (!NetConnect(Settings.ServerHost, static_cast<ushort>(Settings.ServerPort))) {
-                ShowMainScreen(SCREEN_LOGIN, {});
-                AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
-            }
-        }
-        else {
-            // Reason
-            const auto reason = _initNetReason;
-            _initNetReason = INIT_NET_REASON_NONE;
-
-            // After connect things
-            if (reason == INIT_NET_REASON_LOGIN) {
-                Net_SendLogIn();
-            }
-            else if (reason == INIT_NET_REASON_REG) {
-                Net_SendCreatePlayer();
-            }
-            else if (reason == INIT_NET_REASON_LOAD) {
-                // Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
-            }
-            else if (reason != INIT_NET_REASON_CUSTOM) {
-                throw UnreachablePlaceException(LINE_STR);
-            }
-        }
+    if (_initNetReason != INIT_NET_REASON_NONE) {
+        _conn.Connect();
     }
 
-    // Parse Net
-    if (_isConnected) {
-        ProcessSocket();
-    }
+    _conn.Process();
 
     // Exit in Login screen if net disconnect
-    if (!_isConnected && !IsMainScreen(SCREEN_LOGIN)) {
+    if (!_conn.IsConnected() && !IsMainScreen(SCREEN_LOGIN)) {
         ShowMainScreen(SCREEN_LOGIN, {});
     }
 
@@ -658,6 +445,7 @@ void FOClient::MainLoop()
     }
 
     // Start render
+    EffectMngr.UpdateEffects(GameTime);
     SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
 
 #if !FO_SINGLEPLAYER
@@ -875,795 +663,63 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
     }
 }
 
-static auto GetLastSocketError() -> string
+void FOClient::Net_OnConnect(bool success)
 {
-#if FO_WINDOWS
-    const auto error_code = ::WSAGetLastError();
-    wchar_t* ws = nullptr;
-    ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), reinterpret_cast<LPWSTR>(&ws), 0, nullptr);
-    const string error_str = _str().parseWideChar(ws);
-    ::LocalFree(ws);
+    if (success) {
+        // Reason
+        const auto reason = _initNetReason;
+        _initNetReason = INIT_NET_REASON_NONE;
 
-    return _str("{} ({})", error_str, error_code);
-#else
-    return _str("{} ({})", strerror(errno), errno);
-#endif
-}
-
-auto FOClient::CheckSocketStatus(bool for_write) -> bool
-{
-    timeval tv {0, 0};
-
-    FD_ZERO(&_netSockSet);
-    FD_SET(_netSock, &_netSockSet);
-
-    const auto r = ::select(static_cast<int>(_netSock) + 1, for_write ? nullptr : &_netSockSet, for_write ? &_netSockSet : nullptr, nullptr, &tv);
-    if (r == 1) {
-        if (_isConnecting) {
-            WriteLog("Connection established.\n");
-            _isConnecting = false;
-            _isConnected = true;
+        // After connect things
+        if (reason == INIT_NET_REASON_LOGIN) {
+            Net_SendLogIn();
         }
-        return true;
-    }
-
-    if (r == 0) {
-        auto error = 0;
-#if FO_WINDOWS
-        int len = sizeof(error);
-#else
-        socklen_t len = sizeof(error);
-#endif
-        if (::getsockopt(_netSock, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error), &len) != SOCKET_ERROR && error == 0) {
-            return false;
+        else if (reason == INIT_NET_REASON_REG) {
+            Net_SendCreatePlayer();
         }
-
-        WriteLog("Socket error '{}'.\n", GetLastSocketError());
-    }
-    else {
-        // Error
-        WriteLog("Socket select error '{}'.\n", GetLastSocketError());
-    }
-
-    if (_isConnecting) {
-        WriteLog("Can't connect to server.\n");
-        _isConnecting = false;
-    }
-
-    NetDisconnect();
-    return false;
-}
-
-auto FOClient::NetConnect(string_view host, ushort port) -> bool
-{
-#if FO_WEB
-    port++;
-    if (!Settings.SecuredWebSockets) {
-        EM_ASM(Module['websocket']['url'] = 'ws://');
-        WriteLog("Connecting to server 'ws://{}:{}'.\n", host, port);
-    }
-    else {
-        EM_ASM(Module['websocket']['url'] = 'wss://');
-        WriteLog("Connecting to server 'wss://{}:{}'.\n", host, port);
-    }
-#else
-    WriteLog("Connecting to server '{}:{}'.\n", host, port);
-#endif
-
-    _isConnecting = false;
-    _isConnected = false;
-
-    if (_zStream == nullptr) {
-        _zStream = new z_stream();
-        _zStream->zalloc = [](voidpf, uInt items, uInt size) { return calloc(items, size); };
-        _zStream->zfree = [](voidpf, voidpf address) { free(address); };
-        _zStream->opaque = nullptr;
-        const auto inf_init = ::inflateInit(_zStream);
-        RUNTIME_ASSERT(inf_init == Z_OK);
-    }
-
-#if FO_WINDOWS
-    WSADATA wsa;
-    if (::WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        WriteLog("WSAStartup error '{}'.\n", GetLastSocketError());
-        return false;
-    }
-#endif
-
-    if (!FillSockAddr(_sockAddr, host, port)) {
-        return false;
-    }
-    if (Settings.ProxyType != 0u && !FillSockAddr(_proxyAddr, Settings.ProxyHost, static_cast<ushort>(Settings.ProxyPort))) {
-        return false;
-    }
-
-    _netIn.SetEncryptKey(0);
-    _netOut.SetEncryptKey(0);
-
-#if FO_LINUX
-    const auto sock_type = SOCK_STREAM | SOCK_CLOEXEC;
-#else
-    const auto sock_type = SOCK_STREAM;
-#endif
-    if ((_netSock = ::socket(PF_INET, sock_type, IPPROTO_TCP)) == INVALID_SOCKET) {
-        WriteLog("Create socket error '{}'.\n", GetLastSocketError());
-        return false;
-    }
-
-    // Nagle
-#if !FO_WEB
-    if (Settings.DisableTcpNagle) {
-        auto optval = 1;
-        if (::setsockopt(_netSock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&optval), sizeof(optval)) != 0) {
-            WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", GetLastSocketError());
+        else if (reason == INIT_NET_REASON_LOAD) {
+            // Net_SendSaveLoad( false, SaveLoadFileName.c_str(), nullptr );
         }
-    }
-#endif
-
-    // Direct connect
-    if (Settings.ProxyType == 0u) {
-        // Set non blocking mode
-#if FO_WINDOWS
-        unsigned long mode = 1;
-        if (::ioctlsocket(_netSock, FIONBIO, &mode) != 0)
-#else
-        int flags = fcntl(_netSock, F_GETFL, 0);
-        RUNTIME_ASSERT(flags >= 0);
-        if (::fcntl(_netSock, F_SETFL, flags | O_NONBLOCK))
-#endif
-        {
-            WriteLog("Can't set non-blocking mode to socket, error '{}'.\n", GetLastSocketError());
-            return false;
-        }
-
-        const auto r = ::connect(_netSock, reinterpret_cast<sockaddr*>(&_sockAddr), sizeof(sockaddr_in));
-#if FO_WINDOWS
-        if (r == SOCKET_ERROR && ::WSAGetLastError() != WSAEWOULDBLOCK)
-#else
-        if (r == SOCKET_ERROR && errno != EINPROGRESS)
-#endif
-        {
-            WriteLog("Can't connect to game server, error '{}'.\n", GetLastSocketError());
-            return false;
+        else if (reason != INIT_NET_REASON_CUSTOM) {
+            throw UnreachablePlaceException(LINE_STR);
         }
     }
     else {
-#if !FO_IOS && !FO_ANDROID && !FO_WEB
-        // Proxy connect
-        if (::connect(_netSock, reinterpret_cast<sockaddr*>(&_proxyAddr), sizeof(sockaddr_in)) != 0) {
-            WriteLog("Can't connect to proxy server, error '{}'.\n", GetLastSocketError());
-            return false;
-        }
-
-        auto send_recv = [this]() {
-            if (!NetOutput()) {
-                WriteLog("Net output error.\n");
-                return false;
-            }
-
-            const auto tick = GameTime.FrameTick();
-            while (true) {
-                const auto receive = NetInput(false);
-                if (receive > 0) {
-                    break;
-                }
-
-                if (receive < 0) {
-                    WriteLog("Net input error.\n");
-                    return false;
-                }
-
-                if (GameTime.FrameTick() - tick > 10000) {
-                    WriteLog("Proxy answer timeout.\n");
-                    return false;
-                }
-
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-
-            return true;
-        };
-
-        uchar b1 = 0;
-        uchar b2 = 0;
-        _netIn.ResetBuf();
-        _netOut.ResetBuf();
-
-        // Authentication
-        if (Settings.ProxyType == PROXY_SOCKS4) {
-            // Connect
-            _netOut << static_cast<uchar>(4); // Socks version
-            _netOut << static_cast<uchar>(1); // Connect command
-            _netOut << static_cast<ushort>(_sockAddr.sin_port);
-            _netOut << static_cast<uint>(_sockAddr.sin_addr.s_addr);
-            _netOut << static_cast<uchar>(0);
-
-            if (!send_recv()) {
-                return false;
-            }
-
-            _netIn >> b1; // Null byte
-            _netIn >> b2; // Answer code
-            if (b2 != 0x5A) {
-                switch (b2) {
-                case 0x5B:
-                    WriteLog("Proxy connection error, request rejected or failed.\n");
-                    break;
-                case 0x5C:
-                    WriteLog("Proxy connection error, request failed because client is not running identd (or not reachable from the server).\n");
-                    break;
-                case 0x5D:
-                    WriteLog("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request.\n");
-                    break;
-                default:
-                    WriteLog("Proxy connection error, Unknown error {}.\n", b2);
-                    break;
-                }
-                return false;
-            }
-        }
-        else if (Settings.ProxyType == PROXY_SOCKS5) {
-            _netOut << static_cast<uchar>(5); // Socks version
-            _netOut << static_cast<uchar>(1); // Count methods
-            _netOut << static_cast<uchar>(2); // Method
-
-            if (!send_recv()) {
-                return false;
-            }
-
-            _netIn >> b1; // Socks version
-            _netIn >> b2; // Method
-            if (b2 == 2) // User/Password
-            {
-                _netOut << static_cast<uchar>(1); // Subnegotiation version
-                _netOut << static_cast<uchar>(Settings.ProxyUser.length()); // Name length
-                _netOut.Push(Settings.ProxyUser.c_str(), static_cast<uint>(Settings.ProxyUser.length())); // Name
-                _netOut << static_cast<uchar>(Settings.ProxyPass.length()); // Pass length
-                _netOut.Push(Settings.ProxyPass.c_str(), static_cast<uint>(Settings.ProxyPass.length())); // Pass
-
-                if (!send_recv()) {
-                    return false;
-                }
-
-                _netIn >> b1; // Subnegotiation version
-                _netIn >> b2; // Status
-                if (b2 != 0) {
-                    WriteLog("Invalid proxy user or password.\n");
-                    return false;
-                }
-            }
-            else if (b2 != 0) // Other authorization
-            {
-                WriteLog("Socks server connect fail.\n");
-                return false;
-            }
-
-            // Connect
-            _netOut << static_cast<uchar>(5); // Socks version
-            _netOut << static_cast<uchar>(1); // Connect command
-            _netOut << static_cast<uchar>(0); // Reserved
-            _netOut << static_cast<uchar>(1); // IP v4 address
-            _netOut << static_cast<uint>(_sockAddr.sin_addr.s_addr);
-            _netOut << static_cast<ushort>(_sockAddr.sin_port);
-
-            if (!send_recv()) {
-                return false;
-            }
-
-            _netIn >> b1; // Socks version
-            _netIn >> b2; // Answer code
-
-            if (b2 != 0) {
-                switch (b2) {
-                case 1:
-                    WriteLog("Proxy connection error, SOCKS-server error.\n");
-                    break;
-                case 2:
-                    WriteLog("Proxy connection error, connections fail by proxy rules.\n");
-                    break;
-                case 3:
-                    WriteLog("Proxy connection error, network is not aviable.\n");
-                    break;
-                case 4:
-                    WriteLog("Proxy connection error, host is not aviable.\n");
-                    break;
-                case 5:
-                    WriteLog("Proxy connection error, connection denied.\n");
-                    break;
-                case 6:
-                    WriteLog("Proxy connection error, TTL expired.\n");
-                    break;
-                case 7:
-                    WriteLog("Proxy connection error, command not supported.\n");
-                    break;
-                case 8:
-                    WriteLog("Proxy connection error, address type not supported.\n");
-                    break;
-                default:
-                    WriteLog("Proxy connection error, unknown error {}.\n", b2);
-                    break;
-                }
-                return false;
-            }
-        }
-        else if (Settings.ProxyType == PROXY_HTTP) {
-            string buf = _str("CONNECT {}:{} HTTP/1.0\r\n\r\n", inet_ntoa(_sockAddr.sin_addr), port);
-            _netOut.Push(buf.c_str(), static_cast<uint>(buf.length()));
-
-            if (!send_recv()) {
-                return false;
-            }
-
-            buf = reinterpret_cast<const char*>(_netIn.GetData() + _netIn.GetReadPos());
-            if (buf.find(" 200 ") == string::npos) {
-                WriteLog("Proxy connection error, receive message '{}'.\n", buf);
-                return false;
-            }
-        }
-        else {
-            WriteLog("Unknown proxy type {}.\n", Settings.ProxyType);
-            return false;
-        }
-
-        _netIn.ResetBuf();
-        _netOut.ResetBuf();
-
-        _isConnected = true;
-
-#else
-        throw GenericException("Proxy connection is not supported on this platform");
-#endif
-    }
-
-    _isConnecting = true;
-    return true;
-}
-
-auto FOClient::FillSockAddr(sockaddr_in& saddr, string_view host, ushort port) -> bool
-{
-    saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(port);
-    if ((saddr.sin_addr.s_addr = ::inet_addr(string(host).c_str())) == static_cast<uint>(-1)) {
-        const auto* h = ::gethostbyname(string(host).c_str());
-        if (h == nullptr) {
-            WriteLog("Can't resolve remote host '{}', error '{}'.", host, GetLastSocketError());
-            return false;
-        }
-
-        std::memcpy(&saddr.sin_addr, h->h_addr, sizeof(in_addr));
-    }
-    return true;
-}
-
-void FOClient::NetDisconnect()
-{
-    _isConnecting = false;
-
-    if (_netSock != INVALID_SOCKET) {
-        ::closesocket(_netSock);
-        _netSock = INVALID_SOCKET;
-    }
-
-    if (_zStream != nullptr) {
-        ::inflateEnd(_zStream);
-        _zStream = nullptr;
-    }
-
-    if (_isConnected) {
-        _isConnected = false;
-
-        WriteLog("Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}.\n", _bytesSend, _bytesReceive, _bytesReceive + _bytesSend, _bytesRealReceive);
-
-        if (CurMap != nullptr) {
-            CurMap->MarkAsDestroyed();
-            CurMap->Release();
-            CurMap = nullptr;
-        }
-
-        _netIn.ResetBuf();
-        _netOut.ResetBuf();
-        _netIn.SetEncryptKey(0);
-        _netOut.SetEncryptKey(0);
-        _netIn.SetError(false);
-        _netOut.SetError(false);
-
-        if (_curPlayer != nullptr) {
-            _curPlayer->MarkAsDestroyed();
-            _curPlayer->Release();
-            _curPlayer = nullptr;
-        }
-
-        ProcessAutoLogin();
+        ShowMainScreen(SCREEN_LOGIN, {});
+        AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
     }
 }
 
-void FOClient::ProcessSocket()
+void FOClient::Net_OnDisconnect()
 {
-    if (_netSock == INVALID_SOCKET) {
-        return;
+    if (CurMap != nullptr) {
+        CurMap->MarkAsDestroyed();
+        CurMap->Release();
+        CurMap = nullptr;
     }
 
-    if (NetInput(true) >= 0) {
-        NetProcess();
-
-        if (_isConnected && Settings.HelpInfo && _netOut.IsEmpty() && _pingTick == 0u && Settings.PingPeriod != 0u && GameTime.FrameTick() >= _pingCallTick) {
-            Net_SendPing(PING_PING);
-            _pingTick = GameTime.FrameTick();
-        }
-
-        NetOutput();
-    }
-    else {
-        NetDisconnect();
-    }
-}
-
-auto FOClient::NetOutput() -> bool
-{
-    if (!_isConnected) {
-        return false;
-    }
-    if (_netOut.IsEmpty()) {
-        return true;
-    }
-    if (!CheckSocketStatus(true)) {
-        return _isConnected;
+    if (_curPlayer != nullptr) {
+        _curPlayer->MarkAsDestroyed();
+        _curPlayer->Release();
+        _curPlayer = nullptr;
     }
 
-    const int tosend = _netOut.GetEndPos();
-    auto sendpos = 0;
-    while (sendpos < tosend) {
-#if FO_WINDOWS
-        DWORD len = 0;
-        WSABUF buf;
-        buf.buf = reinterpret_cast<char*>(_netOut.GetData()) + sendpos;
-        buf.len = tosend - sendpos;
-        if (::WSASend(_netSock, &buf, 1, &len, 0, nullptr, nullptr) == SOCKET_ERROR || len == 0)
-#else
-        int len = (int)::send(_netSock, _netOut.GetData() + sendpos, tosend - sendpos, 0);
-        if (len <= 0)
-#endif
-        {
-            WriteLog("Socket error while send to server, error '{}'.\n", GetLastSocketError());
-            NetDisconnect();
-            return false;
-        }
-
-        sendpos += len;
-        _bytesSend += len;
-    }
-
-    _netOut.ResetBuf();
-    return true;
-}
-
-auto FOClient::NetInput(bool unpack) -> int
-{
-    if (!CheckSocketStatus(false)) {
-        return 0;
-    }
-
-#if FO_WINDOWS
-    DWORD len = 0;
-    DWORD flags = 0;
-    WSABUF buf;
-    buf.buf = reinterpret_cast<char*>(_incomeBuf.data());
-    buf.len = static_cast<uint>(_incomeBuf.size());
-    if (::WSARecv(_netSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
-#else
-    int len = static_cast<int>(::recv(_netSock, _incomeBuf.data(), _incomeBuf.size(), 0));
-    if (len == SOCKET_ERROR)
-#endif
-    {
-        WriteLog("Socket error while receive from server, error '{}'.\n", GetLastSocketError());
-        return -1;
-    }
-    if (len == 0) {
-        WriteLog("Socket is closed.\n");
-        return -2;
-    }
-
-    auto whole_len = static_cast<uint>(len);
-    while (whole_len == static_cast<uint>(_incomeBuf.size())) {
-        _incomeBuf.resize(_incomeBuf.size() * 2);
-
-#if FO_WINDOWS
-        flags = 0;
-        buf.buf = reinterpret_cast<char*>(_incomeBuf.data()) + whole_len;
-        buf.len = static_cast<uint>(_incomeBuf.size()) - whole_len;
-        if (::WSARecv(_netSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
-#else
-        len = static_cast<int>(::recv(_netSock, _incomeBuf.data() + whole_len, _incomeBuf.size() - whole_len, 0));
-        if (len == SOCKET_ERROR)
-#endif
-        {
-#if FO_WINDOWS
-            if (::WSAGetLastError() == WSAEWOULDBLOCK) {
-#else
-            if (errno == EINPROGRESS) {
-#endif
-                break;
-            }
-
-            WriteLog("Socket error (2) while receive from server, error '{}'.\n", GetLastSocketError());
-            return -1;
-        }
-        if (len == 0) {
-            WriteLog("Socket is closed (2).\n");
-            return -2;
-        }
-
-        whole_len += len;
-    }
-
-    _netIn.ShrinkReadBuf();
-
-    const auto old_pos = _netIn.GetEndPos();
-
-    if (unpack && !Settings.DisableZlibCompression) {
-        _zStream->next_in = _incomeBuf.data();
-        _zStream->avail_in = whole_len;
-        _zStream->next_out = _netIn.GetData() + _netIn.GetEndPos();
-        _zStream->avail_out = _netIn.GetAvailLen();
-
-        const auto first_inflate = ::inflate(_zStream, Z_SYNC_FLUSH);
-        RUNTIME_ASSERT(first_inflate == Z_OK);
-
-        auto uncompr = static_cast<uint>(reinterpret_cast<size_t>(_zStream->next_out) - reinterpret_cast<size_t>(_netIn.GetData()));
-        _netIn.SetEndPos(uncompr);
-
-        while (_zStream->avail_in != 0u) {
-            _netIn.GrowBuf(NetBuffer::DEFAULT_BUF_SIZE);
-
-            _zStream->next_out = _netIn.GetData() + _netIn.GetEndPos();
-            _zStream->avail_out = _netIn.GetAvailLen();
-
-            const auto next_inflate = ::inflate(_zStream, Z_SYNC_FLUSH);
-            RUNTIME_ASSERT(next_inflate == Z_OK);
-
-            uncompr = static_cast<uint>(reinterpret_cast<size_t>(_zStream->next_out) - reinterpret_cast<size_t>(_netIn.GetData()));
-            _netIn.SetEndPos(uncompr);
-        }
-    }
-    else {
-        _netIn.AddData(_incomeBuf.data(), whole_len);
-    }
-
-    _bytesReceive += whole_len;
-    _bytesRealReceive += _netIn.GetEndPos() - old_pos;
-    return static_cast<int>(_netIn.GetEndPos() - old_pos);
-}
-
-void FOClient::NetProcess()
-{
-    while (_isConnected && _netIn.NeedProcess()) {
-        uint msg = 0;
-        _netIn >> msg;
-
-        CHECK_IN_BUFF_ERROR();
-
-        if (Settings.DebugNet) {
-            static uint count = 0;
-            AddMess(SAY_NETMSG, _str("{:04}) Input net message {}.", count, (msg >> 8) & 0xFF));
-            WriteLog("{}) Input net message {}.\n", count, (msg >> 8) & 0xFF);
-            count++;
-        }
-
-        switch (msg) {
-        case NETMSG_DISCONNECT:
-            NetDisconnect();
-            break;
-        case NETMSG_WRONG_NET_PROTO:
-            Net_OnWrongNetProto();
-            break;
-        case NETMSG_LOGIN_SUCCESS:
-            Net_OnLoginSuccess();
-            break;
-        case NETMSG_REGISTER_SUCCESS:
-            WriteLog("Registration success.\n");
-            break;
-
-        case NETMSG_PING:
-            Net_OnPing();
-            break;
-        case NETMSG_END_PARSE_TO_GAME:
-            Net_OnEndParseToGame();
-            break;
-
-        case NETMSG_ADD_PLAYER:
-            Net_OnAddCritter(false);
-            break;
-        case NETMSG_ADD_NPC:
-            Net_OnAddCritter(true);
-            break;
-        case NETMSG_REMOVE_CRITTER:
-            Net_OnRemoveCritter();
-            break;
-        case NETMSG_SOME_ITEM:
-            Net_OnSomeItem();
-            break;
-        case NETMSG_CRITTER_ACTION:
-            Net_OnCritterAction();
-            break;
-        case NETMSG_CRITTER_MOVE_ITEM:
-            Net_OnCritterMoveItem();
-            break;
-        case NETMSG_CRITTER_ANIMATE:
-            Net_OnCritterAnimate();
-            break;
-        case NETMSG_CRITTER_SET_ANIMS:
-            Net_OnCritterSetAnims();
-            break;
-        case NETMSG_CUSTOM_COMMAND:
-            Net_OnCustomCommand();
-            break;
-        case NETMSG_CRITTER_MOVE:
-            Net_OnCritterMove();
-            break;
-        case NETMSG_CRITTER_DIR:
-            Net_OnCritterDir();
-            break;
-        case NETMSG_CRITTER_XY:
-            Net_OnCritterCoords();
-            break;
-
-        case NETMSG_POD_PROPERTY(1, 0):
-            [[fallthrough]];
-        case NETMSG_POD_PROPERTY(1, 1):
-            [[fallthrough]];
-        case NETMSG_POD_PROPERTY(1, 2):
-            Net_OnProperty(1);
-            break;
-        case NETMSG_POD_PROPERTY(2, 0):
-            [[fallthrough]];
-        case NETMSG_POD_PROPERTY(2, 1):
-            [[fallthrough]];
-        case NETMSG_POD_PROPERTY(2, 2):
-            Net_OnProperty(2);
-            break;
-        case NETMSG_POD_PROPERTY(4, 0):
-            [[fallthrough]];
-        case NETMSG_POD_PROPERTY(4, 1):
-            [[fallthrough]];
-        case NETMSG_POD_PROPERTY(4, 2):
-            Net_OnProperty(4);
-            break;
-        case NETMSG_POD_PROPERTY(8, 0):
-            [[fallthrough]];
-        case NETMSG_POD_PROPERTY(8, 1):
-            [[fallthrough]];
-        case NETMSG_POD_PROPERTY(8, 2):
-            Net_OnProperty(8);
-            break;
-        case NETMSG_COMPLEX_PROPERTY:
-            Net_OnProperty(0);
-            break;
-
-        case NETMSG_CRITTER_TEXT:
-            Net_OnText();
-            break;
-        case NETMSG_MSG:
-            Net_OnTextMsg(false);
-            break;
-        case NETMSG_MSG_LEX:
-            Net_OnTextMsg(true);
-            break;
-        case NETMSG_MAP_TEXT:
-            Net_OnMapText();
-            break;
-        case NETMSG_MAP_TEXT_MSG:
-            Net_OnMapTextMsg();
-            break;
-        case NETMSG_MAP_TEXT_MSG_LEX:
-            Net_OnMapTextMsgLex();
-            break;
-
-        case NETMSG_ALL_PROPERTIES:
-            Net_OnAllProperties();
-            break;
-
-        case NETMSG_CLEAR_ITEMS:
-            Net_OnChosenClearItems();
-            break;
-        case NETMSG_ADD_ITEM:
-            Net_OnChosenAddItem();
-            break;
-        case NETMSG_REMOVE_ITEM:
-            Net_OnChosenEraseItem();
-            break;
-        case NETMSG_ALL_ITEMS_SEND:
-            Net_OnAllItemsSend();
-            break;
-
-        case NETMSG_TALK_NPC:
-            Net_OnChosenTalk();
-            break;
-
-        case NETMSG_GAME_INFO:
-            Net_OnGameInfo();
-            break;
-
-        case NETMSG_AUTOMAPS_INFO:
-            Net_OnAutomapsInfo();
-            break;
-        case NETMSG_VIEW_MAP:
-            Net_OnViewMap();
-            break;
-
-        case NETMSG_LOADMAP:
-            Net_OnLoadMap();
-            break;
-        case NETMSG_MAP:
-            Net_OnMap();
-            break;
-        case NETMSG_GLOBAL_INFO:
-            Net_OnGlobalInfo();
-            break;
-        case NETMSG_SOME_ITEMS:
-            Net_OnSomeItems();
-            break;
-        case NETMSG_RPC:
-            // ScriptSys.HandleRpc(&Bin);
-            break;
-
-        case NETMSG_ADD_ITEM_ON_MAP:
-            Net_OnAddItemOnMap();
-            break;
-        case NETMSG_ERASE_ITEM_FROM_MAP:
-            Net_OnEraseItemFromMap();
-            break;
-        case NETMSG_ANIMATE_ITEM:
-            Net_OnAnimateItem();
-            break;
-        case NETMSG_COMBAT_RESULTS:
-            Net_OnCombatResult();
-            break;
-        case NETMSG_EFFECT:
-            Net_OnEffect();
-            break;
-        case NETMSG_FLY_EFFECT:
-            Net_OnFlyEffect();
-            break;
-        case NETMSG_PLAY_SOUND:
-            Net_OnPlaySound();
-            break;
-
-        case NETMSG_UPDATE_FILES_LIST:
-            Net_OnUpdateFilesList();
-            break;
-        case NETMSG_UPDATE_FILE_DATA:
-            Net_OnUpdateFileData();
-            break;
-
-        default:
-            _netIn.SkipMsg(msg);
-            break;
-        }
-    }
-
-    if (_netIn.IsError()) {
-        if (Settings.DebugNet) {
-            AddMess(SAY_NETMSG, "Invalid network message. Disconnect.");
-        }
-
-        WriteLog("Invalid network message. Disconnect.\n");
-        NetDisconnect();
-    }
+    ProcessAutoLogin();
 }
 
 void FOClient::Net_SendUpdate()
 {
     // Header
-    _netOut << NETMSG_UPDATE;
+    _conn.OutBuf << NETMSG_UPDATE;
 
     // Protocol version
-    _netOut << static_cast<ushort>(FO_COMPATIBILITY_VERSION);
+    _conn.OutBuf << static_cast<ushort>(FO_COMPATIBILITY_VERSION);
 
     // Data encrypting
-    const uint encrypt_key = 0x00420042;
-    _netOut << encrypt_key;
-    _netOut.SetEncryptKey(encrypt_key + 521);
-    _netIn.SetEncryptKey(encrypt_key + 3491);
+    const uint encrypt_key = NetBuffer::GenerateEncryptKey();
+    _conn.OutBuf << encrypt_key;
+    _conn.OutBuf.SetEncryptKey(encrypt_key);
+    _conn.InBuf.SetEncryptKey(encrypt_key);
 }
 
 void FOClient::Net_SendLogIn()
@@ -1672,17 +728,17 @@ void FOClient::Net_SendLogIn()
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
 
-    _netOut << NETMSG_LOGIN;
-    _netOut << msg_len;
-    _netOut << FO_COMPATIBILITY_VERSION;
+    _conn.OutBuf << NETMSG_LOGIN;
+    _conn.OutBuf << msg_len;
+    _conn.OutBuf << FO_COMPATIBILITY_VERSION;
 
     // Begin data encrypting
-    _netOut.SetEncryptKey(12345);
-    _netIn.SetEncryptKey(12345);
+    _conn.OutBuf.SetEncryptKey(12345);
+    _conn.InBuf.SetEncryptKey(12345);
 
-    _netOut << _loginName;
-    _netOut << _loginPassword;
-    _netOut << _curLang.NameCode;
+    _conn.OutBuf << _loginName;
+    _conn.OutBuf << _loginPassword;
+    _conn.OutBuf << _curLang.NameCode;
 
     AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
 }
@@ -1693,16 +749,16 @@ void FOClient::Net_SendCreatePlayer()
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
 
-    _netOut << NETMSG_REGISTER;
-    _netOut << msg_len;
-    _netOut << FO_COMPATIBILITY_VERSION;
+    _conn.OutBuf << NETMSG_REGISTER;
+    _conn.OutBuf << msg_len;
+    _conn.OutBuf << FO_COMPATIBILITY_VERSION;
 
     // Begin data encrypting
-    _netOut.SetEncryptKey(1234567890);
-    _netIn.SetEncryptKey(1234567890);
+    _conn.OutBuf.SetEncryptKey(1234567890);
+    _conn.InBuf.SetEncryptKey(1234567890);
 
-    _netOut << _loginName;
-    _netOut << _loginPassword;
+    _conn.OutBuf << _loginName;
+    _conn.OutBuf << _loginPassword;
 }
 
 void FOClient::Net_SendText(string_view send_str, uchar how_say)
@@ -1719,10 +775,10 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(how_say) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(str.length());
 
-    _netOut << NETMSG_SEND_TEXT;
-    _netOut << msg_len;
-    _netOut << how_say;
-    _netOut << str;
+    _conn.OutBuf << NETMSG_SEND_TEXT;
+    _conn.OutBuf << msg_len;
+    _conn.OutBuf << how_say;
+    _conn.OutBuf << str;
 }
 
 void FOClient::Net_SendDir()
@@ -1732,8 +788,8 @@ void FOClient::Net_SendDir()
         return;
     }
 
-    _netOut << NETMSG_DIR;
-    _netOut << chosen->GetDir();
+    _conn.OutBuf << NETMSG_DIR;
+    _conn.OutBuf << chosen->GetDir();
 }
 
 void FOClient::Net_SendMove(vector<uchar> steps)
@@ -1761,10 +817,10 @@ void FOClient::Net_SendMove(vector<uchar> steps)
         SetBit(move_params, MOVE_PARAM_STEP_DISALLOW); // Inform about stopping
     }
 
-    _netOut << (chosen->IsRunning ? NETMSG_SEND_MOVE_RUN : NETMSG_SEND_MOVE_WALK);
-    _netOut << move_params;
-    _netOut << chosen->GetHexX();
-    _netOut << chosen->GetHexY();
+    _conn.OutBuf << (chosen->IsRunning ? NETMSG_SEND_MOVE_RUN : NETMSG_SEND_MOVE_WALK);
+    _conn.OutBuf << move_params;
+    _conn.OutBuf << chosen->GetHexX();
+    _conn.OutBuf << chosen->GetHexY();
 }
 
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
@@ -1799,95 +855,94 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
     const auto is_pod = prop->IsPlainData();
     if (is_pod) {
-        _netOut << NETMSG_SEND_POD_PROPERTY(data_size, additional_args);
+        _conn.OutBuf << NETMSG_SEND_POD_PROPERTY(data_size, additional_args);
     }
     else {
         uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(uint) + sizeof(ushort) + data_size;
-        _netOut << NETMSG_SEND_COMPLEX_PROPERTY;
-        _netOut << msg_len;
+        _conn.OutBuf << NETMSG_SEND_COMPLEX_PROPERTY;
+        _conn.OutBuf << msg_len;
     }
 
-    _netOut << static_cast<char>(type);
+    _conn.OutBuf << static_cast<char>(type);
 
     switch (type) {
     case NetProperty::CritterItem:
-        _netOut << dynamic_cast<ItemView*>(client_entity)->GetCritId();
-        _netOut << client_entity->GetId();
+        _conn.OutBuf << dynamic_cast<ItemView*>(client_entity)->GetCritId();
+        _conn.OutBuf << client_entity->GetId();
         break;
     case NetProperty::Critter:
-        _netOut << client_entity->GetId();
+        _conn.OutBuf << client_entity->GetId();
         break;
     case NetProperty::MapItem:
-        _netOut << client_entity->GetId();
+        _conn.OutBuf << client_entity->GetId();
         break;
     case NetProperty::ChosenItem:
-        _netOut << client_entity->GetId();
+        _conn.OutBuf << client_entity->GetId();
         break;
     default:
         break;
     }
 
     if (is_pod) {
-        _netOut << prop->GetRegIndex();
-        _netOut.Push(data, data_size);
+        _conn.OutBuf << prop->GetRegIndex();
+        _conn.OutBuf.Push(data, data_size);
     }
     else {
-        _netOut << prop->GetRegIndex();
+        _conn.OutBuf << prop->GetRegIndex();
         if (data_size != 0u) {
-            _netOut.Push(data, data_size);
+            _conn.OutBuf.Push(data, data_size);
         }
     }
 }
 
 void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 {
-    _netOut << NETMSG_SEND_TALK_NPC;
-    _netOut << is_npc;
-    _netOut << id_to_talk;
-    _netOut << answer;
+    _conn.OutBuf << NETMSG_SEND_TALK_NPC;
+    _conn.OutBuf << is_npc;
+    _conn.OutBuf << id_to_talk;
+    _conn.OutBuf << answer;
 }
 
 void FOClient::Net_SendGetGameInfo()
 {
-    _netOut << NETMSG_SEND_GET_INFO;
+    _conn.OutBuf << NETMSG_SEND_GET_INFO;
 }
 
 void FOClient::Net_SendGiveMap(bool automap, hstring map_pid, uint loc_id, uint tiles_hash, uint scen_hash)
 {
-    _netOut << NETMSG_SEND_GIVE_MAP;
-    _netOut << automap;
-    _netOut << map_pid;
-    _netOut << loc_id;
-    _netOut << tiles_hash;
-    _netOut << scen_hash;
+    _conn.OutBuf << NETMSG_SEND_GIVE_MAP;
+    _conn.OutBuf << automap;
+    _conn.OutBuf << map_pid;
+    _conn.OutBuf << loc_id;
+    _conn.OutBuf << tiles_hash;
+    _conn.OutBuf << scen_hash;
 }
 
 void FOClient::Net_SendLoadMapOk()
 {
-    _netOut << NETMSG_SEND_LOAD_MAP_OK;
+    _conn.OutBuf << NETMSG_SEND_LOAD_MAP_OK;
 }
 
 void FOClient::Net_SendPing(uchar ping)
 {
-    _netOut << NETMSG_PING;
-    _netOut << ping;
+    _conn.OutBuf << NETMSG_PING;
+    _conn.OutBuf << ping;
 }
 
 void FOClient::Net_SendRefereshMe()
 {
-    _netOut << NETMSG_SEND_REFRESH_ME;
+    _conn.OutBuf << NETMSG_SEND_REFRESH_ME;
+}
 
-    WaitPing();
+void FOClient::Net_OnUpdateFilesResponse()
+{
+    // Todo: run updater if resources changed
+    AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
 }
 
 void FOClient::Net_OnWrongNetProto()
 {
-    if (_updateData) {
-        UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
-    }
-    else {
-        AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
-    }
+    AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
 }
 
 void FOClient::Net_OnLoginSuccess()
@@ -1901,18 +956,18 @@ void FOClient::Net_OnLoginSuccess()
     uint bin_seed;
     uint bout_seed; // Server bin/bout == client bout/bin
     uint player_id;
-    _netIn >> msg_len;
-    _netIn >> bin_seed;
-    _netIn >> bout_seed;
-    _netIn >> player_id;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> bin_seed;
+    _conn.InBuf >> bout_seed;
+    _conn.InBuf >> player_id;
 
-    NET_READ_PROPERTIES(_netIn, _globalsPropertiesData);
-    NET_READ_PROPERTIES(_netIn, _playerPropertiesData);
+    NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
+    NET_READ_PROPERTIES(_conn.InBuf, _playerPropertiesData);
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
-    _netOut.SetEncryptKey(bin_seed);
-    _netIn.SetEncryptKey(bout_seed);
+    _conn.OutBuf.SetEncryptKey(bin_seed);
+    _conn.InBuf.SetEncryptKey(bout_seed);
 
     RestoreData(_globalsPropertiesData);
 
@@ -1929,16 +984,16 @@ void FOClient::Net_OnLoginSuccess()
 void FOClient::Net_OnAddCritter(bool is_npc)
 {
     uint msg_len;
-    _netIn >> msg_len;
+    _conn.InBuf >> msg_len;
 
     uint crid;
     ushort hx;
     ushort hy;
     uchar dir;
-    _netIn >> crid;
-    _netIn >> hx;
-    _netIn >> hy;
-    _netIn >> dir;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> hx;
+    _conn.InBuf >> hy;
+    _conn.InBuf >> dir;
 
     CritterCondition cond;
     uint anim1_alive;
@@ -1948,31 +1003,31 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     uint anim2_ko;
     uint anim2_dead;
     uint flags;
-    _netIn >> cond;
-    _netIn >> anim1_alive;
-    _netIn >> anim1_ko;
-    _netIn >> anim1_dead;
-    _netIn >> anim2_alive;
-    _netIn >> anim2_ko;
-    _netIn >> anim2_dead;
-    _netIn >> flags;
+    _conn.InBuf >> cond;
+    _conn.InBuf >> anim1_alive;
+    _conn.InBuf >> anim1_ko;
+    _conn.InBuf >> anim1_dead;
+    _conn.InBuf >> anim2_alive;
+    _conn.InBuf >> anim2_ko;
+    _conn.InBuf >> anim2_dead;
+    _conn.InBuf >> flags;
 
     // Npc
     hstring npc_pid;
     if (is_npc) {
-        npc_pid = _netIn.ReadHashedString(*this);
+        npc_pid = _conn.InBuf.ReadHashedString(*this);
     }
 
     // Player
     string cl_name;
     if (!is_npc) {
-        _netIn >> cl_name;
+        _conn.InBuf >> cl_name;
     }
 
     // Properties
-    NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
+    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2019,9 +1074,9 @@ void FOClient::Net_OnAddCritter(bool is_npc)
 void FOClient::Net_OnRemoveCritter()
 {
     uint remove_crid;
-    _netIn >> remove_crid;
+    _conn.InBuf >> remove_crid;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2044,13 +1099,13 @@ void FOClient::Net_OnText()
     uchar how_say;
     string text;
     bool unsafe_text;
-    _netIn >> msg_len;
-    _netIn >> crid;
-    _netIn >> how_say;
-    _netIn >> text;
-    _netIn >> unsafe_text;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> how_say;
+    _conn.InBuf >> text;
+    _conn.InBuf >> unsafe_text;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (how_say == SAY_FLASH_WINDOW) {
         FlashGameWindow();
@@ -2067,24 +1122,24 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
 {
     if (with_lexems) {
         uint msg_len;
-        _netIn >> msg_len;
+        _conn.InBuf >> msg_len;
     }
 
     uint crid;
     uchar how_say;
     ushort msg_num;
     uint num_str;
-    _netIn >> crid;
-    _netIn >> how_say;
-    _netIn >> msg_num;
-    _netIn >> num_str;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> how_say;
+    _conn.InBuf >> msg_num;
+    _conn.InBuf >> num_str;
 
     string lexems;
     if (with_lexems) {
-        _netIn >> lexems;
+        _conn.InBuf >> lexems;
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (how_say == SAY_FLASH_WINDOW) {
         FlashGameWindow();
@@ -2226,14 +1281,14 @@ void FOClient::Net_OnMapText()
     uint color;
     string text;
     bool unsafe_text;
-    _netIn >> msg_len;
-    _netIn >> hx;
-    _netIn >> hy;
-    _netIn >> color;
-    _netIn >> text;
-    _netIn >> unsafe_text;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> hx;
+    _conn.InBuf >> hy;
+    _conn.InBuf >> color;
+    _conn.InBuf >> text;
+    _conn.InBuf >> unsafe_text;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         WriteLog("Invalid coords, hx {}, hy {}, text '{}'.\n", hx, hy, text);
@@ -2254,13 +1309,13 @@ void FOClient::Net_OnMapTextMsg()
     uint color;
     ushort msg_num;
     uint num_str;
-    _netIn >> hx;
-    _netIn >> hy;
-    _netIn >> color;
-    _netIn >> msg_num;
-    _netIn >> num_str;
+    _conn.InBuf >> hx;
+    _conn.InBuf >> hy;
+    _conn.InBuf >> color;
+    _conn.InBuf >> msg_num;
+    _conn.InBuf >> num_str;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (msg_num >= TEXTMSG_COUNT) {
         WriteLog("Msg num invalid value, num {}.\n", msg_num);
@@ -2281,15 +1336,15 @@ void FOClient::Net_OnMapTextMsgLex()
     ushort msg_num;
     uint num_str;
     string lexems;
-    _netIn >> msg_len;
-    _netIn >> hx;
-    _netIn >> hy;
-    _netIn >> color;
-    _netIn >> msg_num;
-    _netIn >> num_str;
-    _netIn >> lexems;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> hx;
+    _conn.InBuf >> hy;
+    _conn.InBuf >> color;
+    _conn.InBuf >> msg_num;
+    _conn.InBuf >> num_str;
+    _conn.InBuf >> lexems;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (msg_num >= TEXTMSG_COUNT) {
         WriteLog("Msg num invalid value, num {}.\n", msg_num);
@@ -2305,10 +1360,10 @@ void FOClient::Net_OnCritterDir()
 {
     uint crid;
     uchar dir;
-    _netIn >> crid;
-    _netIn >> dir;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> dir;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (dir >= Settings.MapDirCount) {
         WriteLog("Invalid dir {}.\n", dir);
@@ -2331,12 +1386,12 @@ void FOClient::Net_OnCritterMove()
     uint move_params;
     ushort new_hx;
     ushort new_hy;
-    _netIn >> crid;
-    _netIn >> move_params;
-    _netIn >> new_hx;
-    _netIn >> new_hy;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> move_params;
+    _conn.InBuf >> new_hx;
+    _conn.InBuf >> new_hy;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2393,13 +1448,13 @@ void FOClient::Net_OnSomeItem()
     uint msg_len;
     uint item_id;
     hstring item_pid;
-    _netIn >> msg_len;
-    _netIn >> item_id;
-    item_pid = _netIn.ReadHashedString(*this);
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> item_id;
+    item_pid = _conn.InBuf.ReadHashedString(*this);
 
-    NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
+    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (_someItem != nullptr) {
         _someItem->Release();
@@ -2418,12 +1473,12 @@ void FOClient::Net_OnCritterAction()
     int action;
     int action_ext;
     bool is_item;
-    _netIn >> crid;
-    _netIn >> action;
-    _netIn >> action_ext;
-    _netIn >> is_item;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> action;
+    _conn.InBuf >> action_ext;
+    _conn.InBuf >> is_item;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2444,17 +1499,17 @@ void FOClient::Net_OnCritterMoveItem()
     uchar action;
     uchar prev_slot;
     bool is_item;
-    _netIn >> msg_len;
-    _netIn >> crid;
-    _netIn >> action;
-    _netIn >> prev_slot;
-    _netIn >> is_item;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> action;
+    _conn.InBuf >> prev_slot;
+    _conn.InBuf >> is_item;
 
     // Slot items
     ushort slots_data_count;
-    _netIn >> slots_data_count;
+    _conn.InBuf >> slots_data_count;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     vector<uchar> slots_data_slot;
     vector<uint> slots_data_id;
@@ -2464,17 +1519,17 @@ void FOClient::Net_OnCritterMoveItem()
         uchar slot;
         uint id;
         hstring pid;
-        _netIn >> slot;
-        _netIn >> id;
-        pid = _netIn.ReadHashedString(*this);
-        NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
+        _conn.InBuf >> slot;
+        _conn.InBuf >> id;
+        pid = _conn.InBuf.ReadHashedString(*this);
+        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
         slots_data_slot.push_back(slot);
         slots_data_id.push_back(id);
         slots_data_pid.push_back(pid);
         slots_data_data.push_back(_tempPropertiesData);
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2523,14 +1578,14 @@ void FOClient::Net_OnCritterAnimate()
     bool is_item;
     bool clear_sequence;
     bool delay_play;
-    _netIn >> crid;
-    _netIn >> anim1;
-    _netIn >> anim2;
-    _netIn >> is_item;
-    _netIn >> clear_sequence;
-    _netIn >> delay_play;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> anim1;
+    _conn.InBuf >> anim2;
+    _conn.InBuf >> is_item;
+    _conn.InBuf >> clear_sequence;
+    _conn.InBuf >> delay_play;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2555,12 +1610,12 @@ void FOClient::Net_OnCritterSetAnims()
     CritterCondition cond;
     uint anim1;
     uint anim2;
-    _netIn >> crid;
-    _netIn >> cond;
-    _netIn >> anim1;
-    _netIn >> anim2;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> cond;
+    _conn.InBuf >> anim1;
+    _conn.InBuf >> anim2;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2594,11 +1649,11 @@ void FOClient::Net_OnCustomCommand()
     uint crid;
     ushort index;
     int value;
-    _netIn >> crid;
-    _netIn >> index;
-    _netIn >> value;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> index;
+    _conn.InBuf >> value;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2661,12 +1716,12 @@ void FOClient::Net_OnCritterCoords()
     ushort hx;
     ushort hy;
     uchar dir;
-    _netIn >> crid;
-    _netIn >> hx;
-    _netIn >> hy;
-    _netIn >> dir;
+    _conn.InBuf >> crid;
+    _conn.InBuf >> hx;
+    _conn.InBuf >> hy;
+    _conn.InBuf >> dir;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (Settings.DebugNet) {
         AddMess(SAY_NETMSG, _str(" - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir));
@@ -2717,11 +1772,11 @@ void FOClient::Net_OnAllProperties()
     WriteLog("Chosen properties.\n");
 
     uint msg_len;
-    _netIn >> msg_len;
+    _conn.InBuf >> msg_len;
 
-    NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
+    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
@@ -2763,14 +1818,14 @@ void FOClient::Net_OnChosenAddItem()
     uint item_id;
     hstring pid;
     uchar slot;
-    _netIn >> msg_len;
-    _netIn >> item_id;
-    pid = _netIn.ReadHashedString(*this);
-    _netIn >> slot;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> item_id;
+    pid = _conn.InBuf.ReadHashedString(*this);
+    _conn.InBuf >> slot;
 
-    NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
+    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
@@ -2816,9 +1871,9 @@ void FOClient::Net_OnChosenAddItem()
 void FOClient::Net_OnChosenEraseItem()
 {
     uint item_id;
-    _netIn >> item_id;
+    _conn.InBuf >> item_id;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
@@ -2868,16 +1923,16 @@ void FOClient::Net_OnAddItemOnMap()
     ushort item_hx;
     ushort item_hy;
     bool is_added;
-    _netIn >> msg_len;
-    _netIn >> item_id;
-    const auto item_pid = _netIn.ReadHashedString(*this);
-    _netIn >> item_hx;
-    _netIn >> item_hy;
-    _netIn >> is_added;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> item_id;
+    const auto item_pid = _conn.InBuf.ReadHashedString(*this);
+    _conn.InBuf >> item_hx;
+    _conn.InBuf >> item_hy;
+    _conn.InBuf >> is_added;
 
-    NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
+    NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2898,10 +1953,10 @@ void FOClient::Net_OnEraseItemFromMap()
 {
     uint item_id;
     bool is_deleted;
-    _netIn >> item_id;
-    _netIn >> is_deleted;
+    _conn.InBuf >> item_id;
+    _conn.InBuf >> is_deleted;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2929,11 +1984,11 @@ void FOClient::Net_OnAnimateItem()
     uint item_id;
     uchar from_frm;
     uchar to_frm;
-    _netIn >> item_id;
-    _netIn >> from_frm;
-    _netIn >> to_frm;
+    _conn.InBuf >> item_id;
+    _conn.InBuf >> from_frm;
+    _conn.InBuf >> to_frm;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     auto* item = CurMap->GetItem(item_id);
     if (item != nullptr) {
@@ -2946,15 +2001,15 @@ void FOClient::Net_OnCombatResult()
     uint msg_len;
     uint data_count;
     vector<uint> data_vec;
-    _netIn >> msg_len;
-    _netIn >> data_count;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> data_count;
 
     if (data_count != 0u) {
         data_vec.resize(data_count);
-        _netIn.Pop(data_vec.data(), data_count * sizeof(uint));
+        _conn.InBuf.Pop(data_vec.data(), data_count * sizeof(uint));
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     OnCombatResult.Fire(data_vec);
 }
@@ -2965,12 +2020,12 @@ void FOClient::Net_OnEffect()
     ushort hx;
     ushort hy;
     ushort radius;
-    eff_pid = _netIn.ReadHashedString(*this);
-    _netIn >> hx;
-    _netIn >> hy;
-    _netIn >> radius;
+    eff_pid = _conn.InBuf.ReadHashedString(*this);
+    _conn.InBuf >> hx;
+    _conn.InBuf >> hy;
+    _conn.InBuf >> radius;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     // Base hex effect
     CurMap->RunEffect(eff_pid, hx, hy, hx, hy);
@@ -3004,15 +2059,15 @@ void FOClient::Net_OnFlyEffect()
     ushort eff_cr1_hy;
     ushort eff_cr2_hx;
     ushort eff_cr2_hy;
-    eff_pid = _netIn.ReadHashedString(*this);
-    _netIn >> eff_cr1_id;
-    _netIn >> eff_cr2_id;
-    _netIn >> eff_cr1_hx;
-    _netIn >> eff_cr1_hy;
-    _netIn >> eff_cr2_hx;
-    _netIn >> eff_cr2_hy;
+    eff_pid = _conn.InBuf.ReadHashedString(*this);
+    _conn.InBuf >> eff_cr1_id;
+    _conn.InBuf >> eff_cr2_id;
+    _conn.InBuf >> eff_cr1_hx;
+    _conn.InBuf >> eff_cr1_hy;
+    _conn.InBuf >> eff_cr2_hx;
+    _conn.InBuf >> eff_cr2_hy;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -3040,34 +2095,13 @@ void FOClient::Net_OnPlaySound()
     uint msg_len;
     uint synchronize_crid;
     string sound_name;
-    _netIn >> msg_len;
-    _netIn >> synchronize_crid;
-    _netIn >> sound_name;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> synchronize_crid;
+    _conn.InBuf >> sound_name;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     SndMngr.PlaySound(ResMngr.GetSoundNames(), sound_name);
-}
-
-void FOClient::Net_OnPing()
-{
-    uchar ping;
-    _netIn >> ping;
-
-    CHECK_IN_BUFF_ERROR();
-
-    if (ping == PING_WAIT) {
-        Settings.WaitPing = false;
-    }
-    else if (ping == PING_CLIENT) {
-        _netOut << NETMSG_PING;
-        _netOut << PING_CLIENT;
-    }
-    else if (ping == PING_PING) {
-        Settings.Ping = GameTime.FrameTick() - _pingTick;
-        _pingTick = 0;
-        _pingCallTick = GameTime.FrameTick() + Settings.PingPeriod;
-    }
 }
 
 void FOClient::Net_OnEndParseToGame()
@@ -3099,14 +2133,14 @@ void FOClient::Net_OnProperty(uint data_size)
 {
     uint msg_len;
     if (data_size == 0u) {
-        _netIn >> msg_len;
+        _conn.InBuf >> msg_len;
     }
     else {
         msg_len = 0;
     }
 
     char type_ = 0;
-    _netIn >> type_;
+    _conn.InBuf >> type_;
     const auto type = static_cast<NetProperty>(type_);
 
     uint cr_id;
@@ -3116,41 +2150,41 @@ void FOClient::Net_OnProperty(uint data_size)
     switch (type) {
     case NetProperty::CritterItem:
         additional_args = 2;
-        _netIn >> cr_id;
-        _netIn >> item_id;
+        _conn.InBuf >> cr_id;
+        _conn.InBuf >> item_id;
         break;
     case NetProperty::Critter:
         additional_args = 1;
-        _netIn >> cr_id;
+        _conn.InBuf >> cr_id;
         break;
     case NetProperty::MapItem:
         additional_args = 1;
-        _netIn >> item_id;
+        _conn.InBuf >> item_id;
         break;
     case NetProperty::ChosenItem:
         additional_args = 1;
-        _netIn >> item_id;
+        _conn.InBuf >> item_id;
         break;
     default:
         break;
     }
 
     ushort property_index;
-    _netIn >> property_index;
+    _conn.InBuf >> property_index;
 
     if (data_size != 0u) {
         _tempPropertyData.resize(data_size);
-        _netIn.Pop(_tempPropertyData.data(), data_size);
+        _conn.InBuf.Pop(_tempPropertyData.data(), data_size);
     }
     else {
         const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(ushort);
         _tempPropertyData.resize(len);
         if (len != 0u) {
-            _netIn.Pop(_tempPropertyData.data(), len);
+            _conn.InBuf.Pop(_tempPropertyData.data(), len);
         }
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     Entity* entity = nullptr;
     switch (type) {
@@ -3221,12 +2255,12 @@ void FOClient::Net_OnChosenTalk()
     uchar count_answ;
     uint text_id;
     uint talk_time;
-    _netIn >> msg_len;
-    _netIn >> is_npc;
-    _netIn >> talk_id;
-    _netIn >> count_answ;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> is_npc;
+    _conn.InBuf >> talk_id;
+    _conn.InBuf >> count_answ;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (count_answ == 0u) {
         // End dialog
@@ -3238,9 +2272,9 @@ void FOClient::Net_OnChosenTalk()
 
     // Text params
     string lexems;
-    _netIn >> lexems;
+    _conn.InBuf >> lexems;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -3252,17 +2286,17 @@ void FOClient::Net_OnChosenTalk()
     _dlgNpcId = talk_id;
 
     // Main text
-    _netIn >> text_id;
+    _conn.InBuf >> text_id;
 
     // Answers
     vector<uint> answers_texts;
     uint answ_text_id = 0;
     for (auto i = 0; i < count_answ; i++) {
-        _netIn >> answ_text_id;
+        _conn.InBuf >> answ_text_id;
         answers_texts.push_back(answ_text_id);
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     auto str = _curLang.Msg[TEXTMSG_DLG].GetStr(text_id);
     FormatTags(str, GetChosen(), npc, lexems);
@@ -3274,9 +2308,9 @@ void FOClient::Net_OnChosenTalk()
         answers_to_script.push_back(str);
     }
 
-    _netIn >> talk_time;
+    _conn.InBuf >> talk_time;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
     dict->Set("TalkerIsNpc", &is_npc, asTYPEID_BOOL);
@@ -3298,22 +2332,22 @@ void FOClient::Net_OnGameInfo()
     ushort minute;
     ushort second;
     ushort multiplier;
-    _netIn >> year;
-    _netIn >> month;
-    _netIn >> day;
-    _netIn >> hour;
-    _netIn >> minute;
-    _netIn >> second;
-    _netIn >> multiplier;
+    _conn.InBuf >> year;
+    _conn.InBuf >> month;
+    _conn.InBuf >> day;
+    _conn.InBuf >> hour;
+    _conn.InBuf >> minute;
+    _conn.InBuf >> second;
+    _conn.InBuf >> multiplier;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     auto* day_time = CurMap->GetMapDayTime();
     auto* day_color = CurMap->GetMapDayColor();
-    _netIn.Pop(day_time, sizeof(int) * 4);
-    _netIn.Pop(day_color, sizeof(uchar) * 12);
+    _conn.InBuf.Pop(day_time, sizeof(int) * 4);
+    _conn.InBuf.Pop(day_color, sizeof(uchar) * 12);
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
@@ -3339,23 +2373,23 @@ void FOClient::Net_OnLoadMap()
     uint hash_tiles;
     uint hash_scen;
 
-    _netIn >> msg_len;
-    _netIn >> loc_id;
-    _netIn >> map_id;
-    const auto loc_pid = _netIn.ReadHashedString(*this);
-    const auto map_pid = _netIn.ReadHashedString(*this);
-    _netIn >> map_index_in_loc;
-    _netIn >> hash_tiles;
-    _netIn >> hash_scen;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> loc_id;
+    _conn.InBuf >> map_id;
+    const auto loc_pid = _conn.InBuf.ReadHashedString(*this);
+    const auto map_pid = _conn.InBuf.ReadHashedString(*this);
+    _conn.InBuf >> map_index_in_loc;
+    _conn.InBuf >> hash_tiles;
+    _conn.InBuf >> hash_scen;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (map_pid) {
-        NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
-        NET_READ_PROPERTIES(_netIn, _tempPropertiesDataExt);
+        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
+        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesDataExt);
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap != nullptr) {
         CurMap->MarkAsDestroyed();
@@ -3425,14 +2459,14 @@ void FOClient::Net_OnMap()
     ushort maxhy;
     bool send_tiles;
     bool send_scenery;
-    _netIn >> msg_len;
-    const auto map_pid = _netIn.ReadHashedString(*this);
-    _netIn >> maxhx;
-    _netIn >> maxhy;
-    _netIn >> send_tiles;
-    _netIn >> send_scenery;
+    _conn.InBuf >> msg_len;
+    const auto map_pid = _conn.InBuf.ReadHashedString(*this);
+    _conn.InBuf >> maxhx;
+    _conn.InBuf >> maxhy;
+    _conn.InBuf >> send_tiles;
+    _conn.InBuf >> send_scenery;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     WriteLog("Map {} received...\n", map_pid);
 
@@ -3445,26 +2479,26 @@ void FOClient::Net_OnMap()
     uint scen_len = 0;
 
     if (send_tiles) {
-        _netIn >> tiles_len;
+        _conn.InBuf >> tiles_len;
         if (tiles_len != 0u) {
             tiles_data = new char[tiles_len];
-            _netIn.Pop(tiles_data, tiles_len);
+            _conn.InBuf.Pop(tiles_data, tiles_len);
         }
         tiles = true;
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (send_scenery) {
-        _netIn >> scen_len;
+        _conn.InBuf >> scen_len;
         if (scen_len != 0u) {
             scen_data = new char[scen_len];
-            _netIn.Pop(scen_data, scen_len);
+            _conn.InBuf.Pop(scen_data, scen_len);
         }
         scen = true;
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (auto compressed_cache = Cache.GetData(map_name); !compressed_cache.empty()) {
         if (const auto cache = Compressor::Uncompress(compressed_cache, 50); !cache.empty()) {
@@ -3514,7 +2548,7 @@ void FOClient::Net_OnMap()
     }
     else {
         WriteLog("Not for all data of map, disconnect.\n");
-        NetDisconnect();
+        _conn.Disconnect();
         delete[] tiles_data;
         delete[] scen_data;
         return;
@@ -3530,26 +2564,26 @@ void FOClient::Net_OnGlobalInfo()
 {
     uint msg_len;
     uchar info_flags;
-    _netIn >> msg_len;
-    _netIn >> info_flags;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> info_flags;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
         _worldmapLoc.clear();
 
         ushort count_loc;
-        _netIn >> count_loc;
+        _conn.InBuf >> count_loc;
 
         for (auto i = 0; i < count_loc; i++) {
             GmapLocation loc;
-            _netIn >> loc.LocId;
-            loc.LocPid = _netIn.ReadHashedString(*this);
-            _netIn >> loc.LocWx;
-            _netIn >> loc.LocWy;
-            _netIn >> loc.Radius;
-            _netIn >> loc.Color;
-            _netIn >> loc.Entrances;
+            _conn.InBuf >> loc.LocId;
+            loc.LocPid = _conn.InBuf.ReadHashedString(*this);
+            _conn.InBuf >> loc.LocWx;
+            _conn.InBuf >> loc.LocWy;
+            _conn.InBuf >> loc.Radius;
+            _conn.InBuf >> loc.Color;
+            _conn.InBuf >> loc.Entrances;
 
             if (loc.LocId != 0u) {
                 _worldmapLoc.push_back(loc);
@@ -3560,14 +2594,14 @@ void FOClient::Net_OnGlobalInfo()
     if (IsBitSet(info_flags, GM_INFO_LOCATION)) {
         bool add;
         GmapLocation loc;
-        _netIn >> add;
-        _netIn >> loc.LocId;
-        loc.LocPid = _netIn.ReadHashedString(*this);
-        _netIn >> loc.LocWx;
-        _netIn >> loc.LocWy;
-        _netIn >> loc.Radius;
-        _netIn >> loc.Color;
-        _netIn >> loc.Entrances;
+        _conn.InBuf >> add;
+        _conn.InBuf >> loc.LocId;
+        loc.LocPid = _conn.InBuf.ReadHashedString(*this);
+        _conn.InBuf >> loc.LocWx;
+        _conn.InBuf >> loc.LocWy;
+        _conn.InBuf >> loc.Radius;
+        _conn.InBuf >> loc.Color;
+        _conn.InBuf >> loc.Entrances;
 
         const auto it = std::find_if(_worldmapLoc.begin(), _worldmapLoc.end(), [&loc](const GmapLocation& l) { return loc.LocId == l.LocId; });
         if (add) {
@@ -3587,16 +2621,16 @@ void FOClient::Net_OnGlobalInfo()
 
     if (IsBitSet(info_flags, GM_INFO_ZONES_FOG)) {
         auto* fog_data = _worldmapFog.GetData();
-        _netIn.Pop(fog_data, GM_ZONES_FOG_SIZE);
+        _conn.InBuf.Pop(fog_data, GM_ZONES_FOG_SIZE);
     }
 
     if (IsBitSet(info_flags, GM_INFO_FOG)) {
         ushort zx;
         ushort zy;
         uchar fog;
-        _netIn >> zx;
-        _netIn >> zy;
-        _netIn >> fog;
+        _conn.InBuf >> zx;
+        _conn.InBuf >> zy;
+        _conn.InBuf >> fog;
 
         _worldmapFog.Set2Bit(zx, zy, fog);
     }
@@ -3609,7 +2643,7 @@ void FOClient::Net_OnGlobalInfo()
         _worldmapCritters.clear();
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 }
 
 void FOClient::Net_OnSomeItems()
@@ -3618,20 +2652,20 @@ void FOClient::Net_OnSomeItems()
     int param;
     bool is_null;
     uint items_count;
-    _netIn >> msg_len;
-    _netIn >> param;
-    _netIn >> is_null;
-    _netIn >> items_count;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> param;
+    _conn.InBuf >> is_null;
+    _conn.InBuf >> items_count;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     vector<ItemView*> item_container;
     for (uint i = 0; i < items_count; i++) {
         uint item_id;
         hstring item_pid;
-        _netIn >> item_id;
-        item_pid = _netIn.ReadHashedString(*this);
-        NET_READ_PROPERTIES(_netIn, _tempPropertiesData);
+        _conn.InBuf >> item_id;
+        item_pid = _conn.InBuf.ReadHashedString(*this);
+        NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
         const auto* proto_item = ProtoMngr.GetProtoItem(item_pid);
         if (item_id != 0u && proto_item != nullptr) {
@@ -3641,188 +2675,34 @@ void FOClient::Net_OnSomeItems()
         }
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     OnReceiveItems.Fire(item_container, param);
-}
-
-void FOClient::Net_OnUpdateFilesList()
-{
-    uint msg_len;
-    bool outdated;
-    uint data_size;
-    _netIn >> msg_len;
-    _netIn >> outdated;
-    _netIn >> data_size;
-
-    CHECK_IN_BUFF_ERROR();
-
-    vector<uchar> data;
-    data.resize(data_size);
-    if (data_size > 0u) {
-        _netIn.Pop(data.data(), data_size);
-    }
-
-    if (!outdated) {
-        NET_READ_PROPERTIES(_netIn, _globalsPropertiesData);
-    }
-
-    CHECK_IN_BUFF_ERROR();
-
-    _updateData->FileList.clear();
-    _updateData->FilesWholeSize = 0;
-    _updateData->ClientOutdated = outdated;
-
-#if FO_WINDOWS
-    /*bool have_exe = false;
-    string exe_name;
-    if (outdated) {
-        exe_name = _str(File::GetExePath()).extractFileName();
-    }*/
-#endif
-
-    auto reader = DataReader(data);
-
-    for (uint file_index = 0;; file_index++) {
-        auto name_len = reader.Read<short>();
-        if (name_len == -1) {
-            break;
-        }
-
-        RUNTIME_ASSERT(name_len > 0);
-        auto name = string(reader.ReadPtr<char>(name_len), name_len);
-        auto size = reader.Read<uint>();
-        auto hash = reader.Read<uint>();
-
-        // Skip platform depended
-#if FO_WINDOWS
-        // if (outdated && _str(exe_name).compareIgnoreCase(name))
-        //    have_exe = true;
-        string ext = _str(name).getFileExtension();
-        if (!outdated && (ext == "exe" || ext == "pdb")) {
-            continue;
-        }
-#else
-        string ext = _str(name).getFileExtension();
-        if (ext == "exe" || ext == "pdb")
-            continue;
-#endif
-
-        // Check hash
-        const auto cache_data = Cache.GetData(_str("{}.hash", name));
-        auto cached_hash_same = (cache_data.size() == sizeof(hash) && *reinterpret_cast<const uint*>(cache_data.data()) == hash);
-        if (name[0] != '$') {
-            // Real file, human can disturb file consistency, make base recheck
-            auto file_header = FileSys.ReadFileHeader(name);
-            if (file_header && file_header.GetSize() == size) {
-                auto file2 = FileSys.ReadFile(name);
-                if (cached_hash_same || (file2 && hash == Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize()))) {
-                    if (!cached_hash_same) {
-                        Cache.SetData(_str("{}.hash", name), {reinterpret_cast<uchar*>(&hash), sizeof(hash)});
-                    }
-                    continue;
-                }
-            }
-        }
-        else {
-            // In cache, consistency granted
-            if (cached_hash_same) {
-                continue;
-            }
-        }
-
-        // Get this file
-        ClientUpdate::UpdateFile update_file;
-        update_file.Index = file_index;
-        update_file.Name = name;
-        update_file.Size = size;
-        update_file.RemaningSize = size;
-        update_file.Hash = hash;
-        _updateData->FileList.push_back(update_file);
-        _updateData->FilesWholeSize += size;
-    }
-
-#if FO_WINDOWS
-    // if (_updateData->ClientOutdated && !have_exe)
-    //    UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
-#else
-    if (_updateData->ClientOutdated)
-        UpdateFilesAbort(STR_CLIENT_OUTDATED, "Client outdated!");
-#endif
-}
-
-void FOClient::Net_OnUpdateFileData()
-{
-    // Get portion
-    uchar data[FILE_UPDATE_PORTION];
-    _netIn.Pop(data, sizeof(data));
-
-    CHECK_IN_BUFF_ERROR();
-
-    auto& update_file = _updateData->FileList.front();
-
-    // Write data to temp file
-    if (!_updateData->TempFile->Write(data, std::min(update_file.RemaningSize, static_cast<uint>(sizeof(data))))) {
-        UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't write temp file!");
-        return;
-    }
-
-    // Get next portion or finalize data
-    update_file.RemaningSize -= std::min(update_file.RemaningSize, static_cast<uint>(sizeof(data)));
-    if (update_file.RemaningSize > 0) {
-        // Request next portion
-        _netOut << NETMSG_GET_UPDATE_FILE_DATA;
-    }
-    else {
-        // Finalize received data
-        _updateData->TempFile = nullptr;
-
-        // Cache
-        if (update_file.Name[0] == '$') {
-            const auto temp_file = FileSys.ReadFile(UPDATE_TEMP_FILE);
-            if (!temp_file) {
-                UpdateFilesAbort(STR_FILESYSTEM_ERROR, "Can't load update file!");
-                return;
-            }
-
-            Cache.SetData(update_file.Name, {temp_file.GetBuf(), temp_file.GetSize()});
-            Cache.SetData(update_file.Name + ".hash", {reinterpret_cast<uchar*>(&update_file.Hash), sizeof(update_file.Hash)});
-            DiskFileSystem::DeleteFile(UPDATE_TEMP_FILE);
-        }
-        // File
-        else {
-            DiskFileSystem::DeleteFile(update_file.Name);
-            DiskFileSystem::RenameFile(UPDATE_TEMP_FILE, update_file.Name);
-        }
-
-        _updateData->FileList.erase(_updateData->FileList.begin());
-        _updateData->FileDownloading = false;
-    }
 }
 
 void FOClient::Net_OnAutomapsInfo()
 {
     uint msg_len;
     bool clear;
-    _netIn >> msg_len;
-    _netIn >> clear;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> clear;
 
     if (clear) {
         _automaps.clear();
     }
 
     ushort locs_count;
-    _netIn >> locs_count;
+    _conn.InBuf >> locs_count;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     for (ushort i = 0; i < locs_count; i++) {
         uint loc_id;
         hstring loc_pid;
         ushort maps_count;
-        _netIn >> loc_id;
-        loc_pid = _netIn.ReadHashedString(*this);
-        _netIn >> maps_count;
+        _conn.InBuf >> loc_id;
+        loc_pid = _conn.InBuf.ReadHashedString(*this);
+        _conn.InBuf >> maps_count;
 
         auto it = std::find_if(_automaps.begin(), _automaps.end(), [&loc_id](const Automap& m) { return loc_id == m.LocId; });
 
@@ -3842,8 +2722,8 @@ void FOClient::Net_OnAutomapsInfo()
             for (ushort j = 0; j < maps_count; j++) {
                 hstring map_pid;
                 uchar map_index_in_loc;
-                map_pid = _netIn.ReadHashedString(*this);
-                _netIn >> map_index_in_loc;
+                map_pid = _conn.InBuf.ReadHashedString(*this);
+                _conn.InBuf >> map_index_in_loc;
 
                 amap.MapPids.push_back(map_pid);
                 amap.MapNames.push_back(_curLang.Msg[TEXTMSG_LOCATIONS].GetStr(STR_LOC_MAP_NAME(loc_pid.as_uint(), map_index_in_loc)));
@@ -3858,7 +2738,7 @@ void FOClient::Net_OnAutomapsInfo()
         }
     }
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 }
 
 void FOClient::Net_OnViewMap()
@@ -3867,12 +2747,12 @@ void FOClient::Net_OnViewMap()
     ushort hy;
     uint loc_id;
     uint loc_ent;
-    _netIn >> hx;
-    _netIn >> hy;
-    _netIn >> loc_id;
-    _netIn >> loc_ent;
+    _conn.InBuf >> hx;
+    _conn.InBuf >> hy;
+    _conn.InBuf >> loc_id;
+    _conn.InBuf >> loc_ent;
 
-    CHECK_IN_BUFF_ERROR();
+    CHECK_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -3910,13 +2790,6 @@ void FOClient::SetDayTime(bool refresh)
     }
 }
 
-void FOClient::WaitPing()
-{
-    Settings.WaitPing = true;
-
-    Net_SendPing(PING_WAIT);
-}
-
 void FOClient::ProcessGlobalMap()
 {
     // Todo: global map critters
@@ -3941,7 +2814,7 @@ void FOClient::TryExit()
             Settings.Quit = true;
             break;
         case SCREEN_WAIT:
-            NetDisconnect();
+            _conn.Disconnect();
             break;
         default:
             break;
@@ -3958,12 +2831,6 @@ void FOClient::FlashGameWindow()
     if (Settings.WinNotify) {
         SprMngr.BlinkWindow();
     }
-
-#if FO_WINDOWS
-    if (Settings.SoundNotify) {
-        ::Beep(100, 200);
-    }
-#endif
 }
 
 auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
@@ -4635,7 +3502,7 @@ void FOClient::GmapNullParams()
 
 void FOClient::WaitDraw()
 {
-    SprMngr.DrawSpriteSize(_waitPic, 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
+    SprMngr.DrawSpriteSize(_waitPic->GetCurSprId(GameTime.GameTick()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
     SprMngr.Flush();
 }
 
@@ -4678,9 +3545,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "CustomConnect") {
         if (_initNetReason == INIT_NET_REASON_NONE) {
             _initNetReason = INIT_NET_REASON_CUSTOM;
-            if (!_updateData) {
-                _updateData = ClientUpdate();
-            }
         }
     }
     else if (cmd == "DumpAtlases") {
@@ -4756,9 +3620,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
     }
     else if (cmd == "NetDisconnect") {
-        NetDisconnect();
+        _conn.Disconnect();
 
-        if (!_isConnected && !IsMainScreen(SCREEN_LOGIN)) {
+        if (!_conn.IsConnected() && !IsMainScreen(SCREEN_LOGIN)) {
             ShowMainScreen(SCREEN_LOGIN, {});
         }
     }
@@ -4769,10 +3633,10 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         return _str("{}", FO_GAME_VERSION);
     }
     else if (cmd == "BytesSend") {
-        return _str("{}", _bytesSend);
+        return _str("{}", _conn.GetBytesSend());
     }
     else if (cmd == "BytesReceive") {
-        return _str("{}", _bytesReceive);
+        return _str("{}", _conn.GetBytesReceived());
     }
     else if (cmd == "GetLanguage") {
         return _curLang.Name;
@@ -4818,7 +3682,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
 
         string buf;
         if (!PackNetCommand(
-                str, &_netOut,
+                str, &_conn.OutBuf,
                 [&buf, &separator](auto s) {
                     buf += s;
                     buf += separator;

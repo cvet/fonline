@@ -200,23 +200,6 @@ void Sprite::SetAlpha(uchar* alpha)
     Valid = true;
 }
 
-void Sprite::SetFlash(uint mask)
-{
-    if (!Valid) {
-        return;
-    }
-
-    Valid = false;
-    FlashMask = mask;
-    if (Parent != nullptr) {
-        Parent->SetFlash(mask);
-    }
-    if (Child != nullptr) {
-        Child->SetFlash(mask);
-    }
-    Valid = true;
-}
-
 void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy)
 {
     if (!Valid) {
@@ -393,7 +376,6 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, ushort hx, ushort hy, int
     spr->ContourType = 0;
     spr->ContourColor = 0;
     spr->Color = 0;
-    spr->FlashMask = 0;
     spr->DrawEffect = effect;
     spr->Parent = nullptr;
     spr->Child = nullptr;

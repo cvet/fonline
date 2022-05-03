@@ -32,11 +32,17 @@
 //
 
 #include "NetBuffer.h"
+#include "GenericUtils.h"
 
 NetBuffer::NetBuffer()
 {
     _bufLen = DEFAULT_BUF_SIZE;
     _bufData = std::make_unique<uchar[]>(_bufLen);
+}
+
+auto NetBuffer::GenerateEncryptKey() -> uint
+{
+    return (GenericUtils::Random(1, 255) << 24) | (GenericUtils::Random(1, 255) << 16) | (GenericUtils::Random(1, 255) << 8) | GenericUtils::Random(1, 255);
 }
 
 void NetBuffer::SetEncryptKey(uint seed)

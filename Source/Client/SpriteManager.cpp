@@ -105,7 +105,7 @@ auto AnyFrames::GetDir(int dir) -> AnyFrames*
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}, _gameTime {game_time}
+SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}
 {
     _baseColor = COLOR_RGBA(255, 128, 128, 128);
     _drawQuadCount = 1024;
@@ -128,24 +128,6 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, Eff
     DummyAnimation = new AnyFrames();
     DummyAnimation->CntFrm = 1;
     DummyAnimation->Ticks = 100;
-
-    if (_settings.Enable3dRendering) {
-        _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, _gameTime, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
-            PushAtlasType(AtlasType::MeshTextures);
-            auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
-            PopAtlasType();
-
-            if (anim != nullptr) {
-                const auto* si = GetSpriteInfo(anim->Ind[0]);
-                mesh_tex->MainTex = si->Atlas->MainTex;
-                mesh_tex->AtlasOffsetData[0] = si->SprRect[0];
-                mesh_tex->AtlasOffsetData[1] = si->SprRect[1];
-                mesh_tex->AtlasOffsetData[2] = si->SprRect[2] - si->SprRect[0];
-                mesh_tex->AtlasOffsetData[3] = si->SprRect[3] - si->SprRect[1];
-                DestroyAnyFrames(anim);
-            }
-        });
-    }
 }
 
 SpriteManager::~SpriteManager()
@@ -217,9 +199,32 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
     App->Window.AlwaysOnTop(enable);
 }
 
-void SpriteManager::Preload3dModel(string_view model_name) const
+void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver)
 {
+    RUNTIME_ASSERT(!_modelMngr);
+
+    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
+        PushAtlasType(AtlasType::MeshTextures);
+        auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
+        PopAtlasType();
+
+        if (anim != nullptr) {
+            const auto* si = GetSpriteInfo(anim->Ind[0]);
+            mesh_tex->MainTex = si->Atlas->MainTex;
+            mesh_tex->AtlasOffsetData[0] = si->SprRect[0];
+            mesh_tex->AtlasOffsetData[1] = si->SprRect[1];
+            mesh_tex->AtlasOffsetData[2] = si->SprRect[2] - si->SprRect[0];
+            mesh_tex->AtlasOffsetData[3] = si->SprRect[3] - si->SprRect[1];
+            DestroyAnyFrames(anim);
+        }
+    });
+}
+
+void SpriteManager::Preload3dModel(string_view model_name)
+{
+    NON_CONST_METHOD_HINT();
     RUNTIME_ASSERT(_modelMngr);
+
     _modelMngr->PreloadModel(model_name);
 }
 
@@ -230,7 +235,7 @@ void SpriteManager::BeginScene(uint clear_color)
     }
 
     // Render 3d animations
-    if (_settings.Enable3dRendering && !_autoRedrawModel.empty()) {
+    if (!_autoRedrawModel.empty()) {
         for (auto* model : _autoRedrawModel) {
             if (model->NeedDraw()) {
                 RenderModel(model);
@@ -257,7 +262,7 @@ void SpriteManager::EndScene()
 void SpriteManager::OnResolutionChanged()
 {
     // Resize fullscreen render targets
-    for (auto& rt : _rtAll) {
+    for (auto&& rt : _rtAll) {
         if (!rt->ScreenSized) {
             continue;
         }
@@ -856,13 +861,10 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFr
 
 auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
 {
-    if (!_settings.Enable3dRendering) {
-        return nullptr;
-    }
+    RUNTIME_ASSERT(_modelMngr);
 
     // Load 3d animation
-    RUNTIME_ASSERT(_modelMngr);
-    auto model = unique_ptr<ModelInstance>(_modelMngr->GetModel(fname, false));
+    auto&& model = unique_ptr<ModelInstance>(_modelMngr->GetModel(fname, false));
     if (model == nullptr) {
         return nullptr;
     }
@@ -926,6 +928,8 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
 
 void SpriteManager::RenderModel(ModelInstance* model)
 {
+    RUNTIME_ASSERT(_modelMngr);
+
     // Find place for render
     if (model->SprId == 0u) {
         RefreshModelSprite(model);
@@ -949,7 +953,6 @@ void SpriteManager::RenderModel(ModelInstance* model)
     ClearCurrentRenderTarget(0);
     ClearCurrentRenderTargetDepth();
 
-    RUNTIME_ASSERT(_modelMngr);
     _modelMngr->SetScreenSize(rt->MainTex->Width, rt->MainTex->Height);
 
     // Draw model
@@ -967,9 +970,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
 
 void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
 {
-    if (!_settings.Enable3dRendering) {
-        return;
-    }
+    RUNTIME_ASSERT(_modelMngr);
 
     model->StartMeshGeneration();
     RenderModel(model);
@@ -980,12 +981,9 @@ void SpriteManager::Draw3d(int x, int y, ModelInstance* model, uint color)
 
 auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> ModelInstance*
 {
-    if (!_settings.Enable3dRendering) {
-        return nullptr;
-    }
+    RUNTIME_ASSERT(_modelMngr);
 
     // Fill data
-    RUNTIME_ASSERT(_modelMngr);
     auto* model = _modelMngr->GetModel(fname, false);
     if (model == nullptr) {
         return nullptr;
@@ -1003,6 +1001,8 @@ auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> ModelInsta
 
 void SpriteManager::RefreshModelSprite(ModelInstance* model)
 {
+    RUNTIME_ASSERT(_modelMngr);
+
     // Free old place
     if (model->SprId != 0u) {
         _sprData[model->SprId]->Model = nullptr;
@@ -1040,6 +1040,7 @@ void SpriteManager::RefreshModelSprite(ModelInstance* model)
 
 void SpriteManager::FreeModel(ModelInstance* model)
 {
+    RUNTIME_ASSERT(_modelMngr);
     RUNTIME_ASSERT(model);
 
     const auto it = std::find(_autoRedrawModel.begin(), _autoRedrawModel.end(), model);
@@ -1156,23 +1157,9 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     }
 }
 
-void SpriteManager::DrawSprite(AnyFrames* frames, int x, int y, uint color)
-{
-    if (frames != nullptr && frames != DummyAnimation) {
-        DrawSprite(frames->GetCurSprId(_gameTime.GameTick()), x, y, color);
-    }
-}
-
 void SpriteManager::DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
 {
     DrawSpriteSizeExt(id, x, y, w, h, zoom_up, center, false, color);
-}
-
-void SpriteManager::DrawSpriteSize(AnyFrames* frames, int x, int y, int w, int h, bool zoom_up, bool center, uint color)
-{
-    if (frames != nullptr && frames != DummyAnimation) {
-        DrawSpriteSize(frames->GetCurSprId(_gameTime.GameTick()), x, y, w, h, zoom_up, center, color);
-    }
 }
 
 void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color)
@@ -1487,7 +1474,6 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
     const auto ex = _eggX + _settings.ScrOx;
     const auto ey = _eggY + _settings.ScrOy;
-    const auto cur_tick = _gameTime.FrameTick();
 
     for (auto* spr = dtree.RootSprite(); spr != nullptr; spr = spr->ChainChild) {
         RUNTIME_ASSERT(spr->Valid);
@@ -1558,36 +1544,6 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         if (spr->Alpha != nullptr) {
             reinterpret_cast<uchar*>(&color_r)[3] = *spr->Alpha;
             reinterpret_cast<uchar*>(&color_l)[3] = *spr->Alpha;
-        }
-
-        // Process flashing
-        if (spr->FlashMask != 0u) {
-            static auto cnt = 0;
-            static auto tick = cur_tick + 100;
-            static auto add = true;
-            if (cur_tick >= tick) {
-                cnt += add ? 10 : -10;
-                if (cnt > 40) {
-                    cnt = 40;
-                    add = false;
-                }
-                else if (cnt < -40) {
-                    cnt = -40;
-                    add = true;
-                }
-                tick = cur_tick + 100;
-            }
-            static auto flash_func = [](uint& c, int val, uint mask) {
-                const auto r = std::clamp(static_cast<int>((c >> 16) & 0xFF) + val, 0, 255);
-                const auto g = std::clamp(static_cast<int>((c >> 8) & 0xFF) + val, 0, 255);
-                const auto b = std::clamp(static_cast<int>((c & 0xFF)) + val, 0, 255);
-                reinterpret_cast<uchar*>(&c)[2] = static_cast<uchar>(r);
-                reinterpret_cast<uchar*>(&c)[1] = static_cast<uchar>(g);
-                reinterpret_cast<uchar*>(&c)[0] = static_cast<uchar>(b);
-                c &= mask;
-            };
-            flash_func(color_r, cnt, spr->FlashMask);
-            flash_func(color_l, cnt, spr->FlashMask);
         }
 
         // Fix color

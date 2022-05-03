@@ -56,6 +56,7 @@ public:
     [[nodiscard]] auto GetEndPos() const -> uint { return _bufEndPos; }
 
     void SetError(bool value) { _isError = value; }
+    static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
     virtual void ResetBuf();
     void GrowBuf(uint len);
@@ -98,7 +99,7 @@ public:
 
     auto operator<<(string_view i) -> NetBuffer&
     {
-        RUNTIME_ASSERT(i.length() <= 65535);
+        RUNTIME_ASSERT(i.length() <= std::numeric_limits<ushort>::max());
         const auto len = static_cast<ushort>(i.length());
         Push(&len, sizeof(len));
         Push(i.data(), len);

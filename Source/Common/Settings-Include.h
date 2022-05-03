@@ -108,7 +108,6 @@ VARIABLE_SETTING(string, ProxyHost, "");
 VARIABLE_SETTING(uint, ProxyPort, 8080);
 VARIABLE_SETTING(string, ProxyUser, "");
 VARIABLE_SETTING(string, ProxyPass, "");
-VARIABLE_SETTING(bool, WaitPing, false);
 VARIABLE_SETTING(uint, Ping, 0);
 VARIABLE_SETTING(bool, DebugNet, false);
 SETTING_GROUP_END();

@@ -436,6 +436,12 @@ auto FileSystem::ReadFile(string_view path) -> File
     return {};
 }
 
+auto FileSystem::ReadFileText(string_view path) -> string
+{
+    const auto file = ReadFile(path);
+    return file ? file.GetStr() : string();
+}
+
 auto FileSystem::ReadFileHeader(string_view path) -> FileHeader
 {
     RUNTIME_ASSERT(!path.empty());

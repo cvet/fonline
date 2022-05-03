@@ -45,7 +45,6 @@
 #include "FileSystem.h"
 #include "Settings.h"
 #include "Sprites.h"
-#include "Timer.h"
 
 static constexpr auto ANY_FRAMES_POOL_SIZE = 2000;
 static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
@@ -191,7 +190,7 @@ struct SpriteInfo
 
 struct AnyFrames
 {
-    [[nodiscard]] auto GetSprId(uint num_frm) const -> uint;
+    [[nodiscard]] auto GetSprId(uint num_frm = 0u) const -> uint;
     [[nodiscard]] auto GetNextX(uint num_frm) const -> short;
     [[nodiscard]] auto GetNextY(uint num_frm) const -> short;
     [[nodiscard]] auto GetCurSprId(uint tick) const -> uint;
@@ -233,7 +232,7 @@ class SpriteManager final
 {
 public:
     SpriteManager() = delete;
-    SpriteManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
+    SpriteManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -249,7 +248,7 @@ public:
     [[nodiscard]] auto GetSpritesColor() const -> uint { return _baseColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
     [[nodiscard]] auto GetSpriteInfo(uint id) const -> const SpriteInfo* { return _sprData[id]; }
-    [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { return _sprData[id]; }
+    [[nodiscard]] auto GetSpriteInfoForEditing(uint id) -> SpriteInfo* { NON_CONST_METHOD_HINT_ONELINE() return _sprData[id]; }
     [[nodiscard]] auto GetDrawRect(Sprite* prep) const -> IRect;
     [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
@@ -270,7 +269,8 @@ public:
     auto DisableFullscreen() -> bool;
     void BlinkWindow();
     void SetAlwaysOnTop(bool enable);
-    void Preload3dModel(string_view model_name) const;
+    void Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
+    void Preload3dModel(string_view model_name);
     void BeginScene(uint clear_color);
     void EndScene();
     void OnResolutionChanged();
@@ -297,8 +297,6 @@ public:
     void PopScissor();
     void Flush();
     void DrawSprite(uint id, int x, int y, uint color);
-    void DrawSprite(AnyFrames* frames, int x, int y, uint color);
-    void DrawSpriteSize(AnyFrames* frames, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
     void DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
     void DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
@@ -329,7 +327,6 @@ private:
     RenderSettings& _settings;
     FileSystem& _fileSys;
     EffectManager& _effectMngr;
-    GameTimer& _gameTime;
     unique_ptr<ModelManager> _modelMngr {};
     mat44 _projectionMatrixCm {};
     RenderTarget* _rtMain {};

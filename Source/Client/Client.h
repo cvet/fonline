@@ -58,53 +58,24 @@
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "ScriptSystem.h"
+#include "ServerConnection.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
 #include "Timer.h"
 #include "TwoBitMask.h"
-#include "WinApi-Include.h"
-
-#include "zlib.h"
-#if !FO_WINDOWS
-// Todo: add working in IPv6 networks
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-#define SOCKET int
-#define INVALID_SOCKET (-1)
-#define SOCKET_ERROR (-1)
-#define closesocket close
-#define SD_RECEIVE SHUT_RD
-#define SD_SEND SHUT_WR
-#define SD_BOTH SHUT_RDWR
-#endif
-
-DECLARE_EXCEPTION(ClientRestartException);
 
 // Screens
 constexpr auto SCREEN_NONE = 0;
-// Primary screens
-constexpr auto SCREEN_LOGIN = 1;
+constexpr auto SCREEN_LOGIN = 1; // Primary screens
 constexpr auto SCREEN_GAME = 2;
 constexpr auto SCREEN_GLOBAL_MAP = 3;
 constexpr auto SCREEN_WAIT = 4;
-// Secondary screens
-constexpr auto SCREEN_DIALOG = 6;
+constexpr auto SCREEN_DIALOG = 6; // Secondary screens
 constexpr auto SCREEN_TOWN_VIEW = 9;
 
-// Proxy types
-constexpr auto PROXY_SOCKS4 = 1;
-constexpr auto PROXY_SOCKS5 = 2;
-constexpr auto PROXY_HTTP = 3;
-
-// _initNetReason
+// Connection reason
 constexpr auto INIT_NET_REASON_NONE = 0;
 constexpr auto INIT_NET_REASON_LOGIN = 1;
 constexpr auto INIT_NET_REASON_REG = 2;
@@ -144,8 +115,6 @@ public:
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
     void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
     void ScreenQuake(int noise, uint time);
-    void NetDisconnect();
-    void WaitPing();
     void ProcessInputEvent(const InputEvent& event);
     void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
 
@@ -252,7 +221,6 @@ public:
     GeometryHelper GeomHelper;
     ScriptSystem* ScriptSys;
     GameTimer GameTime;
-
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
@@ -278,34 +246,6 @@ public:
     int DrawCritterModelLayers[LAYERS3D_COUNT] {};
 
 protected:
-    struct ClientUpdate
-    {
-        struct UpdateFile
-        {
-            uint Index {};
-            string Name;
-            uint Size {};
-            uint RemaningSize {};
-            uint Hash {};
-        };
-
-        bool ClientOutdated {};
-        bool CacheChanged {};
-        bool FilesChanged {};
-        bool Connecting {};
-        uint ConnectionTimeout {};
-        uint Duration {};
-        bool Aborted {};
-        bool FontLoaded {};
-        string Messages;
-        string Progress;
-        bool FileListReceived {};
-        vector<UpdateFile> FileList {};
-        uint FilesWholeSize {};
-        bool FileDownloading {};
-        unique_ptr<DiskFile> TempFile {};
-    };
-
     struct IfaceAnim
     {
         AnyFrames* Frames {};
@@ -362,18 +302,6 @@ protected:
     void LmapPrepareMap();
     void GmapNullParams();
 
-    void UpdateFilesLoop();
-    void UpdateFilesAddText(uint num_str, string_view num_str_str);
-    void UpdateFilesAbort(uint num_str, string_view num_str_str);
-
-    auto CheckSocketStatus(bool for_write) -> bool;
-    auto NetConnect(string_view host, ushort port) -> bool;
-    auto FillSockAddr(sockaddr_in& saddr, string_view host, ushort port) -> bool;
-    void ProcessSocket();
-    auto NetInput(bool unpack) -> int;
-    auto NetOutput() -> bool;
-    void NetProcess();
-
     void Net_SendUpdate();
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
@@ -388,6 +316,9 @@ protected:
     void Net_SendPing(uchar ping);
     void Net_SendRefereshMe();
 
+    void Net_OnConnect(bool success);
+    void Net_OnDisconnect();
+    void Net_OnUpdateFilesResponse();
     void Net_OnWrongNetProto();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter(bool is_npc);
@@ -404,7 +335,6 @@ protected:
     void Net_OnEffect();
     void Net_OnFlyEffect();
     void Net_OnPlaySound();
-    void Net_OnPing();
     void Net_OnEndParseToGame();
     void Net_OnProperty(uint data_size);
     void Net_OnCritterDir();
@@ -427,8 +357,6 @@ protected:
     void Net_OnMap();
     void Net_OnGlobalInfo();
     void Net_OnSomeItems();
-    void Net_OnUpdateFilesList();
-    void Net_OnUpdateFileData();
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
 
@@ -454,7 +382,7 @@ protected:
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
 
-    int _initCalls {};
+    ServerConnection _conn;
     vector<uchar> _restoreInfoBin {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
@@ -467,22 +395,8 @@ protected:
     LocationView* _curLocation {};
     uint _fpsTick {};
     uint _fpsCounter {};
-    optional<ClientUpdate> _updateData {};
     int _screenModeMain {SCREEN_WAIT};
-    vector<uchar> _incomeBuf {};
-    NetInBuffer _netIn {};
-    NetOutBuffer _netOut {};
-    z_stream* _zStream {};
-    uint _bytesReceive {};
-    uint _bytesRealReceive {};
-    uint _bytesSend {};
-    sockaddr_in _sockAddr {};
-    sockaddr_in _proxyAddr {};
-    SOCKET _netSock {INVALID_SOCKET};
-    fd_set _netSockSet {};
     ItemView* _someItem {};
-    bool _isConnecting {};
-    bool _isConnected {};
     bool _initNetBegin {};
     int _initNetReason {INIT_NET_REASON_NONE};
     bool _initialItemsSend {};

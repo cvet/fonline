@@ -37,7 +37,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define MAKE_NETMSG_HEADER(number) ((uint)((0x5EAD << 16) | ((number) << 8) | (0xAA)))
+#define MAKE_NETMSG_HEADER(number) (static_cast<uint>(number))
 constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 
 // Special message

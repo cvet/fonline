@@ -119,7 +119,6 @@ public:
     int ContourType {};
     uint ContourColor {};
     uint Color {};
-    uint FlashMask {};
     RenderEffect** DrawEffect {};
     bool* ValidCallback {};
     bool Valid {};

@@ -1011,6 +1011,7 @@ static constexpr auto DEFAULT_3D_DRAW_WIDTH = 256;
 static constexpr auto DEFAULT_3D_DRAW_HEIGHT = 128;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
+static constexpr auto FONT_DEFAULT = 5;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes
@@ -1039,7 +1040,6 @@ enum class CritterFindType : uchar
 
 // Ping
 static constexpr uchar PING_PING = 0;
-static constexpr uchar PING_WAIT = 1;
 static constexpr uchar PING_CLIENT = 2;
 
 // Say types

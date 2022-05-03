@@ -163,6 +163,7 @@ public:
     [[nodiscard]] auto FilterFiles(string_view ext) -> FileCollection;
     [[nodiscard]] auto FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection;
     [[nodiscard]] auto ReadFile(string_view path) -> File;
+    [[nodiscard]] auto ReadFileText(string_view path) -> string;
     [[nodiscard]] auto ReadFileHeader(string_view path) -> FileHeader;
     [[nodiscard]] auto ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile;
 
