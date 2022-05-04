@@ -80,6 +80,9 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     Settings.MouseX = std::clamp(x, 0, w - 1);
     Settings.MouseY = std::clamp(y, 0, h - 1);
 
+    // Language Packs
+    _curLang.LoadFromFiles(FileSys, *this, Settings.Language);
+
     SprMngr.SetSpritesColor(COLOR_IFACE);
 
     EffectMngr.LoadDefaultEffects();

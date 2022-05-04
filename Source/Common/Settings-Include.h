@@ -275,6 +275,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(string, AutoLogin, "");
 FIXED_SETTING(uint, TextDelay, 3000);
+VARIABLE_SETTING(string, Language, "engl");
 VARIABLE_SETTING(bool, WinNotify, true);
 VARIABLE_SETTING(bool, SoundNotify, false);
 VARIABLE_SETTING(bool, HelpInfo, false);

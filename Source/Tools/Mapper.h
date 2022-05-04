@@ -270,7 +270,6 @@ public:
     vector<MapView*> LoadedMaps {};
     ConfigFile IfaceIni;
     PropertyVec ShowProps {};
-    LanguagePack CurLang {};
     int CurMode {};
     AnyFrames* CurPDef {};
     AnyFrames* CurPHand {};

@@ -1010,16 +1010,20 @@ static void HashedString_Construct(hstring* self)
 
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
     const auto& str = *static_cast<const string*>(gen->GetArgObject(0));
     auto hstr = GET_GAME_ENGINE_FROM_AS_ENGINE(gen->GetEngine())->ToHashedString(str);
     new (gen->GetObject()) hstring(hstr);
+#endif
 }
 
 static void HashedString_ConstructFromHash(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetArgObject(0));
     auto hstr = GET_GAME_ENGINE_FROM_AS_ENGINE(gen->GetEngine())->ResolveHash(hash);
     new (gen->GetObject()) hstring(hstr);
+#endif
 }
 
 static void HashedString_ConstructCopy(hstring* self, const hstring& other)

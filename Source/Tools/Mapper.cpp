@@ -73,9 +73,6 @@ FOMapper::FOMapper(GlobalSettings& settings) :
     const auto init_face_ok = (InitIface() == 0);
     RUNTIME_ASSERT(init_face_ok);
 
-    // Language Packs
-    CurLang.LoadFromFiles(FileSys, *this, Settings.Language);
-
     // Prototypes
     // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileSys);
     // RUNTIME_ASSERT(protos_ok);
@@ -1287,8 +1284,8 @@ void FOMapper::IntDraw()
         }
 
         if (GetTabIndex() < static_cast<uint>((*CurItemProtos).size())) {
-            auto* proto_item = (*CurItemProtos)[GetTabIndex()];
-            auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.NameCode);
+            const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
+            auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), _curLang.NameCode);
             if (it != proto_item->TextsLang.end()) {
                 auto info = proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
                 info += " - ";
