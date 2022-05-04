@@ -159,7 +159,6 @@ void ReportExceptionAndContinue(const std::exception& ex)
     WriteLog("{}\n", ex.what());
 
 #if FO_DEBUG
-    CreateDumpMessage("Exception", ex.what());
     MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());
 #endif
 }

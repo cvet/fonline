@@ -405,52 +405,10 @@ void FOServer::MainLoop()
 
 void FOServer::DrawGui()
 {
-    // Players
-    ImGui::SetNextWindowPos(_gui.PlayersPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Players", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = "WIP..........................."; // ( Server && Server->_started ? Server->GetIngamePlayersStatistics() :
-                                                       // "Waiting for server start..." );
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Locations and maps
-    ImGui::SetNextWindowPos(_gui.LocMapsPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Locations and maps", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = "WIP..........................."; // ( Server && Server->_started ? MapMngr.GetLocationAndMapsStatistics() :
-                                                       // "Waiting for server start..." );
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Items count
-    ImGui::SetNextWindowPos(_gui.ItemsPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Items count", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = (_started ? ItemMngr.GetItemsStatistics() : "Waiting for server start...");
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Profiler
-    ImGui::SetNextWindowPos(_gui.ProfilerPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
-    if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
-
     // Info
-    ImGui::SetNextWindowPos(_gui.InfoPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.InfoPos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(false, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         _gui.Stats = "";
         const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
@@ -472,15 +430,12 @@ void FOServer::DrawGui()
     ImGui::End();
 
     // Control panel
-    ImGui::SetNextWindowPos(_gui.ControlPanelPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_Once);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.ControlPanelPos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(false, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (_started && !Settings.Quit && ImGui::Button("Stop & Quit", _gui.ButtonSize)) {
+        if (_started && !Settings.Quit && ImGui::Button("Quit", _gui.ButtonSize)) {
             Settings.Quit = true;
-        }
-        if (ImGui::Button("Force quit", _gui.ButtonSize)) {
-            std::exit(0);
         }
         if (ImGui::Button("Create dump", _gui.ButtonSize)) {
             CreateDumpMessage("ManualDump", "Manual");
@@ -493,9 +448,51 @@ void FOServer::DrawGui()
     }
     ImGui::End();
 
+    // Players
+    ImGui::SetNextWindowPos(_gui.PlayersPos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Players", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        _gui.Stats = "WIP..........................."; // ( Server && Server->_started ? Server->GetIngamePlayersStatistics() :
+                                                       // "Waiting for server start..." );
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
+    }
+    ImGui::End();
+
+    // Locations and maps
+    ImGui::SetNextWindowPos(_gui.LocMapsPos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Locations and maps", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        _gui.Stats = "WIP..........................."; // ( Server && Server->_started ? MapMngr.GetLocationAndMapsStatistics() :
+                                                       // "Waiting for server start..." );
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
+    }
+    ImGui::End();
+
+    // Items count
+    ImGui::SetNextWindowPos(_gui.ItemsPos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Items count", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        _gui.Stats = (_started ? ItemMngr.GetItemsStatistics() : "Waiting for server start...");
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
+    }
+    ImGui::End();
+
+    // Profiler
+    ImGui::SetNextWindowPos(_gui.ProfilerPos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        _gui.Stats = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
+        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
+    }
+    ImGui::End();
+
     // Log
-    ImGui::SetNextWindowPos(_gui.LogPos, ImGuiCond_Once);
-    ImGui::SetNextWindowSize(_gui.LogSize, ImGuiCond_Once);
+    ImGui::SetNextWindowPos(_gui.LogPos, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(_gui.LogSize, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
         const auto log = LogGetBuffer();
         if (!log.empty()) {

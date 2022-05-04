@@ -130,7 +130,7 @@ set( FO_SERVER_SCRIPTING_SOURCE "" )
 set( FO_CLIENT_SCRIPTING_SOURCE "" )
 set( FO_MAPPER_SCRIPTING_SOURCE "" )
 set( FO_SINGLE_SCRIPTING_SOURCE "" )
-set( FO_ADDITIONAL_META_FILES "" )
+set( FO_SOURCE_META_FILES "" )
 set( FO_SINGLE_SOURCE "" )
 set( FO_TESTS_SOURCE "" )
 set( FO_CORE_LIBS_GROUP "" )
@@ -515,6 +515,7 @@ macro( AddEngineSource target )
 	foreach( resultEntry ${result} )
 		StatusMessage( "+ Engine source at ${resultEntry}" )
 		list( APPEND FO_${target}_SOURCE ${resultEntry} )
+		list( APPEND FO_SOURCE_META_FILES ${resultEntry} )
 	endforeach()
 endmacro()
 macro( AddNativeIncludeDir )
@@ -1344,7 +1345,7 @@ list( APPEND FO_SERVER_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Server.cpp"
 	"Source/Scripting/ServerScripting.h" )
-	
+
 list( APPEND FO_CLIENT_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
@@ -1356,16 +1357,31 @@ list( APPEND FO_MAPPER_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp"
 	"Source/Scripting/MapperScripting.h" )
-	
+
 list( APPEND FO_SINGLE_SCRIPTING_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Single.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Single.cpp"
 	"Source/Scripting/SingleScripting.h" )
-	
-list( APPEND FO_ADDITIONAL_META_FILES
+
+list( APPEND FO_SOURCE_META_FILES
+	# Here listed all engine source files with codegen tags
+	"Source/Common/Application.h"
+	"Source/Common/Common.h"
+	"Source/Common/Entity.h"
+	"Source/Common/EntityProperties.h"
+	"Source/Common/Settings-Include.h"
 	"Source/Common/DataRegistration-Template.cpp"
 	"Source/Common/EntityProperties-Template.cpp"
+	"Source/Client/Client.h"
+	"Source/Client/Sprites.h"
+	"Source/Server/Critter.h"
+	"Source/Server/Item.h"
+	"Source/Server/Location.h"
+	"Source/Server/Map.h"
+	"Source/Server/Player.h"
+	"Source/Server/Server.h"
+	"Source/Tools/Mapper.h"
 	"Source/Scripting/AngelScriptScripting-Template.cpp"
 	"Source/Scripting/MonoScripting-Template.cpp"
 	"Source/Scripting/NativeScripting-Template.cpp"
@@ -1383,7 +1399,7 @@ list( APPEND FO_ADDITIONAL_META_FILES
 	"Source/Scripting/ClientLocationScriptMethods.cpp"
 	"Source/Scripting/MapperGlobalScriptMethods.cpp"
 	"Source/Scripting/CommonGlobalScriptMethods.cpp" )
-	
+
 list( APPEND FO_TESTS_SOURCE
 	"Source/Tests/Test_AnyData.cpp"
 	"Source/Tests/Test_GenericUtils.cpp" )
@@ -1493,19 +1509,9 @@ endif()
 
 list( APPEND FO_CODEGEN_META_SOURCE
 	${FONLINE_CMAKE_CONTRIBUTION}
-	${FO_ADDITIONAL_META_FILES}
-	${FO_COMMON_SOURCE}
-	${FO_SERVER_SOURCE}
-	${FO_CLIENT_SOURCE}
-	${FO_TOOLS_SOURCE}
+	${FO_SOURCE_META_FILES}
 	${FO_ANGELSCRIPT_SOURCE}
 	${FO_MONO_SOURCE} )
-list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h" )
-list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/SettingsDefault-Include.h" )
-list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h" )
-list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
-list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" )
-list( REMOVE_ITEM FO_CODEGEN_META_SOURCE "${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp" )
 
 foreach( entry ${FO_CODEGEN_META_SOURCE} )
 	list( APPEND FO_CODEGEN_COMMAND_ARGS -meta ${entry} )

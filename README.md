@@ -287,10 +287,10 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: remove critter flags
 * Common: remove special OTHER_* params
+* Common: apply scripts strack trace
 * BakerApp: sound and video preprocessing move to baker
 * BakerApp: bake prototypes?
 * BakerApp: add dialogs verification during baking
-* ServerApp: fix data racing
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: add reverse playing of 3d animation
@@ -298,19 +298,19 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: GetAnim1/GetAnim2 int to uint return type
 * 3dStuff: fix AtlasType referencing in 3dStuff
 * Client: handle mouse wheel
+* Client: run updater if resources changed
 * Client: proto player?
 * Client: synchronize effects showing (for example shot and kill)
+* Client: global map critters
 * Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
-* Client: add working in IPv6 networks
-* CritterView: migrate critter on head text moving in scripts
-* CritterView: do same for 2d animations
-* HexManager: rework smooth item re-appearing before same item still on map
-* HexManager: optimize lighting rebuilding to skip unvisible lights
-* HexManager: need attention! (3)
-* HexManager: move HexManager to MapView?
+* CritterHexView: migrate critter on head text moving in scripts
+* CritterHexView: do same for 2d animations
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
+* MapView: rework smooth item re-appearing before same item still on map
+* MapView: optimize lighting rebuilding to skip unvisible lights
 * ResourceManager: why I disable offset adding?
+* ServerConnection: automatically reconnect on network failtures
 * SpriteManager: restore texture saving
 * SpriteManager: improve DirectX rendering
 * SpriteManager: maybe restrict fps at 60?
@@ -353,15 +353,10 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: remove friend from PropertiesSerializator and use public Property interface
 * Properties: ResolveHash
 * ScriptSystem: fill settings to scripts
-* ScriptSystem: RemoveEntity
 * ScriptSystem: FindFunc
 * Settings-Include: rework global Quit setting
 * Settings: improve editable entry for arrays
 * StringUtils: make isNumber const
-* Testing: improve global exceptions handlers for mobile os
-* Testing: fix script system
-* Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
-* Testing: send client dumps to server
 * AngelScriptScripting-Template: MarshalDict
 * AngelScriptScripting-Template: MarshalBackScalarDict
 * AngelScriptScripting-Template: GetASObjectInfo
@@ -369,7 +364,7 @@ Please follow these instructions to understand how to use this engine by design:
 * ClientItemScriptMethods: solve recursion in GetMapPos
 * ClientItemScriptMethods: need attention!
 * CommonGlobalScriptMethods: fix script system
-* MapperGlobalScriptMethods: need attention! (4)
+* MapperGlobalScriptMethods: need attention! (6)
 * MapperGlobalScriptMethods: Settings.MapsDir
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
@@ -385,12 +380,13 @@ Please follow these instructions to understand how to use this engine by design:
 * Dialogs: check item name on DR_ITEM
 * EntityManager: load locations -> theirs maps -> critters/items on map -> items in critters/containers
 * Location: encapsulate Location data
+* MapManager: need attention!
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
 * Player: allow attach many critters to sigle player
 * Server: move server loop to async processing
-* Server: restore settings (2)
+* Server: restore settings
 * Server: disable look distance caching
 * Server: attach critter to player
 * Server: control max size explicitly, add option to property registration
@@ -404,7 +400,7 @@ Please follow these instructions to understand how to use this engine by design:
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
 * ImageBaker: add supporting of APNG file format
 * ImageBaker: swap colors of fo palette once in header
-* Mapper: need attention! (24)
+* Mapper: need attention! (21)
 * Mapper: mapper render iface layer
   
 ## Repository structure

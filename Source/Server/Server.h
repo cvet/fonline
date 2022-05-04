@@ -217,16 +217,16 @@ private:
     struct ServerGui
     {
         ImVec2 DefaultSize {ImVec2(200, 200)};
-        ImVec2 MemoryPos {ImVec2(0, 0)};
-        ImVec2 PlayersPos {ImVec2(20, 20)};
-        ImVec2 LocMapsPos {ImVec2(40, 40)};
-        ImVec2 ItemsPos {ImVec2(60, 60)};
-        ImVec2 ProfilerPos {ImVec2(80, 80)};
-        ImVec2 InfoPos {ImVec2(100, 100)};
-        ImVec2 ControlPanelPos {ImVec2(120, 120)};
+        ImVec2 InfoPos {ImVec2(10, 10)};
+        ImVec2 ControlPanelPos {ImVec2(300, 10)};
+        ImVec2 MemoryPos {ImVec2(600, 10)};
+        ImVec2 PlayersPos {ImVec2(600, 30)};
+        ImVec2 LocMapsPos {ImVec2(600, 50)};
+        ImVec2 ItemsPos {ImVec2(600, 70)};
+        ImVec2 ProfilerPos {ImVec2(600, 90)};
         ImVec2 ButtonSize {ImVec2(200, 30)};
-        ImVec2 LogPos {ImVec2(140, 140)};
-        ImVec2 LogSize {ImVec2(800, 600)};
+        ImVec2 LogPos {ImVec2(10, 300)};
+        ImVec2 LogSize {ImVec2(800, 400)};
         string WholeLog {};
         string Stats {};
     };
