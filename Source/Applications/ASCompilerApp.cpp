@@ -36,7 +36,6 @@
 #include "DiskFileSystem.h"
 #include "Log.h"
 #include "Settings.h"
-#include "Testing.h"
 
 struct ServerScriptSystem
 {
@@ -62,10 +61,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("ASCompiler");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp("ASCompiler");
         LogWithoutTimestamp();
 
         const auto settings = GlobalSettings(argc, argv);

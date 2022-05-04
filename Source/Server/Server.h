@@ -259,11 +259,11 @@ private:
 
     void RegisterData();
 
-    auto InitLangPacks(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool;
-    void GenerateUpdateFiles(vector<string>* resource_names);
+    void InitLangPacks();
+    void InitLangPacksDialogs();
+    void InitLangPacksLocations();
+    void InitLangPacksItems();
+    void InitUpdateFiles(vector<string>* resource_names);
 
     void EntitySetValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSendGlobalValue(Entity* entity, const Property* prop);
@@ -334,7 +334,6 @@ private:
     ServerStats _stats {};
     ServerGui _gui {};
     map<uint, uint> _regIp {};
-    std::mutex _regIpLocker {};
     vector<LanguagePack> _langPacks {};
     uint _fpsTick {};
     uint _fpsCounter {};
@@ -349,8 +348,6 @@ private:
     vector<ClientConnection*> _freeConnections {};
     mutable std::mutex _freeConnectionsLocker {};
     vector<ClientBanned> _banned {};
-    std::mutex _bannedLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
-    bool _nonConstHelper {};
 };

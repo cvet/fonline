@@ -38,7 +38,6 @@
 #include "Log.h"
 #include "Mapper.h"
 #include "Settings.h"
-#include "Testing.h"
 #include "Timer.h"
 #include "Version-Include.h"
 
@@ -105,10 +104,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
-        SetAppName("Mapper");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp("Mapper");
 
         WriteLog("Starting Mapper {}...\n", FO_GAME_VERSION);
 

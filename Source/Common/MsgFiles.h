@@ -98,7 +98,8 @@ public:
     LanguagePack(LanguagePack&&) noexcept = default;
     auto operator=(const LanguagePack&) -> LanguagePack& = default;
     auto operator=(LanguagePack&&) noexcept -> LanguagePack& = default;
-    auto operator==(const uint name_code) const -> bool { return NameCode == name_code; }
+    auto operator==(const string& name) const -> bool { return name == Name; }
+    auto operator==(const uint name_code) const -> bool { return name_code == NameCode; }
     ~LanguagePack() = default;
 
     [[nodiscard]] auto GetMsgCacheName(int msg_num) const -> string;

@@ -36,7 +36,6 @@
 #include "FileSystem.h"
 #include "Server.h"
 #include "Settings.h"
-#include "Testing.h"
 #include "WinApi-Include.h"
 
 #if FO_WINDOWS
@@ -105,7 +104,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        CreateGlobalData();
+        InitApp("ServerService");
 
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
@@ -216,10 +215,7 @@ int main(int argc, char** argv)
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
-        SetAppName("ServerService");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp("ServerService");
 
         Data->Settings = new GlobalSettings(argc, nullptr); // Todo: convert argv from wchar_t** to char**
 

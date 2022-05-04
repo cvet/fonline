@@ -32,26 +32,60 @@
 //
 
 #include "Common.h"
-
+#include "Application.h"
+#include "DiskFileSystem.h"
+#include "Log.h"
+#include "StringUtils.h"
+#include "Timer.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+#if !FO_WINDOWS
+#if __has_include(<libunwind.h>)
+#define BACKWARD_HAS_LIBUNWIND 1
+#elif __has_include(<bfd.h>)
+#define BACKWARD_HAS_BFD 1
+#endif
+#endif
+#include "backward.hpp"
+#if FO_WINDOWS
+#undef MessageBox
+#endif
+#endif
 
 hstring::entry hstring::_zeroEntry;
 
-static const char* AppName;
+static string* AppName;
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
 
-void SetAppName(const char* name)
+void InitApp(string_view name)
 {
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+    {
+        [[maybe_unused]] const backward::SignalHandling sh;
+        assert(sh.loaded());
+    }
+#endif
+
     assert(AppName == nullptr);
-    AppName = name;
+    AppName = new string();
+    AppName->append(FO_DEV_NAME);
+    if (!name.empty()) {
+        AppName->append("_");
+        AppName->append(name);
+    }
+
+    CreateGlobalData();
+    LogToFile();
 }
 
-auto GetAppName() -> const char*
+auto GetAppName() -> const string&
 {
     assert(AppName != nullptr);
-    return AppName;
+    return *AppName;
 }
 
 void CreateGlobalData()
@@ -65,6 +99,89 @@ void DeleteGlobalData()
 {
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
+    }
+
+    if (AppName != nullptr) {
+        delete AppName;
+        AppName = nullptr;
+    }
+}
+
+auto GetStackTrace() -> string
+{
+    // Todo: apply scripts strack trace
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+    backward::TraceResolver resolver;
+    backward::StackTrace st;
+    st.load_here();
+    st.skip_n_firsts(2);
+    backward::Printer printer;
+    printer.snippet = false;
+    std::stringstream ss;
+    printer.print(st, ss);
+    return ss.str();
+#else
+
+    return "Stack trace: Not supported";
+#endif
+}
+
+bool BreakIntoDebugger()
+{
+#if FO_WINDOWS
+    if (::IsDebuggerPresent() != FALSE) {
+        ::DebugBreak();
+        return true;
+    }
+#endif
+
+    return false;
+}
+
+void ReportExceptionAndExit(const std::exception& ex)
+{
+    if (!BreakIntoDebugger()) {
+        WriteLog("{}\n", ex.what());
+        CreateDumpMessage("FatalException", ex.what());
+        MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
+    }
+
+    std::exit(1);
+}
+
+void ReportExceptionAndContinue(const std::exception& ex)
+{
+    if (BreakIntoDebugger()) {
+        return;
+    }
+
+    WriteLog("{}\n", ex.what());
+
+#if FO_DEBUG
+    CreateDumpMessage("Exception", ex.what());
+    MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());
+#endif
+}
+
+void CreateDumpMessage(string_view appendix, string_view message)
+{
+    const auto traceback = GetStackTrace();
+    const auto dt = Timer::GetCurrentDateTime();
+    const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", appendix, FO_DEV_NAME, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+
+    if (auto file = DiskFileSystem::OpenFile(fname, true)) {
+        file.Write(_str("{}\n", appendix));
+        file.Write(_str("{}\n", message));
+        file.Write(_str("\n"));
+        file.Write(_str("Application\n"));
+        file.Write(_str("\tName        {}\n", GetAppName()));
+        file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
+        file.Write(_str("\tOS          Windows\n"));
+        file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
+        file.Write(_str("\n"));
+        file.Write(traceback);
+        file.Write(_str("\n"));
     }
 }
 
@@ -90,15 +207,3 @@ void emscripten_sleep(unsigned int ms)
     throw UnreachablePlaceException(LINE_STR);
 }
 #endif
-
-bool BreakIntoDebugger()
-{
-#if FO_WINDOWS
-    if (::IsDebuggerPresent() != FALSE) {
-        ::DebugBreak();
-        return true;
-    }
-#endif
-
-    return false;
-}

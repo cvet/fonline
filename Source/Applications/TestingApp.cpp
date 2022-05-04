@@ -42,16 +42,12 @@
 
 #include "GenericUtils.h"
 #include "Log.h"
-#include "Testing.h"
 
 #include "SDL_main.h"
 
 extern "C" int main(int argc, char** argv) // Handled by SDL
 {
-    SetAppName("Testing");
-    CatchSystemExceptions();
-    CreateGlobalData();
-    LogToFile();
+    InitApp("Testing");
     GenericUtils::SetRandomSeed(42);
     return Catch::Session().run(argc, argv);
 }

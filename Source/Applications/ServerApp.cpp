@@ -36,7 +36,6 @@
 #include "AppGui.h"
 #include "Server.h"
 #include "Settings.h"
-#include "Testing.h"
 
 #include "SDL_main.h"
 
@@ -97,10 +96,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
-        SetAppName("Server");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp("Server");
 
         Data->Settings = new GlobalSettings(argc, argv);
 

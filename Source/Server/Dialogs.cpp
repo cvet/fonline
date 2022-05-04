@@ -124,7 +124,7 @@ DialogManager::DialogManager(FOServer* engine) : _engine {engine}
 {
 }
 
-auto DialogManager::LoadDialogs() -> bool
+void DialogManager::LoadDialogs()
 {
     WriteLog("Load dialogs...\n");
 
@@ -155,7 +155,10 @@ auto DialogManager::LoadDialogs() -> bool
     }
 
     WriteLog("Load dialogs complete, count {}.\n", files_loaded);
-    return files_loaded == files.GetFilesCount();
+
+    if (files_loaded != files.GetFilesCount()) {
+        throw ServerInitException("Can't load all dialogs");
+    }
 }
 
 auto DialogManager::AddDialog(DialogPack* pack) -> bool

@@ -44,7 +44,6 @@
 #include "ProtoManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
 #include "minizip/zip.h"
 
@@ -55,10 +54,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("Baker");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp("Baker");
 
         auto settings = GlobalSettings(argc, argv);
 
@@ -71,7 +67,7 @@ int main(int argc, char** argv)
             FileSystem content_files;
             for (const auto& dir : settings.ContentEntry) {
                 WriteLog("Add content entry '{}'.\n", dir);
-                content_files.AddDataSource(dir, true);
+                content_files.AddDataSource(dir);
             }
 
             // Todo: bake prototypes?
@@ -126,7 +122,7 @@ int main(int argc, char** argv)
                 FileSystem res_files;
                 for (const auto& path : paths) {
                     WriteLog("Add resource pack '{}' entry '{}'.\n", pack_name, path);
-                    res_files.AddDataSource(path, true);
+                    res_files.AddDataSource(path);
                 }
 
                 auto resources = res_files.FilterFiles("");

@@ -147,7 +147,7 @@ public:
     [[nodiscard]] auto GetDialog(hstring pack_id) -> DialogPack*;
     [[nodiscard]] auto GetDialogByIndex(uint index) -> DialogPack*;
 
-    [[nodiscard]] auto LoadDialogs() -> bool;
+    void LoadDialogs();
     [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
     [[nodiscard]] auto AddDialog(DialogPack* pack) -> bool;
 

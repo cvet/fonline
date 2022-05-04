@@ -38,7 +38,6 @@
 #include "Log.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
-#include "Testing.h"
 #include "Timer.h"
 #include "Version-Include.h"
 
@@ -158,10 +157,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
-        SetAppName("");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp("");
 
         WriteLog("Starting {}...\n", FO_GAME_VERSION);
 

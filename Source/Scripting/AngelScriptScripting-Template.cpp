@@ -152,6 +152,7 @@ public:
 #define GET_AS_ENGINE_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData->Engine
 #define GET_SCRIPT_SYS_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData.get()
 #define GET_SCRIPT_SYS_FROM_AS_ENGINE(as_engine) static_cast<FOEngine*>(as_engine->GetUserData())->ScriptSys->AngelScriptData.get()
+#define GET_GAME_ENGINE_FROM_AS_ENGINE(as_engine) static_cast<FOEngine*>(as_engine->GetUserData())
 
 #define ENTITY_VERIFY(e) \
     if ((e) != nullptr && (e)->IsDestroyed()) { \
@@ -1002,24 +1003,28 @@ static T* EntityUpCast(Entity* a)
     return dynamic_cast<T*>(a);
 }
 
-static void HashedString_Construct(hstring* mem)
+static void HashedString_Construct(hstring* self)
 {
-    new (mem) hstring();
+    new (self) hstring();
 }
 
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
-    new (gen->GetAddressOfReturnLocation()) hstring();
+    const auto& str = *static_cast<const string*>(gen->GetArgObject(0));
+    auto hstr = GET_GAME_ENGINE_FROM_AS_ENGINE(gen->GetEngine())->ToHashedString(str);
+    new (gen->GetObject()) hstring(hstr);
 }
 
 static void HashedString_ConstructFromHash(asIScriptGeneric* gen)
 {
-    new (gen->GetAddressOfReturnLocation()) hstring();
+    const auto& hash = *static_cast<const uint*>(gen->GetArgObject(0));
+    auto hstr = GET_GAME_ENGINE_FROM_AS_ENGINE(gen->GetEngine())->ResolveHash(hash);
+    new (gen->GetObject()) hstring(hstr);
 }
 
-static void HashedString_ConstructCopy(const hstring& self, hstring* mem)
+static void HashedString_ConstructCopy(hstring* self, const hstring& other)
 {
-    new (mem) hstring(self);
+    new (self) hstring(other);
 }
 
 static void HashedString_Assign(hstring& self, const hstring& other)
@@ -1358,7 +1363,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
-    File script_file = _engine->FileSys.ReadFile("ServerRootModule.fosb");
+    File script_file = _engine->FileSys.ReadFile("Scripts/ServerRootModule.fosb");
     RestoreRootModule(engine, script_file);
 #endif
 

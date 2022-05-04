@@ -55,7 +55,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
 FIXED_SETTING(uint, MinNameLength, 4);
 FIXED_SETTING(uint, MaxNameLength, 12);
-FIXED_SETTING(string, Language, "engl");
+FIXED_SETTING(vector<string>, Languages, "engl");
 FIXED_SETTING(uint, TalkDistance, 3);
 FIXED_SETTING(bool, RunOnCombat, false);
 FIXED_SETTING(bool, RunOnTransfer, false);

@@ -37,7 +37,6 @@
 #include "Log.h"
 #include "Settings.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
 #if FO_HAVE_FBXSDK
 #ifdef __clang__

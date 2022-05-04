@@ -249,6 +249,10 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 
 // Engine exception handling
 extern auto GetStackTrace() -> string;
+extern bool BreakIntoDebugger();
+[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
+extern void ReportExceptionAndContinue(const std::exception& ex);
+extern void CreateDumpMessage(string_view appendix, string_view message);
 
 class GenericException : public std::exception
 {
@@ -305,7 +309,6 @@ private:
             throw AssertationException(str, __FILE__, __LINE__); \
         } \
     } while (false)
-extern bool BreakIntoDebugger();
 #else
 #define RUNTIME_ASSERT_STR(expr, str) \
     do { \
@@ -1413,8 +1416,8 @@ public:
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
 
-extern void SetAppName(const char* name);
-extern auto GetAppName() -> const char*;
+extern void InitApp(string_view name);
+extern auto GetAppName() -> const string&;
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \

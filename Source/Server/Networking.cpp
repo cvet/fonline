@@ -101,9 +101,9 @@ private:
     void AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket);
 
     ServerNetworkSettings& _settings;
+    asio::io_service _ioService {};
     asio::ip::tcp::acceptor _acceptor;
     ConnectionCallback _connectionCallback {};
-    asio::io_service _ioService {};
     std::thread _runThread {};
 };
 

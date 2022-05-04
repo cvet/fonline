@@ -35,7 +35,6 @@
 
 #include "Server.h"
 #include "Settings.h"
-#include "Testing.h"
 
 #if !FO_TESTING
 extern "C" int main(int argc, char** argv)
@@ -44,10 +43,7 @@ extern "C" int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("ServerHeadless");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp("ServerHeadless");
 
         auto settings = GlobalSettings(argc, argv);
         auto* server = new FOServer(settings);

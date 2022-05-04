@@ -35,7 +35,6 @@
 
 #include "Server.h"
 #include "Settings.h"
-#include "Testing.h"
 
 #if FO_LINUX || FO_MAC
 #include <errno.h>
@@ -51,10 +50,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("ServerDaemon");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp("ServerDaemon");
 
 #if FO_LINUX || FO_MAC
         // Start daemon

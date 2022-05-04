@@ -58,8 +58,8 @@ public:
     auto operator=(DataBaseImpl&&) noexcept = delete;
     virtual ~DataBaseImpl() = default;
 
-    [[nodiscard]] virtual auto GetAllIds(string_view collection_name) const -> vector<uint> = 0;
-    [[nodiscard]] auto Get(string_view collection_name, uint id) const -> AnyData::Document;
+    [[nodiscard]] virtual auto GetAllIds(string_view collection_name) -> vector<uint> = 0;
+    [[nodiscard]] auto Get(string_view collection_name, uint id) -> AnyData::Document;
 
     void StartChanges();
     void Insert(string_view collection_name, uint id, const AnyData::Document& doc);
@@ -68,7 +68,7 @@ public:
     void CommitChanges();
 
 protected:
-    [[nodiscard]] virtual auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document = 0;
+    [[nodiscard]] virtual auto GetRecord(string_view collection_name, uint id) -> AnyData::Document = 0;
     virtual void InsertRecord(string_view collection_name, uint id, const AnyData::Document& doc) = 0;
     virtual void UpdateRecord(string_view collection_name, uint id, const AnyData::Document& doc) = 0;
     virtual void DeleteRecord(string_view collection_name, uint id) = 0;
@@ -227,7 +227,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
         }
 
         const auto& dict = std::get<AnyData::DICT_VALUE>(value);
-        for (const auto& [key, value] : dict) {
+        for (auto&& [key, value] : dict) {
             const auto dict_value_index = value.index();
             if (dict_value_index == AnyData::INT_VALUE) {
                 if (!bson_append_int32(&bson_doc, key.c_str(), static_cast<int>(key.length()), std::get<AnyData::INT_VALUE>(value))) {
@@ -317,7 +317,7 @@ static void ValueToBson(string_view key, const AnyData::Value& value, bson_t* bs
 
 static void DocumentToBson(const AnyData::Document& doc, bson_t* bson)
 {
-    for (const auto& [key, value] : doc) {
+    for (auto&& [key, value] : doc) {
         ValueToBson(key, value, bson);
     }
 }
@@ -459,22 +459,22 @@ static void BsonToDocument(const bson_t* bson, AnyData::Document& doc)
     }
 }
 
-auto DataBaseImpl::Get(string_view collection_name, uint id) const -> AnyData::Document
+auto DataBaseImpl::Get(string_view collection_name, uint id) -> AnyData::Document
 {
     const auto collection_name_str = string(collection_name);
 
-    if (_deletedRecords.at(collection_name_str).count(id) != 0u) {
+    if (_deletedRecords[collection_name_str].count(id) != 0u) {
         return AnyData::Document();
     }
 
-    if (_newRecords.at(collection_name_str).count(id) != 0u) {
-        return _recordChanges.at(collection_name_str).at(id);
+    if (_newRecords[collection_name_str].count(id) != 0u) {
+        return _recordChanges[collection_name_str].at(id);
     }
 
     auto doc = GetRecord(collection_name_str, id);
 
-    if (_recordChanges.at(collection_name_str).count(id) != 0u) {
-        for (auto& [key, value] : _recordChanges.at(collection_name_str).at(id)) {
+    if (_recordChanges[collection_name_str].count(id) != 0u) {
+        for (auto&& [key, value] : _recordChanges[collection_name_str].at(id)) {
             doc[key] = value;
         }
     }
@@ -501,7 +501,7 @@ void DataBaseImpl::Insert(string_view collection_name, uint id, const AnyData::D
     RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
 
     _newRecords[collection_name_str].insert(id);
-    for (const auto& [key, value] : doc) {
+    for (auto&& [key, value] : doc) {
         _recordChanges[collection_name_str][id][key] = value;
     }
 }
@@ -534,8 +534,8 @@ void DataBaseImpl::CommitChanges()
 
     _changesStarted = false;
 
-    for (auto& [key, value] : _recordChanges) {
-        for (auto& [key2, value2] : value) {
+    for (auto&& [key, value] : _recordChanges) {
+        for (auto&& [key2, value2] : value) {
             auto it = _newRecords.find(key);
             if (it != _newRecords.end() && it->second.count(key2) != 0u) {
                 InsertRecord(key, key2, value2);
@@ -546,7 +546,7 @@ void DataBaseImpl::CommitChanges()
         }
     }
 
-    for (auto& [key, value] : _deletedRecords) {
+    for (auto&& [key, value] : _deletedRecords) {
         for (const auto& id : value) {
             DeleteRecord(key, id);
         }
@@ -572,7 +572,7 @@ public:
 
     explicit DbJson(string_view storage_dir) : _storageDir {storage_dir} { DiskFileSystem::MakeDirTree(storage_dir); }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
         vector<uint> ids;
         DiskFileSystem::IterateDir(_str("{}/{}/", _storageDir, collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
@@ -591,7 +591,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
     {
         const string path = _str("{}/{}/{}.json", _storageDir, collection_name, id);
 
@@ -762,12 +762,12 @@ public:
 
     ~DbUnQLite() override
     {
-        for (auto& [key, value] : _collections) {
+        for (auto&& [key, value] : _collections) {
             unqlite_close(value);
         }
     }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
@@ -816,7 +816,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
     {
         auto* db = GetCollection(collection_name);
         if (db == nullptr) {
@@ -893,7 +893,7 @@ protected:
             throw DataBaseException("DbUnQLite Document not found", collection_name, id);
         }
 
-        for (const auto& [key, value] : doc) {
+        for (auto&& [key, value] : doc) {
             actual_doc[key] = value;
         }
 
@@ -930,7 +930,7 @@ protected:
 
     void CommitRecords() override
     {
-        for (const auto& [key, value] : _collections) {
+        for (auto&& [key, value] : _collections) {
             const auto commit = unqlite_commit(value);
             if (commit != UNQLITE_OK) {
                 throw DataBaseException("DbUnQLite unqlite_commit", commit);
@@ -1012,7 +1012,7 @@ public:
 
     ~DbMongo() override
     {
-        for (auto& [key, value] : _collections) {
+        for (auto&& [key, value] : _collections) {
             mongoc_collection_destroy(value);
         }
 
@@ -1021,7 +1021,7 @@ public:
         mongoc_cleanup();
     }
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1073,7 +1073,7 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
     {
         auto* collection = GetCollection(collection_name);
         if (collection == nullptr) {
@@ -1237,14 +1237,14 @@ public:
     auto operator=(DbMemory&&) noexcept = delete;
     ~DbMemory() override = default;
 
-    [[nodiscard]] auto GetAllIds(string_view collection_name) const -> vector<uint> override
+    [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
-        const auto& collection = _collections.at(string(collection_name));
+        const auto& collection = _collections[string(collection_name)];
 
         vector<uint> ids;
         ids.reserve(collection.size());
 
-        for (auto& [key, value] : collection) {
+        for (auto&& [key, value] : collection) {
             ids.push_back(key);
         }
 
@@ -1252,9 +1252,9 @@ public:
     }
 
 protected:
-    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) const -> AnyData::Document override
+    [[nodiscard]] auto GetRecord(string_view collection_name, uint id) -> AnyData::Document override
     {
-        const auto& collection = _collections.at(string(collection_name));
+        const auto& collection = _collections[string(collection_name)];
 
         const auto it = collection.find(id);
         return it != collection.end() ? it->second : AnyData::Document();
@@ -1279,7 +1279,7 @@ protected:
         const auto it = collection.find(id);
         RUNTIME_ASSERT(it != collection.end());
 
-        for (const auto& [key, value] : doc) {
+        for (auto&& [key, value] : doc) {
             it->second[key] = value;
         }
     }

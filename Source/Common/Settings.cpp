@@ -32,6 +32,7 @@
 //
 
 #include "Settings.h"
+#include "AnyData.h"
 #include "FileSystem.h"
 #include "StringUtils.h"
 #include "WinApi-Include.h"
@@ -40,51 +41,83 @@
 
 static void SetEntry(string& entry, string_view value)
 {
-    entry = value;
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
+    entry = std::get<AnyData::STRING_VALUE>(any_value);
 }
 static void SetEntry(uchar& entry, string_view value)
 {
-    entry = static_cast<uchar>(_str(value).toInt());
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry = std::get<AnyData::INT_VALUE>(any_value);
 }
 static void SetEntry(short& entry, string_view value)
 {
-    entry = static_cast<short>(_str(value).toInt());
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry = std::get<AnyData::INT_VALUE>(any_value);
 }
 static void SetEntry(int& entry, string_view value)
 {
-    entry = _str(value).toInt();
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry = std::get<AnyData::INT_VALUE>(any_value);
 }
 static void SetEntry(uint& entry, string_view value)
 {
-    entry = _str(value).toInt();
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry = std::get<AnyData::INT_VALUE>(any_value);
 }
 static void SetEntry(bool& entry, string_view value)
 {
-    entry = _str(value).toBool();
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::BOOL_VALUE);
+    entry = std::get<AnyData::BOOL_VALUE>(any_value);
 }
 static void SetEntry(float& entry, string_view value)
 {
-    entry = _str(value).toFloat();
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::DOUBLE_VALUE);
+    entry = static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(any_value));
 }
 static void SetEntry(vector<string>& entry, string_view value)
 {
-    entry.push_back(string(value));
+    entry.clear();
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::STRING_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::STRING_VALUE>(str));
+    }
 }
 static void SetEntry(vector<int>& entry, string_view value)
 {
-    entry.push_back(_str(value).toInt());
+    entry.clear();
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+    }
 }
 static void SetEntry(vector<uint>& entry, string_view value)
 {
-    entry.push_back(_str(value).toUInt());
+    entry.clear();
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+    }
 }
 static void SetEntry(vector<float>& entry, string_view value)
 {
-    entry.push_back(_str(value).toFloat());
+    entry.clear();
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::DOUBLE_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(str)));
+    }
 }
 static void SetEntry(vector<bool>& entry, string_view value)
 {
-    entry.push_back(_str(value).toBool());
+    entry.clear();
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::BOOL_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::BOOL_VALUE>(str));
+    }
 }
 
 static void DrawEntry(string_view name, string_view entry)

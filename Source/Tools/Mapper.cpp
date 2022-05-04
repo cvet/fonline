@@ -39,7 +39,6 @@
 #include "MapLoader.h"
 #include "MapperScripting.h"
 #include "StringUtils.h"
-#include "Testing.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 

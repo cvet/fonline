@@ -37,7 +37,6 @@
 
 #include "ConfigFile.h"
 #include "DataSource.h"
-#include "Settings.h"
 
 DECLARE_EXCEPTION(FileSystemExeption);
 
@@ -167,7 +166,7 @@ public:
     [[nodiscard]] auto ReadFileHeader(string_view path) -> FileHeader;
     [[nodiscard]] auto ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile;
 
-    void AddDataSource(string_view path, bool cache_dirs);
+    void AddDataSource(string_view path, bool cache_dirs = true);
 
 private:
     string _rootPath {};

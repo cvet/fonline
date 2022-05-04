@@ -36,7 +36,6 @@
 #if FO_HAVE_DIRECT_3D
 #include "Log.h"
 #include "StringUtils.h"
-#include "Testing.h"
 #include "WinApi-Include.h"
 
 #include <XInput.h>

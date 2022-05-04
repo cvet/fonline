@@ -40,7 +40,6 @@
 
 #include "GlslangToSpv.h"
 #include "ShaderLang.h"
-#include "Testing.h"
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"

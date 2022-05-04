@@ -2270,14 +2270,9 @@ void MessageBox::ShowErrorMessage(string_view title, string_view message, string
 
 #else
     auto verb_message = string(message);
-#if FO_WINDOWS
-    const string most_recent = "most recent call first";
-#else
-    const string most_recent = "most recent call last";
-#endif
 
     if (!traceback.empty()) {
-        verb_message += _str("\n\nTraceback ({}):\n{}", most_recent, traceback);
+        verb_message += _str("\n{}", traceback);
     }
 
     SDL_MessageBoxButtonData copy_button;

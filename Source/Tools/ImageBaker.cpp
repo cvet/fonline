@@ -43,7 +43,6 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-#include "Testing.h"
 #include "minizip/zip.h"
 #include "png.h"
 

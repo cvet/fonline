@@ -45,7 +45,8 @@ Updater::Updater(GlobalSettings& settings) : _settings {settings}, _conn(setting
 {
     _startTick = Timer::RealtimeTick();
 
-    _fileSys.AddDataSource("$Embedded", true);
+    _fileSys.AddDataSource("$Embedded");
+    _fileSys.AddDataSource(_settings.ResourcesDir, false);
 
     _effectMngr.LoadMinimalEffects();
 

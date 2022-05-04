@@ -38,7 +38,6 @@
 #include "Networking.h"
 #include "PropertiesSerializator.h"
 #include "ServerScripting.h"
-#include "Testing.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
@@ -59,10 +58,8 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 {
     WriteLog("Starting server initialization.\n");
 
-    FileSys.AddDataSource("$Embedded", true);
-    for (const auto& entry : Settings.ResourceEntries) {
-        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry), true);
-    }
+    FileSys.AddDataSource("$Embedded");
+    FileSys.AddDataSource(Settings.ResourcesDir, false);
 
     RegisterData();
     ScriptSys = (script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys);
@@ -90,29 +87,16 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 
     // PropertyRegistrator::GlobalSetCallbacks.push_back(EntitySetValue);
 
-    if (!InitLangPacks(_langPacks)) {
-        throw ServerInitException("Can't init lang packs");
-    }
-
+    InitLangPacks();
     LoadBans();
-
-    // Managers
-    if (!DlgMngr.LoadDialogs()) {
-        throw ServerInitException("Can't load dialogs");
-    }
+    DlgMngr.LoadDialogs();
     // if (!ProtoMngr.LoadProtosFromFiles(FileSys))
     //    return false;
 
     // Language packs
-    if (!InitLangPacksDialogs(_langPacks)) {
-        throw ServerInitException("Can't init dialogs lang packs");
-    }
-    if (!InitLangPacksLocations(_langPacks)) {
-        throw ServerInitException("Can't init locations lang packs");
-    }
-    if (!InitLangPacksItems(_langPacks)) {
-        throw ServerInitException("Can't init items lang packs");
-    }
+    InitLangPacksDialogs();
+    InitLangPacksLocations();
+    InitLangPacksItems();
 
     const auto globals_doc = DbStorage.Get("Game", 1);
     if (globals_doc.empty()) {
@@ -132,7 +116,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 
     // Update files
     vector<string> resource_names;
-    GenerateUpdateFiles(&resource_names);
+    InitUpdateFiles(&resource_names);
 
     // Validate protos resources
     if (!ProtoMngr.ValidateProtoResources(resource_names)) {
@@ -207,7 +191,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 
     // Admin manager
     if (Settings.AdminPanelPort != 0u) {
-        InitAdminManager(this, Settings.AdminPanelPort);
+        InitAdminManager(this, static_cast<ushort>(Settings.AdminPanelPort));
     }
 
     GameTime.FrameAdvance();
@@ -495,11 +479,11 @@ void FOServer::DrawGui()
         if (_started && !Settings.Quit && ImGui::Button("Stop & Quit", _gui.ButtonSize)) {
             Settings.Quit = true;
         }
-        if (ImGui::Button("Quit", _gui.ButtonSize)) {
-            exit(0);
+        if (ImGui::Button("Force quit", _gui.ButtonSize)) {
+            std::exit(0);
         }
         if (ImGui::Button("Create dump", _gui.ButtonSize)) {
-            CreateDump("ManualDump", "Manual");
+            CreateDumpMessage("ManualDump", "Manual");
         }
         if (ImGui::Button("Save log", _gui.ButtonSize)) {
             const auto dt = Timer::GetCurrentDateTime();
@@ -1408,8 +1392,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         CHECK_ALLOW_COMMAND();
 
-        std::lock_guard locker(_bannedLocker);
-
         if (_str(params).compareIgnoreCase("list")) {
             if (_banned.empty()) {
                 logcb("Ban list empty.");
@@ -1574,44 +1556,26 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     }
 }
 
-auto FOServer::InitLangPacks(vector<LanguagePack>& lang_packs) -> bool
+void FOServer::InitLangPacks()
 {
-    WriteLog("Load language packs...\n");
-
-    uint cur_lang = 0;
-    while (true) {
-        // Todo: restore settings
-        string cur_str_lang; // = _str("Language_{}", cur_lang);
-        string lang_name; // = MainConfig->GetStr("", cur_str_lang);
-        if (lang_name.empty()) {
-            break;
-        }
-
+    for (const auto& lang_name : Settings.Languages) {
         if (lang_name.length() != 4) {
-            WriteLog("Language name not equal to four letters.\n");
-            return false;
+            throw ServerInitException("Language name not equal to four letters {}", lang_name);
         }
 
-        auto pack_id = *reinterpret_cast<uint*>(&lang_name);
-        if (std::find(lang_packs.begin(), lang_packs.end(), pack_id) != lang_packs.end()) {
-            WriteLog("Language pack {} is already initialized.\n", cur_lang);
-            return false;
+        if (std::find(_langPacks.begin(), _langPacks.end(), lang_name) != _langPacks.end()) {
+            throw ServerInitException("Language pack {} is already initialized", lang_name);
         }
 
         LanguagePack lang;
         lang.LoadFromFiles(FileSys, *this, lang_name);
-
-        lang_packs.push_back(lang);
-        cur_lang++;
+        _langPacks.emplace_back(std::move(lang));
     }
-
-    WriteLog("Load language packs complete, count {}.\n", cur_lang);
-    return cur_lang > 0;
 }
 
-auto FOServer::InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool
+void FOServer::InitLangPacksDialogs()
 {
-    for (auto& lang_pack : lang_packs) {
+    for (auto& lang_pack : _langPacks) {
         lang_pack.Msg[TEXTMSG_DLG].Clear();
     }
 
@@ -1619,7 +1583,7 @@ auto FOServer::InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool
     for (const auto& kv : all_protos) {
         auto* proto = kv.second;
         for (uint i = 0, j = static_cast<uint>(proto->TextsLang.size()); i < j; i++) {
-            for (auto& lang : lang_packs) {
+            for (auto& lang : _langPacks) {
                 if (proto->TextsLang[i] != lang.NameCode) {
                     continue;
                 }
@@ -1637,7 +1601,7 @@ auto FOServer::InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool
     uint index = 0;
     while ((pack = DlgMngr.GetDialogByIndex(index++)) != nullptr) {
         for (uint i = 0, j = static_cast<uint>(pack->TextsLang.size()); i < j; i++) {
-            for (auto& lang : lang_packs) {
+            for (auto& lang : _langPacks) {
                 if (pack->TextsLang[i] != lang.NameCode) {
                     continue;
                 }
@@ -1650,21 +1614,19 @@ auto FOServer::InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool
             }
         }
     }
-
-    return true;
 }
 
-auto FOServer::InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool
+void FOServer::InitLangPacksLocations()
 {
-    for (auto& lang_pack : lang_packs) {
+    for (auto& lang_pack : _langPacks) {
         lang_pack.Msg[TEXTMSG_LOCATIONS].Clear();
     }
 
     const auto& protos = ProtoMngr.GetProtoLocations();
     for (const auto& kv : protos) {
-        auto* ploc = kv.second;
+        const auto* ploc = kv.second;
         for (uint i = 0, j = static_cast<uint>(ploc->TextsLang.size()); i < j; i++) {
-            for (auto& lang : lang_packs) {
+            for (auto& lang : _langPacks) {
                 if (ploc->TextsLang[i] != lang.NameCode) {
                     continue;
                 }
@@ -1677,21 +1639,19 @@ auto FOServer::InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool
             }
         }
     }
-
-    return true;
 }
 
-auto FOServer::InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool
+void FOServer::InitLangPacksItems()
 {
-    for (auto& lang_pack : lang_packs) {
+    for (auto& lang_pack : _langPacks) {
         lang_pack.Msg[TEXTMSG_ITEM].Clear();
     }
 
     const auto& protos = ProtoMngr.GetProtoItems();
     for (const auto& kv : protos) {
-        auto* proto = kv.second;
+        const auto* proto = kv.second;
         for (uint i = 0, j = static_cast<uint>(proto->TextsLang.size()); i < j; i++) {
-            for (auto& lang : lang_packs) {
+            for (auto& lang : _langPacks) {
                 if (proto->TextsLang[i] != lang.NameCode) {
                     continue;
                 }
@@ -1704,8 +1664,6 @@ auto FOServer::InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool
             }
         }
     }
-
-    return true;
 }
 
 void FOServer::LogToClients(string_view str)
@@ -1770,8 +1728,6 @@ auto FOServer::GetBanLexems(ClientBanned& ban) -> string
 
 void FOServer::ProcessBans()
 {
-    std::lock_guard locker(_bannedLocker);
-
     auto resave = false;
     const auto time = Timer::GetCurrentDateTime();
     for (auto it = _banned.begin(); it != _banned.end();) {
@@ -1792,8 +1748,6 @@ void FOServer::ProcessBans()
 
 void FOServer::SaveBan(ClientBanned& ban, bool expired)
 {
-    std::lock_guard locker(_bannedLocker);
-
     string content = "[Ban]\n";
 
     if (ban.ClientName[0] != 0) {
@@ -1825,8 +1779,6 @@ void FOServer::SaveBan(ClientBanned& ban, bool expired)
 
 void FOServer::SaveBans()
 {
-    std::lock_guard locker(_bannedLocker);
-
     string content;
 
     for (const auto& ban : _banned) {
@@ -1853,8 +1805,6 @@ void FOServer::SaveBans()
 
 void FOServer::LoadBans()
 {
-    std::lock_guard locker(_bannedLocker);
-
     _banned.clear();
 
     auto bans = FileSys.ReadConfigFile(BANS_FNAME_ACTIVE, *this);
@@ -1897,7 +1847,7 @@ void FOServer::LoadBans()
     ProcessBans();
 }
 
-void FOServer::GenerateUpdateFiles(vector<string>* resource_names)
+void FOServer::InitUpdateFiles(vector<string>* resource_names)
 {
     _updateFiles.clear();
     _updateFilesList.clear();
@@ -2322,17 +2272,13 @@ void FOServer::Process_Register(ClientConnection* connection)
     }
 
     // Check for ban by ip
-    {
-        std::lock_guard locker(_bannedLocker);
-
-        const auto ip = connection->GetIp();
-        if (auto* ban = GetBanByIp(ip); ban != nullptr) {
-            connection->Send_TextMsg(STR_NET_BANNED_IP);
-            // connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
-            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
-            connection->GracefulDisconnect();
-            return;
-        }
+    const auto ip = connection->GetIp();
+    if (auto* ban = GetBanByIp(ip); ban != nullptr) {
+        connection->Send_TextMsg(STR_NET_BANNED_IP);
+        // connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
+        connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
+        connection->GracefulDisconnect();
+        return;
     }
 
     // Name
@@ -2370,8 +2316,6 @@ void FOServer::Process_Register(ClientConnection* connection)
 
     // Check brute force registration
     if (Settings.RegistrationTimeout != 0u) {
-        std::lock_guard locker(_regIpLocker);
-
         auto ip = connection->GetIp();
         const auto reg_tick = Settings.RegistrationTimeout * 1000;
         if (auto it = _regIp.find(ip); it != _regIp.end()) {
@@ -2467,16 +2411,12 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Check for ban by ip
-    {
-        std::lock_guard locker(_bannedLocker);
-
-        if (auto* ban = GetBanByIp(connection->GetIp())) {
-            connection->Send_TextMsg(STR_NET_BANNED_IP);
-            connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
-            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
-            connection->GracefulDisconnect();
-            return;
-        }
+    if (auto* ban = GetBanByIp(connection->GetIp())) {
+        connection->Send_TextMsg(STR_NET_BANNED_IP);
+        connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
+        connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
+        connection->GracefulDisconnect();
+        return;
     }
 
     // Check for null in login/password
@@ -2511,16 +2451,12 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Check for ban by name
-    {
-        std::lock_guard locker(_bannedLocker);
-
-        if (auto* ban = GetBanByName(name); ban != nullptr) {
-            connection->Send_TextMsg(STR_NET_BANNED);
-            connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
-            connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
-            connection->GracefulDisconnect();
-            return;
-        }
+    if (auto* ban = GetBanByName(name); ban != nullptr) {
+        connection->Send_TextMsg(STR_NET_BANNED);
+        connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
+        connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
+        connection->GracefulDisconnect();
+        return;
     }
 
 #if !FO_SINGLEPLAYER
