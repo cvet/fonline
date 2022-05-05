@@ -170,7 +170,7 @@ void ServerConnection::Process()
 
 auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
 {
-    constexpr timeval tv = {0, 0};
+    timeval tv = {0, 0};
 
     FD_ZERO(&_impl->NetSockSet);
     FD_SET(_impl->NetSock, &_impl->NetSockSet);
@@ -290,9 +290,9 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
         unsigned long mode = 1;
         if (::ioctlsocket(_impl->NetSock, FIONBIO, &mode) != 0)
 #else
-        int flags = fcntl(NetSock, F_GETFL, 0);
+        int flags = ::fcntl(_impl->NetSock, F_GETFL, 0);
         RUNTIME_ASSERT(flags >= 0);
-        if (::fcntl(NetSock, F_SETFL, flags | O_NONBLOCK))
+        if (::fcntl(_impl->NetSock, F_SETFL, flags | O_NONBLOCK))
 #endif
         {
             WriteLog("Can't set non-blocking mode to socket, error '{}'.\n", _impl->GetLastSocketError());
@@ -560,7 +560,7 @@ auto ServerConnection::DispatchData() -> bool
         buf.len = tosend - sendpos;
         if (::WSASend(_impl->NetSock, &buf, 1, &len, 0, nullptr, nullptr) == SOCKET_ERROR || len == 0)
 #else
-        int len = (int)::send(NetSock, _netOut.GetData() + sendpos, tosend - sendpos, 0);
+        int len = (int)::send(_impl->NetSock, _netOut.GetData() + sendpos, tosend - sendpos, 0);
         if (len <= 0)
 #endif
         {
@@ -591,7 +591,7 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
     buf.len = static_cast<uint>(_incomeBuf.size());
     if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-    int len = static_cast<int>(::recv(NetSock, _incomeBuf.data(), _incomeBuf.size(), 0));
+    int len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data(), _incomeBuf.size(), 0));
     if (len == SOCKET_ERROR)
 #endif
     {
@@ -613,7 +613,7 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
         buf.len = static_cast<uint>(_incomeBuf.size()) - whole_len;
         if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-        len = static_cast<int>(::recv(NetSock, _incomeBuf.data() + whole_len, _incomeBuf.size() - whole_len, 0));
+        len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data() + whole_len, _incomeBuf.size() - whole_len, 0));
         if (len == SOCKET_ERROR)
 #endif
         {

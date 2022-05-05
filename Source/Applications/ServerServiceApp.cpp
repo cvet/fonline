@@ -200,8 +200,6 @@ int main(int argc, char** argv)
                 return 1;
             }
         }
-
-        return 0;
 #else
         RUNTIME_ASSERT_STR(false, "Invalid OS");
 #endif
@@ -209,6 +207,8 @@ int main(int argc, char** argv)
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+
+    return 0;
 }
 
 #if FO_WINDOWS
