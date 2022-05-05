@@ -37,7 +37,7 @@
 
 #include "NetBuffer.h"
 
-#define CHECK_IN_BUF_ERROR(conn) \
+#define CHECK_CLIENT_IN_BUF_ERROR(conn) \
     do { \
         if ((conn)->Bin.IsError()) { \
             WriteLog("Wrong network data from host '{}'.\n", (conn)->GetHost()); \

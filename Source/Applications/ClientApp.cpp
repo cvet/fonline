@@ -89,10 +89,8 @@ void ServerScriptSystem::InitMonoScripting()
 }
 #endif
 
-static void MainEntry(const void* ptr)
+static void MainEntry(void*)
 {
-    UNUSED_VARIABLE(ptr);
-
     if (Data->Client == nullptr) {
         try {
 #if FO_WEB

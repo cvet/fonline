@@ -134,7 +134,7 @@ void ServerConnection::Process()
                 uint msg = 0;
                 _netIn >> msg;
 
-                CHECK_IN_BUF_ERROR(*this);
+                CHECK_SERVER_IN_BUF_ERROR(*this);
 
                 if (_settings.DebugNet) {
                     _msgCount++;
@@ -145,7 +145,7 @@ void ServerConnection::Process()
                 if (it != _handlers.end()) {
                     it->second();
 
-                    CHECK_IN_BUF_ERROR(*this);
+                    CHECK_SERVER_IN_BUF_ERROR(*this);
                 }
                 else {
                     WriteLog("No handler for message {}. Disconnect.\n", msg);
@@ -224,7 +224,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 {
 #if FO_WEB
     port++;
-    if (!Settings.SecuredWebSockets) {
+    if (!_settings.SecuredWebSockets) {
         EM_ASM(Module['websocket']['url'] = 'ws://');
         WriteLog("Connecting to server 'ws://{}:{}'.\n", host, port);
     }
@@ -710,7 +710,7 @@ void ServerConnection::Net_OnPing()
     uchar ping;
     _netIn >> ping;
 
-    CHECK_IN_BUF_ERROR(*this);
+    CHECK_SERVER_IN_BUF_ERROR(*this);
 
     if (ping == PING_CLIENT) {
         _netOut << NETMSG_PING;

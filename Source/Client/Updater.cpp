@@ -172,7 +172,7 @@ void Updater::Net_OnUpdateFilesResponse()
     _conn.InBuf >> outdated;
     _conn.InBuf >> data_size;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     vector<uchar> data;
     data.resize(data_size);
@@ -184,7 +184,7 @@ void Updater::Net_OnUpdateFilesResponse()
         NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (outdated) {
         Abort(STR_CLIENT_OUTDATED, "Client binary outdated");
@@ -239,7 +239,7 @@ void Updater::Net_OnUpdateFileData()
     uchar data[FILE_UPDATE_PORTION];
     _conn.InBuf.Pop(data, sizeof(data));
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto& update_file = _filesToUpdate.front();
 

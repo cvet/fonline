@@ -40,7 +40,7 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
-#define CHECK_IN_BUF_ERROR(conn) \
+#define CHECK_SERVER_IN_BUF_ERROR(conn) \
     do { \
         if ((conn).InBuf.IsError()) { \
             WriteLog("Wrong network data!\n"); \

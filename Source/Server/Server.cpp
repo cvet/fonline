@@ -673,7 +673,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
             player->Connection->Bin.ShrinkReadBuf();
 
             if (!player->Connection->Bin.NeedProcess()) {
-                CHECK_IN_BUF_ERROR(player->Connection);
+                CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
                 break;
             }
 
@@ -697,7 +697,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
 
             player->Connection->LastActivityTime = GameTime.FrameTick();
 
-            CHECK_IN_BUF_ERROR(player->Connection);
+            CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
         }
     }
     else {
@@ -707,7 +707,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
             player->Connection->Bin.ShrinkReadBuf();
 
             if (!player->Connection->Bin.NeedProcess()) {
-                CHECK_IN_BUF_ERROR(player->Connection);
+                CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
                 break;
             }
 
@@ -779,7 +779,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
 
             player->Connection->LastActivityTime = GameTime.FrameTick();
 
-            CHECK_IN_BUF_ERROR(player->Connection);
+            CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
         }
     }
 }
@@ -836,7 +836,7 @@ void FOServer::Process_Text(Player* player)
     player->Connection->Bin >> how_say;
     player->Connection->Bin >> str;
 
-    CHECK_IN_BUF_ERROR(player->Connection);
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     if (!cr->IsAlive() && how_say >= SAY_NORM && how_say <= SAY_RADIO) {
         how_say = SAY_WHISP;
@@ -2131,7 +2131,7 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     connection->Bin >> ping;
 
-    CHECK_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     if (ping == PING_CLIENT) {
         connection->PingOk = true;
@@ -2166,7 +2166,7 @@ void FOServer::Process_Update(ClientConnection* connection)
     connection->Bin.SetEncryptKey(encrypt_key);
     connection->Bout.SetEncryptKey(encrypt_key);
 
-    CHECK_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     // Send update files list
     uint msg_len = sizeof(NETMSG_UPDATE_FILES_LIST) + sizeof(msg_len) + sizeof(bool) + sizeof(uint) + static_cast<uint>(_updateFilesList.size());
@@ -2197,7 +2197,7 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
     uint file_index = 0;
     connection->Bin >> file_index;
 
-    CHECK_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     if (file_index >= static_cast<uint>(_updateFiles.size())) {
         WriteLog("Wrong file index {}, from host '{}'.\n", file_index, connection->GetHost());
@@ -2255,7 +2255,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     ushort proto_ver = 0;
     connection->Bin >> proto_ver;
 
-    CHECK_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     // Begin data encrypting
     connection->Bin.SetEncryptKey(1234567890);
@@ -2286,7 +2286,7 @@ void FOServer::Process_Register(ClientConnection* connection)
     string password;
     connection->Bin >> password;
 
-    CHECK_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     // Check data
     if (!_str(name).isValidUtf8() || name.find('*') != string::npos) {
@@ -2372,7 +2372,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     ushort proto_ver = 0;
     connection->Bin >> proto_ver;
 
-    CHECK_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     // Begin data encrypting
     connection->Bin.SetEncryptKey(12345);
@@ -2395,7 +2395,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     uint msg_language = 0;
     connection->Bin >> msg_language;
 
-    CHECK_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     if (const auto it_l = std::find(_langPacks.begin(), _langPacks.end(), msg_language); it_l == _langPacks.end()) {
         msg_language = (*_langPacks.begin()).NameCode;
@@ -2676,7 +2676,7 @@ void FOServer::Process_GiveMap(Player* player)
     player->Connection->Bin >> hash_tiles;
     player->Connection->Bin >> hash_scen;
 
-    CHECK_IN_BUF_ERROR(player->Connection);
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     const auto* proto_map = ProtoMngr.GetProtoMap(map_pid);
     if (proto_map == nullptr) {
@@ -2783,7 +2783,7 @@ void FOServer::Process_Move(Player* player)
     player->Connection->Bin >> hx;
     player->Connection->Bin >> hy;
 
-    CHECK_IN_BUF_ERROR(player->Connection);
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     if (cr->GetMapId() == 0u) {
         return;
@@ -2833,7 +2833,7 @@ void FOServer::Process_Dir(Player* player)
     uchar dir = 0;
     player->Connection->Bin >> dir;
 
-    CHECK_IN_BUF_ERROR(player->Connection);
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     if (cr->GetMapId() == 0u || dir >= Settings.MapDirCount || cr->GetDir() == dir || cr->IsTalking()) {
         if (cr->GetDir() != dir) {
@@ -2888,7 +2888,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
     player->Connection->Bin >> property_index;
 
-    CHECK_IN_BUF_ERROR(player->Connection);
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     vector<uchar> data;
     if (data_size != 0) {
@@ -2906,7 +2906,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
         player->Connection->Bin.Pop(&data[0], len);
     }
 
-    CHECK_IN_BUF_ERROR(player->Connection);
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
     auto is_public = false;
     const Property* prop = nullptr;

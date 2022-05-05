@@ -967,7 +967,7 @@ void FOClient::Net_OnLoginSuccess()
     NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
     NET_READ_PROPERTIES(_conn.InBuf, _playerPropertiesData);
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     _conn.OutBuf.SetEncryptKey(bin_seed);
     _conn.InBuf.SetEncryptKey(bout_seed);
@@ -1030,7 +1030,7 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     // Properties
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1079,7 +1079,7 @@ void FOClient::Net_OnRemoveCritter()
     uint remove_crid;
     _conn.InBuf >> remove_crid;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1108,7 +1108,7 @@ void FOClient::Net_OnText()
     _conn.InBuf >> text;
     _conn.InBuf >> unsafe_text;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (how_say == SAY_FLASH_WINDOW) {
         FlashGameWindow();
@@ -1142,7 +1142,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
         _conn.InBuf >> lexems;
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (how_say == SAY_FLASH_WINDOW) {
         FlashGameWindow();
@@ -1291,7 +1291,7 @@ void FOClient::Net_OnMapText()
     _conn.InBuf >> text;
     _conn.InBuf >> unsafe_text;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         WriteLog("Invalid coords, hx {}, hy {}, text '{}'.\n", hx, hy, text);
@@ -1318,7 +1318,7 @@ void FOClient::Net_OnMapTextMsg()
     _conn.InBuf >> msg_num;
     _conn.InBuf >> num_str;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (msg_num >= TEXTMSG_COUNT) {
         WriteLog("Msg num invalid value, num {}.\n", msg_num);
@@ -1347,7 +1347,7 @@ void FOClient::Net_OnMapTextMsgLex()
     _conn.InBuf >> num_str;
     _conn.InBuf >> lexems;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (msg_num >= TEXTMSG_COUNT) {
         WriteLog("Msg num invalid value, num {}.\n", msg_num);
@@ -1366,7 +1366,7 @@ void FOClient::Net_OnCritterDir()
     _conn.InBuf >> crid;
     _conn.InBuf >> dir;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (dir >= Settings.MapDirCount) {
         WriteLog("Invalid dir {}.\n", dir);
@@ -1394,7 +1394,7 @@ void FOClient::Net_OnCritterMove()
     _conn.InBuf >> new_hx;
     _conn.InBuf >> new_hy;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1457,7 +1457,7 @@ void FOClient::Net_OnSomeItem()
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (_someItem != nullptr) {
         _someItem->Release();
@@ -1481,7 +1481,7 @@ void FOClient::Net_OnCritterAction()
     _conn.InBuf >> action_ext;
     _conn.InBuf >> is_item;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1512,7 +1512,7 @@ void FOClient::Net_OnCritterMoveItem()
     ushort slots_data_count;
     _conn.InBuf >> slots_data_count;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     vector<uchar> slots_data_slot;
     vector<uint> slots_data_id;
@@ -1532,7 +1532,7 @@ void FOClient::Net_OnCritterMoveItem()
         slots_data_data.push_back(_tempPropertiesData);
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1588,7 +1588,7 @@ void FOClient::Net_OnCritterAnimate()
     _conn.InBuf >> clear_sequence;
     _conn.InBuf >> delay_play;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1618,7 +1618,7 @@ void FOClient::Net_OnCritterSetAnims()
     _conn.InBuf >> anim1;
     _conn.InBuf >> anim2;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1656,7 +1656,7 @@ void FOClient::Net_OnCustomCommand()
     _conn.InBuf >> index;
     _conn.InBuf >> value;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1724,7 +1724,7 @@ void FOClient::Net_OnCritterCoords()
     _conn.InBuf >> hy;
     _conn.InBuf >> dir;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (Settings.DebugNet) {
         AddMess(SAY_NETMSG, _str(" - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir));
@@ -1779,7 +1779,7 @@ void FOClient::Net_OnAllProperties()
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
@@ -1828,7 +1828,7 @@ void FOClient::Net_OnChosenAddItem()
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
@@ -1876,7 +1876,7 @@ void FOClient::Net_OnChosenEraseItem()
     uint item_id;
     _conn.InBuf >> item_id;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
@@ -1935,7 +1935,7 @@ void FOClient::Net_OnAddItemOnMap()
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1959,7 +1959,7 @@ void FOClient::Net_OnEraseItemFromMap()
     _conn.InBuf >> item_id;
     _conn.InBuf >> is_deleted;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -1991,7 +1991,7 @@ void FOClient::Net_OnAnimateItem()
     _conn.InBuf >> from_frm;
     _conn.InBuf >> to_frm;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto* item = CurMap->GetItem(item_id);
     if (item != nullptr) {
@@ -2012,7 +2012,7 @@ void FOClient::Net_OnCombatResult()
         _conn.InBuf.Pop(data_vec.data(), data_count * sizeof(uint));
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     OnCombatResult.Fire(data_vec);
 }
@@ -2028,7 +2028,7 @@ void FOClient::Net_OnEffect()
     _conn.InBuf >> hy;
     _conn.InBuf >> radius;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     // Base hex effect
     CurMap->RunEffect(eff_pid, hx, hy, hx, hy);
@@ -2070,7 +2070,7 @@ void FOClient::Net_OnFlyEffect()
     _conn.InBuf >> eff_cr2_hx;
     _conn.InBuf >> eff_cr2_hy;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2102,7 +2102,7 @@ void FOClient::Net_OnPlaySound()
     _conn.InBuf >> synchronize_crid;
     _conn.InBuf >> sound_name;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     SndMngr.PlaySound(ResMngr.GetSoundNames(), sound_name);
 }
@@ -2187,7 +2187,7 @@ void FOClient::Net_OnProperty(uint data_size)
         }
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     Entity* entity = nullptr;
     switch (type) {
@@ -2263,7 +2263,7 @@ void FOClient::Net_OnChosenTalk()
     _conn.InBuf >> talk_id;
     _conn.InBuf >> count_answ;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (count_answ == 0u) {
         // End dialog
@@ -2277,7 +2277,7 @@ void FOClient::Net_OnChosenTalk()
     string lexems;
     _conn.InBuf >> lexems;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
@@ -2299,7 +2299,7 @@ void FOClient::Net_OnChosenTalk()
         answers_texts.push_back(answ_text_id);
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto str = _curLang.Msg[TEXTMSG_DLG].GetStr(text_id);
     FormatTags(str, GetChosen(), npc, lexems);
@@ -2313,7 +2313,7 @@ void FOClient::Net_OnChosenTalk()
 
     _conn.InBuf >> talk_time;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     /*CScriptDictionary* dict = CScriptDictionary::Create(ScriptSys.GetEngine());
     dict->Set("TalkerIsNpc", &is_npc, asTYPEID_BOOL);
@@ -2343,14 +2343,14 @@ void FOClient::Net_OnGameInfo()
     _conn.InBuf >> second;
     _conn.InBuf >> multiplier;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     auto* day_time = CurMap->GetMapDayTime();
     auto* day_color = CurMap->GetMapDayColor();
     _conn.InBuf.Pop(day_time, sizeof(int) * 4);
     _conn.InBuf.Pop(day_color, sizeof(uchar) * 12);
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
@@ -2385,14 +2385,14 @@ void FOClient::Net_OnLoadMap()
     _conn.InBuf >> hash_tiles;
     _conn.InBuf >> hash_scen;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (map_pid) {
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
         NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesDataExt);
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap != nullptr) {
         CurMap->MarkAsDestroyed();
@@ -2469,7 +2469,7 @@ void FOClient::Net_OnMap()
     _conn.InBuf >> send_tiles;
     _conn.InBuf >> send_scenery;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     WriteLog("Map {} received...\n", map_pid);
 
@@ -2490,7 +2490,7 @@ void FOClient::Net_OnMap()
         tiles = true;
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (send_scenery) {
         _conn.InBuf >> scen_len;
@@ -2501,7 +2501,7 @@ void FOClient::Net_OnMap()
         scen = true;
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (auto compressed_cache = Cache.GetData(map_name); !compressed_cache.empty()) {
         if (const auto cache = Compressor::Uncompress(compressed_cache, 50); !cache.empty()) {
@@ -2570,7 +2570,7 @@ void FOClient::Net_OnGlobalInfo()
     _conn.InBuf >> msg_len;
     _conn.InBuf >> info_flags;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (IsBitSet(info_flags, GM_INFO_LOCATIONS)) {
         _worldmapLoc.clear();
@@ -2646,7 +2646,7 @@ void FOClient::Net_OnGlobalInfo()
         _worldmapCritters.clear();
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 }
 
 void FOClient::Net_OnSomeItems()
@@ -2660,7 +2660,7 @@ void FOClient::Net_OnSomeItems()
     _conn.InBuf >> is_null;
     _conn.InBuf >> items_count;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     vector<ItemView*> item_container;
     for (uint i = 0; i < items_count; i++) {
@@ -2678,7 +2678,7 @@ void FOClient::Net_OnSomeItems()
         }
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     OnReceiveItems.Fire(item_container, param);
 }
@@ -2697,7 +2697,7 @@ void FOClient::Net_OnAutomapsInfo()
     ushort locs_count;
     _conn.InBuf >> locs_count;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     for (ushort i = 0; i < locs_count; i++) {
         uint loc_id;
@@ -2741,7 +2741,7 @@ void FOClient::Net_OnAutomapsInfo()
         }
     }
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 }
 
 void FOClient::Net_OnViewMap()
@@ -2755,7 +2755,7 @@ void FOClient::Net_OnViewMap()
     _conn.InBuf >> loc_id;
     _conn.InBuf >> loc_ent;
 
-    CHECK_IN_BUF_ERROR(_conn);
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
