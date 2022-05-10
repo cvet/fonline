@@ -105,12 +105,11 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
-        if (_bakedFiles.count(string(relative_path)) != 0u) {
+        if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
             continue;
         }
 
-        string ext = _str(relative_path).getFileExtension();
+        string ext = _str(file_header.GetPath()).getFileExtension();
         if (target_ext != ext) {
             continue;
         }
@@ -118,8 +117,8 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
         auto file = _allFiles.GetCurFile();
 
         try {
-            auto collection = loader(relative_path, "", file);
-            BakeCollection(relative_path, collection);
+            auto collection = loader(file_header.GetPath(), "", file);
+            BakeCollection(file_header.GetPath(), collection);
         }
         catch (const ImageBakerException& ex) {
             ReportExceptionAndContinue(ex);

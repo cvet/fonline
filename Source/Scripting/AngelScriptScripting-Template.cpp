@@ -1367,7 +1367,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
-    File script_file = _engine->FileSys.ReadFile("Scripts/ServerRootModule.fosb");
+    File script_file = _engine->FileSys.ReadFile("AngelScript/ServerRootModule.fosb");
     RestoreRootModule(engine, script_file);
 #endif
 
@@ -1533,12 +1533,13 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     writer.Write<uint>(static_cast<uint>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
-    auto file = DiskFileSystem::OpenFile(string(script_path) + "b", true);
+    const auto script_out_path = _str("AngelScript/{}b", _str(script_path).extractFileName()).str();
+    auto file = DiskFileSystem::OpenFile(script_out_path, true);
     if (!file) {
-        throw ScriptCompilerException("Can't write binary to file", _str("{}b", script_path));
+        throw ScriptCompilerException("Can't write binary to file", script_out_path);
     }
     if (!file.Write(data)) {
-        throw ScriptCompilerException("Can't write binary to file", _str("{}b", script_path));
+        throw ScriptCompilerException("Can't write binary to file", script_out_path);
     }
 }
 

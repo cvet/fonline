@@ -110,6 +110,7 @@
 #include <deque>
 #include <functional>
 #include <future>
+#include <iostream>
 #include <list>
 #include <map>
 #include <memory>
@@ -254,6 +255,7 @@ extern bool BreakIntoDebugger();
 extern void ReportExceptionAndContinue(const std::exception& ex);
 extern void CreateDumpMessage(string_view appendix, string_view message);
 
+// Todo: pass name to exceptions context args
 class GenericException : public std::exception
 {
 public:
@@ -1399,12 +1401,12 @@ class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value) const -> string = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
     [[nodiscard]] virtual auto ToHashedString(string_view s) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool& failed) -> int = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
 };
 
 class AnimationResolver

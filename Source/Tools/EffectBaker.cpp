@@ -173,18 +173,17 @@ void EffectBaker::AutoBakeEffects()
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
 
         {
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            if (_bakedFiles.count(string(relative_path)) != 0u) {
+            if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
                 continue;
             }
         }
 
-        string ext = _str(relative_path).getFileExtension();
+        string ext = _str(file_header.GetPath()).getFileExtension();
         if (ext != "fofx") {
             continue;
         }
@@ -196,7 +195,7 @@ void EffectBaker::AutoBakeEffects()
         futs.emplace_back(std::async(std::launch::async | std::launch::deferred, &EffectBaker::BakeShaderProgram, this, relative_path, content));
 #else
         try {
-            BakeShaderProgram(relative_path, content);
+            BakeShaderProgram(file_header.GetPath(), content);
         }
         catch (const EffectBakerException& ex) {
             ReportExceptionAndContinue(ex);

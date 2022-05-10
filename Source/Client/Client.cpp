@@ -59,18 +59,19 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
 // clang-format on
 {
     FileSys.AddDataSource("$Embedded");
+    FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
     for (const auto& entry : Settings.ResourceEntries) {
         FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
     }
 
 #if FO_IOS
-    FileSys.AddDataSource("../../Documents", true);
+    FileSys.AddDataSource("../../Documents");
 #elif FO_ANDROID
-    FileSys.AddDataSource("$AndroidAssets", true);
-    // AddDataSource(SDL_AndroidGetInternalStoragePath(), true);
-    // AddDataSource(SDL_AndroidGetExternalStoragePath(), true);
+    FileSys.AddDataSource("$AndroidAssets");
+    // AddDataSource(SDL_AndroidGetInternalStoragePath());
+    // AddDataSource(SDL_AndroidGetExternalStoragePath());
 #elif FO_WEB
-    FileSys.AddDataSource("PersistentData", true);
+    FileSys.AddDataSource("PersistentData");
 #endif
 
     _fpsTick = GameTime.FrameTick();
@@ -81,7 +82,7 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     Settings.MouseY = std::clamp(y, 0, h - 1);
 
     // Language Packs
-    _curLang.LoadFromFiles(FileSys, *this, Settings.Language);
+    _curLang.LoadTexts(FileSys, Settings.Language);
 
     SprMngr.SetSpritesColor(COLOR_IFACE);
 
@@ -741,7 +742,6 @@ void FOClient::Net_SendLogIn()
 
     _conn.OutBuf << _loginName;
     _conn.OutBuf << _loginPassword;
-    _conn.OutBuf << _curLang.NameCode;
 
     AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
 }
@@ -3646,7 +3646,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SetLanguage" && args.size() >= 2) {
         if (args[1].length() == 4) {
-            _curLang.LoadFromCache(Cache, *this, args[1]);
+            _curLang.LoadTexts(FileSys, args[1]);
         }
     }
     else if (cmd == "SetResolution" && args.size() >= 3) {

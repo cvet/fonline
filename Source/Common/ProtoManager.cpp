@@ -38,7 +38,7 @@
 #include "StringUtils.h"
 
 template<class T>
-static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, T*>& protos)
+static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, const T*>& protos)
 {
     auto writer = DataWriter(data);
     writer.Write<uint>(static_cast<uint>(protos.size()));
@@ -64,7 +64,7 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, T*>& pro
         vector<uint>* props_data_sizes = nullptr;
         proto_item->StoreData(true, &props_data, &props_data_sizes);
 
-        writer.Write<uint>(static_cast<ushort>(props_data->size()));
+        writer.Write<ushort>(static_cast<ushort>(props_data->size()));
         for (size_t i = 0; i < props_data->size(); i++) {
             const auto cur_size = props_data_sizes->at(i);
             writer.Write<uint>(cur_size);
@@ -74,7 +74,7 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, T*>& pro
 }
 
 template<class T>
-static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, map<hstring, T*>& protos)
+static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, map<hstring, const T*>& protos)
 {
     vector<const uchar*> props_data;
     vector<uint> props_data_sizes;
@@ -84,7 +84,7 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
         const auto proto_name = string(reader.ReadPtr<char>(proto_name_len), proto_name_len);
         const auto proto_id = name_resolver.ToHashedString(proto_name);
 
-        auto* proto = new std::remove_const_t<T>(proto_id, property_registrator);
+        auto* proto = new T(proto_id, property_registrator);
 
         const auto components_count = reader.Read<ushort>();
         for (ushort j = 0; j < components_count; j++) {
@@ -133,7 +133,7 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
 }
 
 template<class T>
-static void ParseProtos(FileSystem& file_sys, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view app_name, map<hstring, T*>& protos)
+static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view app_name, map<hstring, const T*>& protos)
 {
     // Collect data
     auto files = file_sys.FilterFiles(ext);
@@ -152,7 +152,7 @@ static void ParseProtos(FileSystem& file_sys, NameResolver& name_resolver, const
             auto& kv = *pkv;
             auto name = kv.count("$Name") ? kv["$Name"] : file.GetName();
             auto pid = name_resolver.ToHashedString(name);
-            if (files_protos.count(pid)) {
+            if (files_protos.count(pid) != 0u) {
                 throw ProtoManagerException("Proto already loaded", name);
             }
 
@@ -176,7 +176,7 @@ static void ParseProtos(FileSystem& file_sys, NameResolver& name_resolver, const
 
     // Injection
     auto injection = [&files_protos, &name_resolver](const char* key_name, bool overwrite) {
-        for (auto& [pid, kv] : files_protos) {
+        for (auto&& [pid, kv] : files_protos) {
             if (kv.count(key_name)) {
                 for (const auto& inject_name : _str(kv[key_name]).split(' ')) {
                     if (inject_name == "All") {
@@ -200,10 +200,9 @@ static void ParseProtos(FileSystem& file_sys, NameResolver& name_resolver, const
     injection("$Inject", false);
 
     // Protos
-    for (auto& [fst, snd] : files_protos) {
-        const auto pid = fst;
+    for (auto&& [pid, kv] : files_protos) {
         auto base_name = pid.as_str();
-        RUNTIME_ASSERT(protos.count(pid) == 0);
+        RUNTIME_ASSERT(protos.count(pid) == 0u);
 
         // Fill content from parents
         map<string, string> final_kv;
@@ -224,16 +223,16 @@ static void ParseProtos(FileSystem& file_sys, NameResolver& name_resolver, const
                 InsertMapValues(parent->second, final_kv, true);
             }
         };
-        fill_parent(base_name, snd);
+        fill_parent(base_name, kv);
 
         // Actual content
-        InsertMapValues(snd, final_kv, true);
+        InsertMapValues(kv, final_kv, true);
 
         // Final injection
         injection("$InjectOverride", true);
 
         // Create proto
-        auto* proto = new std::remove_const_t<T>(pid, property_registrator);
+        auto* proto = new T(pid, property_registrator);
         if (!proto->LoadFromText(final_kv)) {
             delete proto;
             throw ProtoManagerException("Proto item fail to load properties", base_name);
@@ -255,28 +254,28 @@ static void ParseProtos(FileSystem& file_sys, NameResolver& name_resolver, const
     }
 
     // Texts
-    for (auto [pid, file_text] : files_texts) {
-        auto* proto = const_cast<std::remove_const_t<T>*>(protos[pid]);
+    for (auto&& [pid, file_text] : files_texts) {
+        auto* proto = const_cast<T*>(protos[pid]);
         RUNTIME_ASSERT(proto);
 
-        for (auto [lang, pairs] : file_text) {
+        for (auto&& [lang, pairs] : file_text) {
             FOMsg temp_msg;
             temp_msg.LoadFromMap(pairs);
 
             auto* msg = new FOMsg();
             uint str_num = 0;
-            while ((str_num = temp_msg.GetStrNumUpper(str_num))) {
+            while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0u) {
                 const auto count = temp_msg.Count(str_num);
                 auto new_str_num = str_num;
 
                 if constexpr (std::is_same_v<T, ProtoItem>) {
-                    new_str_num = ITEM_STR_ID(proto->ProtoId, str_num);
+                    new_str_num = ITEM_STR_ID(proto->GetProtoId().as_uint(), str_num);
                 }
                 else if constexpr (std::is_same_v<T, ProtoCritter>) {
-                    new_str_num = CR_STR_ID(proto->ProtoId, str_num);
+                    new_str_num = CR_STR_ID(proto->GetProtoId().as_uint(), str_num);
                 }
                 else if constexpr (std::is_same_v<T, ProtoLocation>) {
-                    new_str_num = LOC_STR_ID(proto->ProtoId, str_num);
+                    new_str_num = LOC_STR_ID(proto->GetProtoId().as_uint(), str_num);
                 }
 
                 for (const auto n : xrange(count)) {
@@ -294,15 +293,15 @@ ProtoManager::ProtoManager(FOEngineBase* engine) : _engine {engine}
 {
 }
 
-void ProtoManager::Load(FileSystem& file_sys)
+void ProtoManager::ParseProtos(FileSystem& file_sys)
 {
-    ParseProtos(file_sys, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
-    ParseProtos(file_sys, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
-    ParseProtos(file_sys, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
-    ParseProtos(file_sys, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
+    ParseProtosExt<ProtoItem>(file_sys, *_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), "foitem", "ProtoItem", _itemProtos);
+    ParseProtosExt<ProtoCritter>(file_sys, *_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), "focr", "ProtoCritter", _crProtos);
+    ParseProtosExt<ProtoMap>(file_sys, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), "fomap", "ProtoMap", _mapProtos);
+    ParseProtosExt<ProtoLocation>(file_sys, *_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), "foloc", "ProtoLocation", _locProtos);
 
     // Mapper collections
-    for (auto [pid, proto] : _itemProtos) {
+    for (auto&& [pid, proto] : _itemProtos) {
         if (!proto->GetComponents().empty()) {
             const_cast<ProtoItem*>(proto)->CollectionName = _str(*proto->GetComponents().begin()).lower();
         }
@@ -311,7 +310,7 @@ void ProtoManager::Load(FileSystem& file_sys)
         }
     }
 
-    for (auto [pid, proto] : _crProtos) {
+    for (auto&& [pid, proto] : _crProtos) {
         const_cast<ProtoCritter*>(proto)->CollectionName = "all";
     }
 
@@ -321,7 +320,7 @@ void ProtoManager::Load(FileSystem& file_sys)
     }
 
     // Check maps for locations
-    for (auto [pid, proto] : _locProtos) {
+    for (auto&& [pid, proto] : _locProtos) {
         for (auto map_pid : proto->GetMapProtos()) {
             if (_mapProtos.count(map_pid) == 0u) {
                 throw ProtoManagerException("Proto map not found for proto location", map_pid, proto->GetName());
@@ -336,31 +335,26 @@ void ProtoManager::Load(const vector<uchar>& data)
         return;
     }
 
-    const auto uncompressed_data = Compressor::Uncompress(data, 15);
-    if (uncompressed_data.empty()) {
-        throw ProtoManagerException("Unable to uncompress data");
-    }
-
-    auto reader = DataReader(uncompressed_data);
-    ReadProtosFromBinary(*_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), reader, _itemProtos);
-    ReadProtosFromBinary(*_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), reader, _crProtos);
-    ReadProtosFromBinary(*_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), reader, _mapProtos);
-    ReadProtosFromBinary(*_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), reader, _locProtos);
+    auto reader = DataReader(data);
+    ReadProtosFromBinary<ProtoItem>(*_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), reader, _itemProtos);
+    ReadProtosFromBinary<ProtoCritter>(*_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), reader, _crProtos);
+    ReadProtosFromBinary<ProtoMap>(*_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), reader, _mapProtos);
+    ReadProtosFromBinary<ProtoLocation>(*_engine, _engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), reader, _locProtos);
     reader.VerifyEnd();
 }
 
 auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>
 {
     vector<uchar> data;
-    WriteProtosToBinary(data, _itemProtos);
-    WriteProtosToBinary(data, _crProtos);
-    WriteProtosToBinary(data, _mapProtos);
-    WriteProtosToBinary(data, _locProtos);
-    return Compressor::Compress(data);
+    WriteProtosToBinary<ProtoItem>(data, _itemProtos);
+    WriteProtosToBinary<ProtoCritter>(data, _crProtos);
+    WriteProtosToBinary<ProtoMap>(data, _mapProtos);
+    WriteProtosToBinary<ProtoLocation>(data, _locProtos);
+    return data;
 }
 
 template<typename T>
-static auto ValidateProtoResourcesExt(const map<hstring, T*>& protos, set<hstring>& hashes) -> int
+static auto ValidateProtoResourcesExt(const map<hstring, T*>& protos, unordered_set<hstring>& hashes) -> int
 {
     auto errors = 0;
     for (auto& kv : protos) {
@@ -370,7 +364,7 @@ static auto ValidateProtoResourcesExt(const map<hstring, T*>& protos, set<hstrin
             auto* prop = registrator->GetByIndex(i);
             if (prop->IsBaseTypeResource()) {
                 const auto h = proto->GetProperties().template GetValue<hstring>(prop);
-                if (h && !hashes.count(h)) {
+                if (h && hashes.count(h) == 0u) {
                     WriteLog("Resource '{}' not found for property '{}' in prototype '{}'.\n", h, prop->GetName(), proto->GetName());
                     errors++;
                 }
@@ -380,9 +374,9 @@ static auto ValidateProtoResourcesExt(const map<hstring, T*>& protos, set<hstrin
     return errors;
 }
 
-auto ProtoManager::ValidateProtoResources(const vector<string>& resource_names) const -> bool
+void ProtoManager::ValidateProtoResources(const unordered_set<string>& resource_names) const
 {
-    set<hstring> hashes;
+    unordered_set<hstring> hashes;
     for (const auto& name : resource_names) {
         hashes.insert(_engine->ToHashedString(name));
     }
@@ -392,7 +386,10 @@ auto ProtoManager::ValidateProtoResources(const vector<string>& resource_names) 
     errors += ValidateProtoResourcesExt(_crProtos, hashes);
     errors += ValidateProtoResourcesExt(_mapProtos, hashes);
     errors += ValidateProtoResourcesExt(_locProtos, hashes);
-    return errors == 0;
+
+    if (errors != 0) {
+        throw ProtoManagerException("Proto resources verification failed");
+    }
 }
 
 auto ProtoManager::GetProtoItem(hstring proto_id) -> const ProtoItem*

@@ -1232,12 +1232,13 @@ list( APPEND FO_COMMON_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
 
 list( APPEND FO_SERVER_SOURCE
+	# These files included manually per target:
+	# "Source/Server/AppGui.cpp"
+	# "Source/Server/AppGuiDX.cpp"
+	# "Source/Server/AppGuiStub.cpp"
 	"Source/Server/AdminPanel.cpp"
 	"Source/Server/AdminPanel.h"
-	"Source/Server/AppGui.cpp"
 	"Source/Server/AppGui.h"
-	"Source/Server/AppGuiDX.cpp"
-	"Source/Server/AppGuiStub.cpp"
 	"Source/Server/ClientConnection.cpp"
 	"Source/Server/ClientConnection.h"
 	"Source/Server/Critter.cpp"
@@ -1277,10 +1278,6 @@ list( APPEND FO_SERVER_SOURCE
 	"Source/Scripting/ServerMapScriptMethods.cpp"
 	"Source/Scripting/ServerLocationScriptMethods.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp" )
-
-list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGui.cpp" )
-list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGuiDX.cpp" )
-list( REMOVE_ITEM FO_SERVER_SOURCE "Source/Server/AppGuiStub.cpp" )
 
 list( APPEND FO_CLIENT_SOURCE
 	"Source/Client/3dAnimation.cpp"
@@ -1524,6 +1521,7 @@ list( APPEND FO_CODEGEN_OUTPUT
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp"
@@ -1733,7 +1731,17 @@ if( FONLINE_BUILD_BAKER )
 		"Source/Tools/ModelBaker.cpp"
 		"Source/Tools/EffectBaker.h"
 		"Source/Tools/EffectBaker.cpp"
-		"Source/Tools/F2Palette-Include.h" )
+		"Source/Tools/F2Palette-Include.h"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp" )
+	if( FO_ANGELSCRIPT_SCRIPTING )
+		target_sources( FOnlineBaker PRIVATE
+			"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
+			"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
+			"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
+			"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
+			"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
+			"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp" )
+	endif()
 	set_target_properties( FOnlineBaker PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT} )
 	set_target_properties( FOnlineBaker PROPERTIES OUTPUT_NAME "FOnlineBaker" )
 	set_target_properties( FOnlineBaker PROPERTIES COMPILE_DEFINITIONS "FO_ASYNC_BAKE=0;FO_TESTING=0;FO_SINGLEPLAYER=0" )
@@ -1789,7 +1797,8 @@ if( FONLINE_UNIT_TESTS )
 		"Source/Applications/ClientApp.cpp"
 		"Source/Applications/MapperApp.cpp"
 		"Source/Applications/BakerApp.cpp"
-		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp" )
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp" )
 	add_dependencies( FOnlineUnitTests CodeGeneration )
 	set_target_properties( FOnlineUnitTests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineUnitTests PROPERTIES OUTPUT_NAME "FOnlineUnitTests" )
@@ -1820,7 +1829,9 @@ if( FONLINE_CODE_COVERAGE )
 		"Source/Applications/ServerHeadlessApp.cpp"
 		"Source/Applications/ClientApp.cpp"
 		"Source/Applications/MapperApp.cpp"
-		"Source/Applications/BakerApp.cpp" )
+		"Source/Applications/BakerApp.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Mapper.cpp"
+		"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-Baker.cpp" )
 	add_dependencies( FOnlineCodeCoverage CodeGeneration )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_TESTS_OUTPUT} )
 	set_target_properties( FOnlineCodeCoverage PROPERTIES OUTPUT_NAME "FOnlineCodeCoverage" )
@@ -1842,23 +1853,23 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 	# Compile AngelScript scripts
 	if( FO_ANGELSCRIPT_SCRIPTING )
 		set( compileASScripts FOnlineASCompiler
-			-ASMapper "${FO_SCRIPTS_OUTPUT}/MapperRootModule.fos" )
+			-ASMapper "${CMAKE_BINARY_DIR}/GeneratedSource/MapperRootModule.fos" )
 		if( NOT FO_SINGLEPLAYER )
 			list( APPEND compileASScripts
-				-ASServer "${FO_SCRIPTS_OUTPUT}/ServerRootModule.fos"
-				-ASClient "${FO_SCRIPTS_OUTPUT}/ClientRootModule.fos" )
+				-ASServer "${CMAKE_BINARY_DIR}/GeneratedSource/ServerRootModule.fos"
+				-ASClient "${CMAKE_BINARY_DIR}/GeneratedSource/ClientRootModule.fos" )
 		else()
 			list( APPEND compileASScripts
-				-ASSingle "${FO_SCRIPTS_OUTPUT}/SingleRootModule.fos" )
+				-ASSingle "${CMAKE_BINARY_DIR}/GeneratedSource/SingleRootModule.fos" )
 		endif()
 
-		add_custom_target( CompileAngelScripts
+		add_custom_target( CompileAngelScript
 			COMMAND ${compileASScripts}
 			DEPENDS CodeGeneration
 			SOURCES ${FO_ANGELSCRIPT_SOURCE}
 			WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
 			COMMENT "Compile AngelScript scripts" )
-		list( APPEND FO_COMMANDS_GROUP "CompileAngelScripts" )
+		list( APPEND FO_COMMANDS_GROUP "CompileAngelScript" )
 	endif()
 
 	# Compile Mono scripts
@@ -1878,35 +1889,30 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 			COMMENT "Compile Mono scripts" )
 		list( APPEND FO_COMMANDS_GROUP "CompileMonoScripts" )
 	endif()
-
-	# Compile all scripts
-	add_custom_target( CompileAllScripts
-		COMMAND ${compileASScripts}
-		COMMAND ${compileMonoScripts}
-		DEPENDS CodeGeneration
-		SOURCES ${FO_ANGELSCRIPT_SOURCE} ${FO_MONO_SOURCE}
-		WORKING_DIRECTORY ${FO_SCRIPTS_OUTPUT}
-		COMMENT "Compile all scripts" )
-	list( APPEND FO_COMMANDS_GROUP "CompileAllScripts" )
 endif()
 
 # Bakering
-set( bakeContent "FOnlineBaker" )
-foreach( entry ${FO_CONTENT} )
-	list( APPEND bakeContent -ContentEntry ${entry} )
-endforeach()
-
-add_custom_target( BakeContent
-	COMMAND ${bakeContent}
-	DEPENDS CodeGeneration
-	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
-	COMMENT "Bake resources" )
-list( APPEND FO_COMMANDS_GROUP "BakeContent" )
-
 set( bakeResources "FOnlineBaker" )
+
 foreach( entry ${FO_RESOURCES} )
-	list( APPEND bakeResources -ResourcesEntry ${entry} )
+	list( APPEND bakeResources -BakeResourceEntries +${entry} )
 endforeach()
+foreach( entry ${FO_CONTENT} )
+	list( APPEND bakeResources -BakeContentEntries +${entry} )
+endforeach()
+
+if( FO_ANGELSCRIPT_SCRIPTING )
+	list( APPEND bakeResources
+		-ASMapper "${CMAKE_BINARY_DIR}/GeneratedSource/MapperRootModule.fos" )
+	if( NOT FO_SINGLEPLAYER )
+		list( APPEND bakeResources
+			-ASServer "${CMAKE_BINARY_DIR}/GeneratedSource/ServerRootModule.fos"
+			-ASClient "${CMAKE_BINARY_DIR}/GeneratedSource/ClientRootModule.fos" )
+	else()
+		list( APPEND bakeResources
+			-ASSingle "${CMAKE_BINARY_DIR}/GeneratedSource/SingleRootModule.fos" )
+	endif()
+endif()
 
 add_custom_target( BakeResources
 	COMMAND ${bakeResources}
@@ -1914,14 +1920,6 @@ add_custom_target( BakeResources
 	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
 	COMMENT "Bake resources" )
 list( APPEND FO_COMMANDS_GROUP "BakeResources" )
-
-add_custom_target( BakeAll
-	COMMAND ${bakeContent}
-	COMMAND ${bakeResources}
-	DEPENDS CodeGeneration
-	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
-	COMMENT "Bake all" )
-list( APPEND FO_COMMANDS_GROUP "BakeAll" )
 
 # Configs
 StatusMessage( "Configs:" )
@@ -1944,12 +1942,6 @@ endforeach()
 
 # Packaging
 StatusMessage( "Packages:" )
-
-add_custom_target( MakeAllPackages
-	DEPENDS CodeGeneration
-	WORKING_DIRECTORY ${FONLINE_OUTPUT_PATH}
-	COMMENT "Make all packages" )
-list( APPEND FO_COMMANDS_GROUP "MakeAllPackages" )
 
 foreach( package ${FO_PACKAGES} )
 	if( ${Package_${package}_Debug} )
@@ -2020,7 +2012,6 @@ foreach( package ${FO_PACKAGES} )
 
 		StatusMessage( "  ${target} for ${platform}-${arch} in ${pack} with ${config} config" )
 		add_custom_command( TARGET MakePackage-${package} POST_BUILD COMMAND ${packageCommands} )
-		add_custom_command( TARGET MakeAllPackages POST_BUILD COMMAND ${packageCommands} )
 	endforeach()
 endforeach()
 

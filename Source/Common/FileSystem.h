@@ -86,6 +86,7 @@ public:
     ~File() = default;
 
     [[nodiscard]] auto GetStr() const -> string;
+    [[nodiscard]] auto GetData() const -> vector<uchar>;
     [[nodiscard]] auto GetBuf() const -> const uchar*;
     [[nodiscard]] auto GetCurBuf() const -> const uchar*;
     [[nodiscard]] auto GetCurPos() const -> size_t;
@@ -128,7 +129,6 @@ public:
     auto operator=(FileCollection&&) noexcept = delete;
     ~FileCollection() = default;
 
-    [[nodiscard]] auto GetPath() const -> string_view;
     [[nodiscard]] auto GetCurFile() const -> File;
     [[nodiscard]] auto GetCurFileHeader() const -> FileHeader;
     [[nodiscard]] auto FindFileByName(string_view name) const -> File;
@@ -140,9 +140,8 @@ public:
     void ResetCounter();
 
 private:
-    FileCollection(string_view path, vector<FileHeader> files);
+    explicit FileCollection(vector<FileHeader> files);
 
-    string _filterPath {};
     vector<FileHeader> _allFiles {};
     int _curFileIndex {-1};
     mutable unordered_map<string, size_t> _nameToIndex {};
@@ -166,7 +165,7 @@ public:
     [[nodiscard]] auto ReadFileHeader(string_view path) -> FileHeader;
     [[nodiscard]] auto ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile;
 
-    void AddDataSource(string_view path, bool cache_dirs = true);
+    void AddDataSource(string_view path, DataSourceType type = DataSourceType::Default);
 
 private:
     string _rootPath {};

@@ -34,7 +34,6 @@
 #include "Dialogs.h"
 #include "Critter.h"
 #include "FileSystem.h"
-#include "GenericUtils.h"
 #include "Item.h"
 #include "Location.h"
 #include "Log.h"
@@ -493,7 +492,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
             ivalue = _engine->ToHashedString(svalue).as_int();
         }
         else {
-            ivalue = _engine->ResolveGenericValue(svalue, fail);
+            ivalue = _engine->ResolveGenericValue(svalue, &fail);
         }
     } break;
     case DR_ITEM: {
@@ -519,7 +518,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
 
         // Value
         input >> svalue;
-        ivalue = _engine->ResolveGenericValue(svalue, fail);
+        ivalue = _engine->ResolveGenericValue(svalue, &fail);
     } break;
     case DR_SCRIPT: {
         // Script name
@@ -532,7 +531,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
 #define READ_SCRIPT_VALUE_(val) \
     { \
         input >> value_str; \
-        (val) = _engine->ResolveGenericValue(value_str, fail); \
+        (val) = _engine->ResolveGenericValue(value_str, &fail); \
     }
         char value_str[1024];
         if (values_count > 0)

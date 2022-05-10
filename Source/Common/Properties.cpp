@@ -161,7 +161,7 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
         _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndicies.size()) * sizeof(short));
         whole_size += _storeDataSizes.back();
 
-        for (const auto index : xrange(_storeDataComplexIndicies)) {
+        for (const auto index : _storeDataComplexIndicies) {
             const auto* prop = _registrator->_registeredProperties[index];
             _storeData.push_back(_complexData[prop->_complexDataIndex]);
             _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
@@ -313,6 +313,9 @@ auto Properties::LoadPropertyFromText(const Property* prop, string_view text) ->
     }
     else if (prop->_isInt64 || prop->_isUInt64) {
         value_type = AnyData::INT64_VALUE;
+    }
+    else if (prop->_isInt) {
+        value_type = AnyData::INT_VALUE;
     }
     else if (prop->_isBool) {
         value_type = AnyData::BOOL_VALUE;
@@ -951,6 +954,8 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     }
 
     // PlainData property data offset
+    const auto prev_public_space_size = _publicPodDataSpace.size();
+    const auto prev_protected_space_size = _protectedPodDataSpace.size();
     auto data_base_offset = static_cast<uint>(-1);
     if (prop->_dataType == Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
         const auto is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
@@ -1020,16 +1025,26 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     _registeredPropertiesLookup.emplace(prop->GetName(), prop);
 
     // Fix plain data data offsets
-    for (auto* prop : _registeredProperties) {
-        if (prop->_podDataOffset == static_cast<uint>(-1)) {
+    if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
+        prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+    }
+    else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
+        prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+    }
+
+    for (auto* other_prop : _registeredProperties) {
+        if (other_prop->_podDataOffset == static_cast<uint>(-1) || other_prop == prop) {
             continue;
         }
 
-        if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
-            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+        if (IsEnumSet(other_prop->_accessType, Property::AccessType::ProtectedMask)) {
+            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
+            other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
         }
         else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
+            other_prop->_podDataOffset -= static_cast<uint>(prev_protected_space_size);
+            other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
         }
     }
 }

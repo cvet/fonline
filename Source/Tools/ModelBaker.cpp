@@ -221,12 +221,11 @@ void ModelBaker::AutoBakeModels()
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        auto relative_path = string(file_header.GetPath().substr(_allFiles.GetPath().length()));
-        if (_bakedFiles.count(relative_path) != 0u) {
+        if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
             continue;
         }
 
-        string ext = _str(relative_path).getFileExtension();
+        string ext = _str(file_header.GetPath()).getFileExtension();
         if (!(ext == "fbx" || ext == "dae" || ext == "obj")) {
             continue;
         }
@@ -234,8 +233,8 @@ void ModelBaker::AutoBakeModels()
         auto file = _allFiles.GetCurFile();
 
         try {
-            auto data = BakeFile(relative_path, file);
-            _bakedFiles.emplace(relative_path, std::move(data));
+            auto data = BakeFile(file_header.GetPath(), file);
+            _bakedFiles.emplace(file_header.GetPath(), std::move(data));
         }
         catch (const ModelBakerException& ex) {
             ReportExceptionAndContinue(ex);

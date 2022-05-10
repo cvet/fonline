@@ -33,6 +33,7 @@
 
 #include "EngineBase.h"
 #include "GenericUtils.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 FOEngineBase::FOEngineBase(bool is_server) : Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, is_server, *this)), GameProperties(GetInitRef()), _isServer {is_server}
@@ -93,49 +94,71 @@ void FOEngineBase::FinalizeDataRegistration()
     _registrationFinalized = true;
 }
 
-auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int
+auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
 {
     const auto it = _enumsFull.find(string(enum_value_name));
     if (it == _enumsFull.end()) {
-        failed = true;
-        // EnumResolveException
-        return 0;
+        if (failed != nullptr) {
+            WriteLog("Invalid enum full value '{}'.\n", enum_value_name);
+            *failed = true;
+            return 0;
+        }
+
+        throw EnumResolveException("Invalid enum full value", enum_value_name);
     }
 
     return it->second;
 }
 
-auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int
+auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int
 {
     const auto enum_it = _enums.find(string(enum_name));
     if (enum_it == _enums.end()) {
-        failed = true;
-        // EnumResolveException
-        return 0;
+        if (failed != nullptr) {
+            WriteLog("Invalid enum '{}'.\n", enum_name);
+            *failed = true;
+            return 0;
+        }
+
+        throw EnumResolveException("Invalid enum", enum_name, value_name);
     }
 
     const auto value_it = enum_it->second.find(string(value_name));
     if (value_it == enum_it->second.end()) {
-        failed = true;
-        // EnumResolveException
-        return 0;
+        if (failed != nullptr) {
+            WriteLog("Can't resolve '{}' for enum '{}'.\n", value_name, enum_name);
+            *failed = true;
+            return 0;
+        }
+
+        throw EnumResolveException("Invalid enum value", enum_name, value_name);
     }
 
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value) const -> string
+auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> string
 {
     const auto enum_it = _enumsRev.find(string(enum_name));
     if (enum_it == _enumsRev.end()) {
-        // EnumResolveException
-        return string();
+        if (failed != nullptr) {
+            WriteLog("Invalid enum '{}' for resolve value.\n", enum_name);
+            *failed = true;
+            return string();
+        }
+
+        throw EnumResolveException("Invalid enum for resolve value", enum_name, value);
     }
 
     const auto value_it = enum_it->second.find(value);
     if (value_it == enum_it->second.end()) {
-        // EnumResolveException
-        return string();
+        if (failed != nullptr) {
+            WriteLog("Can't resolve value {} for enum '{}'.\n", value, enum_name);
+            *failed = true;
+            return string();
+        }
+
+        throw EnumResolveException("Can't resolve value for enum", enum_name, value);
     }
 
     return value_it->second;
@@ -174,30 +197,25 @@ auto FOEngineBase::ToHashedString(string_view s) const -> hstring
 auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 {
     if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
-        if (failed != nullptr) {
-            *failed = false;
-        }
-
         return hstring(&it->second);
     }
 
     if (failed != nullptr) {
+        WriteLog("Can't resolve hash {}.\n", h);
         *failed = true;
         return hstring();
     }
-    else {
-        throw HashResolveException("Can't resolve hash", h);
-    }
+
+    throw HashResolveException("Can't resolve hash", h);
 }
 
-auto FOEngineBase::ResolveGenericValue(string_view str, bool& failed) -> int
+auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
 {
     if (str.empty()) {
-        failed = true;
         return 0;
     }
 
-    if (str[0] == '@' && str[1] != 0) {
+    if (str[0] == '@') {
         return ToHashedString(str.substr(1)).as_int();
     }
     else if (_str(str).isNumber()) {

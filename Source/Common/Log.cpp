@@ -110,7 +110,7 @@ auto LogGetBuffer() -> string
     return string();
 }
 
-void WriteLogMessage(string_view message)
+void WriteLogMessage(LogType type, string_view message)
 {
     std::lock_guard locker(Data->LogLocker);
 
@@ -122,8 +122,8 @@ void WriteLogMessage(string_view message)
     // Make message
     string result;
     if (!Data->LogDisableTimestamp) {
-        auto now = time(nullptr);
-        const auto* t = localtime(&now);
+        const auto now = ::time(nullptr);
+        const auto* t = ::localtime(&now);
         result += _str("[{}:{}:{}] ", t->tm_hour, t->tm_min, t->tm_sec);
     }
     result += message;
@@ -139,18 +139,42 @@ void WriteLogMessage(string_view message)
 
     if (!Data->LogFunctions.empty()) {
         Data->LogFunctionsInProcess = true;
-        for (auto& [func_name, func] : Data->LogFunctions) {
+        for (auto&& [func_name, func] : Data->LogFunctions) {
             func(result);
         }
         Data->LogFunctionsInProcess = false;
     }
 
 #if FO_WINDOWS
-    OutputDebugStringW(_str(result).toWideChar().c_str());
+    ::OutputDebugStringW(_str(result).toWideChar().c_str());
 #endif
 
 #if !FO_ANDROID
-    printf("%s", result.c_str());
+    // Todo: colorize log texts
+    const char* color = nullptr;
+    switch (type) {
+    case LogType::InfoSection:
+        color = "\033[32m"; // Green
+        break;
+    case LogType::Warning:
+        color = "\033[33m"; // Yellow
+        break;
+    case LogType::Error:
+        color = "\031[31m"; // Red
+        break;
+    default:
+        break;
+    }
+
+    if (color != nullptr) {
+        // std::cout << color << result << "\033[39m";
+        std::cout << result;
+    }
+    else {
+        std::cout << result;
+    }
+
+    std::cout.flush();
 #else
     __android_log_print(ANDROID_LOG_INFO, "FOnline", "%s", result.c_str());
 #endif

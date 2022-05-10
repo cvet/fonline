@@ -39,80 +39,111 @@
 
 #include "imgui.h"
 
-static void SetEntry(string& entry, string_view value)
+static void SetEntry(string& entry, string_view value, bool append)
 {
+    if (!append) {
+        entry.clear();
+    }
+    if (append && !entry.empty()) {
+        entry += " ";
+    }
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
-    entry = std::get<AnyData::STRING_VALUE>(any_value);
+    entry += std::get<AnyData::STRING_VALUE>(any_value);
 }
-static void SetEntry(uchar& entry, string_view value)
+static void SetEntry(uchar& entry, string_view value, bool append)
 {
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry = std::get<AnyData::INT_VALUE>(any_value);
+    entry += static_cast<uchar>(std::get<AnyData::INT_VALUE>(any_value));
 }
-static void SetEntry(short& entry, string_view value)
+static void SetEntry(short& entry, string_view value, bool append)
 {
+    if (!append) {
+        entry = 0;
+    }
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry = std::get<AnyData::INT_VALUE>(any_value);
+    entry = static_cast<short>(entry + std::get<AnyData::INT_VALUE>(any_value));
 }
-static void SetEntry(int& entry, string_view value)
+static void SetEntry(int& entry, string_view value, bool append)
 {
+    if (!append) {
+        entry = 0;
+    }
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry = std::get<AnyData::INT_VALUE>(any_value);
+    entry += std::get<AnyData::INT_VALUE>(any_value);
 }
-static void SetEntry(uint& entry, string_view value)
+static void SetEntry(uint& entry, string_view value, bool append)
 {
+    if (!append) {
+        entry = 0u;
+    }
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
-    entry = std::get<AnyData::INT_VALUE>(any_value);
+    entry += std::get<AnyData::INT_VALUE>(any_value);
 }
-static void SetEntry(bool& entry, string_view value)
+static void SetEntry(bool& entry, string_view value, bool append)
 {
+    if (!append) {
+        entry = false;
+    }
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::BOOL_VALUE);
-    entry = std::get<AnyData::BOOL_VALUE>(any_value);
+    entry |= std::get<AnyData::BOOL_VALUE>(any_value);
 }
-static void SetEntry(float& entry, string_view value)
+static void SetEntry(float& entry, string_view value, bool append)
 {
+    if (!append) {
+        entry = 0.0f;
+    }
     auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::DOUBLE_VALUE);
-    entry = static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(any_value));
+    entry += static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(any_value));
 }
-static void SetEntry(vector<string>& entry, string_view value)
+static void SetEntry(vector<string>& entry, string_view value, bool append)
 {
-    entry.clear();
+    if (!append) {
+        entry.clear();
+    }
     auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::STRING_VALUE);
     auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
     for (const auto& str : arr) {
         entry.emplace_back(std::get<AnyData::STRING_VALUE>(str));
     }
 }
-static void SetEntry(vector<int>& entry, string_view value)
+static void SetEntry(vector<int>& entry, string_view value, bool append)
 {
-    entry.clear();
+    if (!append) {
+        entry.clear();
+    }
     auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
     auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
     for (const auto& str : arr) {
         entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
     }
 }
-static void SetEntry(vector<uint>& entry, string_view value)
+static void SetEntry(vector<uint>& entry, string_view value, bool append)
 {
-    entry.clear();
+    if (!append) {
+        entry.clear();
+    }
     auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
     auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
     for (const auto& str : arr) {
         entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
     }
 }
-static void SetEntry(vector<float>& entry, string_view value)
+static void SetEntry(vector<float>& entry, string_view value, bool append)
 {
-    entry.clear();
+    if (!append) {
+        entry.clear();
+    }
     auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::DOUBLE_VALUE);
     auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
     for (const auto& str : arr) {
         entry.emplace_back(static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(str)));
     }
 }
-static void SetEntry(vector<bool>& entry, string_view value)
+static void SetEntry(vector<bool>& entry, string_view value, bool append)
 {
-    entry.clear();
+    if (!append) {
+        entry.clear();
+    }
     auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::BOOL_VALUE);
     auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
     for (const auto& str : arr) {
@@ -382,21 +413,29 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     const_cast<int&>(MapDirCount) = MapHexagonal ? 6 : 8;
 }
 
-void GlobalSettings::SetValue(string_view setting_name, string value)
+void GlobalSettings::SetValue(string_view setting_name, const string& value)
 {
+#define SET_SETTING(sett) \
+    if (!value.empty() && value[0] == '+') { \
+        SetEntry(sett, value.substr(1), true); \
+    } \
+    else { \
+        SetEntry(sett, value, false); \
+    }
 #define FIXED_SETTING(type, name, ...) \
     if (setting_name == #name) { \
-        SetEntry(const_cast<type&>(name), value); \
+        SET_SETTING(const_cast<type&>(name)); \
         return; \
     }
 #define VARIABLE_SETTING(type, name, ...) \
     if (setting_name == #name) { \
-        SetEntry(name, value); \
+        SET_SETTING(name); \
         return; \
     }
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
+#undef SET_SETTING
 }
 
 void GlobalSettings::Draw(bool editable)

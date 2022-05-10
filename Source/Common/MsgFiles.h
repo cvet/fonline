@@ -39,6 +39,8 @@
 #include "FileSystem.h"
 #include "MsgStr-Include.h"
 
+DECLARE_EXCEPTION(LanguagePackException);
+
 static constexpr auto TEXTMSG_TEXT = 0;
 static constexpr auto TEXTMSG_DLG = 1;
 static constexpr auto TEXTMSG_ITEM = 2;
@@ -92,7 +94,6 @@ private:
 class LanguagePack final
 {
 public:
-    // Todo: move loading to constructors
     LanguagePack() = default;
     LanguagePack(const LanguagePack&) = default;
     LanguagePack(LanguagePack&&) noexcept = default;
@@ -102,13 +103,11 @@ public:
     auto operator==(const uint name_code) const -> bool { return name_code == NameCode; }
     ~LanguagePack() = default;
 
-    [[nodiscard]] auto GetMsgCacheName(int msg_num) const -> string;
-
-    void LoadFromFiles(FileSystem& file_sys, NameResolver& name_resolver, string_view lang_name);
-    void LoadFromCache(const CacheStorage& cache, NameResolver& name_resolver, string_view lang_name);
+    void ParseTexts(FileSystem& file_sys, NameResolver& name_resolver, string_view lang_name);
+    void SaveTextsToDisk(string_view dir) const;
+    void LoadTexts(FileSystem& file_sys, string_view lang_name);
 
     string Name {};
     uint NameCode {};
-    bool IsAllMsgLoaded {};
     FOMsg Msg[TEXTMSG_COUNT] {};
 };

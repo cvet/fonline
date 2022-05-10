@@ -91,6 +91,17 @@ auto File::GetStr() const -> string
     return {reinterpret_cast<const char*>(_fileBuf.get()), _fileSize};
 }
 
+auto File::GetData() const -> vector<uchar>
+{
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
+
+    vector<uchar> result;
+    result.resize(_fileSize);
+    std::memcpy(result.data(), _fileBuf.get(), _fileSize);
+    return result;
+}
+
 auto File::GetBuf() const -> const uchar*
 {
     RUNTIME_ASSERT(_isLoaded);
@@ -288,7 +299,7 @@ auto File::GetLEUInt() -> uint
     return res;
 }
 
-FileCollection::FileCollection(string_view path, vector<FileHeader> files) : _filterPath {path}, _allFiles {std::move(files)}
+FileCollection::FileCollection(vector<FileHeader> files) : _allFiles {std::move(files)}
 {
 }
 
@@ -302,11 +313,6 @@ auto FileCollection::MoveNext() -> bool
 void FileCollection::ResetCounter()
 {
     _curFileIndex = -1;
-}
-
-auto FileCollection::GetPath() const -> string_view
-{
-    return _filterPath;
 }
 
 auto FileCollection::GetCurFile() const -> File
@@ -388,9 +394,9 @@ auto FileCollection::GetFilesCount() const -> size_t
     return _allFiles.size();
 }
 
-void FileSystem::AddDataSource(string_view path, bool cache_dirs)
+void FileSystem::AddDataSource(string_view path, DataSourceType type)
 {
-    _dataSources.emplace(_dataSources.begin(), path, cache_dirs);
+    _dataSources.emplace(_dataSources.begin(), path, type);
 }
 
 auto FileSystem::FilterFiles(string_view ext) -> FileCollection
@@ -401,9 +407,14 @@ auto FileSystem::FilterFiles(string_view ext) -> FileCollection
 auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection
 {
     vector<FileHeader> files;
+    unordered_set<string> processed_files;
 
     for (auto& ds : _dataSources) {
-        for (auto& fname : ds.GetFileNames(dir, include_subdirs, ext)) {
+        for (const auto& fname : ds.GetFileNames(dir, include_subdirs, ext)) {
+            if (!processed_files.insert(fname).second) {
+                continue;
+            }
+
             size_t size = 0u;
             uint64 write_time = 0u;
             const auto ok = ds.IsFilePresent(fname, _str(fname).lower(), size, write_time);
@@ -414,7 +425,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
         }
     }
 
-    return {dir, std::move(files)};
+    return FileCollection({std::move(files)});
 }
 
 auto FileSystem::ReadFile(string_view path) -> File

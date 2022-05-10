@@ -112,6 +112,7 @@ public:
     [[nodiscard]] static auto OpenFile(string_view fname, bool write, bool write_through) -> DiskFile;
     [[nodiscard]] static auto FindFiles(string_view path, string_view ext) -> DiskFind;
 
+    static auto IsDir(string_view path) -> bool;
     static auto DeleteFile(string_view fname) -> bool;
     static auto CopyFile(string_view fname, string_view copy_fname) -> bool;
     static auto RenameFile(string_view fname, string_view new_fname) -> bool;

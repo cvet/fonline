@@ -1747,10 +1747,10 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "Layer" || token == "Value") {
                 (*istr) >> buf;
                 if (token == "Layer") {
-                    layer = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                    layer = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 }
                 else {
-                    layer_val = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                    layer_val = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 }
 
                 link = &dummy_link;
@@ -1810,7 +1810,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     for (auto& cut_layer_name : cur_layer_names) {
                         if (cut_layer_name != "All") {
-                            const auto cut_layer = _modelMngr._nameResolver.ResolveGenericValue(cut_layer_name, convert_value_fail);
+                            const auto cut_layer = _modelMngr._nameResolver.ResolveGenericValue(cut_layer_name, &convert_value_fail);
                             cut->Layers.push_back(cut_layer);
                         }
                         else {
@@ -1999,7 +1999,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto disabled_layers = _str(buf).split('-');
 
                 for (const auto& disabled_layer_name : disabled_layers) {
-                    const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, convert_value_fail);
+                    const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, &convert_value_fail);
                     if (disabled_layer >= 0 && disabled_layer < LAYERS3D_COUNT) {
                         link->DisabledLayer.push_back(disabled_layer);
                     }
@@ -2025,7 +2025,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Texture") {
                 (*istr) >> buf;
-                auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 (*istr) >> buf;
                 if (index >= 0 && index < EFFECT_TEXTURES) {
@@ -2040,9 +2040,9 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "Anim" || token == "AnimSpeed" || token == "AnimExt" || token == "AnimSpeedExt") {
                 // Index animation
                 (*istr) >> buf;
-                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 if (token == "Anim" || token == "AnimExt") {
                     // Todo: add reverse playing of 3d animation
@@ -2069,14 +2069,14 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "AnimLayerValue") {
                 (*istr) >> buf;
-                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 (*istr) >> buf;
-                const auto anim_layer = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto anim_layer = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 uint index = (ind1 << 16) | ind2;
                 if (_animLayerValues.count(index) == 0u) {
@@ -2094,9 +2094,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto ind1 = 0;
                 auto ind2 = 0;
                 (*istr) >> buf;
-                ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 if (valuei == 1) {
                     _anim1Equals.emplace(ind1, ind2);
@@ -2125,7 +2125,7 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "RenderDir") {
                 (*istr) >> buf;
 
-                _renderAnimDir = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                _renderAnimDir = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
             }
             else if (token == "DisableShadow") {
                 _shadowDisabled = true;
@@ -2134,9 +2134,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto w = 0;
                 auto h = 0;
                 (*istr) >> buf;
-                w = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                w = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                h = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                h = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 _drawWidth = w;
                 _drawHeight = h;

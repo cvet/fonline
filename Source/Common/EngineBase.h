@@ -54,12 +54,12 @@ public:
     [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int override;
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override;
-    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value) const -> string override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string override;
     [[nodiscard]] auto ToHashedString(string_view s) const -> hstring override;
     [[nodiscard]] auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
-    [[nodiscard]] auto ResolveGenericValue(string_view str, bool& failed) -> int override;
+    [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int override;
     [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
 

@@ -97,6 +97,7 @@ def checkErrors():
             writeStub('DataRegistration-Client.cpp')
             writeStub('DataRegistration-Mapper.cpp')
             writeStub('DataRegistration-Single.cpp')
+            writeStub('DataRegistration-Baker.cpp')
             writeStub('DataRegistration-ServerCompiler.cpp')
             writeStub('DataRegistration-ClientCompiler.cpp')
             writeStub('DataRegistration-MapperCompiler.cpp')
@@ -1017,182 +1018,192 @@ except Exception as ex:
     showError('Code generation for data registration failed', ex)
 checkErrors()
     
-def genDataRegistration(isASCompiler):
-    if args.multiplayer:
-        for target in ['Server', 'Client', 'Mapper']:
-            globalLines = []
-            registerLines = []
-            restoreLines = []
-            propertyMapLines = []
+def genDataRegistration(target, isASCompiler):
+    globalLines = []
+    registerLines = []
+    restoreLines = []
+    propertyMapLines = []
 
-            # Enums
-            registerLines.append('// Enums')
-            for e in codeGenTags['ExportEnum']:
-                gname, utype, keyValues, _, _ = e
-                registerLines.append('AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
-                registerLines.append('{')
-                for kv in keyValues:
-                    registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
-                registerLines.append('});')
-                registerLines.append('')
-            if target != 'Client' or isASCompiler:
-                for e in codeGenTags['Enum']:
-                    gname, utype, keyValues, _, _ = e
-                    registerLines.append('AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
-                    registerLines.append('{')
-                    for kv in keyValues:
-                        registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
-                    registerLines.append('});')
-                    registerLines.append('')
-            
-            # Property registrators
-            registerLines.append('// Properties')
-            for entity in gameEntities:
-                registerLines.append('registrators["' + entity + '"] = CreatePropertyRegistrator("' + entity + '");')
+    # Enums
+    registerLines.append('// Enums')
+    for e in codeGenTags['ExportEnum']:
+        gname, utype, keyValues, _, _ = e
+        registerLines.append('AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
+        registerLines.append('{')
+        for kv in keyValues:
+            registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
+        registerLines.append('});')
+        registerLines.append('')
+    if target != 'Client' or isASCompiler:
+        for e in codeGenTags['Enum']:
+            gname, utype, keyValues, _, _ = e
+            registerLines.append('AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
+            registerLines.append('{')
+            for kv in keyValues:
+                registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
+            registerLines.append('});')
             registerLines.append('')
-            
-            # Properties
-            def getEnumFlags(t, ename = 'Enum'):
-                tt = t.split('.')
-                if tt[0] == 'dict':
-                    return getEnumFlags(tt[1], 'KeyEnum') + getEnumFlags('.'.join(tt[2:]))
-                if tt[0] == 'arr':
-                    return getEnumFlags(tt[1])
-                if tt[0] in scriptEnums or tt[0] in engineEnums:
-                    return [ename, '=', tt[0]]
-                return []
-            for entity in gameEntities:
-                registerLines.append('registrator = registrators["' + entity + '"];')
-                for propTag in codeGenTags['ExportProperty']:
-                    ent, access, type, name, flags, _ = propTag
-                    if ent == entity:
-                        registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
-                                access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
-                if target != 'Client' or isASCompiler:
-                    for propTag in codeGenTags['Property']:
-                        ent, access, type, name, flags, _ = propTag
-                        if ent == entity:
-                            registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
-                                    access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
-                registerLines.append('')
-            
-            # Restore enums info
-            if target == 'Server' and not isASCompiler:
-                restoreLines.append('restoreInfo["Enums"] =')
-                restoreLines.append('{')
-                for e in codeGenTags['Enum']:
-                    gname, utype, keyValues, _, _ = e
-                    if keyValues:
-                        restoreLines.append('    "' + gname + ' ' + utype + '"')
-                        for kv in keyValues[:-1]:
-                            restoreLines.append('    " ' + kv[0] + '=' + kv[1] + '"')
-                        restoreLines.append('    " ' + keyValues[-1][0] + '=' + keyValues[-1][1] + '",')
-                    else:
-                        restoreLines.append('    "' + gname + ' ' + utype + '",')
-                restoreLines.append('};')
-                restoreLines.append('')
-            
-            # Restore properties info
-            if target == 'Server' and not isASCompiler:
-                def replaceFakedEnum(t):
-                    tt = t.split('.')
-                    if tt[0] == 'dict':
-                        return 'dict.' + replaceFakedEnum(tt[1]) + replaceFakedEnum('.'.join(tt[2:]))
-                    if tt[0] == 'arr':
-                        return 'arr.' + replaceFakedEnum(tt[1])
-                    if tt[0] in scriptEnums or tt[0] in engineEnums:
-                        return metaTypeToEngineType(tt[0], target, False)
-                    return tt[0]
-                dummyIndex = 0
-                restoreLines.append('restoreInfo["Properties"] =')
-                restoreLines.append('{')
-                for e in codeGenTags['Property']:
-                    entity, access, type, name, flags, _ = e
-                    if access not in ['PrivateServer', 'VirtualPrivateServer']:
-                        allFlags = flags + getEnumFlags(type)
-                        restoreLines.append('    "' + entity + ' ' + access + ' ' + replaceFakedEnum(type) + ' ' + name + (' ' if allFlags else '') + ' '.join(allFlags) + '",')
-                    else:
-                        restoreLines.append('    "' + entity + ' ' + access + ' int __dummy' + str(dummyIndex) + '",')
-                        dummyIndex += 1
-                restoreLines.append('};')
-                restoreLines.append('')
-            
-            # Todo: make script events restorable
-            # Restore events info
-            #if target == 'Server' and not isASCompiler:
-            #    restoreLines.append('restoreInfo["Events"] =')
-            #    restoreLines.append('{')
-            #    for entity in gameEntities:
-            #        for evTag in codeGenTags['Event']:
-            #            targ, ent, evName, evArgs, evFlags, _ = evTag
-            #            if targ in ['Client', 'Common'] and ent == entity:
-            #                restoreLines.append('    "' + entity + ' ' + evName + ' ' + ' '.join([a[0] + ' ' + (a[1] if a[1] else '_') for a in evArgs]) +
-            #                        (' | ' if evFlags else '') + ' '.join(evFlags) + '",')
-            #    restoreLines.append('};')
-            #    restoreLines.append('')
-            
-            # Todo: make setting values restorable
-            # Restore settings
-            #if target == 'Server' and not isASCompiler:
-            #    restoreLines.append('restoreInfo["Settings"] =')
-            #    restoreLines.append('{')
-            #    for settTag in codeGenTags['ExportSettings']:
-            #        grName, targ, settings, flags, _ = settTag
-            #        if targ in ['Common', 'Client']:
-            #            for sett in settings:
-            #                fixOrVar, keyType, keyName, initValues, _ = sett
-            #                restoreLines.append('    "' + grName + ' ' + fixOrVar + ' ' + keyType + ' ' + keyName + (' ' if flags else '') + ' '.join(flags) + (' |' + ' '.join(initValues) if initValues else '') + '",')
-            #    for settTag in codeGenTags['Setting']:
-            #        type, name, initValue, flags, _ = settTag
-            #        restoreLines.append('    "Script fix ' + type + ' ' + name + (' ' if flags else '') + ' '.join(flags) + (' |' + initValue if initValue is not None else '') + '",')
-            #    restoreLines.append('};')
-            #    restoreLines.append('')
-                
-            # Property map
-            if target == 'Client' and not isASCompiler:
-                def addPropMapEntry(e):
-                    propertyMapLines.append('{ "' + e + '", [](RESTORE_ARGS) { RegisterProperty<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
-                fakedEnums = ['ScriptEnum_uint8', 'ScriptEnum_uint16', 'ScriptEnum_int', 'ScriptEnum_uint']
-                for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + fakedEnums:
-                    addPropMapEntry(t)
-                    addPropMapEntry('arr.' + t)
-                for tKey in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'hstring'] + fakedEnums:
-                    for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'hstring', 'string'] + fakedEnums:
-                        addPropMapEntry('dict.' + tKey + '.' + t)
-                        addPropMapEntry('dict.' + tKey + '.arr.' + t)
-            
-            createFile('DataRegistration-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
-            writeCodeGenTemplate('DataRegistration')
-            
-            if not isASCompiler:
-                if target == 'Server':
-                    insertCodeGenLines(restoreLines, 'WriteRestoreInfo')
-                    insertCodeGenLines(registerLines, 'ServerRegister')
-                    insertCodeGenLines(globalLines, 'Global')
-                elif target == 'Client':
-                    insertCodeGenLines(registerLines, 'ClientRegister')
-                    insertCodeGenLines(propertyMapLines, 'PropertyMap')
-                    insertCodeGenLines(globalLines, 'Global')
-                elif target == 'Mapper':
-                    insertCodeGenLines(registerLines, 'MapperRegister')
-                    insertCodeGenLines(globalLines, 'Global')
+    
+    # Property registrators
+    registerLines.append('// Properties')
+    for entity in gameEntities:
+        registerLines.append('registrators["' + entity + '"] = CreatePropertyRegistrator("' + entity + '");')
+    registerLines.append('')
+    
+    # Properties
+    def getEnumFlags(t, ename = 'Enum'):
+        tt = t.split('.')
+        if tt[0] == 'dict':
+            return getEnumFlags(tt[1], 'KeyEnum') + getEnumFlags('.'.join(tt[2:]))
+        if tt[0] == 'arr':
+            return getEnumFlags(tt[1])
+        if tt[0] in scriptEnums or tt[0] in engineEnums:
+            return [ename, '=', tt[0]]
+        return []
+    for entity in gameEntities:
+        registerLines.append('registrator = registrators["' + entity + '"];')
+        for propTag in codeGenTags['ExportProperty']:
+            ent, access, type, name, flags, _ = propTag
+            if ent == entity:
+                registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
+                        access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
+        if target != 'Client' or isASCompiler:
+            for propTag in codeGenTags['Property']:
+                ent, access, type, name, flags, _ = propTag
+                if ent == entity:
+                    registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
+                            access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
+        registerLines.append('')
+    
+    # Restore enums info
+    if target == 'Server' and not isASCompiler:
+        restoreLines.append('restoreInfo["Enums"] =')
+        restoreLines.append('{')
+        for e in codeGenTags['Enum']:
+            gname, utype, keyValues, _, _ = e
+            if keyValues:
+                restoreLines.append('    "' + gname + ' ' + utype + '"')
+                for kv in keyValues[:-1]:
+                    restoreLines.append('    " ' + kv[0] + '=' + kv[1] + '"')
+                restoreLines.append('    " ' + keyValues[-1][0] + '=' + keyValues[-1][1] + '",')
             else:
-                insertCodeGenLines(registerLines, 'CompilerRegister')
-                insertCodeGenLines(globalLines, 'Global')
-            
-            if target == 'Server':
-                insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0',
-                        '#define MAPPER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
-            elif target == 'Client':
-                insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1',
-                        '#define MAPPER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
-            elif target == 'Mapper':
-                insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
-                        '#define MAPPER_REGISTRATION 1', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
+                restoreLines.append('    "' + gname + ' ' + utype + '",')
+        restoreLines.append('};')
+        restoreLines.append('')
+    
+    # Restore properties info
+    if target == 'Server' and not isASCompiler:
+        def replaceFakedEnum(t):
+            tt = t.split('.')
+            if tt[0] == 'dict':
+                return 'dict.' + replaceFakedEnum(tt[1]) + replaceFakedEnum('.'.join(tt[2:]))
+            if tt[0] == 'arr':
+                return 'arr.' + replaceFakedEnum(tt[1])
+            if tt[0] in scriptEnums or tt[0] in engineEnums:
+                return metaTypeToEngineType(tt[0], target, False)
+            return tt[0]
+        dummyIndex = 0
+        restoreLines.append('restoreInfo["Properties"] =')
+        restoreLines.append('{')
+        for e in codeGenTags['Property']:
+            entity, access, type, name, flags, _ = e
+            if access not in ['PrivateServer', 'VirtualPrivateServer']:
+                allFlags = flags + getEnumFlags(type)
+                restoreLines.append('    "' + entity + ' ' + access + ' ' + replaceFakedEnum(type) + ' ' + name + (' ' if allFlags else '') + ' '.join(allFlags) + '",')
+            else:
+                restoreLines.append('    "' + entity + ' ' + access + ' int __dummy' + str(dummyIndex) + '",')
+                dummyIndex += 1
+        restoreLines.append('};')
+        restoreLines.append('')
+    
+    # Todo: make script events restorable
+    # Restore events info
+    #if target == 'Server' and not isASCompiler:
+    #    restoreLines.append('restoreInfo["Events"] =')
+    #    restoreLines.append('{')
+    #    for entity in gameEntities:
+    #        for evTag in codeGenTags['Event']:
+    #            targ, ent, evName, evArgs, evFlags, _ = evTag
+    #            if targ in ['Client', 'Common'] and ent == entity:
+    #                restoreLines.append('    "' + entity + ' ' + evName + ' ' + ' '.join([a[0] + ' ' + (a[1] if a[1] else '_') for a in evArgs]) +
+    #                        (' | ' if evFlags else '') + ' '.join(evFlags) + '",')
+    #    restoreLines.append('};')
+    #    restoreLines.append('')
+    
+    # Todo: make setting values restorable
+    # Restore settings
+    #if target == 'Server' and not isASCompiler:
+    #    restoreLines.append('restoreInfo["Settings"] =')
+    #    restoreLines.append('{')
+    #    for settTag in codeGenTags['ExportSettings']:
+    #        grName, targ, settings, flags, _ = settTag
+    #        if targ in ['Common', 'Client']:
+    #            for sett in settings:
+    #                fixOrVar, keyType, keyName, initValues, _ = sett
+    #                restoreLines.append('    "' + grName + ' ' + fixOrVar + ' ' + keyType + ' ' + keyName + (' ' if flags else '') + ' '.join(flags) + (' |' + ' '.join(initValues) if initValues else '') + '",')
+    #    for settTag in codeGenTags['Setting']:
+    #        type, name, initValue, flags, _ = settTag
+    #        restoreLines.append('    "Script fix ' + type + ' ' + name + (' ' if flags else '') + ' '.join(flags) + (' |' + initValue if initValue is not None else '') + '",')
+    #    restoreLines.append('};')
+    #    restoreLines.append('')
+        
+    # Property map
+    if target == 'Client' and not isASCompiler:
+        def addPropMapEntry(e):
+            propertyMapLines.append('{ "' + e + '", [](RESTORE_ARGS) { RegisterProperty<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
+        fakedEnums = ['ScriptEnum_uint8', 'ScriptEnum_uint16', 'ScriptEnum_int', 'ScriptEnum_uint']
+        for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + fakedEnums:
+            addPropMapEntry(t)
+            addPropMapEntry('arr.' + t)
+        for tKey in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'hstring'] + fakedEnums:
+            for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'hstring', 'string'] + fakedEnums:
+                addPropMapEntry('dict.' + tKey + '.' + t)
+                addPropMapEntry('dict.' + tKey + '.arr.' + t)
+    
+    createFile('DataRegistration-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
+    writeCodeGenTemplate('DataRegistration')
+    
+    if not isASCompiler:
+        if target == 'Server':
+            insertCodeGenLines(restoreLines, 'WriteRestoreInfo')
+            insertCodeGenLines(registerLines, 'ServerRegister')
+            insertCodeGenLines(globalLines, 'Global')
+        elif target == 'Client':
+            insertCodeGenLines(registerLines, 'ClientRegister')
+            insertCodeGenLines(propertyMapLines, 'PropertyMap')
+            insertCodeGenLines(globalLines, 'Global')
+        elif target == 'Mapper':
+            insertCodeGenLines(registerLines, 'MapperRegister')
+            insertCodeGenLines(globalLines, 'Global')
+        elif target == 'Baker':
+            insertCodeGenLines(registerLines, 'BakerRegister')
+            insertCodeGenLines(globalLines, 'Global')
+    else:
+        insertCodeGenLines(registerLines, 'CompilerRegister')
+        insertCodeGenLines(globalLines, 'Global')
+    
+    if target == 'Server':
+        insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0',
+                '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
+    elif target == 'Client':
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1',
+                '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
+    elif target == 'Mapper':
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
+                '#define MAPPER_REGISTRATION 1', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
+    elif target == 'Baker':
+        assert not isASCompiler
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
+                '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 1', '#define COMPILER_MODE 0'], 'Defines')
 
 try:
-    genDataRegistration(False)
-    genDataRegistration(True)
+    genDataRegistration('Baker', False)
+    
+    if args.multiplayer:
+        for target in ['Server', 'Client', 'Mapper']:
+            genDataRegistration(target, False)
+            if args.angelscript:
+                genDataRegistration(target, True)
     
 except Exception as ex:
     showError('Code generation for data registration failed', ex)
@@ -1747,7 +1758,7 @@ checkErrors()
 # AngelScript root file
 def genAngelScriptRoot(target):
     # Generate content file
-    createFile('Content.fos')
+    createFile('Content.fos', args.genoutput)
     def writeEnums(name, lst):
         writeFile('namespace ' + name)
         writeFile('{')
@@ -1791,8 +1802,8 @@ def genAngelScriptRoot(target):
             writeFile('#include "' + file.replace('\\', '/') + ('" // ' + comment if comment else '"'))
             writeFile('}')
 
-        createFile(target + 'RootModule.fos')
-        addInclude(args.output.replace('\\', '/').rstrip('/') + '/Content.fos', 'Generated')
+        createFile(target + 'RootModule.fos', args.genoutput)
+        addInclude(args.genoutput.replace('\\', '/').rstrip('/') + '/Content.fos', 'Generated')
         for file in files:
             addInclude(file[1], 'Sort ' + str(file[0]) if file[0] else None)
 

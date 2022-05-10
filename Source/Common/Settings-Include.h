@@ -48,7 +48,7 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(FileSystemSettings, virtual DummySettings);
 FIXED_SETTING(string, ResourcesDir, "Resources");
-FIXED_SETTING(vector<string>, ResourceEntries, "");
+FIXED_SETTING(vector<string>, ResourceEntries);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -182,8 +182,9 @@ FIXED_SETTING(string, ASMapper);
 SETTING_GROUP_END();
 
 SETTING_GROUP(BakerSettings, virtual DummySettings);
-FIXED_SETTING(vector<string>, ContentEntry);
-FIXED_SETTING(vector<string>, ResourcesEntry);
+VARIABLE_SETTING(vector<string>, BakeResourceEntries);
+VARIABLE_SETTING(vector<string>, BakeContentEntries);
+VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv");
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server

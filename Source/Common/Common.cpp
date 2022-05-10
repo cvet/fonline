@@ -63,14 +63,15 @@ int GlobalDataCallbacksCount;
 
 void InitApp(string_view name)
 {
+    assert(AppName == nullptr);
+
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     {
-        [[maybe_unused]] const backward::SignalHandling sh;
+        [[maybe_unused]] static backward::SignalHandling sh;
         assert(sh.loaded());
     }
 #endif
 
-    assert(AppName == nullptr);
     AppName = new string();
     AppName->append(FO_DEV_NAME);
     if (!name.empty()) {
@@ -120,7 +121,8 @@ auto GetStackTrace() -> string
     printer.snippet = false;
     std::stringstream ss;
     printer.print(st, ss);
-    return ss.str();
+    auto st_str = ss.str();
+    return st_str.back() == '\n' ? st_str.substr(0, st_str.size() - 1) : st_str;
 #else
 
     return "Stack trace: Not supported";
@@ -142,12 +144,12 @@ bool BreakIntoDebugger()
 void ReportExceptionAndExit(const std::exception& ex)
 {
     if (!BreakIntoDebugger()) {
-        WriteLog("{}\n", ex.what());
+        WriteLog(LogType::Error, "\n{}\n\n", ex.what());
         CreateDumpMessage("FatalException", ex.what());
         MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
     }
 
-    std::exit(1);
+    std::quick_exit(EXIT_FAILURE);
 }
 
 void ReportExceptionAndContinue(const std::exception& ex)
@@ -156,7 +158,7 @@ void ReportExceptionAndContinue(const std::exception& ex)
         return;
     }
 
-    WriteLog("{}\n", ex.what());
+    WriteLog(LogType::Error, "\n{}\n\n", ex.what());
 
 #if FO_DEBUG
     MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());

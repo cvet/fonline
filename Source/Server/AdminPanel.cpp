@@ -292,7 +292,7 @@ static void AdminWork(FOServer* server, Session* session)
         }
         else if (cmd == "kill") {
             WriteLog("Admin panel ({}): Kill whole process.\n", admin_name);
-            std::exit(0);
+            std::quick_exit(EXIT_SUCCESS);
         }
         else if (cmd == "stop") {
             if (!server->IsStarted()) {

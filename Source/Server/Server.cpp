@@ -59,12 +59,21 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     WriteLog("Starting server initialization.\n");
 
     FileSys.AddDataSource("$Embedded");
-    FileSys.AddDataSource(Settings.ResourcesDir, false);
+    FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
     RegisterData();
     ScriptSys = (script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys);
 
     GameTime.FrameAdvance();
+
+    // Network
+    WriteLog("Starting server on ports {} and {}.\n", Settings.ServerPort, Settings.ServerPort + 1);
+    if ((_tcpServer = NetServerBase::StartTcpServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
+        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort);
+    }
+    if ((_webSocketsServer = NetServerBase::StartWebSocketsServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
+        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort + 1);
+    }
 
     // Data base
     DbStorage = ConnectToDataBase(Settings.DbStorage);
@@ -79,25 +88,26 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
         }
     }
 
-    // Start data base changes
     DbStorage.StartChanges();
     if (DbHistory) {
         DbHistory.StartChanges();
     }
 
+    // Property callbacks
     // PropertyRegistrator::GlobalSetCallbacks.push_back(EntitySetValue);
 
-    InitLangPacks();
+    // Bans
     LoadBans();
+
+    // Dialogs
     DlgMngr.LoadDialogs();
-    // if (!ProtoMngr.LoadProtosFromFiles(FileSys))
-    //    return false;
 
-    // Language packs
-    InitLangPacksDialogs();
-    InitLangPacksLocations();
-    InitLangPacksItems();
+    // Protos
+    // ProtoMngr.Load();
+    //  if (!ProtoMngr.LoadProtosFromFiles(FileSys))
+    //     return false;
 
+    // Globals
     const auto globals_doc = DbStorage.Get("Game", 1);
     if (globals_doc.empty()) {
         DbStorage.Insert("Game", 1, {{"_Proto", string("")}});
@@ -115,12 +125,32 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     //    return false;
 
     // Update files
-    vector<string> resource_names;
-    InitUpdateFiles(&resource_names);
+    {
+        auto writer = DataWriter(_updateFilesDesc);
 
-    // Validate protos resources
-    if (!ProtoMngr.ValidateProtoResources(resource_names)) {
-        throw ServerInitException("Failed to validate resource names");
+        // ..ResourceEntries
+        // Scripts.fopack
+        // Protos.fopack
+        // Texts.fopack
+        // fopack: f0f0 0001 hash zip data
+        for (const auto& res_entry : Settings.ResourceEntries) {
+            auto files = FileSys.FilterFiles("", "Update/", true);
+            while (files.MoveNext()) {
+                auto file = files.GetCurFile();
+                const auto file_path = string(file.GetName().substr("Update/"_len));
+
+                auto data = file.GetData();
+                _updateFilesData.push_back(data);
+
+                writer.Write<short>(static_cast<short>(file_path.length()));
+                writer.WritePtr(file_path.data(), file_path.length());
+                writer.Write<uint>(static_cast<uint>(data.size()));
+                writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
+            }
+        }
+
+        // Complete files list
+        writer.Write<short>(-1);
     }
 
     // Initialization script
@@ -172,29 +202,19 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
         throw ServerInitException("Start script failed");
     }
 
-    // Commit data base changes
-    DbStorage.CommitChanges();
-    if (DbHistory) {
-        DbHistory.CommitChanges();
-    }
-
-    _stats.ServerStartTick = GameTime.FrameTick();
-
-    // Network
-    WriteLog("Starting server on ports {} and {}.\n", Settings.ServerPort, Settings.ServerPort + 1);
-    if ((_tcpServer = NetServerBase::StartTcpServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
-        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort);
-    }
-    if ((_webSocketsServer = NetServerBase::StartWebSocketsServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
-        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort + 1);
-    }
-
     // Admin manager
     if (Settings.AdminPanelPort != 0u) {
         InitAdminManager(this, static_cast<ushort>(Settings.AdminPanelPort));
     }
 
+    // Commit initial data base changes
+    DbStorage.CommitChanges();
+    if (DbHistory) {
+        DbHistory.CommitChanges();
+    }
+
     GameTime.FrameAdvance();
+    _stats.ServerStartTick = GameTime.FrameTick();
     _fpsTick = GameTime.FrameTick();
     _started = true;
 }
@@ -546,6 +566,10 @@ void FOServer::GetAccesses(vector<string>& client, vector<string>& tester, vecto
 
 void FOServer::OnNewConnection(NetConnection* net_connection)
 {
+    if (!_started) {
+        return;
+    }
+
     auto* connection = new ClientConnection(net_connection);
 
     // Add to free connections
@@ -1553,116 +1577,6 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     }
 }
 
-void FOServer::InitLangPacks()
-{
-    for (const auto& lang_name : Settings.Languages) {
-        if (lang_name.length() != 4) {
-            throw ServerInitException("Language name not equal to four letters {}", lang_name);
-        }
-
-        if (std::find(_langPacks.begin(), _langPacks.end(), lang_name) != _langPacks.end()) {
-            throw ServerInitException("Language pack {} is already initialized", lang_name);
-        }
-
-        LanguagePack lang;
-        lang.LoadFromFiles(FileSys, *this, lang_name);
-        _langPacks.emplace_back(std::move(lang));
-    }
-}
-
-void FOServer::InitLangPacksDialogs()
-{
-    for (auto& lang_pack : _langPacks) {
-        lang_pack.Msg[TEXTMSG_DLG].Clear();
-    }
-
-    const auto& all_protos = ProtoMngr.GetProtoCritters();
-    for (const auto& kv : all_protos) {
-        auto* proto = kv.second;
-        for (uint i = 0, j = static_cast<uint>(proto->TextsLang.size()); i < j; i++) {
-            for (auto& lang : _langPacks) {
-                if (proto->TextsLang[i] != lang.NameCode) {
-                    continue;
-                }
-
-                if (lang.Msg[TEXTMSG_DLG].IsIntersects(*proto->Texts[i])) {
-                    WriteLog("Warning! Proto item '{}' text intersection detected, send notification about this to developers.\n", proto->GetName());
-                }
-
-                lang.Msg[TEXTMSG_DLG] += *proto->Texts[i];
-            }
-        }
-    }
-
-    DialogPack* pack = nullptr;
-    uint index = 0;
-    while ((pack = DlgMngr.GetDialogByIndex(index++)) != nullptr) {
-        for (uint i = 0, j = static_cast<uint>(pack->TextsLang.size()); i < j; i++) {
-            for (auto& lang : _langPacks) {
-                if (pack->TextsLang[i] != lang.NameCode) {
-                    continue;
-                }
-
-                if (lang.Msg[TEXTMSG_DLG].IsIntersects(*pack->Texts[i])) {
-                    WriteLog("Warning! Dialog '{}' text intersection detected, send notification about this to developers.\n", pack->PackName);
-                }
-
-                lang.Msg[TEXTMSG_DLG] += *pack->Texts[i];
-            }
-        }
-    }
-}
-
-void FOServer::InitLangPacksLocations()
-{
-    for (auto& lang_pack : _langPacks) {
-        lang_pack.Msg[TEXTMSG_LOCATIONS].Clear();
-    }
-
-    const auto& protos = ProtoMngr.GetProtoLocations();
-    for (const auto& kv : protos) {
-        const auto* ploc = kv.second;
-        for (uint i = 0, j = static_cast<uint>(ploc->TextsLang.size()); i < j; i++) {
-            for (auto& lang : _langPacks) {
-                if (ploc->TextsLang[i] != lang.NameCode) {
-                    continue;
-                }
-
-                if (lang.Msg[TEXTMSG_LOCATIONS].IsIntersects(*ploc->Texts[i])) {
-                    WriteLog("Warning! Location '{}' text intersection detected, send notification about this to developers.\n", ploc->GetName());
-                }
-
-                lang.Msg[TEXTMSG_LOCATIONS] += *ploc->Texts[i];
-            }
-        }
-    }
-}
-
-void FOServer::InitLangPacksItems()
-{
-    for (auto& lang_pack : _langPacks) {
-        lang_pack.Msg[TEXTMSG_ITEM].Clear();
-    }
-
-    const auto& protos = ProtoMngr.GetProtoItems();
-    for (const auto& kv : protos) {
-        const auto* proto = kv.second;
-        for (uint i = 0, j = static_cast<uint>(proto->TextsLang.size()); i < j; i++) {
-            for (auto& lang : _langPacks) {
-                if (proto->TextsLang[i] != lang.NameCode) {
-                    continue;
-                }
-
-                if (lang.Msg[TEXTMSG_ITEM].IsIntersects(*proto->Texts[i])) {
-                    WriteLog("Warning! Proto item '{}' text intersection detected, send notification about this to developers.\n", proto->GetName());
-                }
-
-                lang.Msg[TEXTMSG_ITEM] += *proto->Texts[i];
-            }
-        }
-    }
-}
-
 void FOServer::LogToClients(string_view str)
 {
     if (!str.empty() && str.back() == '\n') {
@@ -1842,83 +1756,6 @@ void FOServer::LoadBans()
         bans.GotoNextApp("Ban");
     }
     ProcessBans();
-}
-
-void FOServer::InitUpdateFiles(vector<string>* resource_names)
-{
-    _updateFiles.clear();
-    _updateFilesList.clear();
-
-    auto writer = DataWriter(_updateFilesList);
-
-    // Fill texts
-    for (auto& lang_pack : _langPacks) {
-        for (auto i = 0; i < TEXTMSG_COUNT; i++) {
-            const auto msg_cache_name = lang_pack.GetMsgCacheName(i);
-            auto msg_data = lang_pack.Msg[i].GetBinaryData();
-
-            UpdateFile update_file = {};
-            update_file.Data = std::move(msg_data);
-            _updateFiles.emplace_back(update_file);
-
-            writer.Write<short>(static_cast<short>(msg_cache_name.length()));
-            writer.WritePtr(msg_cache_name.c_str(), msg_cache_name.length());
-            writer.Write<uint>(static_cast<uint>(update_file.Data.size()));
-            writer.Write<uint>(Hashing::MurmurHash2(update_file.Data.data(), update_file.Data.size()));
-        }
-    }
-
-    // Fill prototypes
-    {
-        const auto protos_cache_name = string("$protos.cache");
-        auto proto_items_data = ProtoMngr.GetProtosBinaryData();
-
-        UpdateFile update_file = {};
-        update_file.Data = std::move(proto_items_data);
-        _updateFiles.push_back(update_file);
-
-        writer.Write<short>(static_cast<short>(protos_cache_name.length()));
-        writer.WritePtr(protos_cache_name.c_str(), protos_cache_name.length());
-        writer.Write<uint>(static_cast<uint>(update_file.Data.size()));
-        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data.data(), update_file.Data.size()));
-    }
-
-    // Fill files
-    auto files = FileSys.FilterFiles("", "Update/", true);
-    while (files.MoveNext()) {
-        auto file = files.GetCurFile();
-        const auto file_path = string(file.GetName().substr("Update/"_len));
-
-        UpdateFile update_file = {};
-        update_file.Data.resize(file.GetSize());
-        std::memcpy(update_file.Data.data(), file.GetBuf(), file.GetSize());
-        _updateFiles.push_back(update_file);
-
-        writer.Write<short>(static_cast<short>(file_path.length()));
-        writer.WritePtr(file_path.data(), file_path.length());
-        writer.Write<uint>(static_cast<uint>(update_file.Data.size()));
-        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data.data(), update_file.Data.size()));
-    }
-
-    // Append binaries
-    auto binaries = FileSys.FilterFiles("", "Binaries/", true);
-    while (binaries.MoveNext()) {
-        auto file = binaries.GetCurFile();
-
-        UpdateFile update_file = {};
-        update_file.Data.resize(file.GetSize());
-        std::memcpy(update_file.Data.data(), file.GetBuf(), file.GetSize());
-        _updateFiles.push_back(update_file);
-
-        auto file_path = file.GetName().substr("Binaries/"_len);
-        writer.Write<short>(static_cast<short>(file_path.length()));
-        writer.WritePtr(file_path.data(), file_path.length());
-        writer.Write<uint>(static_cast<uint>(update_file.Data.size()));
-        writer.Write<uint>(Hashing::MurmurHash2(update_file.Data.data(), update_file.Data.size()));
-    }
-
-    // Complete files list
-    writer.Write<short>(-1);
 }
 
 void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
@@ -2169,7 +2006,7 @@ void FOServer::Process_Update(ClientConnection* connection)
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     // Send update files list
-    uint msg_len = sizeof(NETMSG_UPDATE_FILES_LIST) + sizeof(msg_len) + sizeof(bool) + sizeof(uint) + static_cast<uint>(_updateFilesList.size());
+    uint msg_len = sizeof(NETMSG_UPDATE_FILES_LIST) + sizeof(msg_len) + sizeof(bool) + sizeof(uint) + static_cast<uint>(_updateFilesDesc.size());
 
     // With global properties
     vector<uchar*>* global_vars_data = nullptr;
@@ -2182,9 +2019,9 @@ void FOServer::Process_Update(ClientConnection* connection)
     connection->Bout << NETMSG_UPDATE_FILES_LIST;
     connection->Bout << msg_len;
     connection->Bout << outdated;
-    connection->Bout << static_cast<uint>(_updateFilesList.size());
-    if (!_updateFilesList.empty()) {
-        connection->Bout.Push(&_updateFilesList[0], static_cast<uint>(_updateFilesList.size()));
+    connection->Bout << static_cast<uint>(_updateFilesDesc.size());
+    if (!_updateFilesDesc.empty()) {
+        connection->Bout.Push(&_updateFilesDesc[0], static_cast<uint>(_updateFilesDesc.size()));
     }
     if (!outdated) {
         NET_WRITE_PROPERTIES(connection->Bout, global_vars_data, global_vars_data_sizes);
@@ -2199,7 +2036,7 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
-    if (file_index >= static_cast<uint>(_updateFiles.size())) {
+    if (file_index >= static_cast<uint>(_updateFilesData.size())) {
         WriteLog("Wrong file index {}, from host '{}'.\n", file_index, connection->GetHost());
         connection->GracefulDisconnect();
         return;
@@ -2219,10 +2056,10 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
         return;
     }
 
-    const auto& update_file = _updateFiles[connection->UpdateFileIndex];
+    const auto& update_file_data = _updateFilesData[connection->UpdateFileIndex];
     const auto offset = connection->UpdateFilePortion * FILE_UPDATE_PORTION;
 
-    if (offset + FILE_UPDATE_PORTION < update_file.Data.size()) {
+    if (offset + FILE_UPDATE_PORTION < update_file_data.size()) {
         connection->UpdateFilePortion++;
     }
     else {
@@ -2230,12 +2067,12 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
     }
 
     uchar data[FILE_UPDATE_PORTION];
-    const auto remaining_size = update_file.Data.size() - offset;
+    const auto remaining_size = update_file_data.size() - offset;
     if (remaining_size >= sizeof(data)) {
-        std::memcpy(data, &update_file.Data[offset], sizeof(data));
+        std::memcpy(data, &update_file_data[offset], sizeof(data));
     }
     else {
-        std::memcpy(data, &update_file.Data[offset], remaining_size);
+        std::memcpy(data, &update_file_data[offset], remaining_size);
         std::memset(&data[remaining_size], 0, sizeof(data) - remaining_size);
     }
 
@@ -2391,15 +2228,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     connection->Bin >> name;
     connection->Bin >> password;
 
-    // Bin hashes
-    uint msg_language = 0;
-    connection->Bin >> msg_language;
-
     CHECK_CLIENT_IN_BUF_ERROR(connection);
-
-    if (const auto it_l = std::find(_langPacks.begin(), _langPacks.end(), msg_language); it_l == _langPacks.end()) {
-        msg_language = (*_langPacks.begin()).NameCode;
-    }
 
     // If only cache checking than disconnect
     if (name.empty()) {
@@ -2502,8 +2331,6 @@ void FOServer::Process_LogIn(ClientConnection* connection)
         connection->GracefulDisconnect();
         return;
     }
-
-    player->LanguageMsg = msg_language;
 
     // Attach critter
     // Todo: attach critter to player

@@ -263,6 +263,25 @@ void FOMapper::RegisterData()
     FinalizeDataRegistration();
 }
 
+#elif BAKER_REGISTRATION
+
+class BakerEngine : public FOEngineBase
+{
+public:
+    BakerEngine() : FOEngineBase(true) { }
+    void RegisterData();
+};
+
+void BakerEngine::RegisterData()
+{
+    unordered_map<string, PropertyRegistrator*> registrators;
+    PropertyRegistrator* registrator;
+
+    ///@ CodeGen BakerRegister
+
+    FinalizeDataRegistration();
+}
+
 #endif
 #endif
 

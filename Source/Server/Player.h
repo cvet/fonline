@@ -122,7 +122,6 @@ public:
     ClientConnection* Connection {};
     int DisableSend {};
     uchar Access {ACCESS_CLIENT};
-    uint LanguageMsg {};
     bool IsTransferring {true};
     string LastSay {};
     uint LastSayEqualCount {};

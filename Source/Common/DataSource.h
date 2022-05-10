@@ -37,13 +37,19 @@
 
 DECLARE_EXCEPTION(DataSourceException);
 
+enum class DataSourceType
+{
+    Default,
+    DirRoot,
+};
+
 class DataSource final
 {
 public:
     class Impl;
 
     DataSource() = delete;
-    DataSource(string_view path, bool cache_dirs);
+    DataSource(string_view path, DataSourceType type);
     DataSource(const DataSource&) = delete;
     DataSource(DataSource&&) noexcept;
     auto operator=(const DataSource&) = delete;

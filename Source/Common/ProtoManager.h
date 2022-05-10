@@ -52,7 +52,6 @@ public:
     ~ProtoManager() = default;
 
     [[nodiscard]] auto GetProtosBinaryData() const -> vector<uchar>;
-    [[nodiscard]] auto ValidateProtoResources(const vector<string>& resource_names) const -> bool;
     [[nodiscard]] auto GetProtoItem(hstring proto_id) -> const ProtoItem*;
     [[nodiscard]] auto GetProtoCritter(hstring proto_id) -> const ProtoCritter*;
     [[nodiscard]] auto GetProtoMap(hstring proto_id) -> const ProtoMap*;
@@ -62,7 +61,8 @@ public:
     [[nodiscard]] auto GetProtoMaps() const -> const map<hstring, const ProtoMap*>&;
     [[nodiscard]] auto GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&;
 
-    void Load(FileSystem& file_sys);
+    void ParseProtos(FileSystem& file_sys);
+    void ValidateProtoResources(const unordered_set<string>& resource_names) const;
     void Load(const vector<uchar>& data);
 
 private:

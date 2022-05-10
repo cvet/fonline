@@ -709,6 +709,12 @@ auto DiskFile::Write(const_span<uchar> data) -> bool
 }
 
 #if !FO_IOS
+auto DiskFileSystem::IsDir(string_view path) -> bool
+{
+    std::error_code ec;
+    return std::filesystem::is_directory(path, ec) && !ec;
+}
+
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {
     std::error_code ec;
@@ -756,6 +762,18 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 }
 
 #else
+
+auto DiskFileSystem::IsDir(string_view path) -> bool
+{
+    struct stat st;
+    if (::stat(path, &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {

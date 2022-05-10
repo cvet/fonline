@@ -106,7 +106,7 @@ private:
 class CachedDir final : public DataSource::Impl
 {
 public:
-    explicit CachedDir(string_view fname);
+    CachedDir(string_view fname, bool recursive);
     CachedDir(const CachedDir&) = delete;
     CachedDir(CachedDir&&) noexcept = default;
     auto operator=(const CachedDir&) = delete;
@@ -226,24 +226,75 @@ private:
     FileNameVec _filesTreeNames {};
 };
 
-DataSource::DataSource(string_view path, bool cache_dirs)
+DataSource::DataSource(string_view path, DataSourceType type)
 {
-    const string ext = _str(path).getFileExtension();
-    if (path == "$AndroidAssets") {
-        _pImpl = std::make_unique<AndroidAssets>();
+    RUNTIME_ASSERT(!path.empty());
+
+    // Special entries
+    if (path.front() == '$') {
+        RUNTIME_ASSERT(type == DataSourceType::Default);
+
+        if (path == "$Embedded") {
+            _pImpl = std::make_unique<ZipFile>(path);
+            return;
+        }
+        else if (path == "$AndroidAssets") {
+            _pImpl = std::make_unique<AndroidAssets>();
+            return;
+        }
+
+        throw DataSourceException("Invalid magic path", path, type);
     }
-    else if (ext == "dat") {
-        _pImpl = std::make_unique<FalloutDat>(path);
+
+    // Dir without subdirs
+    if (type == DataSourceType::DirRoot) {
+        if (!DiskFileSystem::IsDir(path)) {
+            WriteLog(LogType::Warning, "Directory '{}' not found", path);
+        }
+
+        _pImpl = std::make_unique<CachedDir>(path, false);
+        return;
     }
-    else if (ext == "zip" || ext == "bos" || path[0] == '$') {
-        _pImpl = std::make_unique<ZipFile>(path);
+
+    // Raw view
+    if (DiskFileSystem::IsDir(path)) {
+        _pImpl = std::make_unique<CachedDir>(path, true);
+        return;
     }
-    else if (!cache_dirs) {
-        _pImpl = std::make_unique<NonCachedDir>(path);
+
+    // Packed view
+    const auto is_file_present = [](string_view file_path) -> bool {
+        const auto file = DiskFileSystem::OpenFile(file_path, false);
+        return !!file;
+    };
+
+    if (is_file_present(path)) {
+        const string ext = _str(path).getFileExtension();
+        if (ext == "dat") {
+            _pImpl = std::make_unique<FalloutDat>(path);
+            return;
+        }
+        else if (ext == "zip" || ext == "bos") {
+            _pImpl = std::make_unique<ZipFile>(path);
+            return;
+        }
+
+        throw DataSourceException("Unknown file extension", ext, path, type);
     }
-    else {
-        _pImpl = std::make_unique<CachedDir>(path);
+    else if (is_file_present(_str("{}.zip", path))) {
+        _pImpl = std::make_unique<ZipFile>(_str("{}.zip", path));
+        return;
     }
+    else if (is_file_present(_str("{}.bos", path))) {
+        _pImpl = std::make_unique<ZipFile>(_str("{}.bos", path));
+        return;
+    }
+    else if (is_file_present(_str("{}.dat", path))) {
+        _pImpl = std::make_unique<FalloutDat>(_str("{}.dat", path));
+        return;
+    }
+
+    throw DataSourceException("Data pack not found", path, type);
 }
 
 DataSource::~DataSource() = default;
@@ -331,13 +382,13 @@ auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_v
     return GetFileNamesGeneric(fnames, path, include_subdirs, ext);
 }
 
-CachedDir::CachedDir(string_view fname)
+CachedDir::CachedDir(string_view fname, bool recursive)
 {
     _basePath = fname;
     DiskFileSystem::ResolvePath(_basePath);
     _basePath += "/";
 
-    DiskFileSystem::IterateDir(_basePath, "", true, [this](string_view path, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(_basePath, "", recursive, [this](string_view path, size_t size, uint64 write_time) {
         FileEntry fe;
         fe.FileName = _str("{}{}", _basePath, path);
         fe.FileSize = size;
@@ -569,7 +620,10 @@ auto FalloutDat::IsFilePresent(string_view path, string_view path_lower, size_t&
         return false;
     }
 
-    std::memcpy(&size, it->second + 1, sizeof(size));
+    uint real_size = 0;
+    std::memcpy(&real_size, it->second + 1, sizeof(real_size));
+
+    size = real_size;
     write_time = _writeTime;
     return true;
 }
@@ -588,7 +642,7 @@ auto FalloutDat::OpenFile(string_view path, string_view path_lower, size_t& size
     std::memcpy(&real_size, ptr + 1, sizeof(real_size));
     uint packed_size = 0;
     std::memcpy(&packed_size, ptr + 5, sizeof(packed_size));
-    uint offset = 0;
+    int offset = 0;
     std::memcpy(&offset, ptr + 9, sizeof(offset));
 
     if (!_datFile.SetPos(offset, DiskFileSeek::Set)) {

@@ -231,11 +231,6 @@ private:
         string Stats {};
     };
 
-    struct UpdateFile
-    {
-        vector<uchar> Data {};
-    };
-
     struct TextListener
     {
         ScriptFunc<void, Critter*, string> Func {};
@@ -258,12 +253,6 @@ private:
     static constexpr auto BANS_FNAME_EXPIRED = "Save/Bans/Expired.txt";
 
     void RegisterData();
-
-    void InitLangPacks();
-    void InitLangPacksDialogs();
-    void InitLangPacksLocations();
-    void InitLangPacksItems();
-    void InitUpdateFiles(vector<string>* resource_names);
 
     void EntitySetValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSendGlobalValue(Entity* entity, const Property* prop);
@@ -334,11 +323,10 @@ private:
     ServerStats _stats {};
     ServerGui _gui {};
     map<uint, uint> _regIp {};
-    vector<LanguagePack> _langPacks {};
     uint _fpsTick {};
     uint _fpsCounter {};
-    vector<UpdateFile> _updateFiles {};
-    vector<uchar> _updateFilesList {};
+    vector<vector<uchar>> _updateFilesData {};
+    vector<uchar> _updateFilesDesc {};
     vector<TextListener> _textListeners {};
     vector<Player*> _logClients {};
     vector<string> _logLines {};
