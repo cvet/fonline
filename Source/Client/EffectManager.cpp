@@ -55,7 +55,7 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
         if (!file) {
             file = _fileSys.ReadFile(path);
             if (!file) {
-                WriteLog("Effect file '{}' not found.\n", path);
+                WriteLog("Effect file '{}' not found", path);
                 return {};
             }
         }

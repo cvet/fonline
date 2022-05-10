@@ -448,7 +448,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
-    WriteLog("{}\n", text);
+    WriteLog("{}", text);
 }
 
 ///# ...

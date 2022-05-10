@@ -224,7 +224,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     auto dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('R', 'I', 'F', 'F')) {
-        WriteLog("'RIFF' not found.\n");
+        WriteLog("'RIFF' not found");
         return false;
     }
 
@@ -232,19 +232,19 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('W', 'A', 'V', 'E')) {
-        WriteLog("'WAVE' not found.\n");
+        WriteLog("'WAVE' not found");
         return false;
     }
 
     dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('f', 'm', 't', ' ')) {
-        WriteLog("'fmt ' not found.\n");
+        WriteLog("'fmt ' not found");
         return false;
     }
 
     dw_buf = file.GetLEUInt();
     if (dw_buf == 0u) {
-        WriteLog("Unknown format.\n");
+        WriteLog("Unknown format");
         return false;
     }
 
@@ -262,7 +262,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     file.CopyData(&waveformatex, 16);
 
     if (waveformatex.WFormatTag != 1) {
-        WriteLog("Compressed files not supported.\n");
+        WriteLog("Compressed files not supported");
         return false;
     }
 
@@ -276,7 +276,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     }
 
     if (dw_buf != MAKEUINT('d', 'a', 't', 'a')) {
-        WriteLog("Unknown format2.\n");
+        WriteLog("Unknown format2");
         return false;
     }
 
@@ -295,7 +295,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
         break;
     default:
-        WriteLog("Unknown format.\n");
+        WriteLog("Unknown format");
         return false;
     }
 
@@ -329,7 +329,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto* buf = reinterpret_cast<unsigned short*>(&sound->BaseBuf[0]);
     const auto dec_data = acm->readAndDecompress(buf, buf_size);
     if (dec_data != buf_size) {
-        WriteLog("Decode Acm error.\n");
+        WriteLog("Decode Acm error");
         return false;
     }
 
@@ -383,25 +383,25 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     const auto error = ov_open_callbacks(new File {std::move(file)}, sound->OggStream.get(), nullptr, 0, callbacks);
     if (error != 0) {
-        WriteLog("Open OGG file '{}' fail, error:\n", fname);
+        WriteLog("Open OGG file '{}' fail, error:", fname);
         switch (error) {
         case OV_EREAD:
-            WriteLog("A read from media returned an error.\n");
+            WriteLog("A read from media returned an error");
             break;
         case OV_ENOTVORBIS:
-            WriteLog("Bitstream does not contain any Vorbis data.\n");
+            WriteLog("Bitstream does not contain any Vorbis data");
             break;
         case OV_EVERSION:
-            WriteLog("Vorbis version mismatch.\n");
+            WriteLog("Vorbis version mismatch");
             break;
         case OV_EBADHEADER:
-            WriteLog("Invalid Vorbis bitstream header.\n");
+            WriteLog("Invalid Vorbis bitstream header");
             break;
         case OV_EFAULT:
-            WriteLog("Internal logic fault; indicates a bug or heap/stack corruption.\n");
+            WriteLog("Internal logic fault; indicates a bug or heap/stack corruption");
             break;
         default:
-            WriteLog("Unknown error code {}.\n", error);
+            WriteLog("Unknown error code {}", error);
             break;
         }
         return false;

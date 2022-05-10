@@ -154,14 +154,14 @@ FOMapper::FOMapper(GlobalSettings& settings) :
 
 auto FOMapper::InitIface() -> int
 {
-    WriteLog("Init interface.\n");
+    WriteLog("Init interface");
 
     auto& ini = IfaceIni;
 
     // ini = FileSys.ReadConfigFile("mapper_default.ini", *this);
 
     if (!ini) {
-        WriteLog("File 'mapper_default.ini' not found.\n");
+        WriteLog("File 'mapper_default.ini' not found");
         return __LINE__;
     }
 
@@ -270,7 +270,7 @@ auto FOMapper::InitIface() -> int
     // Console
     ConsolePic = SprMngr.LoadAnimation(ini.GetStr("", "ConsolePic", "error"), true, false);
 
-    WriteLog("Init interface complete.\n");
+    WriteLog("Init interface complete");
     return 0;
 }
 
@@ -278,13 +278,13 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) -> bool
 {
     const auto res = IfaceIni.GetStr("", name);
     if (res.empty()) {
-        WriteLog("Signature '{}' not found.\n", name);
+        WriteLog("Signature '{}' not found", name);
         return false;
     }
 
     if (sscanf(res.c_str(), "%d%d%d%d", &comp[0], &comp[1], &comp[2], &comp[3]) != 4) {
         comp.Clear();
-        WriteLog("Unable to parse signature '{}'.\n", name);
+        WriteLog("Unable to parse signature '{}'", name);
         return false;
     }
 

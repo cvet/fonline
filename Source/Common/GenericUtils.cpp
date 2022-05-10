@@ -179,7 +179,7 @@ auto Compressor::Uncompress(const_span<uchar> data, size_t mul_approx) -> vector
             buf.resize(buf_len);
         }
         else if (result != Z_OK) {
-            WriteLog("Unpack error {}.\n", result);
+            WriteLog("Unpack error {}", result);
             return {};
         }
         else {

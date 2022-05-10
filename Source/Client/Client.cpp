@@ -116,11 +116,11 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
         SprMngr.Init3dSubsystem(GameTime, *this, *this);
 
         if (!Preload3dFiles.empty()) {
-            WriteLog("Preload 3d files...\n");
+            WriteLog("Preload 3d files...");
             for (const auto& name : Preload3dFiles) {
                 SprMngr.Preload3dModel(name);
             }
-            WriteLog("Preload 3d files complete.\n");
+            WriteLog("Preload 3d files complete");
         }
     }
 
@@ -129,7 +129,7 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     _conn.AddDisconnectHandler(std::bind(&FOClient::Net_OnDisconnect, this));
     _conn.AddMessageHandler(NETMSG_WRONG_NET_PROTO, std::bind(&FOClient::Net_OnWrongNetProto, this));
     _conn.AddMessageHandler(NETMSG_LOGIN_SUCCESS, std::bind(&FOClient::Net_OnLoginSuccess, this));
-    _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [] { WriteLog("Registration success.\n"); });
+    _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [] { WriteLog("Registration success"); });
     _conn.AddMessageHandler(NETMSG_END_PARSE_TO_GAME, std::bind(&FOClient::Net_OnEndParseToGame, this));
     _conn.AddMessageHandler(NETMSG_ADD_PLAYER, std::bind(&FOClient::Net_OnAddCritter, this, false));
     _conn.AddMessageHandler(NETMSG_ADD_NPC, std::bind(&FOClient::Net_OnAddCritter, this, true));
@@ -728,7 +728,7 @@ void FOClient::Net_SendUpdate()
 
 void FOClient::Net_SendLogIn()
 {
-    WriteLog("Player login.\n");
+    WriteLog("Player login");
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
 
@@ -748,7 +748,7 @@ void FOClient::Net_SendLogIn()
 
 void FOClient::Net_SendCreatePlayer()
 {
-    WriteLog("Player registration.\n");
+    WriteLog("Player registration");
 
     uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
 
@@ -950,7 +950,7 @@ void FOClient::Net_OnWrongNetProto()
 
 void FOClient::Net_OnLoginSuccess()
 {
-    WriteLog("Authentication success.\n");
+    WriteLog("Authentication success");
 
     AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
 
@@ -1150,7 +1150,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
     }
 
     if (msg_num >= TEXTMSG_COUNT) {
-        WriteLog("Msg num invalid value {}.\n", msg_num);
+        WriteLog("Msg num invalid value {}", msg_num);
         return;
     }
 
@@ -1294,7 +1294,7 @@ void FOClient::Net_OnMapText()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
-        WriteLog("Invalid coords, hx {}, hy {}, text '{}'.\n", hx, hy, text);
+        WriteLog("Invalid coords, hx {}, hy {}, text '{}'", hx, hy, text);
         return;
     }
 
@@ -1321,7 +1321,7 @@ void FOClient::Net_OnMapTextMsg()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (msg_num >= TEXTMSG_COUNT) {
-        WriteLog("Msg num invalid value, num {}.\n", msg_num);
+        WriteLog("Msg num invalid value, num {}", msg_num);
         return;
     }
 
@@ -1350,7 +1350,7 @@ void FOClient::Net_OnMapTextMsgLex()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (msg_num >= TEXTMSG_COUNT) {
-        WriteLog("Msg num invalid value, num {}.\n", msg_num);
+        WriteLog("Msg num invalid value, num {}", msg_num);
         return;
     }
 
@@ -1369,7 +1369,7 @@ void FOClient::Net_OnCritterDir()
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (dir >= Settings.MapDirCount) {
-        WriteLog("Invalid dir {}.\n", dir);
+        WriteLog("Invalid dir {}", dir);
         dir = 0;
     }
 
@@ -1740,7 +1740,7 @@ void FOClient::Net_OnCritterCoords()
     }
 
     if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight() || dir >= Settings.MapDirCount) {
-        WriteLog("Error data, hx {}, hy {}, dir {}.\n", hx, hy, dir);
+        WriteLog("Error data, hx {}, hy {}, dir {}", hx, hy, dir);
         return;
     }
 
@@ -1772,7 +1772,7 @@ void FOClient::Net_OnCritterCoords()
 
 void FOClient::Net_OnAllProperties()
 {
-    WriteLog("Chosen properties.\n");
+    WriteLog("Chosen properties");
 
     uint msg_len;
     _conn.InBuf >> msg_len;
@@ -1783,7 +1783,7 @@ void FOClient::Net_OnAllProperties()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
-        WriteLog("Chosen not created, skip.\n");
+        WriteLog("Chosen not created, skip");
         return;
     }
 
@@ -1804,7 +1804,7 @@ void FOClient::Net_OnChosenClearItems()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in clear items.\n");
+        WriteLog("Chosen is not created in clear items");
         return;
     }
 
@@ -1832,7 +1832,7 @@ void FOClient::Net_OnChosenAddItem()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in add item.\n");
+        WriteLog("Chosen is not created in add item");
         return;
     }
 
@@ -1880,13 +1880,13 @@ void FOClient::Net_OnChosenEraseItem()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in erase item.\n");
+        WriteLog("Chosen is not created in erase item");
         return;
     }
 
     auto* item = chosen->GetItem(item_id);
     if (item == nullptr) {
-        WriteLog("Item not found, id {}.\n", item_id);
+        WriteLog("Item not found, id {}", item_id);
         return;
     }
 
@@ -1908,7 +1908,7 @@ void FOClient::Net_OnAllItemsSend()
 
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in all items send.\n");
+        WriteLog("Chosen is not created in all items send");
         return;
     }
 
@@ -2089,7 +2089,7 @@ void FOClient::Net_OnFlyEffect()
     }
 
     if (!CurMap->RunEffect(eff_pid, eff_cr1_hx, eff_cr1_hy, eff_cr2_hx, eff_cr2_hy)) {
-        WriteLog("Run effect '{}' failed.\n", eff_pid);
+        WriteLog("Run effect '{}' failed", eff_pid);
     }
 }
 
@@ -2111,7 +2111,7 @@ void FOClient::Net_OnEndParseToGame()
 {
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
-        WriteLog("Chosen is not created in end parse to game.\n");
+        WriteLog("Chosen is not created in end parse to game");
         return;
     }
 
@@ -2129,7 +2129,7 @@ void FOClient::Net_OnEndParseToGame()
         ShowMainScreen(SCREEN_GLOBAL_MAP, {});
     }
 
-    WriteLog("Entering to game complete.\n");
+    WriteLog("Entering to game complete");
 }
 
 void FOClient::Net_OnProperty(uint data_size)
@@ -2367,7 +2367,7 @@ void FOClient::Net_OnGameInfo()
 
 void FOClient::Net_OnLoadMap()
 {
-    WriteLog("Change map...\n");
+    WriteLog("Change map..");
 
     uint msg_len;
     uint loc_id;
@@ -2428,14 +2428,14 @@ void FOClient::Net_OnLoadMap()
         CurMap->GetMapHash(Cache, map_pid, hash_tiles_cl, hash_scen_cl);
 
         if (hash_tiles != hash_tiles_cl || hash_scen != hash_scen_cl) {
-            WriteLog("Obsolete map data (hashes {}:{}, {}:{}).\n", hash_tiles, hash_tiles_cl, hash_scen, hash_scen_cl);
+            WriteLog("Obsolete map data (hashes {}:{}, {}:{})", hash_tiles, hash_tiles_cl, hash_scen, hash_scen_cl);
             Net_SendGiveMap(false, map_pid, 0, hash_tiles_cl, hash_scen_cl);
             return;
         }
 
         CurMap = new MapView(this, )
         if (!CurMap->LoadMap(Cache, map_pid)) {
-            WriteLog("Map not loaded. Disconnect.\n");
+            WriteLog("Map not loaded. Disconnect");
             NetDisconnect();
             return;
         }*/
@@ -2444,12 +2444,12 @@ void FOClient::Net_OnLoadMap()
         _lookBorders.clear();
         _shootBorders.clear();
 
-        WriteLog("Local map loaded.\n");
+        WriteLog("Local map loaded");
     }
     else {
         GmapNullParams();
 
-        WriteLog("Global map loaded.\n");
+        WriteLog("Global map loaded");
     }
 
     Net_SendLoadMapOk();
@@ -2471,7 +2471,7 @@ void FOClient::Net_OnMap()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    WriteLog("Map {} received...\n", map_pid);
+    WriteLog("Map {} received...", map_pid);
 
     const string map_name = _str("{}.map", map_pid);
     auto tiles = false;
@@ -2550,7 +2550,7 @@ void FOClient::Net_OnMap()
         Cache.SetData(map_name, buf);
     }
     else {
-        WriteLog("Not for all data of map, disconnect.\n");
+        WriteLog("Not for all data of map, disconnect");
         _conn.Disconnect();
         delete[] tiles_data;
         delete[] scen_data;
@@ -2560,7 +2560,7 @@ void FOClient::Net_OnMap()
     delete[] tiles_data;
     delete[] scen_data;
 
-    WriteLog("Map saved.\n");
+    WriteLog("Map saved");
 }
 
 void FOClient::Net_OnGlobalInfo()

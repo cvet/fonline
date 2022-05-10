@@ -225,10 +225,10 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
         const auto* prop = _registrator->Find(key);
         if (prop == nullptr || (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1))) {
             if (prop == nullptr) {
-                WriteLog("Unknown property '{}'.\n", key);
+                WriteLog("Unknown property {}", key);
             }
             else {
-                WriteLog("Invalid property '{}' for reading.\n", prop->GetName());
+                WriteLog("Invalid property {} for reading", prop->GetName());
             }
 
             is_error = true;

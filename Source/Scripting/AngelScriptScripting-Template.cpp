@@ -1095,7 +1095,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
     }
 #endif
 
-    WriteLog("{}\n", formatted_message);
+    WriteLog("{}", formatted_message);
 }
 
 #if COMPILER_MODE
@@ -1497,7 +1497,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
         throw ScriptCompilerException("Preprocessor failed", errors.String);
     }
     else if (!errors.String.empty()) {
-        WriteLog("Preprocessor message: {}.\n", errors.String);
+        WriteLog("Preprocessor message: {}", errors.String);
     }
 
     asIScriptModule* mod = engine->GetModule("Root", asGM_ALWAYS_CREATE);

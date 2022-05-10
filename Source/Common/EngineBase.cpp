@@ -99,7 +99,7 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) c
     const auto it = _enumsFull.find(string(enum_value_name));
     if (it == _enumsFull.end()) {
         if (failed != nullptr) {
-            WriteLog("Invalid enum full value '{}'.\n", enum_value_name);
+            WriteLog("Invalid enum full value {}", enum_value_name);
             *failed = true;
             return 0;
         }
@@ -115,7 +115,7 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_nam
     const auto enum_it = _enums.find(string(enum_name));
     if (enum_it == _enums.end()) {
         if (failed != nullptr) {
-            WriteLog("Invalid enum '{}'.\n", enum_name);
+            WriteLog("Invalid enum {}", enum_name);
             *failed = true;
             return 0;
         }
@@ -126,7 +126,7 @@ auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_nam
     const auto value_it = enum_it->second.find(string(value_name));
     if (value_it == enum_it->second.end()) {
         if (failed != nullptr) {
-            WriteLog("Can't resolve '{}' for enum '{}'.\n", value_name, enum_name);
+            WriteLog("Can't resolve {} for enum {}", value_name, enum_name);
             *failed = true;
             return 0;
         }
@@ -142,7 +142,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
     const auto enum_it = _enumsRev.find(string(enum_name));
     if (enum_it == _enumsRev.end()) {
         if (failed != nullptr) {
-            WriteLog("Invalid enum '{}' for resolve value.\n", enum_name);
+            WriteLog("Invalid enum {} for resolve value", enum_name);
             *failed = true;
             return string();
         }
@@ -153,7 +153,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
     const auto value_it = enum_it->second.find(value);
     if (value_it == enum_it->second.end()) {
         if (failed != nullptr) {
-            WriteLog("Can't resolve value {} for enum '{}'.\n", value, enum_name);
+            WriteLog("Can't resolve value {} for enum {}", value, enum_name);
             *failed = true;
             return string();
         }
@@ -201,7 +201,7 @@ auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
     }
 
     if (failed != nullptr) {
-        WriteLog("Can't resolve hash {}.\n", h);
+        WriteLog("Can't resolve hash {}", h);
         *failed = true;
         return hstring();
     }

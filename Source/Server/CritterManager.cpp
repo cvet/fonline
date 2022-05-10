@@ -48,7 +48,7 @@ CritterManager::CritterManager(FOServer* engine) : _engine {engine}
 
 void CritterManager::LinkCritters()
 {
-    WriteLog("Link critters...\n");
+    WriteLog("Link critters...");
 
     const auto critters = GetAllCritters();
     vector<Critter*> critter_groups;
@@ -86,7 +86,7 @@ void CritterManager::LinkCritters()
         _engine->MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId());
     }
 
-    WriteLog("Link critters complete.\n");
+    WriteLog("Link critters complete");
 }
 
 void CritterManager::InitAfterLoad()

@@ -43,7 +43,7 @@
 #define CHECK_SERVER_IN_BUF_ERROR(conn) \
     do { \
         if ((conn).InBuf.IsError()) { \
-            WriteLog("Wrong network data!\n"); \
+            WriteLog("Wrong network data!"); \
             (conn).Disconnect(); \
             return; \
         } \

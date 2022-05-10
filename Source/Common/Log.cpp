@@ -126,7 +126,10 @@ void WriteLogMessage(LogType type, string_view message)
         const auto* t = ::localtime(&now);
         result += _str("[{}:{}:{}] ", t->tm_hour, t->tm_min, t->tm_sec);
     }
+
+    result.reserve(result.size() + message.length() + 1u);
     result += message;
+    result += '\n';
 
     // Write logs
     if (Data->LogFileHandle) {
@@ -149,7 +152,10 @@ void WriteLogMessage(LogType type, string_view message)
     ::OutputDebugStringW(_str(result).toWideChar().c_str());
 #endif
 
-#if !FO_ANDROID
+#if FO_ANDROID
+    __android_log_print(ANDROID_LOG_INFO, "FOnline", "%s", result.c_str());
+#endif
+
     // Todo: colorize log texts
     const char* color = nullptr;
     switch (type) {
@@ -175,7 +181,4 @@ void WriteLogMessage(LogType type, string_view message)
     }
 
     std::cout.flush();
-#else
-    __android_log_print(ANDROID_LOG_INFO, "FOnline", "%s", result.c_str());
-#endif
 }

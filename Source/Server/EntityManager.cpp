@@ -273,7 +273,7 @@ auto EntityManager::GetLocations() -> vector<Location*>
 
 void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric)
 {
-    WriteLog("Load entities...\n");
+    WriteLog("Load entities...");
 
     // Todo: load locations -> theirs maps -> critters/items on map -> items in critters/containers
     const string query[] = {
@@ -366,12 +366,12 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
         }
     }
 
-    WriteLog("Load entities complete.\n");
+    WriteLog("Load entities complete");
 }
 
 void EntityManager::InitAfterLoad()
 {
-    WriteLog("Init entities after load...\n");
+    WriteLog("Init entities after load...");
 
     for (auto&& [id, entity] : _allEntities) {
         entity->AddRef();
@@ -408,7 +408,7 @@ void EntityManager::InitAfterLoad()
         entity->Release();
     }
 
-    WriteLog("Init entities after load complete.\n");
+    WriteLog("Init entities after load complete");
 }
 
 void EntityManager::FinalizeEntities()

@@ -167,7 +167,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     // Load file data
     auto file = _fileSys.ReadFile(fname);
     if (!file) {
-        WriteLog("3d file '{}' not found.\n", fname);
+        WriteLog("3d file '{}' not found", fname);
         return nullptr;
     }
 
@@ -338,7 +338,7 @@ auto ModelManager::GetHierarchy(string_view xname) -> ModelHierarchy*
     // Load
     auto* root_bone = LoadModel(xname);
     if (root_bone == nullptr) {
-        WriteLog("Unable to load 3d file '{}'.\n", xname);
+        WriteLog("Unable to load 3d file '{}'", xname);
         return nullptr;
     }
 
@@ -1712,7 +1712,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 string fname = _str(name).combinePath(templates[0]);
                 auto fo3d_ex = _modelMngr._fileSys.ReadFile(fname);
                 if (!fo3d_ex) {
-                    WriteLog("Include file '{}' not found.\n", fname);
+                    WriteLog("Include file '{}' not found", fname);
                     continue;
                 }
 
@@ -1742,7 +1742,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Subset") {
                 (*istr) >> buf;
-                WriteLog("Tag 'Subset' obsolete, use 'Mesh' instead.\n");
+                WriteLog("Tag 'Subset' obsolete, use 'Mesh' instead");
             }
             else if (token == "Layer" || token == "Value") {
                 (*istr) >> buf;
@@ -1761,7 +1761,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     link = &_animDataDefault;
                 }
                 else if (layer_val == 0) {
-                    WriteLog("Wrong layer '{}' zero value.\n", layer);
+                    WriteLog("Wrong layer '{}' zero value", layer);
                     link = &dummy_link;
                 }
                 else {
@@ -1861,7 +1861,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     }
                 }
                 else {
-                    WriteLog("Cut file '{}' not found.\n", fname);
+                    WriteLog("Cut file '{}' not found", fname);
                     (*istr) >> buf;
                     (*istr) >> buf;
                     (*istr) >> buf;
@@ -2007,7 +2007,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "DisableSubset") {
                 (*istr) >> buf;
-                WriteLog("Tag 'DisableSubset' obsolete, use 'DisableMesh' instead.\n");
+                WriteLog("Tag 'DisableSubset' obsolete, use 'DisableMesh' instead");
             }
             else if (token == "DisableMesh") {
                 (*istr) >> buf;
@@ -2145,19 +2145,19 @@ auto ModelInformation::Load(string_view name) -> bool
                 disable_animation_interpolation = true;
             }
             else {
-                WriteLog("Unknown token '{}' in file '{}'.\n", token, name);
+                WriteLog("Unknown token '{}' in file '{}'", token, name);
             }
         }
 
         // Process pathes
         if (model.empty()) {
-            WriteLog("'ModelInstance' section not found in file '{}'.\n", name);
+            WriteLog("'ModelInstance' section not found in file '{}'", name);
             return false;
         }
 
         // Check for correct param values
         if (convert_value_fail) {
-            WriteLog("Invalid param values for file '{}'.\n", name);
+            WriteLog("Invalid param values for file '{}'", name);
             return false;
         }
 
@@ -2407,7 +2407,7 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
 
     auto* texture = _modelMngr.LoadTexture(tex_name, _fileName);
     if (texture == nullptr) {
-        WriteLog("Can't load texture '{}'.\n", tex_name);
+        WriteLog("Can't load texture '{}'", tex_name);
     }
     return texture;
 }
@@ -2418,7 +2418,7 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 
     auto* effect = _modelMngr._effectMngr.LoadEffect(name, "", _fileName);
     if (effect == nullptr) {
-        WriteLog("Can't load effect '{}'.\n", name);
+        WriteLog("Can't load effect '{}'", name);
     }
     return effect;
 }

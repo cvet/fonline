@@ -73,7 +73,7 @@ int main(int argc, char** argv)
         auto mapper_failed = false;
 
         if (!settings.ASServer.empty()) {
-            WriteLog("    Compile server scripts at {}\n", settings.ASServer);
+            WriteLog("Compile server scripts at {}", settings.ASServer);
 
             try {
                 ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
@@ -84,12 +84,11 @@ int main(int argc, char** argv)
                 }
 
                 server_failed = true;
-                WriteLog("\n");
             }
         }
 
         if (!settings.ASClient.empty()) {
-            WriteLog("    Compile client scripts at {}\n", settings.ASClient);
+            WriteLog("Compile client scripts at {}", settings.ASClient);
 
             try {
                 ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
@@ -100,12 +99,11 @@ int main(int argc, char** argv)
                 }
 
                 client_failed = true;
-                WriteLog("\n");
             }
         }
 
         if (!settings.ASMapper.empty()) {
-            WriteLog("    Compile mapper scripts at {}\n", settings.ASMapper);
+            WriteLog("Compile mapper scripts at {}", settings.ASMapper);
 
             try {
                 MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
@@ -116,26 +114,21 @@ int main(int argc, char** argv)
                 }
 
                 mapper_failed = true;
-                WriteLog("\n");
             }
         }
 
-        WriteLog("\n");
-
         if (!settings.ASServer.empty()) {
-            WriteLog("    Server scripts compilation {}!\n", server_failed ? "failed" : "succeeded");
+            WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
         }
         if (!settings.ASClient.empty()) {
-            WriteLog("    Client scripts compilation {}!\n", client_failed ? "failed" : "succeeded");
+            WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
         }
         if (!settings.ASMapper.empty()) {
-            WriteLog("    Mapper scripts compilation {}!\n", mapper_failed ? "failed" : "succeeded");
+            WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
         }
         if (settings.ASServer.empty() && settings.ASClient.empty() && settings.ASMapper.empty()) {
-            WriteLog("    Nothing to compile!\n");
+            WriteLog("Nothing to compile!");
         }
-
-        WriteLog("\n");
 
         if (server_failed || client_failed || mapper_failed) {
             return 1;

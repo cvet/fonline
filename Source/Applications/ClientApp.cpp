@@ -157,7 +157,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     try {
         InitApp("");
 
-        WriteLog("Starting {}...\n", FO_GAME_VERSION);
+        WriteLog("Starting {} {}", GetAppName(), FO_GAME_VERSION);
 
         Data->Settings = new GlobalSettings(argc, argv);
         InitApplication(*Data->Settings);
@@ -203,7 +203,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         }
 #endif
 
-        WriteLog("Exit from game.\n");
+        WriteLog("Exit from game");
 
 #if FO_SINGLEPLAYER
         delete Data->Server;

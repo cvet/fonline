@@ -48,10 +48,10 @@ ScriptSystem::ScriptSystem(GlobalSettings& settings) : _settings {settings}
         asIScriptModule* module = asEngine->GetModuleByIndex(i);
         int result = module->ResetGlobalVars();
         if (result < 0)
-            WriteLog("Reset global vars fail, module '{}', error {}.\n", module->GetName(), result);
+            WriteLog("Reset global vars fail, module '{}', error {}", module->GetName(), result);
         result = module->UnbindAllImportedFunctions();
         if (result < 0)
-            WriteLog("Unbind fail, module '{}', error {}.\n", module->GetName(), result);
+            WriteLog("Unbind fail, module '{}', error {}", module->GetName(), result);
     }
 
     while (asEngine->GetModuleCount() > 0)
@@ -60,7 +60,7 @@ ScriptSystem::ScriptSystem(GlobalSettings& settings) : _settings {settings}
 
 bool ScriptSystem::ReloadScripts(string_view target)
 {
-    WriteLog("Reload scripts...\n");
+    WriteLog("Reload scripts...");
 
     ScriptSystem::UnloadScripts();
 
@@ -74,7 +74,7 @@ bool ScriptSystem::ReloadScripts(string_view target)
         File file = fos_files.GetCurFile();
         if (!file)
         {
-            WriteLog("Unable to open file '{}'.\n", file.GetName());
+            WriteLog("Unable to open file '{}'", file.GetName());
             errors++;
             continue;
         }
@@ -83,7 +83,7 @@ bool ScriptSystem::ReloadScripts(string_view target)
         string line = file.GetNonEmptyLine();
         if (line.empty())
         {
-            WriteLog("Error in script '{}', file empty.\n", file.GetName());
+            WriteLog("Error in script '{}', file empty", file.GetName());
             errors++;
             continue;
         }
@@ -91,7 +91,7 @@ bool ScriptSystem::ReloadScripts(string_view target)
         // Check signature
         if (line.find("FOS") == string::npos)
         {
-            WriteLog("Error in script '{}', invalid header '{}'.\n", file.GetName(), line);
+            WriteLog("Error in script '{}', invalid header '{}'", file.GetName(), line);
             errors++;
             continue;
         }
@@ -125,7 +125,7 @@ bool ScriptSystem::ReloadScripts(string_view target)
     });
     if (scripts.empty())
     {
-        WriteLog("No scripts found.\n");
+        WriteLog("No scripts found");
         return false;
     }
 
@@ -133,7 +133,7 @@ bool ScriptSystem::ReloadScripts(string_view target)
     string result_code;
     if (!LoadRootModule(scripts, result_code))
     {
-        WriteLog("Load scripts from files fail.\n");
+        WriteLog("Load scripts from files fail");
         return false;
     }
 
@@ -141,7 +141,7 @@ bool ScriptSystem::ReloadScripts(string_view target)
     CacheEnumValues();
 
     // Done
-    WriteLog("Reload scripts complete.\n");
+    WriteLog("Reload scripts complete");
     return true;
 }
 
@@ -490,12 +490,12 @@ bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_
     {
         while (errors.String[errors.String.length() - 1] == '\n')
             errors.String.pop_back();
-        WriteLog("Preprocessor message '{}'.\n", errors.String);
+        WriteLog("Preprocessor message '{}'", errors.String);
     }
 
     if (errors_count)
     {
-        WriteLog("Unable to preprocess.\n");
+        WriteLog("Unable to preprocess");
         return false;
     }
 
@@ -550,7 +550,7 @@ bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_
     asIScriptModule* module = asEngine->GetModule("Root", asGM_ALWAYS_CREATE);
     if (!module)
     {
-        WriteLog("Create 'Root' module fail.\n");
+        WriteLog("Create 'Root' module fail");
         return false;
     }
 
@@ -564,7 +564,7 @@ bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_
     int as_result = module->AddScriptSection("Root", result.String.c_str());
     if (as_result < 0)
     {
-        WriteLog("Unable to add script section, result {}.\n", as_result);
+        WriteLog("Unable to add script section, result {}", as_result);
         module->Discard();
         return false;
     }
@@ -573,7 +573,7 @@ bool ScriptSystem::LoadRootModule(const ScriptEntryVec& scripts, string& result_
     as_result = module->Build();
     if (as_result < 0)
     {
-        WriteLog("Unable to build module, result {}.\n", as_result);
+        WriteLog("Unable to build module, result {}", as_result);
         module->Discard();
         return false;
     }
@@ -591,7 +591,7 @@ bool ScriptSystem::RestoreRootModule(const UCharVec& bytecode, const UCharVec& l
     asIScriptModule* module = asEngine->GetModule("Root", asGM_ALWAYS_CREATE);
     if (!module)
     {
-        WriteLog("Create 'Root' module fail.\n");
+        WriteLog("Create 'Root' module fail");
         return false;
     }
 
@@ -603,7 +603,7 @@ bool ScriptSystem::RestoreRootModule(const UCharVec& bytecode, const UCharVec& l
     int result = module->LoadByteCode(&binary);
     if (result < 0)
     {
-        WriteLog("Can't load binary, result {}.\n", result);
+        WriteLog("Can't load binary, result {}", result);
         module->Discard();
         return false;
     }
@@ -629,7 +629,7 @@ uint ScriptSystem::BindByFuncName(
     if (!func)
     {
         if (!disable_log)
-            WriteLog("Function '{}' not found.\n", func_decl);
+            WriteLog("Function '{}' not found", func_decl);
         return 0;
     }
 
@@ -680,7 +680,7 @@ uint ScriptSystem::BindByFuncNum(hash func_num, bool is_temp, bool disable_log)
     if (!func)
     {
         if (!disable_log)
-            WriteLog("Function '{}' not found.\n", _str().parseHash(func_num));
+            WriteLog("Function '{}' not found", _str().parseHash(func_num));
         return 0;
     }
 
@@ -699,7 +699,7 @@ string ScriptSystem::GetBindFuncName(uint bind_id)
 {
     if (!bind_id || bind_id >= (uint)bindedFunctions.size())
     {
-        WriteLog("Wrong bind id {}, bind buffer size {}.\n", bind_id, bindedFunctions.size());
+        WriteLog("Wrong bind id {}, bind buffer size {}", bind_id, bindedFunctions.size());
         return "";
     }
 
@@ -876,7 +876,7 @@ int ScriptSystem::ResolveEnumValue(string_view enum_value_name, bool& fail)
     auto it = cachedEnums.find(enum_value_name);
     if (it == cachedEnums.end())
     {
-        WriteLog("Enum value '{}' not found.\n", enum_value_name);
+        WriteLog("Enum value '{}' not found", enum_value_name);
         fail = true;
         return 0;
     }
@@ -1031,7 +1031,7 @@ bool ScriptSystem::RunPrepared()
 
     if (result < 0)
     {
-        WriteLog("Context '{}' execute error {}, state '{}'.\n", ctx_data->Info, result, ContextStatesStr[(int)state]);
+        WriteLog("Context '{}' execute error {}, state '{}'", ctx_data->Info, result, ContextStatesStr[(int)state]);
         ctx->Abort();
         ReturnContext(ctx);
         return false;
@@ -1151,7 +1151,7 @@ void ScriptSystem::RunMandatorySuspended()
 
         // Detect recursion
         if (++i % 10000 == 0)
-            WriteLog("Big loops in suspended contexts.\n");
+            WriteLog("Big loops in suspended contexts");
     }
 }
 
@@ -1199,19 +1199,19 @@ void ScriptSystem::Log(string_view str)
     asIScriptContext* ctx = asGetActiveContext();
     if (!ctx)
     {
-        WriteLog("<unknown> : {}.\n", str);
+        WriteLog("<unknown> : {}", str);
         return;
     }
     asIScriptFunction* func = ctx->GetFunction(0);
     if (!func)
     {
-        WriteLog("<unknown> : {}.\n", str);
+        WriteLog("<unknown> : {}", str);
         return;
     }
 
     int line = ctx->GetLineNumber(0);
     Preprocessor::LineNumberTranslator* lnt = (Preprocessor::LineNumberTranslator*)func->GetModule()->GetUserData();
-    WriteLog("{} : {}\n", Preprocessor::ResolveOriginalFile(line, lnt), str);
+    WriteLog("{} : {}", Preprocessor::ResolveOriginalFile(line, lnt), str);
 }
 
 void ScriptSystem::CallbackMessage(const asSMessageInfo* msg, void* param)
@@ -1222,7 +1222,7 @@ void ScriptSystem::CallbackMessage(const asSMessageInfo* msg, void* param)
     else if (msg->type == asMSGTYPE_INFORMATION)
         type = "Info";
 
-    WriteLog("{} : {} : {} : Line {}.\n", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message,
+    WriteLog("{} : {} : {} : Line {}", Preprocessor::ResolveOriginalFile(msg->row), type, msg->message,
         Preprocessor::ResolveOriginalLine(msg->row));
 }
 

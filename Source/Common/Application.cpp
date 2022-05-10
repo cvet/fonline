@@ -495,11 +495,11 @@ Application::Application(GlobalSettings& settings)
                 SDL_PauseAudioDevice(AudioDeviceId, 0);
             }
             else {
-                WriteLog("SDL open audio device failed, error '{}'. Disable sound.\n", SDL_GetError());
+                WriteLog("SDL open audio device failed, error {}", SDL_GetError());
             }
         }
         else {
-            WriteLog("SDL init audio subsystem failed, error '{}'. Disable sound.\n", SDL_GetError());
+            WriteLog("SDL init audio subsystem failed, error {}", SDL_GetError());
         }
     }
 
@@ -599,7 +599,7 @@ Application::Application(GlobalSettings& settings)
 #define CHECK_EXTENSION(ext, critical) \
     if (!GL_HAS(ext)) { \
         string msg = ((critical) ? "Critical" : "Not critical"); \
-        WriteLog("OpenGL extension '" #ext "' not supported. {}.\n", msg); \
+        WriteLog("OpenGL extension '" #ext "' not supported. {}", msg); \
         if (critical) \
             extension_errors++; \
     }
@@ -743,10 +743,10 @@ Application::Application(GlobalSettings& settings)
             attr.minorVersion = 0;
             gl_context = emscripten_webgl_create_context(nullptr, &attr);
             RUNTIME_ASSERT_STR(gl_context > 0, _str("Failed to create WebGL context, error '{}'", (int)gl_context));
-            WriteLog("Created WebGL1 context.\n");
+            WriteLog("Created WebGL1 context");
         }
         else {
-            WriteLog("Created WebGL2 context.\n");
+            WriteLog("Created WebGL2 context");
         }
 
         EMSCRIPTEN_RESULT r = emscripten_webgl_make_context_current(gl_context);
@@ -795,7 +795,7 @@ Application::Application(GlobalSettings& settings)
             GLint max_uniform_components;
             GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
             if (max_uniform_components < 1024) {
-                WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}.\n", max_uniform_components);
+                WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
             }
 #endif
         }
@@ -867,7 +867,7 @@ Application::Application(GlobalSettings& settings)
             {D3D_FEATURE_LEVEL_9_2, "9.2"},
             {D3D_FEATURE_LEVEL_9_1, "9.1"},
         };
-        WriteLog("Direct3D device created with feature level {}.\n", feature_levels_str.at(feature_level));
+        WriteLog("Direct3D device created with feature level {}", feature_levels_str.at(feature_level));
 
         ID3D11Texture2D* back_buf = nullptr;
         SwapChain->GetBuffer(0, IID_PPV_ARGS(&back_buf));
@@ -1658,7 +1658,7 @@ auto Application::AppRender::CreateEffect(string_view /*name*/, string_view /*de
         }
         if (fail)
         {
-            WriteLog("Invalid commands in effect '{}'.\n", fname);
+            WriteLog("Invalid commands in effect '{}'", fname);
             return nullptr;
         }*/
         /*bool EffectManager::LoadEffectPass(Effect* effect, string_view fname, File& file, uint pass, bool use_in_2d,
@@ -1734,7 +1734,7 @@ version, "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines, "\n", fil
     GL(glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled));
     if (!compiled)
     {
-        WriteLog("Vertex shader not compiled, effect '{}'.\n", fname);
+        WriteLog("Vertex shader not compiled, effect '{}'", fname);
         ShaderInfo::Log("Vertex shader", vs);
         GL(glDeleteShader(vs));
         GL(glDeleteShader(fs));
@@ -1746,7 +1746,7 @@ version, "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines, "\n", fil
     GL(glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled));
     if (!compiled)
     {
-        WriteLog("Fragment shader not compiled, effect '{}'.\n", fname);
+        WriteLog("Fragment shader not compiled, effect '{}'", fname);
         ShaderInfo::Log("Fragment shader", fs);
         GL(glDeleteShader(vs));
         GL(glDeleteShader(fs));
@@ -1782,7 +1782,7 @@ version, "\n", "#define FRAGMENT_SHADER\n", internal_defines, defines, "\n", fil
     GL(glGetProgramiv(program, GL_LINK_STATUS, &linked));
     if (!linked)
     {
-        WriteLog("Failed to link shader program, effect '{}'.\n", fname);
+        WriteLog("Failed to link shader program, effect '{}'", fname);
         ShaderInfo::LogProgram(program);
         GL(glDetachShader(program, vs));
         GL(glDetachShader(program, fs));

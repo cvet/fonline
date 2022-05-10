@@ -56,7 +56,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     DlgMngr(this)
 // clang-format on
 {
-    WriteLog("Starting server initialization.\n");
+    WriteLog("Starting server initialization");
 
     FileSys.AddDataSource("$Embedded");
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
@@ -67,7 +67,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     GameTime.FrameAdvance();
 
     // Network
-    WriteLog("Starting server on ports {} and {}.\n", Settings.ServerPort, Settings.ServerPort + 1);
+    WriteLog("Starting server on ports {} and {}", Settings.ServerPort, Settings.ServerPort + 1);
     if ((_tcpServer = NetServerBase::StartTcpServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
         throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort);
     }
@@ -189,12 +189,12 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
             }
         }
 
-        WriteLog("Process critters visibility...\n");
+        WriteLog("Process critters visibility..");
         for (auto* cr : EntityMngr.GetCritters()) {
             MapMngr.ProcessVisibleCritters(cr);
             MapMngr.ProcessVisibleItems(cr);
         }
-        WriteLog("Process critters visibility complete.\n");
+        WriteLog("Process critters visibility complete");
     }
 
     // Start script
@@ -281,16 +281,16 @@ void FOServer::Shutdown()
     }
 
     // Stats
-    WriteLog("Server stopped.\n");
-    WriteLog("Stats:\n");
-    WriteLog("Traffic:\n");
-    WriteLog("Bytes Send: {}\n", _stats.BytesSend);
-    WriteLog("Bytes Recv: {}\n", _stats.BytesRecv);
-    WriteLog("Cycles count: {}\n", _stats.LoopCycles);
-    WriteLog("Approx cycle period: {}\n", _stats.LoopTime / (_stats.LoopCycles != 0u ? _stats.LoopCycles : 1));
-    WriteLog("Min cycle period: {}\n", _stats.LoopMin);
-    WriteLog("Max cycle period: {}\n", _stats.LoopMax);
-    WriteLog("Count of lags (>100ms): {}\n", _stats.LagsCount);
+    WriteLog("Server stopped");
+    WriteLog("Stats:");
+    WriteLog("Traffic:");
+    WriteLog("Bytes Send: {}", _stats.BytesSend);
+    WriteLog("Bytes Recv: {}", _stats.BytesRecv);
+    WriteLog("Cycles count: {}", _stats.LoopCycles);
+    WriteLog("Approx cycle period: {}", _stats.LoopTime / (_stats.LoopCycles != 0u ? _stats.LoopCycles : 1));
+    WriteLog("Min cycle period: {}", _stats.LoopMin);
+    WriteLog("Max cycle period: {}", _stats.LoopMax);
+    WriteLog("Count of lags (>100ms): {}", _stats.LagsCount);
 
     _didFinishDispatcher();
 }
@@ -817,7 +817,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
     }
 
     if (connection->Bin.IsError()) {
-        WriteLog("Wrong network data from connection ip '{}'.\n", connection->GetHost());
+        WriteLog("Wrong network data from connection ip '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }
@@ -827,7 +827,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
     }
 
     if (GameTime.FrameTick() - connection->LastActivityTime >= PING_CLIENT_LIFE_TIME) {
-        WriteLog("Connection activity timeout from ip '{}'.\n", connection->GetHost());
+        WriteLog("Connection activity timeout from ip '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
     }
@@ -870,7 +870,7 @@ void FOServer::Process_Text(Player* player)
         player->LastSayEqualCount++;
 
         if (player->LastSayEqualCount >= 10) {
-            WriteLog("Flood detected, client '{}'. Disconnect.\n", cr->GetName());
+            WriteLog("Flood detected, client '{}'. Disconnect", cr->GetName());
             player->Connection->HardDisconnect();
             return;
         }
@@ -1980,7 +1980,7 @@ void FOServer::Process_Ping(ClientConnection* connection)
         // Valid pings
     }
     else {
-        WriteLog("Unknown ping {}, client host '{}'.\n", ping, connection->GetHost());
+        WriteLog("Unknown ping {}, client host '{}'", ping, connection->GetHost());
         return;
     }
 
@@ -2037,7 +2037,7 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
     if (file_index >= static_cast<uint>(_updateFilesData.size())) {
-        WriteLog("Wrong file index {}, from host '{}'.\n", file_index, connection->GetHost());
+        WriteLog("Wrong file index {}, from host '{}'", file_index, connection->GetHost());
         connection->GracefulDisconnect();
         return;
     }
@@ -2051,7 +2051,7 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
 void FOServer::Process_UpdateFileData(ClientConnection* connection)
 {
     if (connection->UpdateFileIndex == -1) {
-        WriteLog("Wrong update call, client host '{}'.\n", connection->GetHost());
+        WriteLog("Wrong update call, client host '{}'", connection->GetHost());
         connection->GracefulDisconnect();
         return;
     }
@@ -2449,7 +2449,7 @@ void FOServer::Process_PlaceToGame(Player* player)
     }
     else {
         if (map == nullptr) {
-            WriteLog("Map not found, client '{}'.\n", cr->GetName());
+            WriteLog("Map not found, client '{}'", cr->GetName());
             player->Connection->HardDisconnect();
             return;
         }
@@ -2507,20 +2507,20 @@ void FOServer::Process_GiveMap(Player* player)
 
     const auto* proto_map = ProtoMngr.GetProtoMap(map_pid);
     if (proto_map == nullptr) {
-        WriteLog("Map prototype not found, client '{}'.\n", cr->GetName());
+        WriteLog("Map prototype not found, client '{}'", cr->GetName());
         player->Connection->HardDisconnect();
         return;
     }
 
     if (automap) {
         if (!MapMngr.CheckKnownLoc(cr, loc_id)) {
-            WriteLog("Request for loading unknown automap, client '{}'.\n", cr->GetName());
+            WriteLog("Request for loading unknown automap, client '{}'", cr->GetName());
             return;
         }
 
         auto* loc = MapMngr.GetLocation(loc_id);
         if (loc == nullptr) {
-            WriteLog("Request for loading incorrect automap, client '{}'.\n", cr->GetName());
+            WriteLog("Request for loading incorrect automap, client '{}'", cr->GetName());
             return;
         }
 
@@ -2534,14 +2534,14 @@ void FOServer::Process_GiveMap(Player* player)
             }
         }
         if (!found) {
-            WriteLog("Request for loading incorrect automap, client '{}'.\n", cr->GetName());
+            WriteLog("Request for loading incorrect automap, client '{}'", cr->GetName());
             return;
         }
     }
     else {
         auto* map = MapMngr.GetMap(cr->GetMapId());
         if ((map == nullptr || map_pid != map->GetProtoId()) && map_pid != cr->ViewMapPid) {
-            WriteLog("Request for loading incorrect map, client '{}'.\n", cr->GetName());
+            WriteLog("Request for loading incorrect map, client '{}'", cr->GetName());
             return;
         }
     }
@@ -3039,7 +3039,7 @@ void FOServer::ProcessMove(Critter* cr)
 auto FOServer::Dialog_Compile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
 {
     if (base_dlg.Id < 2) {
-        WriteLog("Wrong dialog id {}.\n", base_dlg.Id);
+        WriteLog("Wrong dialog id {}", base_dlg.Id);
         return false;
     }
 
@@ -3507,7 +3507,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
 void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance)
 {
     if (cl->Talk.Locked) {
-        WriteLog("Dialog locked, client '{}'.\n", cl->GetName());
+        WriteLog("Dialog locked, client '{}'", cl->GetName());
         return;
     }
     if (cl->Talk.Type != TalkType::None) {
@@ -3534,7 +3534,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
         if (!ignore_distance) {
             if (cl->GetMapId() != npc->GetMapId()) {
-                WriteLog("Different maps, npc '{}' {}, client '{}' {}.\n", npc->GetName(), npc->GetMapId(), cl->GetName(), cl->GetMapId());
+                WriteLog("Different maps, npc '{}' {}, client '{}' {}", npc->GetName(), npc->GetMapId(), cl->GetName(), cl->GetMapId());
                 return;
             }
 
@@ -3544,7 +3544,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
                 cl->Send_Position(cl);
                 cl->Send_Position(npc);
                 cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
-                WriteLog("Wrong distance to npc '{}', client '{}'.\n", npc->GetName(), cl->GetName());
+                WriteLog("Wrong distance to npc '{}', client '{}'", npc->GetName(), cl->GetName());
                 return;
             }
 
@@ -3570,7 +3570,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
         if (!npc->IsAlive()) {
             cl->Send_TextMsg(cl, STR_DIALOG_NPC_NOT_LIFE, SAY_NETMSG, TEXTMSG_GAME);
-            WriteLog("Npc '{}' bad condition, client '{}'.\n", npc->GetName(), cl->GetName());
+            WriteLog("Npc '{}' bad condition, client '{}'", npc->GetName(), cl->GetName());
             return;
         }
 
@@ -3605,14 +3605,14 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
         if (!ignore_distance && !GeomHelper.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
             cl->Send_Position(cl);
             cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
-            WriteLog("Wrong distance to hexes, hx {}, hy {}, client '{}'.\n", hx, hy, cl->GetName());
+            WriteLog("Wrong distance to hexes, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());
             return;
         }
 
         dialog_pack = DlgMngr.GetDialog(dlg_pack_id);
         dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
         if (dialogs == nullptr || dialogs->empty()) {
-            WriteLog("No dialogs, hx {}, hy {}, client '{}'.\n", hx, hy, cl->GetName());
+            WriteLog("No dialogs, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());
             return;
         }
     }
@@ -3647,14 +3647,14 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
     it_d = std::find_if(dialogs->begin(), dialogs->end(), [go_dialog](const Dialog& dlg) { return dlg.Id == go_dialog; });
     if (it_d == dialogs->end()) {
         cl->Send_TextMsg(cl, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", go_dialog, cl->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", go_dialog, cl->GetName(), dialog_pack->PackId);
         return;
     }
 
     // Compile
     if (!Dialog_Compile(npc, cl, *it_d, cl->Talk.CurDialog)) {
         cl->Send_TextMsg(cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cl->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog compile fail, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
         return;
     }
 
@@ -3720,7 +3720,7 @@ void FOServer::Process_Dialog(Player* player)
 
     if ((is_npc != 0u && (cr->Talk.Type != TalkType::Critter || cr->Talk.CritterId != talk_id)) || (is_npc == 0u && (cr->Talk.Type != TalkType::Hex || cr->Talk.DialogPackId.as_uint() != talk_id))) {
         CrMngr.CloseTalk(cr);
-        WriteLog("Invalid talk id {}, client '{}'.\n", is_npc, talk_id, cr->GetName());
+        WriteLog("Invalid talk id {}, client '{}'", is_npc, talk_id, cr->GetName());
         return;
     }
 
@@ -3737,7 +3737,7 @@ void FOServer::Process_Dialog(Player* player)
         if (npc == nullptr) {
             cr->Send_TextMsg(cr, STR_DIALOG_NPC_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
             CrMngr.CloseTalk(cr);
-            WriteLog("Npc with id {} not found, client '{}'.\n", talk_id, cr->GetName());
+            WriteLog("Npc with id {} not found, client '{}'", talk_id, cr->GetName());
             return;
         }
     }
@@ -3747,7 +3747,7 @@ void FOServer::Process_Dialog(Player* player)
     auto* dialogs = (dialog_pack != nullptr ? &dialog_pack->Dialogs : nullptr);
     if ((dialogs == nullptr) || dialogs->empty()) {
         CrMngr.CloseTalk(cr);
-        WriteLog("No dialogs, npc '{}', client '{}'.\n", npc->GetName(), cr->GetName());
+        WriteLog("No dialogs, npc '{}', client '{}'", npc->GetName(), cr->GetName());
         return;
     }
 
@@ -3778,7 +3778,7 @@ void FOServer::Process_Dialog(Player* player)
 
         // Invalid answer
         if (num_answer >= cur_dialog->Answers.size()) {
-            WriteLog("Wrong number of answer {}, client '{}'.\n", num_answer, cr->GetName());
+            WriteLog("Wrong number of answer {}, client '{}'", num_answer, cr->GetName());
             cr->Send_Talk(); // Refresh
             return;
         }
@@ -3788,7 +3788,7 @@ void FOServer::Process_Dialog(Player* player)
 
         // Check demand again
         if (!Dialog_CheckDemand(npc, cr, *answer, true)) {
-            WriteLog("Secondary check of dialog demands fail, client '{}'.\n", cr->GetName());
+            WriteLog("Secondary check of dialog demands fail, client '{}'", cr->GetName());
             CrMngr.CloseTalk(cr); // End
             return;
         }
@@ -3850,7 +3850,7 @@ void FOServer::Process_Dialog(Player* player)
     if (it_d == dialogs->end()) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_FROM_LINK_NOT_FOUND, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}.\n", dlg_id, cr->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog from link {} not found, client '{}', dialog pack {}", dlg_id, cr->GetName(), dialog_pack->PackId);
         return;
     }
 
@@ -3858,7 +3858,7 @@ void FOServer::Process_Dialog(Player* player)
     if (!Dialog_Compile(npc, cr, *it_d, cr->Talk.CurDialog)) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
-        WriteLog("Dialog compile fail, client '{}', dialog pack {}.\n", cr->GetName(), dialog_pack->PackId);
+        WriteLog("Dialog compile fail, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
         return;
     }
 

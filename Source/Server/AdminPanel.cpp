@@ -86,7 +86,7 @@ static void AdminManager(FOServer* server, ushort port)
 #if FO_WINDOWS
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        WriteLog("WSAStartup fail on creation listen socket for admin manager.\n");
+        WriteLog("WSAStartup fail on creation listen socket for admin manager");
         return;
     }
 #endif
@@ -98,7 +98,7 @@ static void AdminManager(FOServer* server, ushort port)
 #endif
     const auto listen_sock = socket(AF_INET, sock_type, 0);
     if (listen_sock == INVALID_SOCKET) {
-        WriteLog("Can't create listen socket for admin manager.\n");
+        WriteLog("Can't create listen socket for admin manager");
         return;
     }
 
@@ -110,13 +110,13 @@ static void AdminManager(FOServer* server, ushort port)
     sin.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(listen_sock, reinterpret_cast<sockaddr*>(&sin), sizeof(sin)) == SOCKET_ERROR) {
-        WriteLog("Can't bind listen socket for admin manager.\n");
+        WriteLog("Can't bind listen socket for admin manager");
         closesocket(listen_sock);
         return;
     }
 
     if (listen(listen_sock, SOMAXCONN) == SOCKET_ERROR) {
-        WriteLog("Can't listen listen socket for admin manager.\n");
+        WriteLog("Can't listen listen socket for admin manager");
         closesocket(listen_sock);
         return;
     }
@@ -219,7 +219,7 @@ static void AdminWork(FOServer* server, Session* session)
     string welcome = "Welcome to FOnline admin panel.\nEnter access key: ";
     const auto welcome_len = static_cast<int>(welcome.length()) + 1;
     if (::send(session->Sock, welcome.c_str(), welcome_len, 0) != welcome_len) {
-        WriteLog("Admin connection first send fail, disconnect.\n");
+        WriteLog("Admin connection first send fail, disconnect");
         goto label_Finish;
     }
 
@@ -233,10 +233,10 @@ static void AdminWork(FOServer* server, Session* session)
 
         if (len <= 0 || len == 1024) {
             if (len == 0) {
-                WriteLog("Admin panel ({}): Socket closed, disconnect.\n", admin_name);
+                WriteLog("Admin panel ({}): Socket closed, disconnect", admin_name);
             }
             else {
-                WriteLog("Admin panel ({}): Socket error, disconnect.\n", admin_name);
+                WriteLog("Admin panel ({}): Socket error, disconnect", admin_name);
             }
 
             goto label_Finish;
@@ -275,11 +275,11 @@ static void AdminWork(FOServer* server, Session* session)
                 }
 
                 session->Authorized = true;
-                WriteLog("Admin panel ({}): Authorized for admin '{}', IP '{}'.\n", admin_name, admin_name, inet_ntoa(session->From.sin_addr));
+                WriteLog("Admin panel ({}): Authorized for admin '{}', IP '{}'", admin_name, admin_name, inet_ntoa(session->From.sin_addr));
                 continue;
             }
 
-            WriteLog("Wrong access key entered in admin panel from IP '{}', disconnect.\n", inet_ntoa(session->From.sin_addr));
+            WriteLog("Wrong access key entered in admin panel from IP '{}', disconnect", inet_ntoa(session->From.sin_addr));
             string failstr = "Wrong access key!\n";
             ::send(session->Sock, failstr.c_str(), static_cast<int>(failstr.length()) + 1, 0);
             goto label_Finish;
@@ -287,28 +287,28 @@ static void AdminWork(FOServer* server, Session* session)
 
         // Process commands
         if (cmd == "exit") {
-            WriteLog("Admin panel ({}): Disconnect from admin panel.\n", admin_name);
+            WriteLog("Admin panel ({}): Disconnect from admin panel", admin_name);
             goto label_Finish;
         }
         else if (cmd == "kill") {
-            WriteLog("Admin panel ({}): Kill whole process.\n", admin_name);
+            WriteLog("Admin panel ({}): Kill whole process", admin_name);
             std::quick_exit(EXIT_SUCCESS);
         }
         else if (cmd == "stop") {
             if (!server->IsStarted()) {
-                WriteLog("Admin panel ({}): Server starting, wait.\n", admin_name);
+                WriteLog("Admin panel ({}): Server starting, wait", admin_name);
             }
             else {
-                WriteLog("Admin panel ({}): Stopping server.\n", admin_name);
+                WriteLog("Admin panel ({}): Stopping server", admin_name);
                 delete server;
             }
         }
         else if (cmd == "state") {
             if (!server->IsStarted()) {
-                WriteLog("Admin panel ({}): Server starting.\n", admin_name);
+                WriteLog("Admin panel ({}): Server starting", admin_name);
             }
             else {
-                WriteLog("Admin panel ({}): Server working.\n", admin_name);
+                WriteLog("Admin panel ({}): Server working", admin_name);
             }
         }
         else if (!cmd.empty() && cmd[0] == '~') {
@@ -321,7 +321,7 @@ static void AdminWork(FOServer* server, Session* session)
                     }
 
                     if (!send_fail && send(session->Sock, buf.c_str(), static_cast<int>(buf.length()) + 1, 0) != static_cast<int>(buf.length()) + 1) {
-                        WriteLog("Admin panel ({}): Send data fail, disconnect.\n", admin_name);
+                        WriteLog("Admin panel ({}): Send data fail, disconnect", admin_name);
                         send_fail = true;
                     }
                 };
@@ -331,7 +331,7 @@ static void AdminWork(FOServer* server, Session* session)
                 if (!buf.IsEmpty()) {
                     // uint msg = 0;
                     // buf >> msg;
-                    // WriteLog("Admin panel ({}): Execute command '{}'.\n", admin_name, cmd);
+                    // WriteLog("Admin panel ({}): Execute command '{}'", admin_name, cmd);
                     // server->Process_Command(buf, func, nullptr, admin_name);
                 }
 
@@ -340,11 +340,11 @@ static void AdminWork(FOServer* server, Session* session)
                 }
             }
             else {
-                WriteLog("Admin panel ({}): Can't run command for not started server.\n", admin_name);
+                WriteLog("Admin panel ({}): Can't run command for not started server", admin_name);
             }
         }
         else if (!cmd.empty()) {
-            WriteLog("Admin panel ({}): Unknown command '{}'.\n", admin_name, cmd);
+            WriteLog("Admin panel ({}): Unknown command '{}'", admin_name, cmd);
         }
     }
 

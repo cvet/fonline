@@ -2786,7 +2786,7 @@ void MapView::AddCritterToField(CritterHexView* cr)
     }
     else {
         if (field.Crit != nullptr && field.Crit != cr) {
-            WriteLog("Hex {} {} busy, critter old {}, new {}.\n", hx, hy, field.Crit->GetId(), cr->GetId());
+            WriteLog("Hex {} {} busy, critter old {}, new {}", hx, hy, field.Crit->GetId(), cr->GetId());
             return;
         }
 

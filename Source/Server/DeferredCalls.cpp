@@ -245,7 +245,7 @@ auto DeferredCallManager::GetStatistics() -> string
 
 auto DeferredCallManager::LoadDeferredCalls() -> bool
 {
-    /*WriteLog("Load deferred calls...\n");
+    /*WriteLog("Load deferred calls...");
 
     Uvector<int> call_ids = DbStorage->GetAllIds("DeferredCalls");
     int errors = 0;
@@ -280,7 +280,7 @@ auto DeferredCallManager::LoadDeferredCalls() -> bool
         }
 
         if (call.IsValue && call.IsValues) {
-            WriteLog("Deferred call {} have value and values.\n", call.Id);
+            WriteLog("Deferred call {} have value and values", call.Id);
             errors++;
             continue;
         }
@@ -299,14 +299,14 @@ auto DeferredCallManager::LoadDeferredCalls() -> bool
 
         call.FuncNum = Script::BindScriptFuncNumByFuncName(call_doc["Script"].get<string>(), decl);
         if (!call.FuncNum) {
-            WriteLog("Unable to find function '{}' with declaration '{}' for deferred call {}.\n", call_doc["Script"].get<string>(), decl, call.Id);
+            WriteLog("Unable to find function '{}' with declaration '{}' for deferred call {}", call_doc["Script"].get<string>(), decl, call.Id);
             errors++;
             continue;
         }
 
         call.BindId = Script::BindByFuncNum(call.FuncNum, false);
         if (!call.BindId) {
-            WriteLog("Unable to bind script function '{}' for deferred call {}.\n", _str().parseHash(call.FuncNum), call.Id);
+            WriteLog("Unable to bind script function '{}' for deferred call {}", _str().parseHash(call.FuncNum), call.Id);
             errors++;
             continue;
         }
@@ -315,7 +315,7 @@ auto DeferredCallManager::LoadDeferredCalls() -> bool
         _deferredCalls.push_back(call);
     }
 
-    WriteLog("Load deferred calls complete, count {}.\n", (uint)_deferredCalls.size());
+    WriteLog("Load deferred calls complete, count {}", (uint)_deferredCalls.size());
     return errors == 0;*/
     return false;
 }

@@ -106,7 +106,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
     try {
         InitApp("Mapper");
 
-        WriteLog("Starting Mapper {}...\n", FO_GAME_VERSION);
+        WriteLog("Starting Mapper {}...", FO_GAME_VERSION);
 
         Data->Settings = new GlobalSettings(argc, argv);
         InitApplication(*Data->Settings);

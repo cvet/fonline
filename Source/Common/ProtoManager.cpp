@@ -365,7 +365,7 @@ static auto ValidateProtoResourcesExt(const map<hstring, T*>& protos, unordered_
             if (prop->IsBaseTypeResource()) {
                 const auto h = proto->GetProperties().template GetValue<hstring>(prop);
                 if (h && hashes.count(h) == 0u) {
-                    WriteLog("Resource '{}' not found for property '{}' in prototype '{}'.\n", h, prop->GetName(), proto->GetName());
+                    WriteLog("Resource '{}' not found for property {} in prototype {}", h, prop->GetName(), proto->GetName());
                     errors++;
                 }
             }

@@ -432,7 +432,7 @@ private:
 
     void OnFail()
     {
-        WriteLog("Fail: {}.\n", _connection->get_ec().message());
+        WriteLog("Failed: {}", _connection->get_ec().message());
         Disconnect();
     }
 
@@ -500,7 +500,7 @@ void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket
         _connectionCallback(new NetConnectionAsio(_settings, socket));
     }
     else {
-        WriteLog("Accept error: {}.\n", error.message());
+        WriteLog("Accept error: {}", error.message());
         delete socket;
     }
 
@@ -608,7 +608,7 @@ auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const Connec
         return new NetTcpServer(settings, callback);
     }
     catch (const std::exception& ex) {
-        WriteLog("Can't start Tcp server: {}.\n", ex.what());
+        WriteLog("Can't start Tcp server: {}", ex.what());
         return nullptr;
     }
 #else
@@ -627,7 +627,7 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const
         return new NetTlsWebSocketsServer(settings, callback);
     }
     catch (const std::exception& ex) {
-        WriteLog("Can't start Web sockets server: {}.\n", ex.what());
+        WriteLog("Can't start Web sockets server: {}", ex.what());
         return nullptr;
     }
 #else

@@ -561,7 +561,7 @@ static auto FbxGetElement(T* elements, int index, int* vertices) -> T2
         }
     }
 
-    WriteLog("Unknown mapping mode {} or reference mode {}.\n", elements->GetMappingMode(), elements->GetReferenceMode());
+    WriteLog("Unknown mapping mode {} or reference mode {}", elements->GetMappingMode(), elements->GetReferenceMode());
     return elements->GetDirectArray().GetAt(0);
 }
 
@@ -667,7 +667,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
                 fbx_cluster->GetTransformMatrix(cur_matrix);
                 Bone* skin_bone = root_bone->Find(fbx_cluster->GetLink()->GetName());
                 if (skin_bone == nullptr) {
-                    WriteLog("Skin bone '{}' for mesh '{}' not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName());
+                    WriteLog("Skin bone '{}' for mesh '{}' not found", fbx_cluster->GetLink()->GetName(), fbx_node->GetName());
                     skin_bone = bone;
                 }
                 mesh->SkinBones[i] = skin_bone->Name;

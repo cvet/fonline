@@ -144,7 +144,7 @@ bool BreakIntoDebugger()
 void ReportExceptionAndExit(const std::exception& ex)
 {
     if (!BreakIntoDebugger()) {
-        WriteLog(LogType::Error, "\n{}\n\n", ex.what());
+        WriteLog(LogType::Error, "\n{}\n", ex.what());
         CreateDumpMessage("FatalException", ex.what());
         MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
     }
@@ -158,7 +158,7 @@ void ReportExceptionAndContinue(const std::exception& ex)
         return;
     }
 
-    WriteLog(LogType::Error, "\n{}\n\n", ex.what());
+    WriteLog(LogType::Error, "\n{}\n", ex.what());
 
 #if FO_DEBUG
     MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());

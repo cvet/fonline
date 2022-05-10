@@ -138,7 +138,7 @@ void ServerConnection::Process()
 
                 if (_settings.DebugNet) {
                     _msgCount++;
-                    WriteLog("{}) Input net message {}.\n", _msgCount, msg);
+                    WriteLog("{}) Input net message {}", _msgCount, msg);
                 }
 
                 const auto it = _handlers.find(msg);
@@ -148,7 +148,7 @@ void ServerConnection::Process()
                     CHECK_SERVER_IN_BUF_ERROR(*this);
                 }
                 else {
-                    WriteLog("No handler for message {}. Disconnect.\n", msg);
+                    WriteLog("No handler for message {}. Disconnect", msg);
                     Disconnect();
                     return;
                 }
@@ -178,7 +178,7 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
     const auto r = ::select(static_cast<int>(_impl->NetSock) + 1, for_write ? nullptr : &_impl->NetSockSet, for_write ? &_impl->NetSockSet : nullptr, nullptr, &tv);
     if (r == 1) {
         if (_isConnecting) {
-            WriteLog("Connection established.\n");
+            WriteLog("Connection established");
             _isConnecting = false;
             _isConnected = true;
 
@@ -200,15 +200,15 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
             return false;
         }
 
-        WriteLog("Socket error '{}'.\n", _impl->GetLastSocketError());
+        WriteLog("Socket error '{}'", _impl->GetLastSocketError());
     }
     else {
         // Error
-        WriteLog("Socket select error '{}'.\n", _impl->GetLastSocketError());
+        WriteLog("Socket select error '{}'", _impl->GetLastSocketError());
     }
 
     if (_isConnecting) {
-        WriteLog("Can't connect to server.\n");
+        WriteLog("Can't connect to server");
         _isConnecting = false;
 
         if (_connectCallback) {
@@ -226,14 +226,14 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
     port++;
     if (!_settings.SecuredWebSockets) {
         EM_ASM(Module['websocket']['url'] = 'ws://');
-        WriteLog("Connecting to server 'ws://{}:{}'.\n", host, port);
+        WriteLog("Connecting to server 'ws://{}:{}'", host, port);
     }
     else {
         EM_ASM(Module['websocket']['url'] = 'wss://');
-        WriteLog("Connecting to server 'wss://{}:{}'.\n", host, port);
+        WriteLog("Connecting to server 'wss://{}:{}'", host, port);
     }
 #else
-    WriteLog("Connecting to server '{}:{}'.\n", host, port);
+    WriteLog("Connecting to server '{}:{}'", host, port);
 #endif
 
     if (_impl->ZStream == nullptr) {
@@ -248,7 +248,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 #if FO_WINDOWS
     WSADATA wsa;
     if (::WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
-        WriteLog("WSAStartup error '{}'.\n", _impl->GetLastSocketError());
+        WriteLog("WSAStartup error '{}'", _impl->GetLastSocketError());
         return false;
     }
 #endif
@@ -269,7 +269,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
     constexpr auto sock_type = SOCK_STREAM;
 #endif
     if ((_impl->NetSock = ::socket(PF_INET, sock_type, IPPROTO_TCP)) == INVALID_SOCKET) {
-        WriteLog("Create socket error '{}'.\n", _impl->GetLastSocketError());
+        WriteLog("Create socket error '{}'", _impl->GetLastSocketError());
         return false;
     }
 
@@ -278,7 +278,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
     if (_settings.DisableTcpNagle) {
         auto optval = 1;
         if (::setsockopt(_impl->NetSock, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char*>(&optval), sizeof(optval)) != 0) {
-            WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'.\n", _impl->GetLastSocketError());
+            WriteLog("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", _impl->GetLastSocketError());
         }
     }
 #endif
@@ -295,7 +295,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
         if (::fcntl(_impl->NetSock, F_SETFL, flags | O_NONBLOCK))
 #endif
         {
-            WriteLog("Can't set non-blocking mode to socket, error '{}'.\n", _impl->GetLastSocketError());
+            WriteLog("Can't set non-blocking mode to socket, error '{}'", _impl->GetLastSocketError());
             return false;
         }
 
@@ -306,7 +306,7 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
         if (r == SOCKET_ERROR && errno != EINPROGRESS)
 #endif
         {
-            WriteLog("Can't connect to game server, error '{}'.\n", _impl->GetLastSocketError());
+            WriteLog("Can't connect to game server, error '{}'", _impl->GetLastSocketError());
             return false;
         }
     }
@@ -314,13 +314,13 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 #if !FO_IOS && !FO_ANDROID && !FO_WEB
         // Proxy connect
         if (::connect(_impl->NetSock, reinterpret_cast<sockaddr*>(&_impl->ProxyAddr), sizeof(sockaddr_in)) != 0) {
-            WriteLog("Can't connect to proxy server, error '{}'.\n", _impl->GetLastSocketError());
+            WriteLog("Can't connect to proxy server, error '{}'", _impl->GetLastSocketError());
             return false;
         }
 
         auto send_recv = [this]() {
             if (!DispatchData()) {
-                WriteLog("Net output error.\n");
+                WriteLog("Net output error");
                 return false;
             }
 
@@ -332,12 +332,12 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
                 }
 
                 if (receive < 0) {
-                    WriteLog("Net input error.\n");
+                    WriteLog("Net input error");
                     return false;
                 }
 
                 if (Timer::RealtimeTick() - tick >= 10000.0) {
-                    WriteLog("Proxy answer timeout.\n");
+                    WriteLog("Proxy answer timeout");
                     return false;
                 }
 
@@ -370,16 +370,16 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
             if (b2 != 0x5A) {
                 switch (b2) {
                 case 0x5B:
-                    WriteLog("Proxy connection error, request rejected or failed.\n");
+                    WriteLog("Proxy connection error, request rejected or failed");
                     break;
                 case 0x5C:
-                    WriteLog("Proxy connection error, request failed because client is not running identd (or not reachable from the server).\n");
+                    WriteLog("Proxy connection error, request failed because client is not running identd (or not reachable from the server)");
                     break;
                 case 0x5D:
-                    WriteLog("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request.\n");
+                    WriteLog("Proxy connection error, request failed because client's identd could not confirm the user ID string in the request");
                     break;
                 default:
-                    WriteLog("Proxy connection error, Unknown error {}.\n", b2);
+                    WriteLog("Proxy connection error, Unknown error {}", b2);
                     break;
                 }
                 return false;
@@ -411,13 +411,13 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
                 _netIn >> b1; // Subnegotiation version
                 _netIn >> b2; // Status
                 if (b2 != 0) {
-                    WriteLog("Invalid proxy user or password.\n");
+                    WriteLog("Invalid proxy user or password");
                     return false;
                 }
             }
             else if (b2 != 0) // Other authorization
             {
-                WriteLog("Socks server connect fail.\n");
+                WriteLog("Socks server connect fail");
                 return false;
             }
 
@@ -439,31 +439,31 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
             if (b2 != 0) {
                 switch (b2) {
                 case 1:
-                    WriteLog("Proxy connection error, SOCKS-server error.\n");
+                    WriteLog("Proxy connection error, SOCKS-server error");
                     break;
                 case 2:
-                    WriteLog("Proxy connection error, connections fail by proxy rules.\n");
+                    WriteLog("Proxy connection error, connections fail by proxy rules");
                     break;
                 case 3:
-                    WriteLog("Proxy connection error, network is not aviable.\n");
+                    WriteLog("Proxy connection error, network is not aviable");
                     break;
                 case 4:
-                    WriteLog("Proxy connection error, host is not aviable.\n");
+                    WriteLog("Proxy connection error, host is not aviable");
                     break;
                 case 5:
-                    WriteLog("Proxy connection error, connection denied.\n");
+                    WriteLog("Proxy connection error, connection denied");
                     break;
                 case 6:
-                    WriteLog("Proxy connection error, TTL expired.\n");
+                    WriteLog("Proxy connection error, TTL expired");
                     break;
                 case 7:
-                    WriteLog("Proxy connection error, command not supported.\n");
+                    WriteLog("Proxy connection error, command not supported");
                     break;
                 case 8:
-                    WriteLog("Proxy connection error, address type not supported.\n");
+                    WriteLog("Proxy connection error, address type not supported");
                     break;
                 default:
-                    WriteLog("Proxy connection error, unknown error {}.\n", b2);
+                    WriteLog("Proxy connection error, unknown error {}", b2);
                     break;
                 }
                 return false;
@@ -479,12 +479,12 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 
             buf = reinterpret_cast<const char*>(_netIn.GetData() + _netIn.GetReadPos());
             if (buf.find(" 200 ") == string::npos) {
-                WriteLog("Proxy connection error, receive message '{}'.\n", buf);
+                WriteLog("Proxy connection error, receive message '{}'", buf);
                 return false;
             }
         }
         else {
-            WriteLog("Unknown proxy type {}.\n", _settings.ProxyType);
+            WriteLog("Unknown proxy type {}", _settings.ProxyType);
             return false;
         }
 
@@ -521,7 +521,7 @@ void ServerConnection::Disconnect()
     }
 
     if (_isConnected) {
-        WriteLog("Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}.\n", _bytesSend, _bytesReceive, _bytesReceive + _bytesSend, _bytesRealReceive);
+        WriteLog("Disconnect. Session traffic: send {}, receive {}, whole {}, receive real {}", _bytesSend, _bytesReceive, _bytesReceive + _bytesSend, _bytesRealReceive);
 
         _isConnected = false;
 
@@ -564,7 +564,7 @@ auto ServerConnection::DispatchData() -> bool
         if (len <= 0)
 #endif
         {
-            WriteLog("Socket error while send to server, error '{}'.\n", _impl->GetLastSocketError());
+            WriteLog("Socket error while send to server, error '{}'", _impl->GetLastSocketError());
             Disconnect();
             return false;
         }
@@ -595,11 +595,11 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
     if (len == SOCKET_ERROR)
 #endif
     {
-        WriteLog("Socket error while receive from server, error '{}'.\n", _impl->GetLastSocketError());
+        WriteLog("Socket error while receive from server, error '{}'", _impl->GetLastSocketError());
         return -1;
     }
     if (len == 0) {
-        WriteLog("Socket is closed.\n");
+        WriteLog("Socket is closed");
         return -2;
     }
 
@@ -625,11 +625,11 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
                 break;
             }
 
-            WriteLog("Socket error (2) while receive from server, error '{}'.\n", _impl->GetLastSocketError());
+            WriteLog("Socket error (2) while receive from server, error '{}'", _impl->GetLastSocketError());
             return -1;
         }
         if (len == 0) {
-            WriteLog("Socket is closed (2).\n");
+            WriteLog("Socket is closed (2)");
             return -2;
         }
 

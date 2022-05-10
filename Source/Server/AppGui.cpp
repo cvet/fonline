@@ -129,14 +129,14 @@ bool AppGui::Init(string_view app_name, bool use_dx, bool docking, bool maximize
         UseDirectX = true;
         return true;
 #else
-        WriteLog("This system doesn't has DirectX support.\n");
+        WriteLog("This system doesn't has DirectX support");
         return false;
 #endif
     }
 
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
-        WriteLog("SDL2 init error: {}\n", SDL_GetError());
+        WriteLog("SDL2 init error: {}", SDL_GetError());
         return false;
     }
 
@@ -165,7 +165,7 @@ bool AppGui::Init(string_view app_name, bool use_dx, bool docking, bool maximize
     RUNTIME_ASSERT(glew_result == GLEW_OK);
 #if !FO_WINDOWS
     if (!GLEW_VERSION_2_0 || !GLEW_ARB_vertex_buffer_object) {
-        WriteLog("Minimum OpenGL 2.0 required.\n");
+        WriteLog("Minimum OpenGL 2.0 required");
         return false;
     }
 #endif

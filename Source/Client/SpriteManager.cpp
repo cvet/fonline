@@ -778,7 +778,7 @@ auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy, bool /*frm_
 
     const string ext = _str(fname).getFileExtension();
     if (ext.empty()) {
-        WriteLog("Extension not found, file '{}'.\n", fname);
+        WriteLog("Extension not found, file '{}'", fname);
         return dummy;
     }
 
@@ -1402,7 +1402,7 @@ void SpriteManager::InitializeEgg(string_view egg_name)
         _eggData = App->Render.GetTextureRegion(_sprEgg->Atlas->MainTex, x, y, _eggSprWidth, _eggSprHeight);
     }
     else {
-        WriteLog("Load sprite '{}' fail. Egg disabled.\n", egg_name);
+        WriteLog("Load sprite '{}' fail. Egg disabled", egg_name);
     }
 }
 
@@ -2143,7 +2143,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
     string fname = _str("Fonts/{}.fofnt", font_name);
     auto file = _fileSys.ReadFile(fname);
     if (!file) {
-        WriteLog("File '{}' not found.\n", fname);
+        WriteLog("File '{}' not found", fname);
         return false;
     }
 
@@ -2173,12 +2173,12 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
         // Check version
         if (version == -1) {
             if (key != "Version") {
-                WriteLog("Font '{}' 'Version' signature not found (used deprecated format of 'fofnt').\n", fname);
+                WriteLog("Font '{}' 'Version' signature not found (used deprecated format of 'fofnt')", fname);
                 return false;
             }
             str >> version;
             if (version > 2) {
-                WriteLog("Font '{}' version {} not supported (try update client).\n", fname, version);
+                WriteLog("Font '{}' version {} not supported (try update client)", fname, version);
                 return false;
             }
             continue;
@@ -2201,7 +2201,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
             std::getline(str, letter_buf, '\n');
             auto utf8_letter_begin = letter_buf.find('\'');
             if (utf8_letter_begin == string::npos) {
-                WriteLog("Font '{}' invalid letter specification.\n", fname);
+                WriteLog("Font '{}' invalid letter specification", fname);
                 return false;
             }
             utf8_letter_begin++;
@@ -2209,7 +2209,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
             uint letter_len = 0;
             auto letter = utf8::Decode(letter_buf.c_str() + utf8_letter_begin, &letter_len);
             if (!utf8::IsValid(letter)) {
-                WriteLog("Font '{}' invalid UTF8 letter at  '{}'.\n", fname, letter_buf);
+                WriteLog("Font '{}' invalid UTF8 letter at  '{}'", fname, letter_buf);
                 return false;
             }
 
@@ -2254,7 +2254,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
     image_name.insert(0, "Fonts/");
     auto* image_normal = LoadAnimation(image_name, false, false);
     if (image_normal == nullptr) {
-        WriteLog("Image file '{}' not found.\n", image_name);
+        WriteLog("Image file '{}' not found", image_name);
         return false;
     }
     font.ImageNormal = image_normal;
@@ -2263,7 +2263,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
     if (!not_bordered) {
         auto* image_bordered = LoadAnimation(image_name, false, false);
         if (image_bordered == nullptr) {
-            WriteLog("Can't load twice file '{}'.\n", image_name);
+            WriteLog("Can't load twice file '{}'", image_name);
             return false;
         }
         font.ImageBordered = image_bordered;
@@ -2286,20 +2286,20 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
 auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
 {
     if (index < 0) {
-        WriteLog("Invalid index.\n");
+        WriteLog("Invalid index");
         return false;
     }
 
     FontData font {_effectMngr.Effects.Font};
     auto file = _fileSys.ReadFile(_str("Fonts/{}.fnt", font_name));
     if (!file) {
-        WriteLog("Font file '{}.fnt' not found.\n", font_name);
+        WriteLog("Font file '{}.fnt' not found", font_name);
         return false;
     }
 
     const auto signature = file.GetLEUInt();
     if (signature != MAKEUINT('B', 'M', 'F', 3)) {
-        WriteLog("Invalid signature of font '{}'.\n", font_name);
+        WriteLog("Invalid signature of font '{}'", font_name);
         return false;
     }
 
@@ -2310,7 +2310,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
 
     file.GoForward(7);
     if (file.GetBEUInt() != 0x01010101u) {
-        WriteLog("Wrong padding in font '{}'.\n", font_name);
+        WriteLog("Wrong padding in font '{}'", font_name);
         return false;
     }
 
@@ -2325,7 +2325,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     file.GoForward(2); // Texture height
 
     if (file.GetLEUShort() != 1) {
-        WriteLog("Texture for font '{}' must be one.\n", font_name);
+        WriteLog("Texture for font '{}' must be one", font_name);
         return false;
     }
 
@@ -2371,7 +2371,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     // Load image
     auto* image_normal = LoadAnimation(image_name, false, false);
     if (image_normal == nullptr) {
-        WriteLog("Image file '{}' not found.\n", image_name);
+        WriteLog("Image file '{}' not found", image_name);
         return false;
     }
     font.ImageNormal = image_normal;
@@ -2379,7 +2379,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     // Create bordered instance
     auto* image_bordered = LoadAnimation(image_name, false, false);
     if (image_bordered == nullptr) {
-        WriteLog("Can't load twice file '{}'.\n", image_name);
+        WriteLog("Can't load twice file '{}'", image_name);
         return false;
     }
     font.ImageBordered = image_bordered;
@@ -2685,14 +2685,14 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         }
 
         if (skip_line_end != 0u) {
-            WriteLog("error3\n");
+            WriteLog("error3");
             fi.IsError = true;
             return;
         }
     }
 
     if (skip_line != 0u) {
-        WriteLog("error4\n");
+        WriteLog("error4");
         fi.IsError = true;
         return;
     }
@@ -2702,7 +2702,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
 
     if (fi.LinesAll > FONT_MAX_LINES) {
-        WriteLog("error5 {}\n", fi.LinesAll);
+        WriteLog("error5 {}", fi.LinesAll);
         fi.IsError = true;
         return;
     }

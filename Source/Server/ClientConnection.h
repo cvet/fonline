@@ -40,7 +40,7 @@
 #define CHECK_CLIENT_IN_BUF_ERROR(conn) \
     do { \
         if ((conn)->Bin.IsError()) { \
-            WriteLog("Wrong network data from host '{}'.\n", (conn)->GetHost()); \
+            WriteLog("Wrong network data from host '{}'", (conn)->GetHost()); \
             (conn)->HardDisconnect(); \
             return; \
         } \

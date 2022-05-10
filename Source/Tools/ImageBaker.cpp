@@ -2066,12 +2066,12 @@ static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) 
         static void Error(png_structp png_ptr, png_const_charp error_msg)
         {
             UNUSED_VARIABLE(png_ptr);
-            WriteLog("PNG error '{}'.\n", error_msg);
+            WriteLog("PNG error '{}'", error_msg);
         }
         static void Warning(png_structp png_ptr, png_const_charp /*error_msg*/)
         {
             UNUSED_VARIABLE(png_ptr);
-            // WriteLog( "PNG warning '{}'.\n", error_msg );
+            // WriteLog( "PNG warning '{}'", error_msg );
         }
     };
 

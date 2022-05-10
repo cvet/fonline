@@ -87,34 +87,34 @@ int main(int argc, char** argv)
 
         DiskFileSystem::RemoveBuildHashFile("Resources");
 
-        WriteLog("Start bakering.\n");
+        WriteLog("Start bakering");
 
         auto errors = 0;
 
         // AngelScript scripts
 #if FO_ANGELSCRIPT_SCRIPTING
         try {
-            WriteLog("Compile AngelScript scripts.\n");
+            WriteLog("Compile AngelScript scripts");
 
             RUNTIME_ASSERT(!settings.ASServer.empty());
             RUNTIME_ASSERT(!settings.ASClient.empty());
             RUNTIME_ASSERT(!settings.ASMapper.empty());
 
 #if !FO_SINGLEPLAYER
-            WriteLog("Compile server scripts.\n");
+            WriteLog("Compile server scripts");
             ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
 
-            WriteLog("Compile client scripts.\n");
+            WriteLog("Compile client scripts");
             ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
 #else
-            WriteLog("Compile single scripts.\n");
+            WriteLog("Compile single scripts");
             // MapperScriptSystem().InitAngelScriptScripting(settings.ASSingle.c_str());
 #endif
 
-            WriteLog("Compile mapper scripts.\n");
+            WriteLog("Compile mapper scripts");
             MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
 
-            WriteLog("Compile AngelScript scripts complete!\n");
+            WriteLog("Compile AngelScript scripts complete!");
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -126,7 +126,7 @@ int main(int argc, char** argv)
         auto resource_names = unordered_set<string>();
 
         try {
-            WriteLog("Bake resource packs.\n");
+            WriteLog("Bake resource packs");
 
             RUNTIME_ASSERT(!settings.BakeResourceEntries.empty());
 
@@ -147,18 +147,18 @@ int main(int argc, char** argv)
                         continue;
                     }
 
-                    WriteLog("Bake {}.\n", pack_name);
+                    WriteLog("Bake {}", pack_name);
 
                     FileSystem res_files;
                     for (const auto& path : paths) {
-                        WriteLog("Add resource pack '{}' entry '{}'.\n", pack_name, path);
+                        WriteLog("Add resource pack {} entry '{}'", pack_name, path);
                         res_files.AddDataSource(path);
                     }
 
                     auto resources = res_files.FilterFiles("");
 
                     if (pack_name != "Raw") {
-                        WriteLog("Create resource pack '{}' from {} files.\n", pack_name, resources.GetFilesCount());
+                        WriteLog("Create resource pack {} from {} files", pack_name, resources.GetFilesCount());
 
                         // Cleanup previous
                         const auto del_res_ok = DiskFileSystem::DeleteDir(pack_name);
@@ -208,7 +208,7 @@ int main(int argc, char** argv)
                         }
                     }
                     else {
-                        WriteLog("Copy raw {} resource files.\n", resources.GetFilesCount());
+                        WriteLog("Copy raw {} resource files", resources.GetFilesCount());
 
                         while (resources.MoveNext()) {
                             auto file = resources.GetCurFile();
@@ -220,7 +220,7 @@ int main(int argc, char** argv)
                         }
                     }
 
-                    WriteLog("Bake {} complete!\n", pack_name);
+                    WriteLog("Bake {} complete!", pack_name);
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
@@ -228,7 +228,7 @@ int main(int argc, char** argv)
                 }
             }
 
-            WriteLog("Bake resource packs complete!\n");
+            WriteLog("Bake resource packs complete!");
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -237,7 +237,7 @@ int main(int argc, char** argv)
 
         // Content
         try {
-            WriteLog("Bake content.\n");
+            WriteLog("Bake content");
 
             RUNTIME_ASSERT(!settings.BakeContentEntries.empty());
 
@@ -246,7 +246,7 @@ int main(int argc, char** argv)
 
             FileSystem content_files;
             for (const auto& dir : settings.BakeContentEntries) {
-                WriteLog("Add content entry '{}'.\n", dir);
+                WriteLog("Add content entry '{}'", dir);
                 content_files.AddDataSource(dir, DataSourceType::DirRoot);
             }
 
@@ -254,7 +254,7 @@ int main(int argc, char** argv)
             ProtoManager proto_mngr(&engine);
 
             try {
-                WriteLog("Bake protos.\n");
+                WriteLog("Bake protos");
 
                 auto del_protos_ok = DiskFileSystem::DeleteDir("Protos");
                 RUNTIME_ASSERT(del_protos_ok);
@@ -269,7 +269,7 @@ int main(int argc, char** argv)
                 auto protos_write_ok = protos_file.Write(data.data(), data.size());
                 RUNTIME_ASSERT(protos_write_ok);
 
-                WriteLog("Bake protos complete!\n");
+                WriteLog("Bake protos complete!");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
@@ -279,13 +279,13 @@ int main(int argc, char** argv)
             // Dialogs
             // Todo: add dialogs verification during baking
             try {
-                WriteLog("Bake dialogs.\n");
+                WriteLog("Bake dialogs");
 
                 auto del_dialogs_ok = DiskFileSystem::DeleteDir("Dialogs");
                 RUNTIME_ASSERT(del_dialogs_ok);
 
                 auto dialogs = content_files.FilterFiles("fodlg");
-                WriteLog("Dialogs count {}.\n", dialogs.GetFilesCount());
+                WriteLog("Dialogs count {}", dialogs.GetFilesCount());
 
                 while (dialogs.MoveNext()) {
                     auto file = dialogs.GetCurFile();
@@ -296,7 +296,7 @@ int main(int argc, char** argv)
                     RUNTIME_ASSERT(dlg_file_write_ok);
                 }
 
-                WriteLog("Bake dialogs complete!\n");
+                WriteLog("Bake dialogs complete!");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
@@ -305,7 +305,7 @@ int main(int argc, char** argv)
 
             // Texts
             try {
-                WriteLog("Bake texts.\n");
+                WriteLog("Bake texts");
 
                 auto del_texts_ok = DiskFileSystem::DeleteDir("Texts");
                 RUNTIME_ASSERT(del_texts_ok);
@@ -329,7 +329,7 @@ int main(int argc, char** argv)
                             }
 
                             if (lang.Msg[TEXTMSG_DLG].IsIntersects(*pack->Texts[i])) {
-                                WriteLog("Warning! Dialog '{}' text intersection detected, send notification about this to developers.\n", pack->PackName);
+                                WriteLog("Warning! Dialog '{}' text intersection detected, send notification about this to developers", pack->PackName);
                             }
 
                             lang.Msg[TEXTMSG_DLG] += *pack->Texts[i];
@@ -365,14 +365,14 @@ int main(int argc, char** argv)
                     lang_pack.SaveTextsToDisk("Texts");
                 }
 
-                WriteLog("Bake texts complete!\n");
+                WriteLog("Bake texts complete!");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
                 errors++;
             }
 
-            WriteLog("Bake content complete!\n");
+            WriteLog("Bake content complete!");
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -381,11 +381,11 @@ int main(int argc, char** argv)
 
         // Finalize
         if (errors != 0) {
-            WriteLog("Bakering failed!\n");
+            WriteLog("Bakering failed!");
             return 1;
         }
 
-        WriteLog("Bakering complete!\n");
+        WriteLog("Bakering complete!");
         DiskFileSystem::CreateBuildHashFile("Resources");
         return 0;
     }

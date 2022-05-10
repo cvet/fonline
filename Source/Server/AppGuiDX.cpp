@@ -136,14 +136,14 @@ bool AppGui::InitDX(string_view app_name, bool docking, bool maximized)
 
     // Initialize Direct3D
     if (!CreateDevice(hwnd)) {
-        WriteLog("Failed to create D3D device.\n");
+        WriteLog("Failed to create D3D device");
         UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return false;
     }
 
     // Performance counters
     if (!QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&TicksPerSecond)) || !QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&CurTime))) {
-        WriteLog("Failed to call QueryPerformanceFrequency.\n");
+        WriteLog("Failed to call QueryPerformanceFrequency");
         return false;
     }
 

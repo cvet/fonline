@@ -103,7 +103,7 @@ auto PropertiesSerializator::LoadFromDocument(Properties* props, const AnyData::
         const auto* prop = props->_registrator->Find(key);
 
         if (!prop) {
-            WriteLog("Unknown property '{}'.\n", key);
+            WriteLog("Unknown property {}", key);
             is_error = true;
             continue;
         }
@@ -464,7 +464,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Property* prop, const AnyData::Value& value, NameResolver& name_resolver) -> bool
 {
     if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
-        WriteLog("Invalid property '{}' for reading.\n", prop->GetName());
+        WriteLog("Invalid property {} for reading", prop->GetName());
         return false;
     }
 
@@ -472,7 +472,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     if (prop->_dataType == Property::DataType::PlainData) {
         if (prop->_isHash) {
             if (value.index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong hash value type, property '{}'.\n", prop->GetName());
+                WriteLog("Wrong hash value type, property {}", prop->GetName());
                 return false;
             }
 
@@ -481,7 +481,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
         else if (prop->_isEnum) {
             if (value.index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong enum value type, property '{}'.\n", prop->GetName());
+                WriteLog("Wrong enum value type, property {}", prop->GetName());
                 return false;
             }
 
@@ -494,7 +494,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
             if (value.index() == AnyData::STRING_VALUE || value.index() == AnyData::ARRAY_VALUE || value.index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong integer value type, property '{}'.\n", prop->GetName());
+                WriteLog("Wrong integer value type, property {}", prop->GetName());
                 return false;
             }
 
@@ -565,7 +565,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     }
     else if (prop->_dataType == Property::DataType::String) {
         if (value.index() != AnyData::STRING_VALUE) {
-            WriteLog("Wrong string value type, property '{}'.\n", prop->GetName());
+            WriteLog("Wrong string value type, property {}", prop->GetName());
             return false;
         }
 
@@ -575,7 +575,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     }
     else if (prop->_dataType == Property::DataType::Array) {
         if (value.index() != AnyData::ARRAY_VALUE) {
-            WriteLog("Wrong array value type, property '{}'.\n", prop->GetName());
+            WriteLog("Wrong array value type, property {}", prop->GetName());
             return false;
         }
 
@@ -588,7 +588,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
         if (prop->_isHash) {
             if (arr[0].index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong array hash element value type, property '{}'.\n", prop->GetName());
+                WriteLog("Wrong array hash element value type, property {}", prop->GetName());
                 return false;
             }
 
@@ -606,7 +606,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
         else if (prop->_isEnum) {
             if (arr[0].index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong array enum element value type, property '{}'.\n", prop->GetName());
+                WriteLog("Wrong array enum element value type, property {}", prop->GetName());
                 return false;
             }
 
@@ -629,7 +629,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
             if (arr[0].index() == AnyData::STRING_VALUE || arr[0].index() == AnyData::ARRAY_VALUE || arr[0].index() == AnyData::DICT_VALUE) {
-                WriteLog("Wrong array element value type, property '{}'.\n", prop->GetName());
+                WriteLog("Wrong array element value type, property {}", prop->GetName());
                 return false;
             }
 
@@ -704,7 +704,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             RUNTIME_ASSERT(prop->_isArrayOfString);
 
             if (arr[0].index() != AnyData::STRING_VALUE) {
-                WriteLog("Wrong array element value type, property '{}'.\n", prop->GetName());
+                WriteLog("Wrong array element value type, property {}", prop->GetName());
                 return false;
             }
 
@@ -735,7 +735,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
     }
     else if (prop->_dataType == Property::DataType::Dict) {
         if (value.index() != AnyData::DICT_VALUE) {
-            WriteLog("Wrong dict value type, property '{}'.\n", prop->GetName());
+            WriteLog("Wrong dict value type, property {}", prop->GetName());
             return false;
         }
 
@@ -754,7 +754,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
             if (prop->_isDictOfArray) {
                 if (value2.index() != AnyData::ARRAY_VALUE) {
-                    WriteLog("Wrong dict array value type, property '{}'.\n", prop->GetName());
+                    WriteLog("Wrong dict array value type, property {}", prop->GetName());
                     wrong_input = true;
                     break;
                 }
@@ -766,7 +766,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 if (prop->_isDictKeyHash) {
                     for (const auto& e : arr) {
                         if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element hash value type, property '{}'.\n", prop->GetName());
+                            WriteLog("Wrong dict array element hash value type, property {}", prop->GetName());
                             wrong_input = true;
                             break;
                         }
@@ -777,7 +777,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else if (prop->_isDictKeyEnum) {
                     for (const auto& e : arr) {
                         if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element enum value type, property '{}'.\n", prop->GetName());
+                            WriteLog("Wrong dict array element enum value type, property {}", prop->GetName());
                             wrong_input = true;
                             break;
                         }
@@ -788,7 +788,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else if (prop->_isDictOfArrayOfString) {
                     for (const auto& e : arr) {
                         if (e.index() != AnyData::STRING_VALUE) {
-                            WriteLog("Wrong dict array element string value type, property '{}'.\n", prop->GetName());
+                            WriteLog("Wrong dict array element string value type, property {}", prop->GetName());
                             wrong_input = true;
                             break;
                         }
@@ -799,7 +799,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else {
                     for (const auto& e : arr) {
                         if ((e.index() != AnyData::INT_VALUE && e.index() != AnyData::INT64_VALUE && e.index() != AnyData::DOUBLE_VALUE && e.index() != AnyData::BOOL_VALUE) || e.index() != arr[0].index()) {
-                            WriteLog("Wrong dict array element value type, property '{}'.\n", prop->GetName());
+                            WriteLog("Wrong dict array element value type, property {}", prop->GetName());
                             wrong_input = true;
                             break;
                         }
@@ -810,7 +810,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->_isDictOfString) {
                 if (value2.index() != AnyData::STRING_VALUE) {
-                    WriteLog("Wrong dict string element value type, property '{}'.\n", prop->GetName());
+                    WriteLog("Wrong dict string element value type, property {}", prop->GetName());
                     wrong_input = true;
                     break;
                 }
@@ -819,7 +819,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->_isHash) {
                 if (value2.index() != AnyData::STRING_VALUE) {
-                    WriteLog("Wrong dict hash element value type, property '{}'.\n", prop->GetName());
+                    WriteLog("Wrong dict hash element value type, property {}", prop->GetName());
                     wrong_input = true;
                     break;
                 }
@@ -828,7 +828,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else if (prop->_isEnum) {
                 if (value2.index() != AnyData::STRING_VALUE) {
-                    WriteLog("Wrong dict enum element value type, property '{}'.\n", prop->GetName());
+                    WriteLog("Wrong dict enum element value type, property {}", prop->GetName());
                     wrong_input = true;
                     break;
                 }
@@ -837,7 +837,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             }
             else {
                 if (value2.index() != AnyData::INT_VALUE && value2.index() != AnyData::INT64_VALUE && value2.index() != AnyData::DOUBLE_VALUE && value2.index() != AnyData::BOOL_VALUE) {
-                    WriteLog("Wrong dict number element value type, property '{}'.\n", prop->GetName());
+                    WriteLog("Wrong dict number element value type, property {}", prop->GetName());
                     wrong_input = true;
                     break;
                 }
@@ -1081,7 +1081,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
         }
 
         if (data_pos != data_size) {
-            WriteLog("{} {}\n", data_pos, data_size);
+            WriteLog("{} {}", data_pos, data_size);
         }
 
         RUNTIME_ASSERT(data_pos == data_size);

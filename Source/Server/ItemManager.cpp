@@ -46,7 +46,7 @@ ItemManager::ItemManager(FOServer* engine) : _engine {engine}
 
 void ItemManager::LinkItems()
 {
-    WriteLog("Link items...\n");
+    WriteLog("Link items...");
 
     for (auto* item : GetItems()) {
         if (item->IsStatic()) {
@@ -87,7 +87,7 @@ void ItemManager::LinkItems()
         }
     }
 
-    WriteLog("Link items complete.\n");
+    WriteLog("Link items complete");
 }
 
 void ItemManager::InitAfterLoad()
@@ -221,7 +221,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 {
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     if (proto == nullptr) {
-        WriteLog("Proto item '{}' not found.\n", pid);
+        WriteLog("Proto item {} not found", pid);
         return nullptr;
     }
 
@@ -251,7 +251,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     // Verify destroying
     if (item->IsDestroyed()) {
-        WriteLog("Item destroyed after prototype '{}' initialization.\n", pid);
+        WriteLog("Item destroyed after prototype {} initialization", pid);
         return nullptr;
     }
 
@@ -307,7 +307,7 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
 
     auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties()); // Ignore init script
     if (new_item == nullptr) {
-        WriteLog("Create item '{}' fail, count {}.\n", item->GetName(), count);
+        WriteLog("Create item {} failed, count {}", item->GetName(), count);
         return nullptr;
     }
 

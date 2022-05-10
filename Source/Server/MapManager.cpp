@@ -50,7 +50,7 @@ MapManager::MapManager(FOServer* engine) : _engine {engine}
 
 void MapManager::LinkMaps()
 {
-    WriteLog("Link maps...\n");
+    WriteLog("Link maps...");
 
     // Link maps to locations
     for (auto* map : GetMaps()) {
@@ -81,7 +81,7 @@ void MapManager::LinkMaps()
         }
     }
 
-    WriteLog("Link maps complete.\n");
+    WriteLog("Link maps complete");
 }
 
 void MapManager::LoadStaticMaps(FileSystem& file_sys)
@@ -132,7 +132,7 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
         if (!func_num)
         {
             WriteLog(
-                "Map '{}', can't bind map function '{}'.\n", pmap->GetName(), pmap->GetInitScript());
+                "Map '{}', can't bind map function '{}'", pmap->GetName(), pmap->GetInitScript());
             errors++;
         }*/
     }
@@ -144,7 +144,7 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
             hstring func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Critter, bool)");
             if (!func_num)
             {
-                WriteLog("Map '{}', can't bind critter function '{}'.\n", pmap->GetName(), func_name);
+                WriteLog("Map '{}', can't bind critter function '{}'", pmap->GetName(), func_name);
                 errors++;
             }
         }
@@ -155,7 +155,7 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
             const auto func_name = item->GetInitScript();
             const auto func = _engine->ScriptSys->FindFunc<void, Item*, bool>(func_name);
             if (!func) {
-                WriteLog("Map '{}', can't bind item function '{}'.\n", pmap->GetName(), func_name);
+                WriteLog("Map '{}', can't bind item function '{}'", pmap->GetName(), func_name);
                 errors++;
             }
         }
@@ -171,7 +171,7 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
             }
 
             if (!scenery_func && !trigger_func) {
-                WriteLog("Map '{}', can't bind static item function '{}'.\n", pmap->GetName(), func_name);
+                WriteLog("Map '{}', can't bind static item function '{}'", pmap->GetName(), func_name);
                 errors++;
             }
 
@@ -210,7 +210,7 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
         auto hx = item->GetHexX();
         auto hy = item->GetHexY();
         if (hx >= maxhx || hy >= maxhy) {
-            WriteLog("Invalid item '{}' position on map '{}', hex x {}, hex y {}.\n", item->GetName(), pmap->GetName(), hx, hy);
+            WriteLog("Invalid item '{}' position on map '{}', hex x {}, hex y {}", item->GetName(), pmap->GetName(), hx, hy);
             continue;
         }
 
@@ -311,7 +311,7 @@ void MapManager::GenerateMapContent(Map* map)
     for (const auto* base_cr : map->GetStaticMap()->CrittersVec) {
         auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
         if (npc == nullptr) {
-            WriteLog("Create npc '{}' on map '{}' fail, continue generate.\n", base_cr->GetName(), map->GetName());
+            WriteLog("Create npc '{}' on map '{}' fail, continue generate", base_cr->GetName(), map->GetName());
             continue;
         }
 
@@ -332,7 +332,7 @@ void MapManager::GenerateMapContent(Map* map)
         // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         if (item == nullptr) {
-            WriteLog("Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName());
+            WriteLog("Create item '{}' on map '{}' fail, continue generate", base_item->GetName(), map->GetName());
             continue;
         }
         id_map.insert(std::make_pair(base_item->GetId(), item->GetId()));
@@ -343,7 +343,7 @@ void MapManager::GenerateMapContent(Map* map)
         }
 
         if (!map->AddItem(item, item->GetHexX(), item->GetHexY())) {
-            WriteLog("Add item '{}' to map '{}' failure, continue generate.\n", item->GetName(), map->GetName());
+            WriteLog("Add item '{}' to map '{}' failure, continue generate", item->GetName(), map->GetName());
             _engine->ItemMngr.DeleteItem(item);
         }
     }
@@ -370,7 +370,7 @@ void MapManager::GenerateMapContent(Map* map)
         // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         if (item == nullptr) {
-            WriteLog("Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName());
+            WriteLog("Create item '{}' on map '{}' fail, continue generate", base_item->GetName(), map->GetName());
             continue;
         }
 
@@ -455,12 +455,12 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
 {
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
     if (proto == nullptr) {
-        WriteLog("Location proto '{}' is not loaded.\n", proto_id);
+        WriteLog("Location proto '{}' is not loaded", proto_id);
         return nullptr;
     }
 
     if (wx >= GM_MAXZONEX * _engine->Settings.GlobalMapZoneLength || wy >= GM_MAXZONEY * _engine->Settings.GlobalMapZoneLength) {
-        WriteLog("Invalid location '{}' coordinates.\n", proto_id);
+        WriteLog("Invalid location '{}' coordinates", proto_id);
         return nullptr;
     }
 
@@ -471,7 +471,7 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
     for (const auto map_pid : loc->GetMapProtos()) {
         auto* map = CreateMap(map_pid, loc);
         if (map == nullptr) {
-            WriteLog("Create map '{}' for location '{}' failed.\n", map_pid, proto_id);
+            WriteLog("Create map '{}' for location '{}' failed", map_pid, proto_id);
             for (const auto* map2 : loc->GetMapsRaw()) {
                 map2->Release();
             }
@@ -508,7 +508,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
     const auto* proto_map = _engine->ProtoMngr.GetProtoMap(proto_id);
     if (proto_map == nullptr) {
-        WriteLog("Proto map '{}' is not loaded.\n", proto_id);
+        WriteLog("Proto map '{}' is not loaded", proto_id);
         return nullptr;
     }
 
@@ -1525,7 +1525,7 @@ void MapManager::PathSetMoveParams(vector<PathStep>& path, bool is_run)
 auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool
 {
     if (cr->LockMapTransfers != 0) {
-        WriteLog("Transfers locked, critter '{}'.\n", cr->GetName());
+        WriteLog("Transfers locked, critter '{}'", cr->GetName());
         return false;
     }
 
@@ -1537,13 +1537,13 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
     // Check location deletion
     auto* loc = map != nullptr ? map->GetLocation() : nullptr;
     if (loc != nullptr && loc->GetToGarbage()) {
-        WriteLog("Transfer to deleted location, critter '{}'.\n", cr->GetName());
+        WriteLog("Transfer to deleted location, critter '{}'", cr->GetName());
         return false;
     }
 
     // Maybe critter already in transfer
     if (cr->LockMapTransfers != 0) {
-        WriteLog("Transfers locked, critter '{}'.\n", cr->GetName());
+        WriteLog("Transfers locked, critter '{}'", cr->GetName());
         return false;
     }
 
