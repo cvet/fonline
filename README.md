@@ -277,6 +277,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: rename int to int32 and use int32_t as alias
 * Common: remove max_t
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
+* Common: pass name to exceptions context args
 * Common: auto expand exception parameters to readable state
 * Common: recursion guard for EventDispatcher
 * Common: improve ptr<> system for leng term pointer observing
@@ -288,8 +289,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: remove critter flags
 * Common: remove special OTHER_* params
 * Common: apply scripts strack trace
-* BakerApp: sound and video preprocessing move to baker
-* BakerApp: bake prototypes?
 * BakerApp: add dialogs verification during baking
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
@@ -341,11 +340,11 @@ Please follow these instructions to understand how to use this engine by design:
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: delete \n appendix from WriteLog
+* Log: colorize log texts
 * MapLoader: restore supporting of the map old text format
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
 * MsgFiles: pass default to fomsg gets
-* MsgFiles: move loading to constructors
 * Properties: SetValueFromData
 * Properties: convert to hstring
 * Properties: don't preserve memory for not allocated components in entity
@@ -395,6 +394,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
+* Server: improve ban system
 * Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
 * ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL

@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: sound and video preprocessing move to baker
-
 #include "Common.h"
 
 #include "DiskFileSystem.h"

@@ -96,9 +96,6 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     // Property callbacks
     // PropertyRegistrator::GlobalSetCallbacks.push_back(EntitySetValue);
 
-    // Bans
-    LoadBans();
-
     // Dialogs
     DlgMngr.LoadDialogs();
 
@@ -324,7 +321,7 @@ void FOServer::MainLoop()
 
         {
             std::lock_guard locker(_freeConnectionsLocker);
-            free_connections = _freeConnections;
+            free_connections = copy(_freeConnections);
         }
 
         for (auto* free_connection : free_connections) {
@@ -335,48 +332,63 @@ void FOServer::MainLoop()
 
     // Process players
     {
-        auto players = EntityMngr.GetPlayers();
+        const auto players = copy(EntityMngr.GetPlayers());
 
-        for (auto* player : players) {
+        for (const auto* player : players) {
             player->AddRef();
         }
 
         for (auto* player : players) {
-            RUNTIME_ASSERT(!player->IsDestroyed());
+            try {
+                RUNTIME_ASSERT(!player->IsDestroyed());
 
-            ProcessConnection(player->Connection);
-            ProcessPlayerConnection(player);
+                ProcessConnection(player->Connection);
+                ProcessPlayerConnection(player);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
         }
 
-        for (auto* player : players) {
+        for (const auto* player : players) {
             player->Release();
         }
     }
 
     // Process critters
-    for (auto* cr : EntityMngr.GetCritters()) {
+    for (auto* cr : copy(EntityMngr.GetCritters())) {
         if (cr->IsDestroyed()) {
             continue;
         }
 
-        ProcessCritter(cr);
+        try {
+            ProcessCritter(cr);
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
     }
 
     // Process maps
-    for (auto* map : EntityMngr.GetMaps()) {
+    for (auto* map : copy(EntityMngr.GetMaps())) {
         if (map->IsDestroyed()) {
             continue;
         }
 
-        // Process logic
-        map->Process();
+        try {
+            map->Process();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
     }
 
-    // Locations and maps garbage
-    MapMngr.LocationGarbager();
-
-    // Bans
-    ProcessBans();
+    try {
+        MapMngr.LocationGarbager();
+    }
+    catch (const std::exception& ex) {
+        ReportExceptionAndContinue(ex);
+    }
 
     // Script game loop
     OnLoop.Fire();
@@ -1412,100 +1424,6 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         buf >> info;
 
         CHECK_ALLOW_COMMAND();
-
-        if (_str(params).compareIgnoreCase("list")) {
-            if (_banned.empty()) {
-                logcb("Ban list empty.");
-                return;
-            }
-
-            uint index = 1;
-            for (auto& ban : _banned) {
-                logcb(_str("--- {:3} ---", index));
-                if (ban.ClientName[0] != 0) {
-                    logcb(_str("User: {}", ban.ClientName));
-                }
-                if (ban.ClientIp != 0u) {
-                    logcb(_str("UserIp: {}", ban.ClientIp));
-                }
-                logcb(_str("BeginTime: {} {} {}", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute));
-                logcb(_str("EndTime: {} {} {}", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute));
-                if (ban.BannedBy[0] != 0) {
-                    logcb(_str("BannedBy: {}", ban.BannedBy));
-                }
-                if (ban.BanInfo[0] != 0) {
-                    logcb(_str("Comment: {}", ban.BanInfo));
-                }
-                index++;
-            }
-        }
-        else if (_str(params).compareIgnoreCase("add") || _str(params).compareIgnoreCase("add+")) {
-            auto name_len = _str(name).lengthUtf8();
-            if (name_len < Settings.MinNameLength || name_len > Settings.MaxNameLength || ban_hours == 0u) {
-                logcb("Invalid arguments.");
-                return;
-            }
-
-            const auto player_id = MakePlayerId(name);
-            auto* ban_player = EntityMngr.GetPlayer(player_id);
-            ClientBanned ban;
-            ban.ClientName = name;
-            ban.ClientIp = (ban_player != nullptr && params.find('+') != string::npos ? ban_player->GetIp() : 0);
-            ban.BeginTime = Timer::GetCurrentDateTime();
-            ban.EndTime = ban.BeginTime;
-            ban.EndTime = Timer::AdvanceTime(ban.EndTime, static_cast<int>(ban_hours) * 60 * 60);
-            ban.BannedBy = (cl_ != nullptr ? cl_->Name : admin_panel);
-            ban.BanInfo = info;
-
-            _banned.push_back(ban);
-            SaveBan(ban, false);
-            logcb("User banned.");
-
-            if (ban_player != nullptr) {
-                ban_player->Send_TextMsg(nullptr, STR_NET_BAN, SAY_NETMSG, TEXTMSG_GAME);
-                ban_player->Send_TextMsgLex(nullptr, STR_NET_BAN_REASON, SAY_NETMSG, TEXTMSG_GAME, GetBanLexems(ban));
-                ban_player->Connection->GracefulDisconnect();
-            }
-        }
-        else if (_str(params).compareIgnoreCase("delete")) {
-            if (name.empty()) {
-                logcb("Invalid arguments.");
-                return;
-            }
-
-            auto resave = false;
-            if (name == "*") {
-                auto index = static_cast<int>(ban_hours) - 1;
-                if (index >= 0 && index < static_cast<int>(_banned.size())) {
-                    _banned.erase(_banned.begin() + index);
-                    resave = true;
-                }
-            }
-            else {
-                for (auto it = _banned.begin(); it != _banned.end();) {
-                    auto& ban = *it;
-                    if (_str(ban.ClientName).compareIgnoreCaseUtf8(name)) {
-                        SaveBan(ban, true);
-                        it = _banned.erase(it);
-                        resave = true;
-                    }
-                    else {
-                        ++it;
-                    }
-                }
-            }
-
-            if (resave) {
-                SaveBans();
-                logcb("User unbanned.");
-            }
-            else {
-                logcb("User not found.");
-            }
-        }
-        else {
-            logcb("Unknown option.");
-        }
     } break;
     case CMD_LOG: {
         char flags[16];
@@ -1611,151 +1529,6 @@ void FOServer::DispatchLogToClients()
     }
 
     _logLines.clear();
-}
-
-auto FOServer::GetBanByName(string_view name) -> ClientBanned*
-{
-    const auto it = std::find_if(_banned.begin(), _banned.end(), [name](const ClientBanned& ban) { return _str(name).compareIgnoreCaseUtf8(ban.ClientName); });
-    return it != _banned.end() ? &(*it) : nullptr;
-}
-
-auto FOServer::GetBanByIp(uint ip) -> ClientBanned*
-{
-    const auto it = std::find_if(_banned.begin(), _banned.end(), [ip](const ClientBanned& ban) { return ban.ClientIp == ip; });
-    return it != _banned.end() ? &(*it) : nullptr;
-}
-
-auto FOServer::GetBanTime(ClientBanned& ban) -> uint
-{
-    const auto time = Timer::GetCurrentDateTime();
-    const auto diff = Timer::GetTimeDifference(ban.EndTime, time) / 60 + 1;
-    return diff > 0 ? diff : 1;
-}
-
-auto FOServer::GetBanLexems(ClientBanned& ban) -> string
-{
-    return _str("$banby{}$time{}$reason{}", ban.BannedBy[0] != 0 ? ban.BannedBy : "?", Timer::GetTimeDifference(ban.EndTime, ban.BeginTime) / 60 / 60, ban.BanInfo[0] != 0 ? ban.BanInfo : "just for fun");
-}
-
-void FOServer::ProcessBans()
-{
-    auto resave = false;
-    const auto time = Timer::GetCurrentDateTime();
-    for (auto it = _banned.begin(); it != _banned.end();) {
-        auto& ban_time = it->EndTime;
-        if (time.Year >= ban_time.Year && time.Month >= ban_time.Month && time.Day >= ban_time.Day && time.Hour >= ban_time.Hour && time.Minute >= ban_time.Minute) {
-            SaveBan(*it, true);
-            it = _banned.erase(it);
-            resave = true;
-        }
-        else {
-            ++it;
-        }
-    }
-    if (resave) {
-        SaveBans();
-    }
-}
-
-void FOServer::SaveBan(ClientBanned& ban, bool expired)
-{
-    string content = "[Ban]\n";
-
-    if (ban.ClientName[0] != 0) {
-        content += _str("User = {}\n", ban.ClientName).str();
-    }
-    if (ban.ClientIp != 0u) {
-        content += _str("UserIp = {}\n", ban.ClientIp).str();
-    }
-    content += _str("BeginTime = {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute).str();
-    content += _str("EndTime = {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute).str();
-    if (ban.BannedBy[0] != 0) {
-        content += _str("BannedBy = {}\n", ban.BannedBy).str();
-    }
-    if (ban.BanInfo[0] != 0) {
-        content += _str("Comment = {}\n", ban.BanInfo).str();
-    }
-    content += "\n";
-
-    {
-        auto file = DiskFileSystem::OpenFile(expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE, false);
-        string cur_content;
-        cur_content.resize(file.GetSize());
-        file.Read(cur_content.data(), file.GetSize());
-        content = cur_content + content;
-    }
-
-    DiskFileSystem::OpenFile(expired ? BANS_FNAME_EXPIRED : BANS_FNAME_ACTIVE, true).Write(content);
-}
-
-void FOServer::SaveBans()
-{
-    string content;
-
-    for (const auto& ban : _banned) {
-        content += "[Ban]\n";
-        if (ban.ClientName[0] != 0) {
-            content += _str("User = {}\n", ban.ClientName).str();
-        }
-        if (ban.ClientIp != 0u) {
-            content += _str("UserIp = {}\n", ban.ClientIp).str();
-        }
-        content += _str("BeginTime = {} {} {}\n", ban.BeginTime.Year, ban.BeginTime.Month, ban.BeginTime.Day, ban.BeginTime.Hour, ban.BeginTime.Minute).str();
-        content += _str("EndTime = {} {} {}\n", ban.EndTime.Year, ban.EndTime.Month, ban.EndTime.Day, ban.EndTime.Hour, ban.EndTime.Minute).str();
-        if (ban.BannedBy[0] != 0) {
-            content += _str("BannedBy = {}\n", ban.BannedBy).str();
-        }
-        if (ban.BanInfo[0] != 0) {
-            content += _str("Comment = {}\n", ban.BanInfo).str();
-        }
-        content += "\n";
-    }
-
-    DiskFileSystem::OpenFile(BANS_FNAME_ACTIVE, true).Write(content);
-}
-
-void FOServer::LoadBans()
-{
-    _banned.clear();
-
-    auto bans = FileSys.ReadConfigFile(BANS_FNAME_ACTIVE, *this);
-    if (!bans) {
-        return;
-    }
-
-    while (bans.IsApp("Ban")) {
-        ClientBanned ban;
-
-        DateTimeStamp time;
-
-        string s;
-        if (!(s = bans.GetStr("Ban", "User")).empty()) {
-            ban.ClientName = s;
-        }
-
-        ban.ClientIp = bans.GetInt("Ban", "UserIp", 0);
-
-        if (!(s = bans.GetStr("Ban", "BeginTime")).empty() && (sscanf(s.c_str(), "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute) != 0)) {
-            ban.BeginTime = time;
-        }
-
-        if (!(s = bans.GetStr("Ban", "EndTime")).empty() && (sscanf(s.c_str(), "%hu%hu%hu%hu%hu", &time.Year, &time.Month, &time.Day, &time.Hour, &time.Minute) != 0)) {
-            ban.EndTime = time;
-        }
-
-        if (!(s = bans.GetStr("Ban", "BannedBy")).empty()) {
-            ban.BannedBy = s;
-        }
-
-        if (!(s = bans.GetStr("Ban", "Comment")).empty()) {
-            ban.BanInfo = s;
-        }
-
-        _banned.push_back(ban);
-
-        bans.GotoNextApp("Ban");
-    }
-    ProcessBans();
 }
 
 void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
@@ -2105,16 +1878,6 @@ void FOServer::Process_Register(ClientConnection* connection)
         return;
     }
 
-    // Check for ban by ip
-    const auto ip = connection->GetIp();
-    if (auto* ban = GetBanByIp(ip); ban != nullptr) {
-        connection->Send_TextMsg(STR_NET_BANNED_IP);
-        // connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
-        connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
-        connection->GracefulDisconnect();
-        return;
-    }
-
     // Name
     string name;
     connection->Bin >> name;
@@ -2236,15 +1999,6 @@ void FOServer::Process_LogIn(ClientConnection* connection)
         return;
     }
 
-    // Check for ban by ip
-    if (auto* ban = GetBanByIp(connection->GetIp())) {
-        connection->Send_TextMsg(STR_NET_BANNED_IP);
-        connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
-        connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
-        connection->GracefulDisconnect();
-        return;
-    }
-
     // Check for null in login/password
     if (name.find('\0') != string::npos || password.find('\0') != string::npos) {
         connection->Send_TextMsg(STR_NET_WRONG_LOGIN);
@@ -2272,15 +2026,6 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     auto doc = DbStorage.Get("Players", player_id);
     if (doc.count("Password") == 0u || doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(doc["Password"]).length() != password.length() || std::get<string>(doc["Password"]) != password) {
         connection->Send_TextMsg(STR_NET_LOGINPASS_WRONG);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Check for ban by name
-    if (auto* ban = GetBanByName(name); ban != nullptr) {
-        connection->Send_TextMsg(STR_NET_BANNED);
-        connection->Send_TextMsgLex(STR_NET_BAN_REASON, GetBanLexems(*ban));
-        connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", GetBanTime(*ban)));
         connection->GracefulDisconnect();
         return;
     }

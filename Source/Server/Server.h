@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: improve ban system
+
 #pragma once
 
 #include "Common.h"
@@ -239,19 +241,6 @@ private:
         uint64 Parameter {};
     };
 
-    struct ClientBanned
-    {
-        DateTimeStamp BeginTime {};
-        DateTimeStamp EndTime {};
-        uint ClientIp {};
-        string ClientName {};
-        string BannedBy {};
-        string BanInfo {};
-    };
-
-    static constexpr auto BANS_FNAME_ACTIVE = "Save/Bans/Active.txt";
-    static constexpr auto BANS_FNAME_EXPIRED = "Save/Bans/Expired.txt";
-
     void RegisterData();
 
     void EntitySetValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
@@ -309,15 +298,6 @@ private:
     void LogToClients(string_view str);
     void DispatchLogToClients();
 
-    auto GetBanByName(string_view name) -> ClientBanned*;
-    auto GetBanByIp(uint ip) -> ClientBanned*;
-    auto GetBanTime(ClientBanned& ban) -> uint;
-    auto GetBanLexems(ClientBanned& ban) -> string;
-    void ProcessBans();
-    void SaveBan(ClientBanned& ban, bool expired);
-    void SaveBans();
-    void LoadBans();
-
     std::atomic_bool _started {};
     vector<uchar> _restoreInfoBin {};
     ServerStats _stats {};
@@ -335,7 +315,6 @@ private:
     NetServerBase* _webSocketsServer {};
     vector<ClientConnection*> _freeConnections {};
     mutable std::mutex _freeConnectionsLocker {};
-    vector<ClientBanned> _banned {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };
