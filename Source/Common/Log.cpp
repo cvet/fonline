@@ -44,8 +44,12 @@
 #include <android/log.h>
 #endif
 
+static void FlushLogAtExit();
+
 struct LogData
 {
+    LogData() { std::at_quick_exit(FlushLogAtExit); }
+
     std::mutex LogLocker {};
     bool LogDisableTimestamp {};
     unique_ptr<DiskFile> LogFileHandle {};
@@ -54,6 +58,13 @@ struct LogData
     string* LogBufferStr {};
 };
 GLOBAL_DATA(LogData, Data);
+
+static void FlushLogAtExit()
+{
+    if (Data != nullptr && Data->LogFileHandle) {
+        Data->LogFileHandle.reset();
+    }
+}
 
 void LogWithoutTimestamp()
 {

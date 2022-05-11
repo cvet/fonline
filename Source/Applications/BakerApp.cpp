@@ -380,12 +380,12 @@ int main(int argc, char** argv)
         // Finalize
         if (errors != 0) {
             WriteLog("Bakering failed!");
-            return 1;
+            std::quick_exit(EXIT_FAILURE);
         }
 
         WriteLog("Bakering complete!");
         DiskFileSystem::CreateBuildHashFile("Resources");
-        return 0;
+        std::quick_exit(EXIT_SUCCESS);
     }
     catch (std::exception& ex) {
         ReportExceptionAndExit(ex);

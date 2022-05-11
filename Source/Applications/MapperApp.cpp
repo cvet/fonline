@@ -151,7 +151,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
         }
 #endif
-        return 0;
+
+        std::quick_exit(EXIT_SUCCESS);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

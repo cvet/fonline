@@ -90,7 +90,8 @@ int main(int argc, char** argv)
         }
 
         delete server;
-        return 0;
+
+        std::quick_exit(EXIT_SUCCESS);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
