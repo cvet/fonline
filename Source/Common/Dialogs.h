@@ -35,11 +35,10 @@
 
 #include "Common.h"
 
+#include "EngineBase.h"
+#include "Entity.h"
 #include "MsgFiles.h"
 #include "ScriptSystem.h"
-
-class FOServer;
-class Critter;
 
 enum class TalkType
 {
@@ -75,7 +74,8 @@ struct DemandResult
 {
     uchar Type {DR_NONE};
     uchar Who {DR_WHO_NONE};
-    max_t ParamId {};
+    int ParamIndex {};
+    hstring ParamHash {};
     bool NoRecheck {};
     bool RetValue {};
     char Op {};
@@ -100,7 +100,7 @@ struct Dialog
     uint TextId {};
     AnswersVec Answers {};
     bool NoShuffle {};
-    ScriptFunc<string, Critter*, Critter*> DlgScriptFunc {};
+    ScriptFunc<string, Entity*, Entity*> DlgScriptFunc {};
 };
 using DialogsVec = vector<Dialog>;
 
@@ -132,11 +132,13 @@ struct TalkData
     bool Locked {};
 };
 
+DECLARE_EXCEPTION(DialogManagerException);
+
 class DialogManager final
 {
 public:
     DialogManager() = delete;
-    explicit DialogManager(FOServer* engine);
+    explicit DialogManager(FOEngineBase* engine);
     DialogManager(const DialogManager&) = delete;
     DialogManager(DialogManager&&) noexcept = default;
     auto operator=(const DialogManager&) = delete;
@@ -147,20 +149,20 @@ public:
     [[nodiscard]] auto GetDialogByIndex(uint index) -> DialogPack*;
 
     void LoadDialogs();
-    [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
     [[nodiscard]] auto AddDialog(DialogPack* pack) -> bool;
+    [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
 
     void EraseDialog(hstring pack_id);
 
 private:
-    [[nodiscard]] auto GetNotAnswerAction(string_view str) -> ScriptFunc<string, Critter*, Critter*>;
+    [[nodiscard]] auto GetNotAnswerAction(string_view str) -> ScriptFunc<string, Entity*, Entity*>;
     [[nodiscard]] auto GetDrType(string_view str) -> uchar;
     [[nodiscard]] auto GetWho(char who) -> uchar;
     [[nodiscard]] auto CheckOper(char oper) -> bool;
 
     [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*;
 
-    FOServer* _engine;
+    FOEngineBase* _engine;
     map<hstring, unique_ptr<DialogPack>> _dialogPacks {};
     bool _nonConstHelper {};
 };

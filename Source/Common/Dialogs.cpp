@@ -34,15 +34,16 @@
 #include "Dialogs.h"
 #include "Critter.h"
 #include "FileSystem.h"
-#include "Item.h"
-#include "Location.h"
 #include "Log.h"
-#include "Map.h"
-#include "Server.h"
-#include "ServerEntity.h"
 #include "StringUtils.h"
 
-static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
+//#include "Item.h"
+//#include "Location.h"
+//#include "Map.h"
+//#include "Server.h"
+//#include "ServerEntity.h"
+
+/*static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
 {
     auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->Find(str);
     auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->Find(str);
@@ -88,7 +89,7 @@ static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, 
         type = DR_PROP_MAP;
     }
 
-    /*if (type == DR_PROP_CRITTER && prop->IsDict())
+    / *if (type == DR_PROP_CRITTER && prop->IsDict())
     {
         type = DR_PROP_CRITTER_DICT;
         if (prop->GetASObjectType()->GetSubTypeId(0) != asTYPEID_UINT32)
@@ -104,7 +105,7 @@ static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, 
             WriteLog("DR property '{}' is not PlainData type", str);
             return -1;
         }
-    }*/
+    }* /
 
     if (is_demand && !prop->IsReadable()) {
         WriteLog("DR property '{}' is not readable", str);
@@ -117,9 +118,9 @@ static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, 
 
     is_hash = prop->IsBaseTypeHash();
     return static_cast<int>(prop->GetRegIndex());
-}
+}*/
 
-DialogManager::DialogManager(FOServer* engine) : _engine {engine}
+DialogManager::DialogManager(FOEngineBase* engine) : _engine {engine}
 {
 }
 
@@ -156,7 +157,7 @@ void DialogManager::LoadDialogs()
     WriteLog("Load dialogs complete, count {}", files_loaded);
 
     if (files_loaded != files.GetFilesCount()) {
-        throw ServerInitException("Can't load all dialogs");
+        throw DialogManagerException("Can't load all dialogs");
     }
 }
 
@@ -167,9 +168,9 @@ auto DialogManager::AddDialog(DialogPack* pack) -> bool
         return false;
     }
 
-    const auto pack_id = (pack->PackId.as_uint() & DLGID_MASK);
-    for (auto& [fst, snd] : _dialogPacks) {
-        const auto check_pack_id = (fst.as_uint() & DLGID_MASK);
+    const auto pack_id = pack->PackId.as_uint() & DLGID_MASK;
+    for (auto&& [fst, snd] : _dialogPacks) {
+        const auto check_pack_id = fst.as_uint() & DLGID_MASK;
         if (pack_id == check_pack_id) {
             WriteLog("Name hash collision for dialogs '{}' and '{}'", pack->PackName, snd->PackName);
             return false;
@@ -291,7 +292,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     uint link = 0;
     string read_str;
 
-    ScriptFunc<string, Critter*, Critter*> script;
+    ScriptFunc<string, Entity*, Entity*> script;
     uint flags = 0;
 
     while (true) {
@@ -436,7 +437,8 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     uchar values_count = 0u;
     string svalue;
     auto ivalue = 0;
-    max_t id = 0;
+    int id_index = 0;
+    hstring id_hash;
     string type_str;
     string name;
     auto no_recheck = false;
@@ -474,10 +476,10 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         // Name
         input >> name;
         auto is_hash = false;
-        id = static_cast<max_t>(GetPropEnumIndex(_engine, name, is_demand, type, is_hash));
+        /*id = static_cast<max_t>(GetPropEnumIndex(_engine, name, is_demand, type, is_hash));
         if (id == static_cast<max_t>(-1)) {
             fail = true;
-        }
+        }*/
 
         // Operator
         input >> oper;
@@ -506,7 +508,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
 
         // Name
         input >> name;
-        id = _engine->ToHashedString(name).as_uint();
+        id_hash = _engine->ToHashedString(name);
         // Todo: check item name on DR_ITEM
 
         // Operator
@@ -625,7 +627,8 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     auto* result = new DemandResult();
     result->Type = type;
     result->Who = who;
-    result->ParamId = id;
+    result->ParamIndex = id_index;
+    result->ParamHash = id_hash;
     result->Op = oper;
     result->ValuesCount = values_count;
     result->NoRecheck = no_recheck;
@@ -643,7 +646,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     return result;
 }
 
-auto DialogManager::GetNotAnswerAction(string_view str) -> ScriptFunc<string, Critter*, Critter*>
+auto DialogManager::GetNotAnswerAction(string_view str) -> ScriptFunc<string, Entity*, Entity*>
 {
     NON_CONST_METHOD_HINT();
 
@@ -651,7 +654,8 @@ auto DialogManager::GetNotAnswerAction(string_view str) -> ScriptFunc<string, Cr
         return {};
     }
 
-    return _engine->ScriptSys->FindFunc<string, Critter*, Critter*>(str);
+    // return _engine->ScriptSys->FindFunc<string, Entity*, Entity*>(str);
+    return {};
 }
 
 auto DialogManager::GetDrType(string_view str) -> uchar
