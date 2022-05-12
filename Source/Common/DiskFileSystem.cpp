@@ -765,7 +765,7 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 auto DiskFileSystem::IsDir(string_view path) -> bool
 {
     struct stat st;
-    if (::stat(path, &st) == 0) {
+    if (::stat(string(path).c_str(), &st) == 0) {
         if (S_ISDIR(st.st_mode)) {
             return true;
         }
