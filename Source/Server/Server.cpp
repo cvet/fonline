@@ -133,7 +133,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 
     // Properties that sending to clients
     {
-        const auto set_send_callbacks = [this](const auto* registrator, const PropertyChangedCallback& callback) {
+        const auto set_send_callbacks = [](const auto* registrator, const PropertyChangedCallback& callback) {
             const auto count = static_cast<int>(registrator->GetCount());
             for (auto i = 0; i < count; i++) {
                 const auto* prop = registrator->GetByIndex(i);
@@ -168,7 +168,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 
     // Properties with custom behaviours
     {
-        const auto set_callback = [this](const auto* registrator, int prop_index, PropertyChangedCallback callback) {
+        const auto set_callback = [](const auto* registrator, int prop_index, PropertyChangedCallback callback) {
             const auto* prop = registrator->GetByIndex(prop_index);
             prop->AddCallback(std::move(callback));
         };
