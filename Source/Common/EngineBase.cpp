@@ -70,9 +70,12 @@ void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_ty
     RUNTIME_ASSERT(_enums.count(string(name)) == 0u);
 
     unordered_map<int, string> key_values_rev;
-    for (const auto& [key, value] : key_values) {
+    for (auto&& [key, value] : key_values) {
         RUNTIME_ASSERT(key_values_rev.count(value) == 0u);
         key_values_rev[value] = key;
+        const auto full_key = _str("{}::{}", name, key).str();
+        RUNTIME_ASSERT(_enumsFull.count(full_key) == 0u);
+        _enumsFull[full_key] = value;
     }
 
     _enums[string(name)] = std::move(key_values);
@@ -217,6 +220,9 @@ auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
 
     if (str[0] == '@') {
         return ToHashedString(str.substr(1)).as_int();
+    }
+    else if (str[0] == 'C' && str.length() >= 9 && str.compare(0, 9, "Content::") == 0) {
+        return ToHashedString(str.substr(str.rfind(':') + 1)).as_int();
     }
     else if (_str(str).isNumber()) {
         return _str(str).toInt();

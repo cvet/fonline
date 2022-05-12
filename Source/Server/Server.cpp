@@ -60,6 +60,14 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 
     FileSys.AddDataSource("$Embedded");
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
+    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
+    }
+    if constexpr (FO_MONO_SCRIPTING) {
+        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Mono"));
+    }
 
     RegisterData();
     ScriptSys = (script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys);
@@ -94,15 +102,16 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     }
 
     // Property callbacks
-    // PropertyRegistrator::GlobalSetCallbacks.push_back(EntitySetValue);
+    // PropertyRegistrator::GlobalSetCallbacks.push_back(OnSetEntityValue);
 
     // Dialogs
     DlgMngr.LoadDialogs();
 
     // Protos
-    // ProtoMngr.Load();
-    //  if (!ProtoMngr.LoadProtosFromFiles(FileSys))
-    //     return false;
+    {
+        auto protos_file = FileSys.ReadFile("Protos.foprob");
+        ProtoMngr.Load(protos_file.GetData());
+    }
 
     // Globals
     const auto globals_doc = DbStorage.Get("Game", 1);
@@ -1531,7 +1540,7 @@ void FOServer::DispatchLogToClients()
     _logLines.clear();
 }
 
-void FOServer::EntitySetValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
+void FOServer::OnSetEntityValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
 {
     NON_CONST_METHOD_HINT();
 
@@ -1578,7 +1587,7 @@ void FOServer::ProcessCritter(Critter* cr)
     }
 
     // Moving
-    ProcessMove(cr);
+    ProcessCritterMoving(cr);
 
     // Idle functions
     OnCritterIdle.Fire(cr);
@@ -1626,7 +1635,7 @@ void FOServer::ProcessCritter(Critter* cr)
     }
 }
 
-auto FOServer::Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool
+auto FOServer::MoveCritter(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool
 {
     const auto map_id = cr->GetMapId();
     if (map_id == 0u) {
@@ -2263,14 +2272,14 @@ void FOServer::Process_GiveMap(Player* player)
             return;
         }
 
-        auto* loc = MapMngr.GetLocation(loc_id);
+        const auto* loc = MapMngr.GetLocation(loc_id);
         if (loc == nullptr) {
             WriteLog("Request for loading incorrect automap, client '{}'", cr->GetName());
             return;
         }
 
         auto found = false;
-        auto automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : vector<hstring>());
+        const auto automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : vector<hstring>());
         if (!automaps.empty()) {
             for (size_t i = 0; i < automaps.size() && !found; i++) {
                 if (automaps[i] == map_pid) {
@@ -2284,17 +2293,54 @@ void FOServer::Process_GiveMap(Player* player)
         }
     }
     else {
-        auto* map = MapMngr.GetMap(cr->GetMapId());
+        const auto* map = MapMngr.GetMap(cr->GetMapId());
         if ((map == nullptr || map_pid != map->GetProtoId()) && map_pid != cr->ViewMapPid) {
             WriteLog("Request for loading incorrect map, client '{}'", cr->GetName());
             return;
         }
     }
 
-    const auto* static_map = MapMngr.FindStaticMap(proto_map);
-    RUNTIME_ASSERT(static_map);
+    {
+        const auto* static_map = MapMngr.FindStaticMap(proto_map);
+        RUNTIME_ASSERT(static_map);
 
-    Send_MapData(player, proto_map, static_map, static_map->HashTiles != hash_tiles, static_map->HashScen != hash_scen);
+        const auto send_tiles = static_map->HashTiles != hash_tiles;
+        const auto send_scenery = static_map->HashScen != hash_scen;
+
+        constexpr auto msg = NETMSG_MAP;
+        const auto maxhx = proto_map->GetWidth();
+        const auto maxhy = proto_map->GetHeight();
+        uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(hstring::hash_t) + sizeof(maxhx) + sizeof(maxhy) + sizeof(bool) * 2;
+
+        if (send_tiles) {
+            msg_len += sizeof(uint) + static_cast<uint>(static_map->Tiles.size()) * sizeof(MapTile);
+        }
+        if (send_scenery) {
+            msg_len += sizeof(uint) + static_cast<uint>(static_map->SceneryData.size());
+        }
+
+        CONNECTION_OUTPUT_BEGIN(player->Connection);
+        player->Connection->Bout << msg;
+        player->Connection->Bout << msg_len;
+        player->Connection->Bout << map_pid;
+        player->Connection->Bout << maxhx;
+        player->Connection->Bout << maxhy;
+        player->Connection->Bout << send_tiles;
+        player->Connection->Bout << send_scenery;
+        if (send_tiles) {
+            player->Connection->Bout << static_cast<uint>(static_map->Tiles.size() * sizeof(MapTile));
+            if (!static_map->Tiles.empty()) {
+                player->Connection->Bout.Push(&static_map->Tiles[0], static_cast<uint>(static_map->Tiles.size()) * sizeof(MapTile));
+            }
+        }
+        if (send_scenery) {
+            player->Connection->Bout << static_cast<uint>(static_map->SceneryData.size());
+            if (!static_map->SceneryData.empty()) {
+                player->Connection->Bout.Push(&static_map->SceneryData[0], static_cast<uint>(static_map->SceneryData.size()));
+            }
+        }
+        CONNECTION_OUTPUT_END(player->Connection);
+    }
 
     if (!automap) {
         Map* map = nullptr;
@@ -2303,44 +2349,6 @@ void FOServer::Process_GiveMap(Player* player)
         }
         cr->Send_LoadMap(map, MapMngr);
     }
-}
-
-void FOServer::Send_MapData(Player* player, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery)
-{
-    constexpr auto msg = NETMSG_MAP;
-    const auto map_pid = pmap->GetProtoId();
-    const auto maxhx = pmap->GetWidth();
-    const auto maxhy = pmap->GetHeight();
-    uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(map_pid) + sizeof(maxhx) + sizeof(maxhy) + sizeof(bool) * 2;
-
-    if (send_tiles) {
-        msg_len += sizeof(uint) + static_cast<uint>(static_map->Tiles.size()) * sizeof(MapTile);
-    }
-    if (send_scenery) {
-        msg_len += sizeof(uint) + static_cast<uint>(static_map->SceneryData.size());
-    }
-
-    CONNECTION_OUTPUT_BEGIN(player->Connection);
-    player->Connection->Bout << msg;
-    player->Connection->Bout << msg_len;
-    player->Connection->Bout << map_pid;
-    player->Connection->Bout << maxhx;
-    player->Connection->Bout << maxhy;
-    player->Connection->Bout << send_tiles;
-    player->Connection->Bout << send_scenery;
-    if (send_tiles) {
-        player->Connection->Bout << static_cast<uint>(static_map->Tiles.size() * sizeof(MapTile));
-        if (!static_map->Tiles.empty()) {
-            player->Connection->Bout.Push(&static_map->Tiles[0], static_cast<uint>(static_map->Tiles.size()) * sizeof(MapTile));
-        }
-    }
-    if (send_scenery) {
-        player->Connection->Bout << static_cast<uint>(static_map->SceneryData.size());
-        if (!static_map->SceneryData.empty()) {
-            player->Connection->Bout.Push(&static_map->SceneryData[0], static_cast<uint>(static_map->SceneryData.size()));
-        }
-    }
-    CONNECTION_OUTPUT_END(player->Connection);
 }
 
 void FOServer::Process_Move(Player* player)
@@ -2393,7 +2401,7 @@ void FOServer::Process_Move(Player* player)
     }
 
     // Try move
-    Act_Move(cr, hx, hy, move_params);
+    MoveCritter(cr, hx, hy, move_params);
 }
 
 void FOServer::Process_Dir(Player* player)
@@ -2630,7 +2638,7 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::ProcessMove(Critter* cr)
+void FOServer::ProcessCritterMoving(Critter* cr)
 {
     if (cr->Moving.State != MovingState::InProgress) {
         return;
@@ -2765,7 +2773,7 @@ void FOServer::ProcessMove(Critter* cr)
     const auto& steps = cr->Moving.Steps;
     if (!cr->Moving.Steps.empty() && cr->Moving.Iter < steps.size()) {
         const auto& ps = steps[cr->Moving.Iter];
-        if (!GeomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), ps.HexX, ps.HexY, 1) || !Act_Move(cr, ps.HexX, ps.HexY, ps.MoveParams)) {
+        if (!GeomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), ps.HexX, ps.HexY, 1) || !MoveCritter(cr, ps.HexX, ps.HexY, ps.MoveParams)) {
             // Error
             cr->Moving.Steps.clear();
             cr->Broadcast_Position();
@@ -2781,7 +2789,7 @@ void FOServer::ProcessMove(Critter* cr)
     }
 }
 
-auto FOServer::Dialog_Compile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
+auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
 {
     if (base_dlg.Id < 2) {
         WriteLog("Wrong dialog id {}", base_dlg.Id);
@@ -2791,7 +2799,7 @@ auto FOServer::Dialog_Compile(Critter* npc, Critter* cl, const Dialog& base_dlg,
     compiled_dlg = base_dlg;
 
     for (auto it_a = compiled_dlg.Answers.begin(); it_a != compiled_dlg.Answers.end();) {
-        if (!Dialog_CheckDemand(npc, cl, *it_a, false)) {
+        if (!DialogCheckDemand(npc, cl, *it_a, false)) {
             it_a = compiled_dlg.Answers.erase(it_a);
         }
         else {
@@ -2808,7 +2816,7 @@ auto FOServer::Dialog_Compile(Critter* npc, Critter* cl, const Dialog& base_dlg,
     return true;
 }
 
-auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool
+auto FOServer::DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool
 {
     if (answer.Demands.empty()) {
         return true;
@@ -2839,8 +2847,6 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
         if (master == nullptr) {
             continue;
         }
-
-        const auto index = demand.ParamId;
 
         switch (demand.Type) {
         case DR_PROP_GLOBAL:
@@ -2880,7 +2886,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
                 break;
             }
 
-            const auto* prop = prop_registrator->GetByIndex(index);
+            const auto* prop = prop_registrator->GetByIndex(demand.ParamIndex);
             auto val = 0;
             if (demand.Type == DR_PROP_CRITTER_DICT) {
                 if (slave == nullptr) {
@@ -2960,7 +2966,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
             }
         } break;
         case DR_ITEM: {
-            const auto pid = ResolveHash(index);
+            const auto pid = demand.ParamHash;
             switch (demand.Op) {
             case '>':
                 if (static_cast<int>(master->CountItemPid(pid)) > demand.Value) {
@@ -3025,7 +3031,7 @@ auto FOServer::Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answe
     return true;
 }
 
-auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint
+auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint
 {
     if (answer.Results.empty()) {
         return 0;
@@ -3053,7 +3059,6 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
             continue;
         }
 
-        const auto index = result.ParamId;
         switch (result.Type) {
         case DR_PROP_GLOBAL:
         case DR_PROP_CRITTER:
@@ -3092,7 +3097,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
                 break;
             }
 
-            // Todo: restore Dialog_UseResult
+            // Todo: restore DialogUseResult
             UNUSED_VARIABLE(prop_registrator);
             /*const auto* prop = prop_registrator->GetByIndex(index);
             int val = 0;
@@ -3202,7 +3207,7 @@ auto FOServer::Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer)
         }
             continue;
         case DR_ITEM: {
-            const auto pid = ResolveHash(index);
+            const auto pid = result.ParamHash;
             const int cur_count = master->CountItemPid(pid);
             auto need_count = cur_count;
 
@@ -3260,7 +3265,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
     }
 
     DialogPack* dialog_pack;
-    DialogsVec* dialogs;
+    vector<Dialog>* dialogs;
 
     // Talk with npc
     if (npc != nullptr) {
@@ -3367,7 +3372,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
     auto go_dialog = uint(-1);
     auto it_a = (*it_d).Answers.begin();
     for (; it_a != (*it_d).Answers.end(); ++it_a) {
-        if (Dialog_CheckDemand(npc, cl, *it_a, false)) {
+        if (DialogCheckDemand(npc, cl, *it_a, false)) {
             go_dialog = (*it_a).Link;
         }
         if (go_dialog != uint(-1)) {
@@ -3380,7 +3385,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
     }
 
     // Use result
-    const auto force_dialog = Dialog_UseResult(npc, cl, (*it_a));
+    const auto force_dialog = DialogUseResult(npc, cl, (*it_a));
     if (force_dialog != 0u) {
         if (force_dialog == uint(-1)) {
             return;
@@ -3397,7 +3402,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
     }
 
     // Compile
-    if (!Dialog_Compile(npc, cl, *it_d, cl->Talk.CurDialog)) {
+    if (!DialogCompile(npc, cl, *it_d, cl->Talk.CurDialog)) {
         cl->Send_TextMsg(cl, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
         WriteLog("Dialog compile fail, client '{}', dialog pack {}", cl->GetName(), dialog_pack->PackId);
         return;
@@ -3423,11 +3428,9 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
     // Get lexems
     cl->Talk.Lexems.clear();
-    if (cl->Talk.CurDialog.DlgScriptFunc) {
+    if (!cl->Talk.CurDialog.DlgScriptFunc.empty()) {
         cl->Talk.Locked = true;
-        if (cl->Talk.CurDialog.DlgScriptFunc(cl, npc)) {
-            cl->Talk.Lexems = cl->Talk.CurDialog.DlgScriptFunc.GetResult();
-        }
+        ScriptSys->CallFunc<string, Critter*, Critter*>(cl->Talk.CurDialog.DlgScriptFunc, cl, npc, cl->Talk.Lexems);
         cl->Talk.Locked = false;
     }
 
@@ -3532,14 +3535,14 @@ void FOServer::Process_Dialog(Player* player)
         answer = &(*(cur_dialog->Answers.begin() + num_answer));
 
         // Check demand again
-        if (!Dialog_CheckDemand(npc, cr, *answer, true)) {
+        if (!DialogCheckDemand(npc, cr, *answer, true)) {
             WriteLog("Secondary check of dialog demands fail, client '{}'", cr->GetName());
             CrMngr.CloseTalk(cr); // End
             return;
         }
 
         // Use result
-        force_dialog = Dialog_UseResult(npc, cr, *answer);
+        force_dialog = DialogUseResult(npc, cr, *answer);
         if (force_dialog != 0u) {
             dlg_id = force_dialog;
         }
@@ -3553,7 +3556,7 @@ void FOServer::Process_Dialog(Player* player)
             [[fallthrough]];
         case DIALOG_BARTER:
         label_Barter:
-            if (cur_dialog->DlgScriptFunc) {
+            if (!cur_dialog->DlgScriptFunc.empty()) {
                 cr->Send_TextMsg(npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME);
                 return;
             }
@@ -3600,7 +3603,7 @@ void FOServer::Process_Dialog(Player* player)
     }
 
     // Compile
-    if (!Dialog_Compile(npc, cr, *it_d, cr->Talk.CurDialog)) {
+    if (!DialogCompile(npc, cr, *it_d, cr->Talk.CurDialog)) {
         CrMngr.CloseTalk(cr);
         cr->Send_TextMsg(cr, STR_DIALOG_COMPILE_FAIL, SAY_NETMSG, TEXTMSG_GAME);
         WriteLog("Dialog compile fail, client '{}', dialog pack {}", cr->GetName(), dialog_pack->PackId);
@@ -3613,11 +3616,9 @@ void FOServer::Process_Dialog(Player* player)
 
     // Get lexems
     cr->Talk.Lexems.clear();
-    if (cr->Talk.CurDialog.DlgScriptFunc) {
+    if (!cr->Talk.CurDialog.DlgScriptFunc.empty()) {
         cr->Talk.Locked = true;
-        if (cr->Talk.CurDialog.DlgScriptFunc(cr, npc)) {
-            cr->Talk.Lexems = cr->Talk.CurDialog.DlgScriptFunc.GetResult();
-        }
+        ScriptSys->CallFunc<string, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFunc, cr, npc, cr->Talk.Lexems);
         cr->Talk.Locked = false;
     }
 

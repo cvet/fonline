@@ -487,14 +487,14 @@ auto _str::eraseFileExtension() -> _str&
 
 auto _str::combinePath(string_view path) -> _str&
 {
-    extractDir();
+    if (!path.empty()) {
+        if (!_s.empty() && _s.back() != '/' && path.front() != '/') {
+            _s += "/";
+        }
 
-    if (!_s.empty() && _s.back() != '/' && (path.empty() || path.front() != '/')) {
-        _s += "/";
+        _s += path;
+        formatPath();
     }
-
-    _s += path;
-    formatPath();
 
     return *this;
 }

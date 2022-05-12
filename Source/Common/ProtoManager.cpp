@@ -46,9 +46,6 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, const T*
     for (auto& kv : protos) {
         auto* proto_item = kv.second;
 
-        const auto proto_id = kv.first;
-        writer.Write<uint>(proto_id.as_uint());
-
         const auto proto_name = proto_item->GetName();
         writer.Write<ushort>(static_cast<ushort>(proto_name.length()));
         writer.WritePtr(proto_name.data(), proto_name.length());

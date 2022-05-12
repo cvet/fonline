@@ -649,15 +649,9 @@ AddResources( "Core" "Resources/Core" )
 AddEmbeddedResources( "Resources/Embedded" )
 
 # Scripting defines
-if( FO_NATIVE_SCRIPTING )
-	add_compile_definitions( FO_NATIVE_SCRIPTING )
-endif()
-if( FO_ANGELSCRIPT_SCRIPTING )
-	add_compile_definitions( FO_ANGELSCRIPT_SCRIPTING )
-endif()
-if( FO_MONO_SCRIPTING )
-	add_compile_definitions( FO_MONO_SCRIPTING )
-endif()
+add_compile_definitions( FO_NATIVE_SCRIPTING=$<BOOL:${FO_NATIVE_SCRIPTING}> )
+add_compile_definitions( FO_ANGELSCRIPT_SCRIPTING=$<BOOL:${FO_ANGELSCRIPT_SCRIPTING}> )
+add_compile_definitions( FO_MONO_SCRIPTING=$<BOOL:${FO_MONO_SCRIPTING}> )
 
 # Compiler options
 set( CMAKE_CXX_STANDARD 17 )
@@ -1173,6 +1167,8 @@ list( APPEND FO_COMMON_SOURCE
 	"Source/Common/ConfigFile.h"
 	"Source/Common/DataSource.cpp"
 	"Source/Common/DataSource.h"
+	"Source/Common/Dialogs.cpp"
+	"Source/Common/Dialogs.h"
 	"Source/Common/DiskFileSystem.cpp"
 	"Source/Common/DiskFileSystem.h"
 	"Source/Common/EngineBase.cpp"
@@ -1245,8 +1241,6 @@ list( APPEND FO_SERVER_SOURCE
 	"Source/Server/DataBase.h"
 	"Source/Server/DeferredCalls.cpp"
 	"Source/Server/DeferredCalls.h"
-	"Source/Server/Dialogs.cpp"
-	"Source/Server/Dialogs.h"
 	"Source/Server/EntityManager.cpp"
 	"Source/Server/EntityManager.h"
 	"Source/Server/Item.cpp"

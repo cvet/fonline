@@ -36,9 +36,7 @@
 #include "Common.h"
 
 #include "EngineBase.h"
-#include "Entity.h"
 #include "MsgFiles.h"
-#include "ScriptSystem.h"
 
 enum class TalkType
 {
@@ -74,8 +72,9 @@ struct DemandResult
 {
     uchar Type {DR_NONE};
     uchar Who {DR_WHO_NONE};
-    int ParamIndex {};
+    uint ParamIndex {};
     hstring ParamHash {};
+    string ParamFuncName {};
     bool NoRecheck {};
     bool RetValue {};
     char Op {};
@@ -83,34 +82,31 @@ struct DemandResult
     int Value {};
     int ValueExt[5] {};
 };
-using DemandResultVec = vector<DemandResult>;
 
 struct DialogAnswer
 {
     uint Link {};
     uint TextId {};
-    DemandResultVec Demands {};
-    DemandResultVec Results {};
+    vector<DemandResult> Demands {};
+    vector<DemandResult> Results {};
 };
-using AnswersVec = vector<DialogAnswer>;
 
 struct Dialog
 {
     uint Id {};
     uint TextId {};
-    AnswersVec Answers {};
+    vector<DialogAnswer> Answers {};
     bool NoShuffle {};
-    ScriptFunc<string, Entity*, Entity*> DlgScriptFunc {};
+    string DlgScriptFunc {};
 };
-using DialogsVec = vector<Dialog>;
 
 struct DialogPack
 {
     hstring PackId {};
     string PackName {};
-    DialogsVec Dialogs {};
+    vector<Dialog> Dialogs {};
     vector<uint> TextsLang {};
-    vector<FOMsg*> Texts {};
+    vector<FOMsg> Texts {};
     string Comment {};
 };
 
@@ -133,6 +129,7 @@ struct TalkData
 };
 
 DECLARE_EXCEPTION(DialogManagerException);
+DECLARE_EXCEPTION(DialogParseException);
 
 class DialogManager final
 {
@@ -146,20 +143,18 @@ public:
     ~DialogManager() = default;
 
     [[nodiscard]] auto GetDialog(hstring pack_id) -> DialogPack*;
-    [[nodiscard]] auto GetDialogByIndex(uint index) -> DialogPack*;
+    [[nodiscard]] auto GetDialogs() -> vector<DialogPack*>;
 
     void LoadDialogs();
-    [[nodiscard]] auto AddDialog(DialogPack* pack) -> bool;
-    [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
-
-    void EraseDialog(hstring pack_id);
+    void ValidateDialogs();
 
 private:
-    [[nodiscard]] auto GetNotAnswerAction(string_view str) -> ScriptFunc<string, Entity*, Entity*>;
     [[nodiscard]] auto GetDrType(string_view str) -> uchar;
     [[nodiscard]] auto GetWho(char who) -> uchar;
     [[nodiscard]] auto CheckOper(char oper) -> bool;
 
+    [[nodiscard]] auto ParseDialog(string_view pack_name, string_view data) -> DialogPack*;
+    void AddDialog(DialogPack* pack);
     [[nodiscard]] auto LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*;
 
     FOEngineBase* _engine;

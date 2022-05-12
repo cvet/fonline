@@ -66,8 +66,6 @@ int main(int argc, char** argv)
 
         const auto settings = GlobalSettings(argc, argv);
 
-        DiskFileSystem::RemoveBuildHashFile("AngelScript");
-
         auto server_failed = false;
         auto client_failed = false;
         auto mapper_failed = false;
@@ -131,11 +129,10 @@ int main(int argc, char** argv)
         }
 
         if (server_failed || client_failed || mapper_failed) {
-            return 1;
+            std::quick_exit(EXIT_FAILURE);
         }
 
-        DiskFileSystem::CreateBuildHashFile("AngelScript");
-        return 0;
+        std::quick_exit(EXIT_SUCCESS);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

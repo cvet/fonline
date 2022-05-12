@@ -132,7 +132,7 @@
     auto hy = self->GetHexY();
     if (self->GetEngine()->GeomHelper.MoveHexByDir(hx, hy, direction, map->GetWidth(), map->GetHeight())) {
         const auto move_flags = static_cast<ushort>(direction | BIN16(00000000, 00111000));
-        const auto move = self->GetEngine()->Act_Move(self, hx, hy, move_flags);
+        const auto move = self->GetEngine()->MoveCritter(self, hx, hy, move_flags);
         if (move) {
             self->Send_Move(self, move_flags);
         }

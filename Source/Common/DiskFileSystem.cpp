@@ -33,7 +33,6 @@
 
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #if !FO_IOS
@@ -875,19 +874,4 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool inc
 void DiskFileSystem::IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor)
 {
     RecursiveDirLook(path, "", include_subdirs, ext, visitor);
-}
-
-void DiskFileSystem::RemoveBuildHashFile(string_view hash_name)
-{
-    const auto build_hash_deleted = DeleteFile(_str("{}.build-hash", hash_name));
-    RUNTIME_ASSERT(build_hash_deleted);
-}
-
-void DiskFileSystem::CreateBuildHashFile(string_view hash_name)
-{
-    auto build_hash_file = OpenFile(_str("{}.build-hash", hash_name), true, true);
-    RUNTIME_ASSERT(build_hash_file);
-    const auto build_hash = string(FO_BUILD_HASH);
-    const auto build_hash_writed = build_hash_file.Write(build_hash);
-    RUNTIME_ASSERT(build_hash_writed);
 }

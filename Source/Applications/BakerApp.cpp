@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "Dialogs.h"
 #include "DiskFileSystem.h"
 #include "EffectBaker.h"
 #include "EngineBase.h"
@@ -43,6 +44,7 @@
 #include "ProtoManager.h"
 #include "Settings.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 
 class BakerEngine : public FOEngineBase
 {
@@ -83,7 +85,8 @@ int main(int argc, char** argv)
 
         auto settings = GlobalSettings(argc, argv);
 
-        DiskFileSystem::RemoveBuildHashFile("Resources");
+        const auto build_hash_deleted = DiskFileSystem::DeleteFile("Resources.build-hash");
+        RUNTIME_ASSERT(build_hash_deleted);
 
         WriteLog("Start bakering");
 
@@ -249,7 +252,7 @@ int main(int argc, char** argv)
             }
 
             // Protos
-            ProtoManager proto_mngr(&engine);
+            auto proto_mngr = ProtoManager(&engine);
 
             try {
                 WriteLog("Bake protos");
@@ -275,19 +278,22 @@ int main(int argc, char** argv)
             }
 
             // Dialogs
-            // Todo: add dialogs verification during baking
+            auto dialog_mngr = DialogManager(&engine);
+
             try {
                 WriteLog("Bake dialogs");
 
                 auto del_dialogs_ok = DiskFileSystem::DeleteDir("Dialogs");
                 RUNTIME_ASSERT(del_dialogs_ok);
 
+                dialog_mngr.LoadDialogs();
+                dialog_mngr.ValidateDialogs();
+
                 auto dialogs = content_files.FilterFiles("fodlg");
                 WriteLog("Dialogs count {}", dialogs.GetFilesCount());
 
                 while (dialogs.MoveNext()) {
                     auto file = dialogs.GetCurFile();
-
                     auto dlg_file = DiskFileSystem::OpenFile(_str("Dialogs/{}.fodlg", file.GetName()), true);
                     RUNTIME_ASSERT(dlg_file);
                     auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetSize());
@@ -317,23 +323,21 @@ int main(int argc, char** argv)
                 }
 
                 // Dialog texts
-                /*DialogPack* pack = nullptr;
-                uint index = 0;
-                while ((pack = DlgMngr.GetDialogByIndex(index++)) != nullptr) {
-                    for (uint i = 0, j = static_cast<uint>(pack->TextsLang.size()); i < j; i++) {
-                        for (auto& lang : _langPacks) {
+                for (auto* pack : dialog_mngr.GetDialogs()) {
+                    for (size_t i = 0; i < pack->TextsLang.size(); i++) {
+                        for (auto& lang : lang_packs) {
                             if (pack->TextsLang[i] != lang.NameCode) {
                                 continue;
                             }
 
-                            if (lang.Msg[TEXTMSG_DLG].IsIntersects(*pack->Texts[i])) {
-                                WriteLog("Warning! Dialog '{}' text intersection detected, send notification about this to developers", pack->PackName);
+                            if (lang.Msg[TEXTMSG_DLG].IsIntersects(pack->Texts[i])) {
+                                throw GenericException("Dialog text intersection detected", pack->PackName);
                             }
 
-                            lang.Msg[TEXTMSG_DLG] += *pack->Texts[i];
+                            lang.Msg[TEXTMSG_DLG] += pack->Texts[i];
                         }
                     }
-                }*/
+                }
 
                 // Proto texts
                 const auto fill_proto_texts = [&lang_packs](const auto& protos, int txt_type) {
@@ -384,7 +388,14 @@ int main(int argc, char** argv)
         }
 
         WriteLog("Bakering complete!");
-        DiskFileSystem::CreateBuildHashFile("Resources");
+
+        {
+            auto build_hash_file = DiskFileSystem::OpenFile("Resources.build-hash", true, true);
+            RUNTIME_ASSERT(build_hash_file);
+            const auto build_hash_writed = build_hash_file.Write(FO_BUILD_HASH);
+            RUNTIME_ASSERT(build_hash_writed);
+        }
+
         std::quick_exit(EXIT_SUCCESS);
     }
     catch (std::exception& ex) {

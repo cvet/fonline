@@ -174,7 +174,9 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
 
 void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
 {
-    // Restore PlainData data
+    // Restore plain data
+    RUNTIME_ASSERT(all_data_sizes.size() > 0);
+    RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
     const auto public_size = static_cast<uint>(_registrator->_publicPodDataSpace.size());
     const auto protected_size = static_cast<uint>(_registrator->_protectedPodDataSpace.size());
     RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size);

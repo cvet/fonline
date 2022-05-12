@@ -161,7 +161,6 @@ using ushort = unsigned short;
 using uint = unsigned int;
 using uint64 = uint64_t;
 using int64 = int64_t;
-using max_t = uint; // Todo: remove max_t
 
 // Check the sizes of base types
 static_assert(sizeof(char) == 1);
@@ -256,73 +255,47 @@ extern void ReportExceptionAndContinue(const std::exception& ex);
 extern void CreateDumpMessage(string_view appendix, string_view message);
 
 // Todo: pass name to exceptions context args
-class GenericException : public std::exception
-{
-public:
-    GenericException() = delete;
-    GenericException(const GenericException&) = delete;
-    GenericException(GenericException&&) = default;
-    auto operator=(const GenericException&) = delete;
-    auto operator=(GenericException&&) noexcept = delete;
-    ~GenericException() override = default;
-
-    template<typename... Args>
-    explicit GenericException(string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
-    {
-        _exceptionMessage = "Exception: ";
-        _exceptionMessage.append(message);
-        if (!_exceptionParams.empty()) {
-            _exceptionMessage.append("\n  Context args:");
-            for (auto& param : _exceptionParams)
-                _exceptionMessage.append("\n  - ").append(param);
-        }
-        _exceptionMessage.append("\n");
-        _exceptionMessage.append(GetStackTrace());
-    }
-
-    [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); }
-
-private:
-    string _exceptionMessage {};
-    // Todo: auto expand exception parameters to readable state
-    vector<string> _exceptionParams {};
-};
-
 #define DECLARE_EXCEPTION(exception_name) \
-    class exception_name : public GenericException \
+    class exception_name : public std::exception \
     { \
     public: \
-        template<typename... Args> \
-        exception_name(Args... args) : GenericException(std::forward<Args>(args)...) \
-        { \
-        } \
         exception_name() = delete; \
         exception_name(const exception_name&) = delete; \
         exception_name(exception_name&&) = default; \
         auto operator=(const exception_name&) = delete; \
         auto operator=(exception_name&&) noexcept = delete; \
         ~exception_name() override = default; \
+        template<typename... Args> \
+\
+        explicit exception_name(string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
+        { \
+            _exceptionMessage = #exception_name ": "; \
+            _exceptionMessage.append(message); \
+            if (!_exceptionParams.empty()) { \
+                _exceptionMessage.append("\n  Context args:"); \
+                for (auto& param : _exceptionParams) \
+                    _exceptionMessage.append("\n  - ").append(param); \
+            } \
+            _exceptionMessage.append("\n"); \
+            _exceptionMessage.append(GetStackTrace()); \
+        } \
+        [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
+\
+    private: \
+        string _exceptionMessage {}; \
+        vector<string> _exceptionParams {}; \
     }
 
-#if FO_DEBUG
+// Todo: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
+#define RUNTIME_ASSERT(expr) \
+    if (!(expr)) \
+    throw AssertationException(#expr, __FILE__, __LINE__)
 #define RUNTIME_ASSERT_STR(expr, str) \
-    do { \
-        if (!(expr) && !BreakIntoDebugger()) { \
-            throw AssertationException(str, __FILE__, __LINE__); \
-        } \
-    } while (false)
-#else
-#define RUNTIME_ASSERT_STR(expr, str) \
-    do { \
-        if (!(expr)) { \
-            throw AssertationException(str, __FILE__, __LINE__); \
-        } \
-    } while (false)
-#endif
-
-#define RUNTIME_ASSERT(expr) RUNTIME_ASSERT_STR(expr, #expr)
+    if (!(expr)) \
+    throw AssertationException(str, __FILE__, __LINE__)
 
 // Common exceptions
+DECLARE_EXCEPTION(GenericException);
 DECLARE_EXCEPTION(AssertationException);
 DECLARE_EXCEPTION(UnreachablePlaceException);
 DECLARE_EXCEPTION(NotSupportedException);

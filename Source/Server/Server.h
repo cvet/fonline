@@ -243,17 +243,10 @@ private:
 
     void RegisterData();
 
-    void EntitySetValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSendGlobalValue(Entity* entity, const Property* prop);
-    void OnSendPlayerValue(Entity* entity, const Property* prop);
-    void OnSendCritterValue(Entity* entity, const Property* prop);
-    void OnSendMapValue(Entity* entity, const Property* prop);
-    void OnSendLocationValue(Entity* entity, const Property* prop);
-
-    void Send_MapData(Player* player, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery);
-    auto Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
-    auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
-    auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
+    void OnNewConnection(NetConnection* net_connection);
+    void ProcessFreeConnection(ClientConnection* connection);
+    void ProcessPlayerConnection(Player* player);
+    void ProcessConnection(ClientConnection* connection);
 
     void Process_Ping(ClientConnection* connection);
     void Process_Update(ClientConnection* connection);
@@ -272,7 +265,14 @@ private:
     void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
 
+    void OnSendGlobalValue(Entity* entity, const Property* prop);
+    void OnSendPlayerValue(Entity* entity, const Property* prop);
     void OnSendItemValue(Entity* entity, const Property* prop);
+    void OnSendCritterValue(Entity* entity, const Property* prop);
+    void OnSendMapValue(Entity* entity, const Property* prop);
+    void OnSendLocationValue(Entity* entity, const Property* prop);
+
+    void OnSetEntityValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSetItemCount(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* old_value);
     void OnSetItemRecacheHex(Entity* entity, const Property* prop, void* cur_value, void* old_value);
@@ -282,18 +282,14 @@ private:
     void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
 
     void ProcessCritter(Critter* cr);
+    void ProcessCritterMoving(Critter* cr);
+    auto MoveCritter(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
 
-    auto Dialog_Compile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
-    auto Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool;
-    auto Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint;
-
-    void OnNewConnection(NetConnection* net_connection);
-
-    void ProcessFreeConnection(ClientConnection* connection);
-    void ProcessPlayerConnection(Player* player);
-    void ProcessConnection(ClientConnection* connection);
-
-    void ProcessMove(Critter* cr);
+    auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
+    auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
+    auto DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
+    auto DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool;
+    auto DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint;
 
     void LogToClients(string_view str);
     void DispatchLogToClients();

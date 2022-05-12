@@ -275,10 +275,9 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: rename char to int8 and use int8_t as alias
 * Common: rename short to int16 and use int16_t as alias
 * Common: rename int to int32 and use int32_t as alias
-* Common: remove max_t
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
 * Common: pass name to exceptions context args
-* Common: auto expand exception parameters to readable state
+* Common: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
 * Common: recursion guard for EventDispatcher
 * Common: improve ptr<> system for leng term pointer observing
 * Common: add _hash c-string literal helper
@@ -289,7 +288,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: remove critter flags
 * Common: remove special OTHER_* params
 * Common: apply scripts strack trace
-* BakerApp: add dialogs verification during baking
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: add reverse playing of 3d animation
@@ -329,6 +327,7 @@ Please follow these instructions to understand how to use this engine by design:
 * ApplicationHeadless: app settings
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
+* Dialogs: validate script entries, hashes
 * Entity: events array may be modified during call, need take it into account here
 * Entity: not exception safe, revert ignore with raii
 * Entity: improve entity event ExPolicy
@@ -376,7 +375,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
 * DeferredCalls: improve deferred calls
-* Dialogs: check item name on DR_ITEM
 * EntityManager: load locations -> theirs maps -> critters/items on map -> items in critters/containers
 * Location: encapsulate Location data
 * MapManager: need attention!
@@ -390,7 +388,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: attach critter to player
 * Server: control max size explicitly, add option to property registration
 * Server: disable send changing field by client to this client
-* Server: restore Dialog_UseResult
+* Server: restore DialogUseResult
 * Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime

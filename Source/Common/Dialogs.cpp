@@ -32,24 +32,16 @@
 //
 
 #include "Dialogs.h"
-#include "Critter.h"
 #include "FileSystem.h"
-#include "Log.h"
 #include "StringUtils.h"
 
-//#include "Item.h"
-//#include "Location.h"
-//#include "Map.h"
-//#include "Server.h"
-//#include "ServerEntity.h"
-
-/*static auto GetPropEnumIndex(FOServer* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> int
+static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_demand, uchar& type, bool& is_hash) -> uint
 {
-    auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->Find(str);
-    auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->Find(str);
-    auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->Find(str);
-    auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME)->Find(str);
-    auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME)->Find(str);
+    const auto* prop_global = engine->GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME)->Find(str);
+    const auto* prop_critter = engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME)->Find(str);
+    const auto* prop_item = engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME)->Find(str);
+    const auto* prop_location = engine->GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME)->Find(str);
+    const auto* prop_map = engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME)->Find(str);
 
     auto count = 0;
     count += prop_global != nullptr ? 1 : 0;
@@ -59,12 +51,10 @@
     count += prop_map != nullptr ? 1 : 0;
 
     if (count == 0) {
-        WriteLog("DR property '{}' not found in GlobalVars/Critter/Item/Location/Map", str);
-        return -1;
+        throw DialogParseException("DR property not found in GlobalVars/Critter/Item/Location/Map", str);
     }
     if (count > 1) {
-        WriteLog("DR property '{}' found multiple instances in GlobalVars/Critter/Item/Location/Map", str);
-        return -1;
+        throw DialogParseException("DR property found multiple instances in GlobalVars/Critter/Item/Location/Map", str);
     }
 
     const Property* prop = nullptr;
@@ -89,36 +79,28 @@
         type = DR_PROP_MAP;
     }
 
-    / *if (type == DR_PROP_CRITTER && prop->IsDict())
-    {
+    if (type == DR_PROP_CRITTER && prop->IsDict()) {
         type = DR_PROP_CRITTER_DICT;
-        if (prop->GetASObjectType()->GetSubTypeId(0) != asTYPEID_UINT32)
-        {
-            WriteLog("DR property '{}' Dict must have 'uint' in key", str);
-            return -1;
+        if (prop->GetDictKeyTypeName() != "uint") {
+            throw DialogParseException("DR property Dict must have 'uint' in key", str);
         }
     }
-    else
-    {
-        if (!prop->IsPlainData())
-        {
-            WriteLog("DR property '{}' is not PlainData type", str);
-            return -1;
+    else {
+        if (!prop->IsPlainData()) {
+            throw DialogParseException("DR property is not PlainData type", str);
         }
-    }* /
+    }
 
     if (is_demand && !prop->IsReadable()) {
-        WriteLog("DR property '{}' is not readable", str);
-        return -1;
+        throw DialogParseException("DR property is not readable", str);
     }
     if (!is_demand && !prop->IsWritable()) {
-        WriteLog("DR property '{}' is not writable", str);
-        return -1;
+        throw DialogParseException("DR property is not writable", str);
     }
 
     is_hash = prop->IsBaseTypeHash();
-    return static_cast<int>(prop->GetRegIndex());
-}*/
+    return prop->GetRegIndex();
+}
 
 DialogManager::DialogManager(FOEngineBase* engine) : _engine {engine}
 {
@@ -126,59 +108,44 @@ DialogManager::DialogManager(FOEngineBase* engine) : _engine {engine}
 
 void DialogManager::LoadDialogs()
 {
-    WriteLog("Load dialogs..");
-
-    _dialogPacks.clear();
+    auto errors = 0;
 
     auto files = _engine->FileSys.FilterFiles("fodlg");
-    size_t files_loaded = 0u;
     while (files.MoveNext()) {
-        auto file = files.GetCurFile();
-        if (!file) {
-            WriteLog("Unable to open file '{}'", file.GetName());
-            continue;
+        try {
+            auto file = files.GetCurFile();
+            auto* pack = ParseDialog(file.GetName(), file.GetStr());
+            AddDialog(pack);
         }
-
-        string pack_data = file.GetStr();
-        auto* pack = ParseDialog(file.GetName(), pack_data);
-        if (pack == nullptr) {
-            WriteLog("Unable to parse dialog '{}'", file.GetName());
-            continue;
+        catch (const DialogParseException& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
         }
-
-        if (!AddDialog(pack)) {
-            WriteLog("Unable to add dialog '{}'", file.GetName());
-            continue;
-        }
-
-        files_loaded++;
     }
 
-    WriteLog("Load dialogs complete, count {}", files_loaded);
-
-    if (files_loaded != files.GetFilesCount()) {
+    if (errors != 0) {
         throw DialogManagerException("Can't load all dialogs");
     }
 }
 
-auto DialogManager::AddDialog(DialogPack* pack) -> bool
+void DialogManager::ValidateDialogs()
+{
+    // Todo: validate script entries, hashes
+}
+
+void DialogManager::AddDialog(DialogPack* pack)
 {
     if (_dialogPacks.count(pack->PackId) != 0u) {
-        WriteLog("Dialog '{}' already added", pack->PackName);
-        return false;
+        throw DialogManagerException("Dialog already added", pack->PackName);
     }
 
-    const auto pack_id = pack->PackId.as_uint() & DLGID_MASK;
-    for (auto&& [fst, snd] : _dialogPacks) {
-        const auto check_pack_id = fst.as_uint() & DLGID_MASK;
-        if (pack_id == check_pack_id) {
-            WriteLog("Name hash collision for dialogs '{}' and '{}'", pack->PackName, snd->PackName);
-            return false;
+    for (auto&& [pack_id, other_pack] : _dialogPacks) {
+        if ((pack->PackId.as_uint() & DLGID_MASK) == (pack_id.as_uint() & DLGID_MASK)) {
+            throw DialogManagerException("Name hash collision for dialogs", pack->PackName, other_pack->PackName);
         }
     }
 
     _dialogPacks.insert(std::make_pair(pack->PackId, pack));
-    return true;
 }
 
 auto DialogManager::GetDialog(hstring pack_id) -> DialogPack*
@@ -187,21 +154,15 @@ auto DialogManager::GetDialog(hstring pack_id) -> DialogPack*
     return it != _dialogPacks.end() ? it->second.get() : nullptr;
 }
 
-auto DialogManager::GetDialogByIndex(uint index) -> DialogPack*
+auto DialogManager::GetDialogs() -> vector<DialogPack*>
 {
-    auto it = _dialogPacks.begin();
-    while (index-- != 0u && it != _dialogPacks.end()) {
-        ++it;
-    }
-    return it != _dialogPacks.end() ? it->second.get() : nullptr;
-}
+    vector<DialogPack*> result;
 
-void DialogManager::EraseDialog(hstring pack_id)
-{
-    const auto it = _dialogPacks.find(pack_id);
-    if (it != _dialogPacks.end()) {
-        _dialogPacks.erase(it);
+    for (auto&& [pack_id, pack] : _dialogPacks) {
+        result.emplace_back(pack.get());
     }
+
+    return result;
 }
 
 auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> DialogPack*
@@ -209,12 +170,6 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     auto fodlg = ConfigFile("", *_engine);
     fodlg.CollectContent();
     fodlg.AppendData(data);
-
-#define LOAD_FAIL(err) \
-    WriteLog("Dialog '{}' - {}", pack_name, err); \
-    delete pack; \
-    return nullptr
-#define VERIFY_STR_ID(str_id) (uint(str_id) <= ~DLGID_MASK)
 
     auto* pack = new DialogPack();
     auto dlg_buf = fodlg.GetAppContent("dialog");
@@ -230,55 +185,55 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     // Texts
     auto lang_key = fodlg.GetStr("data", "lang", "");
     if (lang_key.empty()) {
-        LOAD_FAIL("Lang app not found.");
+        throw DialogParseException("Lang app not found", pack_name);
     }
 
     // Check dialog pack
     if (pack->PackId.as_uint() <= 0xFFFF) {
-        LOAD_FAIL("Invalid hash for dialog name.");
+        throw DialogParseException("Invalid hash for dialog name", pack_name);
     }
 
     lang_apps = _str(lang_key).split(' ');
     if (lang_apps.empty()) {
-        LOAD_FAIL("Lang app is empty.");
+        throw DialogParseException("Lang app is empty", pack_name);
     }
 
     for (size_t i = 0; i < lang_apps.size(); i++) {
         auto& lang_app = lang_apps[i];
         if (lang_app.size() != 4) {
-            LOAD_FAIL("Language length not equal 4.");
+            throw DialogParseException("Language length not equal 4", pack_name);
         }
 
         lang_buf = fodlg.GetAppContent(lang_app);
         if (lang_buf.empty()) {
-            LOAD_FAIL("One of the lang section not found.");
+            throw DialogParseException("One of the lang section not found", pack_name);
         }
 
         FOMsg temp_msg;
         if (!temp_msg.LoadFromString(lang_buf, *_engine)) {
-            LOAD_FAIL("Load MSG fail.");
+            throw DialogParseException("Load MSG fail", pack_name);
         }
 
         if (temp_msg.GetStrNumUpper(100000000 + ~DLGID_MASK) != 0u) {
-            LOAD_FAIL("Text have any text with index greather than 4000.");
+            throw DialogParseException("Text have any text with index greather than 4000", pack_name);
         }
 
         pack->TextsLang.push_back(*reinterpret_cast<const uint*>(lang_app.c_str()));
-        pack->Texts.push_back(new FOMsg());
+        pack->Texts.push_back(FOMsg());
 
         uint str_num = 0;
         while ((str_num = temp_msg.GetStrNumUpper(str_num)) != 0u) {
             const auto count = temp_msg.Count(str_num);
             const auto new_str_num = DLG_STR_ID(pack->PackId.as_uint(), (str_num < 100000000 ? str_num / 10 : str_num - 100000000 + 12000));
             for (uint n = 0; n < count; n++) {
-                pack->Texts[i]->AddStr(new_str_num, _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n["));
+                pack->Texts[i].AddStr(new_str_num, _str(temp_msg.GetStr(str_num, n)).replace("\n\\[", "\n["));
             }
         }
     }
 
     // Dialog
     if (dlg_buf.empty()) {
-        LOAD_FAIL("Dialog section not found.");
+        throw DialogParseException("Dialog section not found", pack_name);
     }
 
     char ch = 0;
@@ -290,9 +245,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     uint dlg_id = 0;
     uint text_id = 0;
     uint link = 0;
-    string read_str;
-
-    ScriptFunc<string, Entity*, Entity*> script;
+    string script;
     uint flags = 0;
 
     while (true) {
@@ -301,31 +254,28 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             break;
         }
         if (input.fail()) {
-            LOAD_FAIL("Bad dialog id number.");
+            throw DialogParseException("Bad dialog id number", pack_name);
         }
 
         input >> text_id;
         if (input.fail()) {
-            LOAD_FAIL("Bad text link.");
+            throw DialogParseException("Bad text link", pack_name);
         }
-        if (!VERIFY_STR_ID(text_id / 10)) {
-            LOAD_FAIL("Invalid text link value.");
+        if (text_id / 10 > ~DLGID_MASK) {
+            throw DialogParseException("Invalid text link value", pack_name);
         }
 
-        input >> read_str;
+        input >> script;
         if (input.fail()) {
-            LOAD_FAIL("Bad not answer action.");
+            throw DialogParseException("Bad not answer action", pack_name);
         }
-
-        script = GetNotAnswerAction(read_str);
-        if (!script) {
-            WriteLog("Unable to parse '{}'", read_str);
-            LOAD_FAIL("Invalid not answer action.");
+        if (script == "NOT_ANSWER_CLOSE_DIALOG" || script == "None") {
+            script = "";
         }
 
         input >> flags;
         if (input.fail()) {
-            LOAD_FAIL("Bad flags.");
+            throw DialogParseException("Bad flags", pack_name);
         }
 
         Dialog current_dialog;
@@ -337,7 +287,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         // Read answers
         input >> ch;
         if (input.fail()) {
-            LOAD_FAIL("Dialog corrupted.");
+            throw DialogParseException("Dialog corrupted", pack_name);
         }
 
         if (ch == '@') // End of current dialog node
@@ -351,22 +301,22 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             break;
         }
         if (ch != '#') {
-            LOAD_FAIL("Parse error 0.");
+            throw DialogParseException("Parse error 0", pack_name);
         }
 
         while (!input.eof()) {
             input >> link;
             if (input.fail()) {
-                LOAD_FAIL("Bad link in answer.");
+                throw DialogParseException("Bad link in answer", pack_name);
             }
 
             input >> text_id;
             if (input.fail()) {
-                LOAD_FAIL("Bad text link in answer.");
+                throw DialogParseException("Bad text link in answer", pack_name);
             }
 
-            if (!VERIFY_STR_ID(text_id / 10)) {
-                LOAD_FAIL("Invalid text link value in answer.");
+            if (text_id / 10 > ~DLGID_MASK) {
+                throw DialogParseException("Invalid text link value in answer", pack_name);
             }
 
             DialogAnswer current_answer;
@@ -376,14 +326,14 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             while (true) {
                 input >> ch;
                 if (input.fail()) {
-                    LOAD_FAIL("Parse answer character fail.");
+                    throw DialogParseException("Parse answer character fail", pack_name);
                 }
 
                 // Demands
                 if (ch == 'D') {
                     auto* d = LoadDemandResult(input, true);
                     if (d == nullptr) {
-                        LOAD_FAIL("Demand not loaded.");
+                        throw DialogParseException("Demand not loaded", pack_name);
                     }
 
                     current_answer.Demands.push_back(*d);
@@ -392,13 +342,13 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
                 else if (ch == 'R') {
                     auto* r = LoadDemandResult(input, false);
                     if (r == nullptr) {
-                        LOAD_FAIL("Result not loaded.");
+                        throw DialogParseException("Result not loaded", pack_name);
                     }
 
                     current_answer.Results.push_back(*r);
                 }
                 else if (ch == '*' || ch == 'd' || ch == 'r') {
-                    LOAD_FAIL("Found old token, update dialog file to actual format (resave in version 2.22).");
+                    throw DialogParseException("Found old token, update dialog file to actual format (resave in version 2.22)", pack_name);
                 }
                 else {
                     break;
@@ -422,34 +372,30 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     }
 
     return pack;
-
-#undef LOAD_FAIL
-#undef VERIFY_STR_ID
 }
 
 auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*
 {
     NON_CONST_METHOD_HINT();
 
-    auto fail = false;
     char who = DR_WHO_PLAYER;
     auto oper = '=';
-    uchar values_count = 0u;
+    int values_count = 0;
     string svalue;
     auto ivalue = 0;
-    int id_index = 0;
+    uint id_index = 0u;
     hstring id_hash;
     string type_str;
     string name;
+    string script_name;
     auto no_recheck = false;
-    const auto ret_value = false;
+    auto ret_value = false;
 
     int script_val[5] = {0, 0, 0, 0, 0};
 
     input >> type_str;
     if (input.fail()) {
-        WriteLog("Parse DR type fail");
-        return nullptr;
+        throw DialogParseException("Parse DR type fail");
     }
 
     auto type = GetDrType(type_str);
@@ -457,8 +403,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         no_recheck = true;
         input >> type_str;
         if (input.fail()) {
-            WriteLog("Parse DR type fail2");
-            return nullptr;
+            throw DialogParseException("Parse DR type fail2");
         }
         type = GetDrType(type_str);
     }
@@ -469,23 +414,18 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         input >> who;
         who = GetWho(who);
         if (who == DR_WHO_NONE) {
-            WriteLog("Invalid DR property who '{}'", who);
-            fail = true;
+            throw DialogParseException("Invalid DR property who", who);
         }
 
         // Name
         input >> name;
         auto is_hash = false;
-        /*id = static_cast<max_t>(GetPropEnumIndex(_engine, name, is_demand, type, is_hash));
-        if (id == static_cast<max_t>(-1)) {
-            fail = true;
-        }*/
+        id_index = GetPropEnumIndex(_engine, name, is_demand, type, is_hash);
 
         // Operator
         input >> oper;
         if (!CheckOper(oper)) {
-            WriteLog("Invalid DR property oper '{}'", oper);
-            fail = true;
+            throw DialogParseException("Invalid DR property oper", oper);
         }
 
         // Value
@@ -494,7 +434,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
             ivalue = _engine->ToHashedString(svalue).as_int();
         }
         else {
-            ivalue = _engine->ResolveGenericValue(svalue, &fail);
+            ivalue = _engine->ResolveGenericValue(svalue);
         }
     } break;
     case DR_ITEM: {
@@ -502,125 +442,65 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
         input >> who;
         who = GetWho(who);
         if (who == DR_WHO_NONE) {
-            WriteLog("Invalid DR item who '{}'", who);
-            fail = true;
+            throw DialogParseException("Invalid DR item who", who);
         }
 
         // Name
         input >> name;
         id_hash = _engine->ToHashedString(name);
-        // Todo: check item name on DR_ITEM
 
         // Operator
         input >> oper;
         if (!CheckOper(oper)) {
-            WriteLog("Invalid DR item oper '{}'", oper);
-            fail = true;
+            throw DialogParseException("Invalid DR item oper", oper);
         }
 
         // Value
         input >> svalue;
-        ivalue = _engine->ResolveGenericValue(svalue, &fail);
+        ivalue = _engine->ResolveGenericValue(svalue);
     } break;
     case DR_SCRIPT: {
         // Script name
-        input >> name;
+        input >> script_name;
 
         // Values count
         input >> values_count;
 
-// Values
-#define READ_SCRIPT_VALUE_(val) \
-    { \
-        input >> value_str; \
-        (val) = _engine->ResolveGenericValue(value_str, &fail); \
-    }
-        char value_str[1024];
-        if (values_count > 0)
-            READ_SCRIPT_VALUE_(script_val[0])
-        if (values_count > 1)
-            READ_SCRIPT_VALUE_(script_val[1])
-        if (values_count > 2)
-            READ_SCRIPT_VALUE_(script_val[2])
-        if (values_count > 3)
-            READ_SCRIPT_VALUE_(script_val[3])
-        if (values_count > 4)
-            READ_SCRIPT_VALUE_(script_val[4])
+        // Values
+        string value_str;
+        if (values_count > 0) {
+            input >> value_str;
+            script_val[0] = _engine->ResolveGenericValue(value_str);
+        }
+        if (values_count > 1) {
+            input >> value_str;
+            script_val[1] = _engine->ResolveGenericValue(value_str);
+        }
+        if (values_count > 2) {
+            input >> value_str;
+            script_val[2] = _engine->ResolveGenericValue(value_str);
+        }
+        if (values_count > 3) {
+            input >> value_str;
+            script_val[3] = _engine->ResolveGenericValue(value_str);
+        }
+        if (values_count > 4) {
+            input >> value_str;
+            script_val[4] = _engine->ResolveGenericValue(value_str);
+        }
         if (values_count > 5) {
-            WriteLog("Invalid DR script values count {}", values_count);
-            values_count = 0;
-            fail = true;
+            throw DialogParseException("Invalid values count", values_count);
         }
-
-        /*// Bind function
-#define BIND_D_FUNC(params) \
-    do \
-    { \
-        id = scriptSys.BindByFuncName(name, "bool %s(Critter, Critter" params, false); \
-    } while (0)
-#define BIND_R_FUNC(params) \
-    do \
-    { \
-        if ((id = scriptSys.BindByFuncName(name, "uint %s(Critter, Critter" params, false, true)) > 0) \
-            ret_value = true; \
-        else \
-            id = scriptSys.BindByFuncName(name, "void %s(Critter, Critter" params, false); \
-    } while (0)
-        switch (values_count)
-        {
-        case 1:
-            if (is_demand)
-                BIND_D_FUNC(", int)");
-            else
-                BIND_R_FUNC(", int)");
-            break;
-        case 2:
-            if (is_demand)
-                BIND_D_FUNC(", int, int)");
-            else
-                BIND_R_FUNC(", int,int)");
-            break;
-        case 3:
-            if (is_demand)
-                BIND_D_FUNC(", int, int, int)");
-            else
-                BIND_R_FUNC(", int, int, int)");
-            break;
-        case 4:
-            if (is_demand)
-                BIND_D_FUNC(", int, int, int, int)");
-            else
-                BIND_R_FUNC(", int, int, int, int)");
-            break;
-        case 5:
-            if (is_demand)
-                BIND_D_FUNC(", int, int, int, int ,int)");
-            else
-                BIND_R_FUNC(", int, int, int, int, int)");
-            break;
-        default:
-            if (is_demand)
-                BIND_D_FUNC(")");
-            else
-                BIND_R_FUNC(")");
-            break;
-        }
-        if (!id)
-        {
-            WriteLog("Script '{}' bind error", name);
-            return nullptr;
-        }*/
     } break;
     case DR_OR:
         break;
     default:
-        return nullptr;
+        throw DialogParseException("Invalid DR type");
     }
 
     // Validate parsing
     if (input.fail()) {
-        WriteLog("DR parse fail");
-        fail = true;
+        throw DialogParseException("DR parse fail");
     }
 
     // Fill
@@ -629,8 +509,9 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     result->Who = who;
     result->ParamIndex = id_index;
     result->ParamHash = id_hash;
+    result->ParamFuncName = script_name;
     result->Op = oper;
-    result->ValuesCount = values_count;
+    result->ValuesCount = static_cast<uchar>(values_count);
     result->NoRecheck = no_recheck;
     result->RetValue = ret_value;
     result->Value = ivalue;
@@ -639,23 +520,7 @@ auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> De
     result->ValueExt[2] = script_val[2];
     result->ValueExt[3] = script_val[3];
     result->ValueExt[4] = script_val[4];
-
-    if (fail) {
-        return nullptr;
-    }
     return result;
-}
-
-auto DialogManager::GetNotAnswerAction(string_view str) -> ScriptFunc<string, Entity*, Entity*>
-{
-    NON_CONST_METHOD_HINT();
-
-    if (str == "NOT_ANSWER_CLOSE_DIALOG" || str == "None") {
-        return {};
-    }
-
-    // return _engine->ScriptSys->FindFunc<string, Entity*, Entity*>(str);
-    return {};
 }
 
 auto DialogManager::GetDrType(string_view str) -> uchar

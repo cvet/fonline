@@ -1692,7 +1692,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "ModelInstance") {
                 (*istr) >> buf;
-                model = _str(name).combinePath(buf);
+                model = _str(name).extractDir().combinePath(buf);
             }
             else if (token == "Include") {
                 // Get swapped words
@@ -1709,7 +1709,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 // Include file path
-                string fname = _str(name).combinePath(templates[0]);
+                string fname = _str(name).extractDir().combinePath(templates[0]);
                 auto fo3d_ex = _modelMngr._fileSys.ReadFile(fname);
                 if (!fo3d_ex) {
                     WriteLog("Include file '{}' not found", fname);
@@ -1784,7 +1784,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 link->Layer = layer;
                 link->LayerValue = layer_val;
 
-                string fname = _str(name).combinePath(buf);
+                string fname = _str(name).extractDir().combinePath(buf);
                 link->ChildName = fname;
 
                 mesh = hstring();
@@ -1797,7 +1797,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Cut") {
                 (*istr) >> buf;
-                string fname = _str(name).combinePath(buf);
+                string fname = _str(name).extractDir().combinePath(buf);
                 auto* area = _modelMngr.GetHierarchy(fname);
                 if (area != nullptr) {
                     // Add cut
@@ -2189,7 +2189,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     anim_path = model;
                 }
                 else {
-                    anim_path = _str(name).combinePath(anim.FileName);
+                    anim_path = _str(name).extractDir().combinePath(anim.FileName);
                 }
 
                 auto* set = _modelMngr.LoadAnimation(anim_path, anim.Name);
