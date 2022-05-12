@@ -1393,6 +1393,7 @@ public:
 
 extern void InitApp(string_view name);
 extern auto GetAppName() -> const string&;
+[[noreturn]] extern void AppExit(bool success);
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \

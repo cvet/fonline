@@ -1023,7 +1023,7 @@ void Application::BeginFrame()
             ::_CrtMemDumpAllObjectsSince(&CrtMemState);
 #endif
 
-            std::quick_exit(EXIT_SUCCESS);
+            AppExit(true);
         }
         default:
             break;

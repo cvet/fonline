@@ -89,6 +89,16 @@ auto GetAppName() -> const string&
     return *AppName;
 }
 
+void AppExit(bool success)
+{
+    const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
+    std::quick_exit(code);
+#else
+    std::exit(code);
+#endif
+}
+
 void CreateGlobalData()
 {
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
@@ -149,7 +159,7 @@ void ReportExceptionAndExit(const std::exception& ex)
         MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
     }
 
-    std::quick_exit(EXIT_FAILURE);
+    AppExit(false);
 }
 
 void ReportExceptionAndContinue(const std::exception& ex)

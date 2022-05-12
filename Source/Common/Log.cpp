@@ -44,11 +44,13 @@
 #include <android/log.h>
 #endif
 
-static void FlushLogAtExit();
+[[maybe_unused]] static void FlushLogAtExit();
 
 struct LogData
 {
+#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
     LogData() { std::at_quick_exit(FlushLogAtExit); }
+#endif
 
     std::mutex LogLocker {};
     bool LogDisableTimestamp {};

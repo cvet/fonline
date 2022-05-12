@@ -210,7 +210,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
         delete Data->Client;
 
-        std::quick_exit(EXIT_SUCCESS);
+        AppExit(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

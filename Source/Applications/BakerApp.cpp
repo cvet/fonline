@@ -384,7 +384,7 @@ int main(int argc, char** argv)
         // Finalize
         if (errors != 0) {
             WriteLog("Bakering failed!");
-            std::quick_exit(EXIT_FAILURE);
+            AppExit(false);
         }
 
         WriteLog("Bakering complete!");
@@ -396,7 +396,7 @@ int main(int argc, char** argv)
             RUNTIME_ASSERT(build_hash_writed);
         }
 
-        std::quick_exit(EXIT_SUCCESS);
+        AppExit(true);
     }
     catch (std::exception& ex) {
         ReportExceptionAndExit(ex);

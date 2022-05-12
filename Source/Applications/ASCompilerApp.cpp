@@ -129,10 +129,10 @@ int main(int argc, char** argv)
         }
 
         if (server_failed || client_failed || mapper_failed) {
-            std::quick_exit(EXIT_FAILURE);
+            AppExit(false);
         }
 
-        std::quick_exit(EXIT_SUCCESS);
+        AppExit(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

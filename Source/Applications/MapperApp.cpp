@@ -152,7 +152,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         }
 #endif
 
-        std::quick_exit(EXIT_SUCCESS);
+        AppExit(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

@@ -62,7 +62,7 @@ extern "C" int main(int argc, char** argv)
 
         delete server;
 
-        std::quick_exit(EXIT_SUCCESS);
+        AppExit(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

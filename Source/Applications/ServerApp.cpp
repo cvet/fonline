@@ -122,7 +122,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         const auto use_dx = false;
 #endif
         if (!AppGui::Init(GetAppName(), use_dx, false, false)) {
-            std::quick_exit(EXIT_FAILURE);
+            AppExit(false);
         }
 
         // Server loop in separate thread
@@ -167,7 +167,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         RUNTIME_ASSERT(Data->ServerState == ServerStateType::Stopped);
 
-        std::quick_exit(EXIT_SUCCESS);
+        AppExit(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
