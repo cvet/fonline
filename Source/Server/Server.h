@@ -265,21 +265,22 @@ private:
     void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop);
-    void OnSendPlayerValue(Entity* entity, const Property* prop);
-    void OnSendItemValue(Entity* entity, const Property* prop);
-    void OnSendCritterValue(Entity* entity, const Property* prop);
-    void OnSendMapValue(Entity* entity, const Property* prop);
-    void OnSendLocationValue(Entity* entity, const Property* prop);
+    void OnSaveEntityValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
 
-    void OnSetEntityValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemCount(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemRecacheHex(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemBlockLines(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemIsGeck(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemIsRadio(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+
+    void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
 
     void ProcessCritter(Critter* cr);
     void ProcessCritterMoving(Critter* cr);

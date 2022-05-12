@@ -125,6 +125,8 @@ public:
     bool IsTransferring {true};
     string LastSay {};
     uint LastSayEqualCount {};
+    const Entity* SendIgnoreEntity {};
+    const Property* SendIgnoreProperty {};
 
 private:
     string _name {};

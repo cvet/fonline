@@ -363,19 +363,20 @@ protected:
     void OnText(string_view str, uint crid, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop);
-    void OnSendPlayerValue(Entity* entity, const Property* prop);
-    void OnSendCritterValue(Entity* entity, const Property* prop);
-    void OnSetCritterModelName(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetCritterContourColor(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSendItemValue(Entity* entity, const Property* prop);
-    void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSendMapValue(Entity* entity, const Property* prop);
-    void OnSendLocationValue(Entity* entity, const Property* prop);
+    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+
+    void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
 
     void AnimProcess();
 
@@ -443,4 +444,6 @@ protected:
     uchar _dlgIsNpc {};
     uint _dlgNpcId {};
     optional<uint> _prevDayTimeColor {};
+    const Entity* _sendIgnoreEntity {};
+    const Property* _sendIgnoreProperty {};
 };

@@ -56,7 +56,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     DlgMngr(this)
 // clang-format on
 {
-    WriteLog("Starting server initialization");
+    WriteLog("Start server");
 
     FileSys.AddDataSource("$Embedded");
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
@@ -101,15 +101,104 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
         DbHistory.StartChanges();
     }
 
-    // Property callbacks
-    // PropertyRegistrator::GlobalSetCallbacks.push_back(OnSetEntityValue);
+    // Properties that saving to data base
+    for (auto&& [name, registrator] : GetAllPropertyRegistrators()) {
+        const auto count = static_cast<int>(registrator->GetCount());
+        for (auto i = 0; i < count; i++) {
+            const auto* prop = registrator->GetByIndex(i);
+
+            switch (prop->GetAccess()) {
+            case Property::AccessType::PrivateCommon:
+                [[fallthrough]];
+            case Property::AccessType::PrivateServer:
+                [[fallthrough]];
+            case Property::AccessType::Public:
+                [[fallthrough]];
+            case Property::AccessType::PublicModifiable:
+                [[fallthrough]];
+            case Property::AccessType::PublicFullModifiable:
+                [[fallthrough]];
+            case Property::AccessType::Protected:
+                [[fallthrough]];
+            case Property::AccessType::ProtectedModifiable:
+                break;
+            default:
+                continue;
+            }
+
+            using namespace std::placeholders;
+            prop->AddCallback(std::bind(&FOServer::OnSaveEntityValue, this, _1, _2, _3, _4));
+        }
+    }
+
+    // Properties that sending to clients
+    {
+        const auto set_send_callbacks = [this](const auto* registrator, const PropertyChangedCallback& callback) {
+            const auto count = static_cast<int>(registrator->GetCount());
+            for (auto i = 0; i < count; i++) {
+                const auto* prop = registrator->GetByIndex(i);
+
+                switch (prop->GetAccess()) {
+                case Property::AccessType::Public:
+                    [[fallthrough]];
+                case Property::AccessType::PublicModifiable:
+                    [[fallthrough]];
+                case Property::AccessType::PublicFullModifiable:
+                    [[fallthrough]];
+                case Property::AccessType::Protected:
+                    [[fallthrough]];
+                case Property::AccessType::ProtectedModifiable:
+                    break;
+                default:
+                    continue;
+                }
+
+                prop->AddCallback(callback);
+            }
+        };
+
+        using namespace std::placeholders;
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendGlobalValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendPlayerValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendItemValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendCritterValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendMapValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendLocationValue, this, _1, _2, _3, _4));
+    }
+
+    // Properties with custom behaviours
+    {
+        const auto set_callback = [this](const auto* registrator, int prop_index, PropertyChangedCallback callback) {
+            const auto* prop = registrator->GetByIndex(prop_index);
+            prop->AddCallback(std::move(callback));
+        };
+
+        using namespace std::placeholders;
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, std::bind(&FOServer::OnSetItemCount, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, std::bind(&FOServer::OnSetItemChangeView, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, std::bind(&FOServer::OnSetItemChangeView, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, std::bind(&FOServer::OnSetItemChangeView, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, std::bind(&FOServer::OnSetItemChangeView, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, std::bind(&FOServer::OnSetItemRecacheHex, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, std::bind(&FOServer::OnSetItemRecacheHex, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, std::bind(&FOServer::OnSetItemRecacheHex, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, std::bind(&FOServer::OnSetItemRecacheHex, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, std::bind(&FOServer::OnSetItemBlockLines, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, std::bind(&FOServer::OnSetItemIsGeck, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, std::bind(&FOServer::OnSetItemIsRadio, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, std::bind(&FOServer::OnSetItemOpened, this, _1, _2, _3, _4));
+    }
 
     // Dialogs
     DlgMngr.LoadDialogs();
 
     // Protos
     {
-        auto protos_file = FileSys.ReadFile("Protos.foprob");
+        const auto protos_file = FileSys.ReadFile("Protos.foprob");
+        if (!protos_file) {
+            throw ServerInitException("Protos.foprob not found");
+        }
+
         ProtoMngr.Load(protos_file.GetData());
     }
 
@@ -130,29 +219,37 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     // if (!ScriptSys.LoadDeferredCalls())
     //    return false;
 
-    // Update files
+    // Resource packs for client
     {
         auto writer = DataWriter(_updateFilesDesc);
 
-        // ..ResourceEntries
-        // Scripts.fopack
-        // Protos.fopack
-        // Texts.fopack
-        // fopack: f0f0 0001 hash zip data
-        for (const auto& res_entry : Settings.ResourceEntries) {
-            auto files = FileSys.FilterFiles("", "Update/", true);
-            while (files.MoveNext()) {
-                auto file = files.GetCurFile();
-                const auto file_path = string(file.GetName().substr("Update/"_len));
+        const auto add_sync_file = [&writer, this](string_view path) {
+            const auto file = FileSys.ReadFile(path);
+            if (!file) {
+                if constexpr (FO_DEBUG) {
+                    return;
+                }
 
-                auto data = file.GetData();
-                _updateFilesData.push_back(data);
-
-                writer.Write<short>(static_cast<short>(file_path.length()));
-                writer.WritePtr(file_path.data(), file_path.length());
-                writer.Write<uint>(static_cast<uint>(data.size()));
-                writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
+                throw ServerInitException("Resource pack for client not found", path);
             }
+
+            const auto data = file.GetData();
+            _updateFilesData.push_back(data);
+
+            writer.Write<short>(static_cast<short>(file.GetPath().length()));
+            writer.WritePtr(file.GetPath().data(), file.GetPath().length());
+            writer.Write<uint>(static_cast<uint>(data.size()));
+            writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
+        };
+
+        for (const auto& resource_entry : Settings.ResourceEntries) {
+            add_sync_file(_str("{}.zip", resource_entry));
+        }
+
+        add_sync_file("Texts.zip");
+        add_sync_file("Protos.zip");
+        if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
+            add_sync_file("AngelScript.zip");
         }
 
         // Complete files list
@@ -223,6 +320,8 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     _stats.ServerStartTick = GameTime.FrameTick();
     _fpsTick = GameTime.FrameTick();
     _started = true;
+
+    WriteLog("Start server complete!");
 }
 
 FOServer::~FOServer()
@@ -1540,46 +1639,6 @@ void FOServer::DispatchLogToClients()
     _logLines.clear();
 }
 
-void FOServer::OnSetEntityValue(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
-{
-    NON_CONST_METHOD_HINT();
-
-    if (prop->IsTemporary()) {
-        return;
-    }
-
-    uint entry_id;
-
-    if (auto* server_entity = dynamic_cast<ServerEntity*>(entity); server_entity != nullptr) {
-        if (server_entity->GetId() == 0u) {
-            return;
-        }
-
-        entry_id = server_entity->GetId();
-    }
-    else {
-        entry_id = 1u;
-    }
-
-    const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
-    DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
-
-    if (DbHistory && prop->IsHistorical()) {
-        const auto history_id = GetHistoryRecordsId();
-        SetHistoryRecordsId(history_id + 1u);
-
-        const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
-
-        AnyData::Document doc;
-        doc["Time"] = static_cast<int64>(time.count());
-        doc["EntityId"] = static_cast<int>(entry_id);
-        doc["Property"] = prop->GetName();
-        doc["Value"] = value;
-
-        DbHistory.Insert(_str("{}sHistory", entity->GetClassName()), history_id, doc);
-    }
-}
-
 void FOServer::ProcessCritter(Critter* cr)
 {
     if (GameTime.IsGamePaused()) {
@@ -2585,11 +2644,60 @@ void FOServer::Process_Property(Player* player, uint data_size)
         return;
     }
 
-    // Todo: disable send changing field by client to this client
-    entity->SetValueFromData(prop, data, false);
+    {
+        player->SendIgnoreEntity = entity;
+        player->SendIgnoreProperty = prop;
+
+        auto revert_send_ignore = ScopeCallback([player]() noexcept {
+            player->SendIgnoreEntity = nullptr;
+            player->SendIgnoreProperty = nullptr;
+        });
+
+        entity->SetValueFromData(prop, data);
+    }
 }
 
-void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
+void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    NON_CONST_METHOD_HINT();
+
+    if (prop->IsTemporary()) {
+        return;
+    }
+
+    uint entry_id;
+
+    if (const auto* server_entity = dynamic_cast<ServerEntity*>(entity); server_entity != nullptr) {
+        if (server_entity->GetId() == 0u) {
+            return;
+        }
+
+        entry_id = server_entity->GetId();
+    }
+    else {
+        entry_id = 1u;
+    }
+
+    const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
+    DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
+
+    if (DbHistory && prop->IsHistorical()) {
+        const auto history_id = GetHistoryRecordsId();
+        SetHistoryRecordsId(history_id + 1u);
+
+        const auto time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+
+        AnyData::Document doc;
+        doc["Time"] = static_cast<int64>(time.count());
+        doc["EntityId"] = static_cast<int>(entry_id);
+        doc["Property"] = prop->GetName();
+        doc["Value"] = value;
+
+        DbHistory.Insert(_str("{}sHistory", entity->GetClassName()), history_id, doc);
+    }
+}
+
+void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto* player : EntityMngr.GetPlayers()) {
@@ -2598,14 +2706,14 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
+void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     auto* player = dynamic_cast<Player*>(entity);
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
 
-void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
+void FOServer::OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     auto* cr = dynamic_cast<Critter*>(entity);
 
@@ -2620,7 +2728,41 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
+void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
+        const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
+        const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
+
+        if (item->GetOwnership() == ItemOwnership::CritterInventory) {
+            if (is_public || is_protected) {
+                auto* cr = CrMngr.GetCritter(item->GetCritId());
+                if (cr != nullptr) {
+                    if (is_public || is_protected) {
+                        cr->Send_Property(NetProperty::ChosenItem, prop, item);
+                    }
+                    if (is_public) {
+                        cr->Broadcast_Property(NetProperty::CritterItem, prop, item);
+                    }
+                }
+            }
+        }
+        else if (item->GetOwnership() == ItemOwnership::MapHex) {
+            if (is_public) {
+                auto* map = MapMngr.GetMap(item->GetMapId());
+                if (map != nullptr) {
+                    map->SendProperty(NetProperty::MapItem, prop, item);
+                }
+            }
+        }
+        else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
+            // Todo: add container properties changing notifications
+            // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
+        }
+    }
+}
+
+void FOServer::OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
@@ -2628,12 +2770,150 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
+void FOServer::OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
         for (auto* map : loc->GetMaps()) {
             map->SendProperty(NetProperty::Location, prop, loc);
+        }
+    }
+}
+
+void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    NON_CONST_METHOD_HINT();
+    UNUSED_VARIABLE(prop);
+
+    auto* item = dynamic_cast<Item*>(entity);
+    const auto new_count = *static_cast<const uint*>(new_value);
+    const auto old_count = *static_cast<const uint*>(old_value);
+    if (static_cast<int>(new_count) > 0 && (item->GetStackable() || new_count == 1)) {
+        const auto diff = static_cast<int>(item->GetCount()) - static_cast<int>(old_count);
+        ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
+    }
+    else {
+        item->SetCount(old_count);
+        if (!item->GetStackable()) {
+            throw GenericException("Trying to change count of not stackable item");
+        }
+
+        throw GenericException("Item count can't be zero or negative", new_count);
+    }
+}
+
+void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    UNUSED_VARIABLE(old_value);
+
+    // IsHidden, IsAlwaysView, IsTrap, TrapValue
+    auto* item = dynamic_cast<Item*>(entity);
+
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
+        auto* map = MapMngr.GetMap(item->GetMapId());
+        if (map != nullptr) {
+            map->ChangeViewItem(item);
+            if (prop == item->GetPropertyIsTrap()) {
+                map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
+            }
+        }
+    }
+    else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
+        auto* cr = CrMngr.GetCritter(item->GetCritId());
+        if (cr != nullptr) {
+            const auto value = *static_cast<const bool*>(new_value);
+            if (value) {
+                cr->Send_EraseItem(item);
+            }
+            else {
+                cr->Send_AddItem(item);
+            }
+            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
+        }
+    }
+}
+
+void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(old_value);
+
+    // IsNoBlock, IsShootThru, IsGag, IsTrigger
+    const auto* item = dynamic_cast<Item*>(entity);
+
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
+        auto* map = MapMngr.GetMap(item->GetMapId());
+        if (map != nullptr) {
+            map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
+        }
+    }
+}
+
+void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    // BlockLines
+    const auto* item = dynamic_cast<Item*>(entity);
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
+        auto* map = MapMngr.GetMap(item->GetMapId());
+        if (map != nullptr) {
+            // Todo: make BlockLines changable in runtime
+        }
+    }
+}
+
+void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    auto* item = dynamic_cast<Item*>(entity);
+    const auto value = *static_cast<const bool*>(new_value);
+
+    if (item->GetOwnership() == ItemOwnership::MapHex) {
+        auto* map = MapMngr.GetMap(item->GetMapId());
+        if (map != nullptr) {
+            map->GetLocation()->GeckCount += (value ? 1 : -1);
+        }
+    }
+}
+
+void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    auto* item = dynamic_cast<Item*>(entity);
+    const auto value = *static_cast<const bool*>(new_value);
+
+    if (value) {
+        ItemMngr.RegisterRadio(item);
+    }
+    else {
+        ItemMngr.UnregisterRadio(item);
+    }
+}
+
+void FOServer::OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    auto* item = dynamic_cast<Item*>(entity);
+    const auto new_opened = *static_cast<const bool*>(new_value);
+    const auto old_opened = *static_cast<const bool*>(old_value);
+
+    if (item->GetIsCanOpen()) {
+        if (!old_opened && new_opened) {
+            item->SetIsLightThru(true);
+
+            if (item->GetOwnership() == ItemOwnership::MapHex) {
+                auto* map = MapMngr.GetMap(item->GetMapId());
+                if (map != nullptr) {
+                    map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
+                }
+            }
+        }
+        if (old_opened && !new_opened) {
+            item->SetIsLightThru(false);
+
+            if (item->GetOwnership() == ItemOwnership::MapHex) {
+                auto* map = MapMngr.GetMap(item->GetMapId());
+                if (map != nullptr) {
+                    map->SetHexFlag(item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM);
+                    map->SetHexFlag(item->GetHexX(), item->GetHexY(), FH_NRAKE_ITEM);
+                }
+            }
         }
     }
 }
@@ -3674,177 +3954,6 @@ auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint
     }
 
     return item;
-}
-
-void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
-{
-    if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
-        const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
-        const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
-        if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-            if (is_public || is_protected) {
-                auto* cr = CrMngr.GetCritter(item->GetCritId());
-                if (cr != nullptr) {
-                    if (is_public || is_protected) {
-                        cr->Send_Property(NetProperty::ChosenItem, prop, item);
-                    }
-                    if (is_public) {
-                        cr->Broadcast_Property(NetProperty::CritterItem, prop, item);
-                    }
-                }
-            }
-        }
-        else if (item->GetOwnership() == ItemOwnership::MapHex) {
-            if (is_public) {
-                auto* map = MapMngr.GetMap(item->GetMapId());
-                if (map != nullptr) {
-                    map->SendProperty(NetProperty::MapItem, prop, item);
-                }
-            }
-        }
-        else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
-            // Todo: add container properties changing notifications
-            // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
-        }
-    }
-}
-
-void FOServer::OnSetItemCount(Entity* entity, const Property* prop, void* cur_value, void* old_value)
-{
-    NON_CONST_METHOD_HINT();
-    UNUSED_VARIABLE(prop);
-
-    auto* item = dynamic_cast<Item*>(entity);
-    const auto cur = *static_cast<uint*>(cur_value);
-    const auto old = *static_cast<uint*>(old_value);
-    if (static_cast<int>(cur) > 0 && (item->GetStackable() || cur == 1)) {
-        const auto diff = static_cast<int>(item->GetCount()) - static_cast<int>(old);
-        ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
-    }
-    else {
-        item->SetCount(old);
-        if (!item->GetStackable()) {
-            throw GenericException("Trying to change count of not stackable item");
-        }
-
-        throw GenericException("Item count can't be zero or negative", cur);
-    }
-}
-
-void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* old_value)
-{
-    UNUSED_VARIABLE(old_value);
-
-    // IsHidden, IsAlwaysView, IsTrap, TrapValue
-    auto* item = dynamic_cast<Item*>(entity);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
-        if (map != nullptr) {
-            map->ChangeViewItem(item);
-            if (prop == item->GetPropertyIsTrap()) {
-                map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
-            }
-        }
-    }
-    else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-        auto* cr = CrMngr.GetCritter(item->GetCritId());
-        if (cr != nullptr) {
-            const auto value = *static_cast<bool*>(cur_value);
-            if (value) {
-                cr->Send_EraseItem(item);
-            }
-            else {
-                cr->Send_AddItem(item);
-            }
-            cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
-        }
-    }
-}
-
-void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, void* cur_value, void* old_value)
-{
-    UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(old_value);
-
-    // IsNoBlock, IsShootThru, IsGag, IsTrigger
-    const auto* item = dynamic_cast<Item*>(entity);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
-        if (map != nullptr) {
-            map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
-        }
-    }
-}
-
-void FOServer::OnSetItemBlockLines(Entity* entity, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
-{
-    // BlockLines
-    const auto* item = dynamic_cast<Item*>(entity);
-    if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
-        if (map != nullptr) {
-            // Todo: make BlockLines changable in runtime
-        }
-    }
-}
-
-void FOServer::OnSetItemIsGeck(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
-{
-    auto* item = dynamic_cast<Item*>(entity);
-    const auto value = *static_cast<bool*>(cur_value);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* map = MapMngr.GetMap(item->GetMapId());
-        if (map != nullptr) {
-            map->GetLocation()->GeckCount += (value ? 1 : -1);
-        }
-    }
-}
-
-void FOServer::OnSetItemIsRadio(Entity* entity, const Property* /*prop*/, void* cur_value, void* /*old_value*/)
-{
-    auto* item = dynamic_cast<Item*>(entity);
-    const auto value = *static_cast<bool*>(cur_value);
-
-    if (value) {
-        ItemMngr.RegisterRadio(item);
-    }
-    else {
-        ItemMngr.UnregisterRadio(item);
-    }
-}
-
-void FOServer::OnSetItemOpened(Entity* entity, const Property* /*prop*/, void* cur_value, void* old_value)
-{
-    auto* item = dynamic_cast<Item*>(entity);
-    const auto cur = *static_cast<bool*>(cur_value);
-    const auto old = *static_cast<bool*>(old_value);
-
-    if (item->GetIsCanOpen()) {
-        if (!old && cur) {
-            item->SetIsLightThru(true);
-
-            if (item->GetOwnership() == ItemOwnership::MapHex) {
-                auto* map = MapMngr.GetMap(item->GetMapId());
-                if (map != nullptr) {
-                    map->RecacheHexFlags(item->GetHexX(), item->GetHexY());
-                }
-            }
-        }
-        if (old && !cur) {
-            item->SetIsLightThru(false);
-
-            if (item->GetOwnership() == ItemOwnership::MapHex) {
-                auto* map = MapMngr.GetMap(item->GetMapId());
-                if (map != nullptr) {
-                    map->SetHexFlag(item->GetHexX(), item->GetHexY(), FH_BLOCK_ITEM);
-                    map->SetHexFlag(item->GetHexX(), item->GetHexY(), FH_NRAKE_ITEM);
-                }
-            }
-        }
-    }
 }
 
 auto FOServer::DialogScriptDemand(DemandResult& /*demand*/, Critter* /*master*/, Critter* /*slave*/) -> bool

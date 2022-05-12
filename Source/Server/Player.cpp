@@ -208,6 +208,9 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
     if (IsSendDisabled()) {
         return;
     }
+    if (SendIgnoreEntity == entity && SendIgnoreProperty == prop) {
+        return;
+    }
 
     uint additional_args = 0;
     switch (type) {

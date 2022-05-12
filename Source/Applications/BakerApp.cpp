@@ -245,10 +245,9 @@ int main(int argc, char** argv)
             BakerEngine engine;
             engine.RegisterData();
 
-            FileSystem content_files;
             for (const auto& dir : settings.BakeContentEntries) {
                 WriteLog("Add content entry '{}'", dir);
-                content_files.AddDataSource(dir, DataSourceType::DirRoot);
+                engine.FileSys.AddDataSource(dir, DataSourceType::DirRoot);
             }
 
             // Protos
@@ -260,7 +259,7 @@ int main(int argc, char** argv)
                 auto del_protos_ok = DiskFileSystem::DeleteDir("Protos");
                 RUNTIME_ASSERT(del_protos_ok);
 
-                proto_mngr.ParseProtos(content_files);
+                proto_mngr.ParseProtos(engine.FileSys);
                 proto_mngr.ValidateProtoResources(resource_names);
                 auto data = proto_mngr.GetProtosBinaryData();
                 RUNTIME_ASSERT(!data.empty());
@@ -289,7 +288,7 @@ int main(int argc, char** argv)
                 dialog_mngr.LoadDialogs();
                 dialog_mngr.ValidateDialogs();
 
-                auto dialogs = content_files.FilterFiles("fodlg");
+                auto dialogs = engine.FileSys.FilterFiles("fodlg");
                 WriteLog("Dialogs count {}", dialogs.GetFilesCount());
 
                 while (dialogs.MoveNext()) {
@@ -318,7 +317,7 @@ int main(int argc, char** argv)
 
                 for (const auto& lang_name : settings.Languages) {
                     LanguagePack lang_pack;
-                    lang_pack.ParseTexts(content_files, engine, lang_name);
+                    lang_pack.ParseTexts(engine.FileSys, engine, lang_name);
                     lang_packs.push_back(lang_pack);
                 }
 

@@ -122,7 +122,7 @@ public:
     void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uchar>>& properties_data);
     auto LoadFromText(const map<string, string>& key_values) -> bool;
-    void SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send);
+    void SetValueFromData(const Property* prop, const vector<uchar>& data);
     void SetValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int prop_index, int value);
     void SetValueAsFloat(const Property* prop, float value);

@@ -562,69 +562,6 @@ Application::Application(GlobalSettings& settings)
         throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
     }
 
-#if FO_HAVE_OPENGL
-    if (CurRenderType == RenderType::OpenGL) {
-        // Initialize GLEW
-        // Todo: remove GLEW and bind OpenGL functions manually
-#if !FO_OPENGL_ES
-        auto glew_result = glewInit();
-        RUNTIME_ASSERT_STR(glew_result == GLEW_OK, _str("GLEW not initialized, result {}", glew_result));
-        OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
-        OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0;
-        OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0;
-        OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
-#if FO_MAC
-        OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
-#else
-        OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
-#endif
-#endif
-
-        // OpenGL ES extensions
-#if FO_OPENGL_ES
-        OGL_version_2_0 = true;
-        OGL_vertex_buffer_object = true;
-        OGL_framebuffer_object = true;
-        OGL_framebuffer_object_ext = false;
-        OGL_vertex_array_object = false;
-#if FO_ANDROID
-        OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
-#endif
-#if FO_IOS
-        OGL_vertex_array_object = true;
-#endif
-#endif
-
-        // Check OpenGL extensions
-#define CHECK_EXTENSION(ext, critical) \
-    if (!GL_HAS(ext)) { \
-        string msg = ((critical) ? "Critical" : "Not critical"); \
-        WriteLog("OpenGL extension '" #ext "' not supported. {}", msg); \
-        if (critical) \
-            extension_errors++; \
-    }
-        uint extension_errors = 0;
-        CHECK_EXTENSION(version_2_0, true);
-        CHECK_EXTENSION(vertex_buffer_object, true);
-        CHECK_EXTENSION(vertex_array_object, false);
-        CHECK_EXTENSION(framebuffer_object, false);
-        if (!GL_HAS(framebuffer_object)) {
-            CHECK_EXTENSION(framebuffer_object_ext, true);
-        }
-        RUNTIME_ASSERT(!extension_errors);
-#undef CHECK_EXTENSION
-    }
-
-    // Map framebuffer_object_ext to framebuffer_object
-    if (GL_HAS(framebuffer_object_ext) && !GL_HAS(framebuffer_object)) {
-        OGL_framebuffer_object = true;
-        // glGenFramebuffers = glGenFramebuffersEXT;
-        // glBindFramebuffer = glBindFramebufferEXT;
-        // glFramebufferTexture2D = glFramebufferTexture2DEXT;
-        // Todo: map all framebuffer ext functions
-    }
-#endif
-
     // Determine main window size
     auto is_tablet = false;
 #if FO_IOS || FO_ANDROID
@@ -756,6 +693,65 @@ Application::Application(GlobalSettings& settings)
 
         GlContext = (SDL_GLContext)gl_context;
 #endif
+
+        // Initialize GLEW
+        // Todo: remove GLEW and bind OpenGL functions manually
+#if !FO_OPENGL_ES
+        auto glew_result = glewInit();
+        RUNTIME_ASSERT_STR(glew_result == GLEW_OK, _str("GLEW not initialized, result {}", glew_result));
+        OGL_version_2_0 = GLEW_VERSION_2_0 != 0;
+        OGL_vertex_buffer_object = GLEW_ARB_vertex_buffer_object != 0;
+        OGL_framebuffer_object = GLEW_ARB_framebuffer_object != 0;
+        OGL_framebuffer_object_ext = GLEW_EXT_framebuffer_object != 0;
+#if FO_MAC
+        OGL_vertex_array_object = GLEW_APPLE_vertex_array_object != 0;
+#else
+        OGL_vertex_array_object = GLEW_ARB_vertex_array_object != 0;
+#endif
+#endif
+
+        // OpenGL ES extensions
+#if FO_OPENGL_ES
+        OGL_version_2_0 = true;
+        OGL_vertex_buffer_object = true;
+        OGL_framebuffer_object = true;
+        OGL_framebuffer_object_ext = false;
+        OGL_vertex_array_object = false;
+#if FO_ANDROID
+        OGL_vertex_array_object = SDL_GL_ExtensionSupported("GL_OES_vertex_array_object");
+#endif
+#if FO_IOS
+        OGL_vertex_array_object = true;
+#endif
+#endif
+
+        // Check OpenGL extensions
+#define CHECK_EXTENSION(ext, critical) \
+    if (!GL_HAS(ext)) { \
+        string msg = ((critical) ? "Critical" : "Not critical"); \
+        WriteLog("OpenGL extension '" #ext "' not supported. {}", msg); \
+        if (critical) \
+            extension_errors++; \
+    }
+        uint extension_errors = 0;
+        CHECK_EXTENSION(version_2_0, true);
+        CHECK_EXTENSION(vertex_buffer_object, true);
+        CHECK_EXTENSION(vertex_array_object, false);
+        CHECK_EXTENSION(framebuffer_object, false);
+        if (!GL_HAS(framebuffer_object)) {
+            CHECK_EXTENSION(framebuffer_object_ext, true);
+        }
+        RUNTIME_ASSERT(!extension_errors);
+#undef CHECK_EXTENSION
+
+        // Map framebuffer_object_ext to framebuffer_object
+        if (GL_HAS(framebuffer_object_ext) && !GL_HAS(framebuffer_object)) {
+            OGL_framebuffer_object = true;
+            // glGenFramebuffers = glGenFramebuffersEXT;
+            // glBindFramebuffer = glBindFramebufferEXT;
+            // glFramebufferTexture2D = glFramebufferTexture2DEXT;
+            // Todo: map all framebuffer ext functions
+        }
 
         // Render states
         GL(glClearColor(0.0f, 0.0f, 0.0f, 1.0f));

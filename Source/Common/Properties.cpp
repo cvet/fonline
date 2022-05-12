@@ -34,29 +34,20 @@
 #include "Properties.h"
 #include "Log.h"
 #include "PropertiesSerializator.h"
-#include "ScriptSystem.h"
 #include "StringUtils.h"
 
 Property::Property(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
 }
 
-auto Property::CreateRefValue(uchar* /*data*/, uint /*data_size*/) -> unique_ptr<void, std::function<void(void*)>>
+void Property::AddCallback(PropertyChangedCallback callback) const
 {
-    return nullptr;
-}
-
-auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool& /*need_delete*/) -> uchar*
-{
-    return nullptr;
+    _callbacks.emplace_back(std::move(callback));
 }
 
 Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
     RUNTIME_ASSERT(_registrator);
-
-    _sendIgnoreEntity = nullptr;
-    _sendIgnoreProperty = nullptr;
 
     // Allocate plain data
     if (!_registrator->_podDataPool.empty()) {
@@ -341,21 +332,6 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
 
     const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
     return AnyData::ValueToString(value);
-}
-
-void Properties::SetSendIgnore(const Property* prop, const Entity* entity)
-{
-    if (prop != nullptr) {
-        RUNTIME_ASSERT(_sendIgnoreEntity == nullptr);
-        RUNTIME_ASSERT(_sendIgnoreProperty == nullptr);
-    }
-    else {
-        RUNTIME_ASSERT(_sendIgnoreEntity != nullptr);
-        RUNTIME_ASSERT(_sendIgnoreProperty != nullptr);
-    }
-
-    _sendIgnoreEntity = entity;
-    _sendIgnoreProperty = prop;
 }
 
 auto Properties::GetRawDataSize(const Property* prop) const -> uint
@@ -789,6 +765,11 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     }
 }
 
+auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
+{
+    return _registrator->_nameResolver.ResolveHash(h);
+}
+
 PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server, NameResolver& name_resolver) : _className {class_name}, _isServer {is_server}, _nameResolver {name_resolver}
 {
 }
@@ -844,12 +825,6 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
 auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const -> bool
 {
     return _registeredComponents.count(component_name) > 0u;
-}
-
-void PropertyRegistrator::SetNativeSetCallback(string_view property_name, const NativeCallback& /*callback*/)
-{
-    RUNTIME_ASSERT(!property_name.empty());
-    // Find(property_name)->nativeSetCallback = callback;
 }
 
 auto PropertyRegistrator::GetWholeDataSize() const -> uint

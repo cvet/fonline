@@ -317,9 +317,9 @@ Please follow these instructions to understand how to use this engine by design:
 * Sprites: MapSprite releasing
 * Sprites: : incapsulate all sprite data
 * Application: move different renderers to separate modules
+* Application: recognize tablet mode for Windows 10
 * Application: remove GLEW and bind OpenGL functions manually
 * Application: map all framebuffer ext functions
-* Application: recognize tablet mode for Windows 10
 * Application: fix workaround for strange behaviour of button focus
 * Application: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
 * ApplicationHeadless: move different renderers to separate modules
@@ -329,7 +329,6 @@ Please follow these instructions to understand how to use this engine by design:
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * Dialogs: validate script entries, hashes
 * Entity: events array may be modified during call, need take it into account here
-* Entity: not exception safe, revert ignore with raii
 * Entity: improve entity event ExPolicy
 * Entity: improve entity event Priority
 * Entity: improve entity event OneShot
@@ -349,7 +348,11 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
-* Properties: ResolveHash
+* Properties: SetValue for string
+* Properties: GetValue for array
+* Properties: SetValue for array
+* Properties: GetValue for dict
+* Properties: SetValue for dict
 * ScriptSystem: fill settings to scripts
 * ScriptSystem: FindFunc
 * Settings-Include: rework global Quit setting
@@ -387,11 +390,10 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: disable look distance caching
 * Server: attach critter to player
 * Server: control max size explicitly, add option to property registration
-* Server: disable send changing field by client to this client
-* Server: restore DialogUseResult
-* Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
+* Server: restore DialogUseResult
+* Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: improve ban system
 * Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings

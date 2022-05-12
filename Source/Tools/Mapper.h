@@ -269,7 +269,7 @@ public:
 
     vector<MapView*> LoadedMaps {};
     ConfigFile IfaceIni;
-    PropertyVec ShowProps {};
+    vector<const Property*> ShowProps {};
     int CurMode {};
     AnyFrames* CurPDef {};
     AnyFrames* CurPHand {};

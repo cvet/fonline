@@ -185,6 +185,63 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     _conn.AddMessageHandler(NETMSG_PLAY_SOUND, std::bind(&FOClient::Net_OnPlaySound, this));
     _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, std::bind(&FOClient::Net_OnUpdateFilesResponse, this));
 
+    // Properties that sending to clients
+    {
+        const auto set_send_callbacks = [this](const auto* registrator, const PropertyChangedCallback& callback) {
+            const auto count = static_cast<int>(registrator->GetCount());
+            for (auto i = 0; i < count; i++) {
+                const auto* prop = registrator->GetByIndex(i);
+
+                switch (prop->GetAccess()) {
+                case Property::AccessType::PublicModifiable:
+                    [[fallthrough]];
+                case Property::AccessType::PublicFullModifiable:
+                    [[fallthrough]];
+                case Property::AccessType::ProtectedModifiable:
+                    break;
+                default:
+                    continue;
+                }
+
+                prop->AddCallback(callback);
+            }
+        };
+
+        using namespace std::placeholders;
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendGlobalValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendPlayerValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendItemValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendCritterValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendMapValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendLocationValue, this, _1, _2, _3, _4));
+    }
+
+    // Properties with custom behaviours
+    {
+        const auto set_callback = [this](const auto* registrator, int prop_index, PropertyChangedCallback callback) {
+            const auto* prop = registrator->GetByIndex(prop_index);
+            prop->AddCallback(std::move(callback));
+        };
+
+        using namespace std::placeholders;
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, std::bind(&FOClient::OnSetCritterModelName, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, std::bind(&FOClient::OnSetCritterContourColor, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, std::bind(&FOClient::OnSetItemPicMap, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, std::bind(&FOClient::OnSetItemOffsetCoords, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, std::bind(&FOClient::OnSetItemOffsetCoords, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, std::bind(&FOClient::OnSetItemOpened, this, _1, _2, _3, _4));
+    }
+
     ScreenFadeOut();
 
     // Auto login
@@ -829,6 +886,10 @@ void FOClient::Net_SendMove(vector<uchar> steps)
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
 {
     RUNTIME_ASSERT(entity);
+
+    if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
+        return;
+    }
 
     auto* client_entity = dynamic_cast<ClientEntity*>(entity);
     if (client_entity == nullptr) {
@@ -2236,7 +2297,17 @@ void FOClient::Net_OnProperty(uint data_size)
         return;
     }
 
-    entity->SetValueFromData(prop, _tempPropertyData, true);
+    {
+        _sendIgnoreEntity = entity;
+        _sendIgnoreProperty = prop;
+
+        auto revert_send_ignore = ScopeCallback([this]() noexcept {
+            _sendIgnoreEntity = nullptr;
+            _sendIgnoreProperty = nullptr;
+        });
+
+        entity->SetValueFromData(prop, _tempPropertyData);
+    }
 
     if (type == NetProperty::MapItem) {
         OnItemMapChanged.Fire(dynamic_cast<ItemView*>(entity), dynamic_cast<ItemView*>(entity));
@@ -2969,9 +3040,10 @@ void FOClient::AnimProcess()
     }
 }
 
-void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
+void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
-    UNUSED_VARIABLE(entity);
+    UNUSED_VARIABLE(new_value);
+    UNUSED_VARIABLE(old_value);
     RUNTIME_ASSERT(entity == this);
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -2982,16 +3054,20 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
+void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
-    UNUSED_VARIABLE(entity);
+    UNUSED_VARIABLE(new_value);
+    UNUSED_VARIABLE(old_value);
     RUNTIME_ASSERT(entity == _curPlayer);
 
     Net_SendProperty(NetProperty::Player, prop, _curPlayer);
 }
 
-void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
+void FOClient::OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
+    UNUSED_VARIABLE(new_value);
+    UNUSED_VARIABLE(old_value);
+
     auto* cr = dynamic_cast<CritterView*>(entity);
     if (cr->IsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
@@ -3004,30 +3080,11 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
-    UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(cur_value);
+    UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
-    auto* cr = dynamic_cast<CritterHexView*>(entity);
-    cr->RefreshModel();
-    cr->Action(ACTION_REFRESH, 0, nullptr, false);
-}
-
-void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop, void* cur_value, void* old_value)
-{
-    UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(old_value);
-
-    auto* cr = dynamic_cast<CritterHexView*>(entity);
-    if (cr->SprDrawValid) {
-        cr->SprDraw->SetContour(cr->SprDraw->ContourType, *static_cast<uint*>(cur_value));
-    }
-}
-
-void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
-{
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && item->GetId() != 0u) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritId());
@@ -3055,11 +3112,61 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
     }
 }
 
-void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    UNUSED_VARIABLE(new_value);
+    UNUSED_VARIABLE(old_value);
+    RUNTIME_ASSERT(entity == CurMap);
+
+    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+        Net_SendProperty(NetProperty::Map, prop, CurMap);
+    }
+    else {
+        throw GenericException("Unable to send map modifiable property", prop->GetName());
+    }
+}
+
+void FOClient::OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    UNUSED_VARIABLE(new_value);
+    UNUSED_VARIABLE(old_value);
+    RUNTIME_ASSERT(entity == _curLocation);
+
+    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
+        Net_SendProperty(NetProperty::Location, prop, _curLocation);
+    }
+    else {
+        throw GenericException("Unable to send location modifiable property", prop->GetName());
+    }
+}
+
+void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(new_value);
+    UNUSED_VARIABLE(old_value);
+
+    auto* cr = dynamic_cast<CritterHexView*>(entity);
+    cr->RefreshModel();
+    cr->Action(ACTION_REFRESH, 0, nullptr, false);
+}
+
+void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(old_value);
+
+    auto* cr = dynamic_cast<CritterHexView*>(entity);
+    if (cr->SprDrawValid) {
+        cr->SprDraw->SetContour(cr->SprDraw->ContourType, *static_cast<const uint*>(new_value));
+    }
+}
+
+void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
 
-    UNUSED_VARIABLE(cur_value);
+    UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
     auto* item = dynamic_cast<ItemView*>(entity);
@@ -3089,13 +3196,13 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, void* cur_va
     }
 }
 
-void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
 
     UNUSED_VARIABLE(entity);
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(cur_value);
+    UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
     if (CurMap != nullptr) {
@@ -3103,10 +3210,10 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop, void* cu
     }
 }
 
-void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(cur_value);
+    UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
     auto* item = dynamic_cast<ItemView*>(entity);
@@ -3117,12 +3224,12 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_v
     }
 }
 
-void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     // OffsetX, OffsetY
 
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(cur_value);
+    UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
     auto* item = dynamic_cast<ItemView*>(entity);
@@ -3134,47 +3241,22 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop, void*
     }
 }
 
-void FOClient::OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value)
+void FOClient::OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
 {
     UNUSED_VARIABLE(prop);
 
     auto* item = dynamic_cast<ItemView*>(entity);
-    const auto cur = *static_cast<bool*>(cur_value);
-    const auto old = *static_cast<bool*>(old_value);
+    const auto new_bool = *static_cast<const bool*>(new_value);
+    const auto old_bool = *static_cast<const bool*>(old_value);
 
     if (item->GetIsCanOpen()) {
         auto* hex_item = dynamic_cast<ItemHexView*>(item);
-        if (!old && cur) {
+        if (!old_bool && new_bool) {
             hex_item->SetAnimFromStart();
         }
-        if (old && !cur) {
+        if (old_bool && !new_bool) {
             hex_item->SetAnimFromEnd();
         }
-    }
-}
-
-void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
-{
-    RUNTIME_ASSERT(entity == CurMap);
-
-    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Map, prop, CurMap);
-    }
-    else {
-        throw GenericException("Unable to send map modifiable property", prop->GetName());
-    }
-}
-
-void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
-{
-    UNUSED_VARIABLE(entity);
-    RUNTIME_ASSERT(entity == _curLocation);
-
-    if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
-        Net_SendProperty(NetProperty::Location, prop, _curLocation);
-    }
-    else {
-        throw GenericException("Unable to send location modifiable property", prop->GetName());
     }
 }
 

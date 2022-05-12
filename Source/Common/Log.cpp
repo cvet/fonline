@@ -49,7 +49,11 @@
 struct LogData
 {
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-    LogData() { std::at_quick_exit(FlushLogAtExit); }
+    LogData()
+    {
+        const auto result = std::at_quick_exit(FlushLogAtExit);
+        UNUSED_VARIABLE(result);
+    }
 #endif
 
     std::mutex LogLocker {};

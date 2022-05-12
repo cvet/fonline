@@ -37,6 +37,7 @@
 
 Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
 {
+    _props.SetEntity(this);
 }
 
 void Entity::AddRef() const
@@ -205,18 +206,9 @@ auto Entity::LoadFromText(const map<string, string>& key_values) -> bool
     return _props.LoadFromText(key_values);
 }
 
-void Entity::SetValueFromData(const Property* prop, const vector<uchar>& data, bool ignore_send)
+void Entity::SetValueFromData(const Property* prop, const vector<uchar>& data)
 {
-    // Todo: not exception safe, revert ignore with raii
-    if (ignore_send) {
-        _props.SetSendIgnore(prop, this);
-    }
-
     _props.SetValueFromData(prop, data.data(), static_cast<uint>(data.size()));
-
-    if (ignore_send) {
-        _props.SetSendIgnore(nullptr, nullptr);
-    }
 }
 
 auto Entity::GetValueAsInt(const Property* prop) const -> int
