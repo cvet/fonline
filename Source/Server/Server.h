@@ -95,7 +95,7 @@ public:
 
     void Shutdown();
     void MainLoop();
-    void DrawGui();
+    void DrawGui(string_view server_name);
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
     auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
@@ -216,23 +216,6 @@ private:
         uint LagsCount {};
     };
 
-    struct ServerGui
-    {
-        ImVec2 DefaultSize {ImVec2(200, 200)};
-        ImVec2 InfoPos {ImVec2(10, 10)};
-        ImVec2 ControlPanelPos {ImVec2(300, 10)};
-        ImVec2 MemoryPos {ImVec2(600, 10)};
-        ImVec2 PlayersPos {ImVec2(600, 30)};
-        ImVec2 LocMapsPos {ImVec2(600, 50)};
-        ImVec2 ItemsPos {ImVec2(600, 70)};
-        ImVec2 ProfilerPos {ImVec2(600, 90)};
-        ImVec2 ButtonSize {ImVec2(200, 30)};
-        ImVec2 LogPos {ImVec2(10, 300)};
-        ImVec2 LogSize {ImVec2(800, 400)};
-        string WholeLog {};
-        string Stats {};
-    };
-
     struct TextListener
     {
         ScriptFunc<void, Critter*, string> Func {};
@@ -298,7 +281,6 @@ private:
     std::atomic_bool _started {};
     vector<uchar> _restoreInfoBin {};
     ServerStats _stats {};
-    ServerGui _gui {};
     map<uint, uint> _regIp {};
     uint _fpsTick {};
     uint _fpsCounter {};

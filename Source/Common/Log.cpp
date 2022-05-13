@@ -60,8 +60,7 @@ struct LogData
     bool LogDisableTimestamp {};
     unique_ptr<DiskFile> LogFileHandle {};
     map<string, LogFunc> LogFunctions {};
-    bool LogFunctionsInProcess {};
-    string* LogBufferStr {};
+    std::atomic_bool LogFunctionsInProcess {};
 };
 GLOBAL_DATA(LogData, Data);
 
@@ -87,54 +86,32 @@ void LogToFile()
     Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
 }
 
-void LogToFunc(string_view key, const LogFunc& func, bool enable)
+void SetLogCallback(string_view key, LogFunc callback)
 {
     std::lock_guard locker(Data->LogLocker);
 
-    if (func) {
-        Data->LogFunctions.erase(string(key));
-
-        if (enable) {
-            Data->LogFunctions.insert(std::make_pair(key, func));
+    if (!key.empty()) {
+        if (callback) {
+            Data->LogFunctions.emplace(string(key), std::move(callback));
+        }
+        else {
+            Data->LogFunctions.erase(string(key));
         }
     }
-    else if (!enable) {
+    else {
+        RUNTIME_ASSERT(!callback);
         Data->LogFunctions.clear();
     }
 }
 
-void LogToBuffer(bool enable)
-{
-    std::lock_guard locker(Data->LogLocker);
-
-    delete Data->LogBufferStr;
-    Data->LogBufferStr = nullptr;
-
-    if (enable) {
-        Data->LogBufferStr = new string();
-    }
-}
-
-auto LogGetBuffer() -> string
-{
-    std::lock_guard locker(Data->LogLocker);
-
-    if (Data->LogBufferStr != nullptr && !Data->LogBufferStr->empty()) {
-        auto buf = *Data->LogBufferStr;
-        Data->LogBufferStr->clear();
-        return buf;
-    }
-    return string();
-}
-
 void WriteLogMessage(LogType type, string_view message)
 {
-    std::lock_guard locker(Data->LogLocker);
-
     // Avoid recursive calls
     if (Data->LogFunctionsInProcess) {
         return;
     }
+
+    std::lock_guard locker(Data->LogLocker);
 
     // Make message
     string result;
@@ -151,10 +128,6 @@ void WriteLogMessage(LogType type, string_view message)
     // Write logs
     if (Data->LogFileHandle) {
         Data->LogFileHandle->Write(result);
-    }
-
-    if (Data->LogBufferStr != nullptr) {
-        *Data->LogBufferStr += result;
     }
 
     if (!Data->LogFunctions.empty()) {

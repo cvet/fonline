@@ -42,9 +42,9 @@
 enum class ServerStateType
 {
     Stopped,
-    Start,
+    StartRequest,
     Started,
-    Shutdown,
+    StopRequest,
 };
 
 struct ServerAppData
@@ -56,54 +56,6 @@ struct ServerAppData
 };
 GLOBAL_DATA(ServerAppData, Data);
 
-static void ServerEntry()
-{
-    while (true) {
-        try {
-            try {
-                while (Data->ServerState == ServerStateType::Stopped) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                }
-
-                RUNTIME_ASSERT(Data->ServerState == ServerStateType::Start);
-                Data->Server = new FOServer(*Data->Settings);
-                RUNTIME_ASSERT(Data->ServerState == ServerStateType::Start);
-                Data->ServerState = ServerStateType::Started;
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
-            }
-
-            while (Data->ServerState != ServerStateType::Shutdown) {
-                try {
-                    Data->Server->MainLoop();
-                }
-                catch (const GenericException& ex) {
-                    ReportExceptionAndContinue(ex);
-                }
-                catch (const std::exception& ex) {
-                    ReportExceptionAndExit(ex);
-                }
-            }
-
-            try {
-                RUNTIME_ASSERT(Data->ServerState == ServerStateType::Shutdown);
-                Data->Server->Shutdown();
-                delete Data->Server;
-                Data->Server = nullptr;
-                RUNTIME_ASSERT(Data->ServerState == ServerStateType::Shutdown);
-                Data->ServerState = ServerStateType::Stopped;
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
-            }
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndExit(ex);
-        }
-    }
-}
-
 #if !FO_TESTING
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
@@ -112,7 +64,14 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 {
     try {
         InitApp("Server");
-        LogToBuffer(true);
+
+        string log_buffer;
+        SetLogCallback("ServerApp", [&log_buffer](auto str) {
+            log_buffer += str;
+            if (log_buffer.size() > 100000) {
+                log_buffer = log_buffer.substr(log_buffer.size() - 100000);
+            }
+        });
 
         Data->Settings = new GlobalSettings(argc, argv);
 
@@ -125,12 +84,48 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             AppExit(false);
         }
 
-        // Server loop in separate thread
-        Data->ServerThread = std::thread(ServerEntry);
+        // Async server start/stop
+        const auto start_server = [] {
+            RUNTIME_ASSERT(Data->ServerState == ServerStateType::Stopped);
+            Data->ServerState = ServerStateType::StartRequest;
+            std::thread([] {
+                try {
+                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
+                    Data->Server = new FOServer(*Data->Settings);
+                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
+                    Data->ServerState = ServerStateType::Started;
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                    Data->Server = nullptr;
+                    Data->ServerState = ServerStateType::Stopped;
+                }
+            }).detach();
+        };
+
+        const auto stop_server = [] {
+            RUNTIME_ASSERT(Data->ServerState == ServerStateType::Started);
+            Data->ServerState = ServerStateType::StopRequest;
+            std::thread([] {
+                try {
+                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
+                    Data->Server->Shutdown();
+                    delete Data->Server;
+                    Data->Server = nullptr;
+                    RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
+                    Data->ServerState = ServerStateType::Stopped;
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                    Data->Server = nullptr;
+                    Data->ServerState = ServerStateType::Stopped;
+                }
+            }).detach();
+        };
 
         // Autostart
         if (!Data->Settings->NoStart) {
-            Data->ServerState = ServerStateType::Start;
+            start_server();
         }
 
         // Gui loop
@@ -139,33 +134,91 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 Data->Settings->Quit = true;
             }
 
-            if (Data->ServerState == ServerStateType::Stopped) {
-                const auto& io = ImGui::GetIO();
-                ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, io.DisplaySize.y / 2.0f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-                if (ImGui::Begin("---", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
-                    if (ImGui::Button("Start server", ImVec2(200, 30))) {
-                        Data->ServerState = ServerStateType::Start;
+            const auto& io = ImGui::GetIO();
+
+            // Control panel
+            const auto control_btn_size = ImVec2(200, 30);
+            ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, 50.0f), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.0f));
+            if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
+                const auto imgui_progress_btn = [&control_btn_size](const char* title) {
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                    ImGui::Button(title, control_btn_size);
+                    ImGui::PopItemFlag();
+                    ImGui::PopStyleColor();
+                };
+
+                if (Data->ServerState == ServerStateType::Stopped) {
+                    if (ImGui::Button("Start server", control_btn_size)) {
+                        start_server();
                     }
                 }
-                ImGui::End();
+                else if (Data->ServerState == ServerStateType::StartRequest) {
+                    imgui_progress_btn("Starting server...");
+                }
+                else if (Data->ServerState == ServerStateType::Started) {
+                    if (ImGui::Button("Stop server", control_btn_size)) {
+                        stop_server();
+                    }
+                }
+                else if (Data->ServerState == ServerStateType::StopRequest) {
+                    imgui_progress_btn("Stopping server...");
+                }
+
+                if (ImGui::Button("Create dump", control_btn_size)) {
+                    CreateDumpMessage("ManualDump", "Manual");
+                }
+                if (ImGui::Button("Save log", control_btn_size)) {
+                    const auto dt = Timer::GetCurrentDateTime();
+                    const string log_name = _str("Logs/FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+                    DiskFileSystem::OpenFile(log_name, true).Write(log_buffer);
+                }
+
+                if (!Data->Settings->Quit) {
+                    if (ImGui::Button("Quit", control_btn_size)) {
+                        Data->Settings->Quit = true;
+                    }
+                }
+                else {
+                    imgui_progress_btn("Quitting...");
+                }
             }
-            else if (Data->ServerState == ServerStateType::Started) {
-                Data->Server->DrawGui();
+            ImGui::End();
+
+            // Main loop
+            if (Data->ServerState == ServerStateType::Started) {
+                try {
+                    Data->Server->MainLoop();
+
+                    ImGui::SetNextWindowPos(ImVec2(10, 0), ImGuiCond_FirstUseEver);
+                    Data->Server->DrawGui("Server");
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
             }
+
+            // Log
+            ImGui::SetNextWindowPos(ImVec2(10, 300), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
+                if (!log_buffer.empty()) {
+                    ImGui::TextUnformatted(log_buffer.c_str(), log_buffer.c_str() + log_buffer.size());
+                }
+            }
+            ImGui::End();
 
             AppGui::EndFrame();
 
             if (Data->Settings->Quit) {
                 if (Data->ServerState == ServerStateType::Started) {
-                    Data->ServerState = ServerStateType::Shutdown;
+                    stop_server();
                 }
                 else if (Data->ServerState == ServerStateType::Stopped) {
                     break;
                 }
             }
         }
-
-        RUNTIME_ASSERT(Data->ServerState == ServerStateType::Stopped);
 
         AppExit(true);
     }

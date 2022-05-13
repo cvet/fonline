@@ -775,18 +775,9 @@ auto ItemManager::GetItemStatistics(hstring pid) const -> int64
 
 auto ItemManager::GetItemsStatistics() const -> string
 {
-    vector<const ProtoItem*> protos;
-    const auto& proto_items = _engine->ProtoMngr.GetProtoItems();
-    protos.reserve(proto_items.size());
-    for (const auto& [pid, proto] : proto_items) {
-        protos.push_back(proto);
-    }
-
-    std::sort(protos.begin(), protos.end(), [](const ProtoItem* p1, const ProtoItem* p2) { return p1->GetName().compare(p2->GetName()); });
-
     string result = "Name                                     Count\n";
-    for (const auto* proto : protos) {
-        result += _str("{:<40} {:<20}\n", proto->GetName(), _str("{}", proto->InstanceCount));
+    for (auto&& [pid, proto] : _engine->ProtoMngr.GetProtoItems()) {
+        result += _str("{:<40} {:<20}\n", proto->GetName(), proto->InstanceCount);
     }
     return result;
 }

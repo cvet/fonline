@@ -63,6 +63,4 @@ void WriteLog(LogType type, string_view message, Args... args)
 // Control
 extern void LogWithoutTimestamp();
 extern void LogToFile();
-extern void LogToFunc(string_view key, const LogFunc& func, bool enable);
-extern void LogToBuffer(bool enable);
-extern auto LogGetBuffer() -> string;
+extern void SetLogCallback(string_view key, LogFunc callback);

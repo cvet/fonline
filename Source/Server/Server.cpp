@@ -350,8 +350,8 @@ void FOServer::Shutdown()
     }
 
     // Logging clients
-    LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
-    for (auto* cl : _logClients) {
+    SetLogCallback("LogToClients", nullptr);
+    for (const auto* cl : _logClients) {
         cl->Release();
     }
     _logClients.clear();
@@ -543,107 +543,63 @@ void FOServer::MainLoop()
     }
 }
 
-void FOServer::DrawGui()
+void FOServer::DrawGui(string_view server_name)
 {
-    // Info
-    ImGui::SetNextWindowPos(_gui.InfoPos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(false, ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Info", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = "";
-        const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
-        _gui.Stats += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*GetTimeMultiplier()*/);
-        _gui.Stats += _str("Connections: {}\n", _stats.CurOnline);
-        _gui.Stats += _str("Players in game: {}\n", CrMngr.PlayersInGame());
-        _gui.Stats += _str("NPC in game: {}\n", CrMngr.NpcInGame());
-        _gui.Stats += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
-        _gui.Stats += _str("Items: {}\n", ItemMngr.GetItemsCount());
-        _gui.Stats += _str("Cycles per second: {}\n", _stats.Fps);
-        _gui.Stats += _str("Cycle time: {}\n", _stats.CycleTime);
-        const auto seconds = _stats.Uptime;
-        _gui.Stats += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
-        _gui.Stats += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
-        _gui.Stats += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
-        _gui.Stats += _str("Compress ratio: {}", static_cast<double>(_stats.DataReal) / (_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
+    NON_CONST_METHOD_HINT();
 
-    // Control panel
-    ImGui::SetNextWindowPos(_gui.ControlPanelPos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(false, ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        if (_started && !Settings.Quit && ImGui::Button("Quit", _gui.ButtonSize)) {
-            Settings.Quit = true;
-        }
-        if (ImGui::Button("Create dump", _gui.ButtonSize)) {
-            CreateDumpMessage("ManualDump", "Manual");
-        }
-        if (ImGui::Button("Save log", _gui.ButtonSize)) {
-            const auto dt = Timer::GetCurrentDateTime();
-            const string log_name = _str("Logs/FOnlineServer_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.log", "Log", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
-            DiskFileSystem::OpenFile(log_name, true).Write(_gui.WholeLog);
-        }
-    }
-    ImGui::End();
+    constexpr auto default_buf_size = 1000000; // ~1mb
+    string buf;
+    buf.reserve(default_buf_size);
 
-    // Players
-    ImGui::SetNextWindowPos(_gui.PlayersPos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Players", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = "WIP..........................."; // ( Server && Server->_started ? Server->GetIngamePlayersStatistics() :
-                                                       // "Waiting for server start..." );
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Locations and maps
-    ImGui::SetNextWindowPos(_gui.LocMapsPos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Locations and maps", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = "WIP..........................."; // ( Server && Server->_started ? MapMngr.GetLocationAndMapsStatistics() :
-                                                       // "Waiting for server start..." );
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Items count
-    ImGui::SetNextWindowPos(_gui.ItemsPos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Items count", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = (_started ? ItemMngr.GetItemsStatistics() : "Waiting for server start...");
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Profiler
-    ImGui::SetNextWindowPos(_gui.ProfilerPos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(_gui.DefaultSize, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Profiler", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        _gui.Stats = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
-        ImGui::TextUnformatted(_gui.Stats.c_str(), _gui.Stats.c_str() + _gui.Stats.size());
-    }
-    ImGui::End();
-
-    // Log
-    ImGui::SetNextWindowPos(_gui.LogPos, ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(_gui.LogSize, ImGuiCond_FirstUseEver);
-    if (ImGui::Begin("Log", nullptr, ImGuiWindowFlags_AlwaysVerticalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar)) {
-        const auto log = LogGetBuffer();
-        if (!log.empty()) {
-            _gui.WholeLog += log;
-            if (_gui.WholeLog.size() > 100000) {
-                _gui.WholeLog = _gui.WholeLog.substr(_gui.WholeLog.size() - 100000);
-            }
+    if (ImGui::Begin(string(server_name).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        // Info
+        ImGui::SetNextItemOpen(true, ImGuiCond_FirstUseEver);
+        if (ImGui::TreeNode("Info")) {
+            buf = "";
+            const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
+            buf += _str("Time: {:02}.{:02}.{:04} {:02}:{:02}:{:02} x{}\n", st.Day, st.Month, st.Year, st.Hour, st.Minute, st.Second, "WIP" /*GetTimeMultiplier()*/);
+            buf += _str("Connections: {}\n", _stats.CurOnline);
+            buf += _str("Players in game: {}\n", CrMngr.PlayersInGame());
+            buf += _str("NPC in game: {}\n", CrMngr.NpcInGame());
+            buf += _str("Locations: {} ({})\n", MapMngr.GetLocationsCount(), MapMngr.GetMapsCount());
+            buf += _str("Items: {}\n", ItemMngr.GetItemsCount());
+            buf += _str("Cycles per second: {}\n", _stats.Fps);
+            buf += _str("Cycle time: {}\n", _stats.CycleTime);
+            const auto seconds = _stats.Uptime;
+            buf += _str("Uptime: {:02}:{:02}:{:02}\n", seconds / 60 / 60, seconds / 60 % 60, seconds % 60);
+            buf += _str("KBytes Send: {}\n", _stats.BytesSend / 1024);
+            buf += _str("KBytes Recv: {}\n", _stats.BytesRecv / 1024);
+            buf += _str("Compress ratio: {}", static_cast<double>(_stats.DataReal) / (_stats.DataCompressed != 0 ? _stats.DataCompressed : 1));
+            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+            ImGui::TreePop();
         }
 
-        if (!_gui.WholeLog.empty()) {
-            ImGui::TextUnformatted(_gui.WholeLog.c_str(), _gui.WholeLog.c_str() + _gui.WholeLog.size());
+        // Players
+        if (ImGui::TreeNode("Players")) {
+            buf = GetIngamePlayersStatistics();
+            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+            ImGui::TreePop();
+        }
+
+        // Locations and maps
+        if (ImGui::TreeNode("Locations and maps")) {
+            buf = MapMngr.GetLocationAndMapsStatistics();
+            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+            ImGui::TreePop();
+        }
+
+        // Items count
+        if (ImGui::TreeNode("Items count")) {
+            buf = ItemMngr.GetItemsStatistics();
+            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+            ImGui::TreePop();
+        }
+
+        // Profiler
+        if (ImGui::TreeNode("Profiler")) {
+            buf = "WIP..........................."; // ScriptSys.GetProfilerStatistics();
+            ImGui::TextUnformatted(buf.c_str(), buf.c_str() + buf.size());
+            ImGui::TreePop();
         }
     }
     ImGui::End();
@@ -1093,9 +1049,9 @@ void FOServer::Process_Text(Player* player)
 
 void FOServer::Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
 {
-    LogToFunc("Process_Command", logcb, true);
+    SetLogCallback("Process_Command", logcb);
     Process_CommandReal(buf, logcb, player, admin_panel);
-    LogToFunc("Process_Command", logcb, false);
+    SetLogCallback("Process_Command", nullptr);
 }
 
 void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel)
@@ -1540,7 +1496,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
+        SetLogCallback("LogToClients", nullptr);
 
         auto it = std::find(_logClients.begin(), _logClients.end(), player);
         if (flags[0] == '-' && flags[1] == '\0' && it != _logClients.end()) // Detach current
@@ -1565,7 +1521,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         if (!_logClients.empty()) {
-            LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), true);
+            SetLogCallback("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1));
         }
     } break;
     default:
@@ -1633,7 +1589,7 @@ void FOServer::DispatchLogToClients()
     }
 
     if (_logClients.empty()) {
-        LogToFunc("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1), false);
+        SetLogCallback("LogToClients", nullptr);
     }
 
     _logLines.clear();
