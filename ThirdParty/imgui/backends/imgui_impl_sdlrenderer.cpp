@@ -1,21 +1,25 @@
 // dear imgui: Renderer Backend for SDL_Renderer
 // (Requires: SDL 2.0.17+)
 
-// Important to understand: SDL_Renderer is an _optional_ component of SDL. We do not recommend you use SDL_Renderer
-// because it provide a rather limited API to the end-user. We provide this backend for the sake of completeness.
+// Important to understand: SDL_Renderer is an _optional_ component of SDL.
 // For a multi-platform app consider using e.g. SDL+DirectX on Windows and SDL+OpenGL on Linux/OSX.
+// If your application will want to render any non trivial amount of graphics other than UI,
+// please be aware that SDL_Renderer offers a limited graphic API to the end-user and it might
+// be difficult to step out of those boundaries.
+// However, we understand it is a convenient choice to get an app started easily.
 
 // Implemented features:
 //  [X] Renderer: User texture binding. Use 'SDL_Texture*' as ImTextureID. Read the FAQ about ImTextureID!
+//  [X] Renderer: Support for large meshes (64k+ vertices) with 16-bit indices.
 // Missing features:
-//  [ ] Renderer: Support for large meshes (64k+ vertices) with 16-bit indices.
-//  [ ] Renderer: Multi-viewport support (multiple windows).
 
 // You can copy and use unmodified imgui_impl_* files in your project. See examples/ folder for examples of using this.
 // If you are new to Dear ImGui, read documentation from the docs/ folder + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
 // CHANGELOG
+//  2021-12-21: Update SDL_RenderGeometryRaw() format to work with SDL 2.0.19.
+//  2021-12-03: Added support for large mesh (64K+ vertices), enable ImGuiBackendFlags_RendererHasVtxOffset flag.
 //  2021-10-06: Backup and restore modified ClipRect/Viewport.
 //  2021-09-21: Initial version.
 
@@ -38,7 +42,7 @@ struct ImGui_ImplSDLRenderer_Data
 {
     SDL_Renderer*   SDLRenderer;
     SDL_Texture*    FontTexture;
-    ImGui_ImplSDLRenderer_Data() { memset(this, 0, sizeof(*this)); }
+    ImGui_ImplSDLRenderer_Data() { memset((void*)this, 0, sizeof(*this)); }
 };
 
 // Backend data stored in io.BackendRendererUserData to allow support for multiple Dear ImGui contexts
@@ -59,6 +63,7 @@ bool ImGui_ImplSDLRenderer_Init(SDL_Renderer* renderer)
     ImGui_ImplSDLRenderer_Data* bd = IM_NEW(ImGui_ImplSDLRenderer_Data)();
     io.BackendRendererUserData = (void*)bd;
     io.BackendRendererName = "imgui_impl_sdlrenderer";
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
 
     bd->SDLRenderer = renderer;
 
@@ -125,7 +130,7 @@ void ImGui_ImplSDLRenderer_RenderDrawData(ImDrawData* draw_data)
         SDL_Rect    ClipRect;
     };
     BackupSDLRendererState old = {};
-    old.ClipEnabled = SDL_RenderIsClipEnabled(bd->SDLRenderer);
+    old.ClipEnabled = SDL_RenderIsClipEnabled(bd->SDLRenderer) == SDL_TRUE;
     SDL_RenderGetViewport(bd->SDLRenderer, &old.Viewport);
     SDL_RenderGetClipRect(bd->SDLRenderer, &old.ClipRect);
 
@@ -162,15 +167,19 @@ void ImGui_ImplSDLRenderer_RenderDrawData(ImDrawData* draw_data)
                 if (clip_min.y < 0.0f) { clip_min.y = 0.0f; }
                 if (clip_max.x > fb_width) { clip_max.x = (float)fb_width; }
                 if (clip_max.y > fb_height) { clip_max.y = (float)fb_height; }
-                if (clip_max.x < clip_min.x || clip_max.y < clip_min.y)
+                if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
                     continue;
 
                 SDL_Rect r = { (int)(clip_min.x), (int)(clip_min.y), (int)(clip_max.x - clip_min.x), (int)(clip_max.y - clip_min.y) };
                 SDL_RenderSetClipRect(bd->SDLRenderer, &r);
 
-                const float* xy = (const float*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, pos));
-                const float* uv = (const float*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, uv));
-                const int* color = (const int*)((const char*)vtx_buffer + IM_OFFSETOF(ImDrawVert, col));
+                const float* xy = (const float*)((const char*)(vtx_buffer + pcmd->VtxOffset) + IM_OFFSETOF(ImDrawVert, pos));
+                const float* uv = (const float*)((const char*)(vtx_buffer + pcmd->VtxOffset) + IM_OFFSETOF(ImDrawVert, uv));
+#if SDL_VERSION_ATLEAST(2,0,19)
+                const SDL_Color* color = (const SDL_Color*)((const char*)(vtx_buffer + pcmd->VtxOffset) + IM_OFFSETOF(ImDrawVert, col)); // SDL 2.0.19+
+#else
+                const int* color = (const int*)((const char*)(vtx_buffer + pcmd->VtxOffset) + IM_OFFSETOF(ImDrawVert, col)); // SDL 2.0.17 and 2.0.18
+#endif
 
                 // Bind texture, Draw
 				SDL_Texture* tex = (SDL_Texture*)pcmd->GetTexID();
@@ -178,7 +187,7 @@ void ImGui_ImplSDLRenderer_RenderDrawData(ImDrawData* draw_data)
                     xy, (int)sizeof(ImDrawVert),
                     color, (int)sizeof(ImDrawVert),
                     uv, (int)sizeof(ImDrawVert),
-                    cmd_list->VtxBuffer.Size,
+                    cmd_list->VtxBuffer.Size - pcmd->VtxOffset,
                     idx_buffer + pcmd->IdxOffset, pcmd->ElemCount, sizeof(ImDrawIdx));
             }
         }
@@ -201,7 +210,8 @@ bool ImGui_ImplSDLRenderer_CreateFontsTexture()
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);   // Load as RGBA 32-bit (75% of the memory is wasted, but default font is so small) because it is more likely to be compatible with user's existing shaders. If your ImTextureId represent a higher-level concept than just a GL texture id, consider calling GetTexDataAsAlpha8() instead to save on GPU memory.
 
     // Upload texture to graphics system
-    bd->FontTexture = SDL_CreateTexture(bd->SDLRenderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, width, height);
+    // (Bilinear sampling is required by default. Set 'io.Fonts->Flags |= ImFontAtlasFlags_NoBakedLines' or 'style.AntiAliasedLinesUseTex = false' to allow point/nearest sampling)
+    bd->FontTexture = SDL_CreateTexture(bd->SDLRenderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, width, height);
     if (bd->FontTexture == NULL)
     {
         SDL_Log("error creating texture");
@@ -209,6 +219,7 @@ bool ImGui_ImplSDLRenderer_CreateFontsTexture()
     }
     SDL_UpdateTexture(bd->FontTexture, NULL, pixels, 4 * width);
     SDL_SetTextureBlendMode(bd->FontTexture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureScaleMode(bd->FontTexture, SDL_ScaleModeLinear);
 
     // Store our identifier
     io.Fonts->SetTexID((ImTextureID)(intptr_t)bd->FontTexture);
