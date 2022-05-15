@@ -857,81 +857,76 @@ void Application::BeginFrame()
     _onFrameBeginDispatcher();
 }
 
-void Application::RenderImGui()
-{
-    ImGui::Render();
-
-    const auto* draw_data = ImGui::GetDrawData();
-
-    // Avoid rendering when minimized
-    const auto fb_width = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-    const auto fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
-    if (fb_width == 0 || fb_height == 0) {
-        return;
-    }
-
-    const auto l = draw_data->DisplayPos.x;
-    const auto r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-    const auto t = draw_data->DisplayPos.y;
-    const auto b = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-    const float ortho_projection[4][4] = {
-        {2.0f / (r - l), 0.0f, 0.0f, 0.0f},
-        {0.0f, 2.0f / (t - b), 0.0f, 0.0f},
-        {0.0f, 0.0f, -1.0f, 0.0f},
-        {(r + l) / (l - r), (t + b) / (b - t), 0.0f, 1.0f},
-    };
-    std::memcpy(_imguiEffect->ProjBuf.ProjMatrix, ortho_projection, sizeof(ortho_projection));
-
-    // Scissor/clipping
-    const auto clip_off = draw_data->DisplayPos;
-    const auto clip_scale = draw_data->FramebufferScale;
-
-    // Render command lists
-    for (int cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
-        const auto* cmd_list = draw_data->CmdLists[cmd];
-
-        _imguiDrawBuf->Vertices2D.resize(cmd_list->VtxBuffer.Size);
-        for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
-            auto& v = _imguiDrawBuf->Vertices2D[i];
-            const auto& iv = cmd_list->VtxBuffer[i];
-            v.X = iv.pos.x;
-            v.Y = iv.pos.y;
-            v.TU = iv.uv.x;
-            v.TV = iv.uv.y;
-            v.Diffuse = iv.col;
-        }
-
-        _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
-        for (int i = 0; i < cmd_list->IdxBuffer.Size; i++) {
-            _imguiDrawBuf->Indices[i] = cmd_list->IdxBuffer[i];
-        }
-
-        _imguiDrawBuf->DataChanged = true;
-
-        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
-            const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-            RUNTIME_ASSERT(pcmd->UserCallback == nullptr);
-
-            const auto clip_rect_x = static_cast<int>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
-            const auto clip_rect_y = static_cast<int>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
-            const auto clip_rect_z = static_cast<int>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
-            const auto clip_rect_w = static_cast<int>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
-
-            if (clip_rect_x < fb_width && clip_rect_y < fb_height && clip_rect_z >= 0 && clip_rect_w >= 0) {
-                ActiveRenderer->EnableScissor(clip_rect_x, fb_height - clip_rect_w, clip_rect_z - clip_rect_x, clip_rect_w - clip_rect_y);
-                _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
-                ActiveRenderer->DisableScissor();
-            }
-        }
-    }
-}
-
 void Application::EndFrame()
 {
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
 
-    RenderImGui();
+    // Render ImGui
+    ImGui::Render();
 
+    const auto* draw_data = ImGui::GetDrawData();
+
+    const auto fb_width = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
+    const auto fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
+
+    if (fb_width > 0 && fb_height > 0) {
+        const auto l = draw_data->DisplayPos.x;
+        const auto r = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+        const auto t = draw_data->DisplayPos.y;
+        const auto b = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+        const float ortho_projection[4][4] = {
+            {2.0f / (r - l), 0.0f, 0.0f, 0.0f},
+            {0.0f, 2.0f / (t - b), 0.0f, 0.0f},
+            {0.0f, 0.0f, -1.0f, 0.0f},
+            {(r + l) / (l - r), (t + b) / (b - t), 0.0f, 1.0f},
+        };
+        std::memcpy(_imguiEffect->ProjBuf.ProjMatrix, ortho_projection, sizeof(ortho_projection));
+
+        // Scissor/clipping
+        const auto clip_off = draw_data->DisplayPos;
+        const auto clip_scale = draw_data->FramebufferScale;
+
+        // Render command lists
+        for (int cmd = 0; cmd < draw_data->CmdListsCount; cmd++) {
+            const auto* cmd_list = draw_data->CmdLists[cmd];
+
+            _imguiDrawBuf->Vertices2D.resize(cmd_list->VtxBuffer.Size);
+            for (int i = 0; i < cmd_list->VtxBuffer.Size; i++) {
+                auto& v = _imguiDrawBuf->Vertices2D[i];
+                const auto& iv = cmd_list->VtxBuffer[i];
+                v.X = iv.pos.x;
+                v.Y = iv.pos.y;
+                v.TU = iv.uv.x;
+                v.TV = iv.uv.y;
+                v.Diffuse = iv.col;
+            }
+
+            _imguiDrawBuf->Indices.resize(cmd_list->IdxBuffer.Size);
+            for (int i = 0; i < cmd_list->IdxBuffer.Size; i++) {
+                _imguiDrawBuf->Indices[i] = cmd_list->IdxBuffer[i];
+            }
+
+            _imguiDrawBuf->DataChanged = true;
+
+            for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
+                const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+                RUNTIME_ASSERT(pcmd->UserCallback == nullptr);
+
+                const auto clip_rect_x = static_cast<int>((pcmd->ClipRect.x - clip_off.x) * clip_scale.x);
+                const auto clip_rect_y = static_cast<int>((pcmd->ClipRect.y - clip_off.y) * clip_scale.y);
+                const auto clip_rect_z = static_cast<int>((pcmd->ClipRect.z - clip_off.x) * clip_scale.x);
+                const auto clip_rect_w = static_cast<int>((pcmd->ClipRect.w - clip_off.y) * clip_scale.y);
+
+                if (clip_rect_x < fb_width && clip_rect_y < fb_height && clip_rect_z >= 0 && clip_rect_w >= 0) {
+                    ActiveRenderer->EnableScissor(clip_rect_x, fb_height - clip_rect_w, clip_rect_z - clip_rect_x, clip_rect_w - clip_rect_y);
+                    _imguiEffect->DrawBuffer(_imguiDrawBuf, pcmd->IdxOffset, pcmd->ElemCount, static_cast<RenderTexture*>(pcmd->TextureId));
+                    ActiveRenderer->DisableScissor();
+                }
+            }
+        }
+    }
+
+    // Frame complete, swap buffers
     ActiveRenderer->Present();
 
     _onFrameEndDispatcher();

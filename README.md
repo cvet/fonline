@@ -352,9 +352,10 @@ Please follow these instructions to understand how to use this engine by design:
 * Application: recognize tablet mode for Windows 10
 * Application: fix workaround for strange behaviour of button focus
 * ApplicationHeadless: implement effect CanBatch
+* Rendering-Direct3D: pass additional defines to shaders (passed + internal)
 * Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
 * Rendering-OpenGL: map all framebuffer ext functions
-* Rendering-OpenGL: additional defines to shaders
+* Rendering-OpenGL: pass additional defines to shaders (passed + internal)
 * Rendering-OpenGL: smooth only if( zoom && *zoom != 1.0f )
 * Rendering: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
 * AngelScriptScripting-Template: MarshalDict
@@ -396,8 +397,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Server: improve ban system
 * Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
-* ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
-* ImageBaker: add supporting of APNG file format
+* EffectBaker: pre-compile HLSH shaders with D3DCompile
 * ImageBaker: swap colors of fo palette once in header
 * Mapper: need attention! (21)
 * Mapper: mapper render iface layer

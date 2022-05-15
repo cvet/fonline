@@ -31,9 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: finish with GLSL to SPIRV to GLSL/HLSL/MSL
-// Todo: add supporting of APNG file format
-
 #include "ImageBaker.h"
 #include "F2Palette-Include.h"
 #include "FileSystem.h"
@@ -43,7 +40,6 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-#include "minizip/zip.h"
 #include "png.h"
 
 static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*;

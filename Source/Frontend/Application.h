@@ -332,8 +332,6 @@ public:
     AppAudio Audio;
 
 private:
-    void RenderImGui();
-
     string _name {};
     uint64 _time {};
     uint64 _timeFrequency {};

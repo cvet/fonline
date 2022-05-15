@@ -36,9 +36,7 @@
 #if FO_ENABLE_3D
 
 #include "Application.h"
-#include "GenericUtils.h"
 #include "Log.h"
-#include "Settings.h"
 #include "StringUtils.h"
 
 #if FO_HAVE_FBXSDK

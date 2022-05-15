@@ -293,8 +293,8 @@ protected:
     string _effectDefines {};
     hstring _name {};
     uint _passCount {};
-    BlendFuncType _blendFuncParam1[EFFECT_MAX_PASSES] {};
-    BlendFuncType _blendFuncParam2[EFFECT_MAX_PASSES] {};
+    BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};
+    BlendFuncType _destBlendFunc[EFFECT_MAX_PASSES] {};
     BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
 #if FO_ENABLE_3D
     bool _isShadow[EFFECT_MAX_PASSES] {};

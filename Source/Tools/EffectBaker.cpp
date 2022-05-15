@@ -31,11 +31,11 @@
 // SOFTWARE.
 //
 
-#include "EffectBaker.h"
+// Todo: pre-compile HLSH shaders with D3DCompile
 
+#include "EffectBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
-#include "Log.h"
 #include "StringUtils.h"
 
 #include "GlslangToSpv.h"
@@ -354,7 +354,8 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     // SPIR-V to HLSL
     auto make_hlsl = [this, &fname_wo_ext, &spirv]() {
         spirv_cross::CompilerHLSL compiler {spirv};
-        const auto& options = compiler.get_hlsl_options();
+        auto options = compiler.get_hlsl_options();
+        options.shader_model = 30;
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE

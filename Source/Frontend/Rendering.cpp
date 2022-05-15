@@ -110,8 +110,8 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, string_view defi
             blend_func = {"SrcAlpha", "InvSrcAlpha"};
         }
 
-        _blendFuncParam1[pass] = get_blend_func(blend_func[0]);
-        _blendFuncParam2[pass] = get_blend_func(blend_func[1]);
+        _srcBlendFunc[pass] = get_blend_func(blend_func[0]);
+        _destBlendFunc[pass] = get_blend_func(blend_func[1]);
         _blendEquation[pass] = get_blend_equation(fofx.GetStr("Effect", _str("BlendEquation_Pass{}", pass + 1), "FuncAdd"));
     }
 }

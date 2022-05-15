@@ -230,8 +230,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
     const auto make_current = SDL_GL_MakeCurrent(window, GlContext);
     RUNTIME_ASSERT_STR(make_current >= 0, _str("Can't set current context, error '{}'", SDL_GetError()));
 
-    // SDL_GL_SetSwapInterval(settings.VSync ? 1 : 0);
-    SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetSwapInterval(settings.VSync ? 1 : 0);
 
 #else
     EmscriptenWebGLContextAttributes attr;
@@ -459,7 +458,7 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, string_v
         string frag_content = loader(frag_fname);
         RUNTIME_ASSERT(!frag_content.empty());
 
-        // Todo: additional defines to shaders
+        // Todo: pass additional defines to shaders (passed + internal)
         // defines
         // string internal_defines = _str("#define PASS{}\n#define MAX_BONES {}\n", pass, MaxBones);
 
@@ -833,10 +832,12 @@ void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool s
     }
 
     if (depth) {
+        GL(glClearDepth(1.0));
         clear_flags |= GL_DEPTH_BUFFER_BIT;
     }
 
     if (stencil) {
+        GL(glClearStencil(0));
         clear_flags |= GL_STENCIL_BUFFER_BIT;
     }
 
