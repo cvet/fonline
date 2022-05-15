@@ -62,5 +62,5 @@ void WriteLog(LogType type, string_view message, Args... args)
 
 // Control
 extern void LogWithoutTimestamp();
-extern void LogToFile();
+extern void LogToFile(string_view fname);
 extern void SetLogCallback(string_view key, LogFunc callback);

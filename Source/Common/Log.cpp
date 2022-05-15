@@ -78,11 +78,10 @@ void LogWithoutTimestamp()
     Data->LogDisableTimestamp = true;
 }
 
-void LogToFile()
+void LogToFile(string_view fname)
 {
     std::lock_guard locker(Data->LogLocker);
 
-    const auto fname = _str("{}.log", GetAppName()).str();
     Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
 }
 

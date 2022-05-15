@@ -773,9 +773,30 @@ ZipFile::ZipFile(string_view fname)
 
         ffunc.zopen_file = [](voidpf, const char* filename, int) -> voidpf {
             if (string(filename) == "$Embedded") {
+                static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
+                auto default_array = true;
+                for (size_t i = 4; i < 5 && default_array; i++) {
+                    if (EMBEDDED_RESOURCES[i] != 0x00) {
+                        default_array = false;
+                    }
+                }
+                for (size_t i = 5; i < 47 && default_array; i++) {
+                    if (EMBEDDED_RESOURCES[i] != 0x42) {
+                        default_array = false;
+                    }
+                }
+                for (size_t i = 47; i < 48 && default_array; i++) {
+                    if (EMBEDDED_RESOURCES[i] != 0x00) {
+                        default_array = false;
+                    }
+                }
+                if (default_array) {
+                    throw DataSourceException("Embedded resources not really embed");
+                }
+
                 auto* mem_stream = new MemStream();
-                mem_stream->Buf = EmbeddedResources;
-                mem_stream->Length = sizeof(EmbeddedResources);
+                mem_stream->Buf = EMBEDDED_RESOURCES;
+                mem_stream->Length = sizeof(EMBEDDED_RESOURCES);
                 mem_stream->Pos = 0;
                 return mem_stream;
             }

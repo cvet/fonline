@@ -249,7 +249,7 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 
 // Engine exception handling
 extern auto GetStackTrace() -> string;
-extern bool BreakIntoDebugger();
+extern bool BreakIntoDebugger(string_view error_message);
 [[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
 extern void ReportExceptionAndContinue(const std::exception& ex);
 extern void CreateDumpMessage(string_view appendix, string_view message);
@@ -278,6 +278,7 @@ extern void CreateDumpMessage(string_view appendix, string_view message);
             } \
             _exceptionMessage.append("\n"); \
             _exceptionMessage.append(GetStackTrace()); \
+            BreakIntoDebugger(_exceptionMessage); \
         } \
         [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
 \
@@ -1391,9 +1392,10 @@ public:
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
 
-extern void InitApp(string_view name);
-extern auto GetAppName() -> const string&;
-[[noreturn]] extern void AppExit(bool success);
+class Application;
+extern Application* App;
+extern void InitApp(int argc, char** argv, string_view name_appendix);
+[[noreturn]] extern void ExitApp(bool success);
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \

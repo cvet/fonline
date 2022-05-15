@@ -35,8 +35,8 @@
 
 #include "Application.h"
 #include "DiskFileSystem.h"
-#include "Log.h"
 #include "StringUtils.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 Application* App;
@@ -45,29 +45,14 @@ Application* App;
 static _CrtMemState CrtMemState;
 #endif
 
-const uint Application::AppRender::MAX_ATLAS_WIDTH = 1024;
-const uint Application::AppRender::MAX_ATLAS_HEIGHT = 1024;
-const uint Application::AppRender::MAX_BONES = 32;
+static const uint MAX_ATLAS_WIDTH_ = 1024;
+static const uint MAX_ATLAS_HEIGHT_ = 1024;
+static const uint MAX_BONES_ = 32;
+const uint& Application::AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
+const uint& Application::AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
+const uint& Application::AppRender::MAX_BONES {MAX_BONES_};
 const int Application::AppAudio::AUDIO_FORMAT_U8 = 0;
 const int Application::AppAudio::AUDIO_FORMAT_S16 = 1;
-
-struct RenderTexture::Impl
-{
-    virtual ~Impl() = default;
-};
-
-RenderTexture::~RenderTexture()
-{
-}
-
-struct RenderEffect::Impl
-{
-    virtual ~Impl() = default;
-};
-
-RenderEffect::~RenderEffect()
-{
-}
 
 auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 {
@@ -81,37 +66,18 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-struct RenderMesh::Impl
-{
-    virtual ~Impl() = default;
-};
-
-RenderMesh::~RenderMesh()
-{
-}
-
-void InitApplication(GlobalSettings& settings)
-{
-    // Ensure that we call init only once
-    static std::once_flag once;
-    auto first_call = false;
-    std::call_once(once, [&first_call] { first_call = true; });
-    if (!first_call) {
-        throw AppInitException("Application::Init must be called only once");
-    }
-
-    App = new Application(settings);
-}
-
-Application::Application(GlobalSettings& settings)
+Application::Application(int argc, char** argv, string_view name_appendix) : Settings(argc, argv)
 {
     // Skip SDL allocations from profiling
 #if FO_WINDOWS && FO_DEBUG
     ::_CrtMemCheckpoint(&CrtMemState);
 #endif
 
-    // Todo: app settings
-    UNUSED_VARIABLE(settings);
+    _name.append(FO_DEV_NAME);
+    if (!name_appendix.empty()) {
+        _name.append("_");
+        _name.append(name_appendix);
+    }
 }
 
 #if FO_IOS
@@ -213,37 +179,6 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
     return nullptr;
 }
 
-auto Application::AppRender::GetTexturePixel(RenderTexture* tex, int x, int y) const -> uint
-{
-    UNUSED_VARIABLE(tex);
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
-
-    return 0;
-}
-
-auto Application::AppRender::GetTextureRegion(RenderTexture* tex, int x, int y, uint w, uint h) const -> vector<uint>
-{
-    UNUSED_VARIABLE(tex);
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
-    UNUSED_VARIABLE(w);
-    UNUSED_VARIABLE(h);
-
-    RUNTIME_ASSERT(w && h);
-    const auto size = w * h;
-    vector<uint> result(size);
-
-    return result;
-}
-
-void Application::AppRender::UpdateTextureRegion(RenderTexture* tex, const IRect& r, const uint* data)
-{
-    UNUSED_VARIABLE(tex);
-    UNUSED_VARIABLE(r);
-    UNUSED_VARIABLE(data);
-}
-
 void Application::AppRender::SetRenderTarget(RenderTexture* tex)
 {
     UNUSED_VARIABLE(tex);
@@ -254,13 +189,11 @@ auto Application::AppRender::GetRenderTarget() -> RenderTexture*
     return nullptr;
 }
 
-void Application::AppRender::ClearRenderTarget(uint color)
+void Application::AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
     UNUSED_VARIABLE(color);
-}
-
-void Application::AppRender::ClearRenderTargetDepth()
-{
+    UNUSED_VARIABLE(depth);
+    UNUSED_VARIABLE(stencil);
 }
 
 void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
@@ -275,36 +208,20 @@ void Application::AppRender::DisableScissor()
 {
 }
 
-auto Application::AppRender::CreateEffect(string_view name, string_view defines, const RenderEffectLoader& file_loader) -> RenderEffect*
+auto Application::AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+{
+    UNUSED_VARIABLE(is_static);
+
+    return nullptr;
+}
+
+auto Application::AppRender::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& file_loader) -> RenderEffect*
 {
     UNUSED_VARIABLE(name);
     UNUSED_VARIABLE(defines);
     UNUSED_VARIABLE(file_loader);
 
     return nullptr;
-}
-
-void Application::AppRender::DrawQuads(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, uint pos, RenderEffect* effect, RenderTexture* tex)
-{
-    UNUSED_VARIABLE(vbuf);
-    UNUSED_VARIABLE(ibuf);
-    UNUSED_VARIABLE(pos);
-    UNUSED_VARIABLE(effect);
-    UNUSED_VARIABLE(tex);
-}
-
-void Application::AppRender::DrawPrimitive(const Vertex2DVec& vbuf, const vector<ushort>& ibuf, RenderEffect* effect, RenderPrimitiveType prim)
-{
-    UNUSED_VARIABLE(vbuf);
-    UNUSED_VARIABLE(ibuf);
-    UNUSED_VARIABLE(effect);
-    UNUSED_VARIABLE(prim);
-}
-
-void Application::AppRender::DrawMesh(RenderMesh* mesh, RenderEffect* effect)
-{
-    UNUSED_VARIABLE(mesh);
-    UNUSED_VARIABLE(effect);
 }
 
 auto Application::AppInput::PollEvent(InputEvent& event) -> bool

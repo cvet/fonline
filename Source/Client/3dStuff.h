@@ -70,7 +70,7 @@ struct MeshData
     void Load(DataReader& reader, NameResolver& name_resolver);
 
     ModelBone* Owner {};
-    Vertex3DVec Vertices {};
+    vector<Vertex3D> Vertices {};
     vector<ushort> Indices {};
     string DiffuseTexture {};
     vector<hstring> SkinBoneNames {};
@@ -261,7 +261,7 @@ private:
     struct CombinedMesh
     {
         RenderEffect* DrawEffect {};
-        RenderMesh* DrawMesh {};
+        RenderDrawBuffer* DrawMesh {};
         int EncapsulatedMeshCount {};
         vector<MeshData*> Meshes {};
         vector<uint> MeshVertices {};

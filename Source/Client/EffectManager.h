@@ -46,6 +46,10 @@ class FOServer;
 
 struct EffectCollection
 {
+    RenderEffect* ImGui {};
+    RenderEffect* ImGuiDefault {};
+    RenderEffect* Font {};
+    RenderEffect* FontDefault {};
     RenderEffect* Contour {};
     RenderEffect* ContourDefault {};
     RenderEffect* Generic {};
@@ -76,8 +80,6 @@ struct EffectCollection
     RenderEffect* FlushLightDefault {};
     RenderEffect* FlushFog {};
     RenderEffect* FlushFogDefault {};
-    RenderEffect* Font {};
-    RenderEffect* FontDefault {};
     RenderEffect* Skinned3d {};
     RenderEffect* Skinned3dDefault {};
 };
@@ -92,7 +94,7 @@ public:
     auto operator=(EffectManager&&) -> EffectManager& = delete;
     ~EffectManager() = default;
 
-    [[nodiscard]] auto LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*;
+    [[nodiscard]] auto LoadEffect(EffectUsage usage, string_view name, string_view defines, string_view base_path) -> RenderEffect*;
 
     void LoadMinimalEffects();
     void LoadDefaultEffects();

@@ -224,8 +224,7 @@ struct DipData
 {
     RenderTexture* MainTex {};
     RenderEffect* SourceEffect {};
-    uint SpritesCount {};
-    FRect SpriteBorder {};
+    size_t SpritesCount {};
 };
 
 class SpriteManager final
@@ -277,8 +276,7 @@ public:
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
     void DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to);
-    void ClearCurrentRenderTarget(uint color);
-    void ClearCurrentRenderTargetDepth();
+    void ClearCurrentRenderTarget(uint color, bool with_depth = false);
     void PushAtlasType(AtlasType atlas_type);
     void PushAtlasType(AtlasType atlas_type, bool one_image);
     void PopAtlasType();
@@ -342,13 +340,14 @@ private:
     vector<SpriteInfo*> _sprData {};
     vector<ModelInstance*> _autoRedrawModel {};
     MemoryPool<sizeof(AnyFrames), ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
-    vector<ushort> _quadsIndices {};
-    vector<ushort> _pointsIndices {};
-    Vertex2DVec _vBuffer {};
     vector<DipData> _dipQueue {};
+    RenderDrawBuffer* _spritesDrawBuf {};
+    RenderDrawBuffer* _primitiveDrawBuf {};
+    RenderDrawBuffer* _flushDrawBuf {};
+    RenderDrawBuffer* _contourDrawBuf {};
     uint _baseColor {};
-    int _drawQuadCount {};
-    int _curDrawQuad {};
+    size_t _drawQuadCount {};
+    size_t _curDrawQuad {};
     vector<int> _scissorStack {};
     IRect _scissorRect {};
     bool _contoursAdded {};

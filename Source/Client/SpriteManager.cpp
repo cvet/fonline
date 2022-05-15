@@ -111,7 +111,13 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, Eff
     _drawQuadCount = 1024;
     _allAtlases.reserve(100);
     _dipQueue.reserve(1000);
-    _vBuffer.resize(_drawQuadCount * 4);
+
+    _spritesDrawBuf = App->Render.CreateDrawBuffer(false);
+    _spritesDrawBuf->Vertices2D.resize(_drawQuadCount * 4);
+    _primitiveDrawBuf = App->Render.CreateDrawBuffer(false);
+    _flushDrawBuf = App->Render.CreateDrawBuffer(false);
+    _contourDrawBuf = App->Render.CreateDrawBuffer(false);
+
     _sprData.resize(SPRITES_BUFFER_SIZE);
     _effectMngr.LoadMinimalEffects();
 
@@ -279,21 +285,18 @@ auto SpriteManager::CreateRenderTarget(bool with_depth, bool screen_sized, uint 
     width = screen_sized ? _settings.ScreenWidth : width;
     height = screen_sized ? _settings.ScreenHeight : height;
 
-    auto* rt = new RenderTarget();
+    auto rt = std::make_unique<RenderTarget>();
     rt->ScreenSized = screen_sized;
     rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(width, height, linear_filtered, with_depth));
     rt->DrawEffect = _effectMngr.Effects.FlushRenderTarget;
 
     auto* prev_tex = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(rt->MainTex.get());
-    App->Render.ClearRenderTarget(0);
-    if (with_depth) {
-        App->Render.ClearRenderTargetDepth();
-    }
+    App->Render.ClearRenderTarget(0, with_depth);
     App->Render.SetRenderTarget(prev_tex);
 
-    _rtAll.push_back(unique_ptr<RenderTarget>(rt));
-    return rt;
+    _rtAll.push_back(std::move(rt));
+    return _rtAll.back().get();
 }
 
 void SpriteManager::PushRenderTarget(RenderTarget* rt)
@@ -333,50 +336,61 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool /*alpha_blend*/, con
     if (region_from == nullptr && region_to == nullptr) {
         const auto w = static_cast<float>(rt->MainTex->Width);
         const auto h = static_cast<float>(rt->MainTex->Height);
-        uint pos = 0;
-        _vBuffer[pos].X = 0.0f;
-        _vBuffer[pos].Y = h;
-        _vBuffer[pos].TU = 0.0f;
-        _vBuffer[pos++].TV = 0.0f;
-        _vBuffer[pos].X = 0.0f;
-        _vBuffer[pos].Y = 0.0f;
-        _vBuffer[pos].TU = 0.0f;
-        _vBuffer[pos++].TV = 1.0f;
-        _vBuffer[pos].X = w;
-        _vBuffer[pos].Y = 0.0f;
-        _vBuffer[pos].TU = 1.0f;
-        _vBuffer[pos++].TV = 1.0f;
-        _vBuffer[pos].X = w;
-        _vBuffer[pos].Y = h;
-        _vBuffer[pos].TU = 1.0f;
-        _vBuffer[pos].TV = 0.0f;
+
+        auto& vbuf = _flushDrawBuf->Vertices2D;
+        auto pos = 0;
+
+        vbuf[pos].X = 0.0f;
+        vbuf[pos].Y = h;
+        vbuf[pos].TU = 0.0f;
+        vbuf[pos++].TV = 0.0f;
+
+        vbuf[pos].X = 0.0f;
+        vbuf[pos].Y = 0.0f;
+        vbuf[pos].TU = 0.0f;
+        vbuf[pos++].TV = 1.0f;
+
+        vbuf[pos].X = w;
+        vbuf[pos].Y = 0.0f;
+        vbuf[pos].TU = 1.0f;
+        vbuf[pos++].TV = 1.0f;
+
+        vbuf[pos].X = w;
+        vbuf[pos].Y = h;
+        vbuf[pos].TU = 1.0f;
+        vbuf[pos].TV = 0.0f;
     }
     else {
         const FRect regionf = region_from != nullptr ? *region_from : IRect(0, 0, rt->MainTex->Width, rt->MainTex->Height);
         const FRect regiont = region_to != nullptr ? *region_to : IRect(0, 0, _rtStack.back()->MainTex->Width, _rtStack.back()->MainTex->Height);
         const auto wf = static_cast<float>(rt->MainTex->Width);
         const auto hf = static_cast<float>(rt->MainTex->Height);
-        uint pos = 0;
-        _vBuffer[pos].X = regiont.Left;
-        _vBuffer[pos].Y = regiont.Bottom;
-        _vBuffer[pos].TU = regionf.Left / wf;
-        _vBuffer[pos++].TV = 1.0f - regionf.Bottom / hf;
-        _vBuffer[pos].X = regiont.Left;
-        _vBuffer[pos].Y = regiont.Top;
-        _vBuffer[pos].TU = regionf.Left / wf;
-        _vBuffer[pos++].TV = 1.0f - regionf.Top / hf;
-        _vBuffer[pos].X = regiont.Right;
-        _vBuffer[pos].Y = regiont.Top;
-        _vBuffer[pos].TU = regionf.Right / wf;
-        _vBuffer[pos++].TV = 1.0f - regionf.Top / hf;
-        _vBuffer[pos].X = regiont.Right;
-        _vBuffer[pos].Y = regiont.Bottom;
-        _vBuffer[pos].TU = regionf.Right / wf;
-        _vBuffer[pos].TV = 1.0f - regionf.Bottom / hf;
+
+        auto& vbuf = _flushDrawBuf->Vertices2D;
+        auto pos = 0;
+
+        vbuf[pos].X = regiont.Left;
+        vbuf[pos].Y = regiont.Bottom;
+        vbuf[pos].TU = regionf.Left / wf;
+        vbuf[pos++].TV = 1.0f - regionf.Bottom / hf;
+
+        vbuf[pos].X = regiont.Left;
+        vbuf[pos].Y = regiont.Top;
+        vbuf[pos].TU = regionf.Left / wf;
+        vbuf[pos++].TV = 1.0f - regionf.Top / hf;
+
+        vbuf[pos].X = regiont.Right;
+        vbuf[pos].Y = regiont.Top;
+        vbuf[pos].TU = regionf.Right / wf;
+        vbuf[pos++].TV = 1.0f - regionf.Top / hf;
+
+        vbuf[pos].X = regiont.Right;
+        vbuf[pos].Y = regiont.Bottom;
+        vbuf[pos].TU = regionf.Right / wf;
+        vbuf[pos].TV = 1.0f - regionf.Bottom / hf;
     }
 
-    _curDrawQuad = 1;
-    _dipQueue.push_back({rt->MainTex.get(), rt->DrawEffect, 1});
+    rt->DrawEffect->DrawBuffer(_flushDrawBuf);
 
     // rt->DrawEffect->DisableBlending = !alpha_blend;
     // if (!alpha_blend)
@@ -396,7 +410,7 @@ auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -
     }
 
     // Read one pixel
-    auto color = App->Render.GetTexturePixel(rt->MainTex.get(), x, y);
+    auto color = rt->MainTex->GetTexturePixel(x, y);
 
     // Refresh picks
     rt->LastPixelPicks.emplace(rt->LastPixelPicks.begin(), x, y, color);
@@ -407,14 +421,9 @@ auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -
     return color;
 }
 
-void SpriteManager::ClearCurrentRenderTarget(uint color)
+void SpriteManager::ClearCurrentRenderTarget(uint color, bool with_depth)
 {
-    App->Render.ClearRenderTarget(color);
-}
-
-void SpriteManager::ClearCurrentRenderTargetDepth()
-{
-    App->Render.ClearRenderTargetDepth();
+    App->Render.ClearRenderTarget(color, with_depth);
 }
 
 void SpriteManager::PushScissor(int l, int t, int r, int b)
@@ -725,14 +734,14 @@ void SpriteManager::FillAtlas(SpriteInfo* si)
     if (data != nullptr) {
         // Whole image
         auto* tex = atlas->MainTex;
-        App->Render.UpdateTextureRegion(tex, IRect(x, y, x + w - 1, y + h - 1), data);
+        tex->UpdateTextureRegion(IRect(x, y, x + w - 1, y + h - 1), data);
 
         // 1px border for correct linear interpolation
         // Top
-        App->Render.UpdateTextureRegion(tex, IRect(x, y - 1, x + w - 1, y - 1), data);
+        tex->UpdateTextureRegion(IRect(x, y - 1, x + w - 1, y - 1), data);
 
         // Bottom
-        App->Render.UpdateTextureRegion(tex, IRect(x, y + h, x + w - 1, y + h), data + (h - 1) * w);
+        tex->UpdateTextureRegion(IRect(x, y + h, x + w - 1, y + h), data + (h - 1) * w);
 
         // Left
         uint data_border[App->Render.MAX_ATLAS_SIZE];
@@ -741,7 +750,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si)
         }
         data_border[0] = data_border[1];
         data_border[h + 1] = data_border[h];
-        App->Render.UpdateTextureRegion(tex, IRect(x - 1, y - 1, x - 1, y + h), data_border);
+        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x - 1, y + h), data_border);
 
         // Right
         for (uint i = 0; i < h; i++) {
@@ -749,7 +758,7 @@ void SpriteManager::FillAtlas(SpriteInfo* si)
         }
         data_border[0] = data_border[1];
         data_border[h + 1] = data_border[h];
-        App->Render.UpdateTextureRegion(tex, IRect(x + w, y - 1, x + w, y + h), data_border);
+        tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w, y + h), data_border);
 
         // Invalidate last pixel color picking
         if (!atlas->RT->LastPixelPicks.empty()) {
@@ -950,8 +959,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
     }
 
     PushRenderTarget(rt);
-    ClearCurrentRenderTarget(0);
-    ClearCurrentRenderTargetDepth();
+    ClearCurrentRenderTarget(0, true);
 
     _modelMngr->SetScreenSize(rt->MainTex->Width, rt->MainTex->Height);
 
@@ -1092,10 +1100,10 @@ void SpriteManager::Flush()
         return;
     }
 
-    uint pos = 0;
+    size_t pos = 0;
     for (const auto& dip : _dipQueue) {
-        App->Render.DrawQuads(_vBuffer, _quadsIndices, pos, dip.SourceEffect, dip.MainTex);
-        pos += 6 * dip.SpritesCount;
+        dip.SourceEffect->DrawBuffer(_spritesDrawBuf, pos, dip.SpritesCount * 6, dip.MainTex);
+        pos += dip.SpritesCount * 6;
     }
 
     _dipQueue.clear();
@@ -1121,36 +1129,37 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
         _dipQueue.back().SpritesCount++;
     }
 
-    auto pos = _curDrawQuad * 4;
-
     if (color == 0u) {
         color = COLOR_IFACE;
     }
     color = COLOR_SWAP_RB(color);
 
-    _vBuffer[pos].X = static_cast<float>(x);
-    _vBuffer[pos].Y = static_cast<float>(y + si->Height);
-    _vBuffer[pos].TU = si->SprRect.Left;
-    _vBuffer[pos].TV = si->SprRect.Bottom;
-    _vBuffer[pos++].Diffuse = color;
+    auto& vbuf = _spritesDrawBuf->Vertices2D;
+    auto pos = _curDrawQuad * 4;
 
-    _vBuffer[pos].X = static_cast<float>(x);
-    _vBuffer[pos].Y = static_cast<float>(y);
-    _vBuffer[pos].TU = si->SprRect.Left;
-    _vBuffer[pos].TV = si->SprRect.Top;
-    _vBuffer[pos++].Diffuse = color;
+    vbuf[pos].X = static_cast<float>(x);
+    vbuf[pos].Y = static_cast<float>(y + si->Height);
+    vbuf[pos].TU = si->SprRect.Left;
+    vbuf[pos].TV = si->SprRect.Bottom;
+    vbuf[pos++].Diffuse = color;
 
-    _vBuffer[pos].X = static_cast<float>(x + si->Width);
-    _vBuffer[pos].Y = static_cast<float>(y);
-    _vBuffer[pos].TU = si->SprRect.Right;
-    _vBuffer[pos].TV = si->SprRect.Top;
-    _vBuffer[pos++].Diffuse = color;
+    vbuf[pos].X = static_cast<float>(x);
+    vbuf[pos].Y = static_cast<float>(y);
+    vbuf[pos].TU = si->SprRect.Left;
+    vbuf[pos].TV = si->SprRect.Top;
+    vbuf[pos++].Diffuse = color;
 
-    _vBuffer[pos].X = static_cast<float>(x + si->Width);
-    _vBuffer[pos].Y = static_cast<float>(y + si->Height);
-    _vBuffer[pos].TU = si->SprRect.Right;
-    _vBuffer[pos].TV = si->SprRect.Bottom;
-    _vBuffer[pos].Diffuse = color;
+    vbuf[pos].X = static_cast<float>(x + si->Width);
+    vbuf[pos].Y = static_cast<float>(y);
+    vbuf[pos].TU = si->SprRect.Right;
+    vbuf[pos].TV = si->SprRect.Top;
+    vbuf[pos++].Diffuse = color;
+
+    vbuf[pos].X = static_cast<float>(x + si->Width);
+    vbuf[pos].Y = static_cast<float>(y + si->Height);
+    vbuf[pos].TU = si->SprRect.Right;
+    vbuf[pos].TV = si->SprRect.Bottom;
+    vbuf[pos].Diffuse = color;
 
     if (++_curDrawQuad == _drawQuadCount) {
         Flush();
@@ -1210,36 +1219,37 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
         _dipQueue.back().SpritesCount++;
     }
 
-    auto pos = _curDrawQuad * 4;
-
     if (color == 0u) {
         color = COLOR_IFACE;
     }
     color = COLOR_SWAP_RB(color);
 
-    _vBuffer[pos].X = xf;
-    _vBuffer[pos].Y = yf + hf;
-    _vBuffer[pos].TU = si->SprRect.Left;
-    _vBuffer[pos].TV = si->SprRect.Bottom;
-    _vBuffer[pos++].Diffuse = color;
+    auto& vbuf = _spritesDrawBuf->Vertices2D;
+    auto pos = _curDrawQuad * 4;
 
-    _vBuffer[pos].X = xf;
-    _vBuffer[pos].Y = yf;
-    _vBuffer[pos].TU = si->SprRect.Left;
-    _vBuffer[pos].TV = si->SprRect.Top;
-    _vBuffer[pos++].Diffuse = color;
+    vbuf[pos].X = xf;
+    vbuf[pos].Y = yf + hf;
+    vbuf[pos].TU = si->SprRect.Left;
+    vbuf[pos].TV = si->SprRect.Bottom;
+    vbuf[pos++].Diffuse = color;
 
-    _vBuffer[pos].X = xf + wf;
-    _vBuffer[pos].Y = yf;
-    _vBuffer[pos].TU = si->SprRect.Right;
-    _vBuffer[pos].TV = si->SprRect.Top;
-    _vBuffer[pos++].Diffuse = color;
+    vbuf[pos].X = xf;
+    vbuf[pos].Y = yf;
+    vbuf[pos].TU = si->SprRect.Left;
+    vbuf[pos].TV = si->SprRect.Top;
+    vbuf[pos++].Diffuse = color;
 
-    _vBuffer[pos].X = xf + wf;
-    _vBuffer[pos].Y = yf + hf;
-    _vBuffer[pos].TU = si->SprRect.Right;
-    _vBuffer[pos].TV = si->SprRect.Bottom;
-    _vBuffer[pos].Diffuse = color;
+    vbuf[pos].X = xf + wf;
+    vbuf[pos].Y = yf;
+    vbuf[pos].TU = si->SprRect.Right;
+    vbuf[pos].TV = si->SprRect.Top;
+    vbuf[pos++].Diffuse = color;
+
+    vbuf[pos].X = xf + wf;
+    vbuf[pos].Y = yf + hf;
+    vbuf[pos].TU = si->SprRect.Right;
+    vbuf[pos].TV = si->SprRect.Bottom;
+    vbuf[pos].Diffuse = color;
 
     if (++_curDrawQuad == _drawQuadCount) {
         Flush();
@@ -1300,36 +1310,37 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
                 _dipQueue.back().SpritesCount++;
             }
 
-            auto pos = _curDrawQuad * 4;
-
             const auto local_width = (last_x ? end_x - xx : width);
             const auto local_height = (last_y ? end_y - yy : height);
             const auto local_right = (last_x ? si->SprRect.Left + last_right_offs * local_width : si->SprRect.Right);
             const auto local_bottom = (last_y ? si->SprRect.Top + last_bottom_offs * local_height : si->SprRect.Bottom);
 
-            _vBuffer[pos].X = xx;
-            _vBuffer[pos].Y = yy + local_height;
-            _vBuffer[pos].TU = si->SprRect.Left;
-            _vBuffer[pos].TV = local_bottom;
-            _vBuffer[pos++].Diffuse = color;
+            auto& vbuf = _spritesDrawBuf->Vertices2D;
+            auto pos = _curDrawQuad * 4;
 
-            _vBuffer[pos].X = xx;
-            _vBuffer[pos].Y = yy;
-            _vBuffer[pos].TU = si->SprRect.Left;
-            _vBuffer[pos].TV = si->SprRect.Top;
-            _vBuffer[pos++].Diffuse = color;
+            vbuf[pos].X = xx;
+            vbuf[pos].Y = yy + local_height;
+            vbuf[pos].TU = si->SprRect.Left;
+            vbuf[pos].TV = local_bottom;
+            vbuf[pos++].Diffuse = color;
 
-            _vBuffer[pos].X = xx + local_width;
-            _vBuffer[pos].Y = yy;
-            _vBuffer[pos].TU = local_right;
-            _vBuffer[pos].TV = si->SprRect.Top;
-            _vBuffer[pos++].Diffuse = color;
+            vbuf[pos].X = xx;
+            vbuf[pos].Y = yy;
+            vbuf[pos].TU = si->SprRect.Left;
+            vbuf[pos].TV = si->SprRect.Top;
+            vbuf[pos++].Diffuse = color;
 
-            _vBuffer[pos].X = xx + local_width;
-            _vBuffer[pos].Y = yy + local_height;
-            _vBuffer[pos].TU = local_right;
-            _vBuffer[pos].TV = local_bottom;
-            _vBuffer[pos].Diffuse = color;
+            vbuf[pos].X = xx + local_width;
+            vbuf[pos].Y = yy;
+            vbuf[pos].TU = local_right;
+            vbuf[pos].TV = si->SprRect.Top;
+            vbuf[pos++].Diffuse = color;
+
+            vbuf[pos].X = xx + local_width;
+            vbuf[pos].Y = yy + local_height;
+            vbuf[pos].TU = local_right;
+            vbuf[pos].TV = local_bottom;
+            vbuf[pos].Diffuse = color;
 
             if (++_curDrawQuad == _drawQuadCount) {
                 Flush();
@@ -1399,7 +1410,7 @@ void SpriteManager::InitializeEgg(string_view egg_name)
 
         const auto x = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->SprRect.Left);
         const auto y = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->SprRect.Top);
-        _eggData = App->Render.GetTextureRegion(_sprEgg->Atlas->MainTex, x, y, _eggSprWidth, _eggSprHeight);
+        _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _eggSprWidth, _eggSprHeight);
     }
     else {
         WriteLog("Load sprite '{}' fail. Egg disabled", egg_name);
@@ -1576,15 +1587,17 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
                 const auto y1_f = static_cast<float>(y1 + ATLAS_SPRITES_PADDING);
                 const auto y2_f = static_cast<float>(y2 + ATLAS_SPRITES_PADDING);
 
+                auto& vbuf = _spritesDrawBuf->Vertices2D;
                 const auto pos = _curDrawQuad * 4;
-                _vBuffer[pos + 0].TUEgg = x1_f / _eggAtlasWidth;
-                _vBuffer[pos + 0].TVEgg = y2_f / _eggAtlasHeight;
-                _vBuffer[pos + 1].TUEgg = x1_f / _eggAtlasWidth;
-                _vBuffer[pos + 1].TVEgg = y1_f / _eggAtlasHeight;
-                _vBuffer[pos + 2].TUEgg = x2_f / _eggAtlasWidth;
-                _vBuffer[pos + 2].TVEgg = y1_f / _eggAtlasHeight;
-                _vBuffer[pos + 3].TUEgg = x2_f / _eggAtlasWidth;
-                _vBuffer[pos + 3].TVEgg = y2_f / _eggAtlasHeight;
+
+                vbuf[pos + 0].TUEgg = x1_f / _eggAtlasWidth;
+                vbuf[pos + 0].TVEgg = y2_f / _eggAtlasHeight;
+                vbuf[pos + 1].TUEgg = x1_f / _eggAtlasWidth;
+                vbuf[pos + 1].TVEgg = y1_f / _eggAtlasHeight;
+                vbuf[pos + 2].TUEgg = x2_f / _eggAtlasWidth;
+                vbuf[pos + 2].TVEgg = y1_f / _eggAtlasHeight;
+                vbuf[pos + 3].TUEgg = x2_f / _eggAtlasWidth;
+                vbuf[pos + 3].TVEgg = y2_f / _eggAtlasHeight;
 
                 egg_added = true;
             }
@@ -1611,38 +1624,39 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         const auto hf = static_cast<float>(si->Height) / zoom;
 
         // Fill buffer
+        auto& vbuf = _spritesDrawBuf->Vertices2D;
         auto pos = _curDrawQuad * 4;
 
-        _vBuffer[pos].X = xf;
-        _vBuffer[pos].Y = yf + hf;
-        _vBuffer[pos].TU = si->SprRect.Left;
-        _vBuffer[pos].TV = si->SprRect.Bottom;
-        _vBuffer[pos++].Diffuse = color_l;
+        vbuf[pos].X = xf;
+        vbuf[pos].Y = yf + hf;
+        vbuf[pos].TU = si->SprRect.Left;
+        vbuf[pos].TV = si->SprRect.Bottom;
+        vbuf[pos++].Diffuse = color_l;
 
-        _vBuffer[pos].X = xf;
-        _vBuffer[pos].Y = yf;
-        _vBuffer[pos].TU = si->SprRect.Left;
-        _vBuffer[pos].TV = si->SprRect.Top;
-        _vBuffer[pos++].Diffuse = color_l;
+        vbuf[pos].X = xf;
+        vbuf[pos].Y = yf;
+        vbuf[pos].TU = si->SprRect.Left;
+        vbuf[pos].TV = si->SprRect.Top;
+        vbuf[pos++].Diffuse = color_l;
 
-        _vBuffer[pos].X = xf + wf;
-        _vBuffer[pos].Y = yf;
-        _vBuffer[pos].TU = si->SprRect.Right;
-        _vBuffer[pos].TV = si->SprRect.Top;
-        _vBuffer[pos++].Diffuse = color_r;
+        vbuf[pos].X = xf + wf;
+        vbuf[pos].Y = yf;
+        vbuf[pos].TU = si->SprRect.Right;
+        vbuf[pos].TV = si->SprRect.Top;
+        vbuf[pos++].Diffuse = color_r;
 
-        _vBuffer[pos].X = xf + wf;
-        _vBuffer[pos].Y = yf + hf;
-        _vBuffer[pos].TU = si->SprRect.Right;
-        _vBuffer[pos].TV = si->SprRect.Bottom;
-        _vBuffer[pos++].Diffuse = color_r;
+        vbuf[pos].X = xf + wf;
+        vbuf[pos].Y = yf + hf;
+        vbuf[pos].TU = si->SprRect.Right;
+        vbuf[pos].TV = si->SprRect.Bottom;
+        vbuf[pos++].Diffuse = color_r;
 
         // Set default texture coordinates for egg texture
-        if (!egg_added && _vBuffer[pos - 1].TUEgg != -1.0f) {
-            _vBuffer[pos - 1].TUEgg = -1.0f;
-            _vBuffer[pos - 2].TUEgg = -1.0f;
-            _vBuffer[pos - 3].TUEgg = -1.0f;
-            _vBuffer[pos - 4].TUEgg = -1.0f;
+        if (!egg_added && vbuf[pos - 1].TUEgg != -1.0f) {
+            vbuf[pos - 1].TUEgg = -1.0f;
+            vbuf[pos - 2].TUEgg = -1.0f;
+            vbuf[pos - 3].TUEgg = -1.0f;
+            vbuf[pos - 4].TUEgg = -1.0f;
         }
 
         // Draw
@@ -1800,13 +1814,13 @@ void SpriteManager::DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim
     }
 
     // Resize buffers
-    if (_vBuffer.size() < count) {
-        _vBuffer.resize(count);
+    if (_primitiveDrawBuf->Vertices2D.size() < count) {
+        _primitiveDrawBuf->Vertices2D.resize(count);
     }
 
     // Collect data
     for (uint i = 0; i < count; i++) {
-        auto& point = points[i];
+        const auto& point = points[i];
         auto x = static_cast<float>(point.PointX);
         auto y = static_cast<float>(point.PointY);
 
@@ -1825,13 +1839,16 @@ void SpriteManager::DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim
             y += offset->Y;
         }
 
-        std::memset(&_vBuffer[i], 0, sizeof(Vertex2D));
-        _vBuffer[i].X = x;
-        _vBuffer[i].Y = y;
-        _vBuffer[i].Diffuse = COLOR_SWAP_RB(point.PointColor);
+        std::memset(&_primitiveDrawBuf->Vertices2D[i], 0, sizeof(Vertex2D));
+        _primitiveDrawBuf->Vertices2D[i].X = x;
+        _primitiveDrawBuf->Vertices2D[i].Y = y;
+        _primitiveDrawBuf->Vertices2D[i].Diffuse = COLOR_SWAP_RB(point.PointColor);
     }
 
-    App->Render.DrawPrimitive(_vBuffer, _pointsIndices, effect, prim);
+    _primitiveDrawBuf->DataChanged = true;
+    _primitiveDrawBuf->PrimType = prim;
+
+    effect->DrawBuffer(_primitiveDrawBuf);
 }
 
 void SpriteManager::DrawContours()
@@ -1870,14 +1887,14 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     }
 
     if (_settings.SpritesZoom == 1.0f) {
-        auto& sr = si->SprRect;
+        const auto& sr = si->SprRect;
         const auto txw = texture->SizeData[2];
         const auto txh = texture->SizeData[3];
         textureuv = {sr.Left - txw, sr.Top - txh, sr.Right + txw, sr.Bottom + txh};
         sprite_border = textureuv;
     }
     else {
-        auto& sr = si->SprRect;
+        const auto& sr = si->SprRect;
         const auto zoomed_x = static_cast<int>(static_cast<float>(x) / _settings.SpritesZoom);
         const auto zoomed_y = static_cast<int>(static_cast<float>(y) / _settings.SpritesZoom);
         const auto zoomed_x2 = static_cast<int>(static_cast<float>(x + si->Width) / _settings.SpritesZoom);
@@ -1888,27 +1905,30 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
 
         PushRenderTarget(_rtContoursMid);
 
-        uint pos = 0;
-        _vBuffer[pos].X = bordersf.Left;
-        _vBuffer[pos].Y = mid_height - bordersf.Bottom;
-        _vBuffer[pos].TU = sr.Left;
-        _vBuffer[pos++].TV = sr.Bottom;
-        _vBuffer[pos].X = bordersf.Left;
-        _vBuffer[pos].Y = mid_height - bordersf.Top;
-        _vBuffer[pos].TU = sr.Left;
-        _vBuffer[pos++].TV = sr.Top;
-        _vBuffer[pos].X = bordersf.Right;
-        _vBuffer[pos].Y = mid_height - bordersf.Top;
-        _vBuffer[pos].TU = sr.Right;
-        _vBuffer[pos++].TV = sr.Top;
-        _vBuffer[pos].X = bordersf.Right;
-        _vBuffer[pos].Y = mid_height - bordersf.Bottom;
-        _vBuffer[pos].TU = sr.Right;
-        _vBuffer[pos].TV = sr.Bottom;
+        auto& vbuf = _flushDrawBuf->Vertices2D;
+        auto pos = 0;
 
-        _curDrawQuad = 1;
-        _dipQueue.push_back({texture, _effectMngr.Effects.FlushRenderTarget, 1});
-        Flush();
+        vbuf[pos].X = bordersf.Left;
+        vbuf[pos].Y = mid_height - bordersf.Bottom;
+        vbuf[pos].TU = sr.Left;
+        vbuf[pos++].TV = sr.Bottom;
+
+        vbuf[pos].X = bordersf.Left;
+        vbuf[pos].Y = mid_height - bordersf.Top;
+        vbuf[pos].TU = sr.Left;
+        vbuf[pos++].TV = sr.Top;
+
+        vbuf[pos].X = bordersf.Right;
+        vbuf[pos].Y = mid_height - bordersf.Top;
+        vbuf[pos].TU = sr.Right;
+        vbuf[pos++].TV = sr.Top;
+
+        vbuf[pos].X = bordersf.Right;
+        vbuf[pos].Y = mid_height - bordersf.Bottom;
+        vbuf[pos].TU = sr.Right;
+        vbuf[pos].TV = sr.Bottom;
+
+        _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf);
 
         PopRenderTarget();
 
@@ -1944,32 +1964,36 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
 
     PushRenderTarget(_rtContours);
 
-    uint pos = 0;
-    _vBuffer[pos].X = bordersf.Left;
-    _vBuffer[pos].Y = bordersf.Bottom;
-    _vBuffer[pos].TU = textureuv.Left;
-    _vBuffer[pos].TV = textureuv.Bottom;
-    _vBuffer[pos++].Diffuse = contour_color;
-    _vBuffer[pos].X = bordersf.Left;
-    _vBuffer[pos].Y = bordersf.Top;
-    _vBuffer[pos].TU = textureuv.Left;
-    _vBuffer[pos].TV = textureuv.Top;
-    _vBuffer[pos++].Diffuse = contour_color;
-    _vBuffer[pos].X = bordersf.Right;
-    _vBuffer[pos].Y = bordersf.Top;
-    _vBuffer[pos].TU = textureuv.Right;
-    _vBuffer[pos].TV = textureuv.Top;
-    _vBuffer[pos++].Diffuse = contour_color;
-    _vBuffer[pos].X = bordersf.Right;
-    _vBuffer[pos].Y = bordersf.Bottom;
-    _vBuffer[pos].TU = textureuv.Right;
-    _vBuffer[pos].TV = textureuv.Bottom;
-    _vBuffer[pos].Diffuse = contour_color;
+    auto& vbuf = _contourDrawBuf->Vertices2D;
+    auto pos = 0;
 
-    _curDrawQuad = 1;
-    _dipQueue.push_back({texture, _effectMngr.Effects.Contour, 1});
-    _dipQueue.back().SpriteBorder = sprite_border;
-    Flush();
+    vbuf[pos].X = bordersf.Left;
+    vbuf[pos].Y = bordersf.Bottom;
+    vbuf[pos].TU = textureuv.Left;
+    vbuf[pos].TV = textureuv.Bottom;
+    vbuf[pos++].Diffuse = contour_color;
+
+    vbuf[pos].X = bordersf.Left;
+    vbuf[pos].Y = bordersf.Top;
+    vbuf[pos].TU = textureuv.Left;
+    vbuf[pos].TV = textureuv.Top;
+    vbuf[pos++].Diffuse = contour_color;
+
+    vbuf[pos].X = bordersf.Right;
+    vbuf[pos].Y = bordersf.Top;
+    vbuf[pos].TU = textureuv.Right;
+    vbuf[pos].TV = textureuv.Top;
+    vbuf[pos++].Diffuse = contour_color;
+
+    vbuf[pos].X = bordersf.Right;
+    vbuf[pos].Y = bordersf.Bottom;
+    vbuf[pos].TU = textureuv.Right;
+    vbuf[pos].TV = textureuv.Bottom;
+    vbuf[pos].Diffuse = contour_color;
+
+    // _effectMngr.Effects.Contour->MapSpriteBuf->
+    // _dipQueue.back().SpriteBorder = sprite_border;
+    _effectMngr.Effects.Contour->DrawBuffer(_contourDrawBuf);
 
     PopRenderTarget();
     _contoursAdded = true;
@@ -2054,17 +2078,17 @@ void SpriteManager::BuildFont(int index)
     const auto* si_bordered = (font.ImageBordered != nullptr ? GetSpriteInfo(font.ImageBordered->GetSprId(0)) : nullptr);
     font.FontTexBordered = si_bordered != nullptr ? si_bordered->Atlas->MainTex : nullptr;
 
-    const auto normal_ox = static_cast<uint>(tex_w * si->SprRect.Left);
-    const auto normal_oy = static_cast<uint>(tex_h * si->SprRect.Top);
-    const auto bordered_ox = (si_bordered != nullptr ? static_cast<uint>(static_cast<float>(si_bordered->Atlas->Width) * si_bordered->SprRect.Left) : 0);
-    const auto bordered_oy = (si_bordered != nullptr ? static_cast<uint>(static_cast<float>(si_bordered->Atlas->Height) * si_bordered->SprRect.Top) : 0);
+    const auto normal_ox = static_cast<int>(tex_w * si->SprRect.Left);
+    const auto normal_oy = static_cast<int>(tex_h * si->SprRect.Top);
+    const auto bordered_ox = (si_bordered != nullptr ? static_cast<int>(static_cast<float>(si_bordered->Atlas->Width) * si_bordered->SprRect.Left) : 0);
+    const auto bordered_oy = (si_bordered != nullptr ? static_cast<int>(static_cast<float>(si_bordered->Atlas->Height) * si_bordered->SprRect.Top) : 0);
 
     // Read texture data
-    auto data_normal = App->Render.GetTextureRegion(si->Atlas->MainTex, normal_ox, normal_oy, si->Width, si->Height);
+    auto data_normal = si->Atlas->MainTex->GetTextureRegion(normal_ox, normal_oy, si->Width, si->Height);
 
     vector<uint> data_bordered;
     if (si_bordered != nullptr) {
-        data_bordered = App->Render.GetTextureRegion(si_bordered->Atlas->MainTex, bordered_ox, bordered_oy, si_bordered->Width, si_bordered->Height);
+        data_bordered = si_bordered->Atlas->MainTex->GetTextureRegion(bordered_ox, bordered_oy, si_bordered->Width, si_bordered->Height);
     }
 
     // Normalize color to gray
@@ -2088,7 +2112,7 @@ void SpriteManager::BuildFont(int index)
         }
 
         const auto r = IRect(normal_ox, normal_oy, normal_ox + si->Width - 1, normal_oy + si->Height - 1);
-        App->Render.UpdateTextureRegion(si->Atlas->MainTex, r, data_normal.data());
+        si->Atlas->MainTex->UpdateTextureRegion(r, data_normal.data());
     }
 
     // Fill border
@@ -2110,14 +2134,14 @@ void SpriteManager::BuildFont(int index)
         }
 
         const auto r_bordered = IRect(bordered_ox, bordered_oy, bordered_ox + si_bordered->Width - 1, bordered_oy + si_bordered->Height - 1);
-        App->Render.UpdateTextureRegion(si_bordered->Atlas->MainTex, r_bordered, data_bordered.data());
+        si_bordered->Atlas->MainTex->UpdateTextureRegion(r_bordered, data_bordered.data());
 
         // Fix texture coordinates on bordered texture
         tex_w = static_cast<float>(si_bordered->Atlas->Width);
         tex_h = static_cast<float>(si_bordered->Atlas->Height);
         image_x = tex_w * si_bordered->SprRect.Left;
         image_y = tex_h * si_bordered->SprRect.Top;
-        for (auto& [index, letter] : font.Letters) {
+        for (auto&& [index, letter] : font.Letters) {
             const auto x = static_cast<float>(letter.PosX);
             const auto y = static_cast<float>(letter.PosY);
             const auto w = static_cast<float>(letter.Width);
@@ -2940,7 +2964,6 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
 
             auto& l = it->second;
 
-            auto pos = _curDrawQuad * 4;
             const auto x = curx - l.OffsX - 1;
             const auto y = cury - l.OffsY - 1;
             const auto w = l.Width + 2;
@@ -2952,29 +2975,32 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             const auto x2 = texture_uv[2];
             const auto y2 = texture_uv[3];
 
-            _vBuffer[pos].X = static_cast<float>(x);
-            _vBuffer[pos].Y = static_cast<float>(y + h);
-            _vBuffer[pos].TU = x1;
-            _vBuffer[pos].TV = y2;
-            _vBuffer[pos++].Diffuse = color;
+            auto& vbuf = _spritesDrawBuf->Vertices2D;
+            auto pos = _curDrawQuad * 4;
 
-            _vBuffer[pos].X = static_cast<float>(x);
-            _vBuffer[pos].Y = static_cast<float>(y);
-            _vBuffer[pos].TU = x1;
-            _vBuffer[pos].TV = y1;
-            _vBuffer[pos++].Diffuse = color;
+            vbuf[pos].X = static_cast<float>(x);
+            vbuf[pos].Y = static_cast<float>(y + h);
+            vbuf[pos].TU = x1;
+            vbuf[pos].TV = y2;
+            vbuf[pos++].Diffuse = color;
 
-            _vBuffer[pos].X = static_cast<float>(x + w);
-            _vBuffer[pos].Y = static_cast<float>(y);
-            _vBuffer[pos].TU = x2;
-            _vBuffer[pos].TV = y1;
-            _vBuffer[pos++].Diffuse = color;
+            vbuf[pos].X = static_cast<float>(x);
+            vbuf[pos].Y = static_cast<float>(y);
+            vbuf[pos].TU = x1;
+            vbuf[pos].TV = y1;
+            vbuf[pos++].Diffuse = color;
 
-            _vBuffer[pos].X = static_cast<float>(x + w);
-            _vBuffer[pos].Y = static_cast<float>(y + h);
-            _vBuffer[pos].TU = x2;
-            _vBuffer[pos].TV = y2;
-            _vBuffer[pos].Diffuse = color;
+            vbuf[pos].X = static_cast<float>(x + w);
+            vbuf[pos].Y = static_cast<float>(y);
+            vbuf[pos].TU = x2;
+            vbuf[pos].TV = y1;
+            vbuf[pos++].Diffuse = color;
+
+            vbuf[pos].X = static_cast<float>(x + w);
+            vbuf[pos].Y = static_cast<float>(y + h);
+            vbuf[pos].TU = x2;
+            vbuf[pos].TV = y2;
+            vbuf[pos].Diffuse = color;
 
             if (++_curDrawQuad == _drawQuadCount) {
                 _dipQueue.push_back({texture, font->DrawEffect, 1});

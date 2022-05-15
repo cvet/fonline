@@ -289,8 +289,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            string dummy_content = "BAKED";
-            _bakedFiles.emplace(fname, vector<uchar>(dummy_content.begin(), dummy_content.end()));
+            _bakedFiles.emplace(fname, vector<uchar>(content.begin(), content.end()));
         }
     }
 }
@@ -323,7 +322,9 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     // SPIR-V to GLSL
     auto make_glsl = [this, &fname_wo_ext, &spirv]() {
         spirv_cross::CompilerGLSL compiler {spirv};
-        const auto& options = compiler.get_common_options();
+        auto options = compiler.get_common_options();
+        options.es = false;
+        options.version = 150;
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
@@ -337,6 +338,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         spirv_cross::CompilerGLSL compiler {spirv};
         auto options = compiler.get_common_options();
         options.es = true;
+        options.version = 300;
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE

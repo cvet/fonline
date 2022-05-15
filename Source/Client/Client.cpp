@@ -58,7 +58,7 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 // clang-format on
 {
-    FileSys.AddDataSource("$Embedded");
+    FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
     for (const auto& entry : Settings.ResourceEntries) {
         FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));

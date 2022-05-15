@@ -40,7 +40,7 @@ EffectManager::EffectManager(RenderSettings& settings, FileSystem& file_sys) : _
 {
 }
 
-auto EffectManager::LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*
+auto EffectManager::LoadEffect(EffectUsage usage, string_view name, string_view defines, string_view base_path) -> RenderEffect*
 {
     // Try find already loaded effect
     for (const auto& effect : _loadedEffects) {
@@ -50,7 +50,7 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
     }
 
     // Load new
-    auto* effect = App->Render.CreateEffect(name, defines, [this, &base_path](string_view path) -> vector<uchar> {
+    auto* effect = App->Render.CreateEffect(usage, name, defines, [this, &base_path](string_view path) -> string {
         auto file = _fileSys.ReadFile(_str("{}/{}", _str(base_path).extractDir(), path));
         if (!file) {
             file = _fileSys.ReadFile(path);
@@ -60,11 +60,7 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
             }
         }
 
-        const auto* buf = file.GetBuf();
-        const auto len = file.GetSize();
-        vector<uchar> result(len);
-        std::memcpy(&result[0], buf, len);
-        return result;
+        return file.GetStr();
     });
 
     _loadedEffects.push_back(unique_ptr<RenderEffect>(effect));
@@ -101,50 +97,58 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
     }
 }
 
-#define LOAD_DEFAULT_EFFECT(effect_handle, effect_name) \
-    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_name, "", "Effects/"))) \
+#define LOAD_DEFAULT_EFFECT(effect_handle, effect_usage, effect_name) \
+    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_usage, effect_name, "", "Effects/"))) \
     effect_errors++
 
 void EffectManager::LoadMinimalEffects()
 {
-    uint effect_errors = 0;
-    LOAD_DEFAULT_EFFECT(Effects.Font, "Font_Default");
-    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, "Flush_RenderTarget");
-    if (effect_errors != 0u) {
+    auto effect_errors = 0;
+
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "ImGui_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::Font, "Font_Default");
+    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::ImGui, "Flush_RenderTarget");
+
+    if (effect_errors != 0) {
         throw EffectManagerException("Minimal effects not loaded");
     }
 }
 
 void EffectManager::LoadDefaultEffects()
 {
-    uint effect_errors = 0;
-    LOAD_DEFAULT_EFFECT(Effects.Generic, "2D_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Critter, "2D_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Roof, "2D_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Rain, "2D_WithoutEgg");
-    LOAD_DEFAULT_EFFECT(Effects.Iface, "Interface_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Primitive, "Primitive_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Light, "Primitive_Light");
-    LOAD_DEFAULT_EFFECT(Effects.Fog, "Primitive_Fog");
-    LOAD_DEFAULT_EFFECT(Effects.Font, "Font_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Tile, "2D_WithoutEgg");
-    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, "Flush_RenderTarget");
-    LOAD_DEFAULT_EFFECT(Effects.FlushPrimitive, "Flush_Primitive");
-    LOAD_DEFAULT_EFFECT(Effects.FlushMap, "Flush_Map");
-    LOAD_DEFAULT_EFFECT(Effects.FlushLight, "Flush_Light");
-    LOAD_DEFAULT_EFFECT(Effects.FlushFog, "Flush_Fog");
-    if (effect_errors > 0) {
+    auto effect_errors = 0;
+
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "ImGui_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::Font, "Font_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::MapSprite, "2D_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::MapSprite, "2D_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Roof, EffectUsage::MapSprite, "2D_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Rain, EffectUsage::MapSprite, "2D_WithoutEgg");
+    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::Interface, "Interface_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Primitive, EffectUsage::Primitive, "Primitive_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Light, EffectUsage::Primitive, "Primitive_Light");
+    LOAD_DEFAULT_EFFECT(Effects.Fog, EffectUsage::Primitive, "Primitive_Fog");
+    LOAD_DEFAULT_EFFECT(Effects.Tile, EffectUsage::MapSprite, "2D_WithoutEgg");
+    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::Flush, "Flush_RenderTarget");
+    LOAD_DEFAULT_EFFECT(Effects.FlushPrimitive, EffectUsage::Flush, "Flush_Primitive");
+    LOAD_DEFAULT_EFFECT(Effects.FlushMap, EffectUsage::Flush, "Flush_Map");
+    LOAD_DEFAULT_EFFECT(Effects.FlushLight, EffectUsage::Flush, "Flush_Light");
+    LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::Flush, "Flush_Fog");
+
+    if (effect_errors != 0) {
         throw EffectManagerException("Default effects not loaded");
     }
 
-    LOAD_DEFAULT_EFFECT(Effects.Contour, "Contour_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Contour, EffectUsage::Contour, "Contour_Default");
 }
 
 void EffectManager::Load3dEffects()
 {
-    uint effect_errors = 0;
-    LOAD_DEFAULT_EFFECT(Effects.Skinned3d, "3D_Skinned");
-    if (effect_errors > 0) {
+    auto effect_errors = 0;
+
+    LOAD_DEFAULT_EFFECT(Effects.Skinned3d, EffectUsage::Model, "3D_Skinned");
+
+    if (effect_errors != 0) {
         throw EffectManagerException("Default 3D effects not loaded");
     }
 }

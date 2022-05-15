@@ -45,7 +45,6 @@
 
 struct MapperAppData
 {
-    GlobalSettings* Settings {};
     FOMapper* Mapper {};
 };
 GLOBAL_DATA(MapperAppData, Data);
@@ -68,12 +67,13 @@ static void MapperEntry(void*)
         if (Data->Mapper == nullptr) {
 #if FO_WEB
             // Wait file system synchronization
-            if (EM_ASM_INT(return Module.syncfsDone) != 1)
+            if (EM_ASM_INT(return Module.syncfsDone) != 1) {
                 return;
+            }
 #endif
 
             try {
-                Data->Mapper = new FOMapper(*Data->Settings);
+                Data->Mapper = new FOMapper(App->Settings);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -104,12 +104,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
-        InitApp("Mapper");
+        InitApp(argc, argv, "Mapper");
 
         WriteLog("Starting Mapper {}...", FO_GAME_VERSION);
-
-        Data->Settings = new GlobalSettings(argc, argv);
-        InitApplication(*Data->Settings);
 
 #if FO_IOS
         MapperEntry(nullptr);
@@ -124,21 +121,21 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
-        while (!Data->Settings->Quit) {
+        while (!App->Settings.Quit) {
             MapperEntry(nullptr);
         }
 
 #else
-        while (!Data->Settings->Quit) {
+        while (!App->Settings.Quit) {
             const auto start_loop = Timer::RealtimeTick();
 
             MapperEntry(nullptr);
 
-            if (!Data->Settings->VSync && Data->Settings->FixedFPS != 0) {
-                if (Data->Settings->FixedFPS > 0) {
+            if (!App->Settings.VSync && App->Settings.FixedFPS != 0) {
+                if (App->Settings.FixedFPS > 0) {
                     static auto balance = 0.0;
                     const auto elapsed = Timer::RealtimeTick() - start_loop;
-                    const auto need_elapsed = 1000.0 / static_cast<double>(Data->Settings->FixedFPS);
+                    const auto need_elapsed = 1000.0 / static_cast<double>(App->Settings.FixedFPS);
                     if (need_elapsed > elapsed) {
                         const auto sleep = need_elapsed - elapsed + balance;
                         balance = fmod(sleep, 1.0);
@@ -146,13 +143,13 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     }
                 }
                 else {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(-Data->Settings->FixedFPS));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(-App->Settings.FixedFPS));
                 }
             }
         }
 #endif
 
-        AppExit(true);
+        ExitApp(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

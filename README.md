@@ -316,15 +316,6 @@ Please follow these instructions to understand how to use this engine by design:
 * SpriteManager: move fonts stuff to separate module
 * Sprites: MapSprite releasing
 * Sprites: : incapsulate all sprite data
-* Application: move different renderers to separate modules
-* Application: recognize tablet mode for Windows 10
-* Application: remove GLEW and bind OpenGL functions manually
-* Application: map all framebuffer ext functions
-* Application: fix workaround for strange behaviour of button focus
-* Application: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
-* ApplicationHeadless: move different renderers to separate modules
-* ApplicationHeadless: implement effect CanBatch
-* ApplicationHeadless: app settings
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * Dialogs: validate script entries, hashes
@@ -358,6 +349,15 @@ Please follow these instructions to understand how to use this engine by design:
 * Settings-Include: rework global Quit setting
 * Settings: improve editable entry for arrays
 * StringUtils: make isNumber const
+* Application: recognize tablet mode for Windows 10
+* Application: fix workaround for strange behaviour of button focus
+* ApplicationHeadless: move different renderers to separate modules
+* ApplicationHeadless: implement effect CanBatch
+* Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
+* Rendering-OpenGL: map all framebuffer ext functions
+* Rendering-OpenGL: additional defines to shaders
+* Rendering-OpenGL: smooth only if( zoom && *zoom != 1.0f )
+* Rendering: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
 * AngelScriptScripting-Template: MarshalDict
 * AngelScriptScripting-Template: MarshalBackScalarDict
 * AngelScriptScripting-Template: GetASObjectInfo

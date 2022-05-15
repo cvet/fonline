@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "Dialogs.h"
 #include "DiskFileSystem.h"
 #include "EffectBaker.h"
@@ -80,10 +81,8 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp("Baker");
+        InitApp(argc, argv, "Baker");
         LogWithoutTimestamp();
-
-        auto settings = GlobalSettings(argc, argv);
 
         const auto build_hash_deleted = DiskFileSystem::DeleteFile("Resources.build-hash");
         RUNTIME_ASSERT(build_hash_deleted);
@@ -97,23 +96,23 @@ int main(int argc, char** argv)
         try {
             WriteLog("Compile AngelScript scripts");
 
-            RUNTIME_ASSERT(!settings.ASServer.empty());
-            RUNTIME_ASSERT(!settings.ASClient.empty());
-            RUNTIME_ASSERT(!settings.ASMapper.empty());
+            RUNTIME_ASSERT(!App->Settings.ASServer.empty());
+            RUNTIME_ASSERT(!App->Settings.ASClient.empty());
+            RUNTIME_ASSERT(!App->Settings.ASMapper.empty());
 
 #if !FO_SINGLEPLAYER
             WriteLog("Compile server scripts");
-            ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
+            ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer.c_str());
 
             WriteLog("Compile client scripts");
-            ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
+            ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
 #else
             WriteLog("Compile single scripts");
-            // MapperScriptSystem().InitAngelScriptScripting(settings.ASSingle.c_str());
+            // MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
 #endif
 
             WriteLog("Compile mapper scripts");
-            MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
+            MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper.c_str());
 
             WriteLog("Compile AngelScript scripts complete!");
         }
@@ -129,14 +128,14 @@ int main(int argc, char** argv)
         try {
             WriteLog("Bake resource packs");
 
-            RUNTIME_ASSERT(!settings.BakeResourceEntries.empty());
+            RUNTIME_ASSERT(!App->Settings.BakeResourceEntries.empty());
 
             auto del_raw_ok = DiskFileSystem::DeleteDir("Raw");
             RUNTIME_ASSERT(del_raw_ok);
             DiskFileSystem::MakeDirTree("Raw");
 
             map<string, vector<string>> res_packs;
-            for (const auto& re : settings.BakeResourceEntries) {
+            for (const auto& re : App->Settings.BakeResourceEntries) {
                 auto re_splitted = _str(re).split(',');
                 RUNTIME_ASSERT(re_splitted.size() == 2);
                 res_packs[re_splitted[0]].push_back(re_splitted[1]);
@@ -144,10 +143,6 @@ int main(int argc, char** argv)
 
             for (auto&& [pack_name, paths] : res_packs) {
                 try {
-                    if (pack_name == "Embedded") {
-                        continue;
-                    }
-
                     WriteLog("Bake {}", pack_name);
 
                     FileSystem res_files;
@@ -170,7 +165,7 @@ int main(int argc, char** argv)
                         // Bake files
                         map<string, vector<uchar>> baked_files;
                         {
-                            ImageBaker image_baker(settings, resources);
+                            ImageBaker image_baker(App->Settings, resources);
                             ModelBaker model_baker(resources);
                             EffectBaker effect_baker(resources);
                             image_baker.AutoBakeImages();
@@ -190,7 +185,7 @@ int main(int argc, char** argv)
                             }
 
                             const auto ext = _str(file_header.GetPath()).getFileExtension().str();
-                            if (std::find(settings.BakeExtraFileExtensions.begin(), settings.BakeExtraFileExtensions.end(), ext) == settings.BakeExtraFileExtensions.end()) {
+                            if (std::find(App->Settings.BakeExtraFileExtensions.begin(), App->Settings.BakeExtraFileExtensions.end(), ext) == App->Settings.BakeExtraFileExtensions.end()) {
                                 continue;
                             }
 
@@ -240,12 +235,12 @@ int main(int argc, char** argv)
         try {
             WriteLog("Bake content");
 
-            RUNTIME_ASSERT(!settings.BakeContentEntries.empty());
+            RUNTIME_ASSERT(!App->Settings.BakeContentEntries.empty());
 
             BakerEngine engine;
             engine.RegisterData();
 
-            for (const auto& dir : settings.BakeContentEntries) {
+            for (const auto& dir : App->Settings.BakeContentEntries) {
                 WriteLog("Add content entry '{}'", dir);
                 engine.FileSys.AddDataSource(dir, DataSourceType::DirRoot);
             }
@@ -315,7 +310,7 @@ int main(int argc, char** argv)
 
                 vector<LanguagePack> lang_packs;
 
-                for (const auto& lang_name : settings.Languages) {
+                for (const auto& lang_name : App->Settings.Languages) {
                     LanguagePack lang_pack;
                     lang_pack.ParseTexts(engine.FileSys, engine, lang_name);
                     lang_packs.push_back(lang_pack);
@@ -383,7 +378,7 @@ int main(int argc, char** argv)
         // Finalize
         if (errors != 0) {
             WriteLog("Bakering failed!");
-            AppExit(false);
+            ExitApp(false);
         }
 
         WriteLog("Bakering complete!");
@@ -395,7 +390,7 @@ int main(int argc, char** argv)
             RUNTIME_ASSERT(build_hash_writed);
         }
 
-        AppExit(true);
+        ExitApp(true);
     }
     catch (std::exception& ex) {
         ReportExceptionAndExit(ex);

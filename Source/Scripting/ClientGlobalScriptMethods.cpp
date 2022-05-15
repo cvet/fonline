@@ -1052,87 +1052,90 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int effectSubtype, string_view effectName, string_view effectDefines)
 {
-    RenderEffect* effect = nullptr;
-    if (!effectName.empty()) {
-        effect = client->EffectMngr.LoadEffect(effectName, effectDefines, "");
-        if (!effect) {
-            throw ScriptException("Effect not found or have some errors, see log file");
+    const auto reload_effect = [&](RenderEffect* def_effect) {
+        if (!effectName.empty()) {
+            auto* effect = client->EffectMngr.LoadEffect(def_effect->Usage, effectName, effectDefines, "");
+            if (!effect) {
+                throw ScriptException("Effect not found or have some errors, see log file");
+            }
+            return effect;
         }
-    }
+        return def_effect;
+    };
 
     const auto eff_type = static_cast<uint>(effectType);
 
     if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype != 0) {
         auto* item = client->CurMap->GetItem(static_cast<uint>(effectSubtype));
         if (item) {
-            item->DrawEffect = (effect ? effect : client->EffectMngr.Effects.Generic);
+            item->DrawEffect = reload_effect(client->EffectMngr.Effects.Generic);
         }
     }
     if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype != 0) {
         auto* cr = client->CurMap->GetCritter(static_cast<uint>(effectSubtype));
         if (cr) {
-            cr->DrawEffect = (effect ? effect : client->EffectMngr.Effects.Critter);
+            cr->DrawEffect = reload_effect(client->EffectMngr.Effects.Critter);
         }
     }
 
     if ((eff_type & static_cast<uint>(EffectType::GenericSprite)) && effectSubtype == 0) {
-        client->EffectMngr.Effects.Generic = (effect ? effect : client->EffectMngr.Effects.GenericDefault);
+        client->EffectMngr.Effects.Generic = reload_effect(client->EffectMngr.Effects.GenericDefault);
     }
     if ((eff_type & static_cast<uint>(EffectType::CritterSprite)) && effectSubtype == 0) {
-        client->EffectMngr.Effects.Critter = (effect ? effect : client->EffectMngr.Effects.CritterDefault);
+        client->EffectMngr.Effects.Critter = reload_effect(client->EffectMngr.Effects.CritterDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::TileSprite)) {
-        client->EffectMngr.Effects.Tile = (effect ? effect : client->EffectMngr.Effects.TileDefault);
+        client->EffectMngr.Effects.Tile = reload_effect(client->EffectMngr.Effects.TileDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::RoofSprite)) {
-        client->EffectMngr.Effects.Roof = (effect ? effect : client->EffectMngr.Effects.RoofDefault);
+        client->EffectMngr.Effects.Roof = reload_effect(client->EffectMngr.Effects.RoofDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::RainSprite)) {
-        client->EffectMngr.Effects.Rain = (effect ? effect : client->EffectMngr.Effects.RainDefault);
+        client->EffectMngr.Effects.Rain = reload_effect(client->EffectMngr.Effects.RainDefault);
     }
 
     if (eff_type & static_cast<uint>(EffectType::SkinnedMesh)) {
-        client->EffectMngr.Effects.Skinned3d = (effect ? effect : client->EffectMngr.Effects.Skinned3dDefault);
+        client->EffectMngr.Effects.Skinned3d = reload_effect(client->EffectMngr.Effects.Skinned3dDefault);
     }
 
     if (eff_type & static_cast<uint>(EffectType::Interface)) {
-        client->EffectMngr.Effects.Iface = (effect ? effect : client->EffectMngr.Effects.IfaceDefault);
+        client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::Contour)) {
-        client->EffectMngr.Effects.Contour = (effect ? effect : client->EffectMngr.Effects.ContourDefault);
+        client->EffectMngr.Effects.Contour = reload_effect(client->EffectMngr.Effects.ContourDefault);
     }
 
     if ((eff_type & static_cast<uint>(EffectType::Font)) && effectSubtype == -1) {
-        client->EffectMngr.Effects.Font = (effect ? effect : client->EffectMngr.Effects.ContourDefault);
+        client->EffectMngr.Effects.Font = reload_effect(client->EffectMngr.Effects.FontDefault);
     }
     if ((eff_type & static_cast<uint>(EffectType::Font)) && effectSubtype >= 0) {
-        client->SprMngr.SetFontEffect(effectSubtype, effect);
+        client->SprMngr.SetFontEffect(effectSubtype, reload_effect(client->EffectMngr.Effects.Font));
     }
 
     if (eff_type & static_cast<uint>(EffectType::Primitive)) {
-        client->EffectMngr.Effects.Primitive = (effect ? effect : client->EffectMngr.Effects.PrimitiveDefault);
+        client->EffectMngr.Effects.Primitive = reload_effect(client->EffectMngr.Effects.PrimitiveDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::Light)) {
-        client->EffectMngr.Effects.Light = (effect ? effect : client->EffectMngr.Effects.LightDefault);
+        client->EffectMngr.Effects.Light = reload_effect(client->EffectMngr.Effects.LightDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::Fog)) {
-        client->EffectMngr.Effects.Fog = (effect ? effect : client->EffectMngr.Effects.FogDefault);
+        client->EffectMngr.Effects.Fog = reload_effect(client->EffectMngr.Effects.FogDefault);
     }
 
     if (eff_type & static_cast<uint>(EffectType::FlushRenderTarget)) {
-        client->EffectMngr.Effects.FlushRenderTarget = (effect ? effect : client->EffectMngr.Effects.FlushRenderTargetDefault);
+        client->EffectMngr.Effects.FlushRenderTarget = reload_effect(client->EffectMngr.Effects.FlushRenderTargetDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::FlushPrimitive)) {
-        client->EffectMngr.Effects.FlushPrimitive = (effect ? effect : client->EffectMngr.Effects.FlushPrimitiveDefault);
+        client->EffectMngr.Effects.FlushPrimitive = reload_effect(client->EffectMngr.Effects.FlushPrimitiveDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::FlushMap)) {
-        client->EffectMngr.Effects.FlushMap = (effect ? effect : client->EffectMngr.Effects.FlushMapDefault);
+        client->EffectMngr.Effects.FlushMap = reload_effect(client->EffectMngr.Effects.FlushMapDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::FlushLight)) {
-        client->EffectMngr.Effects.FlushLight = (effect ? effect : client->EffectMngr.Effects.FlushLightDefault);
+        client->EffectMngr.Effects.FlushLight = reload_effect(client->EffectMngr.Effects.FlushLightDefault);
     }
     if (eff_type & static_cast<uint>(EffectType::FlushFog)) {
-        client->EffectMngr.Effects.FlushFog = (effect ? effect : client->EffectMngr.Effects.FlushFogDefault);
+        client->EffectMngr.Effects.FlushFog = reload_effect(client->EffectMngr.Effects.FlushFogDefault);
     }
 
     if (eff_type & static_cast<uint>(EffectType::Offscreen)) {
@@ -1141,7 +1144,7 @@
         }
 
         client->OffscreenEffects.resize(effectSubtype + 1);
-        client->OffscreenEffects[effectSubtype] = effect;
+        client->OffscreenEffects[effectSubtype] = reload_effect(client->EffectMngr.Effects.GenericDefault);
     }
 }
 

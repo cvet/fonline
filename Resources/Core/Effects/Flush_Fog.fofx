@@ -9,7 +9,9 @@ const float AttackAroundShining = 0.4;
 layout(location = 0) uniform mat4 ProjectionMatrix;
 
 layout(location = 0) in vec2 InPosition;
-layout(location = 1) in vec2 InTexCoord;
+layout(location = 1) in vec4 InColor;
+layout(location = 2) in vec2 InTexCoord;
+layout(location = 3) in vec2 InTexEggCoord;
 
 layout(location = 0) out vec2 TexCoord;
 
@@ -20,7 +22,7 @@ void main(void)
 }
 
 [FragmentShader]
-layout(location = 0) uniform sampler2D ColorMap;
+layout(location = 1) uniform sampler2D ColorMap;
 
 layout(location = 0) in vec2 TexCoord;
 

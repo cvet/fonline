@@ -43,12 +43,14 @@ FIXED_SETTING(string, CommandLine, "");
 FIXED_SETTING(vector<string>, CommandLineArgs);
 VARIABLE_SETTING(bool, Quit, false); // Todo: rework global Quit setting
 FIXED_SETTING(vector<int>, DummyIntVec);
+FIXED_SETTING(string, ImGuiColorStyle, "Light"); // Light, Classic, Dark
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(FileSystemSettings, virtual DummySettings);
 FIXED_SETTING(string, ResourcesDir, "Resources");
 FIXED_SETTING(vector<string>, ResourceEntries);
+FIXED_SETTING(string, EmbeddedResources, "$Embedded");
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -153,10 +155,11 @@ SETTING_GROUP_END();
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(string, WindowName, "FOnline");
 VARIABLE_SETTING(bool, WindowCentered, true);
+VARIABLE_SETTING(bool, NullRenderer, false);
 VARIABLE_SETTING(bool, ForceOpenGL, false);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
-VARIABLE_SETTING(bool, ForceGnm, false);
+VARIABLE_SETTING(bool, ForceGNM, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
 FIXED_SETTING(uint, Animation3dSmoothTime, 150);
 FIXED_SETTING(uint, Animation3dFPS, 30);

@@ -292,7 +292,7 @@ static void AdminWork(FOServer* server, Session* session)
         }
         else if (cmd == "kill") {
             WriteLog("Admin panel ({}): Kill whole process", admin_name);
-            AppExit(true);
+            ExitApp(true);
         }
         else if (cmd == "stop") {
             if (!server->IsStarted()) {

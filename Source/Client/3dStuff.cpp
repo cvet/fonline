@@ -1065,7 +1065,7 @@ void ModelInstance::ClearCombinedMesh(CombinedMesh* combined_mesh)
     combined_mesh->MeshIndices.clear();
     combined_mesh->MeshVertices.clear();
     combined_mesh->MeshAnimLayers.clear();
-    combined_mesh->DrawMesh->Vertices.clear();
+    combined_mesh->DrawMesh->Vertices3D.clear();
     combined_mesh->DrawMesh->Indices.clear();
 }
 
@@ -1088,7 +1088,7 @@ auto ModelInstance::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstan
 void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer)
 {
     auto* mesh = mesh_instance->Mesh;
-    auto& vertices = combined_mesh->DrawMesh->Vertices;
+    auto& vertices = combined_mesh->DrawMesh->Vertices3D;
     auto& indices = combined_mesh->DrawMesh->Indices;
     const auto vertices_old_size = vertices.size();
     const auto indices_old_size = indices.size();
@@ -1234,11 +1234,11 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
 {
     NON_CONST_METHOD_HINT();
 
-    auto& vertices = combined_mesh->DrawMesh->Vertices;
+    auto& vertices = combined_mesh->DrawMesh->Vertices3D;
     auto& indices = combined_mesh->DrawMesh->Indices;
     auto& cut_layers = cut->Layers;
     for (auto& shape : cut->Shapes) {
-        Vertex3DVec result_vertices;
+        vector<Vertex3D> result_vertices;
         vector<ushort> result_indices;
         vector<uint> result_mesh_vertices;
         vector<uint> result_mesh_indices;
@@ -1581,14 +1581,14 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_
         effect->AnimBuf->AbsoluteTime = _animPosTime;
     }
 
-    App->Render.DrawMesh(combined_mesh->DrawMesh, effect);
+    effect->DrawBuffer(combined_mesh->DrawMesh);
 }
 
 auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>
 {
-    auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
+    const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
     if (bone == nullptr) {
-        for (auto* child : _children) {
+        for (const auto* child : _children) {
             bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
             if (bone != nullptr) {
                 break;
@@ -2416,7 +2416,7 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 {
     NON_CONST_METHOD_HINT();
 
-    auto* effect = _modelMngr._effectMngr.LoadEffect(name, "", _fileName);
+    auto* effect = _modelMngr._effectMngr.LoadEffect(EffectUsage::Model, name, "", _fileName);
     if (effect == nullptr) {
         WriteLog("Can't load effect '{}'", name);
     }

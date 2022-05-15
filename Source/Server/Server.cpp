@@ -58,7 +58,7 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
 {
     WriteLog("Start server");
 
-    FileSys.AddDataSource("$Embedded");
+    FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));

@@ -1,0 +1,360 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
+#pragma once
+
+#include "Common.h"
+
+#include "Settings.h"
+
+DECLARE_EXCEPTION(EffectLoadException);
+DECLARE_EXCEPTION(RenderingException);
+
+struct SDL_Window;
+
+constexpr int EFFECT_TEXTURES = 8;
+constexpr int EFFECT_SCRIPT_VALUES = 16;
+constexpr int EFFECT_MAX_PASSES = 6;
+constexpr int MODEL_MAX_BONES = 54;
+constexpr int BONES_PER_VERTEX = 4;
+
+using RenderEffectLoader = std::function<string(string_view)>;
+
+enum class EffectUsage
+{
+    ImGui,
+    Font,
+    MapSprite,
+    Interface,
+    Flush,
+    Contour,
+    Primitive,
+    Model,
+};
+
+enum class RenderPrimitiveType
+{
+    PointList,
+    LineList,
+    LineStrip,
+    TriangleList,
+    TriangleStrip,
+    TriangleFan,
+};
+
+enum class BlendEquationType // Default is FuncAdd
+{
+    FuncAdd,
+    FuncSubtract,
+    FuncReverseSubtract,
+    Max,
+    Min,
+};
+
+enum class BlendFuncType // Default is SrcAlpha InvSrcAlpha
+{
+    Zero,
+    One,
+    SrcColor,
+    InvSrcColor,
+    DstColor,
+    InvDstColor,
+    SrcAlpha,
+    InvSrcAlpha,
+    DstAlpha,
+    InvDstAlpha,
+    ConstantColor,
+    InvConstantColor,
+    SrcAlphaSaturate,
+};
+
+struct Vertex2D
+{
+    float X, Y;
+    uint Diffuse;
+    float TU, TV;
+    float TUEgg, TVEgg;
+};
+static_assert(std::is_standard_layout_v<Vertex2D>);
+static_assert(sizeof(Vertex2D) == 28);
+
+struct Vertex3D
+{
+    vec3 Position;
+    vec3 Normal;
+    float TexCoord[2];
+    float TexCoordBase[2];
+    vec3 Tangent;
+    vec3 Bitangent;
+    float BlendWeights[BONES_PER_VERTEX];
+    float BlendIndices[BONES_PER_VERTEX];
+};
+static_assert(std::is_standard_layout_v<Vertex3D>);
+static_assert(sizeof(Vertex3D) == 96);
+
+class RenderTexture : public RefCounter
+{
+public:
+    RenderTexture(const RenderTexture&) = delete;
+    RenderTexture(RenderTexture&&) noexcept = delete;
+    auto operator=(const RenderTexture&) = delete;
+    auto operator=(RenderTexture&&) noexcept = delete;
+
+    [[nodiscard]] virtual auto GetTexturePixel(int x, int y) -> uint = 0;
+    [[nodiscard]] virtual auto GetTextureRegion(int x, int y, uint w, uint h) -> vector<uint> = 0;
+
+    virtual void UpdateTextureRegion(const IRect& r, const uint* data) = 0;
+
+    const uint Width;
+    const uint Height;
+    const float SizeData[4]; // Width, Height, TexelWidth, TexelHeight
+    const bool LinearFiltered;
+    const bool WithDepth;
+
+protected:
+    RenderTexture(uint width, uint height, bool linear_filtered, bool with_depth);
+};
+
+class RenderDrawBuffer : public RefCounter
+{
+public:
+    RenderDrawBuffer(const RenderDrawBuffer&) = delete;
+    RenderDrawBuffer(RenderDrawBuffer&&) noexcept = delete;
+    auto operator=(const RenderDrawBuffer&) = delete;
+    auto operator=(RenderDrawBuffer&&) noexcept = delete;
+
+    const bool IsStatic;
+
+    vector<Vertex2D> Vertices2D {};
+    vector<Vertex3D> Vertices3D {};
+    vector<ushort> Indices {};
+    bool DataChanged {};
+    bool DisableModelCulling {};
+    RenderPrimitiveType PrimType {};
+
+protected:
+    explicit RenderDrawBuffer(bool is_static);
+};
+
+class RenderEffect : public RefCounter
+{
+public:
+    struct ProjBuffer
+    {
+        float ProjMatrix[16] {}; // mat44
+    };
+
+    struct MainTexBuffer
+    {
+        float MainTexSize[4] {}; // vec4
+    };
+
+    struct TimeBuffer
+    {
+        float RealTime {};
+        float GameTime {};
+        float Padding[2] {};
+    };
+
+    struct MapSpriteBuffer
+    {
+        float EggTexSize[4] {}; // vec4
+        float ZoomFactor {};
+        float Padding[3] {};
+    };
+
+    struct BorderBuffer
+    {
+        float SpriteBorder[4] {}; // vec4
+    };
+
+    // Todo: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
+    struct ModelBuffer
+    {
+        float LightColor[4] {}; // vec4
+        float GroundPosition[4] {}; // vec4
+        float WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat44
+    };
+
+    struct CustomTexBuffer
+    {
+        float AtlasOffset[4 * EFFECT_TEXTURES] {}; // vec4
+        float Size[4 * EFFECT_TEXTURES] {}; // vec4
+    };
+
+    struct AnimBuffer
+    {
+        float NormalizedTime {};
+        float AbsoluteTime {};
+        float Padding[2] {};
+    };
+
+    struct RandomValueBuffer
+    {
+        float Value[4] {};
+    };
+
+    struct ScriptValueBuffer
+    {
+        float Value[EFFECT_SCRIPT_VALUES] {};
+    };
+
+    static_assert(sizeof(ProjBuffer) % 16 == 0 && sizeof(ProjBuffer) == 64);
+    static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 16);
+    static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 16);
+    static_assert(sizeof(MapSpriteBuffer) % 16 == 0 && sizeof(MapSpriteBuffer) == 32);
+    static_assert(sizeof(BorderBuffer) % 16 == 0 && sizeof(BorderBuffer) == 16);
+    static_assert(sizeof(ModelBuffer) % 16 == 0 && sizeof(ModelBuffer) == 3488);
+    static_assert(sizeof(CustomTexBuffer) % 16 == 0 && sizeof(CustomTexBuffer) == 256);
+    static_assert(sizeof(AnimBuffer) % 16 == 0 && sizeof(AnimBuffer) == 16);
+    static_assert(sizeof(RandomValueBuffer) % 16 == 0 && sizeof(RandomValueBuffer) == 16);
+    static_assert(sizeof(ScriptValueBuffer) % 16 == 0 && sizeof(ScriptValueBuffer) == 64);
+    // Total size: 4000
+    // We must fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float))
+
+    RenderEffect(const RenderEffect&) = delete;
+    RenderEffect(RenderEffect&&) noexcept = delete;
+    auto operator=(const RenderEffect&) = delete;
+    auto operator=(RenderEffect&&) noexcept = delete;
+
+    [[nodiscard]] auto IsSame(string_view name, string_view defines) const -> bool;
+    [[nodiscard]] auto CanBatch(const RenderEffect* other) const -> bool;
+
+    const string Name;
+    const EffectUsage Usage;
+
+    ProjBuffer ProjBuf {};
+    optional<MainTexBuffer> MainTexBuf {};
+    optional<TimeBuffer> TimeBuf {};
+    optional<MapSpriteBuffer> MapSpriteBuf {};
+    optional<BorderBuffer> BorderBuf {};
+    optional<ModelBuffer> ModelBuf {};
+    optional<CustomTexBuffer> CustomTexBuf {};
+    optional<AnimBuffer> AnimBuf {};
+    optional<RandomValueBuffer> RandomValueBuf {};
+    optional<ScriptValueBuffer> ScriptValueBuf {};
+    RenderTexture* MainTex {};
+    RenderTexture* EggTex {};
+    RenderTexture* CustomTex[EFFECT_TEXTURES] {};
+    bool DisableShadow {};
+    bool DisableBlending {};
+
+    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, RenderTexture* custom_tex = nullptr) = 0;
+
+protected:
+    RenderEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader);
+
+    string _effectName {};
+    string _effectDefines {};
+    hstring _name {};
+    uint _passCount {};
+    bool _isShadow[EFFECT_MAX_PASSES] {};
+    BlendFuncType _blendFuncParam1[EFFECT_MAX_PASSES] {};
+    BlendFuncType _blendFuncParam2[EFFECT_MAX_PASSES] {};
+    BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
+};
+
+class Renderer
+{
+public:
+    virtual ~Renderer() = default;
+
+    [[nodiscard]] virtual auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* = 0;
+    [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* = 0;
+    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* = 0;
+
+    virtual void Init(GlobalSettings& settings, SDL_Window* window) = 0;
+    virtual void Present() = 0;
+    virtual void SetRenderTarget(RenderTexture* tex) = 0;
+    virtual void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) = 0;
+    virtual void EnableScissor(int x, int y, uint w, uint h) = 0;
+    virtual void DisableScissor() = 0;
+
+protected:
+    void ParseEffect(RenderEffect* effect, string_view name, string_view defines, const RenderEffectLoader& loader);
+};
+
+class Null_Renderer final : public Renderer
+{
+public:
+    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override { return nullptr; }
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override { return nullptr; }
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
+
+    void Init(GlobalSettings& settings, SDL_Window* window) override { }
+    void Present() override { }
+    void SetRenderTarget(RenderTexture* tex) override { }
+    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override { }
+    void EnableScissor(int x, int y, uint w, uint h) override { }
+    void DisableScissor() override { }
+};
+
+#if FO_HAVE_OPENGL
+
+class OpenGL_Renderer final : public Renderer
+{
+public:
+    static constexpr auto RING_BUFFER_LENGTH = 300;
+
+    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override;
+
+    void Init(GlobalSettings& settings, SDL_Window* window) override;
+    void Present() override;
+    void SetRenderTarget(RenderTexture* tex) override;
+    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
+    void EnableScissor(int x, int y, uint w, uint h) override;
+    void DisableScissor() override;
+};
+
+#endif
+
+#if FO_HAVE_DIRECT_3D
+
+class Direct3D_Renderer final : public Renderer
+{
+public:
+    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override;
+
+    void Init(GlobalSettings& settings, SDL_Window* window) override;
+    void Present() override;
+    void SetRenderTarget(RenderTexture* tex) override;
+    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
+    void EnableScissor(int x, int y, uint w, uint h) override;
+    void DisableScissor() override;
+};
+
+#endif

@@ -77,7 +77,7 @@ struct MeshData
         writer.WritePtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
     }
 
-    Vertex3DVec Vertices {};
+    vector<Vertex3D> Vertices {};
     vector<ushort> Indices {};
     string DiffuseTexture {};
     vector<string> SkinBones {};

@@ -33,7 +33,7 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
+#include "Application.h"
 #include "Server.h"
 #include "Settings.h"
 #include "WinApi-Include.h"
@@ -44,7 +44,6 @@ static wchar_t ServiceName[32] = L"FOnlineServer";
 
 struct ServerServiceAppData
 {
-    GlobalSettings* Settings {};
     FOServer* Server {};
     std::thread ServerThread {};
     uint LastState {};
@@ -65,13 +64,13 @@ static void ServerEntry()
 {
     try {
         try {
-            Data->Server = new FOServer(*Data->Settings);
+            Data->Server = new FOServer(App->Settings);
         }
         catch (const std::exception& ex) {
             ReportExceptionAndExit(ex);
         }
 
-        while (!Data->Settings->Quit) {
+        while (!App->Settings.Quit) {
             try {
                 Data->Server->MainLoop();
             }
@@ -104,7 +103,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp("ServerService");
+        InitApp(argc, argv, "ServerService");
 
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
@@ -215,9 +214,8 @@ int main(int argc, char** argv)
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
-        InitApp("ServerService");
-
-        Data->Settings = new GlobalSettings(argc, nullptr); // Todo: convert argv from wchar_t** to char**
+        // Todo: convert argv from wchar_t** to char**
+        InitApp(argc, nullptr, "ServerService");
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
         if (Data->FOServiceStatusHandle == nullptr) {
@@ -249,7 +247,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
         if (opcode == SERVICE_CONTROL_STOP) {
             SetFOServiceStatus(SERVICE_STOP_PENDING);
 
-            Data->Settings->Quit = true;
+            App->Settings.Quit = true;
 
             if (Data->ServerThread.joinable()) {
                 Data->ServerThread.join();

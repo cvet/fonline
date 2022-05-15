@@ -1,6 +1,6 @@
 [Effect]
-BlendFunc_Pass1 = BlendFunc GL_ONE GL_ONE
-BlendEquation_Pass1 = GL_MAX
+BlendFunc_Pass1 = One One
+BlendEquation_Pass1 = Max
 
 [ShaderCommon]
 const float ShinePower = 5.0;
@@ -11,6 +11,8 @@ layout(location = 0) uniform mat4 ProjectionMatrix;
 
 layout(location = 0) in vec2 InPosition;
 layout(location = 1) in vec4 InColor;
+layout(location = 2) in vec2 InTexCoord;
+layout(location = 3) in vec2 InTexEggCoord;
 
 layout(location = 0) out vec4 Color;
 

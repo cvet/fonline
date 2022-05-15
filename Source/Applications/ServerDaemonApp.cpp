@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "Server.h"
 #include "Settings.h"
 
@@ -50,7 +51,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp("ServerDaemon");
+        InitApp(argc, argv, "ServerDaemon");
 
 #if FO_LINUX || FO_MAC
         // Start daemon
@@ -74,24 +75,20 @@ int main(int argc, char** argv)
         ::umask(0);
 #endif
 
-        auto settings = GlobalSettings(argc, argv);
-        auto* server = new FOServer(settings);
+        auto* server = new FOServer(App->Settings);
 
-        while (settings.Quit) {
+        while (!App->Settings.Quit) {
             try {
                 server->MainLoop();
             }
-            catch (const GenericException& ex) {
-                ReportExceptionAndContinue(ex);
-            }
             catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
+                ReportExceptionAndContinue(ex);
             }
         }
 
         delete server;
 
-        AppExit(true);
+        ExitApp(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

@@ -56,15 +56,21 @@
 
 hstring::entry hstring::_zeroEntry;
 
-static string* AppName;
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
 
-void InitApp(string_view name)
+void InitApp(int argc, char** argv, string_view name_appendix)
 {
-    assert(AppName == nullptr);
+    // Ensure that we call init only once
+    static std::once_flag once;
+    auto first_call = false;
+    std::call_once(once, [&first_call] { first_call = true; });
+    if (!first_call) {
+        throw AppInitException("InitApp must be called only once");
+    }
 
+    // Unhandled exceptions handler
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     {
         [[maybe_unused]] static backward::SignalHandling sh;
@@ -72,24 +78,12 @@ void InitApp(string_view name)
     }
 #endif
 
-    AppName = new string();
-    AppName->append(FO_DEV_NAME);
-    if (!name.empty()) {
-        AppName->append("_");
-        AppName->append(name);
-    }
-
     CreateGlobalData();
-    LogToFile();
+
+    App = new Application(argc, argv, name_appendix);
 }
 
-auto GetAppName() -> const string&
-{
-    assert(AppName != nullptr);
-    return *AppName;
-}
-
-void AppExit(bool success)
+void ExitApp(bool success)
 {
     const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
@@ -110,11 +104,6 @@ void DeleteGlobalData()
 {
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
-    }
-
-    if (AppName != nullptr) {
-        delete AppName;
-        AppName = nullptr;
     }
 }
 
@@ -139,7 +128,7 @@ auto GetStackTrace() -> string
 #endif
 }
 
-bool BreakIntoDebugger()
+bool BreakIntoDebugger([[maybe_unused]] string_view error_message)
 {
 #if FO_WINDOWS
     if (::IsDebuggerPresent() != FALSE) {
@@ -153,18 +142,18 @@ bool BreakIntoDebugger()
 
 void ReportExceptionAndExit(const std::exception& ex)
 {
-    if (!BreakIntoDebugger()) {
+    if (!BreakIntoDebugger(ex.what())) {
         WriteLog(LogType::Error, "\n{}\n", ex.what());
         CreateDumpMessage("FatalException", ex.what());
         MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
     }
 
-    AppExit(false);
+    ExitApp(false);
 }
 
 void ReportExceptionAndContinue(const std::exception& ex)
 {
-    if (BreakIntoDebugger()) {
+    if (BreakIntoDebugger(ex.what())) {
         return;
     }
 
@@ -186,7 +175,7 @@ void CreateDumpMessage(string_view appendix, string_view message)
         file.Write(_str("{}\n", message));
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", GetAppName()));
+        file.Write(_str("\tName        {}\n", App->GetName()));
         file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
         file.Write(_str("\tOS          Windows\n"));
         file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));

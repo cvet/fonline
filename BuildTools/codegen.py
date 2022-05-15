@@ -9,6 +9,7 @@ import time
 import uuid
 import io
 import zipfile
+import struct
 
 startTime = time.time()
 
@@ -39,7 +40,6 @@ parser.add_argument('-content', dest='content', action='append', default=[], hel
 parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
 parser.add_argument('-config', dest='config', action='append', default=[], help='debugging config')
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
-parser.add_argument('-output', dest='output', required=True, help='scripts output dir')
 args = parser.parse_args()
 
 def getGuid(name):
@@ -883,8 +883,8 @@ checkErrors()
 files = {}
 lastFile = None
 
-def createFile(name, output=args.output):
-    output = output if output else args.output
+def createFile(name, output):
+    assert output
     path = os.path.join(output, name)
     
     global lastFile
@@ -2794,12 +2794,16 @@ checkErrors()
 
 # Embedded resources
 try:
-    zipData = io.BytesIO()
-    with zipfile.ZipFile(zipData, 'w', compression=zipfile.ZIP_DEFLATED) as zip:
-        for res in resources['Embedded']:
-            zip.write(res[1], res[0])
+    #zipData = io.BytesIO()
+    #with zipfile.ZipFile(zipData, 'w', compression=zipfile.ZIP_DEFLATED) as zip:
+    #    for res in resources['Embedded']:
+    #        zip.write('Backed_' + res[1], res[0])
+    #createFile('EmbeddedResources-Include.h', args.genoutput)
+    #writeFile('const unsigned char EMBEDDED_RESOURCES[] = {0x' + ', 0x'.join(zipData.getvalue().hex(' ').split(' ')) + '};')
+    preserveBufSize = 1200000 # Todo: move preserveBufSize to build setup
+    assert preserveBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('const unsigned char EmbeddedResources[] = {0x' + ', 0x'.join(zipData.getvalue().hex(' ').split(' ')) + '};')
+    writeFile('const unsigned char EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {0x' + ', 0x'.join(struct.pack("I", preserveBufSize).hex(' ').split(' ')) + ', 0x00, ' + ('0x42, ' * 42) + '0x00};')
 
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)

@@ -56,7 +56,6 @@
 
 struct ClientAppData
 {
-    GlobalSettings* Settings {};
     FOClient* Client {};
 #if FO_SINGLEPLAYER
     FOServer* Server {};
@@ -104,7 +103,7 @@ static void MainEntry(void*)
             // Synchronize files
             if (!Data->FilesSynced) {
                 if (Data->FilesSync == nullptr) {
-                    Data->FilesSync = new Updater(*Data->Settings);
+                    Data->FilesSync = new Updater(App->Settings);
                 }
 
                 if (!Data->FilesSync->Process()) {
@@ -123,7 +122,7 @@ static void MainEntry(void*)
             Data->Server = new FOServer(*Data->Settings, script_sys);
             Data->Client = new FOClient(*Data->Settings, script_sys);
 #else
-            Data->Client = new FOClient(*Data->Settings);
+            Data->Client = new FOClient(App->Settings);
 #endif
 #if FO_SINGLEPLAYER
             Data->Server->ConnectClient(Data->Client);
@@ -155,12 +154,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
-        InitApp("");
+        InitApp(argc, argv, "");
 
-        WriteLog("Starting {} {}", GetAppName(), FO_GAME_VERSION);
-
-        Data->Settings = new GlobalSettings(argc, argv);
-        InitApplication(*Data->Settings);
+        WriteLog("Starting {} {}", App->GetName(), FO_GAME_VERSION);
 
 #if FO_IOS
         MainEntry(nullptr);
@@ -175,21 +171,21 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         emscripten_set_main_loop_arg(MainEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
-        while (!Data->Settings->Quit) {
+        while (!App->Settings.Quit) {
             MainEntry(nullptr);
         }
 
 #else
-        while (!Data->Settings->Quit) {
+        while (!App->Settings.Quit) {
             const auto start_loop = Timer::RealtimeTick();
 
             MainEntry(nullptr);
 
-            if (!Data->Settings->VSync && Data->Settings->FixedFPS != 0) {
-                if (Data->Settings->FixedFPS > 0) {
+            if (!App->Settings.VSync && App->Settings.FixedFPS != 0) {
+                if (App->Settings.FixedFPS > 0) {
                     static auto balance = 0.0;
                     const auto elapsed = Timer::RealtimeTick() - start_loop;
-                    const auto need_elapsed = 1000.0 / static_cast<double>(Data->Settings->FixedFPS);
+                    const auto need_elapsed = 1000.0 / static_cast<double>(App->Settings.FixedFPS);
                     if (need_elapsed > elapsed) {
                         const auto sleep = need_elapsed - elapsed + balance;
                         balance = fmod(sleep, 1.0);
@@ -197,7 +193,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     }
                 }
                 else {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(-Data->Settings->FixedFPS));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(-App->Settings.FixedFPS));
                 }
             }
         }
@@ -210,7 +206,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
         delete Data->Client;
 
-        AppExit(true);
+        ExitApp(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

@@ -33,6 +33,7 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "Server.h"
 #include "Settings.h"
 
@@ -43,26 +44,22 @@ extern "C" int main(int argc, char** argv)
 #endif
 {
     try {
-        InitApp("ServerHeadless");
+        InitApp(argc, argv, "ServerHeadless");
 
-        auto settings = GlobalSettings(argc, argv);
-        auto* server = new FOServer(settings);
+        auto* server = new FOServer(App->Settings);
 
-        while (settings.Quit) {
+        while (!App->Settings.Quit) {
             try {
                 server->MainLoop();
             }
-            catch (const GenericException& ex) {
-                ReportExceptionAndContinue(ex);
-            }
             catch (const std::exception& ex) {
-                ReportExceptionAndExit(ex);
+                ReportExceptionAndContinue(ex);
             }
         }
 
         delete server;
 
-        AppExit(true);
+        ExitApp(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

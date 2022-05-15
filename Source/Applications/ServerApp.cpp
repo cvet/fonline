@@ -33,11 +33,13 @@
 
 #include "Common.h"
 
-#include "AppGui.h"
+#include "Application.h"
+#include "Client.h"
 #include "Server.h"
 #include "Settings.h"
 
 #include "SDL_main.h"
+#include "imgui.h"
 
 enum class ServerStateType
 {
@@ -49,10 +51,12 @@ enum class ServerStateType
 
 struct ServerAppData
 {
-    GlobalSettings* Settings {};
     FOServer* Server {};
     std::thread ServerThread {};
     std::atomic<ServerStateType> ServerState {};
+    vector<FOClient*> Clients {};
+    std::atomic_bool ClientSpawning {};
+    std::atomic<FOClient*> SpawnedClient {};
 };
 GLOBAL_DATA(ServerAppData, Data);
 
@@ -63,7 +67,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 #endif
 {
     try {
-        InitApp("Server");
+        InitApp(argc, argv, "Server");
 
         string log_buffer;
         SetLogCallback("ServerApp", [&log_buffer](auto str) {
@@ -73,17 +77,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
         });
 
-        Data->Settings = new GlobalSettings(argc, argv);
-
-#if FO_HAVE_DIRECT_3D
-        const auto use_dx = !Data->Settings->ForceOpenGL;
-#else
-        const auto use_dx = false;
-#endif
-        if (!AppGui::Init(GetAppName(), use_dx, false, false)) {
-            AppExit(false);
-        }
-
         // Async server start/stop
         const auto start_server = [] {
             RUNTIME_ASSERT(Data->ServerState == ServerStateType::Stopped);
@@ -91,7 +84,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             std::thread([] {
                 try {
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
-                    Data->Server = new FOServer(*Data->Settings);
+                    Data->Server = new FOServer(App->Settings);
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
                     Data->ServerState = ServerStateType::Started;
                 }
@@ -111,28 +104,24 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
                     Data->Server->Shutdown();
                     delete Data->Server;
-                    Data->Server = nullptr;
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
-                    Data->ServerState = ServerStateType::Stopped;
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
-                    Data->Server = nullptr;
-                    Data->ServerState = ServerStateType::Stopped;
                 }
+                Data->Server = nullptr;
+                Data->ServerState = ServerStateType::Stopped;
             }).detach();
         };
 
         // Autostart
-        if (!Data->Settings->NoStart) {
+        if (!App->Settings.NoStart) {
             start_server();
         }
 
         // Gui loop
         while (true) {
-            if (!AppGui::BeginFrame()) {
-                Data->Settings->Quit = true;
-            }
+            App->BeginFrame();
 
             const auto& io = ImGui::GetIO();
 
@@ -142,9 +131,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
                 const auto imgui_progress_btn = [&control_btn_size](const char* title) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                    ImGui::BeginDisabled();
                     ImGui::Button(title, control_btn_size);
-                    ImGui::PopItemFlag();
+                    ImGui::EndDisabled();
                     ImGui::PopStyleColor();
                 };
 
@@ -165,6 +154,29 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     imgui_progress_btn("Stopping server...");
                 }
 
+                if (!Data->ClientSpawning) {
+                    if (Data->SpawnedClient != nullptr) {
+                        Data->Clients.emplace_back(Data->SpawnedClient);
+                        Data->SpawnedClient = nullptr;
+                    }
+
+                    if (ImGui::Button("Spawn client", control_btn_size)) {
+                        Data->ClientSpawning = true;
+                        std::thread([] {
+                            try {
+                                Data->SpawnedClient = new FOClient(App->Settings);
+                            }
+                            catch (const std::exception& ex) {
+                                ReportExceptionAndContinue(ex);
+                            }
+                            Data->ClientSpawning = false;
+                        }).detach();
+                    }
+                }
+                else {
+                    imgui_progress_btn("Client spawning...");
+                }
+
                 if (ImGui::Button("Create dump", control_btn_size)) {
                     CreateDumpMessage("ManualDump", "Manual");
                 }
@@ -174,9 +186,9 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     DiskFileSystem::OpenFile(log_name, true).Write(log_buffer);
                 }
 
-                if (!Data->Settings->Quit) {
+                if (!App->Settings.Quit) {
                     if (ImGui::Button("Quit", control_btn_size)) {
-                        Data->Settings->Quit = true;
+                        App->Settings.Quit = true;
                     }
                 }
                 else {
@@ -208,9 +220,15 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
             ImGui::End();
 
-            AppGui::EndFrame();
+            // Clients loop
+            for (auto* client : Data->Clients) {
+                client->MainLoop();
+            }
 
-            if (Data->Settings->Quit) {
+            App->EndFrame();
+
+            // Process quit
+            if (App->Settings.Quit) {
                 if (Data->ServerState == ServerStateType::Started) {
                     stop_server();
                 }
@@ -220,7 +238,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
         }
 
-        AppExit(true);
+        ExitApp(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

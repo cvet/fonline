@@ -31,8 +31,12 @@
 // SOFTWARE.
 //
 
-#if !FO_TESTING
+#ifndef FO_TESTING
 #error FO_TESTING is not defined
+#endif
+
+#if !FO_TESTING
+#error FO_TESTING is not enabled
 #endif
 
 #define CATCH_CONFIG_RUNNER
@@ -41,13 +45,12 @@
 #include "Common.h"
 
 #include "GenericUtils.h"
-#include "Log.h"
 
 #include "SDL_main.h"
 
 extern "C" int main(int argc, char** argv) // Handled by SDL
 {
-    InitApp("Testing");
+    InitApp(argc, argv, "Testing");
     GenericUtils::SetRandomSeed(42);
     return Catch::Session().run(argc, argv);
 }
