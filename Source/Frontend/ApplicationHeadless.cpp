@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: move different renderers to separate modules
-
 #include "Application.h"
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
@@ -169,8 +167,6 @@ void Application::AppWindow::AlwaysOnTop(bool enable)
 
 auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
-    NON_CONST_METHOD_HINT();
-
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
     UNUSED_VARIABLE(linear_filtered);

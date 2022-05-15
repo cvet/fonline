@@ -266,9 +266,6 @@ public:
         void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
         void EnableScissor(int x, int y, uint w, uint h);
         void DisableScissor();
-
-    private:
-        int _nonConstHelper {};
     };
 
     struct AppInput

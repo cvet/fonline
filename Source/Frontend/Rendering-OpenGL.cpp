@@ -171,7 +171,7 @@ public:
         return result;
     }
 
-    void UpdateTextureRegion(const IRect& r, const uint* data)
+    void UpdateTextureRegion(const IRect& r, const uint* data) override
     {
         GL(glBindTexture(GL_TEXTURE_2D, TexId));
         GL(glTexSubImage2D(GL_TEXTURE_2D, 0, r.Left, r.Top, r.Width(), r.Height(), GL_RGBA, GL_UNSIGNED_BYTE, data));

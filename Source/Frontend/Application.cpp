@@ -46,8 +46,6 @@
 #include "SDL_video.h"
 #include "imgui.h"
 
-#include <SDL_opengl.h>
-
 #if SDL_VERSION_ATLEAST(2, 0, 4) && !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && !(defined(__APPLE__) && TARGET_OS_IOS) && !defined(__amigaos4__)
 #define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE 1
 #else
