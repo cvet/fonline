@@ -46,12 +46,6 @@
 #include "SDL_video.h"
 #include "imgui.h"
 
-#if SDL_VERSION_ATLEAST(2, 0, 4) && !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && !(defined(__APPLE__) && TARGET_OS_IOS) && !defined(__amigaos4__)
-#define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE 1
-#else
-#define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE 0
-#endif
-
 Application* App;
 
 #if FO_WINDOWS && FO_DEBUG
@@ -510,11 +504,9 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
     io.WantSaveIniSettings = false;
     io.IniFilename = nullptr;
 
-#if SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE
     const string sdl_backend = SDL_GetCurrentVideoDriver();
     vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
     _mouseCanUseGlobalState = std::any_of(global_mouse_whitelist.begin(), global_mouse_whitelist.end(), [&sdl_backend](auto& entry) { return _str(sdl_backend).startsWith(entry); });
-#endif
 
     if (Settings.ImGuiColorStyle == "Dark") {
         ImGui::StyleColorsDark();
@@ -543,7 +535,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
     MouseCursors[ImGuiMouseCursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
 
-#ifdef FO_WINDOWS
+#if FO_WINDOWS
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version);
     if (SDL_GetWindowWMInfo(SdlWindow, &info) != 0) {
@@ -822,7 +814,7 @@ void Application::BeginFrame()
         _pendingMouseLeaveFrame = 0;
     }
 
-#if SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE
+#if FO_WINDOWS || FO_LINUX || FO_MAC
     SDL_CaptureMouse(_mouseButtonsDown != 0 ? SDL_TRUE : SDL_FALSE);
     const bool is_app_focused = SdlWindow == SDL_GetKeyboardFocus();
 #else
