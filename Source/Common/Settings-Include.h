@@ -163,7 +163,6 @@ VARIABLE_SETTING(bool, ForceGNM, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
 FIXED_SETTING(uint, Animation3dSmoothTime, 150);
 FIXED_SETTING(uint, Animation3dFPS, 30);
-FIXED_SETTING(bool, Enable3dRendering, false);
 VARIABLE_SETTING(bool, VSync, false);
 VARIABLE_SETTING(bool, AlwaysOnTop, false);
 VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);

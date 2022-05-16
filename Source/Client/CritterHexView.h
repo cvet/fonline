@@ -66,14 +66,16 @@ public:
     [[nodiscard]] auto GetAnim2() const -> uint;
     [[nodiscard]] auto IsAnimAvailable(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto IsAnim() const -> bool { return !_animSequence.empty(); }
-    [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
-    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
     [[nodiscard]] auto IsWalkAnim() const -> bool;
     [[nodiscard]] auto GetWalkHexOffsets(uchar dir) const -> tuple<short, short>;
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto GetTextRect() const -> IRect;
     [[nodiscard]] auto GetAttackDist() -> uint;
+#if FO_ENABLE_3D
+    [[nodiscard]] auto IsModel() const -> bool { return _model != nullptr; }
+    [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
+#endif
 
     [[nodiscard]] auto PopLastHex() -> tuple<ushort, ushort>;
 
@@ -82,13 +84,11 @@ public:
     void Init();
     void Finish();
     void FixLastHexes();
-    void RefreshModel();
     void ChangeDir(uchar dir, bool animate);
     void Animate(uint anim1, uint anim2, ItemView* item);
     void AnimateStay();
     void Action(int action, int action_ext, ItemView* item, bool local_call);
     void Process();
-    void DrawStay(IRect r);
     void Move(uchar dir);
     void ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item);
     void ResetOk();
@@ -101,6 +101,9 @@ public:
     void DrawTextOnHead();
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
     void NextAnim(bool erase_front);
+#if FO_ENABLE_3D
+    void RefreshModel();
+#endif
 
     RenderEffect* DrawEffect {};
     bool IsRunning {};
@@ -145,8 +148,6 @@ private:
     int _modelLayers[LAYERS3D_COUNT] {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
-    uchar _staySprDir {};
-    uint _staySprTick {};
     uint _finishingTime {};
     bool _fadingEnable {};
     bool _fadeUp {};
@@ -156,8 +157,6 @@ private:
     uint _tickStartText {};
     uint _tickTextDelay {};
     uint _textOnHeadColor {COLOR_CRITTER_NAME};
-    ModelInstance* _model {};
-    ModelInstance* _modelStay {};
     short _oxExtI {};
     short _oyExtI {};
     float _oxExtF {};
@@ -167,4 +166,7 @@ private:
     uint _offsExtNextTick {};
     string _nameOnHead {};
     vector<tuple<ushort, ushort>> _lastHexes {};
+#if FO_ENABLE_3D
+    ModelInstance* _model {};
+#endif
 };

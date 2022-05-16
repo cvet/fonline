@@ -95,7 +95,7 @@ void ImageBaker::BakeImage(string_view fname_with_opt)
 
 void ImageBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
-    for (const auto& [name, data] : _bakedFiles) {
+    for (auto&& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);
     }
 }
@@ -342,7 +342,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         // Merge many animations in one
         uint frm = 0;
         for (auto& sub_collection : sub_collections) {
-            const auto& [sc, next_x, next_y] = sub_collection;
+            auto&& [sc, next_x, next_y] = sub_collection;
             for (uint j = 0; j < sc.SequenceSize; j++, frm++) {
                 auto& shot = sequence.Frames[frm];
                 shot.NextX = static_cast<short>(sc.Main.OffsX + next_x);

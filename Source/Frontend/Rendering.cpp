@@ -61,14 +61,15 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, string_view defi
     RUNTIME_ASSERT(passes >= 1);
     RUNTIME_ASSERT(passes <= EFFECT_MAX_PASSES);
 
+#if FO_ENABLE_3D
     const auto shadow_pass = fofx.GetInt("Effect", "ShadowPass", -1);
-    RUNTIME_ASSERT(passes <= EFFECT_MAX_PASSES);
     RUNTIME_ASSERT(shadow_pass == -1 || (shadow_pass >= 1 && shadow_pass <= EFFECT_MAX_PASSES));
-
-    _passCount = static_cast<size_t>(passes);
     if (shadow_pass != -1) {
         _isShadow[shadow_pass - 1] = true;
     }
+#endif
+
+    _passCount = static_cast<size_t>(passes);
 
     static auto get_blend_func = [](string_view s) -> BlendFuncType {
 #define CHECK_ENTRY(name) \

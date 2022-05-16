@@ -32,6 +32,9 @@
 //
 
 #include "ModelBaker.h"
+
+#if FO_ENABLE_3D
+
 #include "Application.h"
 #include "GenericUtils.h"
 #include "Log.h"
@@ -253,7 +256,7 @@ void ModelBaker::AutoBakeModels()
 
 void ModelBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
-    for (const auto& [name, data] : _bakedFiles) {
+    for (auto&& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);
     }
 }
@@ -761,4 +764,6 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 {
     throw NotSupportedException("ModelBaker::BakeFile");
 }
+#endif
+
 #endif

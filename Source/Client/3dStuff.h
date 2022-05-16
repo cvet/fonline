@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if FO_ENABLE_3D
+
 #include "3dAnimation.h"
 #include "Application.h"
 #include "EffectManager.h"
@@ -408,3 +410,5 @@ private:
     vector<ModelBone*> _allDrawBones {};
     bool _nonConstHelper {};
 };
+
+#endif

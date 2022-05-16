@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if FO_ENABLE_3D
+
 #include "FileSystem.h"
 
 DECLARE_EXCEPTION(ModelBakerException);
@@ -70,3 +72,5 @@ private:
     fbxsdk::FbxManager* _fbxManager {};
 #endif
 };
+
+#endif

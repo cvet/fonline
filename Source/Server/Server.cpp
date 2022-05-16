@@ -70,7 +70,14 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     }
 
     RegisterData();
-    ScriptSys = (script_sys == nullptr ? new ServerScriptSystem(this, settings) : script_sys);
+
+#if !FO_SINGLEPLAYER
+    RUNTIME_ASSERT(ScriptSys == nullptr);
+    ScriptSys = new ServerScriptSystem(this, settings);
+#else
+    RUNTIME_ASSERT(script_sys != nullptr);
+    ScriptSys = script_sys;
+#endif
 
     GameTime.FrameAdvance();
 

@@ -119,7 +119,11 @@
         throw ScriptException("Critter is not on map");
     }
 
+#if FO_ENABLE_3D
     return hex_cr->IsModel();
+#else
+    return false;
+#endif
 }
 
 ///# ...
@@ -365,6 +369,7 @@
         throw ScriptException("Critter is not on map");
     }
 
+#if FO_ENABLE_3D
     if (!hex_cr->IsModel()) {
         throw ScriptException("Critter is not 3D model");
     }
@@ -377,6 +382,10 @@
                                                               animCallback(hex_cr);
                                                           }
                                                       }});
+
+#else
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
 }
 
 ///# ...
@@ -387,13 +396,14 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Critter_GetBonePos(CritterView* self, hstring boneName, int& boneX, int& boneY)
 {
+#if FO_ENABLE_3D
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
         throw ScriptException("Critter is not on map");
     }
 
     if (!hex_cr->IsModel()) {
-        throw ScriptException("Critter is not 3d");
+        throw ScriptException("Critter is not 3D model");
     }
 
     const auto bone_pos = hex_cr->GetModel()->GetBonePos(boneName);
@@ -404,4 +414,8 @@
     boneX = std::get<0>(*bone_pos) + hex_cr->SprOx;
     boneY = std::get<1>(*bone_pos) + hex_cr->SprOy;
     return true;
+
+#else
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
 }

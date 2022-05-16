@@ -240,7 +240,9 @@ public:
     vector<RenderTarget*> PreDirtyOffscreenSurfaces {};
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
+#if FO_ENABLE_3D
     vector<ModelInstance*> DrawCritterModel {};
+#endif
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
     int DrawCritterModelLayers[LAYERS3D_COUNT] {};

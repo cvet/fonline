@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if FO_ENABLE_3D
+
 class ModelAnimation final
 {
     friend class ModelAnimationController;
@@ -176,3 +178,5 @@ private:
     bool _interpolationDisabled {};
     bool _nonConstHelper {};
 };
+
+#endif

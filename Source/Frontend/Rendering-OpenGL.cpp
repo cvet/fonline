@@ -363,15 +363,15 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
     const_cast<uint&>(Application::AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Check max bones
-    if (settings.Enable3dRendering) {
+#if FO_ENABLE_3D
 #if !FO_OPENGL_ES
-        GLint max_uniform_components;
-        GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
-        if (max_uniform_components < 1024) {
-            WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
-        }
-#endif
+    GLint max_uniform_components;
+    GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
+    if (max_uniform_components < 1024) {
+        WriteLog("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
+#endif
+#endif
 
     GL(glViewport(0, 0, settings.ScreenWidth, settings.ScreenHeight));
 }
@@ -965,6 +965,7 @@ void OpenGL_Effect::DrawPrimitive(RenderPrimitiveType prim, const Vertex2DVec& v
 
 static void EnableVertAtribs(EffectUsage usage)
 {
+#if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         GL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Position))));
         GL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Normal))));
@@ -977,29 +978,34 @@ static void EnableVertAtribs(EffectUsage usage)
         for (uint i = 0; i <= 7; i++) {
             GL(glEnableVertexAttribArray(i));
         }
+
+        return;
     }
-    else {
-        GL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, X))));
-        GL(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Diffuse))));
-        GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TU))));
-        GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TUEgg))));
-        for (uint i = 0; i <= 3; i++) {
-            GL(glEnableVertexAttribArray(i));
-        }
+#endif
+
+    GL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, X))));
+    GL(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Diffuse))));
+    GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TU))));
+    GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TUEgg))));
+    for (uint i = 0; i <= 3; i++) {
+        GL(glEnableVertexAttribArray(i));
     }
 }
 
 static void DisableVertAtribs(EffectUsage usage)
 {
+#if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         for (uint i = 0; i <= 7; i++) {
             GL(glDisableVertexAttribArray(i));
         }
+
+        return;
     }
-    else {
-        for (uint i = 0; i <= 3; i++) {
-            GL(glDisableVertexAttribArray(i));
-        }
+#endif
+
+    for (uint i = 0; i <= 3; i++) {
+        GL(glDisableVertexAttribArray(i));
     }
 }
 
@@ -1034,6 +1040,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         // Fill vertex buffer
         GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
 
+#if FO_ENABLE_3D
         if (Usage == EffectUsage::Model) {
             RUNTIME_ASSERT(dbuf->Vertices2D.empty());
             GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices3D.size() * sizeof(Vertex3D), dbuf->Vertices3D.data(), buf_type));
@@ -1042,12 +1049,17 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             RUNTIME_ASSERT(dbuf->Vertices3D.empty());
             GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices2D.size() * sizeof(Vertex2D), dbuf->Vertices2D.data(), buf_type));
         }
+#else
+        GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices2D.size() * sizeof(Vertex2D), dbuf->Vertices2D.data(), buf_type));
+#endif
 
         // Auto generate indices
         auto& indices = dbuf->Indices;
         switch (Usage) {
-        case EffectUsage::ImGui:
-        case EffectUsage::Model: {
+#if FO_ENABLE_3D
+        case EffectUsage::Model:
+#endif
+        case EffectUsage::ImGui: {
             // Nothing, indices generated manually
         } break;
         case EffectUsage::Font:
@@ -1124,6 +1136,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 #endif
     }
 
+#if FO_ENABLE_3D
     if (Usage == EffectUsage::Model) {
         GL(glEnable(GL_DEPTH_TEST));
 
@@ -1131,6 +1144,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             GL(glEnable(GL_CULL_FACE));
         }
     }
+#endif
 
     if (opengl_dbuf->VertexArrObj != 0u) {
         GL(glBindVertexArray(opengl_dbuf->VertexArrObj));
@@ -1217,6 +1231,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         DisableVertAtribs(Usage);
     }
 
+#if FO_ENABLE_3D
     if (Usage == EffectUsage::Model) {
         GL(glDisable(GL_DEPTH_TEST));
 
@@ -1224,6 +1239,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             GL(glDisable(GL_CULL_FACE));
         }
     }
+#endif
 
     if (Usage == EffectUsage::Primitive) {
 #if !FO_OPENGL_ES

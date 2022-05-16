@@ -80,8 +80,10 @@ struct EffectCollection
     RenderEffect* FlushLightDefault {};
     RenderEffect* FlushFog {};
     RenderEffect* FlushFogDefault {};
+#if FO_ENABLE_3D
     RenderEffect* Skinned3d {};
     RenderEffect* Skinned3dDefault {};
+#endif
 };
 
 class EffectManager final
@@ -98,7 +100,6 @@ public:
 
     void LoadMinimalEffects();
     void LoadDefaultEffects();
-    void Load3dEffects();
     void UpdateEffects(const GameTimer& game_time);
 
     EffectCollection Effects {};

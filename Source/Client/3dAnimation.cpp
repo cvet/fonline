@@ -32,6 +32,9 @@
 //
 
 #include "3dAnimation.h"
+
+#if FO_ENABLE_3D
+
 #include "GenericUtils.h"
 
 void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
@@ -432,3 +435,5 @@ void ModelAnimationController::Interpolate(vec3& v1, const vec3& v2, float facto
         v1 = v2;
     }
 }
+
+#endif

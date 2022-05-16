@@ -351,7 +351,6 @@ Please follow these instructions to understand how to use this engine by design:
 * StringUtils: make isNumber const
 * Application: recognize tablet mode for Windows 10
 * Application: fix workaround for strange behaviour of button focus
-* ApplicationHeadless: move different renderers to separate modules
 * ApplicationHeadless: implement effect CanBatch
 * Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
 * Rendering-OpenGL: map all framebuffer ext functions

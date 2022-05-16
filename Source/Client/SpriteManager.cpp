@@ -205,41 +205,13 @@ void SpriteManager::SetAlwaysOnTop(bool enable)
     App->Window.AlwaysOnTop(enable);
 }
 
-void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver)
-{
-    RUNTIME_ASSERT(!_modelMngr);
-
-    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
-        PushAtlasType(AtlasType::MeshTextures);
-        auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
-        PopAtlasType();
-
-        if (anim != nullptr) {
-            const auto* si = GetSpriteInfo(anim->Ind[0]);
-            mesh_tex->MainTex = si->Atlas->MainTex;
-            mesh_tex->AtlasOffsetData[0] = si->SprRect[0];
-            mesh_tex->AtlasOffsetData[1] = si->SprRect[1];
-            mesh_tex->AtlasOffsetData[2] = si->SprRect[2] - si->SprRect[0];
-            mesh_tex->AtlasOffsetData[3] = si->SprRect[3] - si->SprRect[1];
-            DestroyAnyFrames(anim);
-        }
-    });
-}
-
-void SpriteManager::Preload3dModel(string_view model_name)
-{
-    NON_CONST_METHOD_HINT();
-    RUNTIME_ASSERT(_modelMngr);
-
-    _modelMngr->PreloadModel(model_name);
-}
-
 void SpriteManager::BeginScene(uint clear_color)
 {
     if (_rtMain != nullptr) {
         PushRenderTarget(_rtMain);
     }
 
+#if FO_ENABLE_3D
     // Render 3d animations
     if (!_autoRedrawModel.empty()) {
         for (auto* model : _autoRedrawModel) {
@@ -248,6 +220,7 @@ void SpriteManager::BeginScene(uint clear_color)
             }
         }
     }
+#endif
 
     // Clear window
     if (clear_color != 0u) {
@@ -483,6 +456,8 @@ void SpriteManager::RefreshScissor()
 
 void SpriteManager::EnableScissor()
 {
+    NON_CONST_METHOD_HINT();
+
     if (!_scissorStack.empty() && !_rtStack.empty() && _rtStack.back() == _rtMain) {
         const auto x = _scissorRect.Left;
         const auto y = static_cast<int>(_rtStack.back()->MainTex->Height) - _scissorRect.Bottom;
@@ -494,6 +469,8 @@ void SpriteManager::EnableScissor()
 
 void SpriteManager::DisableScissor()
 {
+    NON_CONST_METHOD_HINT();
+
     if (!_scissorStack.empty() && !_rtStack.empty() && _rtStack.back() == _rtMain) {
         App->Render.DisableScissor();
     }
@@ -642,9 +619,11 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
             for (auto& it_ : _sprData) {
                 const auto* si = it_;
                 if (si != nullptr && si->Atlas == atlas.get()) {
+#if FO_ENABLE_3D
                     if (si->Model != nullptr) {
                         si->Model->SprId = 0;
                     }
+#endif
 
                     delete si;
                     it_ = nullptr;
@@ -793,7 +772,11 @@ auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy, bool /*frm_
 
     AnyFrames* result;
     if (ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj") {
+#if FO_ENABLE_3D
         result = Load3dAnimation(fname);
+#else
+        throw NotEnabled3DException("Can't load animation, 3D submodule not enabled", fname);
+#endif
     }
     else {
         result = Load2dAnimation(fname);
@@ -866,6 +849,36 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFr
 
     // Load fresh
     return LoadAnimation(fname, true, false);
+}
+
+#if FO_ENABLE_3D
+void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver)
+{
+    RUNTIME_ASSERT(!_modelMngr);
+
+    _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
+        PushAtlasType(AtlasType::MeshTextures);
+        auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
+        PopAtlasType();
+
+        if (anim != nullptr) {
+            const auto* si = GetSpriteInfo(anim->Ind[0]);
+            mesh_tex->MainTex = si->Atlas->MainTex;
+            mesh_tex->AtlasOffsetData[0] = si->SprRect[0];
+            mesh_tex->AtlasOffsetData[1] = si->SprRect[1];
+            mesh_tex->AtlasOffsetData[2] = si->SprRect[2] - si->SprRect[0];
+            mesh_tex->AtlasOffsetData[3] = si->SprRect[3] - si->SprRect[1];
+            DestroyAnyFrames(anim);
+        }
+    });
+}
+
+void SpriteManager::Preload3dModel(string_view model_name)
+{
+    NON_CONST_METHOD_HINT();
+    RUNTIME_ASSERT(_modelMngr);
+
+    _modelMngr->PreloadModel(model_name);
 }
 
 auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
@@ -1062,6 +1075,7 @@ void SpriteManager::FreeModel(ModelInstance* model)
 
     delete model;
 }
+#endif
 
 auto SpriteManager::CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*
 {

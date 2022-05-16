@@ -134,23 +134,15 @@ void EffectManager::LoadDefaultEffects()
     LOAD_DEFAULT_EFFECT(Effects.FlushMap, EffectUsage::Flush, "Flush_Map");
     LOAD_DEFAULT_EFFECT(Effects.FlushLight, EffectUsage::Flush, "Flush_Light");
     LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::Flush, "Flush_Fog");
+#if FO_ENABLE_3D
+    LOAD_DEFAULT_EFFECT(Effects.Skinned3d, EffectUsage::Model, "3D_Skinned");
+#endif
 
     if (effect_errors != 0) {
         throw EffectManagerException("Default effects not loaded");
     }
 
     LOAD_DEFAULT_EFFECT(Effects.Contour, EffectUsage::Contour, "Contour_Default");
-}
-
-void EffectManager::Load3dEffects()
-{
-    auto effect_errors = 0;
-
-    LOAD_DEFAULT_EFFECT(Effects.Skinned3d, EffectUsage::Model, "3D_Skinned");
-
-    if (effect_errors != 0) {
-        throw EffectManagerException("Default 3D effects not loaded");
-    }
 }
 
 #undef LOAD_DEFAULT_EFFECT

@@ -45,8 +45,11 @@ struct SDL_Window;
 constexpr int EFFECT_TEXTURES = 8;
 constexpr int EFFECT_SCRIPT_VALUES = 16;
 constexpr int EFFECT_MAX_PASSES = 6;
+
+#if FO_ENABLE_3D
 constexpr int MODEL_MAX_BONES = 54;
 constexpr int BONES_PER_VERTEX = 4;
+#endif
 
 using RenderEffectLoader = std::function<string(string_view)>;
 
@@ -59,7 +62,9 @@ enum class EffectUsage
     Flush,
     Contour,
     Primitive,
+#if FO_ENABLE_3D
     Model,
+#endif
 };
 
 enum class RenderPrimitiveType
@@ -72,16 +77,7 @@ enum class RenderPrimitiveType
     TriangleFan,
 };
 
-enum class BlendEquationType // Default is FuncAdd
-{
-    FuncAdd,
-    FuncSubtract,
-    FuncReverseSubtract,
-    Max,
-    Min,
-};
-
-enum class BlendFuncType // Default is SrcAlpha InvSrcAlpha
+enum class BlendFuncType
 {
     Zero,
     One,
@@ -98,6 +94,15 @@ enum class BlendFuncType // Default is SrcAlpha InvSrcAlpha
     SrcAlphaSaturate,
 };
 
+enum class BlendEquationType
+{
+    FuncAdd,
+    FuncSubtract,
+    FuncReverseSubtract,
+    Max,
+    Min,
+};
+
 struct Vertex2D
 {
     float X, Y;
@@ -108,6 +113,7 @@ struct Vertex2D
 static_assert(std::is_standard_layout_v<Vertex2D>);
 static_assert(sizeof(Vertex2D) == 28);
 
+#if FO_ENABLE_3D
 struct Vertex3D
 {
     vec3 Position;
@@ -121,6 +127,7 @@ struct Vertex3D
 };
 static_assert(std::is_standard_layout_v<Vertex3D>);
 static_assert(sizeof(Vertex3D) == 96);
+#endif
 
 class RenderTexture : public RefCounter
 {
@@ -156,11 +163,13 @@ public:
     const bool IsStatic;
 
     vector<Vertex2D> Vertices2D {};
-    vector<Vertex3D> Vertices3D {};
     vector<ushort> Indices {};
     bool DataChanged {};
-    bool DisableModelCulling {};
     RenderPrimitiveType PrimType {};
+#if FO_ENABLE_3D
+    vector<Vertex3D> Vertices3D {};
+    bool DisableModelCulling {};
+#endif
 
 protected:
     explicit RenderDrawBuffer(bool is_static);
@@ -198,14 +207,6 @@ public:
         float SpriteBorder[4] {}; // vec4
     };
 
-    // Todo: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
-    struct ModelBuffer
-    {
-        float LightColor[4] {}; // vec4
-        float GroundPosition[4] {}; // vec4
-        float WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat44
-    };
-
     struct CustomTexBuffer
     {
         float AtlasOffset[4 * EFFECT_TEXTURES] {}; // vec4
@@ -229,16 +230,28 @@ public:
         float Value[EFFECT_SCRIPT_VALUES] {};
     };
 
+#if FO_ENABLE_3D
+    // Todo: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
+    struct ModelBuffer
+    {
+        float LightColor[4] {}; // vec4
+        float GroundPosition[4] {}; // vec4
+        float WorldMatrices[16 * MODEL_MAX_BONES] {}; // mat44
+    };
+#endif
+
     static_assert(sizeof(ProjBuffer) % 16 == 0 && sizeof(ProjBuffer) == 64);
     static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 16);
     static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 16);
     static_assert(sizeof(MapSpriteBuffer) % 16 == 0 && sizeof(MapSpriteBuffer) == 32);
     static_assert(sizeof(BorderBuffer) % 16 == 0 && sizeof(BorderBuffer) == 16);
-    static_assert(sizeof(ModelBuffer) % 16 == 0 && sizeof(ModelBuffer) == 3488);
     static_assert(sizeof(CustomTexBuffer) % 16 == 0 && sizeof(CustomTexBuffer) == 256);
     static_assert(sizeof(AnimBuffer) % 16 == 0 && sizeof(AnimBuffer) == 16);
     static_assert(sizeof(RandomValueBuffer) % 16 == 0 && sizeof(RandomValueBuffer) == 16);
     static_assert(sizeof(ScriptValueBuffer) % 16 == 0 && sizeof(ScriptValueBuffer) == 64);
+#if FO_ENABLE_3D
+    static_assert(sizeof(ModelBuffer) % 16 == 0 && sizeof(ModelBuffer) == 3488);
+#endif
     // Total size: 4000
     // We must fit to 4096, that value guaranteed by GL_MAX_VERTEX_UNIFORM_COMPONENTS (1024 * sizeof(float))
 
@@ -258,11 +271,13 @@ public:
     optional<TimeBuffer> TimeBuf {};
     optional<MapSpriteBuffer> MapSpriteBuf {};
     optional<BorderBuffer> BorderBuf {};
-    optional<ModelBuffer> ModelBuf {};
     optional<CustomTexBuffer> CustomTexBuf {};
     optional<AnimBuffer> AnimBuf {};
     optional<RandomValueBuffer> RandomValueBuf {};
     optional<ScriptValueBuffer> ScriptValueBuf {};
+#if FO_ENABLE_3D
+    optional<ModelBuffer> ModelBuf {};
+#endif
     RenderTexture* MainTex {};
     RenderTexture* EggTex {};
     RenderTexture* CustomTex[EFFECT_TEXTURES] {};
@@ -278,10 +293,12 @@ protected:
     string _effectDefines {};
     hstring _name {};
     uint _passCount {};
-    bool _isShadow[EFFECT_MAX_PASSES] {};
     BlendFuncType _blendFuncParam1[EFFECT_MAX_PASSES] {};
     BlendFuncType _blendFuncParam2[EFFECT_MAX_PASSES] {};
     BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
+#if FO_ENABLE_3D
+    bool _isShadow[EFFECT_MAX_PASSES] {};
+#endif
 };
 
 class Renderer

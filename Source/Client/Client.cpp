@@ -74,6 +74,12 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     FileSys.AddDataSource("PersistentData");
 #endif
 
+#if !FO_SINGLEPLAYER
+    RUNTIME_ASSERT(ScriptSys == nullptr);
+#else
+    RUNTIME_ASSERT(ScriptSys != nullptr);
+#endif
+
     _fpsTick = GameTime.FrameTick();
 
     const auto [w, h] = SprMngr.GetWindowSize();
@@ -112,17 +118,17 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
     // Init 3d subsystem
-    if (Settings.Enable3dRendering) {
-        SprMngr.Init3dSubsystem(GameTime, *this, *this);
+#if FO_ENABLE_3D
+    SprMngr.Init3dSubsystem(GameTime, *this, *this);
 
-        if (!Preload3dFiles.empty()) {
-            WriteLog("Preload 3d files...");
-            for (const auto& name : Preload3dFiles) {
-                SprMngr.Preload3dModel(name);
-            }
-            WriteLog("Preload 3d files complete");
+    if (!Preload3dFiles.empty()) {
+        WriteLog("Preload 3d files...");
+        for (const auto& name : Preload3dFiles) {
+            SprMngr.Preload3dModel(name);
         }
+        WriteLog("Preload 3d files complete");
     }
+#endif
 
     // Connection handlers
     _conn.AddConnectHandler(std::bind(&FOClient::Net_OnConnect, this, std::placeholders::_1));
@@ -1973,9 +1979,11 @@ void FOClient::Net_OnAllItemsSend()
         return;
     }
 
+#if FO_ENABLE_3D
     if (auto* hex_chosen = dynamic_cast<CritterHexView*>(chosen); hex_chosen != nullptr && hex_chosen->IsModel()) {
         hex_chosen->GetModel()->StartMeshGeneration();
     }
+#endif
 
     OnItemInvAllIn.Fire();
 }
@@ -3147,7 +3155,9 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, const
     UNUSED_VARIABLE(old_value);
 
     auto* cr = dynamic_cast<CritterHexView*>(entity);
+#if FO_ENABLE_3D
     cr->RefreshModel();
+#endif
     cr->Action(ACTION_REFRESH, 0, nullptr, false);
 }
 

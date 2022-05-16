@@ -63,15 +63,17 @@ void ClientScriptSystem::InitMonoScripting()
 
 static void MapperEntry(void*)
 {
-    try {
-        if (Data->Mapper == nullptr) {
 #if FO_WEB
-            // Wait file system synchronization
-            if (EM_ASM_INT(return Module.syncfsDone) != 1) {
-                return;
-            }
+    // Wait file system synchronization
+    if (EM_ASM_INT(return Module.syncfsDone) != 1) {
+        return;
+    }
 #endif
 
+    try {
+        App->BeginFrame();
+
+        if (Data->Mapper == nullptr) {
             try {
                 Data->Mapper = new FOMapper(App->Settings);
             }
@@ -80,20 +82,12 @@ static void MapperEntry(void*)
             }
         }
 
-        try {
-            App->BeginFrame();
-            Data->Mapper->MapperMainLoop();
-            App->EndFrame();
-        }
-        catch (const GenericException& ex) {
-            ReportExceptionAndContinue(ex);
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndExit(ex);
-        }
+        Data->Mapper->MapperMainLoop();
+
+        App->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        ReportExceptionAndContinue(ex);
     }
 }
 

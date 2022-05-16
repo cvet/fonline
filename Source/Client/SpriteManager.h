@@ -181,11 +181,13 @@ struct SpriteInfo
     short OffsX {};
     short OffsY {};
     RenderEffect* DrawEffect {};
-    bool UsedForModel {};
-    ModelInstance* Model {};
     uchar* Data {};
     AtlasType DataAtlasType {};
     bool DataAtlasOneImage {};
+#if FO_ENABLE_3D
+    bool UsedForModel {};
+    ModelInstance* Model {};
+#endif
 };
 
 struct AnyFrames
@@ -254,11 +256,12 @@ public:
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
     [[nodiscard]] auto CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> bool;
     [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
-
     [[nodiscard]] auto LoadAnimation(string_view fname, bool use_dummy, bool frm_anim_pix) -> AnyFrames*;
     [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*;
-    [[nodiscard]] auto LoadModel(string_view fname, bool auto_redraw) -> ModelInstance*;
     [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
+#if FO_ENABLE_3D
+    [[nodiscard]] auto LoadModel(string_view fname, bool auto_redraw) -> ModelInstance*;
+#endif
 
     void SetWindowSize(int w, int h);
     void SetWindowPosition(int x, int y);
@@ -268,8 +271,6 @@ public:
     auto DisableFullscreen() -> bool;
     void BlinkWindow();
     void SetAlwaysOnTop(bool enable);
-    void Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
-    void Preload3dModel(string_view model_name);
     void BeginScene(uint clear_color);
     void EndScene();
     void OnResolutionChanged();
@@ -284,8 +285,6 @@ public:
     void FlushAccumulatedAtlasData();
     void DestroyAtlases(AtlasType atlas_type);
     void DumpAtlases();
-    void RefreshModelSprite(ModelInstance* model);
-    void FreeModel(ModelInstance* model);
     void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
     void DestroyAnyFrames(AnyFrames* anim);
     void SetSpritesColor(uint c) { _baseColor = c; }
@@ -300,11 +299,19 @@ public:
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
     void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender, int prerender_ox, int prerender_oy);
     void DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim, const float* zoom, FPoint* offset, RenderEffect* custom_effect);
-    void Draw3d(int x, int y, ModelInstance* model, uint color);
+
     void DrawContours();
     void InitializeEgg(string_view egg_name);
     void SetEgg(ushort hx, ushort hy, Sprite* spr);
     void EggNotValid() { _eggValid = false; }
+
+#if FO_ENABLE_3D
+    void Init3dSubsystem(GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver);
+    void Preload3dModel(string_view model_name);
+    void RefreshModelSprite(ModelInstance* model);
+    void FreeModel(ModelInstance* model);
+    void Draw3d(int x, int y, ModelInstance* model, uint color);
+#endif
 
     AnyFrames* DummyAnimation {};
 
@@ -313,19 +320,22 @@ private:
     [[nodiscard]] auto FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
     [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data) -> uint;
     [[nodiscard]] auto Load2dAnimation(string_view fname) -> AnyFrames*;
+#if FO_ENABLE_3D
     [[nodiscard]] auto Load3dAnimation(string_view fname) -> AnyFrames*;
+#endif
 
     void FillAtlas(SpriteInfo* si);
-    void RenderModel(ModelInstance* model);
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
     void CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr);
+#if FO_ENABLE_3D
+    void RenderModel(ModelInstance* model);
+#endif
 
     RenderSettings& _settings;
     FileSystem& _fileSys;
     EffectManager& _effectMngr;
-    unique_ptr<ModelManager> _modelMngr {};
     mat44 _projectionMatrixCm {};
     RenderTarget* _rtMain {};
     RenderTarget* _rtContours {};
@@ -338,7 +348,6 @@ private:
     bool _accumulatorActive {};
     vector<SpriteInfo*> _accumulatorSprInfo {};
     vector<SpriteInfo*> _sprData {};
-    vector<ModelInstance*> _autoRedrawModel {};
     MemoryPool<sizeof(AnyFrames), ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
     vector<DipData> _dipQueue {};
     RenderDrawBuffer* _spritesDrawBuf {};
@@ -363,6 +372,10 @@ private:
     float _eggAtlasWidth {};
     float _eggAtlasHeight {};
     bool _nonConstHelper {};
+#if FO_ENABLE_3D
+    unique_ptr<ModelManager> _modelMngr {};
+    vector<ModelInstance*> _autoRedrawModel {};
+#endif
 
     // Todo: move fonts stuff to separate module
 public:

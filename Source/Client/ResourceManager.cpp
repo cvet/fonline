@@ -540,6 +540,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
+#if FO_ENABLE_3D
 auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = nullptr */) -> ModelInstance*
 {
     if (_critterModels.count(model_name) != 0u) {
@@ -563,17 +564,22 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
     model->StartMeshGeneration();
     return model;
 }
+#endif
 
 auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = NULL */) -> uint
 {
     const string ext = _str().getFileExtension();
     if (ext != "fo3d") {
-        auto* anim = GetCritterAnim(model_name, anim1, anim2, dir);
+        const auto* anim = GetCritterAnim(model_name, anim1, anim2, dir);
         return anim != nullptr ? anim->GetSprId(0) : 0u;
     }
     else {
+#if FO_ENABLE_3D
         const auto* model = GetCritterModel(model_name, anim1, anim2, dir, layers3d);
         return model != nullptr ? model->SprId : 0u;
+#else
+        throw NotEnabled3DException("3D submodule not enabled");
+#endif
     }
 }
 

@@ -1094,9 +1094,11 @@
         client->EffectMngr.Effects.Rain = reload_effect(client->EffectMngr.Effects.RainDefault);
     }
 
+#if FO_ENABLE_3D
     if (eff_type & static_cast<uint>(EffectType::SkinnedMesh)) {
         client->EffectMngr.Effects.Skinned3d = reload_effect(client->EffectMngr.Effects.Skinned3dDefault);
     }
+#endif
 
     if (eff_type & static_cast<uint>(EffectType::Interface)) {
         client->EffectMngr.Effects.Iface = reload_effect(client->EffectMngr.Effects.IfaceDefault);
@@ -1727,6 +1729,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_DrawCritter3d(FOClient* client, uint instance, hstring modelName, uint anim1, uint anim2, const vector<int>& layers, const vector<float>& position, uint color)
 {
+#if FO_ENABLE_3D
     // x y
     // rx ry rz
     // sx sy sz
@@ -1798,6 +1801,10 @@
     if (count > 13) {
         client->SprMngr.PopScissor();
     }
+
+#else
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
 }
 
 ///# ...

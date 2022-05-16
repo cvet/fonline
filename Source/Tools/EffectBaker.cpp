@@ -234,7 +234,11 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
     const auto shader_common_content = fofx.GetAppContent("ShaderCommon");
     const auto shader_version = fofx.GetInt("Effect", "Version", 310);
     const auto shader_version_str = _str("#version {} es\n", shader_version).str();
+#if FO_ENABLE_3D
     const auto shader_defines = _str("precision mediump float;\n#define MAX_BONES {}\n", MODEL_MAX_BONES).str();
+#else
+    const auto shader_defines = _str("precision mediump float;\n").str();
+#endif
     const auto shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
 
     for (auto pass = 1; pass <= passes; pass++) {
@@ -414,7 +418,7 @@ void EffectBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
     std::lock_guard locker(_bakedFilesLocker);
 #endif
 
-    for (const auto& [name, data] : _bakedFiles) {
+    for (auto&& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);
     }
 }

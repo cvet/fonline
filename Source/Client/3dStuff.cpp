@@ -32,6 +32,9 @@
 //
 
 #include "3dStuff.h"
+
+#if FO_ENABLE_3D
+
 #include "GenericUtils.h"
 #include "Log.h"
 #include "Settings.h"
@@ -128,9 +131,6 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
 
 ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}, _gameTime {game_time}, _nameResolver {name_resolver}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
 {
-    // Check effects
-    _effectMngr.Load3dEffects();
-
     // Smoothing
     _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
     if (_moveTransitionTime < 0.001f) {
@@ -2422,3 +2422,5 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
     }
     return effect;
 }
+
+#endif

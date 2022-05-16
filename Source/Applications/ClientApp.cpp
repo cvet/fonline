@@ -90,14 +90,16 @@ void ServerScriptSystem::InitMonoScripting()
 
 static void MainEntry(void*)
 {
+#if FO_WEB
+    // Wait file system synchronization
+    if (EM_ASM_INT(return Module.syncfsDone) != 1) {
+        return;
+    }
+#endif
+
     if (Data->Client == nullptr) {
         try {
-#if FO_WEB
-            // Wait file system synchronization
-            if (EM_ASM_INT(return Module.syncfsDone) != 1) {
-                return;
-            }
-#endif
+            App->BeginFrame();
 
 #if !FO_SINGLEPLAYER
             // Synchronize files
@@ -107,6 +109,7 @@ static void MainEntry(void*)
                 }
 
                 if (!Data->FilesSync->Process()) {
+                    App->EndFrame();
                     return;
                 }
 
@@ -118,15 +121,17 @@ static void MainEntry(void*)
 
             // Create game module
 #if FO_SINGLEPLAYER
-            auto* script_sys = new SingleScriptSystem(*Data->Settings);
-            Data->Server = new FOServer(*Data->Settings, script_sys);
-            Data->Client = new FOClient(*Data->Settings, script_sys);
+            auto* script_sys = new SingleScriptSystem(App->Settings);
+            Data->Server = new FOServer(App->Settings, script_sys);
+            Data->Client = new FOClient(App->Settings, script_sys);
 #else
             Data->Client = new FOClient(App->Settings);
 #endif
 #if FO_SINGLEPLAYER
             Data->Server->ConnectClient(Data->Client);
 #endif
+
+            App->EndFrame();
         }
         catch (const std::exception& ex) {
             ReportExceptionAndExit(ex);
@@ -136,14 +141,16 @@ static void MainEntry(void*)
     // Main loop
     try {
         App->BeginFrame();
+
 #if FO_SINGLEPLAYER
         Data->Server->MainLoop();
 #endif
         Data->Client->MainLoop();
+
         App->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        ReportExceptionAndContinue(ex);
     }
 }
 

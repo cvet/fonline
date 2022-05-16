@@ -121,9 +121,14 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     if (MainTex != other->MainTex) {
         return false;
     }
-    if (BorderBuf || ModelBuf || AnimBuf || RandomValueBuf) {
+    if (BorderBuf || AnimBuf || RandomValueBuf) {
         return false;
     }
+#if FO_ENABLE_3D
+    if (ModelBuf) {
+        return false;
+    }
+#endif
     if (CustomTexBuf && std::mismatch(std::begin(CustomTex), std::end(CustomTex), std::begin(other->CustomTex)).first != std::end(CustomTex)) {
         return false;
     }

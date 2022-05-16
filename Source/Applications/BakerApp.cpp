@@ -166,14 +166,16 @@ int main(int argc, char** argv)
                         map<string, vector<uchar>> baked_files;
                         {
                             ImageBaker image_baker(App->Settings, resources);
-                            ModelBaker model_baker(resources);
                             EffectBaker effect_baker(resources);
                             image_baker.AutoBakeImages();
-                            model_baker.AutoBakeModels();
                             effect_baker.AutoBakeEffects();
                             image_baker.FillBakedFiles(baked_files);
-                            model_baker.FillBakedFiles(baked_files);
                             effect_baker.FillBakedFiles(baked_files);
+#if FO_ENABLE_3D
+                            ModelBaker model_baker(resources);
+                            model_baker.AutoBakeModels();
+                            model_baker.FillBakedFiles(baked_files);
+#endif
                         }
 
                         // Raw copy
