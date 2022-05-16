@@ -17,7 +17,7 @@
 #include "imgui_impl_metal.h"
 #if TARGET_OS_OSX
 #include "imgui_impl_osx.h"
-@interface AppViewController : NSViewController
+@interface AppViewController : NSViewController<NSWindowDelegate>
 @end
 #else
 @interface AppViewController : UIViewController
@@ -100,27 +100,8 @@
     self.mtkView.delegate = self;
 
 #if TARGET_OS_OSX
-    // Add a tracking area in order to receive mouse events whenever the mouse is within the bounds of our view
-    NSTrackingArea *trackingArea = [[NSTrackingArea alloc] initWithRect:NSZeroRect
-                                                                options:NSTrackingMouseMoved | NSTrackingInVisibleRect | NSTrackingActiveAlways
-                                                                  owner:self
-                                                               userInfo:nil];
-    [self.view addTrackingArea:trackingArea];
-
-    // If we want to receive key events, we either need to be in the responder chain of the key view,
-    // or else we can install a local monitor. The consequence of this heavy-handed approach is that
-    // we receive events for all controls, not just Dear ImGui widgets. If we had native controls in our
-    // window, we'd want to be much more careful than just ingesting the complete event stream.
-    // To match the behavior of other backends, we pass every event down to the OS.
-    NSEventMask eventMask = NSEventMaskKeyDown | NSEventMaskKeyUp | NSEventMaskFlagsChanged;
-    [NSEvent addLocalMonitorForEventsMatchingMask:eventMask handler:^NSEvent * _Nullable(NSEvent *event)
-    {
-        ImGui_ImplOSX_HandleEvent(event, self.view);
-        return event;
-    }];
-
-    ImGui_ImplOSX_Init();
-
+    ImGui_ImplOSX_Init(self.view);
+    [NSApp activateIgnoringOtherApps:YES];
 #endif
 }
 
@@ -136,8 +117,6 @@
     CGFloat framebufferScale = view.window.screen.scale ?: UIScreen.mainScreen.scale;
 #endif
     io.DisplayFramebufferScale = ImVec2(framebufferScale, framebufferScale);
-
-    io.DeltaTime = 1 / float(view.preferredFramesPerSecond ?: 60);
 
     id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
 
@@ -223,21 +202,18 @@
 
 #if TARGET_OS_OSX
 
-// Forward Mouse/Keyboard events to Dear ImGui OSX backend.
-// Other events are registered via addLocalMonitorForEventsMatchingMask()
--(void)mouseDown:(NSEvent *)event           { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)rightMouseDown:(NSEvent *)event      { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)otherMouseDown:(NSEvent *)event      { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)mouseUp:(NSEvent *)event             { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)rightMouseUp:(NSEvent *)event        { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)otherMouseUp:(NSEvent *)event        { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)mouseMoved:(NSEvent *)event          { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)mouseDragged:(NSEvent *)event        { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)rightMouseMoved:(NSEvent *)event     { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)rightMouseDragged:(NSEvent *)event   { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)otherMouseMoved:(NSEvent *)event     { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)otherMouseDragged:(NSEvent *)event   { ImGui_ImplOSX_HandleEvent(event, self.view); }
--(void)scrollWheel:(NSEvent *)event         { ImGui_ImplOSX_HandleEvent(event, self.view); }
+- (void)viewWillAppear
+{
+    [super viewWillAppear];
+    self.view.window.delegate = self;
+}
+
+- (void)windowWillClose:(NSNotification *)notification
+{
+    ImGui_ImplMetal_Shutdown();
+    ImGui_ImplOSX_Shutdown();
+    ImGui::DestroyContext();
+}
 
 #else
 
@@ -251,7 +227,7 @@
     UITouch *anyTouch = event.allTouches.anyObject;
     CGPoint touchLocation = [anyTouch locationInView:self.view];
     ImGuiIO &io = ImGui::GetIO();
-    io.MousePos = ImVec2(touchLocation.x, touchLocation.y);
+    io.AddMousePosEvent(touchLocation.x, touchLocation.y);
 
     BOOL hasActiveTouch = NO;
     for (UITouch *touch in event.allTouches)
@@ -262,7 +238,7 @@
             break;
         }
     }
-    io.MouseDown[0] = hasActiveTouch;
+    io.AddMouseButtonEvent(0, hasActiveTouch);
 }
 
 -(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event      { [self updateIOWithTouchEvent:event]; }
@@ -301,9 +277,8 @@
                                                     backing:NSBackingStoreBuffered
                                                       defer:NO];
         self.window.contentViewController = rootViewController;
-        [self.window orderFront:self];
         [self.window center];
-        [self.window becomeKeyWindow];
+        [self.window makeKeyAndOrderFront:self];
     }
     return self;
 }

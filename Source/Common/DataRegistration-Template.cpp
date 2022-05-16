@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -184,6 +184,8 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
 
     const auto info_size = reader.Read<uint>();
     for (const auto i : xrange(info_size)) {
+        UNUSED_VARIABLE(i);
+
         const auto name_size = reader.Read<uint>();
         auto name = string();
         name.resize(name_size);
@@ -194,6 +196,8 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
         data.reserve(data_size);
 
         for (const auto e : xrange(data_size)) {
+            UNUSED_VARIABLE(e);
+
             const auto entry_size = reader.Read<uint>();
             auto entry = string();
             entry.resize(entry_size);
@@ -204,6 +208,8 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
 
         restoreInfo.emplace(std::move(name), std::move(data));
     }
+
+    reader.VerifyEnd();
 
     // Restore enums
     for (const auto& info : restoreInfo["Enums"]) {
@@ -253,6 +259,25 @@ void FOMapper::RegisterData()
     PropertyRegistrator* registrator;
 
     ///@ CodeGen MapperRegister
+
+    FinalizeDataRegistration();
+}
+
+#elif BAKER_REGISTRATION
+
+class BakerEngine : public FOEngineBase
+{
+public:
+    BakerEngine() : FOEngineBase(true) { }
+    void RegisterData();
+};
+
+void BakerEngine::RegisterData()
+{
+    unordered_map<string, PropertyRegistrator*> registrators;
+    PropertyRegistrator* registrator;
+
+    ///@ CodeGen BakerRegister
 
     FinalizeDataRegistration();
 }

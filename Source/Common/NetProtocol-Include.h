@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@
 /* Base                                                                 */
 /************************************************************************/
 
-#define MAKE_NETMSG_HEADER(number) ((uint)((0x5EAD << 16) | ((number) << 8) | (0xAA)))
+#define MAKE_NETMSG_HEADER(number) (static_cast<uint>(number))
 constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 
 // Special message
@@ -573,7 +573,7 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_GAME_INFO MAKE_NETMSG_HEADER(117)
-#define NETMSG_GAME_INFO_SIZE (sizeof(uint) + sizeof(ushort) * 8 + sizeof(int) + sizeof(uchar) + sizeof(bool) + sizeof(int) * 4 + sizeof(uchar) * 12)
+#define NETMSG_GAME_INFO_SIZE (sizeof(uint) + sizeof(ushort) * 8 + sizeof(int) * 4 + sizeof(uchar) * 12)
 // ////////////////////////////////////////////////////////////////////////
 // Generic game info
 // ushort GameOpt.YearStart;
@@ -584,10 +584,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ushort GameOpt.Minute;
 // ushort GameOpt.Second;
 // ushort GameOpt.TimeMultiplier;
-// int time
-// uchar rain
-// bool turn_based
-// bool no_log_out
 // int day_time[4]
 // uchar day_color[12]
 // ////////////////////////////////////////////////////////////////////////
@@ -600,11 +596,11 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 //
 // uint mag_len
-// hash map_pid
+// uint loc_id
+// uint map_id
 // hash loc_pid
+// hash map_pid
 // uchar map_index_in_loc
-// int map_time
-// uchar map_rain
 // uint ver_tiles
 // uint ver_walls
 // uint ver_scen

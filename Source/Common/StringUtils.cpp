@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -487,14 +487,14 @@ auto _str::eraseFileExtension() -> _str&
 
 auto _str::combinePath(string_view path) -> _str&
 {
-    extractDir();
+    if (!path.empty()) {
+        if (!_s.empty() && _s.back() != '/' && path.front() != '/') {
+            _s += "/";
+        }
 
-    if (!_s.empty() && _s.back() != '/' && (path.empty() || path.front() != '/')) {
-        _s += "/";
+        _s += path;
+        formatPath();
     }
-
-    _s += path;
-    formatPath();
 
     return *this;
 }

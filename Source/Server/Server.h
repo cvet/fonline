@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: improve ban system
+
 #pragma once
 
 #include "Common.h"
@@ -41,6 +43,7 @@
 #include "DataBase.h"
 #include "DeferredCalls.h"
 #include "Dialogs.h"
+#include "DiskFileSystem.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
 #include "FileSystem.h"
@@ -92,7 +95,7 @@ public:
 
     void Shutdown();
     void MainLoop();
-    void DrawGui();
+    void DrawGui(string_view server_name);
 
     void SetGameTime(int multiplier, int year, int month, int day, int hour, int minute, int second);
     auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
@@ -178,7 +181,6 @@ public:
 
     ServerSettings& Settings;
     GeometryHelper GeomHelper;
-    FileManager FileMngr;
     ScriptSystem* ScriptSys;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
@@ -214,29 +216,6 @@ private:
         uint LagsCount {};
     };
 
-    struct ServerGui
-    {
-        ImVec2 DefaultSize {ImVec2(200, 200)};
-        ImVec2 MemoryPos {ImVec2(0, 0)};
-        ImVec2 PlayersPos {ImVec2(20, 20)};
-        ImVec2 LocMapsPos {ImVec2(40, 40)};
-        ImVec2 ItemsPos {ImVec2(60, 60)};
-        ImVec2 ProfilerPos {ImVec2(80, 80)};
-        ImVec2 InfoPos {ImVec2(100, 100)};
-        ImVec2 ControlPanelPos {ImVec2(120, 120)};
-        ImVec2 ButtonSize {ImVec2(200, 30)};
-        ImVec2 LogPos {ImVec2(140, 140)};
-        ImVec2 LogSize {ImVec2(800, 600)};
-        string WholeLog {};
-        string Stats {};
-    };
-
-    struct UpdateFile
-    {
-        uint Size {};
-        uchar* Data {};
-    };
-
     struct TextListener
     {
         ScriptFunc<void, Critter*, string> Func {};
@@ -245,38 +224,12 @@ private:
         uint64 Parameter {};
     };
 
-    struct ClientBanned
-    {
-        DateTimeStamp BeginTime {};
-        DateTimeStamp EndTime {};
-        uint ClientIp {};
-        string ClientName {};
-        string BannedBy {};
-        string BanInfo {};
-    };
-
-    static constexpr auto BANS_FNAME_ACTIVE = "Save/Bans/Active.txt";
-    static constexpr auto BANS_FNAME_EXPIRED = "Save/Bans/Expired.txt";
-
     void RegisterData();
 
-    auto InitLangPacks(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksDialogs(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksLocations(vector<LanguagePack>& lang_packs) -> bool;
-    auto InitLangPacksItems(vector<LanguagePack>& lang_packs) -> bool;
-    void GenerateUpdateFiles(bool first_generation, vector<string>* resource_names);
-
-    void EntitySetValue(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSendGlobalValue(Entity* entity, const Property* prop);
-    void OnSendPlayerValue(Entity* entity, const Property* prop);
-    void OnSendCritterValue(Entity* entity, const Property* prop);
-    void OnSendMapValue(Entity* entity, const Property* prop);
-    void OnSendLocationValue(Entity* entity, const Property* prop);
-
-    void Send_MapData(Player* player, const ProtoMap* pmap, const StaticMap* static_map, bool send_tiles, bool send_scenery);
-    auto Act_Move(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
-    auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
-    auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
+    void OnNewConnection(NetConnection* net_connection);
+    void ProcessFreeConnection(ClientConnection* connection);
+    void ProcessPlayerConnection(Player* player);
+    void ProcessConnection(ClientConnection* connection);
 
     void Process_Ping(ClientConnection* connection);
     void Process_Update(ClientConnection* connection);
@@ -295,52 +248,44 @@ private:
     void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
 
-    void OnSendItemValue(Entity* entity, const Property* prop);
-    void OnSetItemCount(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemChangeView(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemRecacheHex(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemBlockLines(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemIsGeck(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemIsRadio(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
+    void OnSaveEntityValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+
+    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+
+    void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
 
     void ProcessCritter(Critter* cr);
+    void ProcessCritterMoving(Critter* cr);
+    auto MoveCritter(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
 
-    auto Dialog_Compile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
-    auto Dialog_CheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool;
-    auto Dialog_UseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint;
-
-    void OnNewConnection(NetConnection* net_connection);
-
-    void ProcessFreeConnection(ClientConnection* connection);
-    void ProcessPlayerConnection(Player* player);
-    void ProcessConnection(ClientConnection* connection);
-
-    void ProcessMove(Critter* cr);
+    auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
+    auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;
+    auto DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool;
+    auto DialogCheckDemand(Critter* npc, Critter* cl, DialogAnswer& answer, bool recheck) -> bool;
+    auto DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) -> uint;
 
     void LogToClients(string_view str);
     void DispatchLogToClients();
 
-    auto GetBanByName(string_view name) -> ClientBanned*;
-    auto GetBanByIp(uint ip) -> ClientBanned*;
-    auto GetBanTime(ClientBanned& ban) -> uint;
-    auto GetBanLexems(ClientBanned& ban) -> string;
-    void ProcessBans();
-    void SaveBan(ClientBanned& ban, bool expired);
-    void SaveBans();
-    void LoadBans();
-
     std::atomic_bool _started {};
     vector<uchar> _restoreInfoBin {};
     ServerStats _stats {};
-    ServerGui _gui {};
     map<uint, uint> _regIp {};
-    std::mutex _regIpLocker {};
-    vector<LanguagePack> _langPacks {};
     uint _fpsTick {};
     uint _fpsCounter {};
-    vector<UpdateFile> _updateFiles {};
-    vector<uchar> _updateFilesList {};
+    vector<vector<uchar>> _updateFilesData {};
+    vector<uchar> _updateFilesDesc {};
     vector<TextListener> _textListeners {};
     vector<Player*> _logClients {};
     vector<string> _logLines {};
@@ -349,9 +294,6 @@ private:
     NetServerBase* _webSocketsServer {};
     vector<ClientConnection*> _freeConnections {};
     mutable std::mutex _freeConnectionsLocker {};
-    vector<ClientBanned> _banned {};
-    std::mutex _bannedLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
-    bool _nonConstHelper {};
 };

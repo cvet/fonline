@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,12 +32,10 @@
 //
 
 #include "FileSystem.h"
-
 #include "Log.h"
-#include "Settings.h"
 #include "StringUtils.h"
 
-FileHeader::FileHeader(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {name}, _filePath {path}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
+FileHeader::FileHeader(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds) : _isLoaded {true}, _fileName {name}, _filePath {path}, _fileSize {size}, _writeTime {write_time}, _dataSource {ds}
 {
 }
 
@@ -62,7 +60,7 @@ auto FileHeader::GetPath() const -> string_view
     return _filePath;
 }
 
-auto FileHeader::GetFsize() const -> uint
+auto FileHeader::GetSize() const -> size_t
 {
     RUNTIME_ASSERT(_isLoaded);
 
@@ -76,21 +74,32 @@ auto FileHeader::GetWriteTime() const -> uint64
     return _writeTime;
 }
 
-File::File(string_view name, string_view path, uint size, uint64 write_time, DataSource* ds, uchar* buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {buf}
-{
-    RUNTIME_ASSERT(_fileBuf[_fileSize] == 0);
-}
-
-File::File(uchar* buf, uint size) : FileHeader("", "", size, 0, nullptr), _fileBuf {buf}
+File::File(string_view name, string_view path, size_t size, uint64 write_time, DataSource* ds, unique_del_ptr<uchar>&& buf) : FileHeader(name, path, size, write_time, ds), _fileBuf {std::move(buf)}
 {
 }
 
-auto File::GetCStr() const -> const char*
+File::File(const vector<uchar>& buf) : FileHeader("", "", static_cast<uint>(buf.size()), 0, nullptr), _fileBuf(new uchar[buf.size()])
+{
+    memcpy(_fileBuf.get(), buf.data(), buf.size());
+}
+
+auto File::GetStr() const -> string
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
 
-    return reinterpret_cast<const char*>(_fileBuf.get());
+    return {reinterpret_cast<const char*>(_fileBuf.get()), _fileSize};
+}
+
+auto File::GetData() const -> vector<uchar>
+{
+    RUNTIME_ASSERT(_isLoaded);
+    RUNTIME_ASSERT(_fileBuf);
+
+    vector<uchar> result;
+    result.resize(_fileSize);
+    std::memcpy(result.data(), _fileBuf.get(), _fileSize);
+    return result;
 }
 
 auto File::GetBuf() const -> const uchar*
@@ -109,7 +118,7 @@ auto File::GetCurBuf() const -> const uchar*
     return _fileBuf.get() + _curPos;
 }
 
-auto File::GetCurPos() const -> uint
+auto File::GetCurPos() const -> size_t
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
@@ -117,15 +126,7 @@ auto File::GetCurPos() const -> uint
     return _curPos;
 }
 
-auto File::ReleaseBuffer() -> uchar*
-{
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    return _fileBuf.release();
-}
-
-void File::SetCurPos(uint pos)
+void File::SetCurPos(size_t pos)
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
@@ -134,7 +135,7 @@ void File::SetCurPos(uint pos)
     _curPos = pos;
 }
 
-void File::GoForward(uint offs)
+void File::GoForward(size_t offs)
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
@@ -143,7 +144,7 @@ void File::GoForward(uint offs)
     _curPos += offs;
 }
 
-void File::GoBack(uint offs)
+void File::GoBack(size_t offs)
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
@@ -152,16 +153,21 @@ void File::GoBack(uint offs)
     _curPos -= offs;
 }
 
-auto File::FindFragment(const uchar* fragment, uint fragment_len, uint begin_offs) -> bool
+auto File::FindFragment(string_view fragment) -> bool
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
+    RUNTIME_ASSERT(!fragment.empty());
 
-    for (auto i = begin_offs; i < _fileSize - fragment_len; i++) {
-        if (_fileBuf[i] == fragment[0]) {
+    if (_curPos + fragment.size() > _fileSize) {
+        return false;
+    }
+
+    for (auto i = _curPos; i < _fileSize - fragment.size(); i++) {
+        if (_fileBuf.get()[i] == static_cast<uchar>(fragment[0])) {
             auto not_match = false;
-            for (uint j = 1; j < fragment_len; j++) {
-                if (_fileBuf[static_cast<size_t>(i) + j] != fragment[j]) {
+            for (uint j = 1; j < fragment.size(); j++) {
+                if (_fileBuf.get()[static_cast<size_t>(i) + j] != static_cast<uchar>(fragment[j])) {
                     not_match = true;
                     break;
                 }
@@ -173,44 +179,11 @@ auto File::FindFragment(const uchar* fragment, uint fragment_len, uint begin_off
             }
         }
     }
+
     return false;
 }
 
-auto File::GetNonEmptyLine() -> string
-{
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    while (_curPos < _fileSize) {
-        const auto start = _curPos;
-        uint len = 0;
-        while (_curPos < _fileSize) {
-            if (_fileBuf[_curPos] == '\r' || _fileBuf[_curPos] == '\n' || _fileBuf[_curPos] == '#' || _fileBuf[_curPos] == ';') {
-                for (; _curPos < _fileSize; _curPos++) {
-                    if (_fileBuf[_curPos] == '\n') {
-                        break;
-                    }
-                }
-                _curPos++;
-                break;
-            }
-
-            _curPos++;
-            len++;
-        }
-
-        if (len != 0u) {
-            string line = _str(string(reinterpret_cast<const char*>(&_fileBuf[start]), len)).trim();
-            if (!line.empty()) {
-                return line;
-            }
-        }
-    }
-
-    return "";
-}
-
-void File::CopyMem(void* ptr, uint size)
+void File::CopyData(void* ptr, size_t size)
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(_fileBuf);
@@ -239,7 +212,7 @@ auto File::GetStrNT() -> string
         len++;
     }
 
-    string str(reinterpret_cast<const char*>(&_fileBuf[_curPos]), len);
+    string str(reinterpret_cast<const char*>(&_fileBuf.get()[_curPos]), len);
     _curPos += len + 1;
     return str;
 }
@@ -253,7 +226,7 @@ auto File::GetUChar() -> uchar
         throw FileSystemExeption("Read file error", _fileName);
     }
 
-    return _fileBuf[_curPos++];
+    return _fileBuf.get()[_curPos++];
 }
 
 // ReSharper disable once CppInconsistentNaming
@@ -268,8 +241,8 @@ auto File::GetBEUShort() -> ushort
 
     ushort res = 0;
     auto* cres = reinterpret_cast<uchar*>(&res);
-    cres[1] = _fileBuf[_curPos++];
-    cres[0] = _fileBuf[_curPos++];
+    cres[1] = _fileBuf.get()[_curPos++];
+    cres[0] = _fileBuf.get()[_curPos++];
     return res;
 }
 
@@ -285,8 +258,8 @@ auto File::GetLEUShort() -> ushort
 
     ushort res = 0;
     auto* cres = reinterpret_cast<uchar*>(&res);
-    cres[0] = _fileBuf[_curPos++];
-    cres[1] = _fileBuf[_curPos++];
+    cres[0] = _fileBuf.get()[_curPos++];
+    cres[1] = _fileBuf.get()[_curPos++];
     return res;
 }
 
@@ -303,7 +276,7 @@ auto File::GetBEUInt() -> uint
     uint res = 0;
     auto* cres = reinterpret_cast<uchar*>(&res);
     for (auto i = 3; i >= 0; i--) {
-        cres[i] = _fileBuf[_curPos++];
+        cres[i] = _fileBuf.get()[_curPos++];
     }
     return res;
 }
@@ -321,160 +294,12 @@ auto File::GetLEUInt() -> uint
     uint res = 0;
     auto* cres = reinterpret_cast<uchar*>(&res);
     for (auto i = 0; i <= 3; i++) {
-        cres[i] = _fileBuf[_curPos++];
+        cres[i] = _fileBuf.get()[_curPos++];
     }
     return res;
 }
 
-// ReSharper disable once CppInconsistentNaming
-auto File::GetLE3UChar() -> uint
-{
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(uchar) * 3 > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
-    }
-
-    uint res = 0;
-    auto* cres = reinterpret_cast<uchar*>(&res);
-    for (auto i = 0; i <= 2; i++) {
-        cres[i] = _fileBuf[_curPos++];
-    }
-    return res;
-}
-
-// ReSharper disable once CppInconsistentNaming
-auto File::GetBEFloat() -> float
-{
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(float) > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
-    }
-
-    auto res = NAN;
-    auto* cres = reinterpret_cast<uchar*>(&res);
-    for (auto i = 3; i >= 0; i--) {
-        cres[i] = _fileBuf[_curPos++];
-    }
-    return res;
-}
-
-// ReSharper disable once CppInconsistentNaming
-auto File::GetLEFloat() -> float
-{
-    RUNTIME_ASSERT(_isLoaded);
-    RUNTIME_ASSERT(_fileBuf);
-
-    if (_curPos + sizeof(float) > _fileSize) {
-        throw FileSystemExeption("Read file error", _fileName);
-    }
-
-    auto res = NAN;
-    auto* cres = reinterpret_cast<uchar*>(&res);
-    for (auto i = 0; i <= 3; i++) {
-        cres[i] = _fileBuf[_curPos++];
-    }
-    return res;
-}
-
-auto OutputBuffer::GetOutBuf() const -> const uchar*
-{
-    RUNTIME_ASSERT(!_dataBuf.empty());
-
-    return &_dataBuf[0];
-}
-
-auto OutputBuffer::GetOutBufLen() const -> uint
-{
-    RUNTIME_ASSERT(!_dataBuf.empty());
-
-    return static_cast<uint>(_dataBuf.size());
-}
-
-void OutputBuffer::SetData(const void* data, uint len)
-{
-    if (len == 0u) {
-        return;
-    }
-
-    _dataWriter.WritePtr(data, len);
-}
-
-void OutputBuffer::SetStr(string_view str)
-{
-    SetData(str.data(), static_cast<uint>(str.length()));
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetStrNT(string_view str)
-{
-    SetData(str.data(), static_cast<uint>(str.length()) + 1);
-}
-
-void OutputBuffer::SetUChar(uchar data)
-{
-    _dataWriter.Write(data);
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetBEUShort(ushort data)
-{
-    auto* pdata = reinterpret_cast<uchar*>(&data);
-    _dataWriter.Write(pdata[1]);
-    _dataWriter.Write(pdata[0]);
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetLEUShort(ushort data)
-{
-    auto* pdata = reinterpret_cast<uchar*>(&data);
-    _dataWriter.Write(pdata[0]);
-    _dataWriter.Write(pdata[1]);
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetBEUInt(uint data)
-{
-    auto* pdata = reinterpret_cast<uchar*>(&data);
-    _dataWriter.Write(pdata[3]);
-    _dataWriter.Write(pdata[2]);
-    _dataWriter.Write(pdata[1]);
-    _dataWriter.Write(pdata[0]);
-}
-
-// ReSharper disable once CppInconsistentNaming
-void OutputBuffer::SetLEUInt(uint data)
-{
-    auto* pdata = reinterpret_cast<uchar*>(&data);
-    _dataWriter.Write(pdata[0]);
-    _dataWriter.Write(pdata[1]);
-    _dataWriter.Write(pdata[2]);
-    _dataWriter.Write(pdata[3]);
-}
-
-void OutputBuffer::Clear()
-{
-    _dataBuf.clear();
-}
-
-OutputFile::OutputFile(DiskFile file) : _diskFile {std::move(file)}
-{
-    RUNTIME_ASSERT(_diskFile);
-}
-
-void OutputFile::Save()
-{
-    if (GetOutBufLen() > 0u) {
-        const auto save_ok = _diskFile.Write(GetOutBuf(), GetOutBufLen());
-        RUNTIME_ASSERT(save_ok);
-        Clear();
-    }
-}
-
-FileCollection::FileCollection(string_view path, vector<FileHeader> files) : _filterPath {path}, _allFiles {std::move(files)}
+FileCollection::FileCollection(vector<FileHeader> files) : _allFiles {std::move(files)}
 {
 }
 
@@ -490,11 +315,6 @@ void FileCollection::ResetCounter()
     _curFileIndex = -1;
 }
 
-auto FileCollection::GetPath() const -> string_view
-{
-    return _filterPath;
-}
-
 auto FileCollection::GetCurFile() const -> File
 {
     RUNTIME_ASSERT(_curFileIndex >= 0);
@@ -503,9 +323,9 @@ auto FileCollection::GetCurFile() const -> File
     const auto& fh = _allFiles[_curFileIndex];
     auto fs = fh._fileSize;
     auto wt = fh._writeTime;
-    auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+    auto&& buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
     RUNTIME_ASSERT(buf);
-    return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
+    return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, std::move(buf)};
 }
 
 auto FileCollection::GetCurFileHeader() const -> FileHeader
@@ -514,61 +334,89 @@ auto FileCollection::GetCurFileHeader() const -> FileHeader
     RUNTIME_ASSERT(_curFileIndex < static_cast<int>(_allFiles.size()));
 
     const auto& fh = _allFiles[_curFileIndex];
-    return FileHeader(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource);
+    return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource};
 }
 
 auto FileCollection::FindFileByName(string_view name) const -> File
 {
-    for (const auto& fh : _allFiles) {
-        if (fh._fileName == name) {
-            auto fs = fh._fileSize;
-            auto wt = fh._writeTime;
-            auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
-            RUNTIME_ASSERT(buf);
-            return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
+    if (_allFiles.empty()) {
+        return {};
+    }
+
+    if (_nameToIndex.empty()) {
+        size_t index = 0u;
+        for (const auto& fh : _allFiles) {
+            _nameToIndex.emplace(fh._fileName, index);
+            ++index;
         }
     }
-    return File();
+
+    if (const auto it = _nameToIndex.find(string(name)); it != _nameToIndex.end()) {
+        const auto& fh = _allFiles[it->second];
+        auto fs = fh._fileSize;
+        auto wt = fh._writeTime;
+        auto&& buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+        RUNTIME_ASSERT(buf);
+        return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, std::move(buf)};
+    }
+
+    return {};
 }
 
-auto FileCollection::FindFileByPath(string_view name) const -> File
+auto FileCollection::FindFileByPath(string_view path) const -> File
 {
-    for (const auto& fh : _allFiles) {
-        if (fh._filePath == name) {
-            auto fs = fh._fileSize;
-            auto wt = fh._writeTime;
-            auto* buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
-            RUNTIME_ASSERT(buf);
-            return File(fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, buf);
+    if (_allFiles.empty()) {
+        return {};
+    }
+
+    if (_pathToIndex.empty()) {
+        size_t index = 0u;
+        for (const auto& fh : _allFiles) {
+            _pathToIndex.emplace(fh._filePath, index);
+            ++index;
         }
     }
-    return File();
+
+    if (const auto it = _pathToIndex.find(string(path)); it != _pathToIndex.end()) {
+        const auto& fh = _allFiles[it->second];
+        auto fs = fh._fileSize;
+        auto wt = fh._writeTime;
+        auto&& buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+        RUNTIME_ASSERT(buf);
+        return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, std::move(buf)};
+    }
+
+    return {};
 }
 
-auto FileCollection::GetFilesCount() const -> uint
+auto FileCollection::GetFilesCount() const -> size_t
 {
-    return static_cast<uint>(_allFiles.size());
+    return _allFiles.size();
 }
 
-void FileManager::AddDataSource(string_view path, bool cache_dirs)
+void FileSystem::AddDataSource(string_view path, DataSourceType type)
 {
-    _dataSources.emplace_back(path, cache_dirs);
-    _dataSourceAddedDispatcher(&_dataSources.back());
+    _dataSources.emplace(_dataSources.begin(), path, type);
 }
 
-auto FileManager::FilterFiles(string_view ext) -> FileCollection
+auto FileSystem::FilterFiles(string_view ext) -> FileCollection
 {
     return FilterFiles(ext, "", true);
 }
 
-auto FileManager::FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection
+auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subdirs) -> FileCollection
 {
     vector<FileHeader> files;
+    unordered_set<string> processed_files;
 
     for (auto& ds : _dataSources) {
-        for (auto& fname : ds.GetFileNames(dir, include_subdirs, ext)) {
-            uint size = 0;
-            uint64 write_time = 0;
+        for (const auto& fname : ds.GetFileNames(dir, include_subdirs, ext)) {
+            if (!processed_files.insert(fname).second) {
+                continue;
+            }
+
+            size_t size = 0u;
+            uint64 write_time = 0u;
             const auto ok = ds.IsFilePresent(fname, _str(fname).lower(), size, write_time);
             RUNTIME_ASSERT(ok);
             const string name = _str(fname).extractFileName().eraseFileExtension();
@@ -577,10 +425,10 @@ auto FileManager::FilterFiles(string_view ext, string_view dir, bool include_sub
         }
     }
 
-    return FileCollection(dir, std::move(files));
+    return FileCollection({std::move(files)});
 }
 
-auto FileManager::ReadFile(string_view path) -> File
+auto FileSystem::ReadFile(string_view path) -> File
 {
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
@@ -589,17 +437,23 @@ auto FileManager::ReadFile(string_view path) -> File
     const string name = _str(path).extractFileName().eraseFileExtension();
 
     for (auto& ds : _dataSources) {
-        uint file_size = 0;
-        uint64 write_time = 0;
-        auto* buf = ds.OpenFile(path, path_lower, file_size, write_time);
-        if (buf != nullptr) {
-            return File(name, path, file_size, write_time, &ds, buf);
+        size_t size = 0u;
+        uint64 write_time = 0u;
+        if (auto&& buf = ds.OpenFile(path, path_lower, size, write_time)) {
+            return {name, path, size, write_time, &ds, std::move(buf)};
         }
     }
-    return File(name, path, 0, 0, nullptr, nullptr);
+
+    return {};
 }
 
-auto FileManager::ReadFileHeader(string_view path) -> FileHeader
+auto FileSystem::ReadFileText(string_view path) -> string
+{
+    const auto file = ReadFile(path);
+    return file ? file.GetStr() : string();
+}
+
+auto FileSystem::ReadFileHeader(string_view path) -> FileHeader
 {
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
@@ -608,51 +462,21 @@ auto FileManager::ReadFileHeader(string_view path) -> FileHeader
     const string name = _str(path).extractFileName().eraseFileExtension();
 
     for (auto& ds : _dataSources) {
-        uint file_size = 0;
-        uint64 write_time = 0;
-        if (ds.IsFilePresent(path, path_lower, file_size, write_time)) {
-            return FileHeader(name, path, file_size, write_time, &ds);
+        size_t size = 0u;
+        uint64 write_time = 0u;
+        if (ds.IsFilePresent(path, path_lower, size, write_time)) {
+            return {name, path, size, write_time, &ds};
         }
     }
-    return FileHeader(name, path, 0, 0, nullptr);
+
+    return {};
 }
 
-auto FileManager::ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile
+auto FileSystem::ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile
 {
     if (const auto file = ReadFile(path)) {
-        return ConfigFile(file.GetCStr(), name_resolver);
+        return {file.GetStr(), name_resolver};
     }
-    return ConfigFile("", name_resolver);
-}
 
-auto FileManager::WriteFile(string_view path, bool apply) -> OutputFile
-{
-    NON_CONST_METHOD_HINT();
-
-    auto file = DiskFileSystem::OpenFile(_str("{}/{}", _rootPath, path), true); // Todo: handle apply file writing
-    if (!file) {
-        throw FileSystemExeption("Can't open file for writing", path, apply);
-    }
-    return OutputFile(std::move(file));
-}
-
-void FileManager::DeleteFile(string_view path)
-{
-    NON_CONST_METHOD_HINT();
-
-    DiskFileSystem::DeleteFile(_str("{}/{}", _rootPath, path));
-}
-
-void FileManager::DeleteDir(string_view path)
-{
-    NON_CONST_METHOD_HINT();
-
-    DiskFileSystem::DeleteDir(_str("{}/{}", _rootPath, path));
-}
-
-void FileManager::RenameFile(string_view from_path, string_view to_path)
-{
-    NON_CONST_METHOD_HINT();
-
-    DiskFileSystem::RenameFile(_str("{}/{}", _rootPath, from_path), _str("{}/{}", _rootPath, to_path));
+    return {"", name_resolver};
 }

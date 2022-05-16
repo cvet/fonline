@@ -85,7 +85,7 @@ namespace Preprocessor
     {
 public:
         virtual ~OutStream() {}
-        virtual void Write( const char* str, size_t len ) {}
+        virtual void Write( const char*, size_t ) {}
 
         OutStream& operator<<( const std::string& in )
         {

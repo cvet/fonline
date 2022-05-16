@@ -273,7 +273,7 @@ if (ENABLE_MONGOC)
 
    set (CPACK_RESOURCE_FILE_LICENSE "${SOURCE_DIR}/COPYING")
 
-   include (CPack)
+   #! include (CPack)
 
    # Ensure the default behavior: don't ignore RPATH settings.
    set (CMAKE_SKIP_BUILD_RPATH OFF)

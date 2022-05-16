@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,6 +43,10 @@
 #include "Timer.h"
 
 #if FO_HAVE_ASIO
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wreorder-ctor"
+#pragma clang diagnostic ignored "-Wunused-local-typedef"
+#endif
 #define ASIO_STANDALONE 1
 #define _WIN32_WINNT 0x0601
 #include "asio.hpp"
@@ -97,9 +101,9 @@ private:
     void AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket);
 
     ServerNetworkSettings& _settings;
+    asio::io_service _ioService {};
     asio::ip::tcp::acceptor _acceptor;
     ConnectionCallback _connectionCallback {};
-    asio::io_service _ioService {};
     std::thread _runThread {};
 };
 
@@ -428,7 +432,7 @@ private:
 
     void OnFail()
     {
-        WriteLog("Fail: {}.\n", _connection->get_ec().message());
+        WriteLog("Failed: {}", _connection->get_ec().message());
         Disconnect();
     }
 
@@ -496,7 +500,7 @@ void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket
         _connectionCallback(new NetConnectionAsio(_settings, socket));
     }
     else {
-        WriteLog("Accept error: {}.\n", error.message());
+        WriteLog("Accept error: {}", error.message());
         delete socket;
     }
 
@@ -604,7 +608,7 @@ auto NetServerBase::StartTcpServer(ServerNetworkSettings& settings, const Connec
         return new NetTcpServer(settings, callback);
     }
     catch (const std::exception& ex) {
-        WriteLog("Can't start Tcp server: {}.\n", ex.what());
+        WriteLog("Can't start Tcp server: {}", ex.what());
         return nullptr;
     }
 #else
@@ -623,7 +627,7 @@ auto NetServerBase::StartWebSocketsServer(ServerNetworkSettings& settings, const
         return new NetTlsWebSocketsServer(settings, callback);
     }
     catch (const std::exception& ex) {
-        WriteLog("Can't start Web sockets server: {}.\n", ex.what());
+        WriteLog("Can't start Web sockets server: {}", ex.what());
         return nullptr;
     }
 #else

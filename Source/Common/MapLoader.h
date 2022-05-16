@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "Entity.h"
 #include "ProtoManager.h"
 
 DECLARE_EXCEPTION(MapLoaderException);
@@ -57,9 +56,9 @@ class MapLoader final
 public:
     using CrLoadFunc = std::function<bool(uint id, const ProtoCritter* proto, const map<string, string>& kv)>;
     using ItemLoadFunc = std::function<bool(uint id, const ProtoItem* proto, const map<string, string>& kv)>;
-    using TileLoadFunc = std::function<void(MapTile&& tile)>;
+    using TileLoadFunc = std::function<bool(MapTile&& tile)>;
 
     MapLoader() = delete;
 
-    static void Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
+    static void Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
 };

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,8 +48,8 @@ class Hashing final
 public:
     Hashing() = delete;
 
-    [[nodiscard]] static auto MurmurHash2(const uchar* data, uint len) -> uint;
-    [[nodiscard]] static auto MurmurHash2_64(const uchar* data, uint len) -> uint64;
+    [[nodiscard]] static auto MurmurHash2(const void* data, size_t len) -> uint;
+    [[nodiscard]] static auto MurmurHash2_64(const void* data, size_t len) -> uint64;
 };
 
 class Compressor final
@@ -57,10 +57,8 @@ class Compressor final
 public:
     Compressor() = delete;
 
-    [[nodiscard]] static auto Compress(const uchar* data, uint& data_len) -> uchar*;
-    [[nodiscard]] static auto Compress(const vector<uchar>& data) -> vector<uchar>;
-    [[nodiscard]] static auto Uncompress(const uchar* data, uint& data_len, uint mul_approx) -> uchar*;
-    [[nodiscard]] static auto Uncompress(const vector<uchar>& data, uint mul_approx) -> vector<uchar>;
+    [[nodiscard]] static auto Compress(const_span<uchar> data) -> vector<uchar>;
+    [[nodiscard]] static auto Uncompress(const_span<uchar> data, size_t mul_approx) -> vector<uchar>;
 };
 
 class GenericUtils final
@@ -76,8 +74,8 @@ public:
     [[nodiscard]] static auto IntersectCircleLine(int cx, int cy, int radius, int x1, int y1, int x2, int y2) -> bool;
     [[nodiscard]] static auto GetColorDay(const int* day_time, const uchar* colors, int game_time, int* light) -> uint;
     [[nodiscard]] static auto DistSqrt(int x1, int y1, int x2, int y2) -> uint;
-    [[nodiscard]] static auto GetStepsXY(int x1, int y1, int x2, int y2) -> tuple<float, float>;
-    [[nodiscard]] static auto ChangeStepsXY(float sx, float sy, float deq) -> tuple<float, float>;
+    [[nodiscard]] static auto GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float, float>;
+    [[nodiscard]] static auto ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>;
 
     static void SetRandomSeed(int seed);
 };

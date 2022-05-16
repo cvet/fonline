@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,11 +33,9 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
+#include "Application.h"
 #include "Log.h"
 #include "Settings.h"
-#include "StringUtils.h"
-#include "Testing.h"
 
 struct ServerScriptSystem
 {
@@ -63,25 +61,18 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        SetAppName("FOnlineASCompiler");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
+        InitApp(argc, argv, "ASCompiler");
         LogWithoutTimestamp();
-
-        const auto settings = GlobalSettings(argc, argv);
-
-        DiskFileSystem::RemoveBuildHashFile("AngelScript");
 
         auto server_failed = false;
         auto client_failed = false;
         auto mapper_failed = false;
 
-        if (!settings.ASServer.empty()) {
-            WriteLog("    Compile server scripts at {}\n", settings.ASServer);
+        if (!App->Settings.ASServer.empty()) {
+            WriteLog("Compile server scripts at {}", App->Settings.ASServer);
 
             try {
-                ServerScriptSystem().InitAngelScriptScripting(settings.ASServer.c_str());
+                ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer.c_str());
             }
             catch (std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -89,15 +80,14 @@ int main(int argc, char** argv)
                 }
 
                 server_failed = true;
-                WriteLog("\n");
             }
         }
 
-        if (!settings.ASClient.empty()) {
-            WriteLog("    Compile client scripts at {}\n", settings.ASClient);
+        if (!App->Settings.ASClient.empty()) {
+            WriteLog("Compile client scripts at {}", App->Settings.ASClient);
 
             try {
-                ClientScriptSystem().InitAngelScriptScripting(settings.ASClient.c_str());
+                ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
             }
             catch (std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -105,15 +95,14 @@ int main(int argc, char** argv)
                 }
 
                 client_failed = true;
-                WriteLog("\n");
             }
         }
 
-        if (!settings.ASMapper.empty()) {
-            WriteLog("    Compile mapper scripts at {}\n", settings.ASMapper);
+        if (!App->Settings.ASMapper.empty()) {
+            WriteLog("Compile mapper scripts at {}", App->Settings.ASMapper);
 
             try {
-                MapperScriptSystem().InitAngelScriptScripting(settings.ASMapper.c_str());
+                MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper.c_str());
             }
             catch (std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -121,33 +110,27 @@ int main(int argc, char** argv)
                 }
 
                 mapper_failed = true;
-                WriteLog("\n");
             }
         }
 
-        WriteLog("\n");
-
-        if (!settings.ASServer.empty()) {
-            WriteLog("    Server scripts compilation {}!\n", server_failed ? "failed" : "succeeded");
+        if (!App->Settings.ASServer.empty()) {
+            WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
         }
-        if (!settings.ASClient.empty()) {
-            WriteLog("    Client scripts compilation {}!\n", client_failed ? "failed" : "succeeded");
+        if (!App->Settings.ASClient.empty()) {
+            WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
         }
-        if (!settings.ASMapper.empty()) {
-            WriteLog("    Mapper scripts compilation {}!\n", mapper_failed ? "failed" : "succeeded");
+        if (!App->Settings.ASMapper.empty()) {
+            WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
         }
-        if (settings.ASServer.empty() && settings.ASClient.empty() && settings.ASMapper.empty()) {
-            WriteLog("    Nothing to compile!\n");
+        if (App->Settings.ASServer.empty() && App->Settings.ASClient.empty() && App->Settings.ASMapper.empty()) {
+            WriteLog("Nothing to compile!");
         }
-
-        WriteLog("\n");
 
         if (server_failed || client_failed || mapper_failed) {
-            return 1;
+            ExitApp(false);
         }
 
-        DiskFileSystem::CreateBuildHashFile("AngelScript");
-        return 0;
+        ExitApp(true);
     }
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);

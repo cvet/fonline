@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,7 +50,7 @@ MapManager::MapManager(FOServer* engine) : _engine {engine}
 
 void MapManager::LinkMaps()
 {
-    WriteLog("Link maps...\n");
+    WriteLog("Link maps...");
 
     // Link maps to locations
     for (auto* map : GetMaps()) {
@@ -81,22 +81,22 @@ void MapManager::LinkMaps()
         }
     }
 
-    WriteLog("Link maps complete.\n");
+    WriteLog("Link maps complete");
 }
 
-void MapManager::LoadStaticMaps(FileManager& file_mngr)
+void MapManager::LoadStaticMaps(FileSystem& file_sys)
 {
     for (const auto& [pid, proto] : _engine->ProtoMngr.GetProtoMaps()) {
-        LoadStaticMap(file_mngr, proto);
+        LoadStaticMap(file_sys, proto);
     }
 }
 
-void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
+void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
 {
-    StaticMap static_map {};
+    StaticMap static_map;
 
     MapLoader::Load(
-        pmap->GetName(), file_mngr, _engine->ProtoMngr, *_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME),
+        pmap->GetName(), file_sys, _engine->ProtoMngr, *_engine,
         [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
             auto* cr = new Critter(_engine, id, nullptr, proto);
             if (!cr->LoadFromText(kv)) {
@@ -117,18 +117,22 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
             static_map.AllItemsVec.push_back(item);
             return true;
         },
-        [&static_map](MapTile&& tile) { static_map.Tiles.emplace_back(std::move(tile)); });
+        [&static_map](MapTile&& tile) -> bool {
+            static_map.Tiles.emplace_back(tile);
+            return true;
+        });
 
     // Bind scripts
     auto errors = 0;
 
+    // Todo: need attention!
     if (pmap->GetInitScript()) {
         /*hstring func_num =
             scriptSys.BindScriptFuncNumByFuncName(pmap->GetInitScript(), "void %s(Map, bool)");
         if (!func_num)
         {
             WriteLog(
-                "Map '{}', can't bind map function '{}'.\n", pmap->GetName(), pmap->GetInitScript());
+                "Map '{}', can't bind map function '{}'", pmap->GetName(), pmap->GetInitScript());
             errors++;
         }*/
     }
@@ -140,7 +144,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
             hstring func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Critter, bool)");
             if (!func_num)
             {
-                WriteLog("Map '{}', can't bind critter function '{}'.\n", pmap->GetName(), func_name);
+                WriteLog("Map '{}', can't bind critter function '{}'", pmap->GetName(), func_name);
                 errors++;
             }
         }
@@ -151,7 +155,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
             const auto func_name = item->GetInitScript();
             const auto func = _engine->ScriptSys->FindFunc<void, Item*, bool>(func_name);
             if (!func) {
-                WriteLog("Map '{}', can't bind item function '{}'.\n", pmap->GetName(), func_name);
+                WriteLog("Map '{}', can't bind item function '{}'", pmap->GetName(), func_name);
                 errors++;
             }
         }
@@ -167,7 +171,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
             }
 
             if (!scenery_func && !trigger_func) {
-                WriteLog("Map '{}', can't bind static item function '{}'.\n", pmap->GetName(), func_name);
+                WriteLog("Map '{}', can't bind static item function '{}'", pmap->GetName(), func_name);
                 errors++;
             }
 
@@ -188,6 +192,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
 
     uint scenery_count = 0;
     vector<uchar> scenery_data;
+    auto writer = DataWriter(scenery_data);
     for (auto* item : static_map.AllItemsVec) {
         if (!item->IsStatic()) {
             item->AddRef();
@@ -205,7 +210,7 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
         auto hx = item->GetHexX();
         auto hy = item->GetHexY();
         if (hx >= maxhx || hy >= maxhy) {
-            WriteLog("Invalid item '{}' position on map '{}', hex x {}, hex y {}.\n", item->GetName(), pmap->GetName(), hx, hy);
+            WriteLog("Invalid item '{}' position on map '{}', hex x {}, hex y {}", item->GetName(), pmap->GetName(), hx, hy);
             continue;
         }
 
@@ -254,34 +259,28 @@ void MapManager::LoadStaticMap(FileManager& file_mngr, const ProtoMap* pmap)
         // Data for client
         if (!item->GetIsHidden()) {
             scenery_count++;
-            WriteData(scenery_data, item->GetId());
-            WriteData(scenery_data, item->GetProtoId());
+            writer.Write<uint>(item->GetId());
+            writer.Write<uint>(item->GetProtoId().as_uint());
             vector<uchar*>* all_data = nullptr;
             vector<uint>* all_data_sizes = nullptr;
             item->StoreData(false, &all_data, &all_data_sizes);
-            WriteData(scenery_data, static_cast<uint>(all_data->size()));
+            writer.Write<uint>(static_cast<uint>(all_data->size()));
             for (size_t i = 0; i < all_data->size(); i++) {
-                WriteData(scenery_data, all_data_sizes->at(i));
-                WriteDataArr(scenery_data, all_data->at(i), all_data_sizes->at(i));
+                writer.Write<uint>(all_data_sizes->at(i));
+                writer.WritePtr(all_data->at(i), all_data_sizes->at(i));
             }
         }
     }
 
-    static_map.SceneryData.clear();
-    WriteData(static_map.SceneryData, scenery_count);
-    if (!scenery_data.empty()) {
-        WriteDataArr(static_map.SceneryData, &scenery_data[0], scenery_data.size());
-    }
+    auto final_writer = DataWriter(static_map.SceneryData);
+    final_writer.Write<uint>(scenery_count);
+    final_writer.WritePtr(scenery_data.data(), scenery_data.size());
 
     // Generate hashes
     static_map.HashTiles = maxhx * maxhy;
-    if (!static_map.Tiles.empty()) {
-        static_map.HashTiles = Hashing::MurmurHash2(reinterpret_cast<uchar*>(&static_map.Tiles[0]), static_cast<uint>(static_map.Tiles.size()) * sizeof(MapTile));
-    }
+    static_map.HashTiles = Hashing::MurmurHash2(static_map.Tiles.data(), static_map.Tiles.size() * sizeof(MapTile));
     static_map.HashScen = maxhx * maxhy;
-    if (!static_map.SceneryData.empty()) {
-        static_map.HashScen = Hashing::MurmurHash2(static_cast<uchar*>(&static_map.SceneryData[0]), static_cast<uint>(static_map.SceneryData.size()));
-    }
+    static_map.HashScen = Hashing::MurmurHash2(static_map.SceneryData.data(), static_map.SceneryData.size());
 
     // Shrink the vector capacities to fit their contents and reduce memory use
     static_map.SceneryData.shrink_to_fit();
@@ -312,7 +311,7 @@ void MapManager::GenerateMapContent(Map* map)
     for (const auto* base_cr : map->GetStaticMap()->CrittersVec) {
         auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
         if (npc == nullptr) {
-            WriteLog("Create npc '{}' on map '{}' fail, continue generate.\n", base_cr->GetName(), map->GetName());
+            WriteLog("Create npc '{}' on map '{}' fail, continue generate", base_cr->GetName(), map->GetName());
             continue;
         }
 
@@ -333,7 +332,7 @@ void MapManager::GenerateMapContent(Map* map)
         // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         if (item == nullptr) {
-            WriteLog("Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName());
+            WriteLog("Create item '{}' on map '{}' fail, continue generate", base_item->GetName(), map->GetName());
             continue;
         }
         id_map.insert(std::make_pair(base_item->GetId(), item->GetId()));
@@ -344,7 +343,7 @@ void MapManager::GenerateMapContent(Map* map)
         }
 
         if (!map->AddItem(item, item->GetHexX(), item->GetHexY())) {
-            WriteLog("Add item '{}' to map '{}' failure, continue generate.\n", item->GetName(), map->GetName());
+            WriteLog("Add item '{}' to map '{}' failure, continue generate", item->GetName(), map->GetName());
             _engine->ItemMngr.DeleteItem(item);
         }
     }
@@ -371,7 +370,7 @@ void MapManager::GenerateMapContent(Map* map)
         // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         if (item == nullptr) {
-            WriteLog("Create item '{}' on map '{}' fail, continue generate.\n", base_item->GetName(), map->GetName());
+            WriteLog("Create item '{}' on map '{}' fail, continue generate", base_item->GetName(), map->GetName());
             continue;
         }
 
@@ -456,12 +455,12 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
 {
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
     if (proto == nullptr) {
-        WriteLog("Location proto '{}' is not loaded.\n", proto_id);
+        WriteLog("Location proto '{}' is not loaded", proto_id);
         return nullptr;
     }
 
     if (wx >= GM_MAXZONEX * _engine->Settings.GlobalMapZoneLength || wy >= GM_MAXZONEY * _engine->Settings.GlobalMapZoneLength) {
-        WriteLog("Invalid location '{}' coordinates.\n", proto_id);
+        WriteLog("Invalid location '{}' coordinates", proto_id);
         return nullptr;
     }
 
@@ -472,7 +471,7 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
     for (const auto map_pid : loc->GetMapProtos()) {
         auto* map = CreateMap(map_pid, loc);
         if (map == nullptr) {
-            WriteLog("Create map '{}' for location '{}' failed.\n", map_pid, proto_id);
+            WriteLog("Create map '{}' for location '{}' failed", map_pid, proto_id);
             for (const auto* map2 : loc->GetMapsRaw()) {
                 map2->Release();
             }
@@ -509,7 +508,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
     const auto* proto_map = _engine->ProtoMngr.GetProtoMap(proto_id);
     if (proto_map == nullptr) {
-        WriteLog("Proto map '{}' is not loaded.\n", proto_id);
+        WriteLog("Proto map '{}' is not loaded", proto_id);
         return nullptr;
     }
 
@@ -1526,7 +1525,7 @@ void MapManager::PathSetMoveParams(vector<PathStep>& path, bool is_run)
 auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool
 {
     if (cr->LockMapTransfers != 0) {
-        WriteLog("Transfers locked, critter '{}'.\n", cr->GetName());
+        WriteLog("Transfers locked, critter '{}'", cr->GetName());
         return false;
     }
 
@@ -1538,13 +1537,13 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
     // Check location deletion
     auto* loc = map != nullptr ? map->GetLocation() : nullptr;
     if (loc != nullptr && loc->GetToGarbage()) {
-        WriteLog("Transfer to deleted location, critter '{}'.\n", cr->GetName());
+        WriteLog("Transfer to deleted location, critter '{}'", cr->GetName());
         return false;
     }
 
     // Maybe critter already in transfer
     if (cr->LockMapTransfers != 0) {
-        WriteLog("Transfers locked, critter '{}'.\n", cr->GetName());
+        WriteLog("Transfers locked, critter '{}'", cr->GetName());
         return false;
     }
 

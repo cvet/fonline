@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,18 +39,25 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual DummySettings);
-FIXED_SETTING(string, WorkDir, "");
 FIXED_SETTING(string, CommandLine, "");
 FIXED_SETTING(vector<string>, CommandLineArgs);
 VARIABLE_SETTING(bool, Quit, false); // Todo: rework global Quit setting
 FIXED_SETTING(vector<int>, DummyIntVec);
+FIXED_SETTING(string, ImGuiColorStyle, "Light"); // Light, Classic, Dark
+SETTING_GROUP_END();
+
+///@ ExportSettings Common
+SETTING_GROUP(FileSystemSettings, virtual DummySettings);
+FIXED_SETTING(string, ResourcesDir, "Resources");
+FIXED_SETTING(vector<string>, ResourceEntries);
+FIXED_SETTING(string, EmbeddedResources, "$Embedded");
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonGameplaySettings, virtual DummySettings);
 FIXED_SETTING(uint, MinNameLength, 4);
 FIXED_SETTING(uint, MaxNameLength, 12);
-FIXED_SETTING(string, Language, "engl");
+FIXED_SETTING(vector<string>, Languages, "engl");
 FIXED_SETTING(uint, TalkDistance, 3);
 FIXED_SETTING(bool, RunOnCombat, false);
 FIXED_SETTING(bool, RunOnTransfer, false);
@@ -103,7 +110,6 @@ VARIABLE_SETTING(string, ProxyHost, "");
 VARIABLE_SETTING(uint, ProxyPort, 8080);
 VARIABLE_SETTING(string, ProxyUser, "");
 VARIABLE_SETTING(string, ProxyPass, "");
-VARIABLE_SETTING(bool, WaitPing, false);
 VARIABLE_SETTING(uint, Ping, 0);
 VARIABLE_SETTING(bool, DebugNet, false);
 SETTING_GROUP_END();
@@ -149,14 +155,14 @@ SETTING_GROUP_END();
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(string, WindowName, "FOnline");
 VARIABLE_SETTING(bool, WindowCentered, true);
+VARIABLE_SETTING(bool, NullRenderer, false);
 VARIABLE_SETTING(bool, ForceOpenGL, false);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
-VARIABLE_SETTING(bool, ForceGnm, false);
+VARIABLE_SETTING(bool, ForceGNM, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
 FIXED_SETTING(uint, Animation3dSmoothTime, 150);
 FIXED_SETTING(uint, Animation3dFPS, 30);
-FIXED_SETTING(bool, Enable3dRendering, false);
 VARIABLE_SETTING(bool, VSync, false);
 VARIABLE_SETTING(bool, AlwaysOnTop, false);
 VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -178,8 +184,9 @@ FIXED_SETTING(string, ASMapper);
 SETTING_GROUP_END();
 
 SETTING_GROUP(BakerSettings, virtual DummySettings);
-FIXED_SETTING(vector<string>, ContentEntry);
-FIXED_SETTING(vector<string>, ResourcesEntry);
+VARIABLE_SETTING(vector<string>, BakeResourceEntries);
+VARIABLE_SETTING(vector<string>, BakeContentEntries);
+VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv");
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -260,7 +267,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Mapper
 SETTING_GROUP(MapperSettings, virtual DummySettings);
-FIXED_SETTING(string, ServerDir, "");
+FIXED_SETTING(string, MapsDir, "");
 FIXED_SETTING(string, StartMap, "");
 VARIABLE_SETTING(int, StartHexX, -1);
 VARIABLE_SETTING(int, StartHexY, -1);
@@ -268,16 +275,17 @@ VARIABLE_SETTING(bool, SplitTilesCollection, true);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(string, AutoLogin, "");
 FIXED_SETTING(uint, TextDelay, 3000);
+VARIABLE_SETTING(string, Language, "engl");
 VARIABLE_SETTING(bool, WinNotify, true);
 VARIABLE_SETTING(bool, SoundNotify, false);
 VARIABLE_SETTING(bool, HelpInfo, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual ServerNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual FileSystemSettings, virtual ServerNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
 FIXED_SETTING(uint, AdminPanelPort, 0);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(string, DbHistory, "None");

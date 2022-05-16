@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,9 +70,12 @@ void FOEngineBase::AddEnumGroup(string_view name, const type_info& underlying_ty
     RUNTIME_ASSERT(_enums.count(string(name)) == 0u);
 
     unordered_map<int, string> key_values_rev;
-    for (const auto& [key, value] : key_values) {
+    for (auto&& [key, value] : key_values) {
         RUNTIME_ASSERT(key_values_rev.count(value) == 0u);
         key_values_rev[value] = key;
+        const auto full_key = _str("{}::{}", name, key).str();
+        RUNTIME_ASSERT(_enumsFull.count(full_key) == 0u);
+        _enumsFull[full_key] = value;
     }
 
     _enums[string(name)] = std::move(key_values);
@@ -94,49 +97,71 @@ void FOEngineBase::FinalizeDataRegistration()
     _registrationFinalized = true;
 }
 
-auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int
+auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int
 {
     const auto it = _enumsFull.find(string(enum_value_name));
     if (it == _enumsFull.end()) {
-        failed = true;
-        // EnumResolveException
-        return 0;
+        if (failed != nullptr) {
+            WriteLog("Invalid enum full value {}", enum_value_name);
+            *failed = true;
+            return 0;
+        }
+
+        throw EnumResolveException("Invalid enum full value", enum_value_name);
     }
 
     return it->second;
 }
 
-auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int
+auto FOEngineBase::ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed) const -> int
 {
     const auto enum_it = _enums.find(string(enum_name));
     if (enum_it == _enums.end()) {
-        failed = true;
-        // EnumResolveException
-        return 0;
+        if (failed != nullptr) {
+            WriteLog("Invalid enum {}", enum_name);
+            *failed = true;
+            return 0;
+        }
+
+        throw EnumResolveException("Invalid enum", enum_name, value_name);
     }
 
     const auto value_it = enum_it->second.find(string(value_name));
     if (value_it == enum_it->second.end()) {
-        failed = true;
-        // EnumResolveException
-        return 0;
+        if (failed != nullptr) {
+            WriteLog("Can't resolve {} for enum {}", value_name, enum_name);
+            *failed = true;
+            return 0;
+        }
+
+        throw EnumResolveException("Invalid enum value", enum_name, value_name);
     }
 
     return value_it->second;
 }
 
-auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value) const -> string
+auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* failed) const -> string
 {
     const auto enum_it = _enumsRev.find(string(enum_name));
     if (enum_it == _enumsRev.end()) {
-        // EnumResolveException
-        return string();
+        if (failed != nullptr) {
+            WriteLog("Invalid enum {} for resolve value", enum_name);
+            *failed = true;
+            return string();
+        }
+
+        throw EnumResolveException("Invalid enum for resolve value", enum_name, value);
     }
 
     const auto value_it = enum_it->second.find(value);
     if (value_it == enum_it->second.end()) {
-        // EnumResolveException
-        return string();
+        if (failed != nullptr) {
+            WriteLog("Can't resolve value {} for enum {}", value, enum_name);
+            *failed = true;
+            return string();
+        }
+
+        throw EnumResolveException("Can't resolve value for enum", enum_name, value);
     }
 
     return value_it->second;
@@ -144,13 +169,13 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value) const 
 
 auto FOEngineBase::ToHashedString(string_view s) const -> hstring
 {
-    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2(nullptr, 0))>);
+    static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
     if (s.empty()) {
         return hstring();
     }
 
-    const auto hash_value = Hashing::MurmurHash2(reinterpret_cast<const uchar*>(s.data()), static_cast<uint>(s.length()));
+    const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
     RUNTIME_ASSERT(hash_value != 0u);
 
     if (const auto it = _hashStorage.find(hash_value); it != _hashStorage.end()) {
@@ -175,31 +200,29 @@ auto FOEngineBase::ToHashedString(string_view s) const -> hstring
 auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 {
     if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
-        if (failed != nullptr) {
-            *failed = false;
-        }
-
         return hstring(&it->second);
     }
 
     if (failed != nullptr) {
+        WriteLog("Can't resolve hash {}", h);
         *failed = true;
         return hstring();
     }
-    else {
-        throw HashResolveException("Can't resolve hash", h);
-    }
+
+    throw HashResolveException("Can't resolve hash", h);
 }
 
-auto FOEngineBase::ResolveGenericValue(string_view str, bool& failed) -> int
+auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
 {
     if (str.empty()) {
-        failed = true;
         return 0;
     }
 
-    if (str[0] == '@' && str[1] != 0) {
+    if (str[0] == '@') {
         return ToHashedString(str.substr(1)).as_int();
+    }
+    else if (str[0] == 'C' && str.length() >= 9 && str.compare(0, 9, "Content::") == 0) {
+        return ToHashedString(str.substr(str.rfind(':') + 1)).as_int();
     }
     else if (_str(str).isNumber()) {
         return _str(str).toInt();

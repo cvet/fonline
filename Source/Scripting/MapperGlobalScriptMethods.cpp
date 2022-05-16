@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,11 +50,11 @@
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Mapper_Game_AddItem(FOMapper* mapper, hstring pid, ushort hx, ushort hy)
 {
-    if (hx >= mapper->HexMngr.GetWidth() || hy >= mapper->HexMngr.GetHeight()) {
+    if (hx >= mapper->CurMap->GetWidth() || hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr->GetProtoItem(pid);
+    const auto* proto = mapper->ProtoMngr.GetProtoItem(pid);
     if (!proto) {
         throw ScriptException("Invalid item prototype");
     }
@@ -70,11 +70,11 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Mapper_Game_AddCritter(FOMapper* mapper, hstring pid, ushort hx, ushort hy)
 {
-    if (hx >= mapper->HexMngr.GetWidth() || hy >= mapper->HexMngr.GetHeight()) {
+    if (hx >= mapper->CurMap->GetWidth() || hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex args");
     }
 
-    const auto* proto = mapper->ProtoMngr->GetProtoCritter(pid);
+    const auto* proto = mapper->ProtoMngr.GetProtoCritter(pid);
     if (!proto) {
         throw ScriptException("Invalid critter prototype");
     }
@@ -89,7 +89,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Mapper_Game_GetItem(FOMapper* mapper, ushort hx, ushort hy)
 {
-    return mapper->HexMngr.GetItem(hx, hy, hstring());
+    return mapper->CurMap->GetItem(hx, hy, hstring());
 }
 
 ///# ...
@@ -99,11 +99,11 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<ItemView*> Mapper_Game_GetItems(FOMapper* mapper, ushort hx, ushort hy)
 {
-    vector<ItemHexView*> hex_items;
-    mapper->HexMngr.GetItems(hx, hy, hex_items);
+    const auto hex_items = mapper->CurMap->GetItems(hx, hy);
 
     vector<ItemView*> items;
     items.reserve(hex_items.size());
+
     for (auto* item : hex_items) {
         items.push_back(item);
     }
@@ -119,9 +119,8 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Mapper_Game_GetCritter(FOMapper* mapper, ushort hx, ushort hy, CritterFindType findType)
 {
-    vector<CritterView*> critters_;
-    mapper->HexMngr.GetCritters(hx, hy, critters_, findType);
-    return !critters_.empty() ? critters_[0] : nullptr;
+    const auto critters = mapper->CurMap->GetCritters(hx, hy, findType);
+    return !critters.empty() ? critters.front() : nullptr;
 }
 
 ///# ...
@@ -132,9 +131,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<CritterView*> Mapper_Game_GetCritters(FOMapper* mapper, ushort hx, ushort hy, CritterFindType findType)
 {
-    vector<CritterView*> critters;
-    mapper->HexMngr.GetCritters(hx, hy, critters, findType);
-    return critters;
+    return vec_downcast<CritterView*>(mapper->CurMap->GetCritters(hx, hy, findType));
 }
 
 ///# ...
@@ -147,11 +144,11 @@
     auto hx_ = hx;
     auto hy_ = hy;
 
-    if (hx_ >= mapper->HexMngr.GetWidth()) {
-        hx_ = mapper->HexMngr.GetWidth() - 1;
+    if (hx_ >= mapper->CurMap->GetWidth()) {
+        hx_ = mapper->CurMap->GetWidth() - 1;
     }
-    if (hy_ >= mapper->HexMngr.GetHeight()) {
-        hy_ = mapper->HexMngr.GetHeight() - 1;
+    if (hy_ >= mapper->CurMap->GetHeight()) {
+        hy_ = mapper->CurMap->GetHeight() - 1;
     }
 
     mapper->MoveEntity(entity, hx_, hy_);
@@ -244,17 +241,17 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Mapper_Game_GetTilesCount(FOMapper* mapper, ushort hx, ushort hy, bool roof)
 {
-    if (!mapper->HexMngr.IsMapLoaded()) {
+    if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (hx >= mapper->HexMngr.GetWidth()) {
+    if (hx >= mapper->CurMap->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
     }
-    if (hy >= mapper->HexMngr.GetHeight()) {
+    if (hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex y arg");
     }
 
-    const auto& tiles = mapper->HexMngr.GetTiles(hx, hy, roof);
+    const auto& tiles = mapper->CurMap->GetTiles(hx, hy, roof);
     return static_cast<uint>(tiles.size());
 }
 
@@ -266,19 +263,19 @@
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_DeleteTile(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
 {
-    if (!mapper->HexMngr.IsMapLoaded()) {
+    if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (hx >= mapper->HexMngr.GetWidth()) {
+    if (hx >= mapper->CurMap->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
     }
-    if (hy >= mapper->HexMngr.GetHeight()) {
+    if (hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex y arg");
     }
 
     auto deleted = false;
-    auto& tiles = mapper->HexMngr.GetTiles(hx, hy, roof);
-    auto& f = mapper->HexMngr.GetField(hx, hy);
+    auto& tiles = mapper->CurMap->GetTiles(hx, hy, roof);
+    auto& f = mapper->CurMap->GetField(hx, hy);
     if (layer < 0) {
         deleted = !tiles.empty();
         tiles.clear();
@@ -299,10 +296,10 @@
 
     if (deleted) {
         if (roof) {
-            mapper->HexMngr.RebuildRoof();
+            mapper->CurMap->RebuildRoof();
         }
         else {
-            mapper->HexMngr.RebuildTiles();
+            mapper->CurMap->RebuildTiles();
         }
     }
 }
@@ -318,13 +315,13 @@
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_AddTileHash(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, hstring picHash)
 {
-    if (!mapper->HexMngr.IsMapLoaded()) {
+    if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (hx >= mapper->HexMngr.GetWidth()) {
+    if (hx >= mapper->CurMap->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
     }
-    if (hy >= mapper->HexMngr.GetHeight()) {
+    if (hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex y arg");
     }
 
@@ -335,7 +332,7 @@
     auto layer_ = layer;
     layer_ = std::clamp(layer_, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
-    mapper->HexMngr.SetTile(picHash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
+    mapper->CurMap->SetTile(picHash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
 }
 
 ///# ...
@@ -347,17 +344,17 @@
 ///@ ExportMethod
 [[maybe_unused]] hstring Mapper_Game_GetTileNameEx(FOMapper* mapper, ushort hx, ushort hy, bool roof, int layer)
 {
-    if (!mapper->HexMngr.IsMapLoaded()) {
+    if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (hx >= mapper->HexMngr.GetWidth()) {
+    if (hx >= mapper->CurMap->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
     }
-    if (hy >= mapper->HexMngr.GetHeight()) {
+    if (hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex y arg");
     }
 
-    const auto& tiles = mapper->HexMngr.GetTiles(hx, hy, roof);
+    const auto& tiles = mapper->CurMap->GetTiles(hx, hy, roof);
     for (const auto i : xrange(tiles)) {
         if (tiles[i].Layer == layer) {
             return mapper->ResolveHash(tiles[i].NameHash);
@@ -378,13 +375,13 @@
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_AddTileName(FOMapper* mapper, ushort hx, ushort hy, int ox, int oy, int layer, bool roof, string_view picName)
 {
-    if (!mapper->HexMngr.IsMapLoaded()) {
+    if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
-    if (hx >= mapper->HexMngr.GetWidth()) {
+    if (hx >= mapper->CurMap->GetWidth()) {
         throw ScriptException("Invalid hex x arg");
     }
-    if (hy >= mapper->HexMngr.GetHeight()) {
+    if (hy >= mapper->CurMap->GetHeight()) {
         throw ScriptException("Invalid hex y arg");
     }
 
@@ -396,7 +393,7 @@
     layer_ = std::clamp(layer_, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
 
     const auto pic_hash = mapper->ToHashedString(picName);
-    mapper->HexMngr.SetTile(pic_hash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
+    mapper->CurMap->SetTile(pic_hash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
 }
 
 ///# ...
@@ -405,9 +402,9 @@
 ///@ ExportMethod
 [[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
-    auto* pmap = new ProtoMap(mapper->ToHashedString(fileName), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
     // Todo: need attention!
-    // if (!pmap->EditorLoad(mapper->ServerFileMngr, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
+    // auto* pmap = new ProtoMap(mapper->ToHashedString(fileName), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+    // if (!pmap->EditorLoad(mapper->ServerFileSys, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
     //     return nullptr;
 
     // auto* map = new MapView(0, pmap);
@@ -432,10 +429,8 @@
         mapper->LoadedMaps.erase(it);
     }
 
-    if (map == mapper->ActiveMap) {
-        mapper->HexMngr.UnloadMap();
-        mapper->SelectedEntities.clear();
-        mapper->ActiveMap = nullptr;
+    if (map == mapper->CurMap) {
+        mapper->UnloadMap();
     }
 
     map->GetProto()->Release();
@@ -454,7 +449,7 @@
     }
 
     // Todo: need attention!
-    //((ProtoMap*)map->Proto)->EditorSave(mapper->ServerFileMngr, customName);
+    //((ProtoMap*)map->Proto)->EditorSave(mapper->ServerFileSys, customName);
     mapper->RunMapSaveScript(map);
     return true;
 }
@@ -469,17 +464,18 @@
         throw ScriptException("Proto map arg nullptr");
     }
 
-    if (mapper->ActiveMap == map) {
+    if (mapper->CurMap == map) {
         return true;
     }
 
     mapper->SelectClear();
-    if (!mapper->HexMngr.SetProtoMap(*static_cast<const ProtoMap*>(map->GetProto()))) {
-        return false;
-    }
+    // Todo: need attention!
+    // if (!mapper->CurMap->SetProtoMap(*static_cast<const ProtoMap*>(map->GetProto()))) {
+    //  return false;
+    //}
 
-    mapper->HexMngr.FindSetCenter(map->GetWorkHexX(), map->GetWorkHexY());
-    mapper->ActiveMap = map;
+    mapper->CurMap->FindSetCenter(map->GetWorkHexX(), map->GetWorkHexY());
+    mapper->CurMap = map;
 
     return true;
 }
@@ -493,7 +489,7 @@
     index = -1;
     for (auto i = 0, j = static_cast<int>(mapper->LoadedMaps.size()); i < j; i++) {
         const auto* map = mapper->LoadedMaps[i];
-        if (map == mapper->ActiveMap) {
+        if (map == mapper->CurMap) {
             index = i;
         }
     }
@@ -508,11 +504,12 @@
 {
     vector<string> names;
 
-    auto map_files = mapper->ServerFileMngr.FilterFiles("fomap", dir, false);
-    while (map_files.MoveNext()) {
-        auto file_header = map_files.GetCurFileHeader();
-        names.emplace_back(file_header.GetName());
-    }
+    // Todo: Settings.MapsDir
+    // auto map_files = mapper->ServerFileSys.FilterFiles("fomap", dir, false);
+    // while (map_files.MoveNext()) {
+    //    auto file_header = map_files.GetCurFileHeader();
+    //    names.emplace_back(file_header.GetName());
+    // }
 
     return names;
 }
@@ -523,17 +520,18 @@
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_ResizeMap(FOMapper* mapper, ushort width, ushort height)
 {
-    if (!mapper->HexMngr.IsMapLoaded()) {
+    if (mapper->CurMap == nullptr) {
         throw ScriptException("Map not loaded");
     }
 
-    RUNTIME_ASSERT(mapper->ActiveMap);
-    auto* pmap = const_cast<ProtoMap*>(static_cast<const ProtoMap*>(mapper->ActiveMap->GetProto()));
+    RUNTIME_ASSERT(mapper->CurMap);
+    auto* pmap = const_cast<ProtoMap*>(dynamic_cast<const ProtoMap*>(mapper->CurMap->GetProto()));
 
     // Unload current
-    mapper->HexMngr.GetProtoMap(*pmap);
-    mapper->SelectClear();
-    mapper->HexMngr.UnloadMap();
+    // Todo: need attention!
+    // mapper->CurMap->GetProtoMap(*pmap);
+    // mapper->SelectClear();
+    mapper->UnloadMap();
 
     // Check size
     auto maxhx = std::clamp(width, MAXHEX_MIN, MAXHEX_MAX);
@@ -590,8 +588,8 @@
     }
 
     // Update visibility
-    mapper->HexMngr.SetProtoMap(*pmap);
-    mapper->HexMngr.FindSetCenter(pmap->GetWorkHexX(), pmap->GetWorkHexY());
+    // mapper->CurMap->SetProtoMap(*pmap);
+    mapper->CurMap->FindSetCenter(pmap->GetWorkHexX(), pmap->GetWorkHexY());
 }
 
 ///# ...
@@ -605,8 +603,7 @@
     }
 
     auto& ttab = mapper->TabsTiles[tab];
-    // return ttab.TileSubDirs;
-    return vector<string>();
+    return ttab.TileDirs;
 }
 
 ///# ...
@@ -623,9 +620,12 @@
         return vector<hstring>();
     }
 
-    auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
-    // return stab.ItemProtos;
-    return vector<hstring>();
+    vector<hstring> pids;
+    const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
+    for (const auto* proto : stab.ItemProtos) {
+        pids.push_back(proto->GetProtoId());
+    }
+    return pids;
 }
 
 ///# ...
@@ -642,9 +642,12 @@
         return vector<hstring>();
     }
 
-    auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
-    // return stab.NpcProtos;
-    return vector<hstring>();
+    vector<hstring> pids;
+    const auto& stab = mapper->Tabs[tab][!subTab.empty() ? string(subTab) : FOMapper::DEFAULT_SUB_TAB];
+    for (const auto* proto : stab.NpcProtos) {
+        pids.push_back(proto->GetProtoId());
+    }
+    return pids;
 }
 
 ///# ...

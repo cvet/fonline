@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,59 +32,123 @@
 //
 
 #include "Settings.h"
+#include "AnyData.h"
 #include "FileSystem.h"
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
 #include "imgui.h"
 
-static void SetEntry(string& entry, string_view value)
+static void SetEntry(string& entry, string_view value, bool append)
 {
-    entry = value;
+    if (!append) {
+        entry.clear();
+    }
+    if (append && !entry.empty()) {
+        entry += " ";
+    }
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::STRING_VALUE);
+    entry += std::get<AnyData::STRING_VALUE>(any_value);
 }
-static void SetEntry(uchar& entry, string_view value)
+static void SetEntry(uchar& entry, string_view value, bool append)
 {
-    entry = static_cast<uchar>(_str(value).toInt());
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry += static_cast<uchar>(std::get<AnyData::INT_VALUE>(any_value));
 }
-static void SetEntry(short& entry, string_view value)
+static void SetEntry(short& entry, string_view value, bool append)
 {
-    entry = static_cast<short>(_str(value).toInt());
+    if (!append) {
+        entry = 0;
+    }
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry = static_cast<short>(entry + std::get<AnyData::INT_VALUE>(any_value));
 }
-static void SetEntry(int& entry, string_view value)
+static void SetEntry(int& entry, string_view value, bool append)
 {
-    entry = _str(value).toInt();
+    if (!append) {
+        entry = 0;
+    }
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry += std::get<AnyData::INT_VALUE>(any_value);
 }
-static void SetEntry(uint& entry, string_view value)
+static void SetEntry(uint& entry, string_view value, bool append)
 {
-    entry = _str(value).toInt();
+    if (!append) {
+        entry = 0u;
+    }
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::INT_VALUE);
+    entry += std::get<AnyData::INT_VALUE>(any_value);
 }
-static void SetEntry(bool& entry, string_view value)
+static void SetEntry(bool& entry, string_view value, bool append)
 {
-    entry = _str(value).toBool();
+    if (!append) {
+        entry = false;
+    }
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::BOOL_VALUE);
+    entry |= std::get<AnyData::BOOL_VALUE>(any_value);
 }
-static void SetEntry(float& entry, string_view value)
+static void SetEntry(float& entry, string_view value, bool append)
 {
-    entry = _str(value).toFloat();
+    if (!append) {
+        entry = 0.0f;
+    }
+    auto&& any_value = AnyData::ParseValue(string(value), false, false, AnyData::DOUBLE_VALUE);
+    entry += static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(any_value));
 }
-static void SetEntry(vector<string>& entry, string_view value)
+static void SetEntry(vector<string>& entry, string_view value, bool append)
 {
-    entry.push_back(string(value));
+    if (!append) {
+        entry.clear();
+    }
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::STRING_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::STRING_VALUE>(str));
+    }
 }
-static void SetEntry(vector<int>& entry, string_view value)
+static void SetEntry(vector<int>& entry, string_view value, bool append)
 {
-    entry.push_back(_str(value).toInt());
+    if (!append) {
+        entry.clear();
+    }
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+    }
 }
-static void SetEntry(vector<uint>& entry, string_view value)
+static void SetEntry(vector<uint>& entry, string_view value, bool append)
 {
-    entry.push_back(_str(value).toUInt());
+    if (!append) {
+        entry.clear();
+    }
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::INT_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::INT_VALUE>(str));
+    }
 }
-static void SetEntry(vector<float>& entry, string_view value)
+static void SetEntry(vector<float>& entry, string_view value, bool append)
 {
-    entry.push_back(_str(value).toFloat());
+    if (!append) {
+        entry.clear();
+    }
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::DOUBLE_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(static_cast<float>(std::get<AnyData::DOUBLE_VALUE>(str)));
+    }
 }
-static void SetEntry(vector<bool>& entry, string_view value)
+static void SetEntry(vector<bool>& entry, string_view value, bool append)
 {
-    entry.push_back(_str(value).toBool());
+    if (!append) {
+        entry.clear();
+    }
+    auto&& arr_value = AnyData::ParseValue(string(value), false, true, AnyData::BOOL_VALUE);
+    auto&& arr = std::get<AnyData::ARRAY_VALUE>(arr_value);
+    for (const auto& str : arr) {
+        entry.emplace_back(std::get<AnyData::BOOL_VALUE>(str));
+    }
 }
 
 static void DrawEntry(string_view name, string_view entry)
@@ -117,23 +181,43 @@ static void DrawEntry(string_view name, const float& entry)
 }
 static void DrawEntry(string_view name, const vector<string>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += e;
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 static void DrawEntry(string_view name, const vector<int>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += std::to_string(e);
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 static void DrawEntry(string_view name, const vector<uint>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += std::to_string(e);
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 static void DrawEntry(string_view name, const vector<float>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += std::to_string(e);
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 static void DrawEntry(string_view name, const vector<bool>& entry)
 {
-    ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
+    string value;
+    for (const auto& e : entry) {
+        value += e ? "True" : "False";
+    }
+    ImGui::TextUnformatted(_str("{}: {}", name, value).c_str());
 }
 
 static void DrawEditableEntry(string_view name, string& entry)
@@ -166,27 +250,44 @@ static void DrawEditableEntry(string_view name, float& entry)
 }
 static void DrawEditableEntry(string_view name, vector<string>& entry)
 {
+    // Todo: improve editable entry for arrays
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<int>& entry)
 {
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<uint>& entry)
 {
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<float>& entry)
 {
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 static void DrawEditableEntry(string_view name, vector<bool>& entry)
 {
+    UNUSED_VARIABLE(entry);
     ImGui::TextUnformatted(_str("{}: {}", name, "n/a").c_str());
 }
 
 GlobalSettings::GlobalSettings(int argc, char** argv)
 {
+    // Default config
+    static char default_config[] =
+#include "SettingsDefault-Include.h"
+        ;
+
+    if (const auto config = ConfigFile(default_config, nullptr)) {
+        for (const auto& [key, value] : config.GetApp("")) {
+            SetValue(key, value);
+        }
+    }
+
     // Injected config
     static char internal_config[5022] = {"###InternalConfig###\0"
                                          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
@@ -312,25 +413,29 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     const_cast<int&>(MapDirCount) = MapHexagonal ? 6 : 8;
 }
 
-void GlobalSettings::SetValue(string_view setting_name, string value)
+void GlobalSettings::SetValue(string_view setting_name, const string& value)
 {
-    if (setting_name == "ServerDir") {
-        DiskFileSystem::ResolvePath(value);
+#define SET_SETTING(sett) \
+    if (!value.empty() && value[0] == '+') { \
+        SetEntry(sett, value.substr(1), true); \
+    } \
+    else { \
+        SetEntry(sett, value, false); \
     }
-
 #define FIXED_SETTING(type, name, ...) \
     if (setting_name == #name) { \
-        SetEntry(const_cast<type&>(name), value); \
+        SET_SETTING(const_cast<type&>(name)); \
         return; \
     }
 #define VARIABLE_SETTING(type, name, ...) \
     if (setting_name == #name) { \
-        SetEntry(name, value); \
+        SET_SETTING(name); \
         return; \
     }
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
+#undef SET_SETTING
 }
 
 void GlobalSettings::Draw(bool editable)

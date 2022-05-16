@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -55,13 +55,14 @@ public:
     explicit operator bool() const;
     ~DiskFile();
 
-    [[nodiscard]] auto GetPos() const -> uint;
+    [[nodiscard]] auto GetPos() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
-    [[nodiscard]] auto GetSize() const -> uint;
+    [[nodiscard]] auto GetSize() const -> size_t;
 
-    auto Read(void* buf, uint len) -> bool;
-    auto Write(const void* buf, uint len) -> bool;
+    auto Read(void* buf, size_t len) -> bool;
+    auto Write(const void* buf, size_t len) -> bool;
     auto Write(string_view str) -> bool;
+    auto Write(const_span<uchar> data) -> bool;
     auto SetPos(int offset, DiskFileSeek origin) -> bool;
 
 private:
@@ -89,7 +90,7 @@ public:
 
     [[nodiscard]] auto IsDir() const -> bool;
     [[nodiscard]] auto GetPath() const -> string;
-    [[nodiscard]] auto GetFileSize() const -> uint;
+    [[nodiscard]] auto GetFileSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
 
 private:
@@ -103,7 +104,7 @@ private:
 class DiskFileSystem final
 {
 public:
-    using FileVisitor = std::function<void(string_view, uint, uint64)>;
+    using FileVisitor = std::function<void(string_view, size_t, uint64)>;
 
     DiskFileSystem() = delete;
 
@@ -111,6 +112,7 @@ public:
     [[nodiscard]] static auto OpenFile(string_view fname, bool write, bool write_through) -> DiskFile;
     [[nodiscard]] static auto FindFiles(string_view path, string_view ext) -> DiskFind;
 
+    static auto IsDir(string_view path) -> bool;
     static auto DeleteFile(string_view fname) -> bool;
     static auto CopyFile(string_view fname, string_view copy_fname) -> bool;
     static auto RenameFile(string_view fname, string_view new_fname) -> bool;
@@ -118,7 +120,4 @@ public:
     static void MakeDirTree(string_view path);
     static auto DeleteDir(string_view dir) -> bool;
     static void IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor);
-
-    static void RemoveBuildHashFile(string_view hash_name);
-    static void CreateBuildHashFile(string_view hash_name);
 };

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,37 +36,23 @@
 #include "DiskFileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
+#include "MapLoader.h"
 #include "MapperScripting.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-#include "sha1.h"
-#include "sha2.h"
-
-FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScriptSystem(this, settings)), IfaceIni("", *this)
+// clang-format off
+FOMapper::FOMapper(GlobalSettings& settings) :
+    FOClient(settings, new MapperScriptSystem(this, settings)),
+    IfaceIni("", *this)
+// clang-format on
 {
-    HexMngr.EnableMapperMode();
-
-    ProtoMngr = std::make_unique<ProtoManager>(ServerFileMngr, *this);
-
-    Animations.resize(10000);
-
     // Mouse
     const auto [w, h] = SprMngr.GetWindowSize();
     const auto [x, y] = SprMngr.GetMousePosition();
     Settings.MouseX = std::clamp(x, 0, w - 1);
     Settings.MouseY = std::clamp(y, 0, h - 1);
-
-    // Setup write paths
-    ServerWritePath = Settings.ServerDir;
-    ClientWritePath = Settings.WorkDir;
-
-    // Resources
-    FileMngr.AddDataSource("$Embedded", false);
-    FileMngr.AddDataSource(ClientWritePath + "Data/", false);
-    ServerFileMngr.AddDataSource("$Embedded", false);
-    ServerFileMngr.AddDataSource(ServerWritePath, false);
 
     // Default effects
     EffectMngr.LoadDefaultEffects();
@@ -87,29 +73,26 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     const auto init_face_ok = (InitIface() == 0);
     RUNTIME_ASSERT(init_face_ok);
 
-    // Language Packs
-    CurLang.LoadFromFiles(FileMngr, *this, Settings.Language);
-
     // Prototypes
-    // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileMngr);
+    // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileSys);
     // RUNTIME_ASSERT(protos_ok);
 
     // Initialize tabs
-    const auto& cr_protos = ProtoMngr->GetProtoCritters();
-    for (const auto& [pid, proto] : cr_protos) {
+    const auto& cr_protos = ProtoMngr.GetProtoCritters();
+    for (auto&& [pid, proto] : cr_protos) {
         Tabs[INT_MODE_CRIT][DEFAULT_SUB_TAB].NpcProtos.push_back(proto);
         Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.push_back(proto);
     }
-    for (auto [pid, proto] : Tabs[INT_MODE_CRIT]) {
+    for (auto&& [pid, proto] : Tabs[INT_MODE_CRIT]) {
         std::sort(proto.NpcProtos.begin(), proto.NpcProtos.end(), [](const ProtoCritter* a, const ProtoCritter* b) { return a->GetName().compare(b->GetName()); });
     }
 
-    const auto& item_protos = ProtoMngr->GetProtoItems();
-    for (const auto& [pid, proto] : item_protos) {
+    const auto& item_protos = ProtoMngr.GetProtoItems();
+    for (auto&& [pid, proto] : item_protos) {
         Tabs[INT_MODE_ITEM][DEFAULT_SUB_TAB].ItemProtos.push_back(proto);
         Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.push_back(proto);
     }
-    for (auto [pid, proto] : Tabs[INT_MODE_ITEM]) {
+    for (auto&& [pid, proto] : Tabs[INT_MODE_ITEM]) {
         std::sort(proto.ItemProtos.begin(), proto.ItemProtos.end(), [](const ProtoItem* a, const ProtoItem* b) { return a->GetName().compare(b->GetName()); });
     }
 
@@ -135,36 +118,16 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     TabsName[INT_MODE_LIST] = "Maps";
 
     // Hex manager
-    HexMngr.ReloadSprites();
-    HexMngr.SwitchShowTrack();
+    CurMap->ReloadSprites();
+    CurMap->SwitchShowTrack();
     ChangeGameTime();
-
-    if (!Settings.StartMap.empty()) {
-        const auto map_name = Settings.StartMap;
-        auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
-        const bool initialized = 0;
-        // pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr); // Todo: need attention!
-
-        if (initialized && HexMngr.SetProtoMap(*pmap)) {
-            auto hexX = Settings.StartHexX;
-            auto hexY = Settings.StartHexY;
-            if (hexX < 0 || hexX >= pmap->GetWidth()) {
-                hexX = pmap->GetWorkHexX();
-            }
-            if (hexY < 0 || hexY >= pmap->GetHeight()) {
-                hexY = pmap->GetWorkHexY();
-            }
-            HexMngr.FindSetCenter(hexX, hexY);
-
-            auto* map = new MapView(this, 0, pmap);
-            ActiveMap = map;
-            LoadedMaps.push_back(map);
-            RunMapLoadScript(map);
-        }
-    }
 
     // Start script
     RunStartScript();
+
+    if (!Settings.StartMap.empty()) {
+        LoadMap(Settings.StartMap, Settings.StartHexX, Settings.StartHexY);
+    }
 
     // Refresh resources after start script executed
     for (auto tab = 0; tab < TAB_COUNT; tab++) {
@@ -176,7 +139,6 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
     const auto history_str = Cache.GetString("mapper_console.txt");
     size_t pos = 0;
     size_t prev = 0;
-    size_t count = 0;
     while ((pos = history_str.find('\n', prev)) != std::string::npos) {
         string history_part;
         history_part.assign(&history_str.c_str()[prev], pos - prev);
@@ -192,14 +154,14 @@ FOMapper::FOMapper(GlobalSettings& settings) : FOClient(settings, new MapperScri
 
 auto FOMapper::InitIface() -> int
 {
-    WriteLog("Init interface.\n");
+    WriteLog("Init interface");
 
     auto& ini = IfaceIni;
 
-    // ini = FileMngr.ReadConfigFile("mapper_default.ini", *this);
+    // ini = FileSys.ReadConfigFile("mapper_default.ini", *this);
 
     if (!ini) {
-        WriteLog("File 'mapper_default.ini' not found.\n");
+        WriteLog("File 'mapper_default.ini' not found");
         return __LINE__;
     }
 
@@ -308,7 +270,7 @@ auto FOMapper::InitIface() -> int
     // Console
     ConsolePic = SprMngr.LoadAnimation(ini.GetStr("", "ConsolePic", "error"), true, false);
 
-    WriteLog("Init interface complete.\n");
+    WriteLog("Init interface complete");
     return 0;
 }
 
@@ -316,13 +278,13 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) -> bool
 {
     const auto res = IfaceIni.GetStr("", name);
     if (res.empty()) {
-        WriteLog("Signature '{}' not found.\n", name);
+        WriteLog("Signature '{}' not found", name);
         return false;
     }
 
     if (sscanf(res.c_str(), "%d%d%d%d", &comp[0], &comp[1], &comp[2], &comp[3]) != 4) {
         comp.Clear();
-        WriteLog("Unable to parse signature '{}'.\n", name);
+        WriteLog("Unable to parse signature '{}'", name);
         return false;
     }
 
@@ -331,168 +293,10 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) -> bool
 
 void FOMapper::ChangeGameTime()
 {
-    const auto color = GenericUtils::GetColorDay(HexMngr.GetMapDayTime(), HexMngr.GetMapDayColor(), HexMngr.GetMapTime(), nullptr);
+    const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
     SprMngr.SetSpritesColor(COLOR_GAME_RGB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF));
-    if (HexMngr.IsMapLoaded()) {
-        HexMngr.RefreshMap();
-    }
-}
-
-auto FOMapper::AnimLoad(hstring name, AtlasType res_type) -> uint
-{
-    auto* anim = ResMngr.GetAnim(name, res_type);
-    if (anim == nullptr) {
-        return 0;
-    }
-    auto* ianim = new IfaceAnim {anim, res_type, GameTime.GameTick()};
-    if (ianim == nullptr) {
-        return 0;
-    }
-
-    uint index = 1;
-    for (const auto j = static_cast<uint>(Animations.size()); index < j; index++) {
-        if (Animations[index] == nullptr) {
-            break;
-        }
-    }
-    if (index < static_cast<uint>(Animations.size())) {
-        Animations[index] = ianim;
-    }
-    else {
-        Animations.push_back(ianim);
-    }
-    return index;
-}
-
-auto FOMapper::AnimGetCurSpr(uint anim_id) -> uint
-{
-    if (anim_id >= Animations.size() || (Animations[anim_id] == nullptr)) {
-        return 0;
-    }
-    return Animations[anim_id]->Frames->Ind[Animations[anim_id]->CurSpr];
-}
-
-auto FOMapper::AnimGetCurSprCnt(uint anim_id) -> uint
-{
-    if (anim_id >= Animations.size() || (Animations[anim_id] == nullptr)) {
-        return 0;
-    }
-    return Animations[anim_id]->CurSpr;
-}
-
-auto FOMapper::AnimGetSprCount(uint anim_id) -> uint
-{
-    if (anim_id >= Animations.size() || (Animations[anim_id] == nullptr)) {
-        return 0;
-    }
-    return Animations[anim_id]->Frames->CntFrm;
-}
-
-auto FOMapper::AnimGetFrames(uint anim_id) -> AnyFrames*
-{
-    if (anim_id >= Animations.size() || (Animations[anim_id] == nullptr)) {
-        return 0;
-    }
-    return Animations[anim_id]->Frames;
-}
-
-void FOMapper::AnimRun(uint anim_id, uint flags)
-{
-    if (anim_id >= Animations.size() || (Animations[anim_id] == nullptr)) {
-        return;
-    }
-
-    auto* anim = Animations[anim_id];
-
-    // Set flags
-    anim->Flags = flags & 0xFFFF;
-    flags >>= 16;
-
-    // Set frm
-    uchar cur_frm = flags & 0xFF;
-    if (cur_frm > 0) {
-        cur_frm--;
-        if (cur_frm >= anim->Frames->CntFrm) {
-            cur_frm = anim->Frames->CntFrm - 1;
-        }
-        anim->CurSpr = cur_frm;
-    }
-    // flags>>=8;
-}
-
-void FOMapper::AnimProcess()
-{
-    for (auto* anim : Animations) {
-        if (anim == nullptr || anim->Flags == 0u) {
-            continue;
-        }
-
-        if (IsBitSet(anim->Flags, ANIMRUN_STOP)) {
-            anim->Flags = 0;
-            continue;
-        }
-
-        if (IsBitSet(anim->Flags, ANIMRUN_TO_END) || IsBitSet(anim->Flags, ANIMRUN_FROM_END)) {
-            const auto cur_tick = GameTime.FrameTick();
-            if (cur_tick - anim->LastTick < anim->Frames->Ticks / anim->Frames->CntFrm) {
-                continue;
-            }
-
-            anim->LastTick = cur_tick;
-            auto end_spr = anim->Frames->CntFrm - 1;
-            if (IsBitSet(anim->Flags, ANIMRUN_FROM_END)) {
-                end_spr = 0;
-            }
-
-            if (anim->CurSpr < end_spr) {
-                anim->CurSpr++;
-            }
-            else if (anim->CurSpr > end_spr) {
-                anim->CurSpr--;
-            }
-            else {
-                if (IsBitSet(anim->Flags, ANIMRUN_CYCLE)) {
-                    if (IsBitSet(anim->Flags, ANIMRUN_TO_END)) {
-                        anim->CurSpr = 0;
-                    }
-                    else {
-                        anim->CurSpr = end_spr;
-                    }
-                }
-                else {
-                    anim->Flags = 0;
-                }
-            }
-        }
-    }
-}
-
-void FOMapper::AnimFree(AtlasType res_type)
-{
-    ResMngr.FreeResources(res_type);
-    for (auto*& anim : Animations) {
-        if (anim != nullptr && anim->ResType == res_type) {
-            delete anim;
-        }
-    }
-}
-
-void FOMapper::ProcessInputEvents()
-{
-    // Stop processing if window not active
-    if (!SprMngr.IsWindowFocused()) {
-        InputEvent event;
-        while (App->Input.PollEvent(event)) {
-        }
-
-        Keyb.Lost();
-        OnInputLost.Fire();
-        return;
-    }
-
-    InputEvent event;
-    while (App->Input.PollEvent(event)) {
-        ProcessInputEvent(event);
+    if (CurMap != nullptr) {
+        CurMap->RefreshMap();
     }
 }
 
@@ -569,27 +373,27 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             {
             case KeyCode::F1:
                 Settings.ShowItem = !Settings.ShowItem;
-                HexMngr.RefreshMap();
+                CurMap->RefreshMap();
                 break;
             case KeyCode::F2:
                 Settings.ShowScen = !Settings.ShowScen;
-                HexMngr.RefreshMap();
+                CurMap->RefreshMap();
                 break;
             case KeyCode::F3:
                 Settings.ShowWall = !Settings.ShowWall;
-                HexMngr.RefreshMap();
+                CurMap->RefreshMap();
                 break;
             case KeyCode::F4:
                 Settings.ShowCrit = !Settings.ShowCrit;
-                HexMngr.RefreshMap();
+                CurMap->RefreshMap();
                 break;
             case KeyCode::F5:
                 Settings.ShowTile = !Settings.ShowTile;
-                HexMngr.RefreshMap();
+                CurMap->RefreshMap();
                 break;
             case KeyCode::F6:
                 Settings.ShowFast = !Settings.ShowFast;
-                HexMngr.RefreshMap();
+                CurMap->RefreshMap();
                 break;
             case KeyCode::F7:
                 IntVisible = !IntVisible;
@@ -601,7 +405,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                 ObjVisible = !ObjVisible;
                 break;
             case KeyCode::F10:
-                HexMngr.SwitchShowHex();
+                CurMap->SwitchShowHex();
                 break;
 
             // Fullscreen
@@ -629,7 +433,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             case KeyCode::Add:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
-                    int day_time = HexMngr.GetDayTime();
+                    int day_time = CurMap->GetDayTime();
                     day_time += 60;
                     Globals->SetMinute(day_time % 60);
                     Globals->SetHour(day_time / 60 % 24);
@@ -639,7 +443,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             case KeyCode::Subtract:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
-                    int day_time = HexMngr.GetDayTime();
+                    int day_time = CurMap->GetDayTime();
                     day_time -= 60;
                     Globals->SetMinute(day_time % 60);
                     Globals->SetHour(day_time / 60 % 24);
@@ -665,7 +469,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                 ObjFix = !ObjFix;
                 break;
             case KeyCode::F10:
-                HexMngr.SwitchShowRain();
+                CurMap->SwitchShowRain();
                 break;
             case KeyCode::F11:
                 SprMngr.DumpAtlases();
@@ -676,7 +480,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             case KeyCode::Add:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
-                    int day_time = HexMngr.GetDayTime();
+                    int day_time = CurMap->GetDayTime();
                     day_time += 1;
                     Globals->SetMinute(day_time % 60);
                     Globals->SetHour(day_time / 60 % 24);
@@ -686,7 +490,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
             case KeyCode::Subtract:
                 if (!ConsoleEdit && SelectedEntities.empty())
                 {
-                    int day_time = HexMngr.GetDayTime();
+                    int day_time = CurMap->GetDayTime();
                     day_time -= 60;
                     Globals->SetMinute(day_time % 60);
                     Globals->SetHour(day_time / 60 % 24);
@@ -735,20 +539,20 @@ void FOMapper::ProcessInputEvent(const InputEvent& event)
                 SelectAll();
                 break;
             case KeyCode::S:
-                if (ActiveMap)
+                if (CurMap)
                 {
-                    HexMngr.GetProtoMap(*(ProtoMap*)ActiveMap->Proto);
+                    CurMap->GetProtoMap(*(ProtoMap*)CurMap->Proto);
                     // Todo: need attention!
-                    // ((ProtoMap*)ActiveMap->Proto)->EditorSave(FileMngr, "");
+                    // ((ProtoMap*)CurMap->Proto)->EditorSave(FileSys, "");
                     AddMess("Map saved.");
-                    RunMapSaveScript(ActiveMap);
+                    RunMapSaveScript(CurMap);
                 }
                 break;
             case KeyCode::D:
                 Settings.ScrollCheck = !Settings.ScrollCheck;
                 break;
             case KeyCode::B:
-                HexMngr.MarkPassedHexes();
+                CurMap->MarkPassedHexes();
                 break;
             case KeyCode::Q:
                 Settings.ShowCorners = !Settings.ShowCorners;
@@ -1017,7 +821,7 @@ void FOMapper::ParseMouse()
             else
             {
                 if (event_dy)
-                    HexMngr.ChangeZoom(event_dy > 0 ? -1 : 1);
+                    CurMap->ChangeZoom(event_dy > 0 ? -1 : 1);
             }
             continue;
         }
@@ -1136,78 +940,16 @@ void FOMapper::MapperMainLoop()
     // Process
     AnimProcess();
 
-    if (HexMngr.IsMapLoaded()) {
-        for (auto it = HexMngr.GetCritters().begin(), end = HexMngr.GetCritters().end(); it != end; ++it) {
-            auto* cr = it->second;
-            cr->Process();
-
-            if (cr->IsNeedMove()) {
-                const auto err_move = ((!cr->IsRunning && cr->GetIsNoWalk()) || (cr->IsRunning && cr->GetIsNoRun()));
-                auto old_hx = cr->GetHexX();
-                auto old_hy = cr->GetHexY();
-                if (!err_move && HexMngr.TransitCritter(cr, cr->MoveSteps[0].first, cr->MoveSteps[0].second, true, false)) {
-                    cr->MoveSteps.erase(cr->MoveSteps.begin());
-                }
-                else {
-                    cr->MoveSteps.clear();
-                }
-                HexMngr.RebuildLight();
-            }
-        }
-
-        HexMngr.Scroll();
-        HexMngr.ProcessItems();
-        HexMngr.ProcessRain();
+    if (CurMap != nullptr) {
+        CurMap->Process();
     }
 
     // Start render
     SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
 
     DrawIfaceLayer(0);
-    if (HexMngr.IsMapLoaded()) {
-        HexMngr.DrawMap();
-
-        // Texts on heads
-        if (DrawCrExtInfo != 0) {
-            for (auto [id, cr] : HexMngr.GetCritters()) {
-                if (cr->SprDrawValid) {
-                    if (DrawCrExtInfo == 1) {
-                        cr->SetText(_str("|0xffaabbcc ProtoId...{}\n|0xffff1122 DialogId...{}\n", cr->GetName(), cr->GetDialogId()), COLOR_TEXT_WHITE, 60000000);
-                    }
-                    else {
-                        cr->SetText("", COLOR_TEXT_WHITE, 60000000);
-                    }
-                    cr->DrawTextOnHead();
-                }
-            }
-        }
-
-        // Texts on map
-        const auto tick = GameTime.FrameTick();
-        for (auto it = GameMapTexts.begin(); it != GameMapTexts.end();) {
-            auto& map_text = *it;
-
-            if (tick >= map_text.StartTick + map_text.Tick) {
-                it = GameMapTexts.erase(it);
-            }
-            else {
-                const auto percent = GenericUtils::Percent(map_text.Tick, tick - map_text.StartTick);
-                const auto text_pos = map_text.Pos.Interpolate(map_text.EndPos, percent);
-                const auto& field = HexMngr.GetField(map_text.HexX, map_text.HexY);
-
-                const auto x = static_cast<int>((field.ScrX + Settings.MapHexWidth / 2 + Settings.ScrOx) / Settings.SpritesZoom - 100.0f - static_cast<float>(map_text.Pos.Left - text_pos.Left));
-                const auto y = static_cast<int>((field.ScrY + Settings.MapHexLineHeight / 2 - map_text.Pos.Height() - (map_text.Pos.Top - text_pos.Top) + Settings.ScrOy) / Settings.SpritesZoom - 70.0f);
-
-                auto color = map_text.Color;
-                if (map_text.Fade) {
-                    color = (color ^ 0xFF000000) | ((0xFF * (100 - percent) / 100) << 24);
-                }
-
-                SprMngr.DrawStr(IRect(x, y, x + 200, y + 70), map_text.Text, FT_CENTERX | FT_BOTTOM | FT_BORDERED, color, FONT_DEFAULT);
-
-                ++it;
-            }
-        }
+    if (CurMap != nullptr) {
+        CurMap->DrawMap();
     }
 
     // Iface
@@ -1274,7 +1016,7 @@ void FOMapper::RefreshTiles(int tab)
         bool include_subdirs = ttab.TileSubDirs[t];
 
         vector<string> tiles;
-        auto tile_files = FileMngr.FilterFiles("", path, include_subdirs);
+        auto tile_files = FileSys.FilterFiles("", path, include_subdirs);
         while (tile_files.MoveNext()) {
             tiles.emplace_back(tile_files.GetCurFileHeader().GetPath());
         }
@@ -1400,62 +1142,62 @@ void FOMapper::IntDraw()
         return;
     }
 
-    SprMngr.DrawSprite(IntMainPic, IntX, IntY, 0);
+    SprMngr.DrawSprite(IntMainPic->GetSprId(), IntX, IntY, 0);
 
     switch (IntMode) {
     case INT_MODE_CUSTOM0:
-        SprMngr.DrawSprite(IntPTab, IntBCust[0][0] + IntX, IntBCust[0][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[0][0] + IntX, IntBCust[0][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM1:
-        SprMngr.DrawSprite(IntPTab, IntBCust[1][0] + IntX, IntBCust[1][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[1][0] + IntX, IntBCust[1][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM2:
-        SprMngr.DrawSprite(IntPTab, IntBCust[2][0] + IntX, IntBCust[2][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[2][0] + IntX, IntBCust[2][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM3:
-        SprMngr.DrawSprite(IntPTab, IntBCust[3][0] + IntX, IntBCust[3][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[3][0] + IntX, IntBCust[3][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM4:
-        SprMngr.DrawSprite(IntPTab, IntBCust[4][0] + IntX, IntBCust[4][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[4][0] + IntX, IntBCust[4][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM5:
-        SprMngr.DrawSprite(IntPTab, IntBCust[5][0] + IntX, IntBCust[5][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[5][0] + IntX, IntBCust[5][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM6:
-        SprMngr.DrawSprite(IntPTab, IntBCust[6][0] + IntX, IntBCust[6][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[6][0] + IntX, IntBCust[6][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM7:
-        SprMngr.DrawSprite(IntPTab, IntBCust[7][0] + IntX, IntBCust[7][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[7][0] + IntX, IntBCust[7][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM8:
-        SprMngr.DrawSprite(IntPTab, IntBCust[8][0] + IntX, IntBCust[8][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[8][0] + IntX, IntBCust[8][1] + IntY, 0);
         break;
     case INT_MODE_CUSTOM9:
-        SprMngr.DrawSprite(IntPTab, IntBCust[9][0] + IntX, IntBCust[9][1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCust[9][0] + IntX, IntBCust[9][1] + IntY, 0);
         break;
     case INT_MODE_ITEM:
-        SprMngr.DrawSprite(IntPTab, IntBItem[0] + IntX, IntBItem[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBItem[0] + IntX, IntBItem[1] + IntY, 0);
         break;
     case INT_MODE_TILE:
-        SprMngr.DrawSprite(IntPTab, IntBTile[0] + IntX, IntBTile[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBTile[0] + IntX, IntBTile[1] + IntY, 0);
         break;
     case INT_MODE_CRIT:
-        SprMngr.DrawSprite(IntPTab, IntBCrit[0] + IntX, IntBCrit[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBCrit[0] + IntX, IntBCrit[1] + IntY, 0);
         break;
     case INT_MODE_FAST:
-        SprMngr.DrawSprite(IntPTab, IntBFast[0] + IntX, IntBFast[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBFast[0] + IntX, IntBFast[1] + IntY, 0);
         break;
     case INT_MODE_IGNORE:
-        SprMngr.DrawSprite(IntPTab, IntBIgnore[0] + IntX, IntBIgnore[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBIgnore[0] + IntX, IntBIgnore[1] + IntY, 0);
         break;
     case INT_MODE_INCONT:
-        SprMngr.DrawSprite(IntPTab, IntBInCont[0] + IntX, IntBInCont[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBInCont[0] + IntX, IntBInCont[1] + IntY, 0);
         break;
     case INT_MODE_MESS:
-        SprMngr.DrawSprite(IntPTab, IntBMess[0] + IntX, IntBMess[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBMess[0] + IntX, IntBMess[1] + IntY, 0);
         break;
     case INT_MODE_LIST:
-        SprMngr.DrawSprite(IntPTab, IntBList[0] + IntX, IntBList[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPTab->GetSprId(), IntBList[0] + IntX, IntBList[1] + IntY, 0);
         break;
     default:
         break;
@@ -1474,44 +1216,44 @@ void FOMapper::IntDraw()
     SprMngr.DrawStr(IRect(IntBList, IntX, IntY), TabsName[INT_MODE_LIST], FT_NOBREAK | FT_CENTERX | FT_CENTERY, COLOR_TEXT_WHITE, FONT_DEFAULT);
 
     if (Settings.ShowItem) {
-        SprMngr.DrawSprite(IntPShow, IntBShowItem[0] + IntX, IntBShowItem[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow->GetSprId(), IntBShowItem[0] + IntX, IntBShowItem[1] + IntY, 0);
     }
     if (Settings.ShowScen) {
-        SprMngr.DrawSprite(IntPShow, IntBShowScen[0] + IntX, IntBShowScen[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow->GetSprId(), IntBShowScen[0] + IntX, IntBShowScen[1] + IntY, 0);
     }
     if (Settings.ShowWall) {
-        SprMngr.DrawSprite(IntPShow, IntBShowWall[0] + IntX, IntBShowWall[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow->GetSprId(), IntBShowWall[0] + IntX, IntBShowWall[1] + IntY, 0);
     }
     if (Settings.ShowCrit) {
-        SprMngr.DrawSprite(IntPShow, IntBShowCrit[0] + IntX, IntBShowCrit[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow->GetSprId(), IntBShowCrit[0] + IntX, IntBShowCrit[1] + IntY, 0);
     }
     if (Settings.ShowTile) {
-        SprMngr.DrawSprite(IntPShow, IntBShowTile[0] + IntX, IntBShowTile[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow->GetSprId(), IntBShowTile[0] + IntX, IntBShowTile[1] + IntY, 0);
     }
     if (Settings.ShowRoof) {
-        SprMngr.DrawSprite(IntPShow, IntBShowRoof[0] + IntX, IntBShowRoof[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow->GetSprId(), IntBShowRoof[0] + IntX, IntBShowRoof[1] + IntY, 0);
     }
     if (Settings.ShowFast) {
-        SprMngr.DrawSprite(IntPShow, IntBShowFast[0] + IntX, IntBShowFast[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPShow->GetSprId(), IntBShowFast[0] + IntX, IntBShowFast[1] + IntY, 0);
     }
 
     if (IsSelectItem) {
-        SprMngr.DrawSprite(IntPSelect, IntBSelectItem[0] + IntX, IntBSelectItem[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect->GetSprId(), IntBSelectItem[0] + IntX, IntBSelectItem[1] + IntY, 0);
     }
     if (IsSelectScen) {
-        SprMngr.DrawSprite(IntPSelect, IntBSelectScen[0] + IntX, IntBSelectScen[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect->GetSprId(), IntBSelectScen[0] + IntX, IntBSelectScen[1] + IntY, 0);
     }
     if (IsSelectWall) {
-        SprMngr.DrawSprite(IntPSelect, IntBSelectWall[0] + IntX, IntBSelectWall[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect->GetSprId(), IntBSelectWall[0] + IntX, IntBSelectWall[1] + IntY, 0);
     }
     if (IsSelectCrit) {
-        SprMngr.DrawSprite(IntPSelect, IntBSelectCrit[0] + IntX, IntBSelectCrit[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect->GetSprId(), IntBSelectCrit[0] + IntX, IntBSelectCrit[1] + IntY, 0);
     }
     if (IsSelectTile) {
-        SprMngr.DrawSprite(IntPSelect, IntBSelectTile[0] + IntX, IntBSelectTile[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect->GetSprId(), IntBSelectTile[0] + IntX, IntBSelectTile[1] + IntY, 0);
     }
     if (IsSelectRoof) {
-        SprMngr.DrawSprite(IntPSelect, IntBSelectRoof[0] + IntX, IntBSelectRoof[1] + IntY, 0);
+        SprMngr.DrawSprite(IntPSelect->GetSprId(), IntBSelectRoof[0] + IntX, IntBSelectRoof[1] + IntY, 0);
     }
 
     auto x = IntWWork[0] + IntX;
@@ -1542,10 +1284,9 @@ void FOMapper::IntDraw()
         }
 
         if (GetTabIndex() < static_cast<uint>((*CurItemProtos).size())) {
-            auto* proto_item = (*CurItemProtos)[GetTabIndex()];
-            auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), CurLang.NameCode);
+            const auto* proto_item = (*CurItemProtos)[GetTabIndex()];
+            auto it = std::find(proto_item->TextsLang.begin(), proto_item->TextsLang.end(), _curLang.NameCode);
             if (it != proto_item->TextsLang.end()) {
-                auto index = static_cast<uint>(std::distance(proto_item->TextsLang.begin(), it));
                 auto info = proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 1));
                 info += " - ";
                 info += proto_item->Texts[0]->GetStr(ITEM_STR_ID(proto_item->GetProtoId().as_uint(), 2));
@@ -1614,8 +1355,8 @@ void FOMapper::IntDraw()
         }
     }
     else if (IntMode == INT_MODE_INCONT && !SelectedEntities.empty()) {
-        auto* entity = SelectedEntities[0];
         vector<Entity*> children; // Todo: need attention!
+        // auto* entity = SelectedEntities[0];
         // = entity->GetChildren();
         uint i = InContScroll;
         auto j = i + ProtosOnScreen;
@@ -1651,7 +1392,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             auto* map = LoadedMaps[i];
-            SprMngr.DrawStr(IRect(x, y, x + w, y + h), _str(" '{}'", map->GetName()), 0, map == ActiveMap ? COLOR_IFACE_RED : COLOR_TEXT, FONT_DEFAULT);
+            SprMngr.DrawStr(IRect(x, y, x + w, y + h), _str(" '{}'", map->GetName()), 0, map == CurMap ? COLOR_IFACE_RED : COLOR_TEXT, FONT_DEFAULT);
         }
     }
 
@@ -1662,13 +1403,13 @@ void FOMapper::IntDraw()
 
     // Sub tabs
     if (SubTabsActive) {
-        SprMngr.DrawSprite(SubTabsPic, SubTabsX, SubTabsY, 0);
+        SprMngr.DrawSprite(SubTabsPic->GetSprId(), SubTabsX, SubTabsY, 0);
 
         auto line_height = SprMngr.GetLineHeight(FONT_DEFAULT) + 1;
         auto posy = SubTabsRect.Height() - line_height - 2;
         auto i = 0;
         auto& stabs = Tabs[SubTabsActiveTab];
-        for (auto [fst, snd] : stabs) {
+        for (auto&& [fst, snd] : stabs) {
             i++;
             if (i - 1 < TabsScroll[SubTabsActiveTab]) {
                 continue;
@@ -1701,14 +1442,14 @@ void FOMapper::IntDraw()
     }
 
     // Map info
-    if (HexMngr.IsMapLoaded()) {
+    if (CurMap != nullptr) {
         auto hex_thru = false;
         ushort hx = 0;
         ushort hy = 0;
-        if (HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+        if (CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
             hex_thru = true;
         }
-        auto day_time = HexMngr.GetDayTime();
+        auto day_time = CurMap->GetDayTime();
         SprMngr.DrawStr(IRect(Settings.ScreenWidth - 100, 0, Settings.ScreenWidth, Settings.ScreenHeight),
             _str("Map '{}'\n"
                  "Hex {} {}\n"
@@ -1716,7 +1457,7 @@ void FOMapper::IntDraw()
                  "Fps {}\n"
                  "Tile layer {}\n"
                  "{}",
-                ActiveMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
+                CurMap->GetName(), hex_thru ? hx : -1, hex_thru ? hy : -1, day_time / 60 % 24, day_time % 60, Settings.FPS, TileLayer, Settings.ScrollCheck ? "Scroll check" : ""),
             FT_NOBREAK_LINE, 0, FONT_DEFAULT);
     }
 }
@@ -1738,11 +1479,10 @@ void FOMapper::ObjDraw()
     const auto x = r.Left;
     const auto y = r.Top;
     const auto w = r.Width();
-    auto h = r.Height();
 
-    SprMngr.DrawSprite(ObjWMainPic, ObjX, ObjY, 0);
+    SprMngr.DrawSprite(ObjWMainPic->GetSprId(), ObjX, ObjY, 0);
     if (ObjToAll) {
-        SprMngr.DrawSprite(ObjPbToAllDn, ObjBToAll[0] + ObjX, ObjBToAll[1] + ObjY, 0);
+        SprMngr.DrawSprite(ObjPbToAllDn->GetSprId(), ObjBToAll[0] + ObjX, ObjBToAll[1] + ObjY, 0);
     }
 
     if (item != nullptr) {
@@ -1836,7 +1576,7 @@ void FOMapper::ObjKeyDown(KeyCode dik, string_view dik_text)
             }
 
             SelectEntityProp(ObjCurLine);
-            HexMngr.RebuildLight();
+            CurMap->RebuildLight();
         }
     }
     else if (dik == KeyCode::Up) {
@@ -1933,13 +1673,12 @@ void FOMapper::IntLMouseDown()
             auto posy = SubTabsRect.Height() - line_height - 2;
             auto i = 0;
             auto& stabs = Tabs[SubTabsActiveTab];
-            for (auto [fst, snd] : stabs) {
+            for (auto&& [fst, snd] : stabs) {
                 i++;
                 if (i - 1 < TabsScroll[SubTabsActiveTab]) {
                     continue;
                 }
 
-                const auto& name = fst;
                 auto& stab = snd;
 
                 auto r = IRect(SubTabsRect.Left + SubTabsX + 5, SubTabsRect.Top + SubTabsY + posy, SubTabsRect.Left + SubTabsX + 5 + SubTabsRect.Width(), SubTabsRect.Top + SubTabsY + posy + line_height - 1);
@@ -1968,19 +1707,19 @@ void FOMapper::IntLMouseDown()
     if ((!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) && (!ObjVisible || SelectedEntities.empty() || !IsCurInRect(ObjWMain, ObjX, ObjY))) {
         InContItem = nullptr;
 
-        if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX1, SelectHY1)) {
+        if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX1, SelectHexY1)) {
             return;
         }
-        SelectHX2 = SelectHX1;
-        SelectHY2 = SelectHY1;
+        SelectHexX2 = SelectHexX1;
+        SelectHexY2 = SelectHexY1;
         SelectX = Settings.MouseX;
         SelectY = Settings.MouseY;
 
         if (CurMode == CUR_MODE_DEFAULT) {
             if (Keyb.ShiftDwn) {
                 for (auto* entity : SelectedEntities) {
-                    if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
-                        const auto is_run = (!cr->MoveSteps.empty() && cr->MoveSteps[cr->MoveSteps.size() - 1].first == SelectHX1 && cr->MoveSteps[cr->MoveSteps.size() - 1].second == SelectHY1);
+                    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+                        const auto is_run = (!cr->MoveSteps.empty() && cr->MoveSteps[cr->MoveSteps.size() - 1].first == SelectHexX1 && cr->MoveSteps[cr->MoveSteps.size() - 1].second == SelectHexY1);
 
                         cr->MoveSteps.clear();
                         if (!is_run && cr->GetIsNoWalk()) {
@@ -1990,10 +1729,10 @@ void FOMapper::IntLMouseDown()
                         auto hx = cr->GetHexX();
                         auto hy = cr->GetHexY();
                         vector<uchar> steps;
-                        if (HexMngr.FindPath(nullptr, hx, hy, SelectHX1, SelectHY1, steps, -1)) {
+                        if (CurMap->FindPath(nullptr, hx, hy, SelectHexX1, SelectHexY1, steps, -1)) {
                             for (const auto step : steps) {
-                                if (GeomHelper.MoveHexByDir(hx, hy, step, HexMngr.GetWidth(), HexMngr.GetHeight())) {
-                                    cr->MoveSteps.push_back(pair<ushort, ushort>(hx, hy));
+                                if (GeomHelper.MoveHexByDir(hx, hy, step, CurMap->GetWidth(), CurMap->GetHeight())) {
+                                    cr->MoveSteps.emplace_back(hx, hy);
                                 }
                                 else {
                                     break;
@@ -2017,13 +1756,13 @@ void FOMapper::IntLMouseDown()
         }
         else if (CurMode == CUR_MODE_PLACE_OBJECT) {
             if (IsObjectMode() && !(*CurItemProtos).empty() != 0u) {
-                AddItem((*CurItemProtos)[GetTabIndex()]->GetProtoId(), SelectHX1, SelectHY1, nullptr);
+                AddItem((*CurItemProtos)[GetTabIndex()]->GetProtoId(), SelectHexX1, SelectHexY1, nullptr);
             }
             else if (IsTileMode() && !CurTileNames->empty()) {
-                AddTile((*CurTileNames)[GetTabIndex()], SelectHX1, SelectHY1, 0, 0, TileLayer, DrawRoof);
+                AddTile((*CurTileNames)[GetTabIndex()], SelectHexX1, SelectHexY1, 0, 0, TileLayer, DrawRoof);
             }
             else if (IsCritMode() && !CurNpcProtos->empty()) {
-                AddCritter((*CurNpcProtos)[GetTabIndex()]->GetProtoId(), SelectHX1, SelectHY1);
+                AddCritter((*CurNpcProtos)[GetTabIndex()]->GetProtoId(), SelectHexX1, SelectHexY1);
             }
         }
 
@@ -2082,8 +1821,8 @@ void FOMapper::IntLMouseDown()
                     stab.ItemProtos.push_back((*CurItemProtos)[ind]);
                 }
 
-                HexMngr.SwitchIgnorePid(pid);
-                HexMngr.RefreshMap();
+                CurMap->SwitchIgnorePid(pid);
+                CurMap->RefreshMap();
             }
             // Add to container
             else if (Keyb.AltDwn && !SelectedEntities.empty()) {
@@ -2137,12 +1876,12 @@ void FOMapper::IntLMouseDown()
                 // Delete child
                 if (Keyb.AltDwn && InContItem != nullptr) {
                     if (InContItem->GetOwnership() == ItemOwnership::CritterInventory) {
-                        auto* owner = HexMngr.GetCritter(InContItem->GetCritId());
+                        auto* owner = CurMap->GetCritter(InContItem->GetCritId());
                         RUNTIME_ASSERT(owner);
                         owner->DeleteItem(InContItem, true);
                     }
                     else if (InContItem->GetOwnership() == ItemOwnership::ItemContainer) {
-                        ItemView* owner = HexMngr.GetItemById(InContItem->GetContainerId());
+                        ItemView* owner = CurMap->GetItem(InContItem->GetContainerId());
                         RUNTIME_ASSERT(owner);
                         // owner->ContEraseItem(InContItem); // Todo: need attention!
                         InContItem->Release();
@@ -2159,7 +1898,7 @@ void FOMapper::IntLMouseDown()
                 }
                 // Change child slot
                 else if (Keyb.ShiftDwn && InContItem != nullptr) {
-                    if (auto* cr = dynamic_cast<CritterView*>(SelectedEntities[0]); cr != nullptr) {
+                    if (auto* cr = dynamic_cast<CritterHexView*>(SelectedEntities[0]); cr != nullptr) {
                         auto to_slot = InContItem->GetCritSlot() + 1;
                         // while (to_slot >= Settings.CritterSlotEnabled.size() || !Settings.CritterSlotEnabled[to_slot % 256]) {
                         //    to_slot++;
@@ -2176,22 +1915,22 @@ void FOMapper::IntLMouseDown()
                         cr->AnimateStay();
                     }
                 }
-                HexMngr.RebuildLight();
+                CurMap->RebuildLight();
             }
         }
         else if (IntMode == INT_MODE_LIST) {
             ind += ListScroll;
 
-            if (ind < static_cast<int>(LoadedMaps.size()) && ActiveMap != LoadedMaps[ind]) {
+            if (ind < static_cast<int>(LoadedMaps.size()) && CurMap != LoadedMaps[ind]) {
                 SelectClear();
 
                 // Todo: need attention!
-                /*if (ActiveMap != nullptr) {
-                    HexMngr.GetProtoMap(*dynamic_cast<ProtoMap*>(ActiveMap->Proto));
+                /*if (CurMap != nullptr) {
+                    CurMap->GetProtoMap(*dynamic_cast<ProtoMap*>(CurMap->Proto));
                 }
-                if (HexMngr.SetProtoMap(*dynamic_cast<ProtoMap*>(LoadedMaps[ind]->Proto))) {
-                    ActiveMap = LoadedMaps[ind];
-                    HexMngr.FindSetCenter(ActiveMap->GetWorkHexX(), ActiveMap->GetWorkHexY());
+                if (CurMap->SetProtoMap(*dynamic_cast<ProtoMap*>(LoadedMaps[ind]->Proto))) {
+                    CurMap = LoadedMaps[ind];
+                    CurMap->FindSetCenter(CurMap->GetWorkHexX(), CurMap->GetWorkHexY());
                 }*/
             }
         }
@@ -2344,31 +2083,31 @@ void FOMapper::IntLMouseDown()
     }
     else if (IsCurInRect(IntBShowItem, IntX, IntY)) {
         Settings.ShowItem = !Settings.ShowItem;
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
     else if (IsCurInRect(IntBShowScen, IntX, IntY)) {
         Settings.ShowScen = !Settings.ShowScen;
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
     else if (IsCurInRect(IntBShowWall, IntX, IntY)) {
         Settings.ShowWall = !Settings.ShowWall;
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
     else if (IsCurInRect(IntBShowCrit, IntX, IntY)) {
         Settings.ShowCrit = !Settings.ShowCrit;
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
     else if (IsCurInRect(IntBShowTile, IntX, IntY)) {
         Settings.ShowTile = !Settings.ShowTile;
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
     else if (IsCurInRect(IntBShowRoof, IntX, IntY)) {
         Settings.ShowRoof = !Settings.ShowRoof;
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
     else if (IsCurInRect(IntBShowFast, IntX, IntY)) {
         Settings.ShowFast = !Settings.ShowFast;
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
     else if (IsCurInRect(IntBSelectItem, IntX, IntY)) {
         IsSelectItem = !IsSelectItem;
@@ -2403,34 +2142,36 @@ void FOMapper::IntLMouseDown()
 
 void FOMapper::IntLMouseUp()
 {
-    if (IntHold == INT_SELECT && HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2)) {
+    if (IntHold == INT_SELECT && CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX2, SelectHexY2)) {
         if (CurMode == CUR_MODE_DEFAULT) {
-            if (SelectHX1 != SelectHX2 || SelectHY1 != SelectHY2) {
-                HexMngr.ClearHexTrack();
+            if (SelectHexX1 != SelectHexX2 || SelectHexY1 != SelectHexY2) {
+                CurMap->ClearHexTrack();
                 vector<pair<ushort, ushort>> hexes;
 
                 if (SelectType == SELECT_TYPE_OLD) {
-                    const int fx = std::min(SelectHX1, SelectHX2);
-                    const int tx = std::max(SelectHX1, SelectHX2);
-                    const int fy = std::min(SelectHY1, SelectHY2);
-                    const int ty = std::max(SelectHY1, SelectHY2);
+                    const int fx = std::min(SelectHexX1, SelectHexX2);
+                    const int tx = std::max(SelectHexX1, SelectHexX2);
+                    const int fy = std::min(SelectHexY1, SelectHexY2);
+                    const int ty = std::max(SelectHexY1, SelectHexY2);
 
                     for (auto i = fx; i <= tx; i++) {
                         for (auto j = fy; j <= ty; j++) {
-                            hexes.push_back(std::make_pair(i, j));
+                            hexes.emplace_back(i, j);
                         }
                     }
                 }
                 else {
-                    hexes = HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2));
+                    hexes = CurMap->GetHexesRect(IRect(SelectHexX1, SelectHexY1, SelectHexX2, SelectHexY2));
                 }
 
                 vector<ItemHexView*> items;
                 vector<CritterView*> critters;
-                for (auto [hx, hy] : hexes) {
+                for (auto&& [hx, hy] : hexes) {
                     // Items, critters
-                    HexMngr.GetItems(hx, hy, items);
-                    HexMngr.GetCritters(hx, hy, critters, CritterFindType::Any);
+                    auto hex_items = CurMap->GetItems(hx, hy);
+                    items.insert(items.end(), hex_items.begin(), hex_items.end());
+                    auto hex_critters = CurMap->GetCritters(hx, hy, CritterFindType::Any);
+                    critters.insert(critters.end(), hex_critters.begin(), hex_critters.end());
 
                     // Tile, roof
                     if (IsSelectTile && Settings.ShowTile) {
@@ -2443,10 +2184,10 @@ void FOMapper::IntLMouseUp()
 
                 for (auto* item : items) {
                     const auto pid = item->GetProtoId();
-                    if (HexMngr.IsIgnorePid(pid)) {
+                    if (CurMap->IsIgnorePid(pid)) {
                         continue;
                     }
-                    if (!Settings.ShowFast && HexMngr.IsFastPid(pid)) {
+                    if (!Settings.ShowFast && CurMap->IsFastPid(pid)) {
                         continue;
                     }
 
@@ -2459,7 +2200,7 @@ void FOMapper::IntLMouseUp()
                     else if (item->IsWall() && IsSelectWall && Settings.ShowWall) {
                         SelectAddItem(item);
                     }
-                    else if (Settings.ShowFast && HexMngr.IsFastPid(pid)) {
+                    else if (Settings.ShowFast && CurMap->IsFastPid(pid)) {
                         SelectAddItem(item);
                     }
                 }
@@ -2471,16 +2212,14 @@ void FOMapper::IntLMouseUp()
                 }
             }
             else {
-                ItemHexView* item = nullptr;
-                CritterView* cr = nullptr;
-                HexMngr.GetSmthPixel(Settings.MouseX, Settings.MouseY, item, cr);
+                auto* entity = CurMap->GetEntityAtScreenPos(Settings.MouseX, Settings.MouseY);
 
-                if (item != nullptr) {
-                    if (!HexMngr.IsIgnorePid(item->GetProtoId())) {
+                if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+                    if (!CurMap->IsIgnorePid(item->GetProtoId())) {
                         SelectAddItem(item);
                     }
                 }
-                else if (cr != nullptr) {
+                else if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
                     SelectAddCrit(cr);
                 }
             }
@@ -2491,7 +2230,7 @@ void FOMapper::IntLMouseUp()
             //    IntSetMode(INT_MODE_INCONT);
         }
 
-        HexMngr.RefreshMap();
+        CurMap->RefreshMap();
     }
 
     IntHold = INT_NONE;
@@ -2500,49 +2239,49 @@ void FOMapper::IntLMouseUp()
 void FOMapper::IntMouseMove()
 {
     if (IntHold == INT_SELECT) {
-        HexMngr.ClearHexTrack();
-        if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, SelectHX2, SelectHY2)) {
-            if ((SelectHX2 != 0u) || (SelectHY2 != 0u)) {
-                HexMngr.RefreshMap();
-                SelectHX2 = SelectHY2 = 0;
+        CurMap->ClearHexTrack();
+        if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX2, SelectHexY2)) {
+            if ((SelectHexX2 != 0u) || (SelectHexY2 != 0u)) {
+                CurMap->RefreshMap();
+                SelectHexX2 = SelectHexY2 = 0;
             }
             return;
         }
 
         if (CurMode == CUR_MODE_DEFAULT) {
-            if (SelectHX1 != SelectHX2 || SelectHY1 != SelectHY2) {
+            if (SelectHexX1 != SelectHexX2 || SelectHexY1 != SelectHexY2) {
                 if (SelectType == SELECT_TYPE_OLD) {
-                    const int fx = std::min(SelectHX1, SelectHX2);
-                    const int tx = std::max(SelectHX1, SelectHX2);
-                    const int fy = std::min(SelectHY1, SelectHY2);
-                    const int ty = std::max(SelectHY1, SelectHY2);
+                    const int fx = std::min(SelectHexX1, SelectHexX2);
+                    const int tx = std::max(SelectHexX1, SelectHexX2);
+                    const int fy = std::min(SelectHexY1, SelectHexY2);
+                    const int ty = std::max(SelectHexY1, SelectHexY2);
 
                     for (auto i = fx; i <= tx; i++) {
                         for (auto j = fy; j <= ty; j++) {
-                            HexMngr.GetHexTrack(static_cast<ushort>(i), static_cast<ushort>(j)) = 1;
+                            CurMap->GetHexTrack(static_cast<ushort>(i), static_cast<ushort>(j)) = 1;
                         }
                     }
                 }
                 else if (SelectType == SELECT_TYPE_NEW) {
-                    for (auto [hx, hy] : HexMngr.GetHexesRect(IRect(SelectHX1, SelectHY1, SelectHX2, SelectHY2))) {
-                        HexMngr.GetHexTrack(hx, hy) = 1;
+                    for (auto&& [hx, hy] : CurMap->GetHexesRect(IRect(SelectHexX1, SelectHexY1, SelectHexX2, SelectHexY2))) {
+                        CurMap->GetHexTrack(hx, hy) = 1;
                     }
                 }
 
-                HexMngr.RefreshMap();
+                CurMap->RefreshMap();
             }
         }
         else if (CurMode == CUR_MODE_MOVE_SELECTION) {
-            auto offs_hx = static_cast<int>(SelectHX2) - static_cast<int>(SelectHX1);
-            auto offs_hy = static_cast<int>(SelectHY2) - static_cast<int>(SelectHY1);
+            auto offs_hx = static_cast<int>(SelectHexX2) - static_cast<int>(SelectHexX1);
+            auto offs_hy = static_cast<int>(SelectHexY2) - static_cast<int>(SelectHexY1);
             auto offs_x = Settings.MouseX - SelectX;
             auto offs_y = Settings.MouseY - SelectY;
             if (SelectMove(!Keyb.ShiftDwn, offs_hx, offs_hy, offs_x, offs_y)) {
-                SelectHX1 += offs_hx;
-                SelectHY1 += offs_hy;
+                SelectHexX1 += offs_hx;
+                SelectHexY1 += offs_hy;
                 SelectX += offs_x;
                 SelectY += offs_y;
-                HexMngr.RefreshMap();
+                CurMap->RefreshMap();
             }
         }
     }
@@ -2556,7 +2295,7 @@ void FOMapper::IntMouseMove()
     }
 }
 
-auto FOMapper::GetTabIndex() -> uint
+auto FOMapper::GetTabIndex() const -> uint
 {
     if (IntMode < TAB_COUNT) {
         return TabsActive[IntMode]->Index;
@@ -2600,20 +2339,20 @@ void FOMapper::RefreshCurProtos()
     }
 
     // Update fast pids
-    HexMngr.ClearFastPids();
+    CurMap->ClearFastPids();
     for (const auto* fast_proto : TabsActive[INT_MODE_FAST]->ItemProtos) {
-        HexMngr.AddFastPid(fast_proto->GetProtoId());
+        CurMap->AddFastPid(fast_proto->GetProtoId());
     }
 
     // Update ignore pids
-    HexMngr.ClearIgnorePids();
+    CurMap->ClearIgnorePids();
     for (const auto* ignore_proto : TabsActive[INT_MODE_IGNORE]->ItemProtos) {
-        HexMngr.AddIgnorePid(ignore_proto->GetProtoId());
+        CurMap->AddIgnorePid(ignore_proto->GetProtoId());
     }
 
     // Refresh map
-    if (HexMngr.IsMapLoaded()) {
-        HexMngr.RefreshMap();
+    if (CurMap != nullptr) {
+        CurMap->RefreshMap();
     }
 }
 
@@ -2692,23 +2431,17 @@ void FOMapper::IntSetMode(int mode)
 
 void FOMapper::MoveEntity(ClientEntity* entity, ushort hx, ushort hy)
 {
-    if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
+    NON_CONST_METHOD_HINT();
+
+    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return;
     }
 
-    if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
-        if (cr->IsDead() || (HexMngr.GetField(hx, hy).Crit == nullptr)) {
-            HexMngr.RemoveCritter(cr);
-            cr->SetHexX(hx);
-            cr->SetHexY(hy);
-            HexMngr.SetCritter(cr);
-        }
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        CurMap->MoveCritter(cr, hx, hy);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        HexMngr.DeleteItem(item, false, nullptr);
-        item->SetHexX(hx);
-        item->SetHexY(hy);
-        HexMngr.PushItem(item);
+        CurMap->MoveItem(item, hx, hy);
     }
 }
 
@@ -2719,11 +2452,11 @@ void FOMapper::DeleteEntity(ClientEntity* entity)
         SelectedEntities.erase(it);
     }
 
-    if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
-        HexMngr.DeleteCritter(cr->GetId());
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        CurMap->DestroyCritter(cr);
     }
     else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-        HexMngr.FinishItem(item->GetId(), false);
+        CurMap->DestroyItem(item);
     }
 }
 
@@ -2734,7 +2467,7 @@ void FOMapper::SelectClear()
         if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
             item->RestoreAlpha();
         }
-        else if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+        else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
             cr->Alpha = 0xFF;
         }
     }
@@ -2742,7 +2475,7 @@ void FOMapper::SelectClear()
 
     // Clear tiles
     if (!SelectedTile.empty()) {
-        HexMngr.ParseSelTiles();
+        CurMap->ParseSelTiles();
     }
     SelectedTile.clear();
 }
@@ -2761,7 +2494,7 @@ void FOMapper::SelectAddCrit(CritterView* npc)
 
 void FOMapper::SelectAddTile(ushort hx, ushort hy, bool is_roof)
 {
-    auto& f = HexMngr.GetField(hx, hy);
+    auto& f = CurMap->GetField(hx, hy);
     if (!is_roof && (f.GetTilesCount(false) == 0u)) {
         return;
     }
@@ -2778,7 +2511,7 @@ void FOMapper::SelectAddTile(ushort hx, ushort hy, bool is_roof)
     SelectedTile.push_back({hx, hy, is_roof});
 
     // Select
-    auto& tiles = HexMngr.GetTiles(hx, hy, is_roof);
+    auto& tiles = CurMap->GetTiles(hx, hy, is_roof);
     for (auto& tile : tiles) {
         tile.IsSelected = true;
     }
@@ -2790,11 +2523,11 @@ void FOMapper::SelectAdd(ClientEntity* entity)
     if (it == SelectedEntities.end()) {
         SelectedEntities.push_back(entity);
 
-        if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
-            cr->Alpha = HexMngr.SelectAlpha;
+        if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+            cr->Alpha = CurMap->SelectAlpha;
         }
         else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-            item->Alpha = HexMngr.SelectAlpha;
+            item->Alpha = CurMap->SelectAlpha;
         }
     }
 }
@@ -2805,7 +2538,7 @@ void FOMapper::SelectErase(ClientEntity* entity)
     if (it != SelectedEntities.end()) {
         SelectedEntities.erase(it);
 
-        if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+        if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
             cr->Alpha = 0xFF;
         }
         else if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
@@ -2818,8 +2551,8 @@ void FOMapper::SelectAll()
 {
     SelectClear();
 
-    for (const auto hx : xrange(HexMngr.GetWidth())) {
-        for (const auto hy : xrange(HexMngr.GetHeight())) {
+    for (const auto hx : xrange(CurMap->GetWidth())) {
+        for (const auto hy : xrange(CurMap->GetHeight())) {
             if (IsSelectTile && Settings.ShowTile) {
                 SelectAddTile(hx, hy, false);
             }
@@ -2829,8 +2562,8 @@ void FOMapper::SelectAll()
         }
     }
 
-    for (auto* item : HexMngr.GetItems()) {
-        if (HexMngr.IsIgnorePid(item->GetProtoId())) {
+    for (auto* item : CurMap->GetItems()) {
+        if (CurMap->IsIgnorePid(item->GetProtoId())) {
             continue;
         }
 
@@ -2846,12 +2579,12 @@ void FOMapper::SelectAll()
     }
 
     if (IsSelectCrit && Settings.ShowCrit) {
-        for (auto [id, cr] : HexMngr.GetCritters()) {
+        for (auto* cr : CurMap->GetCritters()) {
             SelectAddCrit(cr);
         }
     }
 
-    HexMngr.RefreshMap();
+    CurMap->RefreshMap();
 }
 
 struct TileToMove
@@ -2945,7 +2678,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hy += offs_hy;
             }
 
-            if (hx < 0 || hy < 0 || hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
+            if (hx < 0 || hy < 0 || hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
                 return false; // Disable moving
             }
         }
@@ -2967,7 +2700,7 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hx += offs_hx;
                 hy += offs_hy;
             }
-            if (hx < 0 || hy < 0 || hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
+            if (hx < 0 || hy < 0 || hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
                 return false; // Disable moving
             }
         }
@@ -3017,20 +2750,14 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hy += offs_hy;
             }
 
-            hx = std::clamp(hx, 0, HexMngr.GetWidth() - 1);
-            hy = std::clamp(hy, 0, HexMngr.GetHeight() - 1);
+            hx = std::clamp(hx, 0, CurMap->GetWidth() - 1);
+            hy = std::clamp(hy, 0, CurMap->GetHeight() - 1);
 
             if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
-                HexMngr.DeleteItem(item, false, nullptr);
-                item->SetHexX(static_cast<ushort>(hx));
-                item->SetHexY(static_cast<ushort>(hy));
-                HexMngr.PushItem(item);
+                CurMap->MoveItem(item, static_cast<ushort>(hx), static_cast<ushort>(hy));
             }
-            else if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
-                HexMngr.RemoveCritter(cr);
-                cr->SetHexX(static_cast<ushort>(hx));
-                cr->SetHexY(static_cast<ushort>(hy));
-                HexMngr.SetCritter(cr);
+            else if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+                CurMap->MoveCritter(cr, static_cast<ushort>(hx), static_cast<ushort>(hy));
             }
         }
     }
@@ -3041,8 +2768,8 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
 
     for (auto& stile : SelectedTile) {
         if (!hex_move) {
-            auto& f = HexMngr.GetField(stile.HexX, stile.HexY);
-            auto& tiles = HexMngr.GetTiles(stile.HexX, stile.HexY, stile.IsRoof);
+            auto& f = CurMap->GetField(stile.HexX, stile.HexY);
+            auto& tiles = CurMap->GetTiles(stile.HexX, stile.HexY, stile.IsRoof);
 
             for (uint k = 0, l = static_cast<uint>(tiles.size()); k < l; k++) {
                 if (tiles[k].IsSelected) {
@@ -3077,21 +2804,21 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
                 hy += offs_hy;
             }
 
-            hx = std::clamp(hx, 0, HexMngr.GetWidth() - 1);
-            hy = std::clamp(hy, 0, HexMngr.GetHeight() - 1);
+            hx = std::clamp(hx, 0, CurMap->GetWidth() - 1);
+            hy = std::clamp(hy, 0, CurMap->GetHeight() - 1);
             if (stile.HexX == hx && stile.HexY == hy) {
                 continue;
             }
 
-            auto& f = HexMngr.GetField(stile.HexX, stile.HexY);
-            auto& tiles = HexMngr.GetTiles(stile.HexX, stile.HexY, stile.IsRoof);
+            auto& f = CurMap->GetField(stile.HexX, stile.HexY);
+            auto& tiles = CurMap->GetTiles(stile.HexX, stile.HexY, stile.IsRoof);
 
             for (uint k = 0; k < tiles.size();) {
                 if (tiles[k].IsSelected) {
                     tiles[k].HexX = hx;
                     tiles[k].HexY = hy;
                     auto& ftile = f.GetTile(k, stile.IsRoof);
-                    tiles_to_move.push_back({&HexMngr.GetField(hx, hy), ftile, &HexMngr.GetTiles(hx, hy, stile.IsRoof), tiles[k], stile.IsRoof});
+                    tiles_to_move.push_back({&CurMap->GetField(hx, hy), ftile, &CurMap->GetTiles(hx, hy, stile.IsRoof), tiles[k], stile.IsRoof});
                     tiles.erase(tiles.begin() + k);
                     f.EraseTile(k, stile.IsRoof);
                 }
@@ -3119,8 +2846,8 @@ void FOMapper::SelectDelete()
     }
 
     for (auto& stile : SelectedTile) {
-        auto& f = HexMngr.GetField(stile.HexX, stile.HexY);
-        auto& tiles = HexMngr.GetTiles(stile.HexX, stile.HexY, stile.IsRoof);
+        auto& f = CurMap->GetField(stile.HexX, stile.HexY);
+        auto& tiles = CurMap->GetTiles(stile.HexX, stile.HexY, stile.IsRoof);
 
         for (uint k = 0; k < tiles.size();) {
             if (tiles[k].IsSelected) {
@@ -3135,42 +2862,36 @@ void FOMapper::SelectDelete()
 
     SelectedEntities.clear();
     SelectedTile.clear();
-    HexMngr.ClearSelTiles();
+    CurMap->ClearSelTiles();
     SelectClear();
-    HexMngr.RefreshMap();
+    CurMap->RefreshMap();
     IntHold = INT_NONE;
     CurMode = CUR_MODE_DEFAULT;
 }
 
 auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 {
-    RUNTIME_ASSERT(ActiveMap);
+    RUNTIME_ASSERT(CurMap);
 
-    const auto* proto = ProtoMngr->GetProtoCritter(pid);
+    const auto* proto = ProtoMngr.GetProtoCritter(pid);
     if (proto == nullptr) {
         return nullptr;
     }
 
-    if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
+    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return nullptr;
     }
-    if (HexMngr.GetField(hx, hy).Crit != nullptr) {
+    if (CurMap->GetField(hx, hy).Crit != nullptr) {
         return nullptr;
     }
 
     SelectClear();
 
-    CritterView* cr = 0; // Todo: need attention!
-    // new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId, proto, Settings, SprMngr, ResMngr);
-    cr->SetHexX(hx);
-    cr->SetHexY(hy);
+    CritterView* cr = CurMap->AddCritter(0, proto, hx, hy, {});
     cr->SetDir(NpcDir);
-    cr->Init();
-
-    HexMngr.AddCritter(cr);
     SelectAdd(cr);
 
-    HexMngr.RefreshMap();
+    CurMap->RefreshMap();
     CurMode = CUR_MODE_DEFAULT;
 
     return cr;
@@ -3178,14 +2899,14 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 
 auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> ItemView*
 {
-    RUNTIME_ASSERT(ActiveMap);
+    RUNTIME_ASSERT(CurMap);
 
     // Checks
-    const auto* proto_item = ProtoMngr->GetProtoItem(pid);
+    const auto* proto_item = ProtoMngr.GetProtoItem(pid);
     if (proto_item == nullptr) {
         return nullptr;
     }
-    if ((owner == nullptr) && (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight())) {
+    if ((owner == nullptr) && (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight())) {
         return nullptr;
     }
     if (proto_item->IsStatic() && (owner != nullptr)) {
@@ -3201,7 +2922,7 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
     ItemView* item = nullptr;
     if (owner != nullptr) {
         // Todo: need attention!
-        /*item = new ItemView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId, proto_item);
+        /*item = new ItemView(--((ProtoMap*)CurMap->Proto)->LastEntityId, proto_item);
         if (owner->Type == EntityType::CritterView)
             ((CritterView*)owner)->AddItem(item);
         else if (owner->Type == EntityType::Item || owner->Type == EntityType::ItemHexView)
@@ -3209,8 +2930,8 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
     }
     else {
         // Todo: need attention!
-        // uint id = HexMngr.AddItem(--((ProtoMap*)ActiveMap->Proto)->LastEntityId, pid, hx, hy, 0, nullptr);
-        // item = HexMngr.GetItemById(id);
+        // uint id = CurMap->AddItem(--((ProtoMap*)CurMap->Proto)->LastEntityId, pid, hx, hy, 0, nullptr);
+        // item = CurMap->GetItem(id);
     }
 
     // Select
@@ -3228,27 +2949,27 @@ auto FOMapper::AddItem(hstring pid, ushort hx, ushort hy, Entity* owner) -> Item
 
 void FOMapper::AddTile(hstring name, ushort hx, ushort hy, short ox, short oy, uchar layer, bool is_roof)
 {
-    RUNTIME_ASSERT(ActiveMap);
+    RUNTIME_ASSERT(CurMap);
 
     hx -= hx % Settings.MapTileStep;
     hy -= hy % Settings.MapTileStep;
 
-    if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
+    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return;
     }
 
     SelectClear();
 
-    HexMngr.SetTile(name, hx, hy, ox, oy, layer, is_roof, false);
+    CurMap->SetTile(name, hx, hy, ox, oy, layer, is_roof, false);
     CurMode = CUR_MODE_DEFAULT;
 }
 
 auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 {
-    RUNTIME_ASSERT(ActiveMap);
+    RUNTIME_ASSERT(CurMap);
 
-    int hx;
-    int hy;
+    int hx = 0;
+    int hy = 0;
     if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
         hx = cr->GetHexX();
         hy = cr->GetHexY();
@@ -3258,19 +2979,19 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
         hy = item->GetHexY();
     }
 
-    if (hx >= HexMngr.GetWidth() || hy >= HexMngr.GetHeight()) {
+    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return nullptr;
     }
 
     Entity* owner = nullptr;
     if (dynamic_cast<CritterView*>(entity) != nullptr) {
-        if (HexMngr.GetField(hx, hy).Crit != nullptr) {
+        if (CurMap->GetField(hx, hy).Crit != nullptr) {
             auto place_founded = false;
             for (auto d = 0; d < 6; d++) {
                 ushort hx_ = hx;
                 ushort hy_ = hy;
-                GeomHelper.MoveHexByDir(hx_, hy_, d, HexMngr.GetWidth(), HexMngr.GetHeight());
-                if (HexMngr.GetField(hx_, hy_).Crit == nullptr) {
+                GeomHelper.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
+                if (CurMap->GetField(hx_, hy_).Crit == nullptr) {
                     hx = hx_;
                     hy = hy_;
                     place_founded = true;
@@ -3282,33 +3003,36 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
             }
         }
 
-        CritterView* cr = 0; // Todo: need attention!
-                             // new CritterView(
-                             //--((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity->Proto, Settings,
-                             // SprMngr, ResMngr);
-        cr->SetProperties(entity->GetProperties());
-        cr->SetHexX(hx);
-        cr->SetHexY(hy);
-        cr->Init();
-        HexMngr.AddCritter(cr);
-        SelectAdd(cr);
-        owner = cr;
+        UNUSED_VARIABLE(hx);
+        UNUSED_VARIABLE(hy);
+        // CritterView* cr = 0; // Todo: need attention!
+        //  new CritterView(
+        //--((ProtoMap*)ActiveMap->Proto)->LastEntityId, (ProtoCritter*)entity->Proto, Settings,
+        //  SprMngr, ResMngr);
+        // cr->SetProperties(entity->GetProperties());
+        // cr->SetHexX(hx);
+        // cr->SetHexY(hy);
+        // cr->Init();
+        // HexMngr.AddCritter(cr);
+        // SelectAdd(cr);
+        // owner = cr;
     }
     else if (dynamic_cast<ItemHexView*>(entity) != nullptr) {
-        const uint id = 0; // Todo: need attention!
-        // HexMngr.AddItem(
-        //  --((ProtoMap*)ActiveMap->Proto)->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr);
-        auto* item = HexMngr.GetItemById(id);
-        SelectAdd(item);
-        owner = item;
+        // const uint id = 0; // Todo: need attention!
+        // CurMap->AddItem(--CurMap->GetProtoMap()->LastEntityId, entity->GetProtoId(), hx, hy, false, nullptr);
+        // auto* item = CurMap->GetItem(id);
+        // SelectAdd(item);
+        // owner = item;
     }
     else {
         throw UnreachablePlaceException(LINE_STR);
     }
 
-    auto* pmap = static_cast<const ProtoMap*>(ActiveMap->GetProto());
+    auto* pmap = static_cast<const ProtoMap*>(CurMap->GetProto());
     std::function<void(Entity*, Entity*)> add_entity_children = [&add_entity_children, &pmap](Entity* from, Entity* to) {
         // Todo: need attention!
+        UNUSED_VARIABLE(add_entity_children);
+        UNUSED_VARIABLE(pmap);
         /*for (auto* from_child : from->GetChildren())
         {
             RUNTIME_ASSERT(from_child->Type == EntityType::Item);
@@ -3344,8 +3068,8 @@ void FOMapper::BufferCopy()
 
     // Add entities to buffer
     std::function<void(EntityBuf*, Entity*)> add_entity = [&add_entity](EntityBuf* entity_buf, Entity* entity) {
-        ushort hx;
-        ushort hy;
+        ushort hx = 0u;
+        ushort hy = 0u;
         if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
             hx = cr->GetHexX();
             hy = cr->GetHexY();
@@ -3362,6 +3086,7 @@ void FOMapper::BufferCopy()
         entity_buf->Proto = (dynamic_cast<EntityWithProto*>(entity) != nullptr ? dynamic_cast<EntityWithProto*>(entity)->GetProto() : nullptr);
         entity_buf->Props = new Properties(entity->GetProperties());
         // Todo: need attention!
+        UNUSED_VARIABLE(add_entity);
         /*for (auto* child : entity->GetChildren())
         {
             EntityBuf* child_buf = new EntityBuf();
@@ -3376,7 +3101,7 @@ void FOMapper::BufferCopy()
 
     // Add tiles to buffer
     for (const auto& tile : SelectedTile) {
-        auto& hex_tiles = HexMngr.GetTiles(tile.HexX, tile.HexY, tile.IsRoof);
+        auto& hex_tiles = CurMap->GetTiles(tile.HexX, tile.HexY, tile.IsRoof);
         for (const auto& hex_tile : hex_tiles) {
             if (hex_tile.IsSelected) {
                 TileBuf tb;
@@ -3401,7 +3126,7 @@ void FOMapper::BufferCut()
 
 void FOMapper::BufferPaste(int, int)
 {
-    if (ActiveMap == nullptr) {
+    if (CurMap == nullptr) {
         return;
     }
 
@@ -3409,7 +3134,7 @@ void FOMapper::BufferPaste(int, int)
 
     // Paste map objects
     for (const auto& entity_buf : EntitiesBuffer) {
-        if (entity_buf.HexX >= HexMngr.GetWidth() || entity_buf.HexY >= HexMngr.GetHeight()) {
+        if (entity_buf.HexX >= CurMap->GetWidth() || entity_buf.HexY >= CurMap->GetHeight()) {
             continue;
         }
 
@@ -3418,13 +3143,13 @@ void FOMapper::BufferPaste(int, int)
 
         const Entity* owner;
         if (entity_buf.IsCritter) {
-            if (HexMngr.GetField(hx, hy).Crit != nullptr) {
+            if (CurMap->GetField(hx, hy).Crit != nullptr) {
                 auto place_founded = false;
                 for (int d = 0; d < 6; d++) {
                     ushort hx_ = entity_buf.HexX;
                     ushort hy_ = entity_buf.HexY;
-                    GeomHelper.MoveHexByDir(hx_, hy_, d, HexMngr.GetWidth(), HexMngr.GetHeight());
-                    if (HexMngr.GetField(hx_, hy_).Crit == nullptr) {
+                    GeomHelper.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
+                    if (CurMap->GetField(hx_, hy_).Crit == nullptr) {
                         hx = hx_;
                         hy = hy_;
                         place_founded = true;
@@ -3436,29 +3161,32 @@ void FOMapper::BufferPaste(int, int)
                 }
             }
 
-            CritterView* cr = 0; // Todo: need attention!
-            // new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
-            //  (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
-            cr->SetProperties(*entity_buf.Props);
-            cr->SetHexX(hx);
-            cr->SetHexY(hy);
-            cr->Init();
-            HexMngr.AddCritter(cr);
-            SelectAdd(cr);
-            owner = cr;
+            UNUSED_VARIABLE(hx);
+            UNUSED_VARIABLE(hy);
+            // CritterView* cr = 0; // Todo: need attention!
+            //  new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
+            //   (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
+            // cr->SetProperties(*entity_buf.Props);
+            // cr->SetHexX(hx);
+            // cr->SetHexY(hy);
+            // cr->Init();
+            // HexMngr.AddCritter(cr);
+            // SelectAdd(cr);
+            // owner = cr;
         }
         else if (entity_buf.IsItem) {
             const uint id = 0; // Todo: need attention!
-            // HexMngr.AddItem(
-            //  --((ProtoMap*)ActiveMap->Proto)->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr);
-            ItemHexView* item = HexMngr.GetItemById(id);
+            // CurMap->AddItem(
+            //  --((ProtoMap*)CurMap->Proto)->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr);
+            ItemHexView* item = CurMap->GetItem(id);
             item->SetProperties(*entity_buf.Props);
             SelectAdd(item);
             owner = item;
         }
 
         // Todo: need attention!
-        /*auto* pmap = dynamic_cast<ProtoMap*>(ActiveMap->Proto);
+        UNUSED_VARIABLE(owner);
+        /*auto* pmap = dynamic_cast<ProtoMap*>(CurMap->Proto);
         std::function<void(EntityBuf*, Entity*)> add_entity_children = [&add_entity_children, &pmap](EntityBuf* entity_buf) {
             for (auto& child_buf : entity_buf->Children) {
                 RUNTIME_ASSERT(child_buf->Type == EntityType::Item);
@@ -3476,9 +3204,9 @@ void FOMapper::BufferPaste(int, int)
 
     // Paste tiles
     for (auto& tile_buf : TilesBuffer) {
-        if (tile_buf.HexX < HexMngr.GetWidth() && tile_buf.HexY < HexMngr.GetHeight()) {
+        if (tile_buf.HexX < CurMap->GetWidth() && tile_buf.HexY < CurMap->GetHeight()) {
             // Create
-            HexMngr.SetTile(tile_buf.Name, tile_buf.HexX, tile_buf.HexY, tile_buf.OffsX, tile_buf.OffsY, tile_buf.Layer, tile_buf.IsRoof, true);
+            CurMap->SetTile(tile_buf.Name, tile_buf.HexX, tile_buf.HexY, tile_buf.OffsX, tile_buf.OffsY, tile_buf.Layer, tile_buf.IsRoof, true);
 
             // Select helper
             bool sel_added = false;
@@ -3504,7 +3232,7 @@ void FOMapper::CurDraw()
         if (anim != nullptr) {
             const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si != nullptr) {
-                SprMngr.DrawSprite(anim, Settings.MouseX, Settings.MouseY, COLOR_IFACE);
+                SprMngr.DrawSprite(anim->GetCurSprId(GameTime.GameTick()), Settings.MouseX, Settings.MouseY, COLOR_IFACE);
             }
         }
     } break;
@@ -3514,15 +3242,15 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
                 break;
             }
 
             const auto spr_id = GetProtoItemCurSprId(proto_item);
             const auto* si = SprMngr.GetSpriteInfo(spr_id);
             if (si != nullptr) {
-                const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
-                const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
+                const auto x = CurMap->GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX + (Settings.MapHexWidth / 2) + Settings.ScrOx + proto_item->GetOffsetX();
+                const auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY + (Settings.MapHexHeight / 2) + Settings.ScrOy + proto_item->GetOffsetY();
                 SprMngr.DrawSpriteSize(spr_id, static_cast<int>(x / Settings.SpritesZoom), static_cast<int>(y / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
             }
         }
@@ -3534,7 +3262,7 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
                 break;
             }
 
@@ -3542,8 +3270,8 @@ void FOMapper::CurDraw()
             if (si != nullptr) {
                 hx -= hx % Settings.MapTileStep;
                 hy -= hy % Settings.MapTileStep;
-                auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
-                auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
+                auto x = CurMap->GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
+                auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY;
                 if (!DrawRoof) {
                     x += Settings.MapTileOffsX;
                     y += Settings.MapTileOffsY;
@@ -3553,7 +3281,7 @@ void FOMapper::CurDraw()
                     y += Settings.MapRoofOffsY;
                 }
 
-                SprMngr.DrawSpriteSize(anim, static_cast<int>((x + Settings.ScrOx) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
+                SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), static_cast<int>((x + Settings.ScrOx) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
             }
         }
         else if (IsCritMode() && !CurNpcProtos->empty()) {
@@ -3565,14 +3293,14 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
                 break;
             }
 
             const auto* si = SprMngr.GetSpriteInfo(spr_id);
             if (si != nullptr) {
-                const auto x = HexMngr.GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
-                const auto y = HexMngr.GetField(hx, hy).ScrY - si->Height + si->OffsY;
+                const auto x = CurMap->GetField(hx, hy).ScrX - (si->Width / 2) + si->OffsX;
+                const auto y = CurMap->GetField(hx, hy).ScrY - si->Height + si->OffsY;
 
                 SprMngr.DrawSpriteSize(spr_id, static_cast<int>((x + Settings.ScrOx + (Settings.MapHexWidth / 2)) / Settings.SpritesZoom), static_cast<int>((y + Settings.ScrOy + (Settings.MapHexHeight / 2)) / Settings.SpritesZoom), static_cast<int>(si->Width / Settings.SpritesZoom), static_cast<int>(si->Height / Settings.SpritesZoom), true, false, 0);
             }
@@ -3619,7 +3347,7 @@ void FOMapper::CurMMouseDown()
     }
     else {
         for (auto* entity : SelectedEntities) {
-            if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+            if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                 auto dir = cr->GetDir() + 1;
                 if (dir >= Settings.MapDirCount) {
                     dir = 0;
@@ -3665,13 +3393,13 @@ auto FOMapper::GetCurHex(ushort& hx, ushort& hy, bool ignore_interface) -> bool
     if (!ignore_interface && IsCurInInterface()) {
         return false;
     }
-    return HexMngr.GetHexPixel(Settings.MouseX, Settings.MouseY, hx, hy);
+    return CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy);
 }
 
 void FOMapper::ConsoleDraw()
 {
     if (ConsoleEdit) {
-        SprMngr.DrawSprite(ConsolePic, IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, 0);
+        SprMngr.DrawSprite(ConsolePic->GetSprId(), IntX + ConsolePicX, (IntVisible ? IntY : Settings.ScreenHeight) + ConsolePicY, 0);
 
         auto str = ConsoleStr;
         str.insert(ConsoleCur, GameTime.FrameTick() % 800 < 400 ? "!" : ".");
@@ -3791,33 +3519,15 @@ void FOMapper::ParseCommand(string_view command)
         }
 
         auto* pmap = new ProtoMap(ToHashedString(map_name), GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
+        UNUSED_VARIABLE(pmap);
         // Todo: need attention!
-        /*if (!pmap->EditorLoad(ServerFileMngr, ProtoMngr, SprMngr, ResMngr))
+        /*if (!pmap->EditorLoad(ServerFileSys, ProtoMngr, SprMngr, ResMngr))
         {
             AddMess("File not found or truncated.");
             return;
         }*/
 
-        SelectClear();
-
-        // Todo: need attention!
-        /*if (ActiveMap != nullptr) {
-            HexMngr.GetProtoMap(*dynamic_cast<ProtoMap*>(ActiveMap->Proto));
-        }
-        if (!HexMngr.SetProtoMap(*pmap)) {
-            AddMess("Load map fail.");
-            return;
-        }*/
-
-        HexMngr.FindSetCenter(pmap->GetWorkHexX(), pmap->GetWorkHexY());
-
-        auto* map = new MapView(this, 0, pmap);
-        ActiveMap = map;
-        LoadedMaps.push_back(map);
-
-        AddMess("Load map complete.");
-
-        RunMapLoadScript(map);
+        LoadMap(map_name, -1, -1);
     }
     // Save map
     else if (command[0] == '^') {
@@ -3827,17 +3537,17 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        if (ActiveMap == nullptr) {
+        if (CurMap == nullptr) {
             AddMess("Map not loaded.");
             return;
         }
 
         // Todo: need attention!
-        // HexMngr.GetProtoMap(*dynamic_cast<ProtoMap*>(ActiveMap->Proto));
-        // ((ProtoMap*)ActiveMap->Proto)->EditorSave(ServerFileMngr, map_name);
+        // CurMap->GetProtoMap(*dynamic_cast<ProtoMap*>(CurMap->Proto));
+        // ((ProtoMap*)CurMap->Proto)->EditorSave(ServerFileSys, map_name);
 
         AddMess("Save map success.");
-        RunMapSaveScript(ActiveMap);
+        RunMapSaveScript(CurMap);
     }
     // Run script
     else if (command[0] == '#') {
@@ -3876,7 +3586,7 @@ void FOMapper::ParseCommand(string_view command)
     else if (command[0] == '@') {
         AddMess("Playing critter animations.");
 
-        if (ActiveMap == nullptr) {
+        if (CurMap == nullptr) {
             AddMess("Map not loaded.");
             return;
         }
@@ -3888,7 +3598,7 @@ void FOMapper::ParseCommand(string_view command)
 
         if (!SelectedEntities.empty()) {
             for (auto* entity : SelectedEntities) {
-                if (auto* cr = dynamic_cast<CritterView*>(entity); cr != nullptr) {
+                if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
                     cr->ClearAnim();
                     for (uint j = 0; j < anims.size() / 2; j++) {
                         cr->Animate(anims[j * 2], anims[j * 2 + 1], nullptr);
@@ -3897,7 +3607,7 @@ void FOMapper::ParseCommand(string_view command)
             }
         }
         else {
-            for (auto [id, cr] : HexMngr.GetCritters()) {
+            for (auto* cr : CurMap->GetCritters()) {
                 cr->ClearAnim();
                 for (uint j = 0; j < anims.size() / 2; j++) {
                     cr->Animate(anims[j * 2], anims[j * 2 + 1], nullptr);
@@ -3930,49 +3640,49 @@ void FOMapper::ParseCommand(string_view command)
             pmap->SetDayColor(arr2);
 
             // Todo: need attention!
-            /*if (ActiveMap != nullptr) {
-                HexMngr.GetProtoMap(*dynamic_cast<ProtoMap*>(ActiveMap->Proto));
+            /*if (CurMap != nullptr) {
+                CurMap->GetProtoMap(*dynamic_cast<ProtoMap*>(CurMap->Proto));
             }
 
-            if (!HexMngr.SetProtoMap(*pmap)) {
+            if (!CurMap->SetProtoMap(*pmap)) {
                 AddMess("Create map fail, see log.");
                 return;
             }*/
 
             AddMess("Create map success.");
-            HexMngr.FindSetCenter(150, 150);
+            CurMap->FindSetCenter(150, 150);
 
             auto* map = new MapView(this, 0, pmap);
-            ActiveMap = map;
+            CurMap = map;
             LoadedMaps.push_back(map);
         }
         else if (command_ext == "unload") {
             AddMess("Unload map.");
 
-            auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), ActiveMap);
+            auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), CurMap);
             if (it == LoadedMaps.end()) {
                 return;
             }
 
             LoadedMaps.erase(it);
             SelectedEntities.clear();
-            ActiveMap->GetProto()->Release();
-            ActiveMap->Release();
-            ActiveMap = nullptr;
+            CurMap->GetProto()->Release();
+            CurMap->Release();
+            CurMap = nullptr;
 
             if (LoadedMaps.empty()) {
-                HexMngr.UnloadMap();
                 return;
             }
 
             // Todo: need attention!
-            /*if (HexMngr.SetProtoMap(*dynamic_cast<ProtoMap*>(LoadedMaps[0]->Proto))) {
-                ActiveMap = LoadedMaps[0];
-                HexMngr.FindSetCenter(ActiveMap->GetWorkHexX(), ActiveMap->GetWorkHexY());
+            UNUSED_VARIABLE(LoadedMaps);
+            /*if (CurMap->SetProtoMap(*dynamic_cast<ProtoMap*>(LoadedMaps[0]->Proto))) {
+                CurMap = LoadedMaps[0];
+                CurMap->FindSetCenter(CurMap->GetWorkHexX(), CurMap->GetWorkHexY());
                 return;
             }*/
         }
-        else if (command_ext == "size" && (ActiveMap != nullptr)) {
+        else if (command_ext == "size" && (CurMap != nullptr)) {
             AddMess("Resize map.");
 
             int maxhx = 0;
@@ -3988,6 +3698,65 @@ void FOMapper::ParseCommand(string_view command)
     else {
         AddMess("Unknown command.");
     }
+}
+
+void FOMapper::LoadMap(string_view map_name, int start_hx, int start_hy)
+{
+    const auto* pmap = ProtoMngr.GetProtoMap(ToHashedString(map_name));
+    if (pmap == nullptr) {
+        AddMess("Map prototype not found");
+        return;
+    }
+
+    auto new_map_holder = std::make_unique<MapView>(this, 0u, pmap);
+    auto* new_map = new_map_holder.get();
+    new_map->EnableMapperMode();
+
+    try {
+        MapLoader::Load(
+            map_name, FileSys, ProtoMngr, *this,
+            [new_map](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+                const auto* new_critter = new_map->AddCritter(id, proto, kv);
+                return new_critter != nullptr;
+            },
+            [new_map](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+                const auto* new_item = new_map->AddItem(id, proto, kv);
+                return new_item != nullptr;
+            },
+            [new_map](MapTile&& tile) -> bool {
+                new_map->AddTile(tile);
+                return true;
+            });
+    }
+    catch (const MapLoaderException& ex) {
+        AddMess(_str("Map truncated: {}", ex.what()));
+        return;
+    }
+
+    start_hx = std::clamp<int>(start_hx, 0, new_map->GetWidth());
+    start_hy = std::clamp<int>(start_hy, 0, new_map->GetHeight());
+    new_map->FindSetCenter(start_hx, start_hy);
+
+    AddMess("Load map complete.");
+
+    SelectClear();
+
+    CurMap = new_map_holder.release();
+    LoadedMaps.push_back(CurMap);
+
+    RunMapLoadScript(CurMap);
+}
+
+void FOMapper::UnloadMap()
+{
+    if (CurMap == nullptr) {
+        return;
+    }
+
+    SelectedEntities.clear();
+    CurMap->MarkAsDestroyed();
+    CurMap->Release();
+    CurMap = nullptr;
 }
 
 void FOMapper::AddMess(string_view message_text)
@@ -4064,8 +3833,7 @@ auto FOMapper::SaveLogFile() -> bool
         fmt_log += i.Time + _str(i.Mess).erase('|', ' ').str();
     }
 
-    f.Write(fmt_log.c_str(), static_cast<uint>(fmt_log.length()));
-    return true;
+    return f.Write(fmt_log);
 }
 
 void FOMapper::RunStartScript()
@@ -4087,89 +3855,9 @@ void FOMapper::RunMapSaveScript(MapView* map)
     OnEditMapSave.Fire(map);
 }
 
-void FOMapper::DrawIfaceLayer(uint /*layer*/)
+void FOMapper::DrawIfaceLayer(uint layer)
 {
     SpritesCanDraw = true;
     OnRenderIface.Fire(); // Todo: mapper render iface layer
     SpritesCanDraw = false;
-}
-
-void FOMapper::OnSetItemFlags(Entity* entity, const Property* prop, void* /*cur_value*/, void* /*old_value*/)
-{
-    // IsColorize, IsBadItem, IsShootThru, IsLightThru, IsNoBlock
-
-    auto* item = dynamic_cast<ItemView*>(entity);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex && HexMngr.IsMapLoaded()) {
-        auto* hex_item = dynamic_cast<ItemHexView*>(item);
-        bool rebuild_cache = false;
-        if (prop == hex_item->GetPropertyIsColorize()) {
-            hex_item->RefreshAlpha();
-        }
-        else if (prop == hex_item->GetPropertyIsBadItem()) {
-            hex_item->SetSprite(nullptr);
-        }
-        else if (prop == hex_item->GetPropertyIsShootThru()) {
-            rebuild_cache = true;
-        }
-        else if (prop == hex_item->GetPropertyIsLightThru()) {
-            HexMngr.RebuildLight();
-            rebuild_cache = true;
-        }
-        else if (prop == hex_item->GetPropertyIsNoBlock()) {
-            rebuild_cache = true;
-        }
-        if (rebuild_cache) {
-            HexMngr.GetField(hex_item->GetHexX(), hex_item->GetHexY()).ProcessCache();
-        }
-    }
-}
-
-void FOMapper::OnSetItemSomeLight(Entity* /*entity*/, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
-{
-    // IsLight, LightIntensity, LightDistance, LightFlags, LightColor
-
-    if (HexMngr.IsMapLoaded()) {
-        HexMngr.RebuildLight();
-    }
-}
-
-void FOMapper::OnSetItemPicMap(Entity* entity, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
-{
-    auto* item = dynamic_cast<ItemView*>(entity);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* hex_item = dynamic_cast<ItemHexView*>(item);
-        hex_item->RefreshAnim();
-    }
-}
-
-void FOMapper::OnSetItemOffsetXY(Entity* entity, const Property* /*prop*/, void* /*cur_value*/, void* /*old_value*/)
-{
-    // OffsetX, OffsetY
-
-    auto* item = dynamic_cast<ItemView*>(entity);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex && HexMngr.IsMapLoaded()) {
-        auto* hex_item = dynamic_cast<ItemHexView*>(item);
-        hex_item->SetAnimOffs();
-        HexMngr.ProcessHexBorders(hex_item);
-    }
-}
-
-void FOMapper::OnSetItemOpened(Entity* entity, const Property* /*prop*/, void* cur_value, void* old_value)
-{
-    auto* item = dynamic_cast<ItemView*>(entity);
-    const bool cur = *static_cast<bool*>(cur_value);
-    const bool old = *static_cast<bool*>(old_value);
-
-    if (item->GetIsCanOpen()) {
-        auto* hex_item = dynamic_cast<ItemHexView*>(item);
-        if (!old && cur) {
-            hex_item->SetAnimFromStart();
-        }
-        if (old && !cur) {
-            hex_item->SetAnimFromEnd();
-        }
-    }
 }

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -54,16 +54,18 @@ public:
     [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int override;
-    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int override;
-    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value) const -> string override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
+    [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
+    [[nodiscard]] auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string override;
     [[nodiscard]] auto ToHashedString(string_view s) const -> hstring override;
     [[nodiscard]] auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring override;
-    [[nodiscard]] auto ResolveGenericValue(string_view str, bool& failed) -> int override;
+    [[nodiscard]] auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int override;
     [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
 
     void FinalizeDataRegistration();
+
+    FileSystem FileSys {};
 
 protected:
     explicit FOEngineBase(bool is_server);

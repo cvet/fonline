@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,7 @@ static constexpr auto MAKEUINT(uchar ch0, uchar ch1, uchar ch2, uchar ch3) -> ui
     return ch0 | ch1 << 8 | ch2 << 16 | ch3 << 24;
 }
 
-SoundManager::SoundManager(AudioSettings& settings, FileManager& file_mngr) : _settings {settings}, _fileMngr {file_mngr}
+SoundManager::SoundManager(AudioSettings& settings, FileSystem& file_sys) : _settings {settings}, _fileSys {file_sys}
 {
     UNUSED_VARIABLE(OV_CALLBACKS_DEFAULT);
     UNUSED_VARIABLE(OV_CALLBACKS_NOCLOSE);
@@ -217,14 +217,14 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 {
     NON_CONST_METHOD_HINT();
 
-    auto file = _fileMngr.ReadFile(fname);
+    auto file = _fileSys.ReadFile(fname);
     if (!file) {
         return false;
     }
 
     auto dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('R', 'I', 'F', 'F')) {
-        WriteLog("'RIFF' not found.\n");
+        WriteLog("'RIFF' not found");
         return false;
     }
 
@@ -232,19 +232,19 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
 
     dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('W', 'A', 'V', 'E')) {
-        WriteLog("'WAVE' not found.\n");
+        WriteLog("'WAVE' not found");
         return false;
     }
 
     dw_buf = file.GetLEUInt();
     if (dw_buf != MAKEUINT('f', 'm', 't', ' ')) {
-        WriteLog("'fmt ' not found.\n");
+        WriteLog("'fmt ' not found");
         return false;
     }
 
     dw_buf = file.GetLEUInt();
     if (dw_buf == 0u) {
-        WriteLog("Unknown format.\n");
+        WriteLog("Unknown format");
         return false;
     }
 
@@ -259,10 +259,10 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         ushort CbSize; // Bytes of extra data appended to this struct
     } waveformatex {};
 
-    file.CopyMem(&waveformatex, 16);
+    file.CopyData(&waveformatex, 16);
 
     if (waveformatex.WFormatTag != 1) {
-        WriteLog("Compressed files not supported.\n");
+        WriteLog("Compressed files not supported");
         return false;
     }
 
@@ -276,7 +276,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     }
 
     if (dw_buf != MAKEUINT('d', 'a', 't', 'a')) {
-        WriteLog("Unknown format2.\n");
+        WriteLog("Unknown format2");
         return false;
     }
 
@@ -295,12 +295,12 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
         sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
         break;
     default:
-        WriteLog("Unknown format.\n");
+        WriteLog("Unknown format");
         return false;
     }
 
     // Convert
-    file.CopyMem(&sound->BaseBuf[0], static_cast<uint>(sound->BaseBufLen));
+    file.CopyData(&sound->BaseBuf[0], sound->BaseBufLen);
 
     return ConvertData(sound);
 }
@@ -309,7 +309,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 {
     NON_CONST_METHOD_HINT();
 
-    const auto file = _fileMngr.ReadFile(fname);
+    const auto file = _fileSys.ReadFile(fname);
     if (!file) {
         return false;
     }
@@ -317,7 +317,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), file.GetFsize(), channels, freq, samples);
+    auto acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
@@ -329,7 +329,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto* buf = reinterpret_cast<unsigned short*>(&sound->BaseBuf[0]);
     const auto dec_data = acm->readAndDecompress(buf, buf_size);
     if (dec_data != buf_size) {
-        WriteLog("Decode Acm error.\n");
+        WriteLog("Decode Acm error");
         return false;
     }
 
@@ -338,7 +338,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
 
 auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 {
-    auto file = _fileMngr.ReadFile(fname);
+    auto file = _fileSys.ReadFile(fname);
     if (!file) {
         return false;
     }
@@ -346,7 +346,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     ov_callbacks callbacks;
     callbacks.read_func = [](void* ptr, size_t size, size_t, void* datasource) -> size_t {
         auto* file2 = static_cast<File*>(datasource);
-        file2->CopyMem(ptr, static_cast<uint>(size));
+        file2->CopyData(ptr, size);
         return size;
     };
     callbacks.seek_func = [](void* datasource, ogg_int64_t offset, int whence) -> int {
@@ -359,7 +359,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
             file2->GoForward(static_cast<uint>(offset));
             break;
         case SEEK_END:
-            file2->SetCurPos(file2->GetFsize() - static_cast<uint>(offset));
+            file2->SetCurPos(file2->GetSize() - static_cast<uint>(offset));
             break;
         default:
             return -1;
@@ -367,13 +367,13 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
         return 0;
     };
     callbacks.close_func = [](void* datasource) -> int {
-        auto* file2 = static_cast<File*>(datasource);
+        const auto* file2 = static_cast<File*>(datasource);
         delete file2;
         return 0;
     };
     callbacks.tell_func = [](void* datasource) -> long {
-        auto* file2 = static_cast<File*>(datasource);
-        return file2->GetCurPos();
+        const auto* file2 = static_cast<File*>(datasource);
+        return static_cast<long>(file2->GetCurPos());
     };
 
     sound->OggStream = unique_ptr<OggVorbis_File, std::function<void(OggVorbis_File*)>>(new OggVorbis_File(), [](auto* vf) {
@@ -383,35 +383,32 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
 
     const auto error = ov_open_callbacks(new File {std::move(file)}, sound->OggStream.get(), nullptr, 0, callbacks);
     if (error != 0) {
-        WriteLog("Open OGG file '{}' fail, error:\n", fname);
+        WriteLog("Open OGG file '{}' fail, error:", fname);
         switch (error) {
         case OV_EREAD:
-            WriteLog("A read from media returned an error.\n");
+            WriteLog("A read from media returned an error");
             break;
         case OV_ENOTVORBIS:
-            WriteLog("Bitstream does not contain any Vorbis data.\n");
+            WriteLog("Bitstream does not contain any Vorbis data");
             break;
         case OV_EVERSION:
-            WriteLog("Vorbis version mismatch.\n");
+            WriteLog("Vorbis version mismatch");
             break;
         case OV_EBADHEADER:
-            WriteLog("Invalid Vorbis bitstream header.\n");
+            WriteLog("Invalid Vorbis bitstream header");
             break;
         case OV_EFAULT:
-            WriteLog("Internal logic fault; indicates a bug or heap/stack corruption.\n");
+            WriteLog("Internal logic fault; indicates a bug or heap/stack corruption");
             break;
         default:
-            WriteLog("Unknown error code {}.\n", error);
+            WriteLog("Unknown error code {}", error);
             break;
         }
         return false;
     }
 
-    auto* vi = ov_info(sound->OggStream.get(), -1);
-    if (vi == nullptr) {
-        WriteLog("Ogg info error.\n");
-        return false;
-    }
+    const auto* vi = ov_info(sound->OggStream.get(), -1);
+    RUNTIME_ASSERT(vi != nullptr);
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
     sound->OriginalChannels = vi->channels;

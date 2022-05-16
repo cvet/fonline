@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,26 +38,31 @@
 #include "ItemView.h"
 #include "ResourceManager.h"
 
+class MapView;
+
 class ItemHexView final : public ItemView
 {
 public:
     ItemHexView() = delete;
-    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, const Properties& props);
-    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data);
-    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto);
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props);
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data);
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
     ItemHexView(const ItemHexView&) = delete;
     ItemHexView(ItemHexView&&) noexcept = delete;
     auto operator=(const ItemHexView&) = delete;
     auto operator=(ItemHexView&&) noexcept = delete;
     ~ItemHexView() override = default;
 
+    [[nodiscard]] auto GetMap() -> MapView* { return _map; }
+    [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
     [[nodiscard]] auto IsAnimated() const -> bool { return _isAnimated; }
     [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
     [[nodiscard]] auto GetEggType() const -> int;
     [[nodiscard]] auto IsFinishing() const -> bool;
-    [[nodiscard]] auto IsFinish() const -> bool;
+    [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto IsDynamicEffect() const -> bool { return _isEffect && (_effSx != 0.0f || _effSy != 0.0f); }
     [[nodiscard]] auto GetEffectStep() const -> pair<ushort, ushort>;
 
@@ -99,11 +104,10 @@ public:
     vector<pair<ushort, ushort>> EffSteps {};
 
 private:
-    ItemHexView(FOClient* engine, uint id, const ProtoItem* proto);
-
     void AfterConstruction();
     void SetFade(bool fade_up);
 
+    MapView* _map;
     uint _curSpr {};
     uint _begSpr {};
     uint _endSpr {};

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,26 +32,65 @@
 //
 
 #include "Common.h"
-
+#include "Application.h"
+#include "DiskFileSystem.h"
+#include "Log.h"
+#include "StringUtils.h"
+#include "Timer.h"
+#include "Version-Include.h"
 #include "WinApi-Include.h"
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+#if !FO_WINDOWS
+#if __has_include(<libunwind.h>)
+#define BACKWARD_HAS_LIBUNWIND 1
+#elif __has_include(<bfd.h>)
+#define BACKWARD_HAS_BFD 1
+#endif
+#endif
+#include "backward.hpp"
+#if FO_WINDOWS
+#undef MessageBox
+#endif
+#endif
 
 hstring::entry hstring::_zeroEntry;
 
-static const char* AppName;
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
 
-void SetAppName(const char* name)
+void InitApp(int argc, char** argv, string_view name_appendix)
 {
-    assert(AppName == nullptr);
-    AppName = name;
+    // Ensure that we call init only once
+    static std::once_flag once;
+    auto first_call = false;
+    std::call_once(once, [&first_call] { first_call = true; });
+    if (!first_call) {
+        throw AppInitException("InitApp must be called only once");
+    }
+
+    // Unhandled exceptions handler
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+    {
+        [[maybe_unused]] static backward::SignalHandling sh;
+        assert(sh.loaded());
+    }
+#endif
+
+    CreateGlobalData();
+
+    App = new Application(argc, argv, name_appendix);
 }
 
-auto GetAppName() -> const char*
+void ExitApp(bool success)
 {
-    assert(AppName != nullptr);
-    return AppName;
+    const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
+    std::quick_exit(code);
+#else
+    std::exit(code);
+#endif
 }
 
 void CreateGlobalData()
@@ -65,6 +104,84 @@ void DeleteGlobalData()
 {
     for (auto i = 0; i < GlobalDataCallbacksCount; i++) {
         DeleteGlobalDataCallbacks[i]();
+    }
+}
+
+auto GetStackTrace() -> string
+{
+    // Todo: apply scripts strack trace
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+    backward::TraceResolver resolver;
+    backward::StackTrace st;
+    st.load_here();
+    st.skip_n_firsts(2);
+    backward::Printer printer;
+    printer.snippet = false;
+    std::stringstream ss;
+    printer.print(st, ss);
+    auto st_str = ss.str();
+    return st_str.back() == '\n' ? st_str.substr(0, st_str.size() - 1) : st_str;
+#else
+
+    return "Stack trace: Not supported";
+#endif
+}
+
+bool BreakIntoDebugger([[maybe_unused]] string_view error_message)
+{
+#if FO_WINDOWS
+    if (::IsDebuggerPresent() != FALSE) {
+        ::DebugBreak();
+        return true;
+    }
+#endif
+
+    return false;
+}
+
+void ReportExceptionAndExit(const std::exception& ex)
+{
+    if (!BreakIntoDebugger(ex.what())) {
+        WriteLog(LogType::Error, "\n{}\n", ex.what());
+        CreateDumpMessage("FatalException", ex.what());
+        MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
+    }
+
+    ExitApp(false);
+}
+
+void ReportExceptionAndContinue(const std::exception& ex)
+{
+    if (BreakIntoDebugger(ex.what())) {
+        return;
+    }
+
+    WriteLog(LogType::Error, "\n{}\n", ex.what());
+
+#if FO_DEBUG
+    MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());
+#endif
+}
+
+void CreateDumpMessage(string_view appendix, string_view message)
+{
+    const auto traceback = GetStackTrace();
+    const auto dt = Timer::GetCurrentDateTime();
+    const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", appendix, FO_DEV_NAME, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+
+    if (auto file = DiskFileSystem::OpenFile(fname, true)) {
+        file.Write(_str("{}\n", appendix));
+        file.Write(_str("{}\n", message));
+        file.Write(_str("\n"));
+        file.Write(_str("Application\n"));
+        file.Write(_str("\tName        {}\n", App->GetName()));
+        file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
+        file.Write(_str("\tOS          Windows\n"));
+        file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));
+        file.Write(_str("\n"));
+        file.Write(traceback);
+        file.Write(_str("\n"));
     }
 }
 
@@ -90,15 +207,3 @@ void emscripten_sleep(unsigned int ms)
     throw UnreachablePlaceException(LINE_STR);
 }
 #endif
-
-bool BreakIntoDebugger()
-{
-#if FO_WINDOWS
-    if (::IsDebuggerPresent() != FALSE) {
-        ::DebugBreak();
-        return true;
-    }
-#endif
-
-    return false;
-}

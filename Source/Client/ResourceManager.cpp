@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,49 +41,36 @@
 static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
-ResourceManager::ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileMngr {file_mngr}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
+ResourceManager::ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileSys {file_sys}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
 {
-    _eventUnsubscriber += _fileMngr.OnDataSourceAdded += [this](DataSource* ds) {
-        // Hash all files
-        for (const auto& name : ds->GetFileNames("", true, "")) {
-            const auto h1 = _nameResolver.ToHashedString(name);
+    {
+        auto allFiles = _fileSys.FilterFiles("", "", true);
+        while (allFiles.MoveNext()) {
+            auto file_header = allFiles.GetCurFileHeader();
+            const auto h1 = _nameResolver.ToHashedString(file_header.GetPath());
             UNUSED_VARIABLE(h1);
-            const auto h2 = _nameResolver.ToHashedString(_str(name).lower());
+            const auto h2 = _nameResolver.ToHashedString(file_header.GetName());
             UNUSED_VARIABLE(h2);
-            const auto h3 = _nameResolver.ToHashedString(_str(name).extractFileName());
-            UNUSED_VARIABLE(h3);
-            const auto h4 = _nameResolver.ToHashedString(_str(name).extractFileName().lower());
-            UNUSED_VARIABLE(h4);
         }
+    }
 
-        // Splashes
-        for (const auto& splash : ds->GetFileNames("Splash/", true, "rix")) {
-            if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
-                _splashNames.push_back(splash);
+    for (const auto* splash_ext : {"rix", "png", "jpg"}) {
+        auto splashes = _fileSys.FilterFiles(splash_ext, "Splash/", true);
+        while (splashes.MoveNext()) {
+            auto file_header = splashes.GetCurFileHeader();
+            if (std::find(_splashNames.begin(), _splashNames.end(), file_header.GetPath()) == _splashNames.end()) {
+                _splashNames.emplace_back(file_header.GetPath());
             }
         }
-        for (const auto& splash : ds->GetFileNames("Splash/", true, "png")) {
-            if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
-                _splashNames.push_back(splash);
-            }
-        }
-        for (const auto& splash : ds->GetFileNames("Splash/", true, "jpg")) {
-            if (std::find(_splashNames.begin(), _splashNames.end(), splash) == _splashNames.end()) {
-                _splashNames.push_back(splash);
-            }
-        }
+    }
 
-        // Sound names
-        for (const auto& sound : ds->GetFileNames("", true, "wav")) {
-            _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
+    for (const auto* sound_ext : {"wav", "acm", "ogg"}) {
+        auto sounds = _fileSys.FilterFiles(sound_ext, "", true);
+        while (sounds.MoveNext()) {
+            auto file_header = sounds.GetCurFileHeader();
+            _soundNames.emplace(_str("{}", file_header.GetName()).lower().str(), file_header.GetPath());
         }
-        for (const auto& sound : ds->GetFileNames("", true, "acm")) {
-            _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
-        }
-        for (const auto& sound : ds->GetFileNames("", true, "ogg")) {
-            _soundNames.insert({_str(sound).eraseFileExtension().upper(), sound});
-        }
-    };
+    }
 }
 
 void ResourceManager::FreeResources(AtlasType atlas_type)
@@ -147,7 +134,7 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
 static auto AnimMapId(hstring model_name, uint anim1, uint anim2, bool is_fallout) -> uint
 {
     uint dw[4] = {model_name.as_uint(), anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
-    return Hashing::MurmurHash2(reinterpret_cast<uchar*>(&dw[0]), sizeof(dw));
+    return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 
 auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*
@@ -553,6 +540,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 #undef LOADSPR_ADDOFFS_NEXT
 }
 
+#if FO_ENABLE_3D
 auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = nullptr */) -> ModelInstance*
 {
     if (_critterModels.count(model_name) != 0u) {
@@ -576,17 +564,22 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
     model->StartMeshGeneration();
     return model;
 }
+#endif
 
 auto ResourceManager::GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = NULL */) -> uint
 {
     const string ext = _str().getFileExtension();
     if (ext != "fo3d") {
-        auto* anim = GetCritterAnim(model_name, anim1, anim2, dir);
+        const auto* anim = GetCritterAnim(model_name, anim1, anim2, dir);
         return anim != nullptr ? anim->GetSprId(0) : 0u;
     }
     else {
+#if FO_ENABLE_3D
         const auto* model = GetCritterModel(model_name, anim1, anim2, dir, layers3d);
         return model != nullptr ? model->SprId : 0u;
+#else
+        throw NotEnabled3DException("3D submodule not enabled");
+#endif
     }
 }
 

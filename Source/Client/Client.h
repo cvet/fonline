@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,13 +39,14 @@
 
 #include "3dStuff.h"
 #include "CacheStorage.h"
+#include "CritterHexView.h"
 #include "CritterView.h"
+#include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
-#include "HexManager.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"
@@ -57,53 +58,24 @@
 #include "ProtoManager.h"
 #include "ResourceManager.h"
 #include "ScriptSystem.h"
+#include "ServerConnection.h"
 #include "Settings.h"
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
 #include "Timer.h"
 #include "TwoBitMask.h"
-#include "WinApi-Include.h"
-
-#include "zlib.h"
-#if !FO_WINDOWS
-// Todo: add working in IPv6 networks
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
-#define SOCKET int
-#define INVALID_SOCKET (-1)
-#define SOCKET_ERROR (-1)
-#define closesocket close
-#define SD_RECEIVE SHUT_RD
-#define SD_SEND SHUT_WR
-#define SD_BOTH SHUT_RDWR
-#endif
-
-DECLARE_EXCEPTION(ClientRestartException);
 
 // Screens
 constexpr auto SCREEN_NONE = 0;
-// Primary screens
-constexpr auto SCREEN_LOGIN = 1;
+constexpr auto SCREEN_LOGIN = 1; // Primary screens
 constexpr auto SCREEN_GAME = 2;
 constexpr auto SCREEN_GLOBAL_MAP = 3;
 constexpr auto SCREEN_WAIT = 4;
-// Secondary screens
-constexpr auto SCREEN_DIALOG = 6;
+constexpr auto SCREEN_DIALOG = 6; // Secondary screens
 constexpr auto SCREEN_TOWN_VIEW = 9;
 
-// Proxy types
-constexpr auto PROXY_SOCKS4 = 1;
-constexpr auto PROXY_SOCKS5 = 2;
-constexpr auto PROXY_HTTP = 3;
-
-// _initNetReason
+// Connection reason
 constexpr auto INIT_NET_REASON_NONE = 0;
 constexpr auto INIT_NET_REASON_LOGIN = 1;
 constexpr auto INIT_NET_REASON_REG = 2;
@@ -115,19 +87,6 @@ class FOClient : public FOEngineBase, public AnimationResolver
     friend class ClientScriptSystem;
 
 public:
-    struct MapText
-    {
-        ushort HexX {};
-        ushort HexY {};
-        uint StartTick {};
-        uint Tick {};
-        string Text;
-        uint Color {};
-        bool Fade {};
-        IRect Pos {};
-        IRect EndPos {};
-    };
-
     FOClient() = delete;
     explicit FOClient(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
     FOClient(const FOClient&) = delete;
@@ -143,9 +102,8 @@ public:
     [[nodiscard]] auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
 
     [[nodiscard]] auto GetChosen() -> CritterView*;
+    [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
-    [[nodiscard]] auto GetCritter(uint crid) -> CritterView* { return HexMngr.GetCritter(crid); }
-    [[nodiscard]] auto GetItem(uint item_id) -> ItemHexView* { return HexMngr.GetItemById(item_id); }
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
 
@@ -157,8 +115,6 @@ public:
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
     void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
     void ScreenQuake(int noise, uint time);
-    void NetDisconnect();
-    void WaitPing();
     void ProcessInputEvent(const InputEvent& event);
     void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
 
@@ -263,21 +219,18 @@ public:
 
     ClientSettings& Settings;
     GeometryHelper GeomHelper;
-    FileManager FileMngr;
     ScriptSystem* ScriptSys;
     GameTimer GameTime;
-
+    ProtoManager ProtoMngr;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
     ResourceManager ResMngr;
-    HexManager HexMngr;
     SoundManager SndMngr;
     Keyboard Keyb;
     CacheStorage Cache;
 
-    unique_ptr<ProtoManager> ProtoMngr {};
+    MapView* CurMap {};
     hstring CurMapPid {};
-    vector<MapText> GameMapTexts {};
     bool CanDrawInScripts {};
     vector<string> Preload3dFiles {};
 
@@ -287,40 +240,14 @@ public:
     vector<RenderTarget*> PreDirtyOffscreenSurfaces {};
     vector<RenderTarget*> DirtyOffscreenSurfaces {};
 
+#if FO_ENABLE_3D
     vector<ModelInstance*> DrawCritterModel {};
+#endif
     vector<hstring> DrawCritterModelCrType {};
     vector<bool> DrawCritterModelFailedToLoad {};
     int DrawCritterModelLayers[LAYERS3D_COUNT] {};
 
-private:
-    struct ClientUpdate
-    {
-        struct UpdateFile
-        {
-            uint Index {};
-            string Name;
-            uint Size {};
-            uint RemaningSize {};
-            uint Hash {};
-        };
-
-        bool ClientOutdated {};
-        bool CacheChanged {};
-        bool FilesChanged {};
-        bool Connecting {};
-        uint ConnectionTimeout {};
-        uint Duration {};
-        bool Aborted {};
-        bool FontLoaded {};
-        string Messages;
-        string Progress;
-        bool FileListReceived {};
-        vector<UpdateFile> FileList {};
-        uint FilesWholeSize {};
-        bool FileDownloading {};
-        unique_ptr<OutputFile> TempFile {};
-    };
-
+protected:
     struct IfaceAnim
     {
         AnyFrames* Frames {};
@@ -359,13 +286,12 @@ private:
         uint CurMap {};
     };
 
-    static constexpr auto FONT_DEFAULT = 5;
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
     void RegisterData(const vector<uchar>& restore_info_bin);
 
     void ProcessAutoLogin();
-    void CrittersProcess();
+    void ProcessGlobalMap();
     void ProcessInputEvents();
     void TryExit();
     void FlashGameWindow();
@@ -374,22 +300,9 @@ private:
     void WaitDraw();
 
     void SetDayTime(bool refresh);
-    void SetGameColor(uint color);
     void LookBordersPrepare();
     void LmapPrepareMap();
     void GmapNullParams();
-
-    void UpdateFilesLoop();
-    void UpdateFilesAddText(uint num_str, string_view num_str_str);
-    void UpdateFilesAbort(uint num_str, string_view num_str_str);
-
-    auto CheckSocketStatus(bool for_write) -> bool;
-    auto NetConnect(string_view host, ushort port) -> bool;
-    auto FillSockAddr(sockaddr_in& saddr, string_view host, ushort port) -> bool;
-    void ProcessSocket();
-    auto NetInput(bool unpack) -> int;
-    auto NetOutput() -> bool;
-    void NetProcess();
 
     void Net_SendUpdate();
     void Net_SendLogIn();
@@ -405,6 +318,9 @@ private:
     void Net_SendPing(uchar ping);
     void Net_SendRefereshMe();
 
+    void Net_OnConnect(bool success);
+    void Net_OnDisconnect();
+    void Net_OnUpdateFilesResponse();
     void Net_OnWrongNetProto();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter(bool is_npc);
@@ -421,7 +337,6 @@ private:
     void Net_OnEffect();
     void Net_OnFlyEffect();
     void Net_OnPlaySound();
-    void Net_OnPing();
     void Net_OnEndParseToGame();
     void Net_OnProperty(uint data_size);
     void Net_OnCritterDir();
@@ -432,7 +347,7 @@ private:
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
     void Net_OnCustomCommand();
-    void Net_OnCritterXY();
+    void Net_OnCritterCoords();
     void Net_OnAllProperties();
     void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();
@@ -444,38 +359,33 @@ private:
     void Net_OnMap();
     void Net_OnGlobalInfo();
     void Net_OnSomeItems();
-    void Net_OnUpdateFilesList();
-    void Net_OnUpdateFileData();
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
 
     void OnText(string_view str, uint crid, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop);
-    void OnSendPlayerValue(Entity* entity, const Property* prop);
-    void OnSendCritterValue(Entity* entity, const Property* prop);
-    void OnSetCritterModelName(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetCritterContourColor(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSendItemValue(Entity* entity, const Property* prop);
-    void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSendMapValue(Entity* entity, const Property* prop);
-    void OnSendLocationValue(Entity* entity, const Property* prop);
+    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+
+    void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
 
     void AnimProcess();
 
     void ProcessScreenEffectFading();
     void ProcessScreenEffectQuake();
 
-    void AddCritter(CritterView* cr);
-    void DeleteCritters();
-    void DeleteCritter(uint crid);
-
-    int _initCalls {};
+    ServerConnection _conn;
     vector<uchar> _restoreInfoBin {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
@@ -485,26 +395,11 @@ private:
     string _loginPassword {};
     bool _isAutoLogin {};
     PlayerView* _curPlayer {};
-    MapView* _curMap {};
     LocationView* _curLocation {};
     uint _fpsTick {};
     uint _fpsCounter {};
-    optional<ClientUpdate> _updateData {};
-    int _screenModeMain {};
-    vector<uchar> _incomeBuf {};
-    NetInBuffer _netIn {};
-    NetOutBuffer _netOut {};
-    z_stream* _zStream {};
-    uint _bytesReceive {};
-    uint _bytesRealReceive {};
-    uint _bytesSend {};
-    sockaddr_in _sockAddr {};
-    sockaddr_in _proxyAddr {};
-    SOCKET _netSock {};
-    fd_set _netSockSet {};
+    int _screenModeMain {SCREEN_WAIT};
     ItemView* _someItem {};
-    bool _isConnecting {};
-    bool _isConnected {};
     bool _initNetBegin {};
     int _initNetReason {INIT_NET_REASON_NONE};
     bool _initialItemsSend {};
@@ -527,9 +422,8 @@ private:
     uint _gameMouseStay {};
     uint _daySumRGB {};
     CritterView* _chosen {};
-    bool _noLogOut {};
     bool _rebuildLookBordersRequest {};
-    bool _drawLookBorders;
+    bool _drawLookBorders {true};
     bool _drawShootBorders {};
     PrimitivePoints _lookBorders {};
     PrimitivePoints _shootBorders {};
@@ -539,16 +433,19 @@ private:
     hstring _pupContPid {};
     uint _holoInfo[MAX_HOLO_INFO] {};
     vector<Automap> _automaps {};
+    vector<CritterView*> _worldmapCritters {};
     TwoBitMask _worldmapFog {};
     PrimitivePoints _worldmapFogPix {};
     vector<GmapLocation> _worldmapLoc {};
     GmapLocation _worldmapTownLoc {};
     PrimitivePoints _lmapPrepPix {};
     IRect _lmapWMap {};
-    int _lmapZoom {};
+    int _lmapZoom {2};
     bool _lmapSwitchHi {};
     uint _lmapPrepareNextTick {};
     uchar _dlgIsNpc {};
     uint _dlgNpcId {};
     optional<uint> _prevDayTimeColor {};
+    const Entity* _sendIgnoreEntity {};
+    const Property* _sendIgnoreProperty {};
 };

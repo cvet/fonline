@@ -11,12 +11,11 @@
 ## Table of Content
 
 - [Features](#features)
-- [Media](#media)
 - [Usage](#usage)
   * [Workflow](#workflow)
-  * [Public API](#public-api)
-  * [Setup](#setup)
+    + [Public API](#public-api)
     + [Visual Studio Code](#visual-studio-code)
+  * [Setup](#setup)
     + [Package dependencies](#package-dependencies)
     + [Statically linked packages](#statically-linked-packages)
   * [Footprint](#footprint)
@@ -24,17 +23,16 @@
 - [Work in progress](#work-in-progress)
   * [Roadmap](#roadmap)
   * [Roadmap for Visual Studio Code extension](#roadmap-for-visual-studio-code-extension)
-  * [Code refactoring plans](#code-refactoring-plans)
   * [Todo list *(generated from source code)*](#todo-list---generated-from-source-code--)
 - [Repository structure](#repository-structure)
 - [Frequently Asked Questions](frequently-asked-questions)
-- [Help and support](#help-and-support)
+- [About](#about)
 
 ## Features
 
 * Isometric graphics (Fallout 1/2/Tactics or Arcanum -like games)
 * Multiplayer mode with authoritative server
-* Singleplayer mode *(work without distinguish between server and client sides)*
+* Singleplayer mode (one binary, no network connections)
 * Supporting of hexagonal and square map tiling
 * Perendered sprites for environment but with possibility of using 3D models for characters
 * Engine core written in C++ (favored C++17 standard)
@@ -59,64 +57,48 @@
 
 Important note: *Not all from described above features are already implemented, for additional information look at 'Work in progress' section below*.
 
-## Media
-
-[![https://img.youtube.com/vi/DzCTz7HjuOM/0.jpg](http://img.youtube.com/vi/DzCTz7HjuOM/0.jpg)](http://www.youtube.com/watch?v=DzCTz7HjuOM "FOnline Intro")
-
 ## Usage
 
-Repository contains source code of engine, third-party sources and build tools for composing all this stuff into final platform-specific bundles.  
-You may work on your game using shell scripts manually but project hosts own extension for Visual Studio Code for simplify these things.  
-Shell scripts targeted for work under Windows 10 / Ubuntu-22.04 / macOS 12.  
+Engine doesn't targeting to use directly but by as part (submodule) to your own project (git repo).  
+Repository contains source code of engine, third-party sources and build tools for composing all this and your stuff into final platform-specific bundles.  
+You may work on your game either using shell scripts manually or custom Visual Studio Code extension for simplify these things.  
+Shell scripts targeted for work under (at least) Windows 10 / Ubuntu-22.04 / macOS 12.  
 You build your game fully from source, there is no prebuilt binaries, full control over the process.
 
 ### Workflow
 
 Process of creating your game in two words looks like this:
 * Once prepare workspace where all intermediate build files will be stored
+* Manage game content and resources
 * Build executables from source to platforms that you needed
 * Compile scripts (AngelScript and/or Mono; but Native were compiled with built executables)
-* Bake all resources (shaders, images and etc) to special formats that will be loaded super fast by server/client
+* Bake all resources (shaders, images and etc) to special formats that will be loaded without overhead by server/client
 * Package built executables and baked resources from steps above to final platform specific bundle (zip, msi, app, apk and etc)
-* Enjoy your shipped game and iterate development
 
-There are couple of shell scripts that help us to do it:  
-* `BuildTools/prepare-workspace.sh` - prepare our linux workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
-* `BuildTools/prepare-win-workspace.ps1` - windows version of prepare workspace, that helps prepare to work
-* `BuildTools/prepare-mac-workspace.sh` - mac version of prepare workspace, that helps prepare to work
-* `BuildTools/build.sh/bat` - build executable for specific platform
-* `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
+#### Public API
 
-Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in [BuildTools/README.md](https://github.com/cvet/fonline/blob/master/BuildTools/README.md).
-
-### Public API
-
-*Todo: write about versioning SemVer https://semver.org and what public API included to itself*  
 Documents related to public API:
 * [Public API](https://fonline.ru/PUBLIC_API)
-* [Multiplayer Script API](https://fonline.ru/MULTIPLAYER_SCRIPT_API)
-* [Singleplayer Script API](https://fonline.ru/SINGLEPLAYER_SCRIPT_API)
-* [Mapper Script API](https://fonline.ru/MAPPER_SCRIPT_API)
+* [Scripting API](https://fonline.ru/SCRIPTING_API)
 
-### Setup
-
-Clone with git this repository.  
-Open repository root in Visual Studio Code, install recommended extensions.  
-*Todo: write about project generation*
-
-#### Windows Subsystem for Linux
-
-Main point of WSL2 for us that we can run Windows programs from Linux.  
-That feature allows unify almost all our build scripts into one environment.  
-Recommended Linux distro is [Ununtu-20.04](https://ubuntu.com) on which all build scripts tested.  
-You may use other distro but there is no guarantee that it will work out of the box.
+Also you must understand that scripting api automaticly generated for each project individually and api described in [Scripting API](https://fonline.ru/SCRIPTING_API) is only basic.  
+See example of extended scripting api at [FOnline TLA Scripting API](https://tla.fonline.ru/SCRIPTING_API).
 
 #### Visual Studio Code
 
 Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
 In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
-Extension activates automatically when editor finds any file that contains `fonline` in name of any file at workspace root.  
 More about extension usage you can find in [Tutorial](https://fonline.ru/TUTORIAL) document.
+
+### Setup
+
+General steps:
+* Create your own project repo and link this repo as submodule
+* Setup your game in cmake extension file (see CMake contribution at [Public API](https://fonline.ru/PUBLIC_API))
+* Manage your project with Visual Studio Code + FOnline extension (see Visual Studio Code extension at [Public API](https://fonline.ru/PUBLIC_API))
+
+Reference project:
+* FOnline: The Life After https://guthub.com/cvet/fonline-tla
 
 #### Package dependencies
 
@@ -145,6 +127,7 @@ List of tools for Windows operating system *(some optional)*:
 
 List of tools for Mac operating system:
 * [CMake](https://cmake.org)
+* [Python](https://python.org) - needed for additional game code generation
 * [Xcode](https://developer.apple.com/xcode)
 
 Other stuff used in build pipeline:
@@ -167,8 +150,8 @@ They are located in ThirdParty directory.
 * [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
 * [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
 * [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
-* SHA1 by Steve Reid - hash generator
-* SHA2 by Olivier Gay - hash generator
+* SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators
+* [span](https://github.com/tcbrindle/span) - std::span implementation for pre c++20
 * [SPIRV-Cross](https://github.com/KhronosGroup/SPIRV-Cross) - spir-v shaders to other shader languages converter
 * [Theora](https://www.theora.org/downloads/) - video library
 * [Vorbis](https://xiph.org/vorbis/) - audio library
@@ -203,8 +186,12 @@ Please follow these instructions to understand how to use this engine by design:
 
 **First release version:**
 
-* [FOnline TLA]((https://github.com/cvet/fonline-tla)) as demo game
-* Code refactoring *(see separate section below)*
+* [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game
+* Code refactoring
+  + Clean up errors handling (error code based + exception based)
+  + Preprocessor defines to constants and enums
+  + Eliminate raw pointers, use raii and smart pointers for control objects lifetime
+  + Fix all warnings from PVS Studio and other static analyzer tools
 * Native C++ and AngelScript scripting layers
 * Documentation for public API
 * API freezing and continuing development with it's backward compatibility
@@ -219,38 +206,19 @@ Please follow these instructions to understand how to use this engine by design:
 * Particle system
 * Metal rendering for macOS/iOS
 
-**Research plans:**
+### Roadmap for Visual Studio Code extension
 
-* Supporting of PlayStation
-* Integration with Unity engine
-
-### Visual Studio Code extension
-
-* Integrate mapper (as javascript module) for editing .fomap
+* Integrate mapper for editing .fomap
 * Integrate dialog editor for editing .fodlg
 * Integrate some property grid for protos editing
-* Integrate server (as separate process but render ui in editor)
-* Integrate client (as javascript module)
+* Integrate server
+* Integrate client
 * Improve viewers for supported graphic formats (frm, spr, png, fofrm and etc)
-* Add supporting of AngelScript language (highlight, auto-completion, compilation)
-* Take and tune some of extensions for C# and C++ scripting
+* Add supporting of AngelScript language (highlight, auto-completion)
 * Improve debugging of code (core and scripting)
 * Improve debugging of game logic (like run game on this map with these scripts)
 * Integrate gui editor for editing .fogui
 * Add snippets for common tasks (like create map, create script, create proto)
-
-### Code refactoring plans
-
-* Move errors handling model from error code based to exception based
-* Eliminate singletons, statics, global functions
-* Preprocessor defines to constants and enums
-* Eliminate raw pointers, use raii and smart pointers for control objects lifetime
-* Hide implementation details from headers using abstraction and pimpl idiom
-* Fix all warnings from PVS Studio and other static analyzer tools
-* Improve more new C++ features like std::array, std::filesystem, std::string_view and etc
-* Decrease platform specific code to minimum (we can leave this work to portable C++ or SDL)
-* C-style casts to C++-style casts
-* Add constness as much as necessary
 
 ### Todo list *(generated from source code)*
 
@@ -307,23 +275,19 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: rename char to int8 and use int8_t as alias
 * Common: rename short to int16 and use int16_t as alias
 * Common: rename int to int32 and use int32_t as alias
-* Common: remove max_t
 * Common: replace depedency from Assimp types (matrix/vector/quaternion/color)
-* Common: auto expand exception parameters to readable state
+* Common: pass name to exceptions context args
+* Common: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
 * Common: recursion guard for EventDispatcher
 * Common: improve ptr<> system for leng term pointer observing
 * Common: add _hash c-string literal helper
-* Common: move WriteData/ReadData to DataWriter/DataReader
 * Common: fix TRect Width/Height
 * Common: eliminate as much defines as possible
 * Common: convert all defines to constants and enums
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: remove critter flags
 * Common: remove special OTHER_* params
-* BakerApp: sound and video preprocessing move to baker
-* BakerApp: bake prototypes?
-* BakerApp: add dialogs verification during baking
-* ServerApp: fix data racing
+* Common: apply scripts strack trace
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: add reverse playing of 3d animation
@@ -331,19 +295,19 @@ Please follow these instructions to understand how to use this engine by design:
 * 3dStuff: GetAnim1/GetAnim2 int to uint return type
 * 3dStuff: fix AtlasType referencing in 3dStuff
 * Client: handle mouse wheel
+* Client: run updater if resources changed
 * Client: proto player?
 * Client: synchronize effects showing (for example shot and kill)
+* Client: global map critters
 * Client: move targs formatting to scripts
 * Client: fix soft scroll if critter teleports
-* Client: add working in IPv6 networks
-* CritterView: migrate critter on head text moving in scripts
-* CritterView: do same for 2d animations
-* HexManager: rework smooth item re-appearing before same item still on map
-* HexManager: optimize lighting rebuilding to skip unvisible lights
-* HexManager: need attention! (3)
-* HexManager: move HexManager to MapView?
+* CritterHexView: migrate critter on head text moving in scripts
+* CritterHexView: do same for 2d animations
 * Keyboard: merge Keyboard into App::Input and Client/Mapper
+* MapView: rework smooth item re-appearing before same item still on map
+* MapView: optimize lighting rebuilding to skip unvisible lights
 * ResourceManager: why I disable offset adding?
+* ServerConnection: automatically reconnect on network failtures
 * SpriteManager: restore texture saving
 * SpriteManager: improve DirectX rendering
 * SpriteManager: maybe restrict fps at 60?
@@ -352,76 +316,90 @@ Please follow these instructions to understand how to use this engine by design:
 * SpriteManager: move fonts stuff to separate module
 * Sprites: MapSprite releasing
 * Sprites: : incapsulate all sprite data
-* Application: move different renderers to separate modules
-* Application: remove GLEW and bind OpenGL functions manually
-* Application: map all framebuffer ext functions
-* Application: recognize tablet mode for Windows 10
-* Application: fix workaround for strange behaviour of button focus
-* Application: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
-* ApplicationHeadless: move different renderers to separate modules
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
+* Dialogs: validate script entries, hashes
 * Entity: events array may be modified during call, need take it into account here
-* Entity: not exception safe, revert ignore with raii
 * Entity: improve entity event ExPolicy
 * Entity: improve entity event Priority
 * Entity: improve entity event OneShot
 * Entity: improve entity event Deferred
-* FileSystem: handle apply file writing
+* EntityProperties: implement Player InitScript
+* EntityProperties: implement Location InitScript
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
 * Log: delete \n appendix from WriteLog
+* Log: colorize log texts
 * MapLoader: restore supporting of the map old text format
 * MapLoader: pass errors vector to MapLoaderException
 * MapLoader: remove mapper specific IsSelected from MapTile
 * MsgFiles: pass default to fomsg gets
-* MsgFiles: move loading to constructors
+* Properties: SetValueFromData
 * Properties: convert to hstring
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
-* Properties: ResolveHash
+* Properties: SetValue for string
+* Properties: GetValue for array
+* Properties: SetValue for array
+* Properties: GetValue for dict
+* Properties: SetValue for dict
 * ScriptSystem: fill settings to scripts
+* ScriptSystem: FindFunc
 * Settings-Include: rework global Quit setting
+* Settings: improve editable entry for arrays
 * StringUtils: make isNumber const
-* Testing: improve global exceptions handlers for mobile os
-* Testing: fix script system
-* Testing: exclude using of dynamic memory allocation in this module and decrease chance of exception throwing
-* Testing: send client dumps to server
+* Application: recognize tablet mode for Windows 10
+* Application: fix workaround for strange behaviour of button focus
+* ApplicationHeadless: implement effect CanBatch
+* Rendering-Direct3D: pass additional defines to shaders (passed + internal)
+* Rendering-OpenGL: remove GLEW and bind OpenGL functions manually
+* Rendering-OpenGL: map all framebuffer ext functions
+* Rendering-OpenGL: pass additional defines to shaders (passed + internal)
+* Rendering-OpenGL: smooth only if( zoom && *zoom != 1.0f )
+* Rendering: split ModelBuffer by number of supported bones (1, 5, 10, 20, 35, 54)
+* AngelScriptScripting-Template: MarshalDict
+* AngelScriptScripting-Template: MarshalBackScalarDict
+* AngelScriptScripting-Template: GetASObjectInfo
+* ClientCritterScriptMethods: handle AbstractItem in Animate
 * ClientItemScriptMethods: solve recursion in GetMapPos
 * ClientItemScriptMethods: need attention!
 * CommonGlobalScriptMethods: fix script system
-* MapperGlobalScriptMethods: need attention! (4)
+* MapperGlobalScriptMethods: need attention! (6)
+* MapperGlobalScriptMethods: Settings.MapsDir
 * MonoScripting-Template: set Mono domain user data
 * MonoScripting-Template: get Mono domain user data
-* ServerItemScriptMethods: fix ItemOwnership::ItemContainer recursion
+* ServerCritterScriptMethods: handle AbstractItem in Action
+* ServerCritterScriptMethods: handle AbstractItem in Animate
 * AdminPanel: admin panel network to Asio
 * Critter: rename to IsOwnedByPlayer
 * Critter: replace to !IsOwnedByPlayer
+* Critter: move Flags to properties
 * Critter: incapsulate Critter::Talk
 * CritterManager: don't remeber but need check (IsPlaneNoTalk)
-* Dialogs: check item name on DR_ITEM
+* DeferredCalls: improve deferred calls
 * EntityManager: load locations -> theirs maps -> critters/items on map -> items in critters/containers
 * Location: encapsulate Location data
+* MapManager: need attention!
 * MapManager: if path finding not be reworked than migrate magic number to scripts
 * MapManager: check group
 * Networking: catch exceptions in network servers
 * Player: allow attach many critters to sigle player
 * Server: move server loop to async processing
-* Server: restore settings (2)
+* Server: restore settings
 * Server: disable look distance caching
 * Server: attach critter to player
 * Server: control max size explicitly, add option to property registration
-* Server: disable send changing field by client to this client
-* Server: don't remeber but need check (IsPlaneNoTalk)
 * Server: add container properties changing notifications
 * Server: make BlockLines changable in runtime
+* Server: restore DialogUseResult
+* Server: don't remeber but need check (IsPlaneNoTalk)
+* Server: improve ban system
 * Server: remove history DB system?
 * Server: run network listeners dynamically, without restriction, based on server settings
-* ImageBaker: finish with GLSL to SPIRV to GLSL/HLSL/MSL
-* ImageBaker: add supporting of APNG file format
+* EffectBaker: pre-compile HLSH shaders with D3DCompile
 * ImageBaker: swap colors of fo palette once in header
-* Mapper: need attention! (24)
+* Mapper: need attention! (21)
 * Mapper: mapper render iface layer
   
 ## Repository structure
@@ -436,7 +414,7 @@ Please follow these instructions to understand how to use this engine by design:
 Following document contains some issues thats give additional information about this engine:
 * [FAQ document](https://fonline.ru/FAQ)
 
-## Help and support
+## About
 
 * Site: [fonline.ru](https://fonline.ru)
 * GitHub: [github.com/cvet/fonline](https://github.com/cvet/fonline)

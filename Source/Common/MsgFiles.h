@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,8 @@
 #include "CacheStorage.h"
 #include "FileSystem.h"
 #include "MsgStr-Include.h"
+
+DECLARE_EXCEPTION(LanguagePackException);
 
 static constexpr auto TEXTMSG_TEXT = 0;
 static constexpr auto TEXTMSG_DLG = 1;
@@ -92,22 +94,20 @@ private:
 class LanguagePack final
 {
 public:
-    // Todo: move loading to constructors
     LanguagePack() = default;
     LanguagePack(const LanguagePack&) = default;
     LanguagePack(LanguagePack&&) noexcept = default;
     auto operator=(const LanguagePack&) -> LanguagePack& = default;
     auto operator=(LanguagePack&&) noexcept -> LanguagePack& = default;
-    auto operator==(const uint name_code) const -> bool { return NameCode == name_code; }
+    auto operator==(const string& name) const -> bool { return name == Name; }
+    auto operator==(const uint name_code) const -> bool { return name_code == NameCode; }
     ~LanguagePack() = default;
 
-    [[nodiscard]] auto GetMsgCacheName(int msg_num) const -> string;
-
-    void LoadFromFiles(FileManager& file_mngr, NameResolver& name_resolver, string_view lang_name);
-    void LoadFromCache(const CacheStorage& cache, NameResolver& name_resolver, string_view lang_name);
+    void ParseTexts(FileSystem& file_sys, NameResolver& name_resolver, string_view lang_name);
+    void SaveTextsToDisk(string_view dir) const;
+    void LoadTexts(FileSystem& file_sys, string_view lang_name);
 
     string Name {};
     uint NameCode {};
-    bool IsAllMsgLoaded {};
     FOMsg Msg[TEXTMSG_COUNT] {};
 };

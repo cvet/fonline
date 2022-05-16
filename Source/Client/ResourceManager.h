@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@ class ResourceManager final
 {
 public:
     ResourceManager() = delete;
-    ResourceManager(FileManager& file_mngr, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver);
+    ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver);
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager(ResourceManager&&) noexcept = delete;
     auto operator=(const ResourceManager&) = delete;
@@ -55,10 +55,12 @@ public:
     [[nodiscard]] auto GetSkDxAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Static); }
     [[nodiscard]] auto GetItemAnim(hstring name) -> AnyFrames* { return GetAnim(name, AtlasType::Dynamic); }
     [[nodiscard]] auto GetCritterAnim(hstring model_name, uint anim1, uint anim2, uchar dir) -> AnyFrames*;
-    [[nodiscard]] auto GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*;
     [[nodiscard]] auto GetCritterSprId(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> uint;
     [[nodiscard]] auto GetRandomSplash() -> AnyFrames*;
     [[nodiscard]] auto GetSoundNames() -> map<string, string>& { return _soundNames; }
+#if FO_ENABLE_3D
+    [[nodiscard]] auto GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*;
+#endif
 
     void FreeResources(AtlasType atlas_type);
     void ReinitializeDynamicAtlas();
@@ -79,17 +81,18 @@ private:
     void FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_base);
     void FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_frm_base);
 
-    FileManager& _fileMngr;
+    FileSystem& _fileSys;
     SpriteManager& _sprMngr;
     AnimationResolver& _animNameResolver;
     NameResolver& _nameResolver;
-    EventUnsubscriber _eventUnsubscriber {};
     map<uint, string> _namesHash {};
     map<hstring, LoadedAnim> _loadedAnims {};
     map<uint, AnyFrames*> _critterFrames {};
-    map<hstring, ModelInstance*> _critterModels {};
     vector<string> _splashNames {};
     map<string, string> _soundNames {};
     AnyFrames* _splash {};
     bool _nonConstHelper {};
+#if FO_ENABLE_3D
+    map<hstring, ModelInstance*> _critterModels {};
+#endif
 };

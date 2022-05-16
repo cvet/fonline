@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,11 @@
 
 #include "CacheStorage.h"
 #include "Client.h"
+#include "CritterHexView.h"
 #include "CritterView.h"
 #include "EffectManager.h"
 #include "Entity.h"
 #include "GeometryHelper.h"
-#include "HexManager.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"
@@ -58,6 +58,8 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "Timer.h"
+
+DECLARE_EXCEPTION(MapperException);
 
 class FOMapper final : public FOClient
 {
@@ -78,7 +80,7 @@ public:
         vector<const ProtoItem*> ItemProtos {};
         vector<const ProtoCritter*> NpcProtos {};
         vector<hstring> TileNames {};
-        int Index {};
+        uint Index {};
         int Scroll {};
     };
 
@@ -129,7 +131,6 @@ public:
     static constexpr auto FONT_BIG_NUM = 2;
     static constexpr auto FONT_SAND_NUM = 3;
     static constexpr auto FONT_SPECIAL = 4;
-    static constexpr auto FONT_DEFAULT = 5;
     static constexpr auto FONT_THIN = 6;
     static constexpr auto FONT_FAT = 7;
     static constexpr auto FONT_BIG = 8;
@@ -176,7 +177,7 @@ public:
     FOMapper(FOMapper&&) noexcept = delete;
     auto operator=(const FOMapper&) = delete;
     auto operator=(FOMapper&&) noexcept = delete;
-    ~FOMapper() = default;
+    ~FOMapper() override = default;
 
     void RegisterData();
 
@@ -186,17 +187,7 @@ public:
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ChangeGameTime();
-    void ProcessInputEvents();
     void ProcessInputEvent(const InputEvent& event);
-
-    auto AnimLoad(hstring name, AtlasType res_type) -> uint;
-    auto AnimGetCurSpr(uint anim_id) -> uint;
-    auto AnimGetCurSprCnt(uint anim_id) -> uint;
-    auto AnimGetSprCount(uint anim_id) -> uint;
-    auto AnimGetFrames(uint anim_id) -> AnyFrames*;
-    void AnimRun(uint anim_id, uint flags);
-    void AnimProcess();
-    void AnimFree(AtlasType res_type);
 
     void CurDraw();
     void CurRMouseUp();
@@ -214,7 +205,7 @@ public:
     void IntMouseMove();
     void IntSetMode(int mode);
 
-    auto GetTabIndex() -> uint;
+    auto GetTabIndex() const -> uint;
     void SetTabIndex(uint index);
     void RefreshCurProtos();
     auto IsObjectMode() const -> bool { return CurItemProtos != nullptr && CurProtoScroll != nullptr; }
@@ -254,6 +245,8 @@ public:
     void ConsoleKeyUp(KeyCode dik);
     void ConsoleProcess();
     void ParseCommand(string_view command);
+    void LoadMap(string_view map_name, int start_hx, int start_hy);
+    void UnloadMap();
 
     void MessBoxGenerate();
     void AddMess(string_view message_text);
@@ -265,12 +258,6 @@ public:
     void RunMapSaveScript(MapView* map);
     void DrawIfaceLayer(uint layer);
 
-    void OnSetItemFlags(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemPicMap(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOffsetXY(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, void* cur_value, void* old_value);
-
     ///@ ExportEvent
     ENTITY_EVENT(ConsoleMessage, string& /*text*/);
     ///@ ExportEvent
@@ -280,17 +267,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(InspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
-    FileManager ServerFileMngr;
-
+    vector<MapView*> LoadedMaps {};
     ConfigFile IfaceIni;
-    string ServerWritePath {};
-    string ClientWritePath {};
-    PropertyVec ShowProps {};
-    MapView* ClientCurMap {};
-    LocationView* ClientCurLocation {};
-    int DrawCrExtInfo {};
-    LanguagePack CurLang {};
-    vector<IfaceAnim*> Animations {};
+    vector<const Property*> ShowProps {};
     int CurMode {};
     AnyFrames* CurPDef {};
     AnyFrames* CurPHand {};
@@ -304,10 +283,10 @@ public:
     int IntY {};
     int IntVectX {};
     int IntVectY {};
-    ushort SelectHX1 {};
-    ushort SelectHY1 {};
-    ushort SelectHX2 {};
-    ushort SelectHY2 {};
+    ushort SelectHexX1 {};
+    ushort SelectHexY1 {};
+    ushort SelectHexX2 {};
+    ushort SelectHexY2 {};
     int SelectX {};
     int SelectY {};
     int SelectType {};
@@ -336,8 +315,6 @@ public:
     IRect IntBShowTile {};
     IRect IntBShowRoof {};
     IRect IntBShowFast {};
-    vector<MapView*> LoadedMaps {};
-    MapView* ActiveMap {};
     map<string, SubTab> Tabs[TAB_COUNT] {};
     SubTab* TabsActive[TAB_COUNT] {};
     TileTab TabsTiles[TAB_COUNT] {};

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +48,7 @@ CritterManager::CritterManager(FOServer* engine) : _engine {engine}
 
 void CritterManager::LinkCritters()
 {
-    WriteLog("Link critters...\n");
+    WriteLog("Link critters...");
 
     const auto critters = GetAllCritters();
     vector<Critter*> critter_groups;
@@ -86,7 +86,7 @@ void CritterManager::LinkCritters()
         _engine->MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, cr->GetGlobalMapLeaderId());
     }
 
-    WriteLog("Link critters complete.\n");
+    WriteLog("Link critters complete");
 }
 
 void CritterManager::InitAfterLoad()
@@ -510,9 +510,9 @@ void CritterManager::CloseTalk(Critter* cr)
             }
         }
 
-        if (cr->_talk.CurDialog.DlgScriptFunc) {
+        if (!cr->_talk.CurDialog.DlgScriptFunc.empty()) {
             cr->_talk.Locked = true;
-            cr->_talk.CurDialog.DlgScriptFunc(cr, talker);
+            _engine->ScriptSys->CallFunc<void, Critter*, Critter*>(cr->_talk.CurDialog.DlgScriptFunc, cr, talker);
             cr->_talk.Locked = false;
         }
     }

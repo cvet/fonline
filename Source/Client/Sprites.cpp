@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -200,23 +200,6 @@ void Sprite::SetAlpha(uchar* alpha)
     Valid = true;
 }
 
-void Sprite::SetFlash(uint mask)
-{
-    if (!Valid) {
-        return;
-    }
-
-    Valid = false;
-    FlashMask = mask;
-    if (Parent != nullptr) {
-        Parent->SetFlash(mask);
-    }
-    if (Child != nullptr) {
-        Child->SetFlash(mask);
-    }
-    Valid = true;
-}
-
 void Sprite::SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy)
 {
     if (!Valid) {
@@ -393,7 +376,6 @@ auto Sprites::PutSprite(Sprite* child, int draw_order, ushort hx, ushort hy, int
     spr->ContourType = 0;
     spr->ContourColor = 0;
     spr->Color = 0;
-    spr->FlashMask = 0;
     spr->DrawEffect = effect;
     spr->Parent = nullptr;
     spr->Child = nullptr;

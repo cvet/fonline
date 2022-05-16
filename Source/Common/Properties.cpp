@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,29 +34,20 @@
 #include "Properties.h"
 #include "Log.h"
 #include "PropertiesSerializator.h"
-#include "ScriptSystem.h"
 #include "StringUtils.h"
 
 Property::Property(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
 }
 
-auto Property::CreateRefValue(uchar* /*data*/, uint /*data_size*/) -> unique_ptr<void, std::function<void(void*)>>
+void Property::AddCallback(PropertyChangedCallback callback) const
 {
-    return nullptr;
-}
-
-auto Property::ExpandComplexValueData(void* /*value*/, uint& /*data_size*/, bool& /*need_delete*/) -> uchar*
-{
-    return nullptr;
+    _callbacks.emplace_back(std::move(callback));
 }
 
 Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
     RUNTIME_ASSERT(_registrator);
-
-    _sendIgnoreEntity = nullptr;
-    _sendIgnoreProperty = nullptr;
 
     // Allocate plain data
     if (!_registrator->_podDataPool.empty()) {
@@ -161,7 +152,7 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
         _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndicies.size()) * sizeof(short));
         whole_size += _storeDataSizes.back();
 
-        for (const auto index : xrange(_storeDataComplexIndicies)) {
+        for (const auto index : _storeDataComplexIndicies) {
             const auto* prop = _registrator->_registeredProperties[index];
             _storeData.push_back(_complexData[prop->_complexDataIndex]);
             _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
@@ -174,7 +165,9 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
 
 void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
 {
-    // Restore PlainData data
+    // Restore plain data
+    RUNTIME_ASSERT(all_data_sizes.size() > 0);
+    RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
     const auto public_size = static_cast<uint>(_registrator->_publicPodDataSpace.size());
     const auto protected_size = static_cast<uint>(_registrator->_protectedPodDataSpace.size());
     RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size);
@@ -225,10 +218,10 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
         const auto* prop = _registrator->Find(key);
         if (prop == nullptr || (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1))) {
             if (prop == nullptr) {
-                WriteLog("Unknown property '{}'.\n", key);
+                WriteLog("Unknown property {}", key);
             }
             else {
-                WriteLog("Invalid property '{}' for reading.\n", prop->GetName());
+                WriteLog("Invalid property {} for reading", prop->GetName());
             }
 
             is_error = true;
@@ -314,6 +307,9 @@ auto Properties::LoadPropertyFromText(const Property* prop, string_view text) ->
     else if (prop->_isInt64 || prop->_isUInt64) {
         value_type = AnyData::INT64_VALUE;
     }
+    else if (prop->_isInt) {
+        value_type = AnyData::INT_VALUE;
+    }
     else if (prop->_isBool) {
         value_type = AnyData::BOOL_VALUE;
     }
@@ -336,21 +332,6 @@ auto Properties::SavePropertyToText(const Property* prop) const -> string
 
     const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
     return AnyData::ValueToString(value);
-}
-
-void Properties::SetSendIgnore(const Property* prop, const Entity* entity)
-{
-    if (prop != nullptr) {
-        RUNTIME_ASSERT(_sendIgnoreEntity == nullptr);
-        RUNTIME_ASSERT(_sendIgnoreProperty == nullptr);
-    }
-    else {
-        RUNTIME_ASSERT(_sendIgnoreEntity != nullptr);
-        RUNTIME_ASSERT(_sendIgnoreProperty != nullptr);
-    }
-
-    _sendIgnoreEntity = entity;
-    _sendIgnoreProperty = prop;
 }
 
 auto Properties::GetRawDataSize(const Property* prop) const -> uint
@@ -406,6 +387,10 @@ void Properties::SetRawData(const Property* prop, const uchar* data, uint data_s
 
 void Properties::SetValueFromData(const Property* prop, const uchar* data, uint data_size)
 {
+    // Todo: SetValueFromData
+    UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(data);
+    UNUSED_VARIABLE(data_size);
     /*if (dataType == Property::String)
     {
         string str;
@@ -780,6 +765,11 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     }
 }
 
+auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
+{
+    return _registrator->_nameResolver.ResolveHash(h);
+}
+
 PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server, NameResolver& name_resolver) : _className {class_name}, _isServer {is_server}, _nameResolver {name_resolver}
 {
 }
@@ -835,12 +825,6 @@ auto PropertyRegistrator::Find(string_view property_name) const -> const Propert
 auto PropertyRegistrator::IsComponentRegistered(hstring component_name) const -> bool
 {
     return _registeredComponents.count(component_name) > 0u;
-}
-
-void PropertyRegistrator::SetNativeSetCallback(string_view property_name, const NativeCallback& /*callback*/)
-{
-    RUNTIME_ASSERT(!property_name.empty());
-    // Find(property_name)->nativeSetCallback = callback;
 }
 
 auto PropertyRegistrator::GetWholeDataSize() const -> uint
@@ -947,6 +931,8 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     }
 
     // PlainData property data offset
+    const auto prev_public_space_size = _publicPodDataSpace.size();
+    const auto prev_protected_space_size = _protectedPodDataSpace.size();
     auto data_base_offset = static_cast<uint>(-1);
     if (prop->_dataType == Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
         const auto is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
@@ -1016,16 +1002,26 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     _registeredPropertiesLookup.emplace(prop->GetName(), prop);
 
     // Fix plain data data offsets
-    for (auto* prop : _registeredProperties) {
-        if (prop->_podDataOffset == static_cast<uint>(-1)) {
+    if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
+        prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+    }
+    else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
+        prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+    }
+
+    for (auto* other_prop : _registeredProperties) {
+        if (other_prop->_podDataOffset == static_cast<uint>(-1) || other_prop == prop) {
             continue;
         }
 
-        if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
-            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+        if (IsEnumSet(other_prop->_accessType, Property::AccessType::ProtectedMask)) {
+            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
+            other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
         }
         else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
+            other_prop->_podDataOffset -= static_cast<uint>(prev_protected_space_size);
+            other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
         }
     }
 }

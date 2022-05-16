@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -119,7 +119,6 @@ public:
     int ContourType {};
     uint ContourColor {};
     uint Color {};
-    uint FlashMask {};
     RenderEffect** DrawEffect {};
     bool* ValidCallback {};
     bool Valid {};
@@ -139,7 +138,7 @@ class Sprites final
 
 public:
     Sprites() = delete;
-    Sprites(HexSettings& settings, SpriteManager& spr_mngr, SpriteVec& pool) : _settings {settings}, _sprMngr {spr_mngr}, _spritesPool {pool} { }
+    Sprites(SpriteManager& spr_mngr, SpriteVec& pool) : _sprMngr {spr_mngr}, _spritesPool {pool} { }
     Sprites(const Sprites&) = delete;
     Sprites(Sprites&&) noexcept = delete;
     auto operator=(const Sprites&) = delete;
@@ -161,7 +160,6 @@ private:
 
     void GrowPool();
 
-    HexSettings& _settings;
     SpriteManager& _sprMngr;
     SpriteVec& _spritesPool;
     Sprite* _rootSprite {};

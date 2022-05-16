@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 //
 
 #include "MsgFiles.h"
+#include "DiskFileSystem.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
@@ -40,16 +41,16 @@
 struct MsgFilesData
 {
     string TextMsgFileName[TEXTMSG_COUNT] {
-        "FOTEXT",
-        "FODLG",
-        "FOOBJ",
-        "FOGAME",
-        "FOGM",
-        "FOCOMBAT",
-        "FOQUEST",
-        "FOHOLO",
-        "FOINTERNAL",
-        "FOLOCATIONS",
+        "text",
+        "_dialogs",
+        "_items",
+        "game",
+        "worldmap",
+        "combat",
+        "quest",
+        "holo",
+        "_internal",
+        "_locations",
     };
 };
 GLOBAL_DATA(MsgFilesData, Data);
@@ -191,7 +192,7 @@ auto FOMsg::GetBinary(uint num) const -> vector<uchar>
         return result;
     }
 
-    auto str = GetStr(num);
+    const auto str = GetStr(num);
     const auto len = static_cast<uint>(str.length()) / 2;
     result.resize(len);
     for (uint i = 0; i < len; i++) {
@@ -226,7 +227,7 @@ auto FOMsg::GetSize() const -> uint
 
 auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
 {
-    for (auto& [key, value] : _strData) {
+    for (auto&& [key, value] : _strData) {
         if (other._strData.count(key) != 0u) {
             return true;
         }
@@ -237,13 +238,13 @@ auto FOMsg::IsIntersects(const FOMsg& other) const -> bool
 auto FOMsg::GetBinaryData() const -> vector<uchar>
 {
     // Fill raw data
-    auto count = static_cast<uint>(_strData.size());
+    const auto count = static_cast<uint>(_strData.size());
 
     vector<uchar> data;
     data.resize(sizeof(count));
     std::memcpy(&data[0], &count, sizeof(count));
 
-    for (auto& [num, str] : _strData) {
+    for (auto&& [num, str] : _strData) {
         auto str_len = static_cast<uint>(str.length());
 
         data.resize(data.size() + sizeof(num) + sizeof(str_len) + str_len);
@@ -255,21 +256,15 @@ auto FOMsg::GetBinaryData() const -> vector<uchar>
     }
 
     // Compress
-    return Compressor::Compress(data);
+    return data;
 }
 
 auto FOMsg::LoadFromBinaryData(const vector<uchar>& data) -> bool
 {
     Clear();
 
-    // Uncompress
-    auto uncompressed_data = Compressor::Uncompress(data, 10);
-    if (uncompressed_data.empty()) {
-        return false;
-    }
-
     // Read count of strings
-    const uchar* buf = &uncompressed_data[0];
+    const uchar* buf = data.data();
     uint count = 0;
     std::memcpy(&count, buf, sizeof(count));
     buf += sizeof(count);
@@ -397,73 +392,76 @@ auto FOMsg::GetMsgType(string_view type_name) -> int
     return -1;
 }
 
-void LanguagePack::LoadFromFiles(FileManager& file_mngr, NameResolver& name_resolver, string_view lang_name)
+void LanguagePack::ParseTexts(FileSystem& file_sys, NameResolver& name_resolver, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
     NameCode = *reinterpret_cast<const uint*>(lang_name.data());
 
-    auto fail = false;
-
-    auto msg_files = file_mngr.FilterFiles("msg");
+    auto msg_files = file_sys.FilterFiles("fotxt");
     while (msg_files.MoveNext()) {
         auto msg_file = msg_files.GetCurFile();
 
-        // Check pattern '...Texts/lang/file'
-        auto dirs = _str(msg_file.GetPath()).split('/');
-        if (dirs.size() >= 3 && dirs[dirs.size() - 3] == "Texts" && dirs[dirs.size() - 2] == lang_name) {
+        auto name = msg_file.GetName();
+        RUNTIME_ASSERT(name.length() > 5);
+        RUNTIME_ASSERT(name[4] == '-');
+
+        if (name.substr(0, 4) == lang_name) {
             for (auto i = 0; i < TEXTMSG_COUNT; i++) {
-                if (_str(Data->TextMsgFileName[i]).compareIgnoreCase(msg_file.GetName())) {
-                    if (!Msg[i].LoadFromString(msg_file.GetCStr(), name_resolver)) {
-                        WriteLog("Invalid MSG file '{}'.\n", msg_file.GetPath());
-                        fail = true;
+                if (Data->TextMsgFileName[i] == name.substr(5)) {
+                    if (!Msg[i].LoadFromString(msg_file.GetStr(), name_resolver)) {
+                        throw LanguagePackException("Invalid text file", msg_file.GetPath());
                     }
-                    break;
+
+                    WriteLog("Loaded {} texts for language '{}' from '{}'", Msg[i].GetSize(), lang_name, msg_file.GetPath());
                 }
             }
         }
     }
 
     if (Msg[TEXTMSG_GAME].GetSize() == 0) {
-        WriteLog("Unable to load '{}' from file.\n", Data->TextMsgFileName[TEXTMSG_GAME]);
+        throw LanguagePackException("Unable to load game texts from file", lang_name);
     }
-
-    IsAllMsgLoaded = Msg[TEXTMSG_GAME].GetSize() > 0 && !fail;
 }
 
-void LanguagePack::LoadFromCache(const CacheStorage& cache, NameResolver& name_resolver, string_view lang_name)
+void LanguagePack::SaveTextsToDisk(string_view dir) const
+{
+    for (auto i = 0; i < TEXTMSG_COUNT; i++) {
+        auto file = DiskFileSystem::OpenFile(_str("{}/{}-{}.fotxtb", dir, Name, Data->TextMsgFileName[i]), true);
+        RUNTIME_ASSERT(file);
+        const auto write_file_ok = file.Write(Msg[i].GetBinaryData());
+        RUNTIME_ASSERT(write_file_ok);
+    }
+}
+
+void LanguagePack::LoadTexts(FileSystem& file_sys, string_view lang_name)
 {
     RUNTIME_ASSERT(lang_name.length() == sizeof(NameCode));
     Name = lang_name;
     NameCode = *reinterpret_cast<const uint*>(lang_name.data());
 
-    auto errors = 0;
-    for (auto i = 0; i < TEXTMSG_COUNT; i++) {
-        uint buf_len = 0;
-        auto* buf = cache.GetRawData(GetMsgCacheName(i), buf_len);
-        if (buf != nullptr) {
-            vector<uchar> data;
-            data.resize(buf_len);
-            std::memcpy(&data[0], buf, buf_len);
-            delete[] buf;
+    auto msg_files = file_sys.FilterFiles("fotxtb", "", false);
+    while (msg_files.MoveNext()) {
+        auto msg_file = msg_files.GetCurFile();
 
-            if (!Msg[i].LoadFromBinaryData(data)) {
-                errors++;
+        auto name = msg_file.GetName();
+        RUNTIME_ASSERT(name.length() > 5);
+        RUNTIME_ASSERT(name[4] == '-');
+
+        if (name.substr(0, 4) == lang_name) {
+            for (auto i = 0; i < TEXTMSG_COUNT; i++) {
+                if (Data->TextMsgFileName[i] == name.substr(5)) {
+                    if (!Msg[i].LoadFromBinaryData(msg_file.GetData())) {
+                        throw LanguagePackException("Invalid text file", msg_file.GetPath());
+                    }
+
+                    WriteLog("Loaded {} texts for language '{}' from '{}'", Msg[i].GetSize(), lang_name, msg_file.GetPath());
+                }
             }
         }
-        else {
-            errors++;
-        }
     }
 
-    if (errors != 0) {
-        WriteLog("Cached language '{}' not found.\n", lang_name);
+    if (Msg[TEXTMSG_GAME].GetSize() == 0) {
+        throw LanguagePackException("Unable to load game texts from file", lang_name);
     }
-
-    IsAllMsgLoaded = errors == 0;
-}
-
-auto LanguagePack::GetMsgCacheName(int msg_num) const -> string
-{
-    return _str("${}-{}.cache", Name, Data->TextMsgFileName[msg_num]);
 }

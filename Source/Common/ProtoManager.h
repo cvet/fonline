@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,9 +44,7 @@ DECLARE_EXCEPTION(ProtoManagerException);
 class ProtoManager final
 {
 public:
-    ProtoManager() = delete;
-    ProtoManager(FileManager& file_mngr, FOEngineBase& engine); // Load from text
-    ProtoManager(const vector<uchar>& data, FOEngineBase& engine); // Restore from binary
+    explicit ProtoManager(FOEngineBase* engine);
     ProtoManager(const ProtoManager&) = delete;
     ProtoManager(ProtoManager&&) noexcept = delete;
     auto operator=(const ProtoManager&) = delete;
@@ -54,7 +52,6 @@ public:
     ~ProtoManager() = default;
 
     [[nodiscard]] auto GetProtosBinaryData() const -> vector<uchar>;
-    [[nodiscard]] auto ValidateProtoResources(const vector<string>& resource_names) const -> bool;
     [[nodiscard]] auto GetProtoItem(hstring proto_id) -> const ProtoItem*;
     [[nodiscard]] auto GetProtoCritter(hstring proto_id) -> const ProtoCritter*;
     [[nodiscard]] auto GetProtoMap(hstring proto_id) -> const ProtoMap*;
@@ -64,8 +61,12 @@ public:
     [[nodiscard]] auto GetProtoMaps() const -> const map<hstring, const ProtoMap*>&;
     [[nodiscard]] auto GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&;
 
+    void ParseProtos(FileSystem& file_sys);
+    void ValidateProtoResources(const unordered_set<string>& resource_names) const;
+    void Load(const vector<uchar>& data);
+
 private:
-    NameResolver& _nameResolver;
+    FOEngineBase* _engine;
     map<hstring, const ProtoItem*> _itemProtos {};
     map<hstring, const ProtoCritter*> _crProtos {};
     map<hstring, const ProtoMap*> _mapProtos {};

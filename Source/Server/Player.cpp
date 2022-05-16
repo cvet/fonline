@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -41,10 +41,8 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef()), _name {name}
+Player::Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef()), Connection {connection}, _name {name}, _talkNextTick {_engine->GameTime.GameTick() + PROCESS_TALK_TICK}
 {
-    Connection = connection;
-    _talkNextTick = _engine->GameTime.GameTick() + PROCESS_TALK_TICK;
 }
 
 Player::~Player()
@@ -152,8 +150,6 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
     hstring pid_map;
     hstring pid_loc;
     uchar map_index_in_loc = 0;
-    auto map_time = -1;
-    uchar map_rain = 0;
     uint hash_tiles = 0;
     uint hash_scen = 0;
 
@@ -167,8 +163,6 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
         pid_map = map->GetProtoId();
         pid_loc = loc->GetProtoId();
         map_index_in_loc = static_cast<uchar>(loc->GetMapIndex(pid_map));
-        map_time = map->GetCurDayTime();
-        map_rain = map->GetRainCapacity();
         hash_tiles = map->GetStaticMap()->HashTiles;
         hash_scen = map->GetStaticMap()->HashScen;
     }
@@ -188,11 +182,11 @@ void Player::Send_LoadMap(Map* map, MapManager& map_mngr)
 
     Connection->Bout << NETMSG_LOADMAP;
     Connection->Bout << msg_len;
-    Connection->Bout << pid_map;
+    Connection->Bout << (loc != nullptr ? loc->GetId() : 0u);
+    Connection->Bout << (map != nullptr ? map->GetId() : 0u);
     Connection->Bout << pid_loc;
+    Connection->Bout << pid_map;
     Connection->Bout << map_index_in_loc;
-    Connection->Bout << map_time;
-    Connection->Bout << map_rain;
     Connection->Bout << hash_tiles;
     Connection->Bout << hash_scen;
     if (map != nullptr) {
@@ -212,6 +206,9 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
     RUNTIME_ASSERT(entity);
 
     if (IsSendDisabled()) {
+        return;
+    }
+    if (SendIgnoreEntity == entity && SendIgnoreProperty == prop) {
         return;
     }
 
@@ -773,11 +770,7 @@ void Player::Send_GameInfo(Map* map)
     if (IsSendDisabled()) {
     }
 
-    /*int time = (map ? map->GetCurDayTime() : -1);
-    uchar rain = (map ? map->GetRainCapacity() : 0);
-    bool no_log_out = (map ? map->GetIsNoLogOut() : true);
-
-    int day_time[4];
+    /*int day_time[4];
     uchar day_color[12];
     CScriptArray* day_time_arr = (map ? map->GetDayTime() : nullptr);
     CScriptArray* day_color_arr = (map ? map->GetDayColor() : nullptr);
@@ -806,8 +799,6 @@ void Player::Send_GameInfo(Map* map)
     Connection->Bout << Globals->GetMinute();
     Connection->Bout << Globals->GetSecond();
     Connection->Bout << Globals->GetTimeMultiplier();
-    Connection->Bout << time;
-    Connection->Bout << rain;
     Connection->Bout << no_log_out;
     Connection->Bout.Push(day_time, sizeof(day_time));
     Connection->Bout.Push(day_color, sizeof(day_color));

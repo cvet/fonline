@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,10 +33,9 @@
 
 #include "Common.h"
 
-#include "FileSystem.h"
+#include "Application.h"
 #include "Server.h"
 #include "Settings.h"
-#include "Testing.h"
 #include "WinApi-Include.h"
 
 #if FO_WINDOWS
@@ -45,7 +44,6 @@ static wchar_t ServiceName[32] = L"FOnlineServer";
 
 struct ServerServiceAppData
 {
-    GlobalSettings* Settings {};
     FOServer* Server {};
     std::thread ServerThread {};
     uint LastState {};
@@ -66,13 +64,13 @@ static void ServerEntry()
 {
     try {
         try {
-            Data->Server = new FOServer(*Data->Settings);
+            Data->Server = new FOServer(App->Settings);
         }
         catch (const std::exception& ex) {
             ReportExceptionAndExit(ex);
         }
 
-        while (!Data->Settings->Quit) {
+        while (!App->Settings.Quit) {
             try {
                 Data->Server->MainLoop();
             }
@@ -105,7 +103,7 @@ int main(int argc, char** argv)
 #endif
 {
     try {
-        CreateGlobalData();
+        InitApp(argc, argv, "ServerService");
 
 #if FO_WINDOWS
         if (std::wstring(::GetCommandLineW()).find(L"--server-service-start") != std::wstring::npos) {
@@ -201,8 +199,6 @@ int main(int argc, char** argv)
                 return 1;
             }
         }
-
-        return 0;
 #else
         RUNTIME_ASSERT_STR(false, "Invalid OS");
 #endif
@@ -210,18 +206,16 @@ int main(int argc, char** argv)
     catch (const std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
+
+    return 0;
 }
 
 #if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
     try {
-        SetAppName("FOnlineServerService");
-        CatchSystemExceptions();
-        CreateGlobalData();
-        LogToFile();
-
-        Data->Settings = new GlobalSettings(argc, nullptr); // Todo: convert argv from wchar_t** to char**
+        // Todo: convert argv from wchar_t** to char**
+        InitApp(argc, nullptr, "ServerService");
 
         Data->FOServiceStatusHandle = ::RegisterServiceCtrlHandlerW(ServiceName, FOServiceCtrlHandler);
         if (Data->FOServiceStatusHandle == nullptr) {
@@ -253,7 +247,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
         if (opcode == SERVICE_CONTROL_STOP) {
             SetFOServiceStatus(SERVICE_STOP_PENDING);
 
-            Data->Settings->Quit = true;
+            App->Settings.Quit = true;
 
             if (Data->ServerThread.joinable()) {
                 Data->ServerThread.join();

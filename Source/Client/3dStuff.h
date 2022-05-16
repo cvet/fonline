@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,8 @@
 #pragma once
 
 #include "Common.h"
+
+#if FO_ENABLE_3D
 
 #include "3dAnimation.h"
 #include "Application.h"
@@ -70,7 +72,7 @@ struct MeshData
     void Load(DataReader& reader, NameResolver& name_resolver);
 
     ModelBone* Owner {};
-    Vertex3DVec Vertices {};
+    vector<Vertex3D> Vertices {};
     vector<ushort> Indices {};
     string DiffuseTexture {};
     vector<hstring> SkinBoneNames {};
@@ -163,7 +165,7 @@ public:
     using MeshTextureCreator = std::function<void(MeshTexture*)>;
 
     ModelManager() = delete;
-    ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator);
+    ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator);
     ModelManager(const ModelManager&) = delete;
     ModelManager(ModelManager&&) noexcept = delete;
     auto operator=(const ModelManager&) = delete;
@@ -191,7 +193,7 @@ private:
     [[nodiscard]] auto GetHierarchy(string_view xname) -> ModelHierarchy*;
 
     RenderSettings& _settings;
-    FileManager& _fileMngr;
+    FileSystem& _fileSys;
     EffectManager& _effectMngr;
     GameTimer& _gameTime;
     NameResolver& _nameResolver;
@@ -261,7 +263,7 @@ private:
     struct CombinedMesh
     {
         RenderEffect* DrawEffect {};
-        RenderMesh* DrawMesh {};
+        RenderDrawBuffer* DrawMesh {};
         int EncapsulatedMeshCount {};
         vector<MeshData*> Meshes {};
         vector<uint> MeshVertices {};
@@ -408,3 +410,5 @@ private:
     vector<ModelBone*> _allDrawBones {};
     bool _nonConstHelper {};
 };
+
+#endif

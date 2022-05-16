@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,16 +44,32 @@
 #include <android/log.h>
 #endif
 
+[[maybe_unused]] static void FlushLogAtExit();
+
 struct LogData
 {
+#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
+    LogData()
+    {
+        const auto result = std::at_quick_exit(FlushLogAtExit);
+        UNUSED_VARIABLE(result);
+    }
+#endif
+
     std::mutex LogLocker {};
     bool LogDisableTimestamp {};
     unique_ptr<DiskFile> LogFileHandle {};
     map<string, LogFunc> LogFunctions {};
-    bool LogFunctionsInProcess {};
-    string* LogBufferStr {};
+    std::atomic_bool LogFunctionsInProcess {};
 };
 GLOBAL_DATA(LogData, Data);
+
+static void FlushLogAtExit()
+{
+    if (Data != nullptr && Data->LogFileHandle) {
+        Data->LogFileHandle.reset();
+    }
+}
 
 void LogWithoutTimestamp()
 {
@@ -62,96 +78,96 @@ void LogWithoutTimestamp()
     Data->LogDisableTimestamp = true;
 }
 
-void LogToFile()
+void LogToFile(string_view fname)
 {
     std::lock_guard locker(Data->LogLocker);
 
-    const auto fname = _str("{}.log", GetAppName()).str();
     Data->LogFileHandle = std::make_unique<DiskFile>(DiskFile {DiskFileSystem::OpenFile(fname, true, true)});
 }
 
-void LogToFunc(string_view key, const LogFunc& func, bool enable)
+void SetLogCallback(string_view key, LogFunc callback)
 {
     std::lock_guard locker(Data->LogLocker);
 
-    if (func) {
-        Data->LogFunctions.erase(string(key));
-
-        if (enable) {
-            Data->LogFunctions.insert(std::make_pair(key, func));
+    if (!key.empty()) {
+        if (callback) {
+            Data->LogFunctions.emplace(string(key), std::move(callback));
+        }
+        else {
+            Data->LogFunctions.erase(string(key));
         }
     }
-    else if (!enable) {
+    else {
+        RUNTIME_ASSERT(!callback);
         Data->LogFunctions.clear();
     }
 }
 
-void LogToBuffer(bool enable)
+void WriteLogMessage(LogType type, string_view message)
 {
-    std::lock_guard locker(Data->LogLocker);
-
-    delete Data->LogBufferStr;
-    Data->LogBufferStr = nullptr;
-
-    if (enable) {
-        Data->LogBufferStr = new string();
-    }
-}
-
-auto LogGetBuffer() -> string
-{
-    std::lock_guard locker(Data->LogLocker);
-
-    if (Data->LogBufferStr != nullptr && !Data->LogBufferStr->empty()) {
-        auto buf = *Data->LogBufferStr;
-        Data->LogBufferStr->clear();
-        return buf;
-    }
-    return string();
-}
-
-void WriteLogMessage(string_view message)
-{
-    std::lock_guard locker(Data->LogLocker);
-
     // Avoid recursive calls
     if (Data->LogFunctionsInProcess) {
         return;
     }
 
+    std::lock_guard locker(Data->LogLocker);
+
     // Make message
     string result;
     if (!Data->LogDisableTimestamp) {
-        auto now = time(nullptr);
-        const auto* t = localtime(&now);
+        const auto now = ::time(nullptr);
+        const auto* t = ::localtime(&now);
         result += _str("[{}:{}:{}] ", t->tm_hour, t->tm_min, t->tm_sec);
     }
+
+    result.reserve(result.size() + message.length() + 1u);
     result += message;
+    result += '\n';
 
     // Write logs
     if (Data->LogFileHandle) {
-        Data->LogFileHandle->Write(result.c_str(), static_cast<uint>(result.length()));
-    }
-
-    if (Data->LogBufferStr != nullptr) {
-        *Data->LogBufferStr += result;
+        Data->LogFileHandle->Write(result);
     }
 
     if (!Data->LogFunctions.empty()) {
         Data->LogFunctionsInProcess = true;
-        for (auto& [func_name, func] : Data->LogFunctions) {
+        for (auto&& [func_name, func] : Data->LogFunctions) {
             func(result);
         }
         Data->LogFunctionsInProcess = false;
     }
 
 #if FO_WINDOWS
-    OutputDebugStringW(_str(result).toWideChar().c_str());
+    ::OutputDebugStringW(_str(result).toWideChar().c_str());
 #endif
 
-#if !FO_ANDROID
-    printf("%s", result.c_str());
-#else
+#if FO_ANDROID
     __android_log_print(ANDROID_LOG_INFO, "FOnline", "%s", result.c_str());
 #endif
+
+    // Todo: colorize log texts
+    const char* color = nullptr;
+    switch (type) {
+    case LogType::InfoSection:
+        color = "\033[32m"; // Green
+        break;
+    case LogType::Warning:
+        color = "\033[33m"; // Yellow
+        break;
+    case LogType::Error:
+        color = "\031[31m"; // Red
+        break;
+    default:
+        break;
+    }
+
+    if (color != nullptr) {
+        // std::cout << color << result << "\033[39m";
+        std::cout << result;
+    }
+    else {
+        std::cout << result;
+    }
+
+    std::cout.flush();
 }

@@ -24,16 +24,14 @@ What is not included or just planned to including will described in the end of t
 
 ### Build scripts
 
-* fonline-setup.ps1
-* validate.sh
-* validate.bat
-* generate-project.sh
-* prepare-workspace.sh
-* build.sh
-* compile-scripts.sh
-* bake-resources.sh
-* make-packages.sh
+* `BuildTools/prepare-workspace.sh` - prepare our linux workspace to futher work (install linux packages, setup emscripten, download android ndk and etc)
+* `BuildTools/prepare-win-workspace.ps1` - windows version of prepare workspace, that helps prepare to work
+* `BuildTools/prepare-mac-workspace.sh` - mac version of prepare workspace, that helps prepare to work
+* `BuildTools/build.sh/bat` - build executable for specific platform
+* `BuildTools/toolset.sh/bat` - script to call different commands for manage build pipeline
+* `BuildTools/validate.sh` and `BuildTools/validate.bat` - that scripts designed for validate that our sources compiling in general; you don't need that scripts and they need for automatic checking of repo consistency and run from ci/cd system like github actions
 
+Scripts can accept additional arguments (`build.sh` for example accept platform for build for) and this information additionaly described in [BuildTools/README.md](https://github.com/cvet/fonline/blob/master/BuildTools/README.md).  
 Other scripts and files in `BuildTools` dir are not part of reliable public API.
 
 ### Environment variables
@@ -137,16 +135,14 @@ Full list of output files:
 CMake contributions included to main CMakeLists.txt scope.
 
 * SetupGame option value option value...
-  - DEV_NAME (default: "Unknown")
-  - NICE_NAME (default: "Unknown")
-  - COMPANY_NAME (default: "Unknown")
-  - VERSION (default: "0.0.1")
-  - ENGINE_VERSION (default: "")
-  - MULTIPLAYER_SCRIPTING (default: YES)
-  - SINGLEPLAYER_SCRIPTING (default: YES)
-  - NATIVE_SCRIPTING (default: YES)
-  - ANGELSCRIPT_SCRIPTING (default: YES)
-  - MONO_SCRIPTING (default: YES)
+  + DEV_NAME - name of game in short format, without whitespaces
+  + NICE_NAME - representative name of game, any characters allowed
+  + AUTHOR_NAME - authoring
+  + GAME_VERSION - any string that describe current version of game
+  + SINGLEPLAYER - set YES if you work on singleplayer game
+  + NATIVE_SCRIPTING - allow native C++ scripting
+  + ANGELSCRIPT_SCRIPTING - allow AngelScript scripting
+  + MONO_SCRIPTING - allow Mono C# scripting
 * AddContent dir(s)
 * AddResources packName dir(s)
 * AddRawResources dir(s)

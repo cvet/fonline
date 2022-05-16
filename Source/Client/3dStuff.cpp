@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,9 @@
 //
 
 #include "3dStuff.h"
+
+#if FO_ENABLE_3D
+
 #include "GenericUtils.h"
 #include "Log.h"
 #include "Settings.h"
@@ -126,13 +129,8 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileManager& file_mngr, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileMngr {file_mngr}, _effectMngr {effect_mngr}, _gameTime {game_time}, _nameResolver {name_resolver}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}, _gameTime {game_time}, _nameResolver {name_resolver}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
 {
-    RUNTIME_ASSERT(_settings.Enable3dRendering);
-
-    // Check effects
-    _effectMngr.Load3dEffects();
-
     // Smoothing
     _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
     if (_moveTransitionTime < 0.001f) {
@@ -167,15 +165,16 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     _processedFiles.emplace(name_hashed);
 
     // Load file data
-    auto file = _fileMngr.ReadFile(fname);
+    auto file = _fileSys.ReadFile(fname);
     if (!file) {
-        WriteLog("3d file '{}' not found.\n", fname);
+        WriteLog("3d file '{}' not found", fname);
         return nullptr;
     }
 
     // Load bones
     auto root_bone = std::make_unique<ModelBone>();
-    DataReader reader {file.GetBuf()};
+    auto reader = DataReader({file.GetBuf(), file.GetSize()});
+
     root_bone->Load(reader, _nameResolver);
     root_bone->FixAfterLoad(root_bone.get());
 
@@ -186,6 +185,8 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
         anim_set->Load(reader, _nameResolver);
         _loadedAnimSets.push_back(std::move(anim_set));
     }
+
+    reader.VerifyEnd();
 
     // Add to collection
     root_bone->Name = name_hashed;
@@ -337,7 +338,7 @@ auto ModelManager::GetHierarchy(string_view xname) -> ModelHierarchy*
     // Load
     auto* root_bone = LoadModel(xname);
     if (root_bone == nullptr) {
-        WriteLog("Unable to load 3d file '{}'.\n", xname);
+        WriteLog("Unable to load 3d file '{}'", xname);
         return nullptr;
     }
 
@@ -776,7 +777,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 {
     auto period = 0.0f;
     if (_animController != nullptr) {
-        auto* set = _animController->GetAnimationSet(_modelInfo->_renderAnim);
+        const auto* set = _animController->GetAnimationSet(_modelInfo->_renderAnim);
         if (set != nullptr) {
             period = set->GetDuration();
         }
@@ -1064,7 +1065,7 @@ void ModelInstance::ClearCombinedMesh(CombinedMesh* combined_mesh)
     combined_mesh->MeshIndices.clear();
     combined_mesh->MeshVertices.clear();
     combined_mesh->MeshAnimLayers.clear();
-    combined_mesh->DrawMesh->Vertices.clear();
+    combined_mesh->DrawMesh->Vertices3D.clear();
     combined_mesh->DrawMesh->Indices.clear();
 }
 
@@ -1087,7 +1088,7 @@ auto ModelInstance::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstan
 void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer)
 {
     auto* mesh = mesh_instance->Mesh;
-    auto& vertices = combined_mesh->DrawMesh->Vertices;
+    auto& vertices = combined_mesh->DrawMesh->Vertices3D;
     auto& indices = combined_mesh->DrawMesh->Indices;
     const auto vertices_old_size = vertices.size();
     const auto indices_old_size = indices.size();
@@ -1233,11 +1234,11 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
 {
     NON_CONST_METHOD_HINT();
 
-    auto& vertices = combined_mesh->DrawMesh->Vertices;
+    auto& vertices = combined_mesh->DrawMesh->Vertices3D;
     auto& indices = combined_mesh->DrawMesh->Indices;
     auto& cut_layers = cut->Layers;
     for (auto& shape : cut->Shapes) {
-        Vertex3DVec result_vertices;
+        vector<Vertex3D> result_vertices;
         vector<ushort> result_indices;
         vector<uint> result_mesh_vertices;
         vector<uint> result_mesh_indices;
@@ -1580,14 +1581,14 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_
         effect->AnimBuf->AbsoluteTime = _animPosTime;
     }
 
-    App->Render.DrawMesh(combined_mesh->DrawMesh, effect);
+    effect->DrawBuffer(combined_mesh->DrawMesh);
 }
 
 auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>
 {
-    auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
+    const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
     if (bone == nullptr) {
-        for (auto* child : _children) {
+        for (const auto* child : _children) {
             bone = child->_modelInfo->_hierarchy->_rootBone->Find(bone_name);
             if (bone != nullptr) {
                 break;
@@ -1623,13 +1624,13 @@ auto ModelInformation::Load(string_view name) -> bool
     // Load fonline 3d file
     if (ext == "fo3d") {
         // Load main fo3d file
-        auto fo3d = _modelMngr._fileMngr.ReadFile(name);
+        auto fo3d = _modelMngr._fileSys.ReadFile(name);
         if (!fo3d) {
             return false;
         }
 
         // Parse
-        string file_buf = fo3d.GetCStr();
+        string file_buf = fo3d.GetStr();
         string model;
         string render_fname;
         string render_anim;
@@ -1691,7 +1692,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "ModelInstance") {
                 (*istr) >> buf;
-                model = _str(name).combinePath(buf);
+                model = _str(name).extractDir().combinePath(buf);
             }
             else if (token == "Include") {
                 // Get swapped words
@@ -1708,15 +1709,15 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 // Include file path
-                string fname = _str(name).combinePath(templates[0]);
-                auto fo3d_ex = _modelMngr._fileMngr.ReadFile(fname);
+                string fname = _str(name).extractDir().combinePath(templates[0]);
+                auto fo3d_ex = _modelMngr._fileSys.ReadFile(fname);
                 if (!fo3d_ex) {
-                    WriteLog("Include file '{}' not found.\n", fname);
+                    WriteLog("Include file '{}' not found", fname);
                     continue;
                 }
 
                 // Words swapping
-                string new_content = fo3d_ex.GetCStr();
+                string new_content = fo3d_ex.GetStr();
                 if (templates.size() > 2) {
                     for (size_t i = 1; i < templates.size() - 1; i += 2) {
                         new_content = _str(new_content).replace(templates[i], templates[i + 1]);
@@ -1724,7 +1725,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
 
                 // Insert new buffer
-                file_buf = _str("{}\n{}", new_content, !istr->eof() ? file_buf.substr(istr->tellg()) : "");
+                file_buf = _str("{}\n{}", new_content, !istr->eof() ? file_buf.substr(static_cast<size_t>(istr->tellg())) : "");
 
                 // Reinitialize stream
                 delete istr;
@@ -1741,15 +1742,15 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Subset") {
                 (*istr) >> buf;
-                WriteLog("Tag 'Subset' obsolete, use 'Mesh' instead.\n");
+                WriteLog("Tag 'Subset' obsolete, use 'Mesh' instead");
             }
             else if (token == "Layer" || token == "Value") {
                 (*istr) >> buf;
                 if (token == "Layer") {
-                    layer = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                    layer = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 }
                 else {
-                    layer_val = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                    layer_val = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 }
 
                 link = &dummy_link;
@@ -1760,7 +1761,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     link = &_animDataDefault;
                 }
                 else if (layer_val == 0) {
-                    WriteLog("Wrong layer '{}' zero value.\n", layer);
+                    WriteLog("Wrong layer '{}' zero value", layer);
                     link = &dummy_link;
                 }
                 else {
@@ -1783,7 +1784,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 link->Layer = layer;
                 link->LayerValue = layer_val;
 
-                string fname = _str(name).combinePath(buf);
+                string fname = _str(name).extractDir().combinePath(buf);
                 link->ChildName = fname;
 
                 mesh = hstring();
@@ -1796,7 +1797,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Cut") {
                 (*istr) >> buf;
-                string fname = _str(name).combinePath(buf);
+                string fname = _str(name).extractDir().combinePath(buf);
                 auto* area = _modelMngr.GetHierarchy(fname);
                 if (area != nullptr) {
                     // Add cut
@@ -1809,7 +1810,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
                     for (auto& cut_layer_name : cur_layer_names) {
                         if (cut_layer_name != "All") {
-                            const auto cut_layer = _modelMngr._nameResolver.ResolveGenericValue(cut_layer_name, convert_value_fail);
+                            const auto cut_layer = _modelMngr._nameResolver.ResolveGenericValue(cut_layer_name, &convert_value_fail);
                             cut->Layers.push_back(cut_layer);
                         }
                         else {
@@ -1860,7 +1861,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     }
                 }
                 else {
-                    WriteLog("Cut file '{}' not found.\n", fname);
+                    WriteLog("Cut file '{}' not found", fname);
                     (*istr) >> buf;
                     (*istr) >> buf;
                     (*istr) >> buf;
@@ -1998,7 +1999,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 const auto disabled_layers = _str(buf).split('-');
 
                 for (const auto& disabled_layer_name : disabled_layers) {
-                    const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, convert_value_fail);
+                    const auto disabled_layer = _modelMngr._nameResolver.ResolveGenericValue(disabled_layer_name, &convert_value_fail);
                     if (disabled_layer >= 0 && disabled_layer < LAYERS3D_COUNT) {
                         link->DisabledLayer.push_back(disabled_layer);
                     }
@@ -2006,7 +2007,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "DisableSubset") {
                 (*istr) >> buf;
-                WriteLog("Tag 'DisableSubset' obsolete, use 'DisableMesh' instead.\n");
+                WriteLog("Tag 'DisableSubset' obsolete, use 'DisableMesh' instead");
             }
             else if (token == "DisableMesh") {
                 (*istr) >> buf;
@@ -2024,7 +2025,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Texture") {
                 (*istr) >> buf;
-                auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                auto index = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 (*istr) >> buf;
                 if (index >= 0 && index < EFFECT_TEXTURES) {
@@ -2039,9 +2040,9 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "Anim" || token == "AnimSpeed" || token == "AnimExt" || token == "AnimSpeedExt") {
                 // Index animation
                 (*istr) >> buf;
-                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 if (token == "Anim" || token == "AnimExt") {
                     // Todo: add reverse playing of 3d animation
@@ -2058,30 +2059,30 @@ auto ModelInformation::Load(string_view name) -> bool
                 }
                 else {
                     (*istr) >> valuef;
-                    _animSpeed.insert(std::make_pair((ind1 << 16) | ind2, valuef));
+                    _animSpeed.emplace((ind1 << 16) | ind2, valuef);
 
                     if (token == "AnimSpeedExt") {
                         (*istr) >> valuef;
-                        _animSpeed.insert(std::make_pair((ind1 << 16) | (ind2 | 0x8000), valuef));
+                        _animSpeed.emplace((ind1 << 16) | (ind2 | 0x8000), valuef);
                     }
                 }
             }
             else if (token == "AnimLayerValue") {
                 (*istr) >> buf;
-                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 (*istr) >> buf;
-                const auto anim_layer = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto anim_layer = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                const auto anim_layer_value = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 uint index = (ind1 << 16) | ind2;
                 if (_animLayerValues.count(index) == 0u) {
-                    _animLayerValues.insert(std::make_pair(index, vector<pair<int, int>>()));
+                    _animLayerValues.emplace(index, vector<pair<int, int>>());
                 }
-                _animLayerValues[index].push_back(pair<int, int>(anim_layer, anim_layer_value));
+                _animLayerValues[index].emplace_back(anim_layer, anim_layer_value);
             }
             else if (token == "FastTransitionBone") {
                 (*istr) >> buf;
@@ -2093,15 +2094,15 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto ind1 = 0;
                 auto ind2 = 0;
                 (*istr) >> buf;
-                ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                ind1 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                ind2 = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 if (valuei == 1) {
-                    _anim1Equals.insert(std::make_pair(ind1, ind2));
+                    _anim1Equals.emplace(ind1, ind2);
                 }
                 else if (valuei == 2) {
-                    _anim2Equals.insert(std::make_pair(ind1, ind2));
+                    _anim2Equals.emplace(ind1, ind2);
                 }
             }
             else if (token == "RenderFrame" || token == "RenderFrames") {
@@ -2124,7 +2125,7 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "RenderDir") {
                 (*istr) >> buf;
 
-                _renderAnimDir = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                _renderAnimDir = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
             }
             else if (token == "DisableShadow") {
                 _shadowDisabled = true;
@@ -2133,9 +2134,9 @@ auto ModelInformation::Load(string_view name) -> bool
                 auto w = 0;
                 auto h = 0;
                 (*istr) >> buf;
-                w = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                w = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
                 (*istr) >> buf;
-                h = _modelMngr._nameResolver.ResolveGenericValue(buf, convert_value_fail);
+                h = _modelMngr._nameResolver.ResolveGenericValue(buf, &convert_value_fail);
 
                 _drawWidth = w;
                 _drawHeight = h;
@@ -2144,19 +2145,19 @@ auto ModelInformation::Load(string_view name) -> bool
                 disable_animation_interpolation = true;
             }
             else {
-                WriteLog("Unknown token '{}' in file '{}'.\n", token, name);
+                WriteLog("Unknown token '{}' in file '{}'", token, name);
             }
         }
 
         // Process pathes
         if (model.empty()) {
-            WriteLog("'ModelInstance' section not found in file '{}'.\n", name);
+            WriteLog("'ModelInstance' section not found in file '{}'", name);
             return false;
         }
 
         // Check for correct param values
         if (convert_value_fail) {
-            WriteLog("Invalid param values for file '{}'.\n", name);
+            WriteLog("Invalid param values for file '{}'", name);
             return false;
         }
 
@@ -2188,7 +2189,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     anim_path = model;
                 }
                 else {
-                    anim_path = _str(name).combinePath(anim.FileName);
+                    anim_path = _str(name).extractDir().combinePath(anim.FileName);
                 }
 
                 auto* set = _modelMngr.LoadAnimation(anim_path, anim.Name);
@@ -2200,7 +2201,7 @@ auto ModelInformation::Load(string_view name) -> bool
                         _renderAnim = set_index;
                     }
                     else if (anim.Index != 0) {
-                        _animIndexes.insert(std::make_pair(anim.Index, set_index));
+                        _animIndexes.emplace(anim.Index, set_index);
                     }
                 }
             }
@@ -2364,7 +2365,8 @@ ModelHierarchy::ModelHierarchy(ModelManager& model_mngr) : _modelMngr {model_mng
 
 void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint depth)
 {
-    bones.insert(std::make_pair(depth, bone));
+    bones.emplace(depth, bone);
+
     for (auto& i : bone->Children) {
         SetupBonesExt(bones, i.get(), depth + 1);
     }
@@ -2405,7 +2407,7 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
 
     auto* texture = _modelMngr.LoadTexture(tex_name, _fileName);
     if (texture == nullptr) {
-        WriteLog("Can't load texture '{}'.\n", tex_name);
+        WriteLog("Can't load texture '{}'", tex_name);
     }
     return texture;
 }
@@ -2414,9 +2416,11 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 {
     NON_CONST_METHOD_HINT();
 
-    auto* effect = _modelMngr._effectMngr.LoadEffect(name, "", _fileName);
+    auto* effect = _modelMngr._effectMngr.LoadEffect(EffectUsage::Model, name, "", _fileName);
     if (effect == nullptr) {
-        WriteLog("Can't load effect '{}'.\n", name);
+        WriteLog("Can't load effect '{}'", name);
     }
     return effect;
 }
+
+#endif

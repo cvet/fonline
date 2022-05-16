@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,9 +33,7 @@
 
 #include "GenericUtils.h"
 #include "Log.h"
-#include "StringUtils.h"
 
-#include "sha2.h"
 #include "zlib.h"
 
 auto Math::FloatCompare(float f1, float f2) -> bool
@@ -46,18 +44,23 @@ auto Math::FloatCompare(float f1, float f2) -> bool
     return std::abs(f1 - f2) <= 1.0e-5f * std::max(std::abs(f1), std::abs(f2));
 }
 
-auto Hashing::MurmurHash2(const uchar* data, uint len) -> uint
+auto Hashing::MurmurHash2(const void* data, size_t len) -> uint
 {
-    const uint seed = 0;
+    if (len == 0u) {
+        return 0u;
+    }
+
+    constexpr uint seed = 0;
     const uint m = 0x5BD1E995;
     const auto r = 24;
-    auto h = seed ^ len;
+    const auto* pdata = static_cast<const uchar*>(data);
+    auto h = seed ^ static_cast<uint>(len);
 
     while (len >= 4) {
-        uint k = data[0];
-        k |= data[1] << 8;
-        k |= data[2] << 16;
-        k |= data[3] << 24;
+        uint k = pdata[0];
+        k |= pdata[1] << 8;
+        k |= pdata[2] << 16;
+        k |= pdata[3] << 24;
 
         k *= m;
         k ^= k >> r;
@@ -66,19 +69,19 @@ auto Hashing::MurmurHash2(const uchar* data, uint len) -> uint
         h *= m;
         h ^= k;
 
-        data += 4;
+        pdata += 4;
         len -= 4;
     }
 
     switch (len) {
     case 3:
-        h ^= data[2] << 16;
+        h ^= pdata[2] << 16;
         [[fallthrough]];
     case 2:
-        h ^= data[1] << 8;
+        h ^= pdata[1] << 8;
         [[fallthrough]];
     case 1:
-        h ^= data[0];
+        h ^= pdata[0];
         h *= m;
         [[fallthrough]];
     default:
@@ -91,18 +94,22 @@ auto Hashing::MurmurHash2(const uchar* data, uint len) -> uint
     return h;
 }
 
-auto Hashing::MurmurHash2_64(const uchar* data, uint len) -> uint64
+auto Hashing::MurmurHash2_64(const void* data, size_t len) -> uint64
 {
-    const uint seed = 0;
+    if (len == 0u) {
+        return 0u;
+    }
+
+    constexpr uint seed = 0;
     const auto m = 0xc6a4a7935bd1e995ULL;
     const auto r = 47;
+    const auto* pdata = static_cast<const uchar*>(data);
+    const auto* pdata2 = reinterpret_cast<const uint64*>(pdata);
+    const auto* end = pdata2 + len / 8;
     auto h = seed ^ len * m;
 
-    const auto* data2 = reinterpret_cast<const uint64*>(data);
-    const auto* end = data2 + len / 8;
-
-    while (data2 != end) {
-        auto k = *data2++;
+    while (pdata2 != end) {
+        auto k = *pdata2++;
 
         k *= m;
         k ^= k >> r;
@@ -112,7 +119,7 @@ auto Hashing::MurmurHash2_64(const uchar* data, uint len) -> uint64
         h *= m;
     }
 
-    const auto* data3 = reinterpret_cast<const uchar*>(data2);
+    const auto* data3 = reinterpret_cast<const uchar*>(pdata2);
 
     switch (len & 7) {
     case 7:
@@ -147,80 +154,41 @@ auto Hashing::MurmurHash2_64(const uchar* data, uint len) -> uint64
     return h;
 }
 
-auto Compressor::Compress(const uchar* data, uint& data_len) -> uchar*
+auto Compressor::Compress(const_span<uchar> data) -> vector<uchar>
 {
-    uLongf buf_len = data_len * 110 / 100 + 12;
-    auto* buf = new uchar[buf_len];
+    auto buf_len = static_cast<uLongf>(data.size() * 110 / 100 + 12);
+    auto buf = vector<uchar>(buf_len);
 
-    if (compress2(buf, &buf_len, data, data_len, Z_BEST_SPEED) != Z_OK) {
-        delete[] buf;
-        return nullptr;
-    }
-
-    data_len = static_cast<uint>(buf_len);
-    return buf;
-}
-
-auto Compressor::Compress(const vector<uchar>& data) -> vector<uchar>
-{
-    auto result_len = static_cast<uint>(data.size());
-    auto* result = Compress(&data[0], result_len);
-    if (result == nullptr) {
+    if (compress2(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()), Z_BEST_SPEED) != Z_OK) {
         return {};
     }
 
-    vector<uchar> compressed_data;
-    compressed_data.resize(result_len);
-    compressed_data.shrink_to_fit();
-    std::memcpy(&compressed_data[0], result, result_len);
-    delete[] result;
-    return compressed_data;
+    buf.resize(buf_len);
+    return buf;
 }
 
-auto Compressor::Uncompress(const uchar* data, uint& data_len, uint mul_approx) -> uchar*
+auto Compressor::Uncompress(const_span<uchar> data, size_t mul_approx) -> vector<uchar>
 {
-    uLongf buf_len = data_len * mul_approx;
-    if (buf_len > 100000000) // 100mb
-    {
-        WriteLog("Unpack buffer length is too large, data length {}, multiplier {}.\n", data_len, mul_approx);
-        return nullptr;
-    }
+    auto buf_len = static_cast<uLongf>(data.size() * mul_approx);
+    auto buf = vector<uchar>(buf_len);
 
-    auto* buf = new uchar[buf_len];
     while (true) {
-        const auto result = uncompress(buf, &buf_len, data, data_len);
+        const auto result = uncompress(buf.data(), &buf_len, data.data(), static_cast<uLong>(data.size()));
         if (result == Z_BUF_ERROR) {
             buf_len *= 2;
-            delete[] buf;
-            buf = new uchar[buf_len];
+            buf.resize(buf_len);
         }
         else if (result != Z_OK) {
-            delete[] buf;
-            WriteLog("Unpack error {}.\n", result);
-            return nullptr;
+            WriteLog("Unpack error {}", result);
+            return {};
         }
         else {
             break;
         }
     }
 
-    data_len = static_cast<uint>(buf_len);
+    buf.resize(buf_len);
     return buf;
-}
-
-auto Compressor::Uncompress(const vector<uchar>& data, uint mul_approx) -> vector<uchar>
-{
-    auto result_len = static_cast<uint>(data.size());
-    auto* result = Uncompress(&data[0], result_len, mul_approx);
-    if (result == nullptr) {
-        return {};
-    }
-
-    vector<uchar> uncompressed_data;
-    uncompressed_data.resize(result_len);
-    std::memcpy(&uncompressed_data[0], result, result_len);
-    delete[] result;
-    return uncompressed_data;
 }
 
 // Default randomizer
@@ -353,13 +321,13 @@ auto GenericUtils::DistSqrt(int x1, int y1, int x2, int y2) -> uint
 {
     const auto dx = x1 - x2;
     const auto dy = y1 - y2;
-    return static_cast<uint>(sqrt(static_cast<double>(dx * dx + dy * dy)));
+    return static_cast<uint>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
 }
 
-auto GenericUtils::GetStepsXY(int x1, int y1, int x2, int y2) -> tuple<float, float>
+auto GenericUtils::GetStepsCoords(int x1, int y1, int x2, int y2) -> tuple<float, float>
 {
-    const auto dx = static_cast<float>(abs(x2 - x1));
-    const auto dy = static_cast<float>(abs(y2 - y1));
+    const auto dx = static_cast<float>(std::abs(x2 - x1));
+    const auto dy = static_cast<float>(std::abs(y2 - y1));
 
     auto sx = 1.0f;
     auto sy = 1.0f;
@@ -376,11 +344,11 @@ auto GenericUtils::GetStepsXY(int x1, int y1, int x2, int y2) -> tuple<float, fl
     return {sx, sy};
 }
 
-auto GenericUtils::ChangeStepsXY(float sx, float sy, float deq) -> tuple<float, float>
+auto GenericUtils::ChangeStepsCoords(float sx, float sy, float deq) -> tuple<float, float>
 {
     const auto rad = deq * PI_FLOAT / 180.0f;
-    sx = sx * cos(rad) - sy * sin(rad);
-    sy = sx * sin(rad) + sy * cos(rad);
+    sx = sx * std::cos(rad) - sy * std::sin(rad);
+    sy = sx * std::sin(rad) + sy * std::cos(rad);
     return {sx, sy};
 }
 

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,16 +36,11 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-EffectManager::EffectManager(RenderSettings& settings, FileManager& file_mngr, GameTimer& game_time) : _settings {settings}, _fileMngr {file_mngr}, _gameTime {game_time}
+EffectManager::EffectManager(RenderSettings& settings, FileSystem& file_sys) : _settings {settings}, _fileSys {file_sys}
 {
-    _eventUnsubscriber += App->OnFrameBegin += [this]() {
-        for (auto& effect : _loadedEffects) {
-            PerFrameEffectUpdate(effect.get());
-        }
-    };
 }
 
-auto EffectManager::LoadEffect(string_view name, string_view defines, string_view base_path) -> RenderEffect*
+auto EffectManager::LoadEffect(EffectUsage usage, string_view name, string_view defines, string_view base_path) -> RenderEffect*
 {
     // Try find already loaded effect
     for (const auto& effect : _loadedEffects) {
@@ -55,34 +50,37 @@ auto EffectManager::LoadEffect(string_view name, string_view defines, string_vie
     }
 
     // Load new
-    auto* effect = App->Render.CreateEffect(name, defines, [this, &base_path](string_view path) -> vector<uchar> {
-        auto file = _fileMngr.ReadFile(_str("{}/{}", _str(base_path).extractDir(), path));
+    auto* effect = App->Render.CreateEffect(usage, name, defines, [this, &base_path](string_view path) -> string {
+        auto file = _fileSys.ReadFile(_str("{}/{}", _str(base_path).extractDir(), path));
         if (!file) {
-            file = _fileMngr.ReadFile(path);
+            file = _fileSys.ReadFile(path);
             if (!file) {
-                WriteLog("Effect file '{}' not found.\n", path);
+                WriteLog("Effect file '{}' not found", path);
                 return {};
             }
         }
 
-        const auto* buf = file.GetBuf();
-        const auto len = file.GetFsize();
-        vector<uchar> result(len);
-        std::memcpy(&result[0], buf, len);
-        return result;
+        return file.GetStr();
     });
-
-    PerFrameEffectUpdate(effect);
 
     _loadedEffects.push_back(unique_ptr<RenderEffect>(effect));
     return effect;
 }
 
-void EffectManager::PerFrameEffectUpdate(RenderEffect* effect) const
+void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
+    for (auto& effect : _loadedEffects) {
+        PerFrameEffectUpdate(effect.get(), game_time);
+    }
+}
+
+void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& game_time)
+{
+    NON_CONST_METHOD_HINT();
+
     if (effect->TimeBuf) {
-        effect->TimeBuf->GameTime = static_cast<float>(_gameTime.GameTick());
-        effect->TimeBuf->RealTime = static_cast<float>(_gameTime.FrameTick());
+        effect->TimeBuf->GameTime = static_cast<float>(game_time.GameTick());
+        effect->TimeBuf->RealTime = static_cast<float>(game_time.FrameTick());
     }
 
     if (effect->RandomValueBuf) {
@@ -99,52 +97,52 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect) const
     }
 }
 
-#define LOAD_DEFAULT_EFFECT(effect_handle, effect_name) \
-    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_name, "", "Effects/"))) \
+#define LOAD_DEFAULT_EFFECT(effect_handle, effect_usage, effect_name) \
+    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_usage, effect_name, "", "Effects/"))) \
     effect_errors++
 
 void EffectManager::LoadMinimalEffects()
 {
-    uint effect_errors = 0;
-    LOAD_DEFAULT_EFFECT(Effects.Font, "Font_Default");
-    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, "Flush_RenderTarget");
-    if (effect_errors != 0u) {
+    auto effect_errors = 0;
+
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "ImGui_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::Font, "Font_Default");
+    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::ImGui, "Flush_RenderTarget");
+
+    if (effect_errors != 0) {
         throw EffectManagerException("Minimal effects not loaded");
     }
 }
 
 void EffectManager::LoadDefaultEffects()
 {
-    uint effect_errors = 0;
-    LOAD_DEFAULT_EFFECT(Effects.Generic, "2D_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Critter, "2D_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Roof, "2D_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Rain, "2D_WithoutEgg");
-    LOAD_DEFAULT_EFFECT(Effects.Iface, "Interface_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Primitive, "Primitive_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Light, "Primitive_Light");
-    LOAD_DEFAULT_EFFECT(Effects.Fog, "Primitive_Fog");
-    LOAD_DEFAULT_EFFECT(Effects.Font, "Font_Default");
-    LOAD_DEFAULT_EFFECT(Effects.Tile, "2D_WithoutEgg");
-    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, "Flush_RenderTarget");
-    LOAD_DEFAULT_EFFECT(Effects.FlushPrimitive, "Flush_Primitive");
-    LOAD_DEFAULT_EFFECT(Effects.FlushMap, "Flush_Map");
-    LOAD_DEFAULT_EFFECT(Effects.FlushLight, "Flush_Light");
-    LOAD_DEFAULT_EFFECT(Effects.FlushFog, "Flush_Fog");
-    if (effect_errors > 0) {
+    auto effect_errors = 0;
+
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, "ImGui_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::Font, "Font_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::MapSprite, "2D_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::MapSprite, "2D_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Roof, EffectUsage::MapSprite, "2D_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Rain, EffectUsage::MapSprite, "2D_WithoutEgg");
+    LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::Interface, "Interface_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Primitive, EffectUsage::Primitive, "Primitive_Default");
+    LOAD_DEFAULT_EFFECT(Effects.Light, EffectUsage::Primitive, "Primitive_Light");
+    LOAD_DEFAULT_EFFECT(Effects.Fog, EffectUsage::Primitive, "Primitive_Fog");
+    LOAD_DEFAULT_EFFECT(Effects.Tile, EffectUsage::MapSprite, "2D_WithoutEgg");
+    LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::Flush, "Flush_RenderTarget");
+    LOAD_DEFAULT_EFFECT(Effects.FlushPrimitive, EffectUsage::Flush, "Flush_Primitive");
+    LOAD_DEFAULT_EFFECT(Effects.FlushMap, EffectUsage::Flush, "Flush_Map");
+    LOAD_DEFAULT_EFFECT(Effects.FlushLight, EffectUsage::Flush, "Flush_Light");
+    LOAD_DEFAULT_EFFECT(Effects.FlushFog, EffectUsage::Flush, "Flush_Fog");
+#if FO_ENABLE_3D
+    LOAD_DEFAULT_EFFECT(Effects.Skinned3d, EffectUsage::Model, "3D_Skinned");
+#endif
+
+    if (effect_errors != 0) {
         throw EffectManagerException("Default effects not loaded");
     }
 
-    LOAD_DEFAULT_EFFECT(Effects.Contour, "Contour_Default");
-}
-
-void EffectManager::Load3dEffects()
-{
-    uint effect_errors = 0;
-    LOAD_DEFAULT_EFFECT(Effects.Skinned3d, "3D_Skinned");
-    if (effect_errors > 0) {
-        throw EffectManagerException("Default 3D effects not loaded");
-    }
+    LOAD_DEFAULT_EFFECT(Effects.Contour, EffectUsage::Contour, "Contour_Default");
 }
 
 #undef LOAD_DEFAULT_EFFECT

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,9 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: finish with GLSL to SPIRV to GLSL/HLSL/MSL
-// Todo: add supporting of APNG file format
-
 #include "ImageBaker.h"
 #include "F2Palette-Include.h"
 #include "FileSystem.h"
@@ -43,12 +40,10 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-#include "Testing.h"
-#include "minizip/zip.h"
 #include "png.h"
 
 static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*;
-static auto TgaLoad(const uchar* data, uint data_size, uint& result_width, uint& result_height) -> uchar*;
+static auto TgaLoad(const uchar* data, size_t data_size, uint& result_width, uint& result_height) -> uchar*;
 
 ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files) : _settings {settings}, _allFiles {all_files}
 {
@@ -96,7 +91,7 @@ void ImageBaker::BakeImage(string_view fname_with_opt)
 
 void ImageBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
-    for (const auto& [name, data] : _bakedFiles) {
+    for (auto&& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);
     }
 }
@@ -106,12 +101,11 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
-        if (_bakedFiles.count(string(relative_path)) != 0u) {
+        if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
             continue;
         }
 
-        string ext = _str(relative_path).getFileExtension();
+        string ext = _str(file_header.GetPath()).getFileExtension();
         if (target_ext != ext) {
             continue;
         }
@@ -119,8 +113,8 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
         auto file = _allFiles.GetCurFile();
 
         try {
-            auto collection = loader(relative_path, "", file);
-            BakeCollection(relative_path, collection);
+            auto collection = loader(file_header.GetPath(), "", file);
+            BakeCollection(file_header.GetPath(), collection);
         }
         catch (const ImageBakerException& ex) {
             ReportExceptionAndContinue(ex);
@@ -138,38 +132,39 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     RUNTIME_ASSERT(!_bakedFiles.count(string(fname)));
 
     vector<uchar> data;
-    DataWriter writer {data};
+    auto writer = DataWriter(data);
+
     const auto check_number = static_cast<ushort>(42);
     const auto dirs = static_cast<uchar>(collection.HaveDirs ? _settings.MapDirCount : 1);
 
-    writer.Write(check_number);
-    writer.Write(collection.SequenceSize);
-    writer.Write(collection.AnimTicks);
-    writer.Write(dirs);
+    writer.Write<ushort>(check_number);
+    writer.Write<ushort>(collection.SequenceSize);
+    writer.Write<ushort>(collection.AnimTicks);
+    writer.Write<uchar>(dirs);
 
     for (const auto dir : xrange(dirs)) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
-        writer.Write(sequence.OffsX);
-        writer.Write(sequence.OffsY);
+        writer.Write<short>(sequence.OffsX);
+        writer.Write<short>(sequence.OffsY);
 
         for (uint i = 0; i < collection.SequenceSize; i++) {
             const auto& shot = sequence.Frames[i];
-            writer.Write(shot.Shared);
+            writer.Write<bool>(shot.Shared);
             if (!shot.Shared) {
-                writer.Write(shot.Width);
-                writer.Write(shot.Height);
-                writer.Write(shot.NextX);
-                writer.Write(shot.NextY);
+                writer.Write<ushort>(shot.Width);
+                writer.Write<ushort>(shot.Height);
+                writer.Write<short>(shot.NextX);
+                writer.Write<short>(shot.NextY);
                 writer.WritePtr(shot.Data.data(), shot.Data.size());
                 RUNTIME_ASSERT(shot.Data.size() == shot.Width * shot.Height * 4);
             }
             else {
-                writer.Write(shot.SharedIndex);
+                writer.Write<ushort>(shot.SharedIndex);
             }
         }
     }
 
-    writer.Write(check_number);
+    writer.Write<ushort>(check_number);
 
     if (!collection.NewExtension.empty()) {
         _bakedFiles.emplace(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), std::move(data));
@@ -256,7 +251,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
     FrameCollection collection;
 
     // Load ini parser
-    ConfigFile fofrm(file.GetCStr(), nullptr);
+    ConfigFile fofrm(file.GetStr(), nullptr);
 
     auto frm_fps = fofrm.GetInt("", "fps", 0);
     if (frm_fps <= 0) {
@@ -343,7 +338,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         // Merge many animations in one
         uint frm = 0;
         for (auto& sub_collection : sub_collections) {
-            const auto& [sc, next_x, next_y] = sub_collection;
+            auto&& [sc, next_x, next_y] = sub_collection;
             for (uint j = 0; j < sc.SequenceSize; j++, frm++) {
                 auto& shot = sequence.Frames[frm];
                 shot.NextX = static_cast<short>(sc.Main.OffsX + next_x);
@@ -846,9 +841,9 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, File& file) -> Fram
 
     file.SetCurPos(0x4);
     ushort w = 0;
-    file.CopyMem(&w, 2);
+    file.CopyData(&w, 2);
     ushort h = 0;
-    file.CopyMem(&h, 2);
+    file.CopyData(&h, 2);
 
     file.SetCurPos(0xA);
     const auto* palette = file.GetCurBuf();
@@ -964,7 +959,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
     using ArtPalette = unsigned int[256];
     ArtPalette palette[4];
 
-    file.CopyMem(&header, sizeof(header));
+    file.CopyData(&header, sizeof(header));
     if ((header.Flags & 0x00000001) != 0u) {
         header.RotationCount = 1;
     }
@@ -973,7 +968,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
     auto palette_count = 0;
     for (auto i = 0; i < 4; i++) {
         if (header.PaletteList[i] != 0u) {
-            file.CopyMem(&palette[i], sizeof(ArtPalette));
+            file.CopyData(&palette[i], sizeof(ArtPalette));
             palette_count++;
         }
     }
@@ -1041,7 +1036,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, File& file) -> Fram
         while (true) {
             file.SetCurPos(sizeof(ArtHeader) + sizeof(ArtPalette) * palette_count + sizeof(ArtFrameInfo) * dir_art * frm_count + sizeof(ArtFrameInfo) * frm_read);
 
-            file.CopyMem(&frame_info, sizeof(frame_info));
+            file.CopyData(&frame_info, sizeof(frame_info));
 
             auto w = frame_info.FrameWidth;
             auto h = frame_info.FrameHeight;
@@ -1218,7 +1213,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
 
         // Read header
         char head[11];
-        file.CopyMem(head, 11);
+        file.CopyData(head, 11);
         if (head[8] != 0 || strcmp(head, "<sprite>") != 0) {
             throw ImageBakerException("Invalid SPR header", fname);
         }
@@ -1261,7 +1256,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
                 file.GoBack(sizeof(ushort) + name_len + sizeof(uint) + sizeof(uint) * item_cnt + sizeof(short) * item_cnt);
 
                 for (uint i = 0; i < item_cnt; i++) {
-                    short val = file.GetLEUShort();
+                    short val = file.GetLEShort();
                     if (val >= 0) {
                         anim_frames.push_back(val);
                     }
@@ -1283,7 +1278,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
         // Find animation
         file.SetCurPos(0);
         for (uint i = 0; i <= anim_index; i++) {
-            if (!file.FindFragment(reinterpret_cast<const uchar*>("<spranim>"), 9, file.GetCurPos())) {
+            if (!file.FindFragment("<spranim>")) {
                 throw ImageBakerException("Spranim for SPR not found", fname);
             }
             file.GoForward(12);
@@ -1295,7 +1290,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
         auto dir_cnt = file.GetLEUInt();
         vector<uint> bboxes;
         bboxes.resize(frame_cnt * dir_cnt * 4);
-        file.CopyMem(bboxes.data(), sizeof(uint) * frame_cnt * dir_cnt * 4);
+        file.CopyData(bboxes.data(), sizeof(uint) * frame_cnt * dir_cnt * 4);
 
         // Fix dir
         if (dir_cnt != 8) {
@@ -1321,32 +1316,34 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
         auto type = file.GetUChar();
         file.GoForward(1); // \0
 
-        uint data_len = 0;
+        size_t data_len = 0u;
         auto cur_pos = file.GetCurPos();
-        if (file.FindFragment(reinterpret_cast<const uchar*>("<spranim_img>"), 13, cur_pos)) {
+        if (file.FindFragment("<spranim_img>")) {
             data_len = file.GetCurPos() - cur_pos;
         }
         else {
-            data_len = file.GetFsize() - cur_pos;
+            data_len = file.GetSize() - cur_pos;
         }
         file.SetCurPos(cur_pos);
 
         auto packed = type == 0x32;
-        uchar* data = nullptr;
+        vector<uchar> data;
         if (packed) {
             // Unpack with zlib
             auto unpacked_len = file.GetLEUInt();
-            data = Compressor::Uncompress(file.GetCurBuf(), data_len, unpacked_len / data_len + 1);
-            if (data == nullptr) {
+            auto unpacked_data = Compressor::Uncompress({file.GetCurBuf(), data_len}, unpacked_len / data_len + 1);
+            if (unpacked_data.empty()) {
                 throw ImageBakerException("Can't unpack SPR data", fname);
             }
-            data_len = unpacked_len;
+
+            data = unpacked_data;
         }
         else {
-            data = file.ReleaseBuffer();
+            data.resize(data_len);
+            std::memcpy(data.data(), file.GetCurBuf(), data_len);
         }
 
-        File fm_images(data, data_len);
+        File fm_images(data);
 
         // Read palette
         typedef uint Palette[256];
@@ -1354,14 +1351,14 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
         for (auto& i : palette) {
             auto palette_count = fm_images.GetLEUInt();
             if (palette_count <= 256) {
-                fm_images.CopyMem(&i, palette_count * 4);
+                fm_images.CopyData(&i, palette_count * 4);
             }
         }
 
         // Index data offsets
-        vector<uint> image_indices;
+        vector<size_t> image_indices;
         image_indices.resize(frame_cnt * dir_cnt * 4);
-        for (uint cur = 0; fm_images.GetCurPos() != fm_images.GetFsize();) {
+        for (uint cur = 0; fm_images.GetCurPos() != fm_images.GetSize();) {
             auto tag = fm_images.GetUChar();
             if (tag == 1) {
                 // Valid index
@@ -1456,7 +1453,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, File& file) -> Fram
                 auto posy = fm_images.GetLEUInt();
 
                 char zar[8] = {0};
-                fm_images.CopyMem(zar, 8);
+                fm_images.CopyData(zar, 8);
                 uchar subtype = zar[6];
 
                 auto w = fm_images.GetLEUInt();
@@ -1558,7 +1555,7 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, File& file) -> Fram
 
     // Read header
     char head[6];
-    file.CopyMem(head, 6);
+    file.CopyData(head, 6);
     if (head[5] != 0 || strcmp(head, "<zar>") != 0) {
         throw ImageBakerException("Invalid ZAR header", fname);
     }
@@ -1578,7 +1575,7 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, File& file) -> Fram
             throw ImageBakerException("Invalid ZAR palette count", fname);
         }
 
-        file.CopyMem(palette, sizeof(uint) * palette_count);
+        file.CopyData(palette, sizeof(uint) * palette_count);
         if (type == 0x34) {
             def_color = file.GetUChar();
         }
@@ -1649,7 +1646,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, File& file) -> Fram
 
     // Read header
     char head[7];
-    file.CopyMem(head, 7);
+    file.CopyData(head, 7);
     if (head[6] != 0 || strcmp(head, "<tile>") != 0) {
         throw ImageBakerException("Invalid TIL file header", fname);
     }
@@ -1660,12 +1657,12 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, File& file) -> Fram
 
     file.GoForward(7 + 4); // Unknown
 
-    auto w = file.GetLEUInt();
+    const auto w = file.GetLEUInt();
     UNUSED_VARIABLE(w);
-    auto h = file.GetLEUInt();
+    const auto h = file.GetLEUInt();
     UNUSED_VARIABLE(h);
 
-    if (!file.FindFragment(reinterpret_cast<const uchar*>("<tiledata>"), 10, file.GetCurPos())) {
+    if (!file.FindFragment("<tiledata>")) {
         throw ImageBakerException("Tiledata in TIL file not found", fname);
     }
 
@@ -1680,7 +1677,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, File& file) -> Fram
     for (uint frm = 0; frm < frames_count; frm++) {
         // Read header
         char zar_head[6];
-        file.CopyMem(zar_head, 6);
+        file.CopyData(zar_head, 6);
         if (zar_head[5] != 0 || strcmp(zar_head, "<zar>") != 0) {
             throw ImageBakerException("ZAR header in TIL file not found", fname);
         }
@@ -1700,7 +1697,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, File& file) -> Fram
                 throw ImageBakerException("TIL file invalid palettes", fname);
             }
 
-            file.CopyMem(palette, sizeof(uint) * palette_count);
+            file.CopyData(palette, sizeof(uint) * palette_count);
             if (type == 0x34) {
                 def_color = file.GetUChar();
             }
@@ -1771,7 +1768,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
 
     // Read signature
     char head[8];
-    file.CopyMem(head, 8);
+    file.CopyData(head, 8);
     if (!_str(head).startsWith("MOS")) {
         throw ImageBakerException("Invalid MOS file header", fname);
     }
@@ -1779,20 +1776,19 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
     // Packed
     if (head[3] == 'C') {
         const auto unpacked_len = file.GetLEUInt();
-        auto data_len = file.GetFsize() - 12;
+        auto data_len = file.GetSize() - 12;
 
-        auto* buf = file.ReleaseBuffer();
+        auto* buf = const_cast<uchar*>(file.GetBuf());
         *reinterpret_cast<ushort*>(buf) = 0x9C78;
 
-        auto* data = Compressor::Uncompress(buf, data_len, unpacked_len / file.GetFsize() + 1);
-        if (data == nullptr) {
-            delete[] buf;
+        const auto data = Compressor::Uncompress({buf, data_len}, unpacked_len / file.GetSize() + 1);
+
+        if (data.empty()) {
             throw ImageBakerException("Can't unpack MOS file", fname);
         }
-        delete[] buf;
 
-        file = File(data, data_len);
-        file.CopyMem(head, 8);
+        file = File(data);
+        file.CopyData(head, 8);
         if (!_str(head).startsWith("MOS")) {
             throw ImageBakerException("Invalid MOS file unpacked header", fname);
         }
@@ -1820,7 +1816,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, File& file) -> Fram
         for (uint x = 0; x < col; x++) {
             // Get palette for current block
             file.SetCurPos(palette_offset + block * 256 * 4);
-            file.CopyMem(palette, 256 * 4);
+            file.CopyData(palette, 256 * 4);
 
             // Set initial position
             file.SetCurPos(tiles_offset + block * 4);
@@ -1889,7 +1885,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
 
     // Read signature
     char head[8];
-    file.CopyMem(head, 8);
+    file.CopyData(head, 8);
     if (!_str(head).startsWith("BAM")) {
         throw ImageBakerException("Invalid BAM file header", fname);
     }
@@ -1897,20 +1893,19 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
     // Packed
     if (head[3] == 'C') {
         auto unpacked_len = file.GetLEUInt();
-        auto data_len = file.GetFsize() - 12;
+        auto data_len = file.GetSize() - 12;
 
-        auto* buf = file.ReleaseBuffer();
+        auto* buf = const_cast<uchar*>(file.GetBuf());
         *reinterpret_cast<ushort*>(buf) = 0x9C78;
 
-        auto* data = Compressor::Uncompress(buf, data_len, unpacked_len / file.GetFsize() + 1);
-        if (data == nullptr) {
-            delete[] buf;
+        const auto data = Compressor::Uncompress({buf, data_len}, unpacked_len / file.GetSize() + 1);
+
+        if (data.empty()) {
             throw ImageBakerException("Cab't unpack BAM file", fname);
         }
-        delete[] buf;
 
-        file = File(data, data_len);
-        file.CopyMem(head, 8);
+        file = File(data);
+        file.CopyData(head, 8);
         if (!_str(head).startsWith("BAM")) {
             throw ImageBakerException("Invalid BAM file unpacked header", fname);
         }
@@ -1945,7 +1940,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, File& file) -> Fram
     // Palette
     uint palette[256] = {0};
     file.SetCurPos(palette_offset);
-    file.CopyMem(palette, 256 * 4);
+    file.CopyData(palette, 256 * 4);
 
     // Find in lookup table
     for (auto i = 0u; i < cycle_frames; i++) {
@@ -2020,7 +2015,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, File& file) -> Fram
 
     uint w = 0;
     uint h = 0;
-    auto* png_data = PngLoad(file.GetBuf(), w, h);
+    const auto* png_data = PngLoad(file.GetBuf(), w, h);
     if (png_data == nullptr) {
         throw ImageBakerException("Can't read PNG", fname);
     }
@@ -2043,7 +2038,7 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, File& file) -> Fram
 
     uint w = 0;
     uint h = 0;
-    auto* tga_data = TgaLoad(file.GetBuf(), file.GetFsize(), w, h);
+    const auto* tga_data = TgaLoad(file.GetBuf(), file.GetSize(), w, h);
     if (tga_data == nullptr) {
         throw ImageBakerException("Can't read TGA", fname);
     }
@@ -2067,12 +2062,12 @@ static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) 
         static void Error(png_structp png_ptr, png_const_charp error_msg)
         {
             UNUSED_VARIABLE(png_ptr);
-            WriteLog("PNG error '{}'.\n", error_msg);
+            WriteLog("PNG error '{}'", error_msg);
         }
         static void Warning(png_structp png_ptr, png_const_charp /*error_msg*/)
         {
             UNUSED_VARIABLE(png_ptr);
-            // WriteLog( "PNG warning '{}'.\n", error_msg );
+            // WriteLog( "PNG warning '{}'", error_msg );
         }
     };
 
@@ -2161,7 +2156,7 @@ static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) 
     return result;
 }
 
-static auto TgaLoad(const uchar* data, uint data_size, uint& result_width, uint& result_height) -> uchar*
+static auto TgaLoad(const uchar* data, size_t data_size, uint& result_width, uint& result_height) -> uchar*
 {
     // Reading macros
     auto read_error = false;

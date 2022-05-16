@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,16 +31,15 @@
 // SOFTWARE.
 //
 
-#include "EffectBaker.h"
+// Todo: pre-compile HLSH shaders with D3DCompile
 
+#include "EffectBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
-#include "Log.h"
 #include "StringUtils.h"
 
 #include "GlslangToSpv.h"
 #include "ShaderLang.h"
-#include "Testing.h"
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
@@ -174,30 +173,29 @@ void EffectBaker::AutoBakeEffects()
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        auto relative_path = file_header.GetPath().substr(_allFiles.GetPath().length());
 
         {
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            if (_bakedFiles.count(string(relative_path)) != 0u) {
+            if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
                 continue;
             }
         }
 
-        string ext = _str(relative_path).getFileExtension();
+        string ext = _str(file_header.GetPath()).getFileExtension();
         if (ext != "fofx") {
             continue;
         }
 
         auto file = _allFiles.GetCurFile();
-        string content(file.GetCStr(), file.GetFsize());
+        string content = file.GetStr();
 
 #if FO_ASYNC_BAKE
         futs.emplace_back(std::async(std::launch::async | std::launch::deferred, &EffectBaker::BakeShaderProgram, this, relative_path, content));
 #else
         try {
-            BakeShaderProgram(relative_path, content);
+            BakeShaderProgram(file_header.GetPath(), content);
         }
         catch (const EffectBakerException& ex) {
             ReportExceptionAndContinue(ex);
@@ -236,7 +234,11 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
     const auto shader_common_content = fofx.GetAppContent("ShaderCommon");
     const auto shader_version = fofx.GetInt("Effect", "Version", 310);
     const auto shader_version_str = _str("#version {} es\n", shader_version).str();
+#if FO_ENABLE_3D
     const auto shader_defines = _str("precision mediump float;\n#define MAX_BONES {}\n", MODEL_MAX_BONES).str();
+#else
+    const auto shader_defines = _str("precision mediump float;\n").str();
+#endif
     const auto shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
 
     for (auto pass = 1; pass <= passes; pass++) {
@@ -291,8 +293,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            string dummy_content = "BAKED";
-            _bakedFiles.emplace(fname, vector<uchar>(dummy_content.begin(), dummy_content.end()));
+            _bakedFiles.emplace(fname, vector<uchar>(content.begin(), content.end()));
         }
     }
 }
@@ -325,7 +326,9 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     // SPIR-V to GLSL
     auto make_glsl = [this, &fname_wo_ext, &spirv]() {
         spirv_cross::CompilerGLSL compiler {spirv};
-        const auto& options = compiler.get_common_options();
+        auto options = compiler.get_common_options();
+        options.es = false;
+        options.version = 150;
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
@@ -339,6 +342,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         spirv_cross::CompilerGLSL compiler {spirv};
         auto options = compiler.get_common_options();
         options.es = true;
+        options.version = 300;
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
@@ -350,7 +354,8 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     // SPIR-V to HLSL
     auto make_hlsl = [this, &fname_wo_ext, &spirv]() {
         spirv_cross::CompilerHLSL compiler {spirv};
-        const auto& options = compiler.get_hlsl_options();
+        auto options = compiler.get_hlsl_options();
+        options.shader_model = 30;
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE
@@ -414,7 +419,7 @@ void EffectBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
     std::lock_guard locker(_bakedFilesLocker);
 #endif
 
-    for (const auto& [name, data] : _bakedFiles) {
+    for (auto&& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);
     }
 }

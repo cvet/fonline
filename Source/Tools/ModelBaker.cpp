@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -32,14 +32,18 @@
 //
 
 #include "ModelBaker.h"
+
+#if FO_ENABLE_3D
+
 #include "Application.h"
-#include "GenericUtils.h"
 #include "Log.h"
-#include "Settings.h"
 #include "StringUtils.h"
-#include "Testing.h"
 
 #if FO_HAVE_FBXSDK
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wnull-dereference"
+#pragma clang diagnostic ignored "-Wuninitialized-const-reference"
+#endif
 #include "fbxsdk.h"
 #endif
 
@@ -74,7 +78,7 @@ struct MeshData
         writer.WritePtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
     }
 
-    Vertex3DVec Vertices {};
+    vector<Vertex3D> Vertices {};
     vector<ushort> Indices {};
     string DiffuseTexture {};
     vector<string> SkinBones {};
@@ -218,12 +222,11 @@ void ModelBaker::AutoBakeModels()
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        auto relative_path = string(file_header.GetPath().substr(_allFiles.GetPath().length()));
-        if (_bakedFiles.count(relative_path) != 0u) {
+        if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
             continue;
         }
 
-        string ext = _str(relative_path).getFileExtension();
+        string ext = _str(file_header.GetPath()).getFileExtension();
         if (!(ext == "fbx" || ext == "dae" || ext == "obj")) {
             continue;
         }
@@ -231,8 +234,8 @@ void ModelBaker::AutoBakeModels()
         auto file = _allFiles.GetCurFile();
 
         try {
-            auto data = BakeFile(relative_path, file);
-            _bakedFiles.emplace(relative_path, std::move(data));
+            auto data = BakeFile(file_header.GetPath(), file);
+            _bakedFiles.emplace(file_header.GetPath(), std::move(data));
         }
         catch (const ModelBakerException& ex) {
             ReportExceptionAndContinue(ex);
@@ -251,7 +254,7 @@ void ModelBaker::AutoBakeModels()
 
 void ModelBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
 {
-    for (const auto& [name, data] : _bakedFiles) {
+    for (auto&& [name, data] : _bakedFiles) {
         baked_files.emplace(name, data);
     }
 }
@@ -294,7 +297,7 @@ public:
             }
         }
         if (len != 0) {
-            _file->CopyMem(buffer, len);
+            _file->CopyData(buffer, len);
         }
         buffer[len] = 0;
         return buffer;
@@ -309,13 +312,13 @@ public:
             _file->GoForward(static_cast<uint>(offset));
         }
         else if (seek_pos == FbxFile::eEnd) {
-            _file->SetCurPos(_file->GetFsize() - static_cast<uint>(offset));
+            _file->SetCurPos(_file->GetSize() - static_cast<uint>(offset));
         }
     }
 
     auto Read(void* data, int size) const -> int override
     {
-        _file->CopyMem(data, size);
+        _file->CopyData(data, size);
         return size;
     }
 
@@ -324,7 +327,7 @@ public:
     auto Write(const void* /*data*/, int /*size*/) -> int override { return 0; }
     [[nodiscard]] auto GetReaderID() const -> int override { return 0; }
     [[nodiscard]] auto GetWriterID() const -> int override { return -1; }
-    [[nodiscard]] auto GetPosition() const -> long override { return _file->GetCurPos(); }
+    [[nodiscard]] auto GetPosition() const -> long override { return static_cast<long>(_file->GetCurPos()); }
     void SetPosition(long position) override { _file->SetCurPos(static_cast<uint>(position)); }
     [[nodiscard]] auto GetError() const -> int override { return 0; }
     void ClearError() override { }
@@ -490,9 +493,10 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
     fbx_scene->Destroy(true);
 
     vector<uchar> data;
-    DataWriter writer {data};
+    auto writer = DataWriter(data);
+
     root_bone->Save(writer);
-    writer.Write(static_cast<uint>(loaded_animations.size()));
+    writer.Write<uint>(static_cast<uint>(loaded_animations.size()));
     for (auto& loaded_animation : loaded_animations) {
         loaded_animation->Save(writer);
     }
@@ -558,7 +562,7 @@ static auto FbxGetElement(T* elements, int index, int* vertices) -> T2
         }
     }
 
-    WriteLog("Unknown mapping mode {} or reference mode {}.\n", elements->GetMappingMode(), elements->GetReferenceMode());
+    WriteLog("Unknown mapping mode {} or reference mode {}", elements->GetMappingMode(), elements->GetReferenceMode());
     return elements->GetDirectArray().GetAt(0);
 }
 
@@ -664,7 +668,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
                 fbx_cluster->GetTransformMatrix(cur_matrix);
                 Bone* skin_bone = root_bone->Find(fbx_cluster->GetLink()->GetName());
                 if (skin_bone == nullptr) {
-                    WriteLog("Skin bone '{}' for mesh '{}' not found.\n", fbx_cluster->GetLink()->GetName(), fbx_node->GetName());
+                    WriteLog("Skin bone '{}' for mesh '{}' not found", fbx_cluster->GetLink()->GetName(), fbx_node->GetName());
                     skin_bone = bone;
                 }
                 mesh->SkinBones[i] = skin_bone->Name;
@@ -758,4 +762,6 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
 {
     throw NotSupportedException("ModelBaker::BakeFile");
 }
+#endif
+
 #endif

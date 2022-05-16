@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,18 +37,18 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& proto_mngr, NameResolver& name_resolver, const PropertyRegistrator* map_property_registrator, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
+void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
 {
     // Find file
-    auto maps = file_mngr.FilterFiles("fomap");
+    auto maps = file_sys.FilterFiles("fomap");
     auto map_file = maps.FindFileByName(name);
     if (!map_file) {
         throw MapLoaderException("Map not found", name);
     }
 
     // Load from file
-    const auto* buf = map_file.GetCStr();
-    const auto is_old_format = strstr(buf, "[Header]") != nullptr && strstr(buf, "[Tiles]") != nullptr && strstr(buf, "[Objects]") != nullptr;
+    const auto buf = map_file.GetStr();
+    const auto is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;
     if (is_old_format) {
         throw MapLoaderException("Unable to load map from old map format", name);
     }
@@ -58,14 +58,6 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
     if (!map_data.IsApp("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
     }
-
-    Properties props(map_property_registrator);
-    if (!props.LoadFromText(map_data.GetApp("ProtoMap"))) {
-        throw MapLoaderException("Unable to load map properties", name);
-    }
-
-    const auto width = props.GetValue<ushort>(map_property_registrator->Find("Width"));
-    const auto height = props.GetValue<ushort>(map_property_registrator->Find("Height"));
 
     // Critters
     vector<string> errors;
@@ -122,18 +114,20 @@ void MapLoader::Load(string_view name, FileManager& file_mngr, ProtoManager& pro
         const auto layer = static_cast<int>(kv.count("Layer") != 0u ? _str(kv["Layer"]).toUInt() : 0);
         const auto is_roof = kv.count("IsRoof") != 0u ? _str(kv["IsRoof"]).toBool() : false;
 
-        if (hx < 0 || hx >= width || hy < 0 || hy >= height) {
-            errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", tname, hx, hy));
-            continue;
-        }
-        if (layer < 0 || layer > 255) {
+        // if (hx < 0 || hx >= width || hy < 0 || hy >= height) {
+        //     errors.emplace_back(_str("Tile '{}' have wrong hex position {} {}", tname, hx, hy));
+        //     continue;
+        // }
+        if (layer < 0 || layer > std::numeric_limits<uchar>::max()) {
             errors.emplace_back(_str("Tile '{}' have wrong layer value {}", tname, layer));
             continue;
         }
 
         const auto htname = name_resolver.ToHashedString(tname);
 
-        tile_load({htname.as_hash(), static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof});
+        if (!tile_load({htname.as_hash(), static_cast<ushort>(hx), static_cast<ushort>(hy), static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer), is_roof})) {
+            errors.emplace_back("Unable to load tile");
+        }
     }
 
     if (!errors.empty()) {

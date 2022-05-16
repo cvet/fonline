@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -110,6 +110,7 @@
 #include <deque>
 #include <functional>
 #include <future>
+#include <iostream>
 #include <list>
 #include <map>
 #include <memory>
@@ -117,6 +118,7 @@
 #include <optional>
 #include <random>
 #include <set>
+#include <span.hpp>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -159,7 +161,6 @@ using ushort = unsigned short;
 using uint = unsigned int;
 using uint64 = uint64_t;
 using int64 = int64_t;
-using max_t = uint; // Todo: remove max_t
 
 // Check the sizes of base types
 static_assert(sizeof(char) == 1);
@@ -197,6 +198,12 @@ using std::unordered_map;
 using std::unordered_set;
 using std::variant;
 using std::vector;
+using tcb::span;
+
+template<typename T>
+using unique_del_ptr = unique_ptr<T, std::function<void(T*)>>;
+template<typename T>
+using const_span = span<const T>;
 
 // Math types
 // Todo: replace depedency from Assimp types (matrix/vector/quaternion/color)
@@ -206,81 +213,95 @@ using mat44 = aiMatrix4x4;
 using quaternion = aiQuaternion;
 using color4 = aiColor4D;
 
-// Engine exception handling
-extern auto GetStackTrace() -> string;
-
-class GenericException : public std::exception
+// Template helpers
+// ReSharper disable CppInconsistentNaming
+template<typename T>
+class has_size
 {
-public:
-    GenericException() = delete;
-    GenericException(const GenericException&) = delete;
-    GenericException(GenericException&&) = default;
-    auto operator=(const GenericException&) = delete;
-    auto operator=(GenericException&&) noexcept = delete;
-    ~GenericException() override = default;
-
-    template<typename... Args>
-    explicit GenericException(string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...}
+    using one = char;
+    struct two
     {
-        _exceptionMessage = "Exception: ";
-        _exceptionMessage.append(message);
-        if (!_exceptionParams.empty()) {
-            _exceptionMessage.append("\n  Context args:");
-            for (auto& param : _exceptionParams)
-                _exceptionMessage.append("\n  - ").append(param);
-        }
-        _exceptionMessage.append("\n");
-        _exceptionMessage.append(GetStackTrace());
-    }
+        char x[2];
+    };
 
-    [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); }
+    template<typename C>
+    static auto test(decltype(&C::size)) -> one;
+    template<typename C>
+    static auto test(...) -> two;
 
-private:
-    string _exceptionMessage {};
-    // Todo: auto expand exception parameters to readable state
-    vector<string> _exceptionParams {};
+public:
+    enum
+    {
+        value = sizeof(test<T>(0)) == sizeof(char)
+    };
 };
 
+template<typename Test, template<typename...> class Ref>
+struct is_specialization : std::false_type
+{
+};
+
+template<template<typename...> class Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type
+{
+};
+// ReSharper restore CppInconsistentNaming
+
+// Engine exception handling
+extern auto GetStackTrace() -> string;
+extern bool BreakIntoDebugger(string_view error_message);
+[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
+extern void ReportExceptionAndContinue(const std::exception& ex);
+extern void CreateDumpMessage(string_view appendix, string_view message);
+
+// Todo: pass name to exceptions context args
 #define DECLARE_EXCEPTION(exception_name) \
-    class exception_name : public GenericException \
+    class exception_name : public std::exception \
     { \
     public: \
-        template<typename... Args> \
-        exception_name(Args... args) : GenericException(std::forward<Args>(args)...) \
-        { \
-        } \
         exception_name() = delete; \
         exception_name(const exception_name&) = delete; \
         exception_name(exception_name&&) = default; \
         auto operator=(const exception_name&) = delete; \
         auto operator=(exception_name&&) noexcept = delete; \
         ~exception_name() override = default; \
+        template<typename... Args> \
+\
+        explicit exception_name(string_view message, Args... args) : _exceptionParams {fmt::format("{}", std::forward<Args>(args))...} \
+        { \
+            _exceptionMessage = #exception_name ": "; \
+            _exceptionMessage.append(message); \
+            if (!_exceptionParams.empty()) { \
+                _exceptionMessage.append("\n  Context args:"); \
+                for (auto& param : _exceptionParams) \
+                    _exceptionMessage.append("\n  - ").append(param); \
+            } \
+            _exceptionMessage.append("\n"); \
+            _exceptionMessage.append(GetStackTrace()); \
+            BreakIntoDebugger(_exceptionMessage); \
+        } \
+        [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
+\
+    private: \
+        string _exceptionMessage {}; \
+        vector<string> _exceptionParams {}; \
     }
 
-#if FO_DEBUG
+// Todo: split RUNTIME_ASSERT to real uncoverable assert and some kind of runtime error
+#define RUNTIME_ASSERT(expr) \
+    if (!(expr)) \
+    throw AssertationException(#expr, __FILE__, __LINE__)
 #define RUNTIME_ASSERT_STR(expr, str) \
-    do { \
-        if (!(expr) && !BreakIntoDebugger()) { \
-            throw AssertationException(str, __FILE__, __LINE__); \
-        } \
-    } while (false)
-extern bool BreakIntoDebugger();
-#else
-#define RUNTIME_ASSERT_STR(expr, str) \
-    do { \
-        if (!(expr)) { \
-            throw AssertationException(str, __FILE__, __LINE__); \
-        } \
-    } while (false)
-#endif
-
-#define RUNTIME_ASSERT(expr) RUNTIME_ASSERT_STR(expr, #expr)
+    if (!(expr)) \
+    throw AssertationException(str, __FILE__, __LINE__)
 
 // Common exceptions
+DECLARE_EXCEPTION(GenericException);
 DECLARE_EXCEPTION(AssertationException);
 DECLARE_EXCEPTION(UnreachablePlaceException);
 DECLARE_EXCEPTION(NotSupportedException);
 DECLARE_EXCEPTION(NotImplementedException);
+DECLARE_EXCEPTION(NotEnabled3DException);
 
 // Event system
 class EventUnsubscriberCallback final
@@ -679,15 +700,20 @@ private:
 };
 
 // Data serialization helpers
+DECLARE_EXCEPTION(DataReadingException);
+
 class DataReader
 {
 public:
-    explicit DataReader(const uchar* buf) : _dataBuf {buf} { }
-    explicit DataReader(const vector<uchar>& buf) : _dataBuf {!buf.empty() ? &buf[0] : nullptr} { }
+    explicit DataReader(const_span<uchar> buf) : _dataBuf {buf} { }
 
-    template<class T>
+    template<class T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
     auto Read() -> T
     {
+        if (_readPos + sizeof(T) > _dataBuf.size()) {
+            throw DataReadingException("Unexpected end of buffer");
+        }
+
         T data;
         std::memcpy(&data, &_dataBuf[_readPos], sizeof(T));
         _readPos += sizeof(T);
@@ -698,29 +724,44 @@ public:
     auto ReadPtr(size_t size) -> const T*
     {
         _readPos += size;
-        return size ? &_dataBuf[_readPos - size] : nullptr;
+        return size ? reinterpret_cast<const T*>(&_dataBuf[_readPos - size]) : nullptr;
     }
 
     template<class T>
     void ReadPtr(T* ptr, size_t size)
     {
-        _readPos += size;
-        if (size)
+        if (size > 0u) {
+            _readPos += size;
             std::memcpy(ptr, &_dataBuf[_readPos - size], size);
+        }
+    }
+
+    void VerifyEnd() const
+    {
+        if (_readPos != _dataBuf.size()) {
+            throw DataReadingException("Not all data readed");
+        }
     }
 
 private:
-    const uchar* _dataBuf;
+    const_span<uchar> _dataBuf;
     size_t _readPos {};
 };
 
 class DataWriter
 {
 public:
-    explicit DataWriter(vector<uchar>& buf) : _dataBuf {buf} { }
+    static constexpr size_t BUF_RESERVE_SIZE = 1024;
 
-    template<class T>
-    void Write(T data)
+    explicit DataWriter(vector<uchar>& buf) : _dataBuf {buf}
+    {
+        if (_dataBuf.capacity() < BUF_RESERVE_SIZE) {
+            _dataBuf.reserve(BUF_RESERVE_SIZE);
+        }
+    }
+
+    template<class T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
+    void Write(std::enable_if_t<true, T> data)
     {
         const auto cur = _dataBuf.size();
         _dataBuf.resize(cur + sizeof(data));
@@ -728,10 +769,11 @@ public:
     }
 
     template<class T>
-    void WritePtr(T* data, size_t size)
+    void WritePtr(const T* data, size_t size)
     {
-        if (!size)
+        if (size == 0u) {
             return;
+        }
 
         const auto cur = _dataBuf.size();
         _dataBuf.resize(cur + size);
@@ -741,41 +783,6 @@ public:
 private:
     vector<uchar>& _dataBuf;
 };
-
-// Todo: move WriteData/ReadData to DataWriter/DataReader
-template<class T>
-void WriteData(vector<uchar>& vec, T data)
-{
-    const auto cur = vec.size();
-    vec.resize(cur + sizeof(data));
-    std::memcpy(&vec[cur], &data, sizeof(data));
-}
-
-template<class T, class U>
-void WriteDataArr(vector<uchar>& vec, T* data, U size)
-{
-    if (size > 0) {
-        const auto cur = static_cast<uint>(vec.size());
-        vec.resize(cur + static_cast<uint>(size));
-        std::memcpy(&vec[cur], data, size);
-    }
-}
-
-template<class T>
-auto ReadData(const vector<uchar>& vec, uint& pos) -> T
-{
-    T data;
-    std::memcpy(&data, &vec[pos], sizeof(T));
-    pos += sizeof(T);
-    return data;
-}
-
-template<class T>
-auto ReadDataArr(const vector<uchar>& vec, uint size, uint& pos) -> const T*
-{
-    pos += size;
-    return size ? reinterpret_cast<const T*>(&vec[pos - size]) : nullptr;
-}
 
 // Flex rect
 template<typename T>
@@ -984,6 +991,7 @@ static constexpr auto DEFAULT_3D_DRAW_WIDTH = 256;
 static constexpr auto DEFAULT_3D_DRAW_HEIGHT = 128;
 static constexpr float MIN_ZOOM = 0.1f;
 static constexpr float MAX_ZOOM = 20.0f;
+static constexpr auto FONT_DEFAULT = 5;
 
 // Id helpers
 // Todo: remove all id masks after moving to 64-bit hashes
@@ -1012,7 +1020,6 @@ enum class CritterFindType : uchar
 
 // Ping
 static constexpr uchar PING_PING = 0;
-static constexpr uchar PING_WAIT = 1;
 static constexpr uchar PING_CLIENT = 2;
 
 // Say types
@@ -1106,7 +1113,6 @@ static constexpr uint FCRIT_CHOSEN = 0x00100000;
 #define OTHER_BREAK_TIME (0)
 #define OTHER_WAIT_TIME (1)
 #define OTHER_FLAGS (2)
-#define OTHER_CLEAR_MAP (6)
 #define OTHER_TELEPORT (7)
 
 // Critter actions
@@ -1305,37 +1311,6 @@ static constexpr auto ANIMRUN_SET_FRM(int frm) -> uint
 }
 
 template<typename T>
-class has_size
-{
-    using one = char;
-    struct two
-    {
-        char x[2];
-    };
-
-    template<typename C>
-    static auto test(decltype(&C::size)) -> one;
-    template<typename C>
-    static auto test(...) -> two;
-
-public:
-    enum
-    {
-        value = sizeof(test<T>(0)) == sizeof(char)
-    };
-};
-
-template<typename Test, template<typename...> class Ref>
-struct is_specialization : std::false_type
-{
-};
-
-template<template<typename...> class Ref, typename... Args>
-struct is_specialization<Ref<Args...>, Ref> : std::true_type
-{
-};
-
-template<typename T>
 class irange_iterator final
 {
 public:
@@ -1384,18 +1359,29 @@ constexpr auto copy(T&& value) -> T
     return T(value);
 }
 
+template<typename T, typename T2>
+constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
+{
+    vector<T> result;
+    result.reserve(value.size());
+    for (auto&& v : value) {
+        result.emplace_back(static_cast<T>(v));
+    }
+    return result;
+}
+
 // ReSharper restore CppInconsistentNaming
 
 class NameResolver
 {
 public:
     virtual ~NameResolver() = default;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool& failed) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool& failed) const -> int = 0;
-    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value) const -> string = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
+    [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
     [[nodiscard]] virtual auto ToHashedString(string_view s) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
-    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool& failed) -> int = 0;
+    [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
 };
 
 class AnimationResolver
@@ -1407,8 +1393,10 @@ public:
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
 
-extern void SetAppName(const char* name);
-extern auto GetAppName() -> const char*;
+class Application;
+extern Application* App;
+extern void InitApp(int argc, char** argv, string_view name_appendix);
+[[noreturn]] extern void ExitApp(bool success);
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \

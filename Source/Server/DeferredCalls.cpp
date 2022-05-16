@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 
 DeferredCallManager::DeferredCallManager(FOServer* engine) : _engine {engine}
 {
+    UNUSED_VARIABLE(_engine);
 }
 
 auto DeferredCallManager::AddDeferredCall(uint delay, bool saved, string_view func_name, int* value, const vector<int>* values, uint* value2, const vector<uint>* values2) -> uint
@@ -244,7 +245,7 @@ auto DeferredCallManager::GetStatistics() -> string
 
 auto DeferredCallManager::LoadDeferredCalls() -> bool
 {
-    /*WriteLog("Load deferred calls...\n");
+    /*WriteLog("Load deferred calls...");
 
     Uvector<int> call_ids = DbStorage->GetAllIds("DeferredCalls");
     int errors = 0;
@@ -279,7 +280,7 @@ auto DeferredCallManager::LoadDeferredCalls() -> bool
         }
 
         if (call.IsValue && call.IsValues) {
-            WriteLog("Deferred call {} have value and values.\n", call.Id);
+            WriteLog("Deferred call {} have value and values", call.Id);
             errors++;
             continue;
         }
@@ -298,14 +299,14 @@ auto DeferredCallManager::LoadDeferredCalls() -> bool
 
         call.FuncNum = Script::BindScriptFuncNumByFuncName(call_doc["Script"].get<string>(), decl);
         if (!call.FuncNum) {
-            WriteLog("Unable to find function '{}' with declaration '{}' for deferred call {}.\n", call_doc["Script"].get<string>(), decl, call.Id);
+            WriteLog("Unable to find function '{}' with declaration '{}' for deferred call {}", call_doc["Script"].get<string>(), decl, call.Id);
             errors++;
             continue;
         }
 
         call.BindId = Script::BindByFuncNum(call.FuncNum, false);
         if (!call.BindId) {
-            WriteLog("Unable to bind script function '{}' for deferred call {}.\n", _str().parseHash(call.FuncNum), call.Id);
+            WriteLog("Unable to bind script function '{}' for deferred call {}", _str().parseHash(call.FuncNum), call.Id);
             errors++;
             continue;
         }
@@ -314,7 +315,7 @@ auto DeferredCallManager::LoadDeferredCalls() -> bool
         _deferredCalls.push_back(call);
     }
 
-    WriteLog("Load deferred calls complete, count {}.\n", (uint)_deferredCalls.size());
+    WriteLog("Load deferred calls complete, count {}", (uint)_deferredCalls.size());
     return errors == 0;*/
     return false;
 }

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,6 @@
 
 #include "DiskFileSystem.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
 #include "WinApi-Include.h"
 
 #if !FO_IOS
@@ -136,44 +135,34 @@ DiskFile::operator bool() const
     return !!_pImpl;
 }
 
-auto DiskFile::Read(void* buf, uint len) -> bool
+auto DiskFile::Read(void* buf, size_t len) -> bool
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
 
-    DWORD br = 0;
-    return ::ReadFile(_pImpl->FileHandle, buf, len, &br, nullptr) != 0 && br == len;
-}
-
-auto DiskFile::Write(const void* buf, uint len) -> bool
-{
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
-
-    DWORD bw = 0;
-    return ::WriteFile(_pImpl->FileHandle, buf, len, &bw, nullptr) != 0 && bw == len;
-}
-
-auto DiskFile::Write(string_view str) -> bool
-{
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(_openedForWriting);
-
-    if (str.empty()) {
+    if (len == 0u) {
         return true;
     }
 
-    const auto len = static_cast<DWORD>(str.length());
+    DWORD br = 0;
+    return ::ReadFile(_pImpl->FileHandle, buf, static_cast<DWORD>(len), &br, nullptr) != 0 && static_cast<size_t>(br) == len;
+}
+
+auto DiskFile::Write(const void* buf, size_t len) -> bool
+{
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_pImpl);
+    RUNTIME_ASSERT(_openedForWriting);
+
+    if (len == 0u) {
+        return true;
+    }
+
     DWORD bw = 0;
-    return ::WriteFile(_pImpl->FileHandle, str.data(), len, &bw, nullptr) != 0 && bw == len;
+    return ::WriteFile(_pImpl->FileHandle, buf, static_cast<DWORD>(len), &bw, nullptr) != 0 && static_cast<size_t>(bw) == len;
 }
 
 auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
@@ -186,13 +175,12 @@ auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
     return ::SetFilePointer(_pImpl->FileHandle, offset, nullptr, static_cast<DWORD>(origin)) != INVALID_SET_FILE_POINTER;
 }
 
-auto DiskFile::GetPos() const -> uint
+auto DiskFile::GetPos() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    const auto pos = ::SetFilePointer(_pImpl->FileHandle, 0, nullptr, FILE_CURRENT);
-    return static_cast<uint>(pos);
+    return ::SetFilePointer(_pImpl->FileHandle, 0, nullptr, FILE_CURRENT);
 }
 
 auto DiskFile::GetWriteTime() const -> uint64
@@ -208,7 +196,7 @@ auto DiskFile::GetWriteTime() const -> uint64
     return ::FileTimeToUInt64(tw);
 }
 
-auto DiskFile::GetSize() const -> uint
+auto DiskFile::GetSize() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
 
@@ -260,27 +248,33 @@ DiskFile::operator bool() const
     return !!_pImpl;
 }
 
-bool DiskFile::Read(void* buf, uint len)
+auto DiskFile::Read(void* buf, size_t len) -> bool
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
 
-    return static_cast<uint>(SDL_RWread(_pImpl->Ops, buf, sizeof(char), len)) == len;
+    if (len == 0u) {
+        return true;
+    }
+
+    return SDL_RWread(_pImpl->Ops, buf, sizeof(char), len) == len;
 }
 
-bool DiskFile::Write(const void* buf, uint len)
+auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
+
+    if (len == 0u) {
+        return true;
+    }
 
     SDL_RWops* ops = _pImpl->Ops;
-    bool result = (static_cast<uint>(SDL_RWwrite(ops, buf, sizeof(char), len)) == len);
+    bool result = SDL_RWwrite(ops, buf, sizeof(char), len) == len;
     if (result && _pImpl->WriteThrough) {
         if (ops->type == SDL_RWOPS_WINFILE) {
 #ifdef __WIN32__
@@ -296,20 +290,7 @@ bool DiskFile::Write(const void* buf, uint len)
     return result;
 }
 
-bool DiskFile::Write(string_view str)
-{
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(_openedForWriting);
-
-    if (!str.empty()) {
-        return Write(str.data(), static_cast<uint>(str.length()));
-    }
-    return true;
-}
-
-bool DiskFile::SetPos(int offset, DiskFileSeek origin)
+auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 {
     NON_CONST_METHOD_HINT();
 
@@ -319,15 +300,15 @@ bool DiskFile::SetPos(int offset, DiskFileSeek origin)
     return SDL_RWseek(_pImpl->Ops, offset, static_cast<int>(origin)) != -1;
 }
 
-uint DiskFile::GetPos() const
+auto DiskFile::GetPos() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    return static_cast<uint>(SDL_RWtell(_pImpl->Ops));
+    return SDL_RWtell(_pImpl->Ops);
 }
 
-uint64 DiskFile::GetWriteTime() const
+auto DiskFile::GetWriteTime() const -> uint64
 {
     RUNTIME_ASSERT(_pImpl);
 
@@ -355,10 +336,10 @@ uint64 DiskFile::GetWriteTime() const
     throw UnreachablePlaceException(LINE_STR);
 }
 
-uint DiskFile::GetSize() const
+auto DiskFile::GetSize() const -> size_t
 {
     Sint64 size = SDL_RWsize(_pImpl->Ops);
-    return size <= 0 ? 0u : static_cast<uint>(size);
+    return size <= 0 ? 0u : static_cast<size_t>(size);
 }
 
 #else
@@ -408,24 +389,30 @@ DiskFile::operator bool() const
     return !!_pImpl;
 }
 
-bool DiskFile::Read(void* buf, uint len)
+auto DiskFile::Read(void* buf, size_t len) -> bool
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
+
+    if (len == 0u) {
+        return true;
+    }
 
     return ::fread(buf, sizeof(char), len, _pImpl->File) == len;
 }
 
-bool DiskFile::Write(const void* buf, uint len)
+auto DiskFile::Write(const void* buf, size_t len) -> bool
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(_openedForWriting);
-    RUNTIME_ASSERT(len > 0u);
+
+    if (len == 0u) {
+        return true;
+    }
 
     bool result = (::fwrite(buf, len, 1, _pImpl->File) == 1);
     if (result && _pImpl->WriteThrough) {
@@ -434,20 +421,7 @@ bool DiskFile::Write(const void* buf, uint len)
     return result;
 }
 
-bool DiskFile::Write(string_view str)
-{
-    NON_CONST_METHOD_HINT();
-
-    RUNTIME_ASSERT(_pImpl);
-    RUNTIME_ASSERT(_openedForWriting);
-
-    if (!str.empty()) {
-        return Write(str.data(), (uint)str.length());
-    }
-    return true;
-}
-
-bool DiskFile::SetPos(int offset, DiskFileSeek origin)
+auto DiskFile::SetPos(int offset, DiskFileSeek origin) -> bool
 {
     NON_CONST_METHOD_HINT();
 
@@ -457,15 +431,15 @@ bool DiskFile::SetPos(int offset, DiskFileSeek origin)
     return ::fseek(_pImpl->File, offset, (int)origin) == 0;
 }
 
-uint DiskFile::GetPos() const
+auto DiskFile::GetPos() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
     RUNTIME_ASSERT(!_openedForWriting);
 
-    return static_cast<uint>(::ftell(_pImpl->File));
+    return static_cast<size_t>(::ftell(_pImpl->File));
 }
 
-uint64 DiskFile::GetWriteTime() const
+auto DiskFile::GetWriteTime() const -> uint64
 {
     RUNTIME_ASSERT(_pImpl);
 
@@ -475,14 +449,14 @@ uint64 DiskFile::GetWriteTime() const
     return static_cast<uint64>(st.st_mtime);
 }
 
-uint DiskFile::GetSize() const
+auto DiskFile::GetSize() const -> size_t
 {
     RUNTIME_ASSERT(_pImpl);
 
     int fd = ::fileno(_pImpl->File);
     struct stat st;
     ::fstat(fd, &st);
-    return static_cast<uint>(st.st_size);
+    return static_cast<size_t>(st.st_size);
 }
 #endif
 
@@ -527,7 +501,7 @@ DiskFind::~DiskFind()
 
 DiskFind::DiskFind(DiskFind&&) noexcept = default;
 
-DiskFind& DiskFind::operator++(int)
+auto DiskFind::operator++(int) -> DiskFind&
 {
     _findDataValid = false;
 
@@ -562,7 +536,7 @@ auto DiskFind::GetPath() const -> string
     return WinWideCharToMultiByte(_pImpl->FindData.cFileName);
 }
 
-auto DiskFind::GetFileSize() const -> uint
+auto DiskFind::GetFileSize() const -> size_t
 {
     RUNTIME_ASSERT(_findDataValid);
     RUNTIME_ASSERT(!(_pImpl->FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY));
@@ -586,7 +560,7 @@ struct DiskFind::Impl
     string Ext {};
     dirent* Ent {};
     bool IsDir {};
-    uint Size {};
+    size_t Size {};
     uint64 WriteTime {};
 };
 
@@ -622,7 +596,7 @@ DiskFind::~DiskFind()
 
 DiskFind::DiskFind(DiskFind&&) noexcept = default;
 
-DiskFind& DiskFind::operator++(int)
+auto DiskFind::operator++(int) -> DiskFind&
 {
     _findDataValid = false;
 
@@ -666,7 +640,7 @@ DiskFind& DiskFind::operator++(int)
     }
 
     _pImpl->IsDir = S_ISDIR(st.st_mode);
-    _pImpl->Size = (uint)st.st_size;
+    _pImpl->Size = st.st_size;
     _pImpl->WriteTime = (uint64)st.st_mtime;
     _findDataValid = true;
     return *this;
@@ -677,21 +651,21 @@ DiskFind::operator bool() const
     return _findDataValid;
 }
 
-bool DiskFind::IsDir() const
+auto DiskFind::IsDir() const -> bool
 {
     RUNTIME_ASSERT(_findDataValid);
 
     return _pImpl->IsDir;
 }
 
-string DiskFind::GetPath() const
+auto DiskFind::GetPath() const -> string
 {
     RUNTIME_ASSERT(_findDataValid);
 
     return _pImpl->Ent->d_name;
 }
 
-uint DiskFind::GetFileSize() const
+auto DiskFind::GetFileSize() const -> size_t
 {
     RUNTIME_ASSERT(_findDataValid);
     RUNTIME_ASSERT(!_pImpl->IsDir);
@@ -699,7 +673,7 @@ uint DiskFind::GetFileSize() const
     return _pImpl->Size;
 }
 
-uint64 DiskFind::GetWriteTime() const
+auto DiskFind::GetWriteTime() const -> uint64
 {
     RUNTIME_ASSERT(_findDataValid);
 
@@ -707,7 +681,39 @@ uint64 DiskFind::GetWriteTime() const
 }
 #endif
 
+auto DiskFile::Write(string_view str) -> bool
+{
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_pImpl);
+    RUNTIME_ASSERT(_openedForWriting);
+
+    if (!str.empty()) {
+        return Write(str.data(), str.length());
+    }
+    return true;
+}
+
+auto DiskFile::Write(const_span<uchar> data) -> bool
+{
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(_pImpl);
+    RUNTIME_ASSERT(_openedForWriting);
+
+    if (!data.empty()) {
+        return Write(data.data(), data.size());
+    }
+    return true;
+}
+
 #if !FO_IOS
+auto DiskFileSystem::IsDir(string_view path) -> bool
+{
+    std::error_code ec;
+    return std::filesystem::is_directory(path, ec) && !ec;
+}
+
 auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {
     std::error_code ec;
@@ -756,12 +762,24 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 
 #else
 
-bool DiskFileSystem::DeleteFile(string_view fname)
+auto DiskFileSystem::IsDir(string_view path) -> bool
+{
+    struct stat st;
+    if (::stat(string(path).c_str(), &st) == 0) {
+        if (S_ISDIR(st.st_mode)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+auto DiskFileSystem::DeleteFile(string_view fname) -> bool
 {
     return remove(string(fname).c_str()) != 0;
 }
 
-bool DiskFileSystem::CopyFile(string_view fname, string_view copy_fname)
+auto DiskFileSystem::CopyFile(string_view fname, string_view copy_fname) -> bool
 {
     bool ok = false;
     FILE* from = fopen(string(fname).c_str(), "rb");
@@ -788,7 +806,7 @@ bool DiskFileSystem::CopyFile(string_view fname, string_view copy_fname)
     return ok;
 }
 
-bool DiskFileSystem::RenameFile(string_view fname, string_view new_fname)
+auto DiskFileSystem::RenameFile(string_view fname, string_view new_fname) -> bool
 {
     return rename(string(fname).c_str(), string(new_fname).c_str()) == 0;
 }
@@ -856,19 +874,4 @@ static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool inc
 void DiskFileSystem::IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor)
 {
     RecursiveDirLook(path, "", include_subdirs, ext, visitor);
-}
-
-void DiskFileSystem::RemoveBuildHashFile(string_view hash_name)
-{
-    const auto build_hash_deleted = DeleteFile(_str("{}.build-hash", hash_name));
-    RUNTIME_ASSERT(build_hash_deleted);
-}
-
-void DiskFileSystem::CreateBuildHashFile(string_view hash_name)
-{
-    auto build_hash_file = OpenFile(_str("{}.build-hash", hash_name), true, true);
-    RUNTIME_ASSERT(build_hash_file);
-    const auto build_hash = string(FO_BUILD_HASH);
-    const auto build_hash_writed = build_hash_file.Write(build_hash.c_str(), static_cast<uint>(build_hash.length()));
-    RUNTIME_ASSERT(build_hash_writed);
 }

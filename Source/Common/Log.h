@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,17 +37,30 @@
 
 using LogFunc = std::function<void(string_view)>;
 
+enum class LogType
+{
+    Info,
+    InfoSection,
+    Warning,
+    Error,
+};
+
 // Write formatted text
-extern void WriteLogMessage(string_view message);
+extern void WriteLogMessage(LogType type, string_view message);
+
 template<typename... Args>
 void WriteLog(string_view message, Args... args)
 {
-    WriteLogMessage(fmt::format(message, std::forward<Args>(args)...));
+    WriteLogMessage(LogType::Info, fmt::format(message, std::forward<Args>(args)...));
+}
+
+template<typename... Args>
+void WriteLog(LogType type, string_view message, Args... args)
+{
+    WriteLogMessage(type, fmt::format(message, std::forward<Args>(args)...));
 }
 
 // Control
 extern void LogWithoutTimestamp();
-extern void LogToFile();
-extern void LogToFunc(string_view key, const LogFunc& func, bool enable);
-extern void LogToBuffer(bool enable);
-extern auto LogGetBuffer() -> string;
+extern void LogToFile(string_view fname);
+extern void SetLogCallback(string_view key, LogFunc callback);

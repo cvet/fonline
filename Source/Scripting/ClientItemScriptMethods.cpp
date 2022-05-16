@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,13 +63,13 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Item_GetMapPos(ItemView* self, ushort& hx, ushort& hy)
 {
-    if (!self->GetEngine()->HexMngr.IsMapLoaded()) {
+    if (self->GetEngine()->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
     }
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->GetCritter(self->GetCritId());
+        const auto* cr = self->GetEngine()->CurMap->GetCritter(self->GetCritId());
         if (!cr) {
             throw ScriptException("CritterCl accessory, CritterCl not found");
         }
@@ -85,7 +85,7 @@
             throw ScriptException("Container accessory, crosslinks");
         }
 
-        ItemView* cont = self->GetEngine()->GetItem(self->GetContainerId());
+        ItemView* cont = self->GetEngine()->CurMap->GetItem(self->GetContainerId());
         if (!cont) {
             throw ScriptException("Container accessory, container not found");
         }

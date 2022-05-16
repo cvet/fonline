@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,7 @@ ItemManager::ItemManager(FOServer* engine) : _engine {engine}
 
 void ItemManager::LinkItems()
 {
-    WriteLog("Link items...\n");
+    WriteLog("Link items...");
 
     for (auto* item : GetItems()) {
         if (item->IsStatic()) {
@@ -87,7 +87,7 @@ void ItemManager::LinkItems()
         }
     }
 
-    WriteLog("Link items complete.\n");
+    WriteLog("Link items complete");
 }
 
 void ItemManager::InitAfterLoad()
@@ -221,7 +221,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 {
     const auto* proto = _engine->ProtoMngr.GetProtoItem(pid);
     if (proto == nullptr) {
-        WriteLog("Proto item '{}' not found.\n", pid);
+        WriteLog("Proto item {} not found", pid);
         return nullptr;
     }
 
@@ -251,7 +251,7 @@ auto ItemManager::CreateItem(hstring pid, uint count, const Properties* props) -
 
     // Verify destroying
     if (item->IsDestroyed()) {
-        WriteLog("Item destroyed after prototype '{}' initialization.\n", pid);
+        WriteLog("Item destroyed after prototype {} initialization", pid);
         return nullptr;
     }
 
@@ -307,7 +307,7 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
 
     auto* new_item = CreateItem(item->GetProtoId(), count, &item->GetProperties()); // Ignore init script
     if (new_item == nullptr) {
-        WriteLog("Create item '{}' fail, count {}.\n", item->GetName(), count);
+        WriteLog("Create item {} failed, count {}", item->GetName(), count);
         return nullptr;
     }
 
@@ -775,18 +775,9 @@ auto ItemManager::GetItemStatistics(hstring pid) const -> int64
 
 auto ItemManager::GetItemsStatistics() const -> string
 {
-    vector<const ProtoItem*> protos;
-    const auto& proto_items = _engine->ProtoMngr.GetProtoItems();
-    protos.reserve(proto_items.size());
-    for (const auto& [pid, proto] : proto_items) {
-        protos.push_back(proto);
-    }
-
-    std::sort(protos.begin(), protos.end(), [](const ProtoItem* p1, const ProtoItem* p2) { return p1->GetName().compare(p2->GetName()); });
-
     string result = "Name                                     Count\n";
-    for (const auto* proto : protos) {
-        result += _str("{:<40} {:<20}\n", proto->GetName(), _str("{}", proto->InstanceCount));
+    for (auto&& [pid, proto] : _engine->ProtoMngr.GetProtoItems()) {
+        result += _str("{:<40} {:<20}\n", proto->GetName(), proto->InstanceCount);
     }
     return result;
 }

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - present, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2022, Anton Tsvetinskiy aka cvet <cvet@tut.by>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,10 +45,7 @@ class Entity;
 class Property;
 class PropertyRegistrator;
 class Properties;
-using PropertyVec = vector<const Property*>;
-using NativeSendCallback = std::function<void(Entity*, const Property*)>;
-using NativeCallback = std::function<void(Entity*, const Property*, void*, void*)>;
-using NativeCallbackVec = vector<NativeCallback>;
+using PropertyChangedCallback = std::function<void(Entity*, const Property*, const void*, const void*)>;
 
 class Property final
 {
@@ -117,6 +114,8 @@ public:
     [[nodiscard]] auto IsTemporary() const -> bool { return _isTemporary; }
     [[nodiscard]] auto IsHistorical() const -> bool { return _isHistorical; }
 
+    void AddCallback(PropertyChangedCallback callback) const;
+
 private:
     enum class DataType
     {
@@ -127,10 +126,10 @@ private:
     };
 
     explicit Property(const PropertyRegistrator* registrator);
-    static auto CreateRefValue(uchar* data, uint data_size) -> unique_ptr<void, std::function<void(void*)>>;
-    static auto ExpandComplexValueData(void* pvalue, uint& data_size, bool& need_delete) -> uchar*;
 
     const PropertyRegistrator* _registrator;
+
+    mutable vector<PropertyChangedCallback> _callbacks {};
 
     string _propName {};
     string _fullTypeName {};
@@ -199,6 +198,7 @@ public:
     ~Properties();
 
     [[nodiscard]] auto GetRegistrator() const -> const PropertyRegistrator* { return _registrator; }
+    [[nodiscard]] auto GetEntity() -> Entity* { NON_CONST_METHOD_HINT_ONELINE() return _entity; }
     [[nodiscard]] auto GetRawDataSize(const Property* prop) const -> uint;
     [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) const -> const uchar*;
     [[nodiscard]] auto GetRawData(const Property* prop, uint& data_size) -> uchar*;
@@ -209,12 +209,12 @@ public:
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(Properties* base) const -> map<string, string>;
 
+    void SetEntity(Entity* entity) { _entity = entity; }
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     auto LoadPropertyFromText(const Property* prop, string_view text) -> bool;
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
     void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uchar>>& all_data);
-    void SetSendIgnore(const Property* prop, const Entity* entity);
     void SetRawData(const Property* prop, const uchar* data, uint data_size);
     void SetValueFromData(const Property* prop, const uchar* data, uint data_size);
     void SetPlainDataValueAsInt(const Property* prop, int value);
@@ -240,7 +240,9 @@ public:
         T old_value = *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
         if (new_value != old_value) {
             *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
-            // setCallback(enumValue, old_value)
+            for (const auto& callback : prop->_callbacks) {
+                callback(_entity, prop, &new_value, &old_value);
+            }
         }
     }
 
@@ -251,9 +253,7 @@ public:
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
         RUNTIME_ASSERT(prop->_isHash);
         const auto h = *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]);
-        // Todo: ResolveHash
-        UNUSED_VARIABLE(h);
-        return hstring();
+        return ResolveHash(h);
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, hstring>, int> = 0>
@@ -262,10 +262,12 @@ public:
         RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
         RUNTIME_ASSERT(prop->_isHash);
-        const auto old_value = *reinterpret_cast<hstring::hash_t*>(_podData[prop->_podDataOffset]);
-        if (new_value.as_uint() != old_value) {
+        const auto old_value = ResolveHash(*reinterpret_cast<hstring::hash_t*>(_podData[prop->_podDataOffset]));
+        if (new_value != old_value) {
             *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = new_value.as_uint();
-            // setCallback(enumValue, old_value)
+            for (const auto& callback : prop->_callbacks) {
+                callback(_entity, prop, &new_value, &old_value);
+            }
         }
     }
 
@@ -279,10 +281,12 @@ public:
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
-    void SetValue(const Property* prop, T /*new_value*/)
+    void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        // Todo: SetValue for string
+        UNUSED_VARIABLE(new_value);
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, vector>::value, int> = 0>
@@ -290,14 +294,17 @@ public:
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        // Todo: GetValue for array
         return {};
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, vector>::value, int> = 0>
-    void SetValue(const Property* prop, T /*new_value*/)
+    void SetValue(const Property* prop, T new_value)
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        // Todo: SetValue for array
+        UNUSED_VARIABLE(new_value);
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
@@ -305,6 +312,7 @@ public:
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        // Todo: GetValue for dict
         return {};
     }
 
@@ -313,9 +321,13 @@ public:
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        // Todo: SetValue for dict
+        UNUSED_VARIABLE(new_value);
     }
 
 private:
+    auto ResolveHash(hstring::hash_t h) const -> hstring;
+
     const PropertyRegistrator* _registrator;
     uchar* _podData {};
     vector<uchar*> _complexData {};
@@ -323,8 +335,7 @@ private:
     mutable vector<uchar*> _storeData {};
     mutable vector<uint> _storeDataSizes {};
     mutable vector<ushort> _storeDataComplexIndicies {};
-    const Entity* _sendIgnoreEntity {};
-    const Property* _sendIgnoreProperty {};
+    Entity* _entity {};
     bool _nonConstHelper {};
 };
 
@@ -352,7 +363,6 @@ public:
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
 
     void RegisterComponent(hstring name);
-    void SetNativeSetCallback(string_view property_name, const NativeCallback& callback);
 
 private:
     string _className;
