@@ -832,7 +832,7 @@ void OpenGL_Renderer::ClearRenderTarget(optional<uint> color, bool depth, bool s
     }
 
     if (depth) {
-        GL(glClearDepth(1.0));
+        GL(glClearDepthf(1.0f));
         clear_flags |= GL_DEPTH_BUFFER_BIT;
     }
 
