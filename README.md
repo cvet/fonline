@@ -147,7 +147,6 @@ They are located in ThirdParty directory.
 * [GLEW](http://glew.sourceforge.net/) - library for binding opengl stuff
 * [glslang](https://github.com/KhronosGroup/glslang) - glsl shaders front-end
 * [Json](https://github.com/azadkuh/nlohmann_json_release) - json parser
-* [diStorm3](https://github.com/gdabah/distorm) - library for low level function call hooks
 * [PNG](http://www.libpng.org/pub/png/libpng.html) - png image loader
 * [SDL2](https://www.libsdl.org/download-2.0.php) - low level access to audio, input and graphics
 * SHA1 & SHA2 generators by Steve Reid and Olivier Gay - hash generators

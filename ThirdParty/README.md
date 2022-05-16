@@ -9,7 +9,6 @@
 * GLEW - [GLEW library](http://glew.sourceforge.net/)
 * glslang - [glslang-11.7.0](https://github.com/KhronosGroup/glslang)
 * Json - [json-nlohmann-3.7.0](https://github.com/azadkuh/nlohmann_json_release)
-* NCodeHook - [distorm3.3-package](https://github.com/gdabah/distorm)
 * PNG - [lpng1616](http://www.libpng.org/pub/png/libpng.html)
 * SDL2 - [SDL2-2.0.20](https://github.com/libsdl-org/SDL)
 * SHA - SHA-1 & SHA-2 hash generators

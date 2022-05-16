@@ -96,7 +96,6 @@ set( FO_THEORA_DIR "" )
 set( FO_ACM_DIR "" )
 set( FO_SHA_DIR "" )
 set( FO_GLEW_DIR "" )
-set( FO_NCODE_HOOK_DIR "" )
 set( FO_FBXSDK_DIR "" )
 set( FO_JSON_DIR "" )
 set( FO_FMT_DIR "" )
@@ -837,17 +836,8 @@ if( FO_USE_GLEW )
 	DisableLibWarnings( GLEW )
 endif()
 
-# NCodeHook
-if( WIN32 )
-	StatusMessage( "+ NCodeHook" )
-	set( FO_NCODE_HOOK_DIR "ThirdParty/NCodeHook" )
-	add_subdirectory( "${FO_NCODE_HOOK_DIR}" )
-	include_directories( "${FO_NCODE_HOOK_DIR}" )
-	list( APPEND FO_COMMON_LIBS "NCodeHook" )
-	DisableLibWarnings( NCodeHook )
-endif()
-
-StatusMessage( "+ Assimp headers" )
+# Assimp
+StatusMessage( "+ Assimp (math headers)" )
 include_directories( "ThirdParty/AssimpMath" )
 
 # Fbx SDK
