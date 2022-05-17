@@ -180,6 +180,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ScriptSettings, virtual TimerSettings);
 FIXED_SETTING(string, ASServer);
 FIXED_SETTING(string, ASClient);
+FIXED_SETTING(string, ASSingle);
 FIXED_SETTING(string, ASMapper);
 SETTING_GROUP_END();
 

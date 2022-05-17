@@ -61,16 +61,21 @@ public:
 };
 
 #if FO_ANGELSCRIPT_SCRIPTING
+#if !FO_SINGLEPLAYER
 struct ServerScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path); // Implementation in AngelScriptScripting-ServerCompiler.cpp
 };
-
 struct ClientScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path); // Implementation in AngelScriptScripting-ClientCompiler.cpp
 };
-
+#else
+struct SingleScriptSystem
+{
+    void InitAngelScriptScripting(const char* script_path); // Implementation in AngelScriptScripting-SingleCompiler.cpp
+};
+#endif
 struct MapperScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path); // Implementation in AngelScriptScripting-MapperCompiler.cpp
@@ -113,8 +118,8 @@ int main(int argc, char** argv)
             WriteLog("Compile client scripts");
             ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
 #else
-            WriteLog("Compile single scripts");
-            // MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
+            WriteLog("Compile game scripts");
+            SingleScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
 #endif
 
             WriteLog("Compile mapper scripts");

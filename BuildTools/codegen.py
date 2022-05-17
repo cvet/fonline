@@ -960,6 +960,13 @@ def insertCodeGenLines(lines, entryName):
     
     insertFileLines(lines, lineIndex)
 
+def getEntityFromTarget(target):
+    if target == 'Server':
+        return 'ServerEntity*'
+    if target in ['Client', 'Mapper']:
+        return 'ClientEntity*'
+    return 'Entity*'
+
 def metaTypeToEngineType(t, target, passIn):
     tt = t.split('.')
     if tt[0] == 'dict':
@@ -981,7 +988,7 @@ def metaTypeToEngineType(t, target, passIn):
     elif tt[0] == 'ScriptFuncName':
         return 'ScriptFuncName<' + ', '.join([metaTypeToEngineType(a, target, False) for a in '.'.join(tt[1:]).split('|')]) + '>'
     elif tt[0] == 'Entity':
-        return 'ClientEntity*' if target != 'Server' else 'ServerEntity*'
+        return getEntityFromTarget(target)
     elif tt[0] in gameEntities:
         if target != 'Server':
             r = gameEntitiesInfo[tt[0]]['Client'] + '*'
@@ -1273,7 +1280,7 @@ def genCode(lang, target, isASCompiler=False):
             elif tt[0] in ['callback', 'predicate', 'init']:
                 return 'asIScriptFunction*'
             elif tt[0] == 'Entity':
-                return 'ClientEntity*' if target != 'Server' else 'ServerEntity*'
+                return getEntityFromTarget(target)
             elif tt[0] in gameEntities:
                 if target != 'Server':
                     return gameEntitiesInfo[tt[0]]['Client'] + '*'

@@ -37,6 +37,7 @@
 #include "Log.h"
 #include "Settings.h"
 
+#if !FO_SINGLEPLAYER
 struct ServerScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
@@ -46,6 +47,12 @@ struct ClientScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
+#else
+struct SingleScriptSystem
+{
+    void InitAngelScriptScripting(const char* script_path);
+};
+#endif
 
 struct MapperScriptSystem
 {
@@ -64,10 +71,15 @@ int main(int argc, char** argv)
         InitApp(argc, argv, "ASCompiler");
         LogWithoutTimestamp();
 
+#if !FO_SINGLEPLAYER
         auto server_failed = false;
         auto client_failed = false;
+#else
+        auto single_failed = false;
+#endif
         auto mapper_failed = false;
 
+#if !FO_SINGLEPLAYER
         if (!App->Settings.ASServer.empty()) {
             WriteLog("Compile server scripts at {}", App->Settings.ASServer);
 
@@ -97,6 +109,22 @@ int main(int argc, char** argv)
                 client_failed = true;
             }
         }
+#else
+        if (!App->Settings.ASSingle.empty()) {
+            WriteLog("Compile game scripts at {}", App->Settings.ASSingle);
+
+            try {
+                SingleScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
+            }
+            catch (std::exception& ex) {
+                if (CompilerPassedMessages.empty()) {
+                    ReportExceptionAndExit(ex);
+                }
+
+                single_failed = true;
+            }
+        }
+#endif
 
         if (!App->Settings.ASMapper.empty()) {
             WriteLog("Compile mapper scripts at {}", App->Settings.ASMapper);
@@ -113,12 +141,18 @@ int main(int argc, char** argv)
             }
         }
 
+#if !FO_SINGLEPLAYER
         if (!App->Settings.ASServer.empty()) {
             WriteLog("Server scripts compilation {}!", server_failed ? "failed" : "succeeded");
         }
         if (!App->Settings.ASClient.empty()) {
             WriteLog("Client scripts compilation {}!", client_failed ? "failed" : "succeeded");
         }
+#else
+        if (!App->Settings.ASSingle.empty()) {
+            WriteLog("Game scripts compilation {}!", single_failed ? "failed" : "succeeded");
+        }
+#endif
         if (!App->Settings.ASMapper.empty()) {
             WriteLog("Mapper scripts compilation {}!", mapper_failed ? "failed" : "succeeded");
         }
@@ -126,7 +160,11 @@ int main(int argc, char** argv)
             WriteLog("Nothing to compile!");
         }
 
+#if !FO_SINGLEPLAYER
         if (server_failed || client_failed || mapper_failed) {
+#else
+        if (single_failed || mapper_failed) {
+#endif
             ExitApp(false);
         }
 

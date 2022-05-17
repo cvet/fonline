@@ -51,18 +51,6 @@ struct MapperAppData
 };
 GLOBAL_DATA(MapperAppData, Data);
 
-#if !FO_TESTING_APP
-void ClientScriptSystem::InitNativeScripting()
-{
-}
-void ClientScriptSystem::InitAngelScriptScripting()
-{
-}
-void ClientScriptSystem::InitMonoScripting()
-{
-}
-#endif
-
 static void MapperEntry(void*)
 {
 #if FO_WEB
