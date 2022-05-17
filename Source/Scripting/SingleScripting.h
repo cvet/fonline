@@ -35,12 +35,16 @@
 
 #include "Common.h"
 
+#if FO_SINGLEPLAYER
+
 #include "ScriptSystem.h"
+
+class FOSingle;
 
 class SingleScriptSystem : public ScriptSystem
 {
 public:
-    explicit SingleScriptSystem(GlobalSettings& settings) : ScriptSystem(settings)
+    explicit SingleScriptSystem(FOSingle* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
     {
         InitNativeScripting();
         InitAngelScriptScripting();
@@ -51,4 +55,8 @@ private:
     void InitNativeScripting();
     void InitAngelScriptScripting();
     void InitMonoScripting();
+
+    FOSingle* _engine;
 };
+
+#endif

@@ -43,10 +43,8 @@
 #include "DataBase.h"
 #include "DeferredCalls.h"
 #include "Dialogs.h"
-#include "DiskFileSystem.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
-#include "FileSystem.h"
 #include "GeometryHelper.h"
 #include "Item.h"
 #include "ItemManager.h"
@@ -58,34 +56,24 @@
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
-#include "StringUtils.h"
 #include "Timer.h"
-#if FO_SINGLEPLAYER
-#include "Client.h"
-#endif
-
-#include "imgui.h"
 
 DECLARE_EXCEPTION(ServerInitException);
 
 class NetServerBase;
 
-class FOServer final : public FOEngineBase
+class FOServer : virtual public FOEngineBase
 {
     friend class ServerScriptSystem;
 
 public:
-    FOServer() = delete;
-    explicit FOServer(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
+    explicit FOServer(GlobalSettings& settings);
+
     FOServer(const FOServer&) = delete;
     FOServer(FOServer&&) noexcept = delete;
     auto operator=(const FOServer&) = delete;
     auto operator=(FOServer&&) noexcept = delete;
     ~FOServer() override;
-
-#if FO_SINGLEPLAYER
-    void ConnectClient(FOClient* client) { }
-#endif
 
     [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
 
@@ -176,12 +164,8 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(StaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
 
-    EventObserver<> OnWillFinish {};
-    EventObserver<> OnDidFinish {};
-
     ServerSettings& Settings;
     GeometryHelper GeomHelper;
-    ScriptSystem* ScriptSys;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
     DeferredCallManager DeferredCallMngr;
@@ -194,6 +178,13 @@ public:
 
     DataBase DbStorage {};
     DataBase DbHistory {}; // Todo: remove history DB system?
+
+    EventObserver<> OnWillFinish {};
+    EventObserver<> OnDidFinish {};
+
+#if !FO_SINGLEPLAYER
+    vector<uchar> RestoreInfoBin {};
+#endif
 
 private:
     struct ServerStats
@@ -223,8 +214,6 @@ private:
         string FirstStr {};
         uint64 Parameter {};
     };
-
-    void RegisterData();
 
     void OnNewConnection(NetConnection* net_connection);
     void ProcessFreeConnection(ClientConnection* connection);
@@ -279,7 +268,6 @@ private:
     void DispatchLogToClients();
 
     std::atomic_bool _started {};
-    vector<uchar> _restoreInfoBin {};
     ServerStats _stats {};
     map<uint, uint> _regIp {};
     uint _fpsTick {};

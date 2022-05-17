@@ -34,10 +34,10 @@
 #include "Common.h"
 
 #include "Application.h"
-#include "ClientScripting.h"
 #include "Log.h"
-#include "Mapper.h"
 #include "Settings.h"
+#include "Single.h"
+#include "SingleScripting.h"
 #include "Timer.h"
 #include "Version-Include.h"
 
@@ -45,68 +45,61 @@
 #include "SDL_main.h"
 #endif
 
-struct MapperAppData
+struct ClientAppData
 {
-    FOMapper* Mapper {};
+    FOSingle* Single {};
 };
-GLOBAL_DATA(MapperAppData, Data);
+GLOBAL_DATA(ClientAppData, Data);
 
-#if !FO_TESTING_APP
-void ClientScriptSystem::InitNativeScripting()
+static void MainEntry(void*)
 {
-}
-void ClientScriptSystem::InitAngelScriptScripting()
-{
-}
-void ClientScriptSystem::InitMonoScripting()
-{
-}
-#endif
-
-static void MapperEntry(void*)
-{
-#if FO_WEB
-    // Wait file system synchronization
-    if (EM_ASM_INT(return Module.syncfsDone) != 1) {
-        return;
-    }
-#endif
-
     try {
+#if FO_WEB
+        // Wait file system synchronization
+        if (EM_ASM_INT(return Module.syncfsDone) != 1) {
+            return;
+        }
+#endif
+
         App->BeginFrame();
 
-        if (Data->Mapper == nullptr) {
+        if (Data->Single == nullptr) {
             try {
-                Data->Mapper = new FOMapper(App->Settings);
+                Data->Single = new FOSingle(App->Settings);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
             }
         }
 
-        Data->Mapper->MapperMainLoop();
+        try {
+            Data->Single->SingleMainLoop();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
 
         App->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        ReportExceptionAndExit(ex);
     }
 }
 
 #if !FO_TESTING_APP
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
-[[maybe_unused]] static auto MapperApp(int argc, char** argv) -> int
+[[maybe_unused]] static auto SingleApp(int argc, char** argv) -> int
 #endif
 {
     try {
-        InitApp(argc, argv, "Mapper");
+        InitApp(argc, argv, "");
 
-        WriteLog("Starting Mapper {}...", FO_GAME_VERSION);
+        WriteLog("Starting {} {}", App->GetName(), FO_GAME_VERSION);
 
 #if FO_IOS
-        MapperEntry(nullptr);
-        App->SetMainLoopCallback(MapperEntry);
+        MainEntry(nullptr);
+        App->SetMainLoopCallback(MainEntry);
 
 #elif FO_WEB
         EM_ASM(FS.mkdir('/PersistentData'); FS.mount(IDBFS, {}, '/PersistentData'); Module.syncfsDone = 0; FS.syncfs(
@@ -114,18 +107,18 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 assert(!err);
                 Module.syncfsDone = 1;
             }););
-        emscripten_set_main_loop_arg(MapperEntry, nullptr, 0, 1);
+        emscripten_set_main_loop_arg(MainEntry, nullptr, 0, 1);
 
 #elif FO_ANDROID
         while (!App->Settings.Quit) {
-            MapperEntry(nullptr);
+            MainEntry(nullptr);
         }
 
 #else
         while (!App->Settings.Quit) {
             const auto start_loop = Timer::RealtimeTick();
 
-            MapperEntry(nullptr);
+            MainEntry(nullptr);
 
             if (!App->Settings.VSync && App->Settings.FixedFPS != 0) {
                 if (App->Settings.FixedFPS > 0) {
@@ -144,6 +137,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }
         }
 #endif
+
+        WriteLog("Exit from game");
+
+        delete Data->Single;
 
         ExitApp(true);
     }

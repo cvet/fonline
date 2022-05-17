@@ -42,8 +42,41 @@ parser.add_argument('-config', dest='config', action='append', default=[], help=
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
 args = parser.parse_args()
 
+assert (args.singleplayer or args.multiplayer) and not (args.singleplayer and args.multiplayer), 'Singleplayer/Multiplayer mismatch'
+
 def getGuid(name):
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
+
+# Generated file list
+genFileList = ['EmbeddedResources-Include.h',
+        'Version-Include.h',
+        'SettingsDefault-Include.h',
+        'EntityProperties-Common.cpp',
+        'DataRegistration-Server.cpp',
+        'DataRegistration-Client.cpp',
+        'DataRegistration-Mapper.cpp',
+        'DataRegistration-Single.cpp',
+        'DataRegistration-Baker.cpp',
+        'DataRegistration-ServerCompiler.cpp',
+        'DataRegistration-ClientCompiler.cpp',
+        'DataRegistration-MapperCompiler.cpp',
+        'DataRegistration-SingleCompiler.cpp',
+        'AngelScriptScripting-Server.cpp',
+        'AngelScriptScripting-Client.cpp',
+        'AngelScriptScripting-Mapper.cpp',
+        'AngelScriptScripting-Single.cpp',
+        'AngelScriptScripting-ServerCompiler.cpp',
+        'AngelScriptScripting-ClientCompiler.cpp',
+        'AngelScriptScripting-MapperCompiler.cpp',
+        'AngelScriptScripting-SingleCompiler.cpp',
+        'MonoScripting-Server.cpp',
+        'MonoScripting-Client.cpp',
+        'MonoScripting-Mapper.cpp',
+        'MonoScripting-Single.cpp',
+        'NativeScripting-Server.cpp',
+        'NativeScripting-Client.cpp',
+        'NativeScripting-Mapper.cpp',
+        'NativeScripting-Single.cpp']
 
 # Parse meta information
 codeGenTags = {
@@ -89,35 +122,8 @@ def checkErrors():
                 with open(args.genoutput.rstrip('/') + '/' + fname, 'w', encoding='utf-8') as f:
                     f.write('\n'.join(errorLines))
             
-            writeStub('EmbeddedResources-Include.h')
-            writeStub('Version-Include.h')
-            writeStub('SettingsDefault-Include.h')
-            writeStub('EntityProperties-Common.cpp')
-            writeStub('DataRegistration-Server.cpp')
-            writeStub('DataRegistration-Client.cpp')
-            writeStub('DataRegistration-Mapper.cpp')
-            writeStub('DataRegistration-Single.cpp')
-            writeStub('DataRegistration-Baker.cpp')
-            writeStub('DataRegistration-ServerCompiler.cpp')
-            writeStub('DataRegistration-ClientCompiler.cpp')
-            writeStub('DataRegistration-MapperCompiler.cpp')
-            writeStub('DataRegistration-SingleCompiler.cpp')
-            writeStub('AngelScriptScripting-Server.cpp')
-            writeStub('AngelScriptScripting-Client.cpp')
-            writeStub('AngelScriptScripting-Mapper.cpp')
-            writeStub('AngelScriptScripting-Single.cpp')
-            writeStub('AngelScriptScripting-ServerCompiler.cpp')
-            writeStub('AngelScriptScripting-ClientCompiler.cpp')
-            writeStub('AngelScriptScripting-MapperCompiler.cpp')
-            writeStub('AngelScriptScripting-SingleCompiler.cpp')
-            writeStub('MonoScripting-Server.cpp')
-            writeStub('MonoScripting-Client.cpp')
-            writeStub('MonoScripting-Mapper.cpp')
-            writeStub('MonoScripting-Single.cpp')
-            writeStub('NativeScripting-Server.cpp')
-            writeStub('NativeScripting-Client.cpp')
-            writeStub('NativeScripting-Mapper.cpp')
-            writeStub('NativeScripting-Single.cpp')
+            for fname in genFileList:
+                writeStub(fname)
             
         except Exception as ex:
             showError('Can\'t write stubs', ex)
@@ -882,10 +888,12 @@ checkErrors()
 # Generate API
 files = {}
 lastFile = None
+genFileNames = []
 
 def createFile(name, output):
     assert output
     path = os.path.join(output, name)
+    genFileNames.append(name)
     
     global lastFile
     lastFile = []
@@ -902,6 +910,13 @@ def insertFileLines(lines, lineIndex):
     lastFile.extend(lastFileCopy)
 
 def flushFiles():
+    # Generate stubs missed files
+    for fname in genFileList:
+        if fname not in genFileNames:
+            createFile(fname, args.genoutput)
+            writeFile('// Empty file')
+    
+    # Write if content changed
     for path, lines in files.items():
         pathDir = os.path.dirname(path)
         if not os.path.isdir(pathDir):
@@ -1017,18 +1032,22 @@ try:
 except Exception as ex:
     showError('Code generation for data registration failed', ex)
 checkErrors()
-    
+
 def genDataRegistration(target, isASCompiler):
     globalLines = []
     registerLines = []
     restoreLines = []
     propertyMapLines = []
-
+    
+    registerLines.append('unordered_map<string, PropertyRegistrator*> registrators;')
+    registerLines.append('PropertyRegistrator* registrator;')
+    registerLines.append('')
+    
     # Enums
     registerLines.append('// Enums')
     for e in codeGenTags['ExportEnum']:
         gname, utype, keyValues, _, _ = e
-        registerLines.append('AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
+        registerLines.append('engine->AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
         registerLines.append('{')
         for kv in keyValues:
             registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
@@ -1037,7 +1056,7 @@ def genDataRegistration(target, isASCompiler):
     if target != 'Client' or isASCompiler:
         for e in codeGenTags['Enum']:
             gname, utype, keyValues, _, _ = e
-            registerLines.append('AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
+            registerLines.append('engine->AddEnumGroup("' + gname + '", typeid(' + metaTypeToEngineType(utype, target, False) + '),')
             registerLines.append('{')
             for kv in keyValues:
                 registerLines.append('    {"' + kv[0] + '", ' + kv[1] + '},')
@@ -1047,7 +1066,7 @@ def genDataRegistration(target, isASCompiler):
     # Property registrators
     registerLines.append('// Properties')
     for entity in gameEntities:
-        registerLines.append('registrators["' + entity + '"] = CreatePropertyRegistrator("' + entity + '");')
+        registerLines.append('registrators["' + entity + '"] = engine->GetOrCreatePropertyRegistrator("' + entity + '");')
     registerLines.append('')
     
     # Properties
@@ -1077,7 +1096,7 @@ def genDataRegistration(target, isASCompiler):
     
     # Restore enums info
     if target == 'Server' and not isASCompiler:
-        restoreLines.append('restoreInfo["Enums"] =')
+        restoreLines.append('restore_info["Enums"] =')
         restoreLines.append('{')
         for e in codeGenTags['Enum']:
             gname, utype, keyValues, _, _ = e
@@ -1103,7 +1122,7 @@ def genDataRegistration(target, isASCompiler):
                 return metaTypeToEngineType(tt[0], target, False)
             return tt[0]
         dummyIndex = 0
-        restoreLines.append('restoreInfo["Properties"] =')
+        restoreLines.append('restore_info["Properties"] =')
         restoreLines.append('{')
         for e in codeGenTags['Property']:
             entity, access, type, name, flags, _ = e
@@ -1119,7 +1138,7 @@ def genDataRegistration(target, isASCompiler):
     # Todo: make script events restorable
     # Restore events info
     #if target == 'Server' and not isASCompiler:
-    #    restoreLines.append('restoreInfo["Events"] =')
+    #    restoreLines.append('restore_info["Events"] =')
     #    restoreLines.append('{')
     #    for entity in gameEntities:
     #        for evTag in codeGenTags['Event']:
@@ -1133,7 +1152,7 @@ def genDataRegistration(target, isASCompiler):
     # Todo: make setting values restorable
     # Restore settings
     #if target == 'Server' and not isASCompiler:
-    #    restoreLines.append('restoreInfo["Settings"] =')
+    #    restoreLines.append('restore_info["Settings"] =')
     #    restoreLines.append('{')
     #    for settTag in codeGenTags['ExportSettings']:
     #        grName, targ, settings, flags, _ = settTag
@@ -1172,6 +1191,10 @@ def genDataRegistration(target, isASCompiler):
             insertCodeGenLines(registerLines, 'ClientRegister')
             insertCodeGenLines(propertyMapLines, 'PropertyMap')
             insertCodeGenLines(globalLines, 'Global')
+        elif target == 'Single':
+            insertCodeGenLines(registerLines, 'SingleRegister')
+            insertCodeGenLines(propertyMapLines, 'PropertyMap')
+            insertCodeGenLines(globalLines, 'Global')
         elif target == 'Mapper':
             insertCodeGenLines(registerLines, 'MapperRegister')
             insertCodeGenLines(globalLines, 'Global')
@@ -1183,27 +1206,40 @@ def genDataRegistration(target, isASCompiler):
         insertCodeGenLines(globalLines, 'Global')
     
     if target == 'Server':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0',
+        insertCodeGenLines(['#define SERVER_REGISTRATION 1', '#define CLIENT_REGISTRATION 0', '#define SINGLE_REGISTRATION 0',
                 '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
     elif target == 'Client':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1',
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 1', '#define SINGLE_REGISTRATION 0',
+                '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
+    elif target == 'Single':
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0', '#define SINGLE_REGISTRATION 1',
                 '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
     elif target == 'Mapper':
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0', '#define SINGLE_REGISTRATION 0',
                 '#define MAPPER_REGISTRATION 1', '#define BAKER_REGISTRATION 0', '#define COMPILER_MODE ' + ('1' if isASCompiler else '0')], 'Defines')
     elif target == 'Baker':
         assert not isASCompiler
-        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0',
+        insertCodeGenLines(['#define SERVER_REGISTRATION 0', '#define CLIENT_REGISTRATION 0', '#define SINGLE_REGISTRATION 0',
                 '#define MAPPER_REGISTRATION 0', '#define BAKER_REGISTRATION 1', '#define COMPILER_MODE 0'], 'Defines')
 
 try:
     genDataRegistration('Baker', False)
     
+    genDataRegistration('Mapper', False)
+    if args.angelscript:
+        genDataRegistration('Mapper', True)
+    
     if args.multiplayer:
-        for target in ['Server', 'Client', 'Mapper']:
-            genDataRegistration(target, False)
-            if args.angelscript:
-                genDataRegistration(target, True)
+        genDataRegistration('Server', False)
+        genDataRegistration('Client', False)
+        if args.angelscript:
+            genDataRegistration('Server', True)
+            genDataRegistration('Client', True)
+    
+    if args.singleplayer:
+        genDataRegistration('Single', False)
+        if args.angelscript:
+            genDataRegistration('Single', True)
     
 except Exception as ex:
     showError('Code generation for data registration failed', ex)
@@ -1213,25 +1249,20 @@ checkErrors()
 def genCode(lang, target, isASCompiler=False):
     createFile(lang + 'Scripting' + '-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
     
-    # Make stub
-    if (target == 'Single' and not args.singleplayer) or \
-            ((target == 'Client' or target == 'Server') and not args.multiplayer) or \
-            (lang == 'AngelScript' and not args.angelscript) or \
-            (lang == 'Mono' and not args.csharp) or \
-            (lang == 'Native' and not args.native):
+    # Make stub for disabled script system
+    if (lang == 'AngelScript' and not args.angelscript) or (lang == 'Mono' and not args.csharp) or (lang == 'Native' and not args.native):
         if isASCompiler:
             writeFile('struct ' + target + 'ScriptSystem { void InitAngelScriptScripting(const char*); };')
             writeFile('void ' + target + 'ScriptSystem::InitAngelScriptScripting(const char*) { }')
         else:
             writeFile('#include "' + target + 'Scripting.h"')
             writeFile('void ' + target + 'ScriptSystem::Init' + lang + 'Scripting() { }')
-            
+        
         return
     
     # Generate from template
     writeCodeGenTemplate(lang)
-    
-    # lang, absPath, entry, line, flags, comment = genTag    
+
     if lang == 'AngelScript':
         def metaTypeToASEngineType(t, ret = False):
             tt = t.split('.')
@@ -1344,6 +1375,7 @@ def genCode(lang, target, isASCompiler=False):
         
         defineLines.append('#define SERVER_SCRIPTING ' + ('1' if target == 'Server' else '0'))
         defineLines.append('#define CLIENT_SCRIPTING ' + ('1' if target == 'Client' else '0'))
+        defineLines.append('#define SINGLE_SCRIPTING ' + ('1' if target == 'Single' else '0'))
         defineLines.append('#define MAPPER_SCRIPTING ' + ('1' if target == 'Mapper' else '0'))
         defineLines.append('#define COMPILER_MODE ' + ('1' if isASCompiler else '0'))
         
@@ -1733,22 +1765,30 @@ def genCode(lang, target, isASCompiler=False):
         assert False, 'Native generation not implemented'
 
 try:
-    genCode('AngelScript', 'Server')
-    genCode('AngelScript', 'Client')
+    if args.multiplayer:
+        genCode('AngelScript', 'Server')
+        genCode('AngelScript', 'Client')
+        genCode('AngelScript', 'Server', True)
+        genCode('AngelScript', 'Client', True)
+    if args.singleplayer:
+        genCode('AngelScript', 'Single')
+        genCode('AngelScript', 'Single', True)
     genCode('AngelScript', 'Mapper')
-    genCode('AngelScript', 'Single')
-    genCode('AngelScript', 'Server', True)
-    genCode('AngelScript', 'Client', True)
     genCode('AngelScript', 'Mapper', True)
-    genCode('AngelScript', 'Single', True)
-    genCode('Mono', 'Server')
-    genCode('Mono', 'Client')
+    
+    if args.multiplayer:
+        genCode('Mono', 'Server')
+        genCode('Mono', 'Client')
+    if args.singleplayer:
+        genCode('Mono', 'Single')
     genCode('Mono', 'Mapper')
-    genCode('Mono', 'Single')
-    genCode('Native', 'Server')
-    genCode('Native', 'Client')
+    
+    if args.multiplayer:
+        genCode('Native', 'Server')
+        genCode('Native', 'Client')
+    if args.singleplayer:
+        genCode('Native', 'Single')
     genCode('Native', 'Mapper')
-    genCode('Native', 'Single')
     
 except Exception as ex:
     showError('Code generation failed', ex)
@@ -1790,7 +1830,7 @@ def genAngelScriptRoot(target):
         fosParams = line[6:].split()
         sort = int(fosParams[fosParams.index('Sort') + 1]) if 'Sort' in fosParams else 0
 
-        if target in fosParams or 'Common' in fosParams:
+        if target in fosParams or 'Common' in fosParams or (target == 'Single' and 'Server' in fosParams):
             asFiles.append((sort, file))
 
     asFiles.sort()
@@ -1815,7 +1855,7 @@ if args.angelscript:
             genAngelScriptRoot('Server')
             genAngelScriptRoot('Client')
         if args.singleplayer:
-            assert False, 'Not implemented'
+            genAngelScriptRoot('Single')
         if args.mapper:
             genAngelScriptRoot('Mapper')
             

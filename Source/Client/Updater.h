@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if !FO_SINGLEPLAYER
+
 #include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
@@ -54,6 +56,8 @@ public:
     ~Updater() = default;
 
     [[nodiscard]] auto Process() -> bool;
+
+    vector<uchar> ClientRestoreBin {};
 
 private:
     struct UpdateFile
@@ -79,7 +83,6 @@ private:
     FileSystem _fileSys {};
     EffectManager _effectMngr;
     SpriteManager _sprMngr;
-    vector<vector<uchar>> _globalsPropertiesData {};
     double _startTick {};
     bool _aborted {};
     vector<string> _messages {};
@@ -88,4 +91,7 @@ private:
     uint _filesWholeSize {};
     unique_ptr<DiskFile> _tempFile {};
     AnyFrames* _splashPic {};
+    vector<vector<uchar>> _globalsPropertiesData {};
 };
+
+#endif

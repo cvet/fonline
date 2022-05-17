@@ -36,125 +36,91 @@
 #include "Application.h"
 #include "Client.h"
 #include "Log.h"
-#include "ScriptSystem.h"
 #include "Settings.h"
 #include "Timer.h"
+#include "Updater.h"
 #include "Version-Include.h"
 
-#if !FO_SINGLEPLAYER
-#include "Updater.h"
-#endif
-
-#if FO_SINGLEPLAYER
-#include "ClientScripting.h"
-#include "Server.h"
-#include "ServerScripting.h"
-#include "SingleScripting.h"
-#endif
-
+#if !FO_TESTING_APP
 #include "SDL_main.h"
+#endif
 
 struct ClientAppData
 {
     FOClient* Client {};
-#if FO_SINGLEPLAYER
-    FOServer* Server {};
-#endif
-#if !FO_SINGLEPLAYER
-    bool FilesSynced {};
-    Updater* FilesSync {};
-#endif
+    bool ResourcesSynced {};
+    Updater* ResourceUpdater {};
+    vector<uchar> ClientRestoreBin {};
 };
 GLOBAL_DATA(ClientAppData, Data);
 
-#if FO_SINGLEPLAYER
-void ClientScriptSystem::InitNativeScripting()
-{
-}
-void ClientScriptSystem::InitAngelScriptScripting()
-{
-}
-void ClientScriptSystem::InitMonoScripting()
-{
-}
-void ServerScriptSystem::InitNativeScripting()
-{
-}
-void ServerScriptSystem::InitAngelScriptScripting()
-{
-}
-void ServerScriptSystem::InitMonoScripting()
-{
-}
-#endif
-
 static void MainEntry(void*)
 {
-#if FO_WEB
-    // Wait file system synchronization
-    if (EM_ASM_INT(return Module.syncfsDone) != 1) {
-        return;
-    }
-#endif
-
-    if (Data->Client == nullptr) {
-        try {
-            App->BeginFrame();
-
-#if !FO_SINGLEPLAYER
-            // Synchronize files
-            if (!Data->FilesSynced) {
-                if (Data->FilesSync == nullptr) {
-                    Data->FilesSync = new Updater(App->Settings);
-                }
-
-                if (!Data->FilesSync->Process()) {
-                    App->EndFrame();
-                    return;
-                }
-
-                delete Data->FilesSync;
-                Data->FilesSync = nullptr;
-                Data->FilesSynced = true;
-            }
-#endif
-
-            // Create game module
-#if FO_SINGLEPLAYER
-            auto* script_sys = new SingleScriptSystem(App->Settings);
-            Data->Server = new FOServer(App->Settings, script_sys);
-            Data->Client = new FOClient(App->Settings, script_sys);
-#else
-            Data->Client = new FOClient(App->Settings);
-#endif
-#if FO_SINGLEPLAYER
-            Data->Server->ConnectClient(Data->Client);
-#endif
-
-            App->EndFrame();
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndExit(ex);
-        }
-    }
-
-    // Main loop
     try {
+#if FO_WEB
+        // Wait file system synchronization
+        if (EM_ASM_INT(return Module.syncfsDone) != 1) {
+            return;
+        }
+#endif
+
         App->BeginFrame();
 
-#if FO_SINGLEPLAYER
-        Data->Server->MainLoop();
-#endif
-        Data->Client->MainLoop();
+        // Synchronize files and start client
+        if (Data->Client == nullptr) {
+            try {
+                // Synchronize files
+                if (!Data->ResourcesSynced) {
+                    if (Data->ResourceUpdater == nullptr) {
+                        Data->ResourceUpdater = new Updater(App->Settings);
+                    }
+
+                    if (!Data->ResourceUpdater->Process()) {
+                        App->EndFrame();
+                        return;
+                    }
+
+                    Data->ClientRestoreBin = std::move(Data->ResourceUpdater->ClientRestoreBin);
+
+                    delete Data->ResourceUpdater;
+                    Data->ResourceUpdater = nullptr;
+                    Data->ResourcesSynced = true;
+                }
+
+                // Create game module
+                Data->Client = new FOClient(App->Settings, Data->ClientRestoreBin);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        }
+
+        // Client loop
+        try {
+            Data->Client->MainLoop();
+        }
+        catch (const ResourcesOutdatedException&) {
+            try {
+                Data->ResourcesSynced = false;
+                Data->Client->Release();
+                Data->Client = nullptr;
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+        }
 
         App->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        ReportExceptionAndExit(ex);
     }
 }
 
-#if !FO_TESTING
+#if !FO_TESTING_APP
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto ClientApp(int argc, char** argv) -> int
@@ -208,9 +174,6 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Exit from game");
 
-#if FO_SINGLEPLAYER
-        delete Data->Server;
-#endif
         delete Data->Client;
 
         ExitApp(true);

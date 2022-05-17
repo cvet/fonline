@@ -38,12 +38,24 @@
 #include "Networking.h"
 #include "PropertiesSerializator.h"
 #include "ServerScripting.h"
+#include "StringUtils.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
 
-// clang-format off
-FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
-    FOEngineBase(true),
+#include "imgui.h"
+
+FOServer::FOServer(GlobalSettings& settings) :
+    FOEngineBase(true,
+        [&, this]() -> ScriptSystem* {
+#if !FO_SINGLEPLAYER
+            extern auto Server_RegisterData(FOEngineBase*)->vector<uchar>;
+            RestoreInfoBin = Server_RegisterData(this);
+            return new ServerScriptSystem(this, settings);
+#else
+            throw UnreachablePlaceException(LINE_STR);
+#endif
+        }),
+
     Settings {settings},
     GeomHelper(Settings),
     GameTime(Settings),
@@ -54,7 +66,6 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     CrMngr(this),
     ItemMngr(this),
     DlgMngr(this)
-// clang-format on
 {
     WriteLog("Start server");
 
@@ -68,16 +79,6 @@ FOServer::FOServer(GlobalSettings& settings, ScriptSystem* script_sys) :
     if constexpr (FO_MONO_SCRIPTING) {
         FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Mono"));
     }
-
-    RegisterData();
-
-#if !FO_SINGLEPLAYER
-    RUNTIME_ASSERT(ScriptSys == nullptr);
-    ScriptSys = new ServerScriptSystem(this, settings);
-#else
-    RUNTIME_ASSERT(script_sys != nullptr);
-    ScriptSys = script_sys;
-#endif
 
     GameTime.FrameAdvance();
 

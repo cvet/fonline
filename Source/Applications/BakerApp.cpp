@@ -50,8 +50,14 @@
 class BakerEngine : public FOEngineBase
 {
 public:
-    BakerEngine() : FOEngineBase(true) { }
-    void RegisterData(); // Implementation in DataRegistration-Baker.cpp
+    BakerEngine() :
+        FOEngineBase(true, [this] {
+            extern void Baker_RegisterData(FOEngineBase*);
+            Baker_RegisterData(this);
+            return nullptr;
+        })
+    {
+    }
 };
 
 #if FO_ANGELSCRIPT_SCRIPTING
@@ -74,7 +80,7 @@ struct MapperScriptSystem
 unordered_set<string> CompilerPassedMessages;
 #endif
 
-#if !FO_TESTING
+#if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto BakerApp(int argc, char** argv) -> int
@@ -240,7 +246,6 @@ int main(int argc, char** argv)
             RUNTIME_ASSERT(!App->Settings.BakeContentEntries.empty());
 
             BakerEngine engine;
-            engine.RegisterData();
 
             for (const auto& dir : App->Settings.BakeContentEntries) {
                 WriteLog("Add content entry '{}'", dir);

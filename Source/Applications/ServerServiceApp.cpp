@@ -96,7 +96,7 @@ static void ServerEntry()
     }
 }
 
-#if !FO_TESTING
+#if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto ServerServiceApp(int argc, char** argv) -> int

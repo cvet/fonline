@@ -33,6 +33,8 @@
 
 #include "Updater.h"
 
+#if !FO_SINGLEPLAYER
+
 #include "ClientScripting.h"
 #include "Log.h"
 #include "NetCommand.h"
@@ -292,3 +294,5 @@ void Updater::GetNextFile()
         }
     }
 }
+
+#endif

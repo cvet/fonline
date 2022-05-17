@@ -35,11 +35,15 @@
 
 #include "Application.h"
 #include "Client.h"
+#include "DiskFileSystem.h"
 #include "Server.h"
 #include "Settings.h"
 
-#include "SDL_main.h"
 #include "imgui.h"
+
+#if !FO_TESTING_APP
+#include "SDL_main.h"
+#endif
 
 enum class ServerStateType
 {
@@ -60,7 +64,7 @@ struct ServerAppData
 };
 GLOBAL_DATA(ServerAppData, Data);
 
-#if !FO_TESTING
+#if !FO_TESTING_APP
 extern "C" int main(int argc, char** argv) // Handled by SDL
 #else
 [[maybe_unused]] static auto ServerApp(int argc, char** argv) -> int
@@ -164,7 +168,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         Data->ClientSpawning = true;
                         std::thread([] {
                             try {
-                                Data->SpawnedClient = new FOClient(App->Settings);
+                                Data->SpawnedClient = new FOClient(App->Settings, Data->Server->RestoreInfoBin);
                             }
                             catch (const std::exception& ex) {
                                 ReportExceptionAndContinue(ex);

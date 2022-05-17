@@ -37,6 +37,7 @@
 
 #include "EntityProperties.h"
 #include "Properties.h"
+#include "ScriptSystem.h"
 
 DECLARE_EXCEPTION(DataRegistrationException);
 DECLARE_EXCEPTION(EnumResolveException);
@@ -63,16 +64,18 @@ public:
     [[nodiscard]] auto GetAllPropertyRegistrators() const -> const auto& { return _registrators; }
     [[nodiscard]] auto GetAllEnums() const -> const auto& { return _enums; }
 
+    auto GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
+    void AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
     void FinalizeDataRegistration();
 
+    ScriptSystem* ScriptSys {};
     FileSystem FileSys {};
 
 protected:
-    explicit FOEngineBase(bool is_server);
-    ~FOEngineBase() override = default;
+    using RegisterDataCallback = std::function<ScriptSystem*()>;
 
-    [[nodiscard]] auto CreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*;
-    void AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
+    FOEngineBase(bool is_server, const RegisterDataCallback& register_data_callback);
+    ~FOEngineBase() override = default;
 
 private:
     bool _isServer;

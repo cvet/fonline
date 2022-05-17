@@ -41,11 +41,9 @@
 #include "CacheStorage.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
-#include "DiskFileSystem.h"
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
-#include "FileSystem.h"
 #include "GeometryHelper.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
@@ -66,6 +64,8 @@
 #include "Timer.h"
 #include "TwoBitMask.h"
 
+DECLARE_EXCEPTION(ResourcesOutdatedException);
+
 // Screens
 constexpr auto SCREEN_NONE = 0;
 constexpr auto SCREEN_LOGIN = 1; // Primary screens
@@ -82,13 +82,15 @@ constexpr auto INIT_NET_REASON_REG = 2;
 constexpr auto INIT_NET_REASON_LOAD = 3;
 constexpr auto INIT_NET_REASON_CUSTOM = 4;
 
-class FOClient : public FOEngineBase, public AnimationResolver
+class FOClient : virtual public FOEngineBase, public AnimationResolver
 {
     friend class ClientScriptSystem;
 
 public:
-    FOClient() = delete;
-    explicit FOClient(GlobalSettings& settings, ScriptSystem* script_sys = nullptr);
+#if !FO_SINGLEPLAYER
+    FOClient(GlobalSettings& settings, const vector<uchar>& restore_info_bin);
+#endif
+
     FOClient(const FOClient&) = delete;
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;
@@ -219,7 +221,6 @@ public:
 
     ClientSettings& Settings;
     GeometryHelper GeomHelper;
-    ScriptSystem* ScriptSys;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;
@@ -288,7 +289,7 @@ protected:
 
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
-    void RegisterData(const vector<uchar>& restore_info_bin);
+    FOClient(GlobalSettings& settings, const RegisterDataCallback& register_data_callback);
 
     void ProcessAutoLogin();
     void ProcessGlobalMap();
@@ -386,7 +387,6 @@ protected:
     void ProcessScreenEffectQuake();
 
     ServerConnection _conn;
-    vector<uchar> _restoreInfoBin {};
     hstring _curMapLocPid {};
     uint _curMapIndexInLoc {};
     int _windowResolutionDiffX {};

@@ -35,6 +35,8 @@
 
 #include "Common.h"
 
+#if !FO_SINGLEPLAYER
+
 #include "ScriptSystem.h"
 
 class FOClient;
@@ -54,5 +56,7 @@ private:
     void InitAngelScriptScripting();
     void InitMonoScripting();
 
-    [[maybe_unused]] FOClient* _engine;
+    FOClient* _engine;
 };
+
+#endif

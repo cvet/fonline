@@ -36,12 +36,16 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FOEngineBase::FOEngineBase(bool is_server) : Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, is_server, *this)), GameProperties(GetInitRef()), _isServer {is_server}
+FOEngineBase::FOEngineBase(bool is_server, const RegisterDataCallback& register_data_callback) : Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, is_server, *this)), GameProperties(GetInitRef()), _isServer {is_server}
 {
+    RUNTIME_ASSERT(register_data_callback);
+
     _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());
+    ScriptSys = register_data_callback();
+    FinalizeDataRegistration();
 }
 
-auto FOEngineBase::CreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
+auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
 {
     RUNTIME_ASSERT(!_registrationFinalized);
 

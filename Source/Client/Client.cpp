@@ -32,7 +32,6 @@
 //
 
 #include "Client.h"
-
 #include "ClientScripting.h"
 #include "GenericUtils.h"
 #include "Log.h"
@@ -40,12 +39,22 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
-// clang-format off
-FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
-    FOEngineBase(false),
+#if !FO_SINGLEPLAYER
+FOClient::FOClient(GlobalSettings& settings, const vector<uchar>& restore_info_bin) :
+    FOClient(settings, [&, this]() -> ScriptSystem* {
+        extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
+        Client_RegisterData(this, restore_info_bin);
+        return new ClientScriptSystem(this, settings);
+    })
+{
+}
+#endif
+
+FOClient::FOClient(GlobalSettings& settings, const RegisterDataCallback& register_data_callback) :
+    FOEngineBase(false, register_data_callback),
+
     Settings {settings},
     GeomHelper(Settings),
-    ScriptSys {script_sys},
     GameTime(Settings),
     ProtoMngr(this),
     EffectMngr(Settings, FileSys),
@@ -56,7 +65,6 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     Cache("Data/Cache.fobin"),
     _conn(Settings),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
-// clang-format on
 {
     FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
@@ -72,12 +80,6 @@ FOClient::FOClient(GlobalSettings& settings, ScriptSystem* script_sys) :
     // AddDataSource(SDL_AndroidGetExternalStoragePath());
 #elif FO_WEB
     FileSys.AddDataSource("PersistentData");
-#endif
-
-#if !FO_SINGLEPLAYER
-    RUNTIME_ASSERT(ScriptSys == nullptr);
-#else
-    RUNTIME_ASSERT(ScriptSys != nullptr);
 #endif
 
     _fpsTick = GameTime.FrameTick();
@@ -1008,6 +1010,8 @@ void FOClient::Net_OnUpdateFilesResponse()
 {
     // Todo: run updater if resources changed
     AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+
+    throw ResourcesOutdatedException("...");
 }
 
 void FOClient::Net_OnWrongNetProto()

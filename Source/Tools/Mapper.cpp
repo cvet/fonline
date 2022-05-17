@@ -39,14 +39,18 @@
 #include "MapLoader.h"
 #include "MapperScripting.h"
 #include "StringUtils.h"
-#include "Version-Include.h"
 #include "WinApi-Include.h"
 
-// clang-format off
 FOMapper::FOMapper(GlobalSettings& settings) :
-    FOClient(settings, new MapperScriptSystem(this, settings)),
+    FOEngineBase(true,
+        [&, this]() -> ScriptSystem* {
+            extern void Mapper_RegisterData(FOEngineBase*);
+            Mapper_RegisterData(this);
+            return new MapperScriptSystem(this, settings);
+        }),
+    FOClient(settings, []() -> ScriptSystem* { throw UnreachablePlaceException(LINE_STR); }),
+
     IfaceIni("", *this)
-// clang-format on
 {
     // Mouse
     const auto [w, h] = SprMngr.GetWindowSize();

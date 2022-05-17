@@ -54,7 +54,7 @@ struct MapperScriptSystem
 
 unordered_set<string> CompilerPassedMessages;
 
-#if !FO_TESTING
+#if !FO_TESTING_APP
 int main(int argc, char** argv)
 #else
 [[maybe_unused]] static auto ASCompilerApp(int argc, char** argv) -> int

@@ -61,7 +61,7 @@
 
 DECLARE_EXCEPTION(MapperException);
 
-class FOMapper final : public FOClient
+class FOMapper final : virtual public FOEngineBase, public FOClient
 {
     friend class MapperScriptSystem;
 
@@ -171,15 +171,13 @@ public:
     static constexpr auto CONSOLE_KEY_TICK = 500;
     static constexpr auto CONSOLE_MAX_ACCELERATE = 460;
 
-    FOMapper() = delete;
     explicit FOMapper(GlobalSettings& settings);
+
     FOMapper(const FOMapper&) = delete;
     FOMapper(FOMapper&&) noexcept = delete;
     auto operator=(const FOMapper&) = delete;
     auto operator=(FOMapper&&) noexcept = delete;
     ~FOMapper() override = default;
-
-    void RegisterData();
 
     auto InitIface() -> int;
     auto IfaceLoadRect(IRect& comp, string_view name) -> bool;

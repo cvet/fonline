@@ -31,32 +31,23 @@
 // SOFTWARE.
 //
 
-#pragma once
+#include "Single.h"
+#include "SingleScripting.h"
 
-#include "Common.h"
-
-#if !FO_SINGLEPLAYER
-
-#include "ScriptSystem.h"
-
-class FOServer;
-
-class ServerScriptSystem : public ScriptSystem
+FOSingle::FOSingle(GlobalSettings& settings) :
+    FOEngineBase(true,
+        [&, this] {
+            extern void Single_RegisterData(FOEngineBase*);
+            Single_RegisterData(this);
+            return new SingleScriptSystem(this, settings);
+        }),
+    FOServer(settings),
+    FOClient(settings, []() -> ScriptSystem* { throw UnreachablePlaceException(LINE_STR); })
 {
-public:
-    ServerScriptSystem(FOServer* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
-    {
-        InitNativeScripting();
-        InitAngelScriptScripting();
-        InitMonoScripting();
-    }
+}
 
-private:
-    void InitNativeScripting();
-    void InitAngelScriptScripting();
-    void InitMonoScripting();
-
-    FOServer* _engine;
-};
-
-#endif
+void FOSingle::SingleMainLoop()
+{
+    FOServer::MainLoop();
+    FOClient::MainLoop();
+}

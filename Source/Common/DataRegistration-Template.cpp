@@ -51,36 +51,7 @@
 #include "EngineBase.h"
 #include "Properties.h"
 #include "ScriptSystem.h"
-
-#if !COMPILER_MODE
-#if SERVER_REGISTRATION
-#include "Server.h"
-#elif CLIENT_REGISTRATION
-#include "Client.h"
-#elif MAPPER_REGISTRATION
-#include "Mapper.h"
-#endif
-#endif
-
-#if COMPILER_MODE
-#if SERVER_REGISTRATION
-class AngelScriptServerCompilerData : public FOEngineBase
-#elif CLIENT_REGISTRATION
-class AngelScriptClientCompilerData : public FOEngineBase
-#elif MAPPER_REGISTRATION
-class AngelScriptMapperCompilerData : public FOEngineBase
-#endif
-{
-public:
-#if SERVER_REGISTRATION
-    AngelScriptServerCompilerData();
-#elif CLIENT_REGISTRATION
-    AngelScriptClientCompilerData();
-#elif MAPPER_REGISTRATION
-    AngelScriptMapperCompilerData();
-#endif
-};
-#endif
+#include "StringUtils.h"
 
 ///@ CodeGen Global
 
@@ -93,19 +64,16 @@ static void RegisterProperty(PropertyRegistrator* registrator, Property::AccessT
 #if !COMPILER_MODE
 #if SERVER_REGISTRATION
 
-void FOServer::RegisterData()
+auto Server_RegisterData(FOEngineBase* engine) -> vector<uchar>
 {
-    unordered_map<string, PropertyRegistrator*> registrators;
-    PropertyRegistrator* registrator;
-
     ///@ CodeGen ServerRegister
 
-    map<string, vector<string>> restoreInfo;
+    map<string, vector<string>> restore_info;
 
     ///@ CodeGen WriteRestoreInfo
 
     size_t estimated_size = sizeof(uint);
-    for (const auto& [name, data] : restoreInfo) {
+    for (const auto& [name, data] : restore_info) {
         estimated_size += sizeof(uint) + name.size();
         estimated_size += sizeof(uint);
         for (const auto& entry : data) {
@@ -113,11 +81,12 @@ void FOServer::RegisterData()
         }
     }
 
-    _restoreInfoBin.reserve(estimated_size + 1024u);
+    vector<uchar> restore_info_bin;
+    restore_info_bin.reserve(estimated_size + 1024u);
 
-    auto writer = DataWriter(_restoreInfoBin);
-    writer.Write<uint>(static_cast<uint>(restoreInfo.size()));
-    for (const auto& [name, data] : restoreInfo) {
+    auto writer = DataWriter(restore_info_bin);
+    writer.Write<uint>(static_cast<uint>(restore_info.size()));
+    for (const auto& [name, data] : restore_info) {
         writer.Write<uint>(static_cast<uint>(name.size()));
         writer.WritePtr(name.data(), name.size());
         writer.Write<uint>(static_cast<uint>(data.size()));
@@ -127,9 +96,9 @@ void FOServer::RegisterData()
         }
     }
 
-    _restoreInfoBin.shrink_to_fit();
+    restore_info_bin.shrink_to_fit();
 
-    FinalizeDataRegistration();
+    return restore_info_bin;
 }
 
 #elif CLIENT_REGISTRATION
@@ -171,11 +140,8 @@ static void RestoreProperty(PropertyRegistrator* registrator, string_view access
 #undef RESTORE_ARGS_PASS
 }
 
-void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
+void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info_bin)
 {
-    unordered_map<string, PropertyRegistrator*> registrators;
-    PropertyRegistrator* registrator;
-
     ///@ CodeGen ClientRegister
 
     map<string, vector<string>> restoreInfo;
@@ -235,51 +201,39 @@ void FOClient::RegisterData(const vector<uchar>& restore_info_bin)
             key_values.emplace(key, value);
         }
 
-        AddEnumGroup(enum_name, *enum_type, std::move(key_values));
+        engine->AddEnumGroup(enum_name, *enum_type, std::move(key_values));
     }
 
     // Restore properties
     for (const auto& info : restoreInfo["Properties"]) {
         const auto tokens = _str(info).split(' ');
-        auto* prop_registrator = registrators[tokens[0]];
+        auto* prop_registrator = engine->GetOrCreatePropertyRegistrator(tokens[0]);
         auto flags = tokens;
         flags.erase(flags.begin(), flags.begin() + 4);
 
         RestoreProperty(prop_registrator, tokens[1], tokens[2], tokens[3], flags);
     }
+}
 
-    FinalizeDataRegistration();
+#elif SINGLE_REGISTRATION
+
+void Single_RegisterData(FOEngineBase* engine)
+{
+    ///@ CodeGen SingleRegister
 }
 
 #elif MAPPER_REGISTRATION
 
-void FOMapper::RegisterData()
+void Mapper_RegisterData(FOEngineBase* engine)
 {
-    unordered_map<string, PropertyRegistrator*> registrators;
-    PropertyRegistrator* registrator;
-
     ///@ CodeGen MapperRegister
-
-    FinalizeDataRegistration();
 }
 
 #elif BAKER_REGISTRATION
 
-class BakerEngine : public FOEngineBase
+void Baker_RegisterData(FOEngineBase* engine)
 {
-public:
-    BakerEngine() : FOEngineBase(true) { }
-    void RegisterData();
-};
-
-void BakerEngine::RegisterData()
-{
-    unordered_map<string, PropertyRegistrator*> registrators;
-    PropertyRegistrator* registrator;
-
     ///@ CodeGen BakerRegister
-
-    FinalizeDataRegistration();
 }
 
 #endif
@@ -288,19 +242,16 @@ void BakerEngine::RegisterData()
 #if COMPILER_MODE
 
 #if SERVER_REGISTRATION
-AngelScriptServerCompilerData::AngelScriptServerCompilerData() : FOEngineBase(true)
+void AngelScript_ServerCompiler_RegisterData(FOEngineBase* engine)
 #elif CLIENT_REGISTRATION
-AngelScriptClientCompilerData::AngelScriptClientCompilerData() : FOEngineBase(false)
+void AngelScript_ClientCompiler_RegisterData(FOEngineBase* engine)
+#elif SINGLE_REGISTRATION
+void AngelScript_SingleCompiler_RegisterData(FOEngineBase* engine)
 #elif MAPPER_REGISTRATION
-AngelScriptMapperCompilerData::AngelScriptMapperCompilerData() : FOEngineBase(true)
+void AngelScript_MapperCompiler_RegisterData(FOEngineBase* engine)
 #endif
 {
-    unordered_map<string, PropertyRegistrator*> registrators;
-    PropertyRegistrator* registrator;
-
     ///@ CodeGen CompilerRegister
-
-    FinalizeDataRegistration();
 }
 
 #endif

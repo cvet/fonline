@@ -35,28 +35,13 @@
 
 #include "Common.h"
 
-#if !FO_SINGLEPLAYER
+#include "Client.h"
+#include "Server.h"
 
-#include "ScriptSystem.h"
-
-class FOServer;
-
-class ServerScriptSystem : public ScriptSystem
+class FOSingle final : virtual public FOEngineBase, public FOServer, public FOClient
 {
 public:
-    ServerScriptSystem(FOServer* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
-    {
-        InitNativeScripting();
-        InitAngelScriptScripting();
-        InitMonoScripting();
-    }
+    explicit FOSingle(GlobalSettings& settings);
 
-private:
-    void InitNativeScripting();
-    void InitAngelScriptScripting();
-    void InitMonoScripting();
-
-    FOServer* _engine;
+    void SingleMainLoop();
 };
-
-#endif

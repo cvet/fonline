@@ -54,6 +54,9 @@
 #elif CLIENT_SCRIPTING
 #include "Client.h"
 #include "ClientScripting.h"
+#elif SINGLE_SCRIPTING
+#include "Single.h"
+#include "SingleScripting.h"
 #elif MAPPER_SCRIPTING
 #include "Mapper.h"
 #include "MapperScripting.h"
@@ -68,6 +71,10 @@
 #define SCRIPTING_CLASS ClientScriptSystem
 #define FOEngine FOClient
 #define BaseEntity ClientEntity
+#elif SINGLE_SCRIPTING
+#define SCRIPTING_CLASS SingleScriptSystem
+#define FOEngine FOSingle
+#define BaseEntity ServerEntity
 #elif MAPPER_SCRIPTING
 #define SCRIPTING_CLASS MapperScriptSystem
 #define FOEngine FOMapper
@@ -127,22 +134,40 @@ struct SCRIPTING_CLASS
 
 #define ENTITY_VERIFY(e)
 
-#if SERVER_SCRIPTING
-class AngelScriptServerCompilerData : public FOEngineBase
-#elif CLIENT_SCRIPTING
-class AngelScriptClientCompilerData : public FOEngineBase
-#elif MAPPER_SCRIPTING
-class AngelScriptMapperCompilerData : public FOEngineBase
-#endif
+class AngelScriptCompilerData : public FOEngineBase
 {
 public:
 #if SERVER_SCRIPTING
-    AngelScriptServerCompilerData();
+    AngelScriptCompilerData() :
+        FOEngineBase(true, [this] {
+            extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
+            AngelScript_ServerCompiler_RegisterData(this);
+            return nullptr;
+        })
 #elif CLIENT_SCRIPTING
-    AngelScriptClientCompilerData();
+    AngelScriptCompilerData() :
+        FOEngineBase(true, [this] {
+            extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
+            AngelScript_ClientCompiler_RegisterData(this);
+            return nullptr;
+        })
+#elif SINGLE_SCRIPTING
+    AngelScriptCompilerData() :
+        FOEngineBase(true, [this] {
+            extern void AngelScript_SingleCompiler_RegisterData(FOEngineBase*);
+            AngelScript_SingleCompiler_RegisterData(this);
+            return nullptr;
+        })
 #elif MAPPER_SCRIPTING
-    AngelScriptMapperCompilerData();
+    AngelScriptCompilerData() :
+        FOEngineBase(true, [this] {
+            extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
+            AngelScript_MapperCompiler_RegisterData(this);
+            return nullptr;
+        })
 #endif
+    {
+    }
 };
 #endif
 
@@ -1108,14 +1133,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 {
 #if !COMPILER_MODE
     FOEngine* game_engine = _engine;
+    game_engine->AddRef();
 #else
-#if SERVER_SCRIPTING
-    FOEngine* game_engine = new AngelScriptServerCompilerData();
-#elif CLIENT_SCRIPTING
-    FOEngine* game_engine = new AngelScriptClientCompilerData();
-#elif MAPPER_SCRIPTING
-    FOEngine* game_engine = new AngelScriptMapperCompilerData();
-#endif
+    FOEngine* game_engine = new AngelScriptCompilerData();
 #endif
 
 #if COMPILER_MODE
@@ -1371,6 +1391,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     File script_file = _engine->FileSys.ReadFile("ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
     File script_file = _engine->FileSys.ReadFile("ClientRootModule.fosb");
+#elif SINGLE_SCRIPTING
+    File script_file = _engine->FileSys.ReadFile("SingleRootModule.fosb");
 #elif MAPPER_SCRIPTING
     File script_file = _engine->FileSys.ReadFile("MapperRootModule.fosb");
 #endif
@@ -1378,9 +1400,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RestoreRootModule(engine, script_file);
 #endif
 
-#if COMPILER_MODE
     game_engine->Release();
-#endif
 }
 
 class BinaryStream : public asIBinaryStream
@@ -1488,8 +1508,13 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     Preprocessor::Define("__SERVER");
 #elif CLIENT_SCRIPTING
     Preprocessor::Define("__CLIENT");
+#elif SINGLE_SCRIPTING
+    Preprocessor::Define("__SINGLE");
+    Preprocessor::Define("__SERVER");
+    Preprocessor::Define("__CLIENT");
 #elif MAPPER_SCRIPTING
     Preprocessor::Define("__MAPPER");
+    Preprocessor::Define("__CLIENT");
 #endif
 
     ScriptLoader loader {script_data};
