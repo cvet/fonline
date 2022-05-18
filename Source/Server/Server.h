@@ -164,7 +164,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(StaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
 
-    ServerSettings& Settings;
     GeometryHelper GeomHelper;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
@@ -181,10 +180,6 @@ public:
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
-
-#if !FO_SINGLEPLAYER
-    vector<uchar> RestoreInfoBin {};
-#endif
 
 private:
     struct ServerStats

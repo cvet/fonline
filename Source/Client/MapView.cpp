@@ -1636,7 +1636,7 @@ void MapView::ParseLightTriangleFan(LightSource& ls)
 
     _lightPointsCount++;
     if (_lightPoints.size() < _lightPointsCount) {
-        _lightPoints.push_back(PrimitivePoints());
+        _lightPoints.push_back(vector<PrimitivePoint>());
     }
     auto& points = _lightPoints[_lightPointsCount - 1];
     points.clear();
@@ -2381,7 +2381,7 @@ void MapView::DrawMapTexts()
     }
 }
 
-void MapView::SetFog(PrimitivePoints& look_points, PrimitivePoints& shoot_points, short* offs_x, short* offs_y)
+void MapView::SetFog(vector<PrimitivePoint>& look_points, vector<PrimitivePoint>& shoot_points, short* offs_x, short* offs_y)
 {
     _fogOffsX = offs_x;
     _fogOffsY = offs_y;

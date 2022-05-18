@@ -139,8 +139,8 @@ set( FO_CACHE_VARIABLES "" )
 set( FO_CONTRIBUTION_DIR "" )
 set( FO_CONTENT "" )
 set( FO_RESOURCES "" )
-set( FO_RESOURCE_ENTRIES "" )
-set( FO_RESOURCE_ENTRIES_LIST "" )
+set( FO_RESOURCE_ENTRIES "Core" )
+set( FO_RESOURCE_ENTRIES_LIST "Core" )
 set( FO_SPRITE_ATLAS "" )
 set( FO_CODEGEN_COMMAND "" )
 set( FO_CODEGEN_COMMAND_ARGS "" )
@@ -437,10 +437,10 @@ set( FO_SINGLE_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Single-${FO_BUILD_PLATFOR
 set( FO_MAPPER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_ASCOMPILER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_BAKER_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
-set( FO_TESTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Tests$<$<CONFIG:Debug>:>" )
+set( FO_TESTS_OUTPUT "${FONLINE_OUTPUT_PATH}/Binaries/Tests-${FO_BUILD_PLATFORM}$<$<CONFIG:Debug>:-Debug>" )
 set( FO_RESOURCES_OUTPUT "${FONLINE_OUTPUT_PATH}/Resources" )
 file( MAKE_DIRECTORY "${FONLINE_OUTPUT_PATH}/Binaries" )
-file( MAKE_DIRECTORY ${FO_RESOURCES_OUTPUT} )
+file( MAKE_DIRECTORY "${FO_RESOURCES_OUTPUT}" )
 
 # Contributions
 macro( ResolveContributedFiles )
@@ -634,14 +634,6 @@ if( NOT FONLINE_CMAKE_CONTRIBUTION STREQUAL "" )
 	endforeach()
 endif()
 
-# Force some variables for internal debugging purposes
-if( NOT ${FO_FORCE_SINGLEPLAYER} STREQUAL "" )
-	set( FO_SINGLEPLAYER ${FO_FORCE_SINGLEPLAYER} )
-endif()
-if( NOT ${FO_FORCE_ENABLE_3D} STREQUAL "" )
-	set( FO_ENABLE_3D ${FO_FORCE_ENABLE_3D} )
-endif()
-
 # Core contribution
 set( FO_CONTRIBUTION_DIR ${CMAKE_CURRENT_SOURCE_DIR} )
 AddNativeIncludeDir( "Source/Scripting/Native" )
@@ -653,6 +645,14 @@ AddMonoSource( "FOnline" "Common" "Source/Scripting/Mono/*.cs" )
 AddResources( "Core" "Resources/Core" )
 AddEmbeddedResources( "Resources/Embedded" )
 AddResources( "Core" "Resources/Embedded" ) # Duplicate embedded to core for correct data updating
+
+# Force some variables for internal debugging purposes
+if( NOT ${FO_FORCE_SINGLEPLAYER} STREQUAL "" )
+	set( FO_SINGLEPLAYER ${FO_FORCE_SINGLEPLAYER} )
+endif()
+if( NOT ${FO_FORCE_ENABLE_3D} STREQUAL "" )
+	set( FO_ENABLE_3D ${FO_FORCE_ENABLE_3D} )
+endif()
 
 # Configuration checks
 if( FONLINE_CODE_COVERAGE AND ( FONLINE_BUILD_CLIENT OR FONLINE_BUILD_SERVER OR FONLINE_BUILD_MAPPER OR FONLINE_BUILD_SINGLE OR FONLINE_BUILD_ASCOMPILER OR FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS ) )

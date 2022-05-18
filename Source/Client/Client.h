@@ -219,7 +219,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(CritterGetAttackDistantion, CritterView* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
 
-    ClientSettings& Settings;
     GeometryHelper GeomHelper;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
@@ -425,8 +424,8 @@ protected:
     bool _rebuildLookBordersRequest {};
     bool _drawLookBorders {true};
     bool _drawShootBorders {};
-    PrimitivePoints _lookBorders {};
-    PrimitivePoints _shootBorders {};
+    vector<PrimitivePoint> _lookBorders {};
+    vector<PrimitivePoint> _shootBorders {};
     AnyFrames* _waitPic {};
     uchar _pupTransferType {};
     uint _pupContId {};
@@ -435,10 +434,10 @@ protected:
     vector<Automap> _automaps {};
     vector<CritterView*> _worldmapCritters {};
     TwoBitMask _worldmapFog {};
-    PrimitivePoints _worldmapFogPix {};
+    vector<PrimitivePoint> _worldmapFogPix {};
     vector<GmapLocation> _worldmapLoc {};
     GmapLocation _worldmapTownLoc {};
-    PrimitivePoints _lmapPrepPix {};
+    vector<PrimitivePoint> _lmapPrepPix {};
     IRect _lmapWMap {};
     int _lmapZoom {2};
     bool _lmapSwitchHi {};

@@ -46,17 +46,16 @@
 
 FOServer::FOServer(GlobalSettings& settings) :
 #if !FO_SINGLEPLAYER
-    FOEngineBase(PropertiesRelationType::ServerRelative,
+    FOEngineBase(settings, PropertiesRelationType::ServerRelative,
         [&, this]() -> ScriptSystem* {
             extern auto Server_RegisterData(FOEngineBase*)->vector<uchar>;
             RestoreInfoBin = Server_RegisterData(this);
             return new ServerScriptSystem(this, settings);
         }),
 #else
-    FOEngineBase(PropertiesRelationType::None, nullptr),
+    FOEngineBase(settings, PropertiesRelationType::None, nullptr),
 #endif
 
-    Settings {settings},
     GeomHelper(Settings),
     GameTime(Settings),
     ProtoMngr(this),
@@ -71,14 +70,6 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
-    if constexpr (FO_ANGELSCRIPT_SCRIPTING) {
-        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
-    }
-    if constexpr (FO_MONO_SCRIPTING) {
-        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Mono"));
-    }
 
     GameTime.FrameAdvance();
 
@@ -197,18 +188,11 @@ FOServer::FOServer(GlobalSettings& settings) :
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, std::bind(&FOServer::OnSetItemOpened, this, _1, _2, _3, _4));
     }
 
-    // Dialogs
-    DlgMngr.LoadDialogs();
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
+    DlgMngr.LoadFromResources();
 
-    // Protos
-    {
-        const auto protos_file = FileSys.ReadFile("Protos.foprob");
-        if (!protos_file) {
-            throw ServerInitException("Protos.foprob not found");
-        }
-
-        ProtoMngr.Load(protos_file.GetData());
-    }
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
+    ProtoMngr.LoadFromResources();
 
     // Globals
     const auto globals_doc = DbStorage.Get("Game", 1);

@@ -42,7 +42,7 @@
 #include "WinApi-Include.h"
 
 FOMapper::FOMapper(GlobalSettings& settings) :
-    FOEngineBase(PropertiesRelationType::BothRelative,
+    FOEngineBase(settings, PropertiesRelationType::BothRelative,
         [&, this]() -> ScriptSystem* {
             extern void Mapper_RegisterData(FOEngineBase*);
             Mapper_RegisterData(this);

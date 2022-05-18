@@ -189,8 +189,8 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   bool IsCloseOnMiss
 //   bool IsCanMove
 //   bool IsMoveIgnoreBorders
-//   int[] AvailableCursors
-//   int Cursor
+//   CursorType[] AvailableCursors
+//   CursorType Cursor
 //   bool IsOnTop
 //   void SetModal( bool enabled )
 //   void SetMultiinstance( bool enabled )

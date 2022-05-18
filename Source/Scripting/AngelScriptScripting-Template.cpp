@@ -114,12 +114,21 @@
 
 #if COMPILER_MODE
 #undef FOEngine
-#define FOEngine FOEngineBase
+#if SERVER_SCRIPTING
+#define FOEngine AngelScriptServerCompiler
+#elif CLIENT_SCRIPTING
+#define FOEngine AngelScriptClientCompiler
+#elif SINGLE_SCRIPTING
+#define FOEngine AngelScriptSingleCompiler
+#elif MAPPER_SCRIPTING
+#define FOEngine AngelScriptMapperCompiler
+#endif
 
 DECLARE_EXCEPTION(ScriptCompilerException);
 
 struct FOServer;
 struct FOClient;
+struct FOSingle;
 struct FOMapper;
 
 struct BaseEntity : Entity
@@ -134,41 +143,33 @@ struct SCRIPTING_CLASS
 
 #define ENTITY_VERIFY(e)
 
-#if SERVER_SCRIPTING
-class AngelScriptServerCompilerData : public FOEngineBase
-#elif CLIENT_SCRIPTING
-class AngelScriptClientCompilerData : public FOEngineBase
-#elif SINGLE_SCRIPTING
-class AngelScriptSingleCompilerData : public FOEngineBase
-#elif MAPPER_SCRIPTING
-class AngelScriptMapperCompilerData : public FOEngineBase
-#endif
+class FOEngine : public FOEngineBase
 {
 public:
 #if SERVER_SCRIPTING
-    AngelScriptServerCompilerData() :
-        FOEngineBase(PropertiesRelationType::ServerRelative, [this] {
+    AngelScriptServerCompiler() :
+        FOEngineBase(Dummy, PropertiesRelationType::ServerRelative, [this] {
             extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
             AngelScript_ServerCompiler_RegisterData(this);
             return nullptr;
         })
 #elif CLIENT_SCRIPTING
-    AngelScriptClientCompilerData() :
-        FOEngineBase(PropertiesRelationType::ClientRelative, [this] {
+    AngelScriptClientCompiler() :
+        FOEngineBase(Dummy, PropertiesRelationType::ClientRelative, [this] {
             extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
             AngelScript_ClientCompiler_RegisterData(this);
             return nullptr;
         })
 #elif SINGLE_SCRIPTING
-    AngelScriptSingleCompilerData() :
-        FOEngineBase(PropertiesRelationType::BothRelative, [this] {
+    AngelScriptSingleCompiler() :
+        FOEngineBase(Dummy, PropertiesRelationType::BothRelative, [this] {
             extern void AngelScript_SingleCompiler_RegisterData(FOEngineBase*);
             AngelScript_SingleCompiler_RegisterData(this);
             return nullptr;
         })
 #elif MAPPER_SCRIPTING
-    AngelScriptMapperCompilerData() :
-        FOEngineBase(PropertiesRelationType::BothRelative, [this] {
+    AngelScriptMapperCompiler() :
+        FOEngineBase(Dummy, PropertiesRelationType::BothRelative, [this] {
             extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
             AngelScript_MapperCompiler_RegisterData(this);
             return nullptr;
@@ -176,6 +177,8 @@ public:
 #endif
     {
     }
+
+    GlobalSettings Dummy {};
 };
 #endif
 
@@ -1134,7 +1137,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 #if COMPILER_MODE
 static void CompileRootModule(asIScriptEngine* engine, string_view script_path);
 #else
-static void RestoreRootModule(asIScriptEngine* engine, File& script_file);
+static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_bin);
 #endif
 
 void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
@@ -1143,15 +1146,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     FOEngine* game_engine = _engine;
     game_engine->AddRef();
 #else
-#if SERVER_SCRIPTING
-    FOEngine* game_engine = new AngelScriptServerCompilerData();
-#elif CLIENT_SCRIPTING
-    FOEngine* game_engine = new AngelScriptClientCompilerData();
-#elif SINGLE_SCRIPTING
-    FOEngine* game_engine = new AngelScriptSingleCompilerData();
-#elif MAPPER_SCRIPTING
-    FOEngine* game_engine = new AngelScriptMapperCompilerData();
-#endif
+    FOEngine* game_engine = new FOEngine();
 #endif
 
 #if COMPILER_MODE
@@ -1403,17 +1398,18 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
+    game_engine->FileSys.AddDataSource(_str(game_engine->Settings.ResourcesDir).combinePath("AngelScript"));
 #if SERVER_SCRIPTING
-    File script_file = _engine->FileSys.ReadFile("ServerRootModule.fosb");
+    File script_file = game_engine->FileSys.ReadFile("ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING
-    File script_file = _engine->FileSys.ReadFile("ClientRootModule.fosb");
+    File script_file = game_engine->FileSys.ReadFile("ClientRootModule.fosb");
 #elif SINGLE_SCRIPTING
-    File script_file = _engine->FileSys.ReadFile("SingleRootModule.fosb");
+    File script_file = game_engine->FileSys.ReadFile("SingleRootModule.fosb");
 #elif MAPPER_SCRIPTING
-    File script_file = _engine->FileSys.ReadFile("MapperRootModule.fosb");
+    File script_file = game_engine->FileSys.ReadFile("MapperRootModule.fosb");
 #endif
     RUNTIME_ASSERT(script_file);
-    RestoreRootModule(engine, script_file);
+    RestoreRootModule(engine, {script_file.GetBuf(), script_file.GetSize()});
 #endif
 
     game_engine->Release();
@@ -1591,12 +1587,12 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
 }
 
 #else
-static void RestoreRootModule(asIScriptEngine* engine, File& script_file)
+static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_bin)
 {
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
-    RUNTIME_ASSERT(script_file);
+    RUNTIME_ASSERT(!script_bin.empty());
 
-    auto reader = DataReader({script_file.GetBuf(), script_file.GetSize()});
+    auto reader = DataReader({script_bin.data(), script_bin.size()});
     vector<asBYTE> buf(reader.Read<uint>());
     std::memcpy(buf.data(), reader.ReadPtr<asBYTE>(buf.size()), buf.size());
     vector<uchar> lnt_data(reader.Read<uint>());

@@ -106,7 +106,7 @@ DialogManager::DialogManager(FOEngineBase* engine) : _engine {engine}
 {
 }
 
-void DialogManager::LoadDialogs()
+void DialogManager::LoadFromResources()
 {
     auto errors = 0;
 

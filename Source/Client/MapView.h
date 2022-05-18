@@ -211,7 +211,7 @@ public:
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
 
-    void SetFog(PrimitivePoints& look_points, PrimitivePoints& shoot_points, short* offs_x, short* offs_y);
+    void SetFog(vector<PrimitivePoint>& look_points, vector<PrimitivePoint>& shoot_points, short* offs_x, short* offs_y);
 
     auto Scroll() -> bool;
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
@@ -382,8 +382,8 @@ private:
     short _fogLastOffsX {};
     short _fogLastOffsY {};
     bool _fogForceRerender {};
-    PrimitivePoints _fogLookPoints {};
-    PrimitivePoints _fogShootPoints {};
+    vector<PrimitivePoint> _fogLookPoints {};
+    vector<PrimitivePoint> _fogShootPoints {};
     uint _critterContourCrId {};
     int _critterContour {};
     int _crittersContour {};
@@ -392,8 +392,8 @@ private:
     bool _requestRenderLight {};
     uchar* _hexLight {};
     uint _lightPointsCount {};
-    vector<PrimitivePoints> _lightPoints {};
-    PrimitivePoints _lightSoftPoints {};
+    vector<vector<PrimitivePoint>> _lightPoints {};
+    vector<PrimitivePoint> _lightSoftPoints {};
     vector<LightSource> _lightSources {};
     vector<LightSource> _lightSourcesScen {};
     int _lightCapacity {};

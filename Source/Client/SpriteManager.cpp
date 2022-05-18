@@ -115,11 +115,13 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, Eff
     _spritesDrawBuf = App->Render.CreateDrawBuffer(false);
     _spritesDrawBuf->Vertices2D.resize(_drawQuadCount * 4);
     _primitiveDrawBuf = App->Render.CreateDrawBuffer(false);
+    _primitiveDrawBuf->Vertices2D.resize(1024);
     _flushDrawBuf = App->Render.CreateDrawBuffer(false);
+    _flushDrawBuf->Vertices2D.resize(4);
     _contourDrawBuf = App->Render.CreateDrawBuffer(false);
+    _contourDrawBuf->Vertices2D.resize(4);
 
     _sprData.resize(SPRITES_BUFFER_SIZE);
-    _effectMngr.LoadMinimalEffects();
 
     MatrixHelper::MatrixOrtho(_projectionMatrixCm[0], 0.0f, static_cast<float>(_settings.ScreenWidth), static_cast<float>(_settings.ScreenHeight), 0.0f, -1.0f, 1.0f);
     _projectionMatrixCm.Transpose(); // Convert to column major order
@@ -127,9 +129,6 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, Eff
     _rtMain = CreateRenderTarget(false, true, 0, 0, true);
     _rtContours = CreateRenderTarget(false, true, 0, 0, false);
     _rtContoursMid = CreateRenderTarget(false, true, 0, 0, false);
-    if (_rtMain != nullptr) {
-        PushRenderTarget(_rtMain);
-    }
 
     DummyAnimation = new AnyFrames();
     DummyAnimation->CntFrm = 1;
@@ -140,7 +139,7 @@ SpriteManager::~SpriteManager()
 {
     delete DummyAnimation;
 
-    for (auto& it : _sprData) {
+    for (const auto* it : _sprData) {
         delete it;
     }
 }
@@ -1365,8 +1364,9 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
     DisableScissor();
 }
 
-void SpriteManager::PrepareSquare(PrimitivePoints& points, const IRect& r, uint color)
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color)
 {
+    points.push_back({r.Right, r.Bottom, color});
     points.push_back({r.Left, r.Top, color});
     points.push_back({r.Right, r.Bottom, color});
     points.push_back({r.Left, r.Top, color});
@@ -1374,7 +1374,7 @@ void SpriteManager::PrepareSquare(PrimitivePoints& points, const IRect& r, uint 
     points.push_back({r.Right, r.Bottom, color});
 }
 
-void SpriteManager::PrepareSquare(PrimitivePoints& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color)
+void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color)
 {
     points.push_back({lb.X, lb.Y, color});
     points.push_back({lt.X, lt.Y, color});
@@ -1491,7 +1491,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         return;
     }
 
-    PrimitivePoints borders;
+    vector<PrimitivePoint> borders;
 
     if (!_eggValid) {
         use_egg = false;
@@ -1680,7 +1680,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Corners indication
         if (_settings.ShowCorners && spr->EggType != 0) {
-            PrimitivePoints corner;
+            vector<PrimitivePoint> corner;
             const auto cx = wf / 2.0f;
 
             switch (spr->EggType) {
@@ -1789,7 +1789,7 @@ auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
     return (egg_color >> 24) < 127;
 }
 
-void SpriteManager::DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim, const float* zoom, FPoint* offset, RenderEffect* custom_effect)
+void SpriteManager::DrawPoints(vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom, FPoint* offset, RenderEffect* custom_effect)
 {
     if (points.empty()) {
         return;

@@ -51,9 +51,8 @@ FOClient::FOClient(GlobalSettings& settings, const vector<uchar>& restore_info_b
 #endif
 
 FOClient::FOClient(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
-    FOEngineBase(props_relation, register_data_callback),
+    FOEngineBase(settings, props_relation, register_data_callback),
 
-    Settings {settings},
     GeomHelper(Settings),
     GameTime(Settings),
     ProtoMngr(this),
@@ -82,6 +81,8 @@ FOClient::FOClient(GlobalSettings& settings, PropertiesRelationType props_relati
     FileSys.AddDataSource("PersistentData");
 #endif
 
+    ResMngr.IndexFiles();
+
     _fpsTick = GameTime.FrameTick();
 
     const auto [w, h] = SprMngr.GetWindowSize();
@@ -90,17 +91,28 @@ FOClient::FOClient(GlobalSettings& settings, PropertiesRelationType props_relati
     Settings.MouseY = std::clamp(y, 0, h - 1);
 
     // Language Packs
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
     _curLang.LoadTexts(FileSys, Settings.Language);
 
     SprMngr.SetSpritesColor(COLOR_IFACE);
 
+    // Init 3d subsystem
+#if FO_ENABLE_3D
+    SprMngr.Init3dSubsystem(GameTime, *this, *this);
+
+    if (!Preload3dFiles.empty()) {
+        WriteLog("Preload 3d files...");
+        for (const auto& name : Preload3dFiles) {
+            SprMngr.Preload3dModel(name);
+        }
+        WriteLog("Preload 3d files complete");
+    }
+#endif
+
     EffectMngr.LoadDefaultEffects();
 
-    // Wait screen
-    _waitPic = ResMngr.GetRandomSplash();
-    SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
-    WaitDraw();
-    SprMngr.EndScene();
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
+    ProtoMngr.LoadFromResources();
 
     // Recreate static atlas
     SprMngr.AccumulateAtlasData();
@@ -118,19 +130,6 @@ FOClient::FOClient(GlobalSettings& settings, PropertiesRelationType props_relati
     // Finish fonts
     SprMngr.BuildFonts();
     SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
-
-    // Init 3d subsystem
-#if FO_ENABLE_3D
-    SprMngr.Init3dSubsystem(GameTime, *this, *this);
-
-    if (!Preload3dFiles.empty()) {
-        WriteLog("Preload 3d files...");
-        for (const auto& name : Preload3dFiles) {
-            SprMngr.Preload3dModel(name);
-        }
-        WriteLog("Preload 3d files complete");
-    }
-#endif
 
     // Connection handlers
     _conn.AddConnectHandler(std::bind(&FOClient::Net_OnConnect, this, std::placeholders::_1));
@@ -584,7 +583,7 @@ void FOClient::ProcessScreenEffectFading()
 {
     SprMngr.Flush();
 
-    PrimitivePoints full_screen_quad;
+    vector<PrimitivePoint> full_screen_quad;
     SprMngr.PrepareSquare(full_screen_quad, IRect(0, 0, Settings.ScreenWidth, Settings.ScreenHeight), 0);
 
     for (auto it = _screenEffects.begin(); it != _screenEffects.end();) {
@@ -3601,8 +3600,10 @@ void FOClient::GmapNullParams()
 
 void FOClient::WaitDraw()
 {
-    SprMngr.DrawSpriteSize(_waitPic->GetCurSprId(GameTime.GameTick()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
-    SprMngr.Flush();
+    if (_waitPic != nullptr) {
+        SprMngr.DrawSpriteSize(_waitPic->GetCurSprId(GameTime.GameTick()), 0, 0, Settings.ScreenWidth, Settings.ScreenHeight, true, true, 0);
+        SprMngr.Flush();
+    }
 }
 
 auto FOClient::CustomCall(string_view command, string_view separator) -> string

@@ -220,7 +220,6 @@ struct PrimitivePoint
     short* PointOffsX {};
     short* PointOffsY {};
 };
-using PrimitivePoints = vector<PrimitivePoint>;
 
 struct DipData
 {
@@ -288,8 +287,8 @@ public:
     void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
     void DestroyAnyFrames(AnyFrames* anim);
     void SetSpritesColor(uint c) { _baseColor = c; }
-    void PrepareSquare(PrimitivePoints& points, const IRect& r, uint color);
-    void PrepareSquare(PrimitivePoints& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color);
+    void PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color);
+    void PrepareSquare(vector<PrimitivePoint>& points, IPoint lt, IPoint rt, IPoint lb, IPoint rb, uint color);
     void PushScissor(int l, int t, int r, int b);
     void PopScissor();
     void Flush();
@@ -298,7 +297,7 @@ public:
     void DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
     void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender, int prerender_ox, int prerender_oy);
-    void DrawPoints(PrimitivePoints& points, RenderPrimitiveType prim, const float* zoom, FPoint* offset, RenderEffect* custom_effect);
+    void DrawPoints(vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom, FPoint* offset, RenderEffect* custom_effect);
 
     void DrawContours();
     void InitializeEgg(string_view egg_name);

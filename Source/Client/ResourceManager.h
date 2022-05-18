@@ -62,6 +62,7 @@ public:
     [[nodiscard]] auto GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*;
 #endif
 
+    void IndexFiles();
     void FreeResources(AtlasType atlas_type);
     void ReinitializeDynamicAtlas();
 

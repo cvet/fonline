@@ -1136,7 +1136,7 @@ def genDataRegistration(target, isASCompiler):
         def replaceFakedEnum(t):
             tt = t.split('.')
             if tt[0] == 'dict':
-                return 'dict.' + replaceFakedEnum(tt[1]) + replaceFakedEnum('.'.join(tt[2:]))
+                return 'dict.' + replaceFakedEnum(tt[1]) + '.' + replaceFakedEnum('.'.join(tt[2:]))
             if tt[0] == 'arr':
                 return 'arr.' + replaceFakedEnum(tt[1])
             if tt[0] in scriptEnums or tt[0] in engineEnums:

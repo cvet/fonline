@@ -145,7 +145,7 @@ public:
     [[nodiscard]] auto GetDialog(hstring pack_id) -> DialogPack*;
     [[nodiscard]] auto GetDialogs() -> vector<DialogPack*>;
 
-    void LoadDialogs();
+    void LoadFromResources();
     void ValidateDialogs();
 
 private:

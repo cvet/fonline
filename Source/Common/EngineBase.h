@@ -38,6 +38,7 @@
 #include "EntityProperties.h"
 #include "Properties.h"
 #include "ScriptSystem.h"
+#include "Settings.h"
 
 DECLARE_EXCEPTION(DataRegistrationException);
 DECLARE_EXCEPTION(EnumResolveException);
@@ -68,13 +69,18 @@ public:
     void AddEnumGroup(string_view name, const type_info& underlying_type, unordered_map<string, int>&& key_values);
     void FinalizeDataRegistration();
 
+    GlobalSettings& Settings;
     ScriptSystem* ScriptSys {};
     FileSystem FileSys {};
+
+#if !FO_SINGLEPLAYER
+    vector<uchar> RestoreInfoBin {};
+#endif
 
 protected:
     using RegisterDataCallback = std::function<ScriptSystem*()>;
 
-    FOEngineBase(PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback);
+    FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback);
     ~FOEngineBase() override = default;
 
 private:

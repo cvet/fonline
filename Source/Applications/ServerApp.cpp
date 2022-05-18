@@ -61,6 +61,7 @@ struct ServerAppData
     vector<FOClient*> Clients {};
     std::atomic_bool ClientSpawning {};
     std::atomic<FOClient*> SpawnedClient {};
+    std::atomic<size_t> ThreadTasks {};
 };
 GLOBAL_DATA(ServerAppData, Data);
 
@@ -85,6 +86,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         const auto start_server = [] {
             RUNTIME_ASSERT(Data->ServerState == ServerStateType::Stopped);
             Data->ServerState = ServerStateType::StartRequest;
+            Data->ThreadTasks.fetch_add(1);
             std::thread([] {
                 try {
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StartRequest);
@@ -97,12 +99,14 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                     Data->Server = nullptr;
                     Data->ServerState = ServerStateType::Stopped;
                 }
+                Data->ThreadTasks.fetch_sub(1);
             }).detach();
         };
 
         const auto stop_server = [] {
             RUNTIME_ASSERT(Data->ServerState == ServerStateType::Started);
             Data->ServerState = ServerStateType::StopRequest;
+            Data->ThreadTasks.fetch_add(1);
             std::thread([] {
                 try {
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
@@ -115,6 +119,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 }
                 Data->Server = nullptr;
                 Data->ServerState = ServerStateType::Stopped;
+                Data->ThreadTasks.fetch_sub(1);
             }).detach();
         };
 
@@ -130,16 +135,19 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             const auto& io = ImGui::GetIO();
 
             // Control panel
-            const auto control_btn_size = ImVec2(200, 30);
+            constexpr auto control_btn_size = ImVec2(200, 30);
             ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, 50.0f), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.0f));
             if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
                 const auto imgui_progress_btn = [&control_btn_size](const char* title) {
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-                    ImGui::BeginDisabled();
                     ImGui::Button(title, control_btn_size);
-                    ImGui::EndDisabled();
                     ImGui::PopStyleColor();
                 };
+
+                const auto some_task_running = Data->ThreadTasks > 0;
+                if (some_task_running) {
+                    ImGui::BeginDisabled();
+                }
 
                 if (Data->ServerState == ServerStateType::Stopped) {
                     if (ImGui::Button("Start server", control_btn_size)) {
@@ -166,15 +174,18 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
                     if (ImGui::Button("Spawn client", control_btn_size)) {
                         Data->ClientSpawning = true;
-                        std::thread([] {
-                            try {
-                                Data->SpawnedClient = new FOClient(App->Settings, Data->Server->RestoreInfoBin);
-                            }
-                            catch (const std::exception& ex) {
-                                ReportExceptionAndContinue(ex);
-                            }
-                            Data->ClientSpawning = false;
-                        }).detach();
+                        Data->ThreadTasks.fetch_add(1);
+                        // Todo: allow instantiate client in separate thread (rendering issues)
+                        // std::thread([] {
+                        try {
+                            Data->SpawnedClient = new FOClient(App->Settings, Data->Server->RestoreInfoBin);
+                        }
+                        catch (const std::exception& ex) {
+                            ReportExceptionAndContinue(ex);
+                        }
+                        Data->ClientSpawning = false;
+                        Data->ThreadTasks.fetch_sub(1);
+                        //}).detach();
                     }
                 }
                 else {
@@ -197,6 +208,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 }
                 else {
                     imgui_progress_btn("Quitting...");
+                }
+
+                if (some_task_running) {
+                    ImGui::EndDisabled();
                 }
             }
             ImGui::End();

@@ -36,7 +36,12 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FOEngineBase::FOEngineBase(PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) : Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this)), GameProperties(GetInitRef()), _propsRelation {props_relation}
+FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
+    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this)),
+    GameProperties(GetInitRef()),
+
+    Settings {settings},
+    _propsRelation {props_relation}
 {
     RUNTIME_ASSERT(props_relation != PropertiesRelationType::None);
     RUNTIME_ASSERT(register_data_callback);

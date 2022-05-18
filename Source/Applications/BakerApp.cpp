@@ -51,13 +51,15 @@ class BakerEngine : public FOEngineBase
 {
 public:
     BakerEngine() :
-        FOEngineBase(PropertiesRelationType::BothRelative, [this] {
+        FOEngineBase(Dummy, PropertiesRelationType::BothRelative, [this] {
             extern void Baker_RegisterData(FOEngineBase*);
             Baker_RegisterData(this);
             return nullptr;
         })
     {
     }
+
+    GlobalSettings Dummy {};
 };
 
 // Implementation in AngelScriptScripting-*Compiler.cpp
@@ -293,7 +295,7 @@ int main(int argc, char** argv)
                 auto del_dialogs_ok = DiskFileSystem::DeleteDir("Dialogs");
                 RUNTIME_ASSERT(del_dialogs_ok);
 
-                dialog_mngr.LoadDialogs();
+                dialog_mngr.LoadFromResources();
                 dialog_mngr.ValidateDialogs();
 
                 auto dialogs = engine.FileSys.FilterFiles("fodlg");

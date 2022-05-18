@@ -1591,7 +1591,7 @@
         return;
     }
 
-    PrimitivePoints points;
+    vector<PrimitivePoint> points;
     const auto size = data.size() / 3;
     points.resize(size);
 

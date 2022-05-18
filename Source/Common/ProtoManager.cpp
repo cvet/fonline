@@ -326,13 +326,14 @@ void ProtoManager::ParseProtos(FileSystem& file_sys)
     }
 }
 
-void ProtoManager::Load(const vector<uchar>& data)
+void ProtoManager::LoadFromResources()
 {
-    if (data.empty()) {
-        return;
+    const auto protos_file = _engine->FileSys.ReadFile("Protos.foprob");
+    if (!protos_file) {
+        throw ProtoManagerException("Protos.foprob not found");
     }
 
-    auto reader = DataReader(data);
+    auto reader = DataReader({protos_file.GetBuf(), protos_file.GetSize()});
     ReadProtosFromBinary<ProtoItem>(*_engine, _engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), reader, _itemProtos);
     ReadProtosFromBinary<ProtoCritter>(*_engine, _engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), reader, _crProtos);
     ReadProtosFromBinary<ProtoMap>(*_engine, _engine->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), reader, _mapProtos);

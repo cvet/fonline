@@ -35,7 +35,7 @@
 #include "SingleScripting.h"
 
 FOSingle::FOSingle(GlobalSettings& settings) :
-    FOEngineBase(PropertiesRelationType::BothRelative,
+    FOEngineBase(settings, PropertiesRelationType::BothRelative,
         [&, this] {
             extern void Single_RegisterData(FOEngineBase*);
             Single_RegisterData(this);

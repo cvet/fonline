@@ -43,6 +43,10 @@ static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
 ResourceManager::ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileSys {file_sys}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
 {
+}
+
+void ResourceManager::IndexFiles()
+{
     {
         auto allFiles = _fileSys.FilterFiles("", "", true);
         while (allFiles.MoveNext()) {

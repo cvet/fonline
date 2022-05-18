@@ -63,7 +63,7 @@ public:
 
     void ParseProtos(FileSystem& file_sys);
     void ValidateProtoResources(const unordered_set<string>& resource_names) const;
-    void Load(const vector<uchar>& data);
+    void LoadFromResources();
 
 private:
     FOEngineBase* _engine;

@@ -96,17 +96,38 @@
 #endif
 #endif
 
-#if !FO_DEBUG
-#define GL(expr) expr
-#else
+#if FO_DEBUG
 #define GL(expr) \
     do { \
         expr; \
         if (RenderDebug) { \
             GLenum err__ = glGetError(); \
-            RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, _str(#expr " error {:#X}", err__)); \
+            RUNTIME_ASSERT_STR(err__ == GL_NO_ERROR, _str(#expr " error {}", ErrCodeToString(err__))); \
         } \
     } while (0)
+
+static auto ErrCodeToString(GLenum err_code) -> string
+{
+#define ERR_CODE_CASE(err_code_variant) \
+    case err_code_variant: \
+        return #err_code_variant
+
+    switch (err_code) {
+        ERR_CODE_CASE(GL_INVALID_ENUM);
+        ERR_CODE_CASE(GL_INVALID_VALUE);
+        ERR_CODE_CASE(GL_INVALID_OPERATION);
+        ERR_CODE_CASE(GL_STACK_OVERFLOW);
+        ERR_CODE_CASE(GL_STACK_UNDERFLOW);
+        ERR_CODE_CASE(GL_OUT_OF_MEMORY);
+        ERR_CODE_CASE(GL_INVALID_FRAMEBUFFER_OPERATION);
+    default:
+        return _str("{:#X}", err_code).str();
+    }
+
+#undef ERR_CODE_CASE
+}
+#else
+#define GL(expr) expr
 #endif
 
 #define GL_HAS(extension) (OGL_##extension)
