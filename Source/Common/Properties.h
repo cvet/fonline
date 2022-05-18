@@ -47,6 +47,14 @@ class PropertyRegistrator;
 class Properties;
 using PropertyChangedCallback = std::function<void(Entity*, const Property*, const void*, const void*)>;
 
+enum class PropertiesRelationType
+{
+    None,
+    ServerRelative,
+    ClientRelative,
+    BothRelative,
+};
+
 class Property final
 {
     friend class PropertyRegistrator;
@@ -347,7 +355,7 @@ class PropertyRegistrator final
 
 public:
     PropertyRegistrator() = delete;
-    PropertyRegistrator(string_view class_name, bool is_server, NameResolver& name_resolver);
+    PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver);
     PropertyRegistrator(const PropertyRegistrator&) = delete;
     PropertyRegistrator(PropertyRegistrator&&) noexcept = default;
     auto operator=(const PropertyRegistrator&) = delete;
@@ -365,8 +373,8 @@ public:
     void RegisterComponent(hstring name);
 
 private:
-    string _className;
-    bool _isServer;
+    const string _className;
+    const PropertiesRelationType _relation;
     NameResolver& _nameResolver;
     vector<Property*> _registeredProperties {};
     unordered_map<string, const Property*> _registeredPropertiesLookup {};

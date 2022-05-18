@@ -45,16 +45,16 @@
 #include "imgui.h"
 
 FOServer::FOServer(GlobalSettings& settings) :
-    FOEngineBase(true,
-        [&, this]() -> ScriptSystem* {
 #if !FO_SINGLEPLAYER
+    FOEngineBase(PropertiesRelationType::ServerRelative,
+        [&, this]() -> ScriptSystem* {
             extern auto Server_RegisterData(FOEngineBase*)->vector<uchar>;
             RestoreInfoBin = Server_RegisterData(this);
             return new ServerScriptSystem(this, settings);
-#else
-            throw UnreachablePlaceException(LINE_STR);
-#endif
         }),
+#else
+    FOEngineBase(PropertiesRelationType::None, nullptr),
+#endif
 
     Settings {settings},
     GeomHelper(Settings),

@@ -649,7 +649,7 @@ constexpr void UnsetBit(T& x, T y) noexcept
 template<typename T, std::enable_if_t<std::is_enum_v<T>, int> = 0>
 constexpr bool IsEnumSet(T value, T check) noexcept
 {
-    return (static_cast<int>(value) & static_cast<int>(check)) != 0;
+    return (static_cast<size_t>(value) & static_cast<size_t>(check)) != 0;
 }
 
 // Float constants

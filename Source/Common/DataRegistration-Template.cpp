@@ -55,12 +55,6 @@
 
 ///@ CodeGen Global
 
-template<typename T>
-static void RegisterProperty(PropertyRegistrator* registrator, Property::AccessType access, string_view name, const vector<string>& flags)
-{
-    registrator->Register<T>(access, name, flags);
-}
-
 #if !COMPILER_MODE
 #if SERVER_REGISTRATION
 
@@ -106,7 +100,7 @@ auto Server_RegisterData(FOEngineBase* engine) -> vector<uchar>
 static void RestoreProperty(PropertyRegistrator* registrator, string_view access, string_view type, const string& name, const vector<string>& flags)
 {
 #define RESTORE_ARGS PropertyRegistrator *registrator, Property::AccessType access, string_view name, const vector<string>&flags
-#define RESTORE_ARGS_PASS registrator, access, name, flags
+#define RESTORE_ARGS_PASS access, name, flags
 
     static unordered_map<string_view, std::function<void(PropertyRegistrator*, Property::AccessType, string_view, const vector<string>&)>> call_map = {
         ///@ CodeGen PropertyMap

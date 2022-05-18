@@ -289,7 +289,7 @@ protected:
 
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
-    FOClient(GlobalSettings& settings, const RegisterDataCallback& register_data_callback);
+    FOClient(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback);
 
     void ProcessAutoLogin();
     void ProcessGlobalMap();

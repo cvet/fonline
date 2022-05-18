@@ -41,7 +41,7 @@
 
 #if !FO_SINGLEPLAYER
 FOClient::FOClient(GlobalSettings& settings, const vector<uchar>& restore_info_bin) :
-    FOClient(settings, [&, this]() -> ScriptSystem* {
+    FOClient(settings, PropertiesRelationType::ClientRelative, [&, this]() -> ScriptSystem* {
         extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
         Client_RegisterData(this, restore_info_bin);
         return new ClientScriptSystem(this, settings);
@@ -50,8 +50,8 @@ FOClient::FOClient(GlobalSettings& settings, const vector<uchar>& restore_info_b
 }
 #endif
 
-FOClient::FOClient(GlobalSettings& settings, const RegisterDataCallback& register_data_callback) :
-    FOEngineBase(false, register_data_callback),
+FOClient::FOClient(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
+    FOEngineBase(props_relation, register_data_callback),
 
     Settings {settings},
     GeomHelper(Settings),

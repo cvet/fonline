@@ -35,14 +35,14 @@
 #include "SingleScripting.h"
 
 FOSingle::FOSingle(GlobalSettings& settings) :
-    FOEngineBase(true,
+    FOEngineBase(PropertiesRelationType::BothRelative,
         [&, this] {
             extern void Single_RegisterData(FOEngineBase*);
             Single_RegisterData(this);
             return new SingleScriptSystem(this, settings);
         }),
     FOServer(settings),
-    FOClient(settings, []() -> ScriptSystem* { throw UnreachablePlaceException(LINE_STR); })
+    FOClient(settings, PropertiesRelationType::None, nullptr)
 {
 }
 

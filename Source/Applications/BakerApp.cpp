@@ -51,7 +51,7 @@ class BakerEngine : public FOEngineBase
 {
 public:
     BakerEngine() :
-        FOEngineBase(true, [this] {
+        FOEngineBase(PropertiesRelationType::BothRelative, [this] {
             extern void Baker_RegisterData(FOEngineBase*);
             Baker_RegisterData(this);
             return nullptr;
@@ -60,25 +60,26 @@ public:
     }
 };
 
+// Implementation in AngelScriptScripting-*Compiler.cpp
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
 struct ServerScriptSystem
 {
-    void InitAngelScriptScripting(const char* script_path); // Implementation in AngelScriptScripting-ServerCompiler.cpp
+    void InitAngelScriptScripting(const char* script_path);
 };
 struct ClientScriptSystem
 {
-    void InitAngelScriptScripting(const char* script_path); // Implementation in AngelScriptScripting-ClientCompiler.cpp
+    void InitAngelScriptScripting(const char* script_path);
 };
 #else
 struct SingleScriptSystem
 {
-    void InitAngelScriptScripting(const char* script_path); // Implementation in AngelScriptScripting-SingleCompiler.cpp
+    void InitAngelScriptScripting(const char* script_path);
 };
 #endif
 struct MapperScriptSystem
 {
-    void InitAngelScriptScripting(const char* script_path); // Implementation in AngelScriptScripting-MapperCompiler.cpp
+    void InitAngelScriptScripting(const char* script_path);
 };
 
 // External variable for compiler messages
@@ -107,22 +108,22 @@ int main(int argc, char** argv)
         try {
             WriteLog("Compile AngelScript scripts");
 
-            RUNTIME_ASSERT(!App->Settings.ASServer.empty());
-            RUNTIME_ASSERT(!App->Settings.ASClient.empty());
-            RUNTIME_ASSERT(!App->Settings.ASMapper.empty());
-
 #if !FO_SINGLEPLAYER
             WriteLog("Compile server scripts");
+            RUNTIME_ASSERT(!App->Settings.ASServer.empty());
             ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer.c_str());
 
             WriteLog("Compile client scripts");
+            RUNTIME_ASSERT(!App->Settings.ASClient.empty());
             ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
 #else
             WriteLog("Compile game scripts");
+            RUNTIME_ASSERT(!App->Settings.ASSingle.empty());
             SingleScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
 #endif
 
             WriteLog("Compile mapper scripts");
+            RUNTIME_ASSERT(!App->Settings.ASMapper.empty());
             MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper.c_str());
 
             WriteLog("Compile AngelScript scripts complete!");

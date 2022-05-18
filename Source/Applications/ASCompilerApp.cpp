@@ -42,7 +42,6 @@ struct ServerScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
-
 struct ClientScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
@@ -53,7 +52,6 @@ struct SingleScriptSystem
     void InitAngelScriptScripting(const char* script_path);
 };
 #endif
-
 struct MapperScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);

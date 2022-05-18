@@ -770,7 +770,7 @@ auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
     return _registrator->_nameResolver.ResolveHash(h);
 }
 
-PropertyRegistrator::PropertyRegistrator(string_view class_name, bool is_server, NameResolver& name_resolver) : _className {class_name}, _isServer {is_server}, _nameResolver {name_resolver}
+PropertyRegistrator::PropertyRegistrator(string_view class_name, PropertiesRelationType relation, NameResolver& name_resolver) : _className {class_name}, _relation {relation}, _nameResolver {name_resolver}
 {
 }
 
@@ -915,15 +915,15 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     // Disallow set or get accessors
     auto disable_get = false;
     auto disable_set = false;
-    if (_isServer && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
+    if (_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
         disable_get = true;
         disable_set = true;
     }
-    if (!_isServer && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
+    if (_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
         disable_get = true;
         disable_set = true;
     }
-    if (!_isServer && (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
+    if (_relation == PropertiesRelationType::ClientRelative && (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
         disable_set = true;
     }
     if (prop->_accessType == Property::AccessType::PublicStatic) {

@@ -42,13 +42,13 @@
 #include "WinApi-Include.h"
 
 FOMapper::FOMapper(GlobalSettings& settings) :
-    FOEngineBase(true,
+    FOEngineBase(PropertiesRelationType::BothRelative,
         [&, this]() -> ScriptSystem* {
             extern void Mapper_RegisterData(FOEngineBase*);
             Mapper_RegisterData(this);
             return new MapperScriptSystem(this, settings);
         }),
-    FOClient(settings, []() -> ScriptSystem* { throw UnreachablePlaceException(LINE_STR); }),
+    FOClient(settings, PropertiesRelationType::None, nullptr),
 
     IfaceIni("", *this)
 {

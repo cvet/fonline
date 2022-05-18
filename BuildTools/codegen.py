@@ -40,6 +40,7 @@ parser.add_argument('-content', dest='content', action='append', default=[], hel
 parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
 parser.add_argument('-config', dest='config', action='append', default=[], help='debugging config')
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
+parser.add_argument('-verbose', dest='verbose', action='store_true', help='verbose mode')
 args = parser.parse_args()
 
 assert (args.singleplayer or args.multiplayer) and not (args.singleplayer and args.multiplayer), 'Singleplayer/Multiplayer mismatch'
@@ -93,7 +94,11 @@ codeGenTags = {
         'RemoteCall': [], # (target, subsystem, name, [(type, name)], [flags], [comment])
         'Setting': [], #(type, name, init value, [flags], [comment])
         'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
-        
+
+def verbosePrint(*str):
+    if args.verbose:
+        print('[CodeGen]', *str)
+
 errors = []
 
 def showError(*messages):
@@ -915,6 +920,7 @@ def flushFiles():
         if fname not in genFileNames:
             createFile(fname, args.genoutput)
             writeFile('// Empty file')
+            verbosePrint('flushFiles', 'empty', fname)
     
     # Write if content changed
     for path, lines in files.items():
@@ -924,10 +930,19 @@ def flushFiles():
         
         if os.path.isfile(path):
             with open(path, 'r', encoding='utf-8-sig') as f:
-                if ''.join([l.rstrip('\r\n') for l in f.readlines()]).rstrip() == ''.join(lines).rstrip():
-                    continue
+                curLines = f.readlines()
+            newLinesStr = ''.join([l.rstrip('\r\n') for l in curLines]).rstrip()
+            curLinesStr = ''.join(lines).rstrip()
+            if newLinesStr == curLinesStr:
+                verbosePrint('flushFiles', 'skip', path)
+                continue
+            else:
+                verbosePrint('flushFiles', 'diff found', path, len(newLinesStr), len(curLinesStr))
+        else:
+            verbosePrint('flushFiles', 'no file', path)
         with open(path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(lines) + '\n')
+        verbosePrint('flushFiles', 'write', path)
 
 # Code
 curCodeGenTemplateType = None
@@ -1046,10 +1061,6 @@ def genDataRegistration(target, isASCompiler):
     restoreLines = []
     propertyMapLines = []
     
-    registerLines.append('unordered_map<string, PropertyRegistrator*> registrators;')
-    registerLines.append('PropertyRegistrator* registrator;')
-    registerLines.append('')
-    
     # Enums
     registerLines.append('// Enums')
     for e in codeGenTags['ExportEnum']:
@@ -1072,6 +1083,9 @@ def genDataRegistration(target, isASCompiler):
     
     # Property registrators
     registerLines.append('// Properties')
+    registerLines.append('unordered_map<string, PropertyRegistrator*> registrators;')
+    registerLines.append('PropertyRegistrator* registrator;')
+    registerLines.append('')
     for entity in gameEntities:
         registerLines.append('registrators["' + entity + '"] = engine->GetOrCreatePropertyRegistrator("' + entity + '");')
     registerLines.append('')
@@ -1091,13 +1105,13 @@ def genDataRegistration(target, isASCompiler):
         for propTag in codeGenTags['ExportProperty']:
             ent, access, type, name, flags, _ = propTag
             if ent == entity:
-                registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
+                registerLines.append('registrator->Register<' + metaTypeToEngineType(type, target, False) + '>(Property::AccessType::' +
                         access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
         if target != 'Client' or isASCompiler:
             for propTag in codeGenTags['Property']:
                 ent, access, type, name, flags, _ = propTag
                 if ent == entity:
-                    registerLines.append('RegisterProperty<' + metaTypeToEngineType(type, target, False) + '>(registrator, Property::AccessType::' +
+                    registerLines.append('registrator->Register<' + metaTypeToEngineType(type, target, False) + '>(Property::AccessType::' +
                             access + ', "' + name + '", {' + ', '.join(['"' + f + '"' for f in flags + getEnumFlags(type) if f]) + '});')
         registerLines.append('')
     
@@ -1176,7 +1190,7 @@ def genDataRegistration(target, isASCompiler):
     # Property map
     if target == 'Client' and not isASCompiler:
         def addPropMapEntry(e):
-            propertyMapLines.append('{ "' + e + '", [](RESTORE_ARGS) { RegisterProperty<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
+            propertyMapLines.append('{ "' + e + '", [](RESTORE_ARGS) { registrator->Register<' + metaTypeToEngineType(e, target, False) + '>(RESTORE_ARGS_PASS); } },')
         fakedEnums = ['ScriptEnum_uint8', 'ScriptEnum_uint16', 'ScriptEnum_int', 'ScriptEnum_uint']
         for t in ['int8', 'int16', 'int', 'int64', 'uint8', 'uint16', 'uint', 'uint64', 'float', 'double', 'bool', 'string', 'hstring'] + fakedEnums:
             addPropMapEntry(t)
@@ -1692,7 +1706,7 @@ def genCode(lang, target, isASCompiler=False):
         
         # Generic funcdefs
         registerLines.append('// Generic funcdefs')
-        for fd in genericFuncdefs:
+        for fd in sorted(genericFuncdefs):
             fdParams = fd.split('|')
             registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0]) + ' Generic_' + '.'.join(fdParams).replace('.', '_') +
                     '_Func(' + ', '.join([metaTypeToASType(p) for p in fdParams[1:]]) + ')"));')

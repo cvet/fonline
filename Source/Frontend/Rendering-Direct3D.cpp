@@ -322,6 +322,7 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, string
             }
 
             // Create the input layout
+#if FO_ENABLE_3D
             if (usage == EffectUsage::Model) {
                 static_assert(BONES_PER_VERTEX == 4);
                 const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
@@ -338,7 +339,9 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, string
                     throw EffectLoadException("Failed to create Vertex Shader 3D layout", vertex_shader_fname, vertex_shader_content);
                 }
             }
-            else {
+            else
+#endif
+            {
                 const D3D11_INPUT_ELEMENT_DESC local_layout[] = {
                     {"TEXCOORD0", 0, DXGI_FORMAT_R32G32_FLOAT, 0, static_cast<UINT>(offsetof(Vertex2D, X)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                     {"TEXCOORD1", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, static_cast<UINT>(offsetof(Vertex2D, Diffuse)), D3D11_INPUT_PER_VERTEX_DATA, 0},

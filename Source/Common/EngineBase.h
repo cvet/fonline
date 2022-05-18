@@ -74,11 +74,11 @@ public:
 protected:
     using RegisterDataCallback = std::function<ScriptSystem*()>;
 
-    FOEngineBase(bool is_server, const RegisterDataCallback& register_data_callback);
+    FOEngineBase(PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback);
     ~FOEngineBase() override = default;
 
 private:
-    bool _isServer;
+    const PropertiesRelationType _propsRelation;
     bool _registrationFinalized {};
     unordered_map<string, const PropertyRegistrator*> _registrators {};
     unordered_map<string, unordered_map<string, int>> _enums {};
