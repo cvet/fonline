@@ -74,7 +74,7 @@ enum class RenderType
 #endif
 };
 
-static SDL_Window* SdlWindow {};
+static bool IsTablet {};
 static SDL_Cursor* MouseCursors[ImGuiMouseCursor_COUNT] {};
 static Renderer* ActiveRenderer {};
 static RenderType ActiveRendererType {};
@@ -83,15 +83,15 @@ static vector<InputEvent>* EventsQueue {};
 static vector<InputEvent>* NextFrameEventsQueue {};
 static SDL_AudioDeviceID AudioDeviceId {};
 static SDL_AudioSpec AudioSpec {};
-static Application::AppAudio::AudioStreamCallback* AudioStreamWriter {};
+static AppAudio::AudioStreamCallback* AudioStreamWriter {};
 static uint MaxAtlasWidth {};
 static uint MaxAtlasHeight {};
 static uint MaxBones {};
-const uint& Application::AppRender::MAX_ATLAS_WIDTH {MaxAtlasWidth};
-const uint& Application::AppRender::MAX_ATLAS_HEIGHT {MaxAtlasHeight};
-const uint& Application::AppRender::MAX_BONES {MaxBones};
-const int Application::AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
-const int Application::AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
+const uint& AppRender::MAX_ATLAS_WIDTH {MaxAtlasWidth};
+const uint& AppRender::MAX_ATLAS_HEIGHT {MaxAtlasHeight};
+const uint& AppRender::MAX_BONES {MaxBones};
+const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
+const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
 static char* ClipboardTextData = nullptr;
 
 static const char* GetClipboardText(void*)
@@ -283,7 +283,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
     // Initialize audio
     if (!Settings.DisableAudio) {
         if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
-            AudioStreamWriter = new Application::AppAudio::AudioStreamCallback();
+            AudioStreamWriter = new AppAudio::AudioStreamCallback();
 
             SDL_AudioSpec desired;
             std::memset(&desired, 0, sizeof(desired));
@@ -376,57 +376,181 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
         }
     }
 
-    // Initialize video system
-    if (ActiveRendererType == RenderType::Null) {
-        return;
-    }
-
-    if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
-        throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
-    }
-
     // Determine main window size
-    // ReSharper disable once CppInitializedValueIsAlwaysRewritten
-    auto is_tablet = false;
 #if FO_IOS || FO_ANDROID
-    is_tablet = true;
+    IsTablet = true;
 #endif
 #if FO_WINDOWS && !FO_UWP
-    is_tablet = (::GetSystemMetrics(SM_TABLETPC) != 0); // Todo: recognize tablet mode for Windows 10
+    IsTablet = ::GetSystemMetrics(SM_TABLETPC) != 0; // Todo: recognize tablet mode for Windows 10
 #endif
-    if (is_tablet) {
-        SDL_DisplayMode mode;
-        if (const auto r = SDL_GetCurrentDisplayMode(0, &mode); r != 0) {
-            throw AppInitException("SDL_GetCurrentDisplayMode failed", SDL_GetError());
+
+    // Initialize video system
+    if (ActiveRendererType != RenderType::Null) {
+        if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+            throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
 
-        Settings.ScreenWidth = std::max(mode.w, mode.h);
-        Settings.ScreenHeight = std::min(mode.w, mode.h);
+        if (IsTablet) {
+            SDL_DisplayMode mode;
+            if (const auto r = SDL_GetCurrentDisplayMode(0, &mode); r != 0) {
+                throw AppInitException("SDL_GetCurrentDisplayMode failed", SDL_GetError());
+            }
 
-        const auto ratio = static_cast<float>(Settings.ScreenWidth) / static_cast<float>(Settings.ScreenHeight);
-        Settings.ScreenHeight = 768;
-        Settings.ScreenWidth = std::lround(static_cast<float>(Settings.ScreenHeight) * ratio);
+            Settings.ScreenWidth = std::max(mode.w, mode.h);
+            Settings.ScreenHeight = std::min(mode.w, mode.h);
 
-        Settings.FullScreen = true;
-    }
+            const auto ratio = static_cast<float>(Settings.ScreenWidth) / static_cast<float>(Settings.ScreenHeight);
+            Settings.ScreenHeight = 768;
+            Settings.ScreenWidth = std::lround(static_cast<float>(Settings.ScreenHeight) * ratio);
+
+            Settings.FullScreen = true;
+        }
 
 #if FO_WEB
-    // Adaptive size
-    int window_w = EM_ASM_INT(return window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth);
-    int window_h = EM_ASM_INT(return window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight);
-    Settings.ScreenWidth = std::clamp(window_w - 200, 1024, 1920);
-    Settings.ScreenHeight = std::clamp(window_h - 100, 768, 1080);
+        // Adaptive size
+        int window_w = EM_ASM_INT(return window.innerWidth || document.documentElement.clientWidth || document.getElementsByTagName('body')[0].clientWidth);
+        int window_h = EM_ASM_INT(return window.innerHeight || document.documentElement.clientHeight || document.getElementsByTagName('body')[0].clientHeight);
+        Settings.ScreenWidth = std::clamp(window_w - 200, 1024, 1920);
+        Settings.ScreenHeight = std::clamp(window_h - 100, 768, 1080);
 
-    // Fixed size
-    int fixed_w = EM_ASM_INT(return 'foScreenWidth' in Module ? Module.foScreenWidth : 0);
-    int fixed_h = EM_ASM_INT(return 'foScreenHeight' in Module ? Module.foScreenHeight : 0);
-    if (fixed_w) {
-        Settings.ScreenWidth = fixed_w;
-    }
-    if (fixed_h) {
-        Settings.ScreenHeight = fixed_h;
-    }
+        // Fixed size
+        int fixed_w = EM_ASM_INT(return 'foScreenWidth' in Module ? Module.foScreenWidth : 0);
+        int fixed_h = EM_ASM_INT(return 'foScreenHeight' in Module ? Module.foScreenHeight : 0);
+        if (fixed_w) {
+            Settings.ScreenWidth = fixed_w;
+        }
+        if (fixed_h) {
+            Settings.ScreenHeight = fixed_h;
+        }
 #endif
+
+        MainWindow._windowHandle = CreateInternalWindow(Settings.ScreenWidth, Settings.ScreenHeight);
+
+        ActiveRenderer->Init(Settings, MainWindow._windowHandle);
+
+        // SDL_ShowCursor(0);
+
+        if (Settings.AlwaysOnTop) {
+            MainWindow.AlwaysOnTop(true);
+        }
+
+        // Skip SDL allocations from profiling
+#if FO_WINDOWS && FO_DEBUG
+        ::_CrtMemCheckpoint(&CrtMemState);
+#endif
+
+        // Init Dear ImGui
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO& io = ImGui::GetIO();
+
+        io.BackendPlatformName = "fonline";
+        io.WantSaveIniSettings = false;
+        io.IniFilename = nullptr;
+
+        const string sdl_backend = SDL_GetCurrentVideoDriver();
+        vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
+        _mouseCanUseGlobalState = std::any_of(global_mouse_whitelist.begin(), global_mouse_whitelist.end(), [&sdl_backend](auto& entry) { return _str(sdl_backend).startsWith(entry); });
+
+        if (Settings.ImGuiColorStyle == "Dark") {
+            ImGui::StyleColorsDark();
+        }
+        else if (Settings.ImGuiColorStyle == "Classic") {
+            ImGui::StyleColorsClassic();
+        }
+        else {
+            ImGui::StyleColorsLight(); // Default theme
+        }
+
+        io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
+        io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+
+        io.GetClipboardTextFn = GetClipboardText;
+        io.SetClipboardTextFn = SetClipboardText;
+        io.ClipboardUserData = nullptr;
+
+        MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+        MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+        MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+        MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+        MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+        MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
+        MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
+        MouseCursors[ImGuiMouseCursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+        MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
+
+#if FO_WINDOWS
+        SDL_SysWMinfo info;
+        SDL_VERSION(&info.version);
+        if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(MainWindow._windowHandle), &info) != 0) {
+            ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<void*>(info.info.win.window);
+        }
+#endif
+
+        SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+
+        // Font texture
+        unsigned char* pixels;
+        int width;
+        int height;
+        int bytes_per_pixel;
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytes_per_pixel);
+        RUNTIME_ASSERT(bytes_per_pixel == 4);
+
+        auto* font_tex = ActiveRenderer->CreateTexture(width, height, true, false);
+        font_tex->UpdateTextureRegion(IRect(0, 0, width - 1, height - 1), reinterpret_cast<const uint*>(pixels));
+        io.Fonts->TexID = font_tex;
+
+        // Default effect
+        FileSystem base_fs;
+        base_fs.AddDataSource(Settings.EmbeddedResources);
+        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default", "", [&base_fs](string_view path) -> string {
+            const auto file = base_fs.ReadFile(path);
+            RUNTIME_ASSERT(file);
+            return file.GetStr();
+        });
+
+        _imguiDrawBuf = ActiveRenderer->CreateDrawBuffer(false);
+    }
+
+    // Start timings
+    _timeFrequency = SDL_GetPerformanceFrequency();
+    _time = SDL_GetPerformanceCounter();
+}
+
+#if FO_IOS
+void Application::SetMainLoopCallback(void (*callback)(void*))
+{
+    SDL_iPhoneSetAnimationCallback(SdlWindow, 1, callback, nullptr);
+}
+#endif
+
+auto Application::GetName() const -> string_view
+{
+    return _name;
+}
+
+auto Application::GetMousePosition() const -> tuple<int, int>
+{
+    auto x = 100;
+    auto y = 100;
+    if (ActiveRendererType != RenderType::Null) {
+        SDL_GetMouseState(&x, &y);
+    }
+    return {x, y};
+}
+
+auto Application::CreateWindow(int width, int height) -> AppWindow*
+{
+    auto* sdl_window = CreateInternalWindow(width, height);
+    auto* window = new AppWindow();
+    window->_windowHandle = sdl_window;
+    return window;
+}
+
+auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
+{
+    NON_CONST_METHOD_HINT();
 
     // Initialize window
     Uint32 window_create_flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
@@ -472,7 +596,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
         window_create_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     }
 
-    if (is_tablet) {
+    if (IsTablet) {
         window_create_flags |= SDL_WINDOW_FULLSCREEN;
         window_create_flags |= SDL_WINDOW_BORDERLESS;
     }
@@ -482,108 +606,13 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
         win_pos = SDL_WINDOWPOS_CENTERED;
     }
 
-    SdlWindow = SDL_CreateWindow(Settings.WindowName.c_str(), win_pos, win_pos, Settings.ScreenWidth, Settings.ScreenHeight, window_create_flags);
-    if (SdlWindow == nullptr) {
+    auto* sdl_window = SDL_CreateWindow(Settings.WindowName.c_str(), win_pos, win_pos, Settings.ScreenWidth, Settings.ScreenHeight, window_create_flags);
+    if (sdl_window == nullptr) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }
 
-    ActiveRenderer->Init(Settings, SdlWindow);
-
-    // SDL_ShowCursor(0);
-
-    if (Settings.AlwaysOnTop) {
-        Window.AlwaysOnTop(true);
-    }
-
-    // Skip SDL allocations from profiling
-#if FO_WINDOWS && FO_DEBUG
-    ::_CrtMemCheckpoint(&CrtMemState);
-#endif
-
-    // Init Dear ImGui
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-
-    io.BackendPlatformName = "fonline";
-    io.WantSaveIniSettings = false;
-    io.IniFilename = nullptr;
-
-    const string sdl_backend = SDL_GetCurrentVideoDriver();
-    vector<string> global_mouse_whitelist = {"windows", "cocoa", "x11", "DIVE", "VMAN"};
-    _mouseCanUseGlobalState = std::any_of(global_mouse_whitelist.begin(), global_mouse_whitelist.end(), [&sdl_backend](auto& entry) { return _str(sdl_backend).startsWith(entry); });
-
-    if (Settings.ImGuiColorStyle == "Dark") {
-        ImGui::StyleColorsDark();
-    }
-    else if (Settings.ImGuiColorStyle == "Classic") {
-        ImGui::StyleColorsClassic();
-    }
-    else {
-        ImGui::StyleColorsLight(); // Default theme
-    }
-
-    io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
-    io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
-
-    io.GetClipboardTextFn = GetClipboardText;
-    io.SetClipboardTextFn = SetClipboardText;
-    io.ClipboardUserData = nullptr;
-
-    MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-    MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-    MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
-    MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
-    MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
-    MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
-    MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
-    MouseCursors[ImGuiMouseCursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
-    MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
-
-#if FO_WINDOWS
-    SDL_SysWMinfo info;
-    SDL_VERSION(&info.version);
-    if (SDL_GetWindowWMInfo(SdlWindow, &info) != 0) {
-        ImGui::GetMainViewport()->PlatformHandleRaw = static_cast<void*>(info.info.win.window);
-    }
-#endif
-
-    SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
-
-    // Font texture
-    unsigned char* pixels;
-    int width;
-    int height;
-    int bytes_per_pixel;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height, &bytes_per_pixel);
-    RUNTIME_ASSERT(bytes_per_pixel == 4);
-
-    auto* font_tex = ActiveRenderer->CreateTexture(width, height, true, false);
-    font_tex->UpdateTextureRegion(IRect(0, 0, width - 1, height - 1), reinterpret_cast<const uint*>(pixels));
-    io.Fonts->TexID = font_tex;
-
-    // Default effect
-    FileSystem base_fs;
-    base_fs.AddDataSource(Settings.EmbeddedResources);
-    _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default", "", [&base_fs](string_view path) -> string {
-        const auto file = base_fs.ReadFile(path);
-        RUNTIME_ASSERT(file);
-        return file.GetStr();
-    });
-
-    _imguiDrawBuf = ActiveRenderer->CreateDrawBuffer(false);
-
-    // Start timings
-    _timeFrequency = SDL_GetPerformanceFrequency();
-    _time = SDL_GetPerformanceCounter();
+    return sdl_window;
 }
-
-#if FO_IOS
-void Application::SetMainLoopCallback(void (*callback)(void*))
-{
-    SDL_iPhoneSetAnimationCallback(SdlWindow, 1, callback, nullptr);
-}
-#endif
 
 void Application::BeginFrame()
 {
@@ -793,15 +822,15 @@ void Application::BeginFrame()
     // Setup display size
     int w;
     int h;
-    SDL_GetWindowSize(SdlWindow, &w, &h);
+    SDL_GetWindowSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &w, &h);
 
-    if ((SDL_GetWindowFlags(SdlWindow) & SDL_WINDOW_MINIMIZED) != 0u) {
+    if ((SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_MINIMIZED) != 0u) {
         w = h = 0;
     }
 
     int display_w;
     int display_h;
-    SDL_GL_GetDrawableSize(SdlWindow, &display_w, &display_h);
+    SDL_GL_GetDrawableSize(static_cast<SDL_Window*>(MainWindow._windowHandle), &display_w, &display_h);
 
     io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
     if (w > 0 && h > 0) {
@@ -821,13 +850,13 @@ void Application::BeginFrame()
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC
     SDL_CaptureMouse(_mouseButtonsDown != 0 ? SDL_TRUE : SDL_FALSE);
-    const bool is_app_focused = SdlWindow == SDL_GetKeyboardFocus();
+    const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle) == SDL_GetKeyboardFocus();
 #else
     const bool is_app_focused = (SDL_GetWindowFlags(SdlWindow) & SDL_WINDOW_INPUT_FOCUS) != 0;
 #endif
     if (is_app_focused) {
         if (io.WantSetMousePos) {
-            SDL_WarpMouseInWindow(SdlWindow, static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y));
+            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(MainWindow._windowHandle), static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y));
         }
 
         if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
@@ -836,7 +865,7 @@ void Application::BeginFrame()
             SDL_GetGlobalMouseState(&mouse_x_global, &mouse_y_global);
             int window_x;
             int window_y;
-            SDL_GetWindowPosition(SdlWindow, &window_x, &window_y);
+            SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
             io.AddMousePosEvent(static_cast<float>(mouse_x_global - window_x), static_cast<float>(mouse_y_global - window_y));
         }
     }
@@ -932,83 +961,81 @@ void Application::EndFrame()
     _onFrameEndDispatcher();
 }
 
-auto Application::AppWindow::GetSize() const -> tuple<int, int>
+auto AppWindow::GetSize() const -> tuple<int, int>
 {
     auto w = 1000;
     auto h = 1000;
     if (ActiveRendererType != RenderType::Null) {
-        SDL_GetWindowSize(SdlWindow, &w, &h);
+        SDL_GetWindowSize(static_cast<SDL_Window*>(_windowHandle), &w, &h);
     }
     return {w, h};
 }
 
-void Application::AppWindow::SetSize(int w, int h)
+void AppWindow::SetSize(int w, int h)
 {
+    NON_CONST_METHOD_HINT();
+
     if (ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowSize(SdlWindow, w, h);
+        SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle), w, h);
     }
 }
 
-auto Application::AppWindow::GetPosition() const -> tuple<int, int>
+auto AppWindow::GetPosition() const -> tuple<int, int>
 {
     auto x = 0;
     auto y = 0;
     if (ActiveRendererType != RenderType::Null) {
-        SDL_GetWindowPosition(SdlWindow, &x, &y);
+        SDL_GetWindowPosition(static_cast<SDL_Window*>(_windowHandle), &x, &y);
     }
     return {x, y};
 }
 
-void Application::AppWindow::SetPosition(int x, int y)
+void AppWindow::SetPosition(int x, int y)
 {
+    NON_CONST_METHOD_HINT();
+
     if (ActiveRendererType != RenderType::Null) {
-        SDL_SetWindowPosition(SdlWindow, x, y);
+        SDL_SetWindowPosition(static_cast<SDL_Window*>(_windowHandle), x, y);
     }
 }
 
-auto Application::AppWindow::GetMousePosition() const -> tuple<int, int>
+void AppWindow::SetMousePosition(int x, int y)
 {
-    auto x = 100;
-    auto y = 100;
-    if (ActiveRendererType != RenderType::Null) {
-        SDL_GetMouseState(&x, &y);
-    }
-    return {x, y};
-}
+    NON_CONST_METHOD_HINT();
 
-void Application::AppWindow::SetMousePosition(int x, int y)
-{
     if (ActiveRendererType != RenderType::Null) {
-        SDL_WarpMouseInWindow(SdlWindow, x, y);
+        SDL_WarpMouseInWindow(static_cast<SDL_Window*>(_windowHandle), x, y);
     }
 }
 
-auto Application::AppWindow::IsFocused() const -> bool
+auto AppWindow::IsFocused() const -> bool
 {
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(SdlWindow) & SDL_WINDOW_INPUT_FOCUS) != 0u;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0u;
     }
 
     return true;
 }
 
-void Application::AppWindow::Minimize()
+void AppWindow::Minimize()
 {
+    NON_CONST_METHOD_HINT();
+
     if (ActiveRendererType != RenderType::Null) {
-        SDL_MinimizeWindow(SdlWindow);
+        SDL_MinimizeWindow(static_cast<SDL_Window*>(_windowHandle));
     }
 }
 
-auto Application::AppWindow::IsFullscreen() const -> bool
+auto AppWindow::IsFullscreen() const -> bool
 {
     if (ActiveRendererType != RenderType::Null) {
-        return (SDL_GetWindowFlags(SdlWindow) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0u;
+        return (SDL_GetWindowFlags(static_cast<SDL_Window*>(_windowHandle)) & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) != 0u;
     }
 
     return false;
 }
 
-auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
+auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
     NON_CONST_METHOD_HINT();
 
@@ -1018,13 +1045,13 @@ auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
 
     const auto is_fullscreen = IsFullscreen();
     if (!is_fullscreen && enable) {
-        if (SDL_SetWindowFullscreen(SdlWindow, SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
+        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), SDL_WINDOW_FULLSCREEN_DESKTOP) == 0) {
             RUNTIME_ASSERT(IsFullscreen());
             return true;
         }
     }
     else if (is_fullscreen && !enable) {
-        if (SDL_SetWindowFullscreen(SdlWindow, 0) == 0) {
+        if (SDL_SetWindowFullscreen(static_cast<SDL_Window*>(_windowHandle), 0) == 0) {
             RUNTIME_ASSERT(!IsFullscreen());
             return true;
         }
@@ -1033,8 +1060,10 @@ auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
     return false;
 }
 
-void Application::AppWindow::Blink()
+void AppWindow::Blink()
 {
+    NON_CONST_METHOD_HINT();
+
     if (ActiveRendererType == RenderType::Null) {
         return;
     }
@@ -1042,14 +1071,16 @@ void Application::AppWindow::Blink()
 #if FO_WINDOWS && !FO_UWP
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version)
-    if (SDL_GetWindowWMInfo(SdlWindow, &info) != 0) {
+    if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(_windowHandle), &info) != 0) {
         ::FlashWindow(info.info.win.window, 1);
     }
 #endif
 }
 
-void Application::AppWindow::AlwaysOnTop(bool enable)
+void AppWindow::AlwaysOnTop(bool enable)
 {
+    NON_CONST_METHOD_HINT();
+
     if (ActiveRendererType == RenderType::Null) {
         return;
     }
@@ -1057,54 +1088,64 @@ void Application::AppWindow::AlwaysOnTop(bool enable)
 #if FO_WINDOWS && !FO_UWP
     SDL_SysWMinfo info;
     SDL_VERSION(&info.version)
-    if (SDL_GetWindowWMInfo(SdlWindow, &info) != 0) {
+    if (SDL_GetWindowWMInfo(static_cast<SDL_Window*>(_windowHandle), &info) != 0) {
         ::SetWindowPos(info.info.win.window, enable ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
     }
 #endif
 }
 
-auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
+void AppWindow::Destroy()
+{
+    NON_CONST_METHOD_HINT();
+
+    if (_windowHandle != nullptr && this != &App->MainWindow) {
+        SDL_DestroyWindow(static_cast<SDL_Window*>(_windowHandle));
+        _windowHandle = nullptr;
+    }
+}
+
+auto AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     return ActiveRenderer->CreateTexture(width, height, linear_filtered, with_depth);
 }
 
-void Application::AppRender::SetRenderTarget(RenderTexture* tex)
+void AppRender::SetRenderTarget(RenderTexture* tex)
 {
     ActiveRenderer->SetRenderTarget(tex);
     RenderTargetTex = tex;
 }
 
-auto Application::AppRender::GetRenderTarget() -> RenderTexture*
+auto AppRender::GetRenderTarget() -> RenderTexture*
 {
     return RenderTargetTex;
 }
 
-void Application::AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
     ActiveRenderer->ClearRenderTarget(color, depth, stencil);
 }
 
-void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
+void AppRender::EnableScissor(int x, int y, uint w, uint h)
 {
     ActiveRenderer->EnableScissor(x, y, w, h);
 }
 
-void Application::AppRender::DisableScissor()
+void AppRender::DisableScissor()
 {
     ActiveRenderer->DisableScissor();
 }
 
-auto Application::AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
     return ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
-auto Application::AppRender::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*
 {
     return ActiveRenderer->CreateEffect(usage, name, defines, loader);
 }
 
-auto Application::AppInput::PollEvent(InputEvent& event) -> bool
+auto AppInput::PollEvent(InputEvent& event) -> bool
 {
     if (!EventsQueue->empty()) {
         event = EventsQueue->front();
@@ -1114,41 +1155,41 @@ auto Application::AppInput::PollEvent(InputEvent& event) -> bool
     return false;
 }
 
-void Application::AppInput::PushEvent(const InputEvent& event)
+void AppInput::PushEvent(const InputEvent& event)
 {
     NextFrameEventsQueue->push_back(event);
 }
 
-void Application::AppInput::SetClipboardText(string_view text)
+void AppInput::SetClipboardText(string_view text)
 {
     SDL_SetClipboardText(string(text).c_str());
 }
 
-auto Application::AppInput::GetClipboardText() -> string
+auto AppInput::GetClipboardText() -> string
 {
     return SDL_GetClipboardText();
 }
 
-auto Application::AppAudio::IsEnabled() -> bool
+auto AppAudio::IsEnabled() -> bool
 {
     return AudioDeviceId >= 2;
 }
 
-auto Application::AppAudio::GetStreamSize() -> uint
+auto AppAudio::GetStreamSize() -> uint
 {
     RUNTIME_ASSERT(IsEnabled());
 
     return AudioSpec.size;
 }
 
-auto Application::AppAudio::GetSilence() -> uchar
+auto AppAudio::GetSilence() -> uchar
 {
     RUNTIME_ASSERT(IsEnabled());
 
     return AudioSpec.silence;
 }
 
-void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
+void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1157,7 +1198,7 @@ void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
     UnlockDevice();
 }
 
-struct Application::AppAudio::AudioConverter
+struct AppAudio::AudioConverter
 {
     int Format {};
     int Channels {};
@@ -1166,7 +1207,7 @@ struct Application::AppAudio::AudioConverter
     bool NeedConvert {};
 };
 
-auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
+auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1207,7 +1248,7 @@ auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vec
     return true;
 }
 
-void Application::AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
+void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
     RUNTIME_ASSERT(IsEnabled());
 
@@ -1215,14 +1256,14 @@ void Application::AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
     SDL_MixAudioFormat(output, buf, AudioSpec.format, AudioSpec.size, volume);
 }
 
-void Application::AppAudio::LockDevice()
+void AppAudio::LockDevice()
 {
     RUNTIME_ASSERT(IsEnabled());
 
     SDL_LockAudioDevice(AudioDeviceId);
 }
 
-void Application::AppAudio::UnlockDevice()
+void AppAudio::UnlockDevice()
 {
     RUNTIME_ASSERT(IsEnabled());
 

@@ -1886,7 +1886,7 @@
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->DrawEffect = client->OffscreenEffects[effectSubtype];
+    rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
     client->SprMngr.DrawRenderTarget(rt, true, nullptr, nullptr);
 }
@@ -1917,7 +1917,7 @@
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->DrawEffect = client->OffscreenEffects[effectSubtype];
+    rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
     IRect from(std::clamp(x, 0, client->Settings.ScreenWidth), std::clamp(y, 0, client->Settings.ScreenHeight), std::clamp(x + w, 0, client->Settings.ScreenWidth), std::clamp(y + h, 0, client->Settings.ScreenHeight));
     auto to = from;
@@ -1954,7 +1954,7 @@
         throw ScriptException("Invalid effect subtype");
     }
 
-    rt->DrawEffect = client->OffscreenEffects[effectSubtype];
+    rt->CustomDrawEffect = client->OffscreenEffects[effectSubtype];
 
     IRect from(std::clamp(fromX, 0, client->Settings.ScreenWidth), std::clamp(fromY, 0, client->Settings.ScreenHeight), std::clamp(fromX + fromW, 0, client->Settings.ScreenWidth), std::clamp(fromY + fromH, 0, client->Settings.ScreenHeight));
     IRect to(std::clamp(toX, 0, client->Settings.ScreenWidth), std::clamp(toY, 0, client->Settings.ScreenHeight), std::clamp(toX + toW, 0, client->Settings.ScreenWidth), std::clamp(toY + toH, 0, client->Settings.ScreenHeight));

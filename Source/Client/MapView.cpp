@@ -300,13 +300,13 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntit
     _rtScreenOy = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
 
     _rtMap = _engine->SprMngr.CreateRenderTarget(false, true, 0, 0, false);
-    _rtMap->DrawEffect = _engine->EffectMngr.Effects.FlushMap;
+    _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
 
     _rtLight = _engine->SprMngr.CreateRenderTarget(false, true, _rtScreenOx * 2, _rtScreenOy * 2, false);
-    _rtLight->DrawEffect = _engine->EffectMngr.Effects.FlushLight;
+    _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
 
     _rtFog = _engine->SprMngr.CreateRenderTarget(false, true, _rtScreenOx * 2, _rtScreenOy * 2, false);
-    _rtFog->DrawEffect = _engine->EffectMngr.Effects.FlushFog;
+    _rtFog->CustomDrawEffect = _engine->EffectMngr.Effects.FlushFog;
 
     _dayTime[0] = 300;
     _dayTime[1] = 600;

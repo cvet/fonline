@@ -88,7 +88,7 @@ class FOClient : virtual public FOEngineBase, public AnimationResolver
 
 public:
 #if !FO_SINGLEPLAYER
-    FOClient(GlobalSettings& settings, const vector<uchar>& restore_info_bin);
+    FOClient(GlobalSettings& settings, AppWindow* window, const vector<uchar>& restore_info_bin);
 #endif
 
     FOClient(const FOClient&) = delete;
@@ -288,7 +288,7 @@ protected:
 
     static constexpr auto MINIMAP_PREPARE_TICK = 1000u;
 
-    FOClient(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback);
+    FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback);
 
     void ProcessAutoLogin();
     void ProcessGlobalMap();

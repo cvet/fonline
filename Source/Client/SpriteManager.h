@@ -138,7 +138,7 @@ enum class AtlasType
 struct RenderTarget
 {
     unique_ptr<RenderTexture> MainTex {};
-    RenderEffect* DrawEffect {};
+    RenderEffect* CustomDrawEffect {};
     bool ScreenSized {};
     vector<tuple<int, int, uint>> LastPixelPicks {};
 };
@@ -232,7 +232,7 @@ class SpriteManager final
 {
 public:
     SpriteManager() = delete;
-    SpriteManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr);
+    SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& file_sys, EffectManager& effect_mngr);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -241,7 +241,6 @@ public:
 
     [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetWindowPosition() const -> tuple<int, int>;
-    [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
@@ -333,6 +332,7 @@ private:
 #endif
 
     RenderSettings& _settings;
+    AppWindow* _window;
     FileSystem& _fileSys;
     EffectManager& _effectMngr;
     mat44 _projectionMatrixCm {};

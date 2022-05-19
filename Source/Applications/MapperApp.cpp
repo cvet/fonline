@@ -65,7 +65,7 @@ static void MapperEntry(void*)
 
         if (Data->Mapper == nullptr) {
             try {
-                Data->Mapper = new FOMapper(App->Settings);
+                Data->Mapper = new FOMapper(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

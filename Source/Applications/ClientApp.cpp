@@ -72,7 +72,7 @@ static void MainEntry(void*)
                 // Synchronize files
                 if (!Data->ResourcesSynced) {
                     if (Data->ResourceUpdater == nullptr) {
-                        Data->ResourceUpdater = new Updater(App->Settings);
+                        Data->ResourceUpdater = new Updater(App->Settings, &App->MainWindow);
                     }
 
                     if (!Data->ResourceUpdater->Process()) {
@@ -88,7 +88,7 @@ static void MainEntry(void*)
                 }
 
                 // Create game module
-                Data->Client = new FOClient(App->Settings, Data->ClientRestoreBin);
+                Data->Client = new FOClient(App->Settings, &App->MainWindow, Data->ClientRestoreBin);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

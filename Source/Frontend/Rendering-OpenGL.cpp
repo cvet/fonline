@@ -116,10 +116,10 @@ static auto ErrCodeToString(GLenum err_code) -> string
         ERR_CODE_CASE(GL_INVALID_ENUM);
         ERR_CODE_CASE(GL_INVALID_VALUE);
         ERR_CODE_CASE(GL_INVALID_OPERATION);
+        ERR_CODE_CASE(GL_INVALID_FRAMEBUFFER_OPERATION);
+        ERR_CODE_CASE(GL_OUT_OF_MEMORY);
         ERR_CODE_CASE(GL_STACK_OVERFLOW);
         ERR_CODE_CASE(GL_STACK_UNDERFLOW);
-        ERR_CODE_CASE(GL_OUT_OF_MEMORY);
-        ERR_CODE_CASE(GL_INVALID_FRAMEBUFFER_OPERATION);
     default:
         return _str("{:#X}", err_code).str();
     }
@@ -226,29 +226,29 @@ public:
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
-    GLint Location_ZoomFactor;
-    GLint Location_ColorMap;
-    GLint Location_ColorMapSize;
-    GLint Location_ColorMapSamples;
-    GLint Location_EggMap;
-    GLint Location_EggMapSize;
-    GLint Location_SpriteBorder;
-    GLint Location_ProjectionMatrix;
-    GLint Location_GroundPosition;
-    GLint Location_LightColor;
-    GLint Location_WorldMatrices;
+    GLint Location_ZoomFactor {};
+    GLint Location_ColorMap {};
+    GLint Location_ColorMapSize {};
+    GLint Location_ColorMapSamples {};
+    GLint Location_EggMap {};
+    GLint Location_EggMapSize {};
+    GLint Location_SpriteBorder {};
+    GLint Location_ProjectionMatrix {};
+    GLint Location_GroundPosition {};
+    GLint Location_LightColor {};
+    GLint Location_WorldMatrices {};
 };
 
-void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
+void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
     RenderDebug = settings.RenderDebug;
-    SdlWindow = window;
+    SdlWindow = static_cast<SDL_Window*>(window);
 
 #if !FO_WEB
-    GlContext = SDL_GL_CreateContext(window);
+    GlContext = SDL_GL_CreateContext(SdlWindow);
     RUNTIME_ASSERT_STR(GlContext, _str("OpenGL context not created, error '{}'", SDL_GetError()));
 
-    const auto make_current = SDL_GL_MakeCurrent(window, GlContext);
+    const auto make_current = SDL_GL_MakeCurrent(SdlWindow, GlContext);
     RUNTIME_ASSERT_STR(make_current >= 0, _str("Can't set current context, error '{}'", SDL_GetError()));
 
     SDL_GL_SetSwapInterval(settings.VSync ? 1 : 0);
@@ -373,14 +373,14 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
     GL(glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_texture_size));
     GLint max_viewport_size[2];
     GL(glGetIntegerv(GL_MAX_VIEWPORT_DIMS, max_viewport_size));
-    auto atlas_w = std::min(static_cast<uint>(max_texture_size), Application::AppRender::MAX_ATLAS_SIZE);
+    auto atlas_w = std::min(static_cast<uint>(max_texture_size), AppRender::MAX_ATLAS_SIZE);
     auto atlas_h = atlas_w;
     atlas_w = std::min(static_cast<uint>(max_viewport_size[0]), atlas_w);
     atlas_h = std::min(static_cast<uint>(max_viewport_size[1]), atlas_h);
-    RUNTIME_ASSERT_STR(atlas_w >= Application::AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", Application::AppRender::MIN_ATLAS_SIZE));
-    RUNTIME_ASSERT_STR(atlas_h >= Application::AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", Application::AppRender::MIN_ATLAS_SIZE));
-    const_cast<uint&>(Application::AppRender::MAX_ATLAS_WIDTH) = atlas_w;
-    const_cast<uint&>(Application::AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
+    RUNTIME_ASSERT_STR(atlas_w >= AppRender::MIN_ATLAS_SIZE, _str("Min texture width must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    RUNTIME_ASSERT_STR(atlas_h >= AppRender::MIN_ATLAS_SIZE, _str("Min texture height must be at least {}", AppRender::MIN_ATLAS_SIZE));
+    const_cast<uint&>(AppRender::MAX_ATLAS_WIDTH) = atlas_w;
+    const_cast<uint&>(AppRender::MAX_ATLAS_HEIGHT) = atlas_h;
 
     // Check max bones
 #if FO_ENABLE_3D
@@ -829,10 +829,10 @@ void OpenGL_Renderer::SetRenderTarget(RenderTexture* tex)
     }
 
     if (screen_size) {
-        Application::AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)settings.ScreenWidth, (float)settings.ScreenHeight, 0.0f, -1.0f, 1.0f);
+        AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)settings.ScreenWidth, (float)settings.ScreenHeight, 0.0f, -1.0f, 1.0f);
     }
     else {
-        Application::AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f);
+        AppWindow::MatrixOrtho(projectionMatrixCM[0], 0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f);
     }
     projectionMatrixCM.Transpose(); // Convert to column major order
     */

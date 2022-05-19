@@ -34,7 +34,7 @@
 #include "Single.h"
 #include "SingleScripting.h"
 
-FOSingle::FOSingle(GlobalSettings& settings) :
+FOSingle::FOSingle(GlobalSettings& settings, AppWindow* window) :
     FOEngineBase(settings, PropertiesRelationType::BothRelative,
         [&, this] {
             extern void Single_RegisterData(FOEngineBase*);
@@ -42,7 +42,7 @@ FOSingle::FOSingle(GlobalSettings& settings) :
             return new SingleScriptSystem(this, settings);
         }),
     FOServer(settings),
-    FOClient(settings, PropertiesRelationType::None, nullptr)
+    FOClient(settings, window, PropertiesRelationType::None, nullptr)
 {
 }
 

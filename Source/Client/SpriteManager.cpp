@@ -105,7 +105,7 @@ auto AnyFrames::GetDir(int dir) -> AnyFrames*
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
 
-SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}
+SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& file_sys, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _fileSys {file_sys}, _effectMngr {effect_mngr}
 {
     _baseColor = COLOR_RGBA(255, 128, 128, 128);
     _drawQuadCount = 1024;
@@ -137,6 +137,8 @@ SpriteManager::SpriteManager(RenderSettings& settings, FileSystem& file_sys, Eff
 
 SpriteManager::~SpriteManager()
 {
+    _window->Destroy();
+
     delete DummyAnimation;
 
     for (const auto* it : _sprData) {
@@ -146,62 +148,57 @@ SpriteManager::~SpriteManager()
 
 auto SpriteManager::GetWindowSize() const -> tuple<int, int>
 {
-    return App->Window.GetSize();
+    return _window->GetSize();
 }
 
 void SpriteManager::SetWindowSize(int w, int h)
 {
-    App->Window.SetSize(w, h);
+    _window->SetSize(w, h);
 }
 
 auto SpriteManager::GetWindowPosition() const -> tuple<int, int>
 {
-    return App->Window.GetPosition();
+    return _window->GetPosition();
 }
 
 void SpriteManager::SetWindowPosition(int x, int y)
 {
-    App->Window.SetPosition(x, y);
-}
-
-auto SpriteManager::GetMousePosition() const -> tuple<int, int>
-{
-    return App->Window.GetMousePosition();
+    _window->SetPosition(x, y);
 }
 
 void SpriteManager::SetMousePosition(int x, int y)
 {
-    App->Window.SetMousePosition(x, y);
+    _window->SetMousePosition(x, y);
 }
 
 auto SpriteManager::IsWindowFocused() const -> bool
 {
-    return App->Window.IsFocused();
+    return _window->IsFocused();
 }
 
 void SpriteManager::MinimizeWindow()
 {
-    App->Window.Minimize();
+    _window->Minimize();
 }
 
 auto SpriteManager::EnableFullscreen() -> bool
 {
-    return App->Window.ToggleFullscreen(true);
+    return _window->ToggleFullscreen(true);
 }
 
 auto SpriteManager::DisableFullscreen() -> bool
 {
-    return App->Window.ToggleFullscreen(false);
+    return _window->ToggleFullscreen(false);
 }
 
 void SpriteManager::BlinkWindow()
 {
-    App->Window.Blink();
+    _window->Blink();
 }
 
 void SpriteManager::SetAlwaysOnTop(bool enable)
 {
-    App->Window.AlwaysOnTop(enable);
+    _window->AlwaysOnTop(enable);
 }
 
 void SpriteManager::BeginScene(uint clear_color)
@@ -260,7 +257,6 @@ auto SpriteManager::CreateRenderTarget(bool with_depth, bool screen_sized, uint 
     auto rt = std::make_unique<RenderTarget>();
     rt->ScreenSized = screen_sized;
     rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(width, height, linear_filtered, with_depth));
-    rt->DrawEffect = _effectMngr.Effects.FlushRenderTarget;
 
     auto* prev_tex = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(rt->MainTex.get());
@@ -301,7 +297,7 @@ void SpriteManager::PopRenderTarget()
     }
 }
 
-void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool /*alpha_blend*/, const IRect* region_from, const IRect* region_to)
+void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to)
 {
     Flush();
 
@@ -362,14 +358,11 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool /*alpha_blend*/, con
         vbuf[pos].TV = 1.0f - regionf.Bottom / hf;
     }
 
-    rt->DrawEffect->DrawBuffer(_flushDrawBuf);
+    auto* effect = rt->CustomDrawEffect != nullptr ? rt->CustomDrawEffect : _effectMngr.Effects.FlushRenderTarget;
 
-    // rt->DrawEffect->DisableBlending = !alpha_blend;
-    // if (!alpha_blend)
-    //    GL(glDisable(GL_BLEND));
-    // Flush();
-    // if (!alpha_blend)
-    //    GL(glEnable(GL_BLEND));
+    effect->MainTex = rt->MainTex.get();
+    effect->DisableBlending = !alpha_blend;
+    effect->DrawBuffer(_flushDrawBuf);
 }
 
 auto SpriteManager::GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint
@@ -982,7 +975,12 @@ void SpriteManager::RenderModel(ModelInstance* model)
     PopRenderTarget();
 
     // Copy render
-    IRect region_to(static_cast<int>(si->SprRect.Left * static_cast<float>(si->Atlas->Width) + 0.5f), static_cast<int>((1.0f - si->SprRect.Top) * static_cast<float>(si->Atlas->Height) + 0.5f), static_cast<int>(si->SprRect.Right * static_cast<float>(si->Atlas->Width) + 0.5f), static_cast<int>((1.0f - si->SprRect.Bottom) * static_cast<float>(si->Atlas->Height) + 0.5f));
+    const auto l = iround(si->SprRect.Left * static_cast<float>(si->Atlas->Width));
+    const auto t = iround((1.0f - si->SprRect.Top) * static_cast<float>(si->Atlas->Height));
+    const auto r = iround(si->SprRect.Right * static_cast<float>(si->Atlas->Width));
+    const auto b = iround((1.0f - si->SprRect.Bottom) * static_cast<float>(si->Atlas->Height));
+    const auto region_to = IRect(l, t, r, b);
+
     PushRenderTarget(si->Atlas->RT);
     DrawRenderTarget(rt, false, nullptr, &region_to);
     PopRenderTarget();
@@ -1135,6 +1133,7 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     }
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+
     if (_dipQueue.empty() || _dipQueue.back().SourceEffect->CanBatch(effect)) {
         _dipQueue.push_back(DipData {si->Atlas->MainTex, effect, 1});
     }
@@ -1225,6 +1224,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     }
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
+
     if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
         _dipQueue.push_back(DipData {si->Atlas->MainTex, effect, 1});
     }
@@ -1797,10 +1797,7 @@ void SpriteManager::DrawPoints(vector<PrimitivePoint>& points, RenderPrimitiveTy
 
     Flush();
 
-    auto* effect = custom_effect;
-    if (effect == nullptr) {
-        effect = _effectMngr.Effects.Primitive;
-    }
+    auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr.Effects.Primitive;
 
     // Check primitives
     const auto count = static_cast<uint>(points.size());

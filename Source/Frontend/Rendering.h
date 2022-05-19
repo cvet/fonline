@@ -40,7 +40,7 @@
 DECLARE_EXCEPTION(EffectLoadException);
 DECLARE_EXCEPTION(RenderingException);
 
-struct SDL_Window;
+using WindowInternalHandle = void;
 
 constexpr int EFFECT_TEXTURES = 8;
 constexpr int EFFECT_SCRIPT_VALUES = 16;
@@ -310,7 +310,7 @@ public:
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* = 0;
     [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* = 0;
 
-    virtual void Init(GlobalSettings& settings, SDL_Window* window) = 0;
+    virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
     virtual void Present() = 0;
     virtual void SetRenderTarget(RenderTexture* tex) = 0;
     virtual void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) = 0;
@@ -328,7 +328,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override { return nullptr; }
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
 
-    void Init(GlobalSettings& settings, SDL_Window* window) override { }
+    void Init(GlobalSettings& settings, WindowInternalHandle* window) override { }
     void Present() override { }
     void SetRenderTarget(RenderTexture* tex) override { }
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override { }
@@ -347,7 +347,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override;
 
-    void Init(GlobalSettings& settings, SDL_Window* window) override;
+    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;
@@ -366,7 +366,7 @@ public:
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
     [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override;
 
-    void Init(GlobalSettings& settings, SDL_Window* window) override;
+    void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
     void SetRenderTarget(RenderTexture* tex) override;
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) override;

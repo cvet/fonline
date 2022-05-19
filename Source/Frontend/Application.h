@@ -222,6 +222,83 @@ struct InputEvent
     explicit InputEvent(KeyUpEvent ev) : Type {EventType::KeyUpEvent}, KeyUp {ev} { }
 };
 
+struct AppWindow
+{
+    friend class Application;
+
+    [[nodiscard]] auto GetSize() const -> tuple<int, int>;
+    [[nodiscard]] auto GetPosition() const -> tuple<int, int>;
+    [[nodiscard]] auto IsFocused() const -> bool;
+    [[nodiscard]] auto IsFullscreen() const -> bool;
+
+    void SetSize(int w, int h);
+    void SetPosition(int x, int y);
+    void SetMousePosition(int x, int y);
+    void Minimize();
+    auto ToggleFullscreen(bool enable) -> bool;
+    void Blink();
+    void AlwaysOnTop(bool enable);
+    void Destroy();
+
+private:
+    WindowInternalHandle* _windowHandle {};
+    int _nonConstHelper {};
+};
+
+struct AppRender
+{
+    static constexpr uint MAX_ATLAS_SIZE = 4096;
+    static constexpr uint MIN_ATLAS_SIZE = 2048;
+    static const uint& MAX_ATLAS_WIDTH;
+    static const uint& MAX_ATLAS_HEIGHT;
+    static const uint& MAX_BONES;
+
+    [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
+    [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*;
+    [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*;
+
+    void SetRenderTarget(RenderTexture* tex);
+    void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
+    void EnableScissor(int x, int y, uint w, uint h);
+    void DisableScissor();
+};
+
+struct AppInput
+{
+    static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
+
+    [[nodiscard]] auto GetClipboardText() -> string;
+
+    [[nodiscard]] auto PollEvent(InputEvent& event) -> bool;
+
+    void PushEvent(const InputEvent& event);
+    void SetClipboardText(string_view text);
+};
+
+struct AppAudio
+{
+    static const int AUDIO_FORMAT_U8;
+    static const int AUDIO_FORMAT_S16;
+
+    using AudioStreamCallback = std::function<void(uchar*)>;
+
+    [[nodiscard]] auto IsEnabled() -> bool;
+    [[nodiscard]] auto GetStreamSize() -> uint;
+    [[nodiscard]] auto GetSilence() -> uchar;
+
+    [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool;
+
+    void SetSource(AudioStreamCallback stream_callback);
+    void MixAudio(uchar* output, uchar* buf, int volume);
+    void LockDevice();
+    void UnlockDevice();
+
+private:
+    struct AudioConverter;
+    vector<AudioConverter*> _converters {};
+};
+
 class Application final
 {
     friend void InitApp(int argc, char** argv, string_view name_appendix);
@@ -229,87 +306,16 @@ class Application final
     Application(int argc, char** argv, string_view name_appendix);
 
 public:
-    struct AppWindow
-    {
-        [[nodiscard]] auto GetSize() const -> tuple<int, int>;
-        [[nodiscard]] auto GetPosition() const -> tuple<int, int>;
-        [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
-        [[nodiscard]] auto IsFocused() const -> bool;
-        [[nodiscard]] auto IsFullscreen() const -> bool;
-
-        void SetSize(int w, int h);
-        void SetPosition(int x, int y);
-        void SetMousePosition(int x, int y);
-        void Minimize();
-        auto ToggleFullscreen(bool enable) -> bool;
-        void Blink();
-        void AlwaysOnTop(bool enable);
-
-    private:
-        int _nonConstHelper {};
-    };
-
-    struct AppRender
-    {
-        static constexpr uint MAX_ATLAS_SIZE = 4096;
-        static constexpr uint MIN_ATLAS_SIZE = 2048;
-        static const uint& MAX_ATLAS_WIDTH;
-        static const uint& MAX_ATLAS_HEIGHT;
-        static const uint& MAX_BONES;
-
-        [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
-        [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*;
-        [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
-        [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*;
-
-        void SetRenderTarget(RenderTexture* tex);
-        void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
-        void EnableScissor(int x, int y, uint w, uint h);
-        void DisableScissor();
-    };
-
-    struct AppInput
-    {
-        static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
-
-        [[nodiscard]] auto GetClipboardText() -> string;
-
-        [[nodiscard]] auto PollEvent(InputEvent& event) -> bool;
-
-        void PushEvent(const InputEvent& event);
-        void SetClipboardText(string_view text);
-    };
-
-    struct AppAudio
-    {
-        static const int AUDIO_FORMAT_U8;
-        static const int AUDIO_FORMAT_S16;
-
-        using AudioStreamCallback = std::function<void(uchar*)>;
-
-        [[nodiscard]] auto IsEnabled() -> bool;
-        [[nodiscard]] auto GetStreamSize() -> uint;
-        [[nodiscard]] auto GetSilence() -> uchar;
-
-        [[nodiscard]] auto ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool;
-
-        void SetSource(AudioStreamCallback stream_callback);
-        void MixAudio(uchar* output, uchar* buf, int volume);
-        void LockDevice();
-        void UnlockDevice();
-
-    private:
-        struct AudioConverter;
-        vector<AudioConverter*> _converters {};
-    };
-
     Application(const Application&) = delete;
     Application(Application&&) noexcept = delete;
     auto operator=(const Application&) = delete;
     auto operator=(Application&&) noexcept = delete;
     ~Application() = default;
 
-    [[nodiscard]] auto GetName() const -> string_view { return _name; }
+    [[nodiscard]] auto GetName() const -> string_view;
+    [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
+
+    [[nodiscard]] auto CreateWindow(int width, int height) -> AppWindow*;
 
 #if FO_IOS
     void SetMainLoopCallback(void (*callback)(void*));
@@ -326,12 +332,14 @@ public:
     EventObserver<> OnLowMemory {};
     EventObserver<> OnQuit {};
 
-    AppWindow Window;
+    AppWindow MainWindow;
     AppRender Render;
     AppInput Input;
     AppAudio Audio;
 
 private:
+    [[nodiscard]] auto CreateInternalWindow(int width, int height) -> WindowInternalHandle*;
+
     string _name {};
     uint64 _time {};
     uint64 _timeFrequency {};
@@ -346,6 +354,7 @@ private:
     EventDispatcher<> _onResumeDispatcher {OnResume};
     EventDispatcher<> _onLowMemoryDispatcher {OnLowMemory};
     EventDispatcher<> _onQuitDispatcher {OnQuit};
+    int _nonConstHelper {};
 };
 
 class MessageBox final

@@ -123,6 +123,23 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             }).detach();
         };
 
+        const auto spawn_client = [](bool in_separate_window) {
+            Data->ClientSpawning = true;
+            Data->ThreadTasks.fetch_add(1);
+            // Todo: allow instantiate client in separate thread (rendering issues)
+            // std::thread([] {
+            try {
+                auto* window = in_separate_window ? App->CreateWindow(800, 600) : &App->MainWindow;
+                Data->SpawnedClient = new FOClient(App->Settings, window, Data->Server->RestoreInfoBin);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+            Data->ClientSpawning = false;
+            Data->ThreadTasks.fetch_sub(1);
+            //}).detach();
+        };
+
         // Autostart
         if (!App->Settings.NoStart) {
             start_server();
@@ -135,7 +152,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             const auto& io = ImGui::GetIO();
 
             // Control panel
-            constexpr auto control_btn_size = ImVec2(200, 30);
+            constexpr auto control_btn_size = ImVec2(250, 30);
             ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x / 2.0f, 50.0f), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.0f));
             if (ImGui::Begin("Control panel", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
                 const auto imgui_progress_btn = [&control_btn_size](const char* title) {
@@ -172,24 +189,16 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                         Data->SpawnedClient = nullptr;
                     }
 
-                    if (ImGui::Button("Spawn client", control_btn_size)) {
-                        Data->ClientSpawning = true;
-                        Data->ThreadTasks.fetch_add(1);
-                        // Todo: allow instantiate client in separate thread (rendering issues)
-                        // std::thread([] {
-                        try {
-                            Data->SpawnedClient = new FOClient(App->Settings, Data->Server->RestoreInfoBin);
-                        }
-                        catch (const std::exception& ex) {
-                            ReportExceptionAndContinue(ex);
-                        }
-                        Data->ClientSpawning = false;
-                        Data->ThreadTasks.fetch_sub(1);
-                        //}).detach();
+                    if (ImGui::Button("Spawn client (in background)", control_btn_size)) {
+                        spawn_client(false);
+                    }
+                    if (ImGui::Button("Spawn client (in new window)", control_btn_size)) {
+                        spawn_client(true);
                     }
                 }
                 else {
                     imgui_progress_btn("Client spawning...");
+                    imgui_progress_btn("..................");
                 }
 
                 if (ImGui::Button("Create dump", control_btn_size)) {
@@ -220,7 +229,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             if (Data->ServerState == ServerStateType::Started) {
                 try {
                     Data->Server->MainLoop();
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
 
+                try {
                     ImGui::SetNextWindowPos(ImVec2(10, 0), ImGuiCond_FirstUseEver);
                     Data->Server->DrawGui("Server");
                 }
@@ -241,7 +255,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             // Clients loop
             for (auto* client : Data->Clients) {
-                client->MainLoop();
+                try {
+                    client->MainLoop();
+                }
+                catch (const std::exception& ex) {
+                    ReportExceptionAndContinue(ex);
+                }
             }
 
             App->EndFrame();

@@ -40,8 +40,8 @@
 #include "Version-Include.h"
 
 #if !FO_SINGLEPLAYER
-FOClient::FOClient(GlobalSettings& settings, const vector<uchar>& restore_info_bin) :
-    FOClient(settings, PropertiesRelationType::ClientRelative, [&, this]() -> ScriptSystem* {
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const vector<uchar>& restore_info_bin) :
+    FOClient(settings, window, PropertiesRelationType::ClientRelative, [&, this]() -> ScriptSystem* {
         extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
         Client_RegisterData(this, restore_info_bin);
         return new ClientScriptSystem(this, settings);
@@ -50,14 +50,14 @@ FOClient::FOClient(GlobalSettings& settings, const vector<uchar>& restore_info_b
 }
 #endif
 
-FOClient::FOClient(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
     FOEngineBase(settings, props_relation, register_data_callback),
 
     GeomHelper(Settings),
     GameTime(Settings),
     ProtoMngr(this),
     EffectMngr(Settings, FileSys),
-    SprMngr(Settings, FileSys, EffectMngr),
+    SprMngr(Settings, window, FileSys, EffectMngr),
     ResMngr(FileSys, SprMngr, *this, *this),
     SndMngr(Settings, FileSys),
     Keyb(Settings, SprMngr),
@@ -85,10 +85,7 @@ FOClient::FOClient(GlobalSettings& settings, PropertiesRelationType props_relati
 
     _fpsTick = GameTime.FrameTick();
 
-    const auto [w, h] = SprMngr.GetWindowSize();
-    const auto [x, y] = SprMngr.GetMousePosition();
-    Settings.MouseX = std::clamp(x, 0, w - 1);
-    Settings.MouseY = std::clamp(y, 0, h - 1);
+    std::tie(Settings.MouseX, Settings.MouseY) = App->GetMousePosition();
 
     // Language Packs
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
@@ -455,23 +452,6 @@ void FOClient::MainLoop()
         _fpsCounter++;
     }
 
-    // Game end
-    if (Settings.Quit) {
-        return;
-    }
-
-    // Input events
-    InputEvent event;
-    while (App->Input.PollEvent(event)) {
-        if (event.Type == InputEvent::EventType::MouseMoveEvent) {
-            const auto [w, h] = SprMngr.GetWindowSize();
-            const auto x = static_cast<int>(static_cast<float>(event.MouseMove.MouseX) / static_cast<float>(w) * static_cast<float>(Settings.ScreenWidth));
-            const auto y = static_cast<int>(static_cast<float>(event.MouseMove.MouseY) / static_cast<float>(h) * static_cast<float>(Settings.ScreenHeight));
-            Settings.MouseX = std::clamp(x, 0, Settings.ScreenWidth - 1);
-            Settings.MouseY = std::clamp(y, 0, Settings.ScreenHeight - 1);
-        }
-    }
-
     // Network
     if (_initNetReason != INIT_NET_REASON_NONE) {
         _conn.Connect();
@@ -651,6 +631,8 @@ void FOClient::ProcessScreenEffectQuake()
 
 void FOClient::ProcessInputEvents()
 {
+    std::tie(Settings.MouseX, Settings.MouseY) = App->GetMousePosition();
+
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused()) {
         InputEvent event;

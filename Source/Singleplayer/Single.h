@@ -35,13 +35,14 @@
 
 #include "Common.h"
 
+#include "Application.h"
 #include "Client.h"
 #include "Server.h"
 
 class FOSingle final : virtual public FOEngineBase, public FOServer, public FOClient
 {
 public:
-    explicit FOSingle(GlobalSettings& settings);
+    explicit FOSingle(GlobalSettings& settings, AppWindow* window);
 
     void SingleMainLoop();
 };

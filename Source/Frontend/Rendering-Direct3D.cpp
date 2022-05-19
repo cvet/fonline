@@ -151,14 +151,14 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
     throw UnreachablePlaceException(LINE_STR);
 }
 
-void Direct3D_Renderer::Init(GlobalSettings& settings, SDL_Window* window)
+void Direct3D_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
 {
     RenderDebug = settings.RenderDebug;
-    SdlWindow = window;
+    SdlWindow = static_cast<SDL_Window*>(window);
 
     SDL_SysWMinfo wminfo = {};
     SDL_VERSION(&wminfo.version)
-    SDL_GetWindowWMInfo(window, &wminfo);
+    SDL_GetWindowWMInfo(SdlWindow, &wminfo);
 #if !FO_UWP
     auto* hwnd = wminfo.info.win.window;
 #else

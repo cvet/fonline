@@ -171,7 +171,7 @@ public:
     static constexpr auto CONSOLE_KEY_TICK = 500;
     static constexpr auto CONSOLE_MAX_ACCELERATE = 460;
 
-    explicit FOMapper(GlobalSettings& settings);
+    FOMapper(GlobalSettings& settings, AppWindow* window);
 
     FOMapper(const FOMapper&) = delete;
     FOMapper(FOMapper&&) noexcept = delete;

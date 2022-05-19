@@ -46,11 +46,11 @@ static _CrtMemState CrtMemState;
 static const uint MAX_ATLAS_WIDTH_ = 1024;
 static const uint MAX_ATLAS_HEIGHT_ = 1024;
 static const uint MAX_BONES_ = 32;
-const uint& Application::AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
-const uint& Application::AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
-const uint& Application::AppRender::MAX_BONES {MAX_BONES_};
-const int Application::AppAudio::AUDIO_FORMAT_U8 = 0;
-const int Application::AppAudio::AUDIO_FORMAT_S16 = 1;
+const uint& AppRender::MAX_ATLAS_WIDTH {MAX_ATLAS_WIDTH_};
+const uint& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
+const uint& AppRender::MAX_BONES {MAX_BONES_};
+const int AppAudio::AUDIO_FORMAT_U8 = 0;
+const int AppAudio::AUDIO_FORMAT_S16 = 1;
 
 auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 {
@@ -66,6 +66,8 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 
 Application::Application(int argc, char** argv, string_view name_appendix) : Settings(argc, argv)
 {
+    UNUSED_VARIABLE(MainWindow._windowHandle);
+
     // Skip SDL allocations from profiling
 #if FO_WINDOWS && FO_DEBUG
     ::_CrtMemCheckpoint(&CrtMemState);
@@ -76,6 +78,34 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
         _name.append("_");
         _name.append(name_appendix);
     }
+}
+
+auto Application::GetName() const -> string_view
+{
+    return _name;
+}
+
+auto Application::GetMousePosition() const -> tuple<int, int>
+{
+    auto x = 100;
+    auto y = 100;
+    return {x, y};
+}
+
+auto Application::CreateWindow(int width, int height) -> AppWindow*
+{
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
+
+    return nullptr;
+}
+
+auto Application::CreateInternalWindow(int width, int height) -> WindowInternalHandle*
+{
+    UNUSED_VARIABLE(width);
+    UNUSED_VARIABLE(height);
+
+    return nullptr;
 }
 
 #if FO_IOS
@@ -94,60 +124,55 @@ void Application::EndFrame()
     _onFrameEndDispatcher();
 }
 
-auto Application::AppWindow::GetSize() const -> tuple<int, int>
+auto AppWindow::GetSize() const -> tuple<int, int>
 {
     auto w = 1000;
     auto h = 1000;
+
     return {w, h};
 }
 
-void Application::AppWindow::SetSize(int w, int h)
+void AppWindow::SetSize(int w, int h)
 {
     UNUSED_VARIABLE(w);
     UNUSED_VARIABLE(h);
 }
 
-auto Application::AppWindow::GetPosition() const -> tuple<int, int>
+auto AppWindow::GetPosition() const -> tuple<int, int>
 {
     auto x = 0;
     auto y = 0;
+
     return {x, y};
 }
 
-void Application::AppWindow::SetPosition(int x, int y)
+void AppWindow::SetPosition(int x, int y)
 {
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
 }
 
-auto Application::AppWindow::GetMousePosition() const -> tuple<int, int>
-{
-    auto x = 100;
-    auto y = 100;
-    return {x, y};
-}
-
-void Application::AppWindow::SetMousePosition(int x, int y)
+void AppWindow::SetMousePosition(int x, int y)
 {
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
 }
 
-auto Application::AppWindow::IsFocused() const -> bool
+auto AppWindow::IsFocused() const -> bool
 {
     return true;
 }
 
-void Application::AppWindow::Minimize()
+void AppWindow::Minimize()
 {
 }
 
-auto Application::AppWindow::IsFullscreen() const -> bool
+auto AppWindow::IsFullscreen() const -> bool
 {
     return false;
 }
 
-auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
+auto AppWindow::ToggleFullscreen(bool enable) -> bool
 {
     NON_CONST_METHOD_HINT();
 
@@ -156,16 +181,20 @@ auto Application::AppWindow::ToggleFullscreen(bool enable) -> bool
     return false;
 }
 
-void Application::AppWindow::Blink()
+void AppWindow::Blink()
 {
 }
 
-void Application::AppWindow::AlwaysOnTop(bool enable)
+void AppWindow::AlwaysOnTop(bool enable)
 {
     UNUSED_VARIABLE(enable);
 }
 
-auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
+void AppWindow::Destroy()
+{
+}
+
+auto AppRender::CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*
 {
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);
@@ -175,24 +204,24 @@ auto Application::AppRender::CreateTexture(uint width, uint height, bool linear_
     return nullptr;
 }
 
-void Application::AppRender::SetRenderTarget(RenderTexture* tex)
+void AppRender::SetRenderTarget(RenderTexture* tex)
 {
     UNUSED_VARIABLE(tex);
 }
 
-auto Application::AppRender::GetRenderTarget() -> RenderTexture*
+auto AppRender::GetRenderTarget() -> RenderTexture*
 {
     return nullptr;
 }
 
-void Application::AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
+void AppRender::ClearRenderTarget(optional<uint> color, bool depth, bool stencil)
 {
     UNUSED_VARIABLE(color);
     UNUSED_VARIABLE(depth);
     UNUSED_VARIABLE(stencil);
 }
 
-void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
+void AppRender::EnableScissor(int x, int y, uint w, uint h)
 {
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
@@ -200,18 +229,18 @@ void Application::AppRender::EnableScissor(int x, int y, uint w, uint h)
     UNUSED_VARIABLE(h);
 }
 
-void Application::AppRender::DisableScissor()
+void AppRender::DisableScissor()
 {
 }
 
-auto Application::AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
+auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
 {
     UNUSED_VARIABLE(is_static);
 
     return nullptr;
 }
 
-auto Application::AppRender::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& file_loader) -> RenderEffect*
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& file_loader) -> RenderEffect*
 {
     UNUSED_VARIABLE(name);
     UNUSED_VARIABLE(defines);
@@ -220,55 +249,55 @@ auto Application::AppRender::CreateEffect(EffectUsage usage, string_view name, s
     return nullptr;
 }
 
-auto Application::AppInput::PollEvent(InputEvent& event) -> bool
+auto AppInput::PollEvent(InputEvent& event) -> bool
 {
     UNUSED_VARIABLE(event);
 
     return false;
 }
 
-void Application::AppInput::PushEvent(const InputEvent& event)
+void AppInput::PushEvent(const InputEvent& event)
 {
     UNUSED_VARIABLE(event);
 }
 
-void Application::AppInput::SetClipboardText(string_view text)
+void AppInput::SetClipboardText(string_view text)
 {
     UNUSED_VARIABLE(text);
 }
 
-auto Application::AppInput::GetClipboardText() -> string
+auto AppInput::GetClipboardText() -> string
 {
     return string();
 }
 
-auto Application::AppAudio::IsEnabled() -> bool
+auto AppAudio::IsEnabled() -> bool
 {
     return false;
 }
 
-auto Application::AppAudio::GetStreamSize() -> uint
+auto AppAudio::GetStreamSize() -> uint
 {
     RUNTIME_ASSERT(IsEnabled());
 
     return 0u;
 }
 
-auto Application::AppAudio::GetSilence() -> uchar
+auto AppAudio::GetSilence() -> uchar
 {
     RUNTIME_ASSERT(IsEnabled());
 
     return 0u;
 }
 
-void Application::AppAudio::SetSource(AudioStreamCallback stream_callback)
+void AppAudio::SetSource(AudioStreamCallback stream_callback)
 {
     UNUSED_VARIABLE(stream_callback);
 
     RUNTIME_ASSERT(IsEnabled());
 }
 
-auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
+auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& buf) -> bool
 {
     UNUSED_VARIABLE(format);
     UNUSED_VARIABLE(channels);
@@ -280,7 +309,7 @@ auto Application::AppAudio::ConvertAudio(int format, int channels, int rate, vec
     return true;
 }
 
-void Application::AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
+void AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
 {
     UNUSED_VARIABLE(output);
     UNUSED_VARIABLE(buf);
@@ -289,12 +318,12 @@ void Application::AppAudio::MixAudio(uchar* output, uchar* buf, int volume)
     RUNTIME_ASSERT(IsEnabled());
 }
 
-void Application::AppAudio::LockDevice()
+void AppAudio::LockDevice()
 {
     RUNTIME_ASSERT(IsEnabled());
 }
 
-void Application::AppAudio::UnlockDevice()
+void AppAudio::UnlockDevice()
 {
     RUNTIME_ASSERT(IsEnabled());
 }

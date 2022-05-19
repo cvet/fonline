@@ -65,7 +65,7 @@ static void MainEntry(void*)
 
         if (Data->Single == nullptr) {
             try {
-                Data->Single = new FOSingle(App->Settings);
+                Data->Single = new FOSingle(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

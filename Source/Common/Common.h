@@ -1370,6 +1370,12 @@ constexpr auto vec_downcast(const vector<T2>& value) -> vector<T>
     return result;
 }
 
+template<typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+constexpr auto iround(T value) -> int
+{
+    return static_cast<int>(std::lround(value));
+}
+
 // ReSharper restore CppInconsistentNaming
 
 class NameResolver

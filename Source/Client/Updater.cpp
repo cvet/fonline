@@ -43,7 +43,7 @@
 
 static const string UPDATE_TEMP_FILE = "Update.fobin";
 
-Updater::Updater(GlobalSettings& settings) : _settings {settings}, _conn(settings), _effectMngr(_settings, _fileSys), _sprMngr(_settings, _fileSys, _effectMngr)
+Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {settings}, _conn(settings), _effectMngr(_settings, _fileSys), _sprMngr(_settings, window, _fileSys, _effectMngr)
 {
     _startTick = Timer::RealtimeTick();
 

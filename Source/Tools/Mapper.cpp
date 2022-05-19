@@ -41,23 +41,17 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-FOMapper::FOMapper(GlobalSettings& settings) :
+FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     FOEngineBase(settings, PropertiesRelationType::BothRelative,
         [&, this]() -> ScriptSystem* {
             extern void Mapper_RegisterData(FOEngineBase*);
             Mapper_RegisterData(this);
             return new MapperScriptSystem(this, settings);
         }),
-    FOClient(settings, PropertiesRelationType::None, nullptr),
+    FOClient(settings, window, PropertiesRelationType::None, nullptr),
 
     IfaceIni("", *this)
 {
-    // Mouse
-    const auto [w, h] = SprMngr.GetWindowSize();
-    const auto [x, y] = SprMngr.GetMousePosition();
-    Settings.MouseX = std::clamp(x, 0, w - 1);
-    Settings.MouseY = std::clamp(y, 0, h - 1);
-
     // Default effects
     EffectMngr.LoadDefaultEffects();
 

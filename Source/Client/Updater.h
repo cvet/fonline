@@ -48,7 +48,7 @@ class Updater final
 {
 public:
     Updater() = delete;
-    explicit Updater(GlobalSettings& settings);
+    explicit Updater(GlobalSettings& settings, AppWindow* window);
     Updater(const Updater&) = delete;
     Updater(Updater&&) noexcept = delete;
     auto operator=(const Updater&) = delete;
