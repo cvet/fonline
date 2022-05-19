@@ -75,7 +75,7 @@ ServerConnection::ServerConnection(ClientNetworkSettings& settings) : _settings 
     _incomeBuf.resize(NetBuffer::DEFAULT_BUF_SIZE);
 
     AddMessageHandler(NETMSG_DISCONNECT, [this] { Disconnect(); });
-    AddMessageHandler(NETMSG_PING, std::bind(&ServerConnection::Net_OnPing, this));
+    AddMessageHandler(NETMSG_PING, [this] { Net_OnPing(); });
 }
 
 ServerConnection::~ServerConnection()

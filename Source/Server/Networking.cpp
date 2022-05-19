@@ -148,7 +148,7 @@ private:
     void Run();
     void OnOpen(websocketpp::connection_hdl hdl);
     auto OnValidate(websocketpp::connection_hdl hdl) -> bool;
-    auto OnTlsInit(const websocketpp::connection_hdl& hdl) const -> shared_ptr<ssl_context>;
+    auto OnTlsInit(const websocketpp::connection_hdl hdl) const -> shared_ptr<ssl_context>;
 
     ServerNetworkSettings& _settings;
     ConnectionCallback _connectionCallback {};
@@ -333,7 +333,10 @@ public:
     ~NetConnectionAsio() override { delete _socket; }
 
 private:
-    void NextAsyncRead() { async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), std::bind(&NetConnectionAsio::AsyncRead, this, std::placeholders::_1, std::placeholders::_2)); }
+    void NextAsyncRead()
+    {
+        async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), [this](std::error_code error, size_t bytes) { AsyncRead(error, bytes); });
+    }
 
     void AsyncRead(std::error_code error, size_t bytes)
     {
@@ -346,8 +349,10 @@ private:
         }
     }
 
-    void AsyncWrite(std::error_code error, size_t /*bytes*/)
+    void AsyncWrite(std::error_code error, size_t bytes)
     {
+        UNUSED_VARIABLE(bytes);
+
         _writePending = false;
 
         if (!error) {
@@ -365,7 +370,7 @@ private:
             uint len = 0;
             const auto* buf = SendCallback(len);
             if (buf != nullptr) {
-                async_write(*_socket, asio::buffer(buf, len), std::bind(&NetConnectionAsio::AsyncWrite, this, std::placeholders::_1, std::placeholders::_2));
+                async_write(*_socket, asio::buffer(buf, len), [this](std::error_code error, size_t bytes) { AsyncWrite(error, bytes); });
             }
             else {
                 if (_isDisconnected) {
@@ -409,10 +414,10 @@ public:
             connection->get_raw_socket().set_option(asio::ip::tcp::no_delay(true), error);
         }
 
-        connection->set_message_handler(websocketpp::lib::bind(&NetConnectionWebSocket::OnMessage, this, websocketpp::lib::placeholders::_2));
-        connection->set_fail_handler(websocketpp::lib::bind(&NetConnectionWebSocket::OnFail, this));
-        connection->set_close_handler(websocketpp::lib::bind(&NetConnectionWebSocket::OnClose, this));
-        connection->set_http_handler(websocketpp::lib::bind(&NetConnectionWebSocket::OnHttp, this));
+        connection->set_message_handler([this](auto&&, message_ptr msg) { OnMessage(msg); });
+        connection->set_fail_handler([this](websocketpp::connection_hdl) { OnFail(); });
+        connection->set_close_handler([this](websocketpp::connection_hdl) { OnClose(); });
+        connection->set_http_handler([this](websocketpp::connection_hdl) { OnHttp(); });
     }
 
     NetConnectionWebSocket() = delete;
@@ -491,7 +496,7 @@ void NetTcpServer::Run()
 void NetTcpServer::AcceptNext()
 {
     auto* socket = new asio::ip::tcp::socket(_ioService);
-    _acceptor.async_accept(*socket, std::bind(&NetTcpServer::AcceptConnection, this, std::placeholders::_1, socket));
+    _acceptor.async_accept(*socket, [this, socket](std::error_code error) { AcceptConnection(error, socket); });
 }
 
 void NetTcpServer::AcceptConnection(std::error_code error, asio::ip::tcp::socket* socket)
@@ -512,8 +517,8 @@ NetNoTlsWebSocketsServer::NetNoTlsWebSocketsServer(ServerNetworkSettings& settin
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
-    _server.set_open_handler(websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
-    _server.set_validate_handler(websocketpp::lib::bind(&NetNoTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
+    _server.set_open_handler([this](websocketpp::connection_hdl hdl) { OnOpen(hdl); });
+    _server.set_validate_handler([this](websocketpp::connection_hdl hdl) { return OnValidate(hdl); });
     _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
     _server.start_accept();
 
@@ -557,9 +562,9 @@ NetTlsWebSocketsServer::NetTlsWebSocketsServer(ServerNetworkSettings& settings, 
     _connectionCallback = std::move(callback);
 
     _server.init_asio();
-    _server.set_open_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnOpen, this, websocketpp::lib::placeholders::_1));
-    _server.set_validate_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnValidate, this, websocketpp::lib::placeholders::_1));
-    _server.set_tls_init_handler(websocketpp::lib::bind(&NetTlsWebSocketsServer::OnTlsInit, this, websocketpp::lib::placeholders::_1));
+    _server.set_open_handler([this](websocketpp::connection_hdl hdl) { OnOpen(hdl); });
+    _server.set_validate_handler([this](websocketpp::connection_hdl hdl) { return OnValidate(hdl); });
+    _server.set_tls_init_handler([this](websocketpp::connection_hdl hdl) { return OnTlsInit(hdl); });
     _server.listen(asio::ip::tcp::v6(), static_cast<uint16_t>(settings.ServerPort + 1));
     _server.start_accept();
 
@@ -585,14 +590,16 @@ void NetTlsWebSocketsServer::OnOpen(websocketpp::connection_hdl hdl)
 
 auto NetTlsWebSocketsServer::OnValidate(websocketpp::connection_hdl hdl) -> bool
 {
-    auto connection = _server.get_con_from_hdl(std::move(hdl));
+    auto&& connection = _server.get_con_from_hdl(std::move(hdl));
     std::error_code error;
     connection->select_subprotocol("binary", error);
     return !error;
 }
 
-auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl& /*hdl*/) const -> shared_ptr<ssl_context>
+auto NetTlsWebSocketsServer::OnTlsInit(const websocketpp::connection_hdl hdl) const -> shared_ptr<ssl_context>
 {
+    UNUSED_VARIABLE(hdl);
+
     shared_ptr<ssl_context> ctx(new ssl_context(ssl_context::tlsv1));
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::single_dh_use);
     ctx->use_certificate_chain_file(_settings.WssCertificate);

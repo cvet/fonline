@@ -53,6 +53,26 @@ constexpr int BONES_PER_VERTEX = 4;
 
 using RenderEffectLoader = std::function<string(string_view)>;
 
+enum class RenderType
+{
+    Null,
+#if FO_HAVE_OPENGL
+    OpenGL,
+#endif
+#if FO_HAVE_DIRECT_3D
+    Direct3D,
+#endif
+#if FO_HAVE_METAL
+    Metal,
+#endif
+#if FO_HAVE_VULKAN
+    Vulkan,
+#endif
+#if FO_HAVE_GNM
+    GNM,
+#endif
+};
+
 enum class EffectUsage
 {
     ImGui,

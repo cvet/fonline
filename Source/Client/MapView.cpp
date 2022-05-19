@@ -324,6 +324,8 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntit
     _dayColor[9] = 128;
     _dayColor[10] = 86;
     _dayColor[11] = 29;
+
+    _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnWindowSizeChanged += [this] { OnWindowSizeChanged(); };
 }
 
 MapView::~MapView()
@@ -3960,7 +3962,7 @@ auto MapView::GetMapDayColor() -> uchar*
     return _dayColor;
 }
 
-void MapView::OnResolutionChanged()
+void MapView::OnWindowSizeChanged()
 {
     _fogForceRerender = true;
 

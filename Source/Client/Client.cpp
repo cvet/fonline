@@ -85,7 +85,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
 
     _fpsTick = GameTime.FrameTick();
 
-    std::tie(Settings.MouseX, Settings.MouseY) = App->GetMousePosition();
+    std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
     // Language Packs
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
@@ -129,65 +129,65 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
     SprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
     // Connection handlers
-    _conn.AddConnectHandler(std::bind(&FOClient::Net_OnConnect, this, std::placeholders::_1));
-    _conn.AddDisconnectHandler(std::bind(&FOClient::Net_OnDisconnect, this));
-    _conn.AddMessageHandler(NETMSG_WRONG_NET_PROTO, std::bind(&FOClient::Net_OnWrongNetProto, this));
-    _conn.AddMessageHandler(NETMSG_LOGIN_SUCCESS, std::bind(&FOClient::Net_OnLoginSuccess, this));
+    _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
+    _conn.AddDisconnectHandler([this] { Net_OnDisconnect(); });
+    _conn.AddMessageHandler(NETMSG_WRONG_NET_PROTO, [this] { Net_OnWrongNetProto(); });
+    _conn.AddMessageHandler(NETMSG_LOGIN_SUCCESS, [this] { Net_OnLoginSuccess(); });
     _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [] { WriteLog("Registration success"); });
-    _conn.AddMessageHandler(NETMSG_END_PARSE_TO_GAME, std::bind(&FOClient::Net_OnEndParseToGame, this));
-    _conn.AddMessageHandler(NETMSG_ADD_PLAYER, std::bind(&FOClient::Net_OnAddCritter, this, false));
-    _conn.AddMessageHandler(NETMSG_ADD_NPC, std::bind(&FOClient::Net_OnAddCritter, this, true));
-    _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, std::bind(&FOClient::Net_OnRemoveCritter, this));
-    _conn.AddMessageHandler(NETMSG_SOME_ITEM, std::bind(&FOClient::Net_OnSomeItem, this));
-    _conn.AddMessageHandler(NETMSG_CRITTER_ACTION, std::bind(&FOClient::Net_OnCritterAction, this));
-    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_ITEM, std::bind(&FOClient::Net_OnCritterMoveItem, this));
-    _conn.AddMessageHandler(NETMSG_CRITTER_ANIMATE, std::bind(&FOClient::Net_OnCritterAnimate, this));
-    _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, std::bind(&FOClient::Net_OnCritterSetAnims, this));
-    _conn.AddMessageHandler(NETMSG_CUSTOM_COMMAND, std::bind(&FOClient::Net_OnCustomCommand, this));
-    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, std::bind(&FOClient::Net_OnCritterMove, this));
-    _conn.AddMessageHandler(NETMSG_CRITTER_DIR, std::bind(&FOClient::Net_OnCritterDir, this));
-    _conn.AddMessageHandler(NETMSG_CRITTER_XY, std::bind(&FOClient::Net_OnCritterCoords, this));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 0), std::bind(&FOClient::Net_OnProperty, this, 1));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 1), std::bind(&FOClient::Net_OnProperty, this, 1));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 2), std::bind(&FOClient::Net_OnProperty, this, 1));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 0), std::bind(&FOClient::Net_OnProperty, this, 2));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 1), std::bind(&FOClient::Net_OnProperty, this, 2));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 2), std::bind(&FOClient::Net_OnProperty, this, 2));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 0), std::bind(&FOClient::Net_OnProperty, this, 4));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 1), std::bind(&FOClient::Net_OnProperty, this, 4));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 2), std::bind(&FOClient::Net_OnProperty, this, 4));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 0), std::bind(&FOClient::Net_OnProperty, this, 8));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 1), std::bind(&FOClient::Net_OnProperty, this, 8));
-    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 2), std::bind(&FOClient::Net_OnProperty, this, 8));
-    _conn.AddMessageHandler(NETMSG_COMPLEX_PROPERTY, std::bind(&FOClient::Net_OnProperty, this, 0));
-    _conn.AddMessageHandler(NETMSG_CRITTER_TEXT, std::bind(&FOClient::Net_OnText, this));
-    _conn.AddMessageHandler(NETMSG_MSG, std::bind(&FOClient::Net_OnTextMsg, this, false));
-    _conn.AddMessageHandler(NETMSG_MSG_LEX, std::bind(&FOClient::Net_OnTextMsg, this, true));
-    _conn.AddMessageHandler(NETMSG_MAP_TEXT, std::bind(&FOClient::Net_OnMapText, this));
-    _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG, std::bind(&FOClient::Net_OnMapTextMsg, this));
-    _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG_LEX, std::bind(&FOClient::Net_OnMapTextMsgLex, this));
-    _conn.AddMessageHandler(NETMSG_ALL_PROPERTIES, std::bind(&FOClient::Net_OnAllProperties, this));
-    _conn.AddMessageHandler(NETMSG_CLEAR_ITEMS, std::bind(&FOClient::Net_OnChosenClearItems, this));
-    _conn.AddMessageHandler(NETMSG_ADD_ITEM, std::bind(&FOClient::Net_OnChosenAddItem, this));
-    _conn.AddMessageHandler(NETMSG_REMOVE_ITEM, std::bind(&FOClient::Net_OnChosenEraseItem, this));
-    _conn.AddMessageHandler(NETMSG_ALL_ITEMS_SEND, std::bind(&FOClient::Net_OnAllItemsSend, this));
-    _conn.AddMessageHandler(NETMSG_TALK_NPC, std::bind(&FOClient::Net_OnChosenTalk, this));
-    _conn.AddMessageHandler(NETMSG_GAME_INFO, std::bind(&FOClient::Net_OnGameInfo, this));
-    _conn.AddMessageHandler(NETMSG_AUTOMAPS_INFO, std::bind(&FOClient::Net_OnAutomapsInfo, this));
-    _conn.AddMessageHandler(NETMSG_VIEW_MAP, std::bind(&FOClient::Net_OnViewMap, this));
-    _conn.AddMessageHandler(NETMSG_LOADMAP, std::bind(&FOClient::Net_OnLoadMap, this));
-    _conn.AddMessageHandler(NETMSG_MAP, std::bind(&FOClient::Net_OnMap, this));
-    _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, std::bind(&FOClient::Net_OnGlobalInfo, this));
-    _conn.AddMessageHandler(NETMSG_SOME_ITEMS, std::bind(&FOClient::Net_OnSomeItems, this));
+    _conn.AddMessageHandler(NETMSG_END_PARSE_TO_GAME, [this] { Net_OnEndParseToGame(); });
+    _conn.AddMessageHandler(NETMSG_ADD_PLAYER, [this] { Net_OnAddCritter(false); });
+    _conn.AddMessageHandler(NETMSG_ADD_NPC, [this] { Net_OnAddCritter(true); });
+    _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, [this] { Net_OnRemoveCritter(); });
+    _conn.AddMessageHandler(NETMSG_SOME_ITEM, [this] { Net_OnSomeItem(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_ACTION, [this] { Net_OnCritterAction(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_ITEM, [this] { Net_OnCritterMoveItem(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_ANIMATE, [this] { Net_OnCritterAnimate(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
+    _conn.AddMessageHandler(NETMSG_CUSTOM_COMMAND, [this] { Net_OnCustomCommand(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_XY, [this] { Net_OnCritterCoords(); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 0), [this] { Net_OnProperty(1); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 1), [this] { Net_OnProperty(1); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 2), [this] { Net_OnProperty(1); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 0), [this] { Net_OnProperty(2); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 1), [this] { Net_OnProperty(2); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(2, 2), [this] { Net_OnProperty(2); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 0), [this] { Net_OnProperty(4); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 1), [this] { Net_OnProperty(4); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(4, 2), [this] { Net_OnProperty(4); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 0), [this] { Net_OnProperty(8); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 1), [this] { Net_OnProperty(8); });
+    _conn.AddMessageHandler(NETMSG_POD_PROPERTY(8, 2), [this] { Net_OnProperty(8); });
+    _conn.AddMessageHandler(NETMSG_COMPLEX_PROPERTY, [this] { Net_OnProperty(0); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_TEXT, [this] { Net_OnText(); });
+    _conn.AddMessageHandler(NETMSG_MSG, [this] { Net_OnTextMsg(false); });
+    _conn.AddMessageHandler(NETMSG_MSG_LEX, [this] { Net_OnTextMsg(true); });
+    _conn.AddMessageHandler(NETMSG_MAP_TEXT, [this] { Net_OnMapText(); });
+    _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG, [this] { Net_OnMapTextMsg(); });
+    _conn.AddMessageHandler(NETMSG_MAP_TEXT_MSG_LEX, [this] { Net_OnMapTextMsgLex(); });
+    _conn.AddMessageHandler(NETMSG_ALL_PROPERTIES, [this] { Net_OnAllProperties(); });
+    _conn.AddMessageHandler(NETMSG_CLEAR_ITEMS, [this] { Net_OnChosenClearItems(); });
+    _conn.AddMessageHandler(NETMSG_ADD_ITEM, [this] { Net_OnChosenAddItem(); });
+    _conn.AddMessageHandler(NETMSG_REMOVE_ITEM, [this] { Net_OnChosenEraseItem(); });
+    _conn.AddMessageHandler(NETMSG_ALL_ITEMS_SEND, [this] { Net_OnAllItemsSend(); });
+    _conn.AddMessageHandler(NETMSG_TALK_NPC, [this] { Net_OnChosenTalk(); });
+    _conn.AddMessageHandler(NETMSG_GAME_INFO, [this] { Net_OnGameInfo(); });
+    _conn.AddMessageHandler(NETMSG_AUTOMAPS_INFO, [this] { Net_OnAutomapsInfo(); });
+    _conn.AddMessageHandler(NETMSG_VIEW_MAP, [this] { Net_OnViewMap(); });
+    _conn.AddMessageHandler(NETMSG_LOADMAP, [this] { Net_OnLoadMap(); });
+    _conn.AddMessageHandler(NETMSG_MAP, [this] { Net_OnMap(); });
+    _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
+    _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
     // _conn.AddMessageHandler(NETMSG_RPC, // ScriptSys.HandleRpc(&Bin);
-    _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, std::bind(&FOClient::Net_OnAddItemOnMap, this));
-    _conn.AddMessageHandler(NETMSG_ERASE_ITEM_FROM_MAP, std::bind(&FOClient::Net_OnEraseItemFromMap, this));
-    _conn.AddMessageHandler(NETMSG_ANIMATE_ITEM, std::bind(&FOClient::Net_OnAnimateItem, this));
-    _conn.AddMessageHandler(NETMSG_COMBAT_RESULTS, std::bind(&FOClient::Net_OnCombatResult, this));
-    _conn.AddMessageHandler(NETMSG_EFFECT, std::bind(&FOClient::Net_OnEffect, this));
-    _conn.AddMessageHandler(NETMSG_FLY_EFFECT, std::bind(&FOClient::Net_OnFlyEffect, this));
-    _conn.AddMessageHandler(NETMSG_PLAY_SOUND, std::bind(&FOClient::Net_OnPlaySound, this));
-    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, std::bind(&FOClient::Net_OnUpdateFilesResponse, this));
+    _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
+    _conn.AddMessageHandler(NETMSG_ERASE_ITEM_FROM_MAP, [this] { Net_OnEraseItemFromMap(); });
+    _conn.AddMessageHandler(NETMSG_ANIMATE_ITEM, [this] { Net_OnAnimateItem(); });
+    _conn.AddMessageHandler(NETMSG_COMBAT_RESULTS, [this] { Net_OnCombatResult(); });
+    _conn.AddMessageHandler(NETMSG_EFFECT, [this] { Net_OnEffect(); });
+    _conn.AddMessageHandler(NETMSG_FLY_EFFECT, [this] { Net_OnFlyEffect(); });
+    _conn.AddMessageHandler(NETMSG_PLAY_SOUND, [this] { Net_OnPlaySound(); });
+    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
 
     // Properties that sending to clients
     {
@@ -211,13 +211,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
             }
         };
 
-        using namespace std::placeholders;
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendGlobalValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendPlayerValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendItemValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendCritterValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendMapValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), std::bind(&FOClient::OnSendLocationValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendGlobalValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendPlayerValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendItemValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendCritterValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendMapValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendLocationValue(entity, prop, new_value, old_value); });
     }
 
     // Properties with custom behaviours
@@ -227,23 +226,22 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
             prop->AddCallback(std::move(callback));
         };
 
-        using namespace std::placeholders;
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, std::bind(&FOClient::OnSetCritterModelName, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, std::bind(&FOClient::OnSetCritterContourColor, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, std::bind(&FOClient::OnSetItemFlags, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, std::bind(&FOClient::OnSetItemSomeLight, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, std::bind(&FOClient::OnSetItemPicMap, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, std::bind(&FOClient::OnSetItemOffsetCoords, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, std::bind(&FOClient::OnSetItemOffsetCoords, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, std::bind(&FOClient::OnSetItemOpened, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetCritterModelName(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetCritterContourColor(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemFlags(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemFlags(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemFlags(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemFlags(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemFlags(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemSomeLight(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemSomeLight(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemSomeLight(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemSomeLight(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemSomeLight(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemPicMap(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemOffsetCoords(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemOffsetCoords(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemOpened(entity, prop, new_value, old_value); });
     }
 
     ScreenFadeOut();
@@ -631,7 +629,7 @@ void FOClient::ProcessScreenEffectQuake()
 
 void FOClient::ProcessInputEvents()
 {
-    std::tie(Settings.MouseX, Settings.MouseY) = App->GetMousePosition();
+    std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
     // Stop processing if window not active
     if (!SprMngr.IsWindowFocused()) {
@@ -3745,11 +3743,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         else {
             _windowResolutionDiffX += diff_w / 2;
             _windowResolutionDiffY += diff_h / 2;
-        }
-
-        SprMngr.OnResolutionChanged();
-        if (CurMap != nullptr) {
-            CurMap->OnResolutionChanged();
         }
     }
     else if (cmd == "RefreshAlwaysOnTop") {

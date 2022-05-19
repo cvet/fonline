@@ -133,6 +133,8 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     DummyAnimation = new AnyFrames();
     DummyAnimation->CntFrm = 1;
     DummyAnimation->Ticks = 100;
+
+    _eventUnsubscriber += _window->OnWindowSizeChanged += [this] { OnWindowSizeChanged(); };
 }
 
 SpriteManager::~SpriteManager()
@@ -168,7 +170,7 @@ void SpriteManager::SetWindowPosition(int x, int y)
 
 void SpriteManager::SetMousePosition(int x, int y)
 {
-    _window->SetMousePosition(x, y);
+    App->Input.SetMousePosition(x, y, _window);
 }
 
 auto SpriteManager::IsWindowFocused() const -> bool
@@ -234,7 +236,7 @@ void SpriteManager::EndScene()
     }
 }
 
-void SpriteManager::OnResolutionChanged()
+void SpriteManager::OnWindowSizeChanged()
 {
     // Resize fullscreen render targets
     for (auto&& rt : _rtAll) {

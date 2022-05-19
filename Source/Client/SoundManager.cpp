@@ -84,7 +84,7 @@ SoundManager::SoundManager(AudioSettings& settings, FileSystem& file_sys) : _set
 #endif
 
     _outputBuf.resize(App->Audio.GetStreamSize());
-    App->Audio.SetSource(std::bind(&SoundManager::ProcessSounds, this, std::placeholders::_1));
+    App->Audio.SetSource([this](uchar* output) { ProcessSounds(output); });
     _isActive = true;
 }
 

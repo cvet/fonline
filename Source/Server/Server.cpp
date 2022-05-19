@@ -75,10 +75,10 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Network
     WriteLog("Starting server on ports {} and {}", Settings.ServerPort, Settings.ServerPort + 1);
-    if ((_tcpServer = NetServerBase::StartTcpServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
+    if ((_tcpServer = NetServerBase::StartTcpServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); })) == nullptr) {
         throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort);
     }
-    if ((_webSocketsServer = NetServerBase::StartWebSocketsServer(Settings, std::bind(&FOServer::OnNewConnection, this, std::placeholders::_1))) == nullptr) {
+    if ((_webSocketsServer = NetServerBase::StartWebSocketsServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); })) == nullptr) {
         throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort + 1);
     }
 
@@ -125,8 +125,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 continue;
             }
 
-            using namespace std::placeholders;
-            prop->AddCallback(std::bind(&FOServer::OnSaveEntityValue, this, _1, _2, _3, _4));
+            prop->AddCallback([this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSaveEntityValue(entity, prop, new_value, old_value); });
         }
     }
 
@@ -156,13 +155,12 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
         };
 
-        using namespace std::placeholders;
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendGlobalValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendPlayerValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendItemValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendCritterValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendMapValue, this, _1, _2, _3, _4));
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), std::bind(&FOServer::OnSendLocationValue, this, _1, _2, _3, _4));
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendGlobalValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendPlayerValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendItemValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendCritterValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendMapValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendLocationValue(entity, prop, new_value, old_value); });
     }
 
     // Properties with custom behaviours
@@ -172,20 +170,19 @@ FOServer::FOServer(GlobalSettings& settings) :
             prop->AddCallback(std::move(callback));
         };
 
-        using namespace std::placeholders;
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, std::bind(&FOServer::OnSetItemCount, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, std::bind(&FOServer::OnSetItemChangeView, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, std::bind(&FOServer::OnSetItemChangeView, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, std::bind(&FOServer::OnSetItemChangeView, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, std::bind(&FOServer::OnSetItemChangeView, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, std::bind(&FOServer::OnSetItemRecacheHex, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, std::bind(&FOServer::OnSetItemRecacheHex, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, std::bind(&FOServer::OnSetItemRecacheHex, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, std::bind(&FOServer::OnSetItemRecacheHex, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, std::bind(&FOServer::OnSetItemBlockLines, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, std::bind(&FOServer::OnSetItemIsGeck, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, std::bind(&FOServer::OnSetItemIsRadio, this, _1, _2, _3, _4));
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, std::bind(&FOServer::OnSetItemOpened, this, _1, _2, _3, _4));
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemCount(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemChangeView(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemChangeView(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemChangeView(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemChangeView(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemRecacheHex(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemRecacheHex(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemRecacheHex(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemRecacheHex(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemBlockLines(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemIsGeck(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemIsRadio(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemOpened(entity, prop, new_value, old_value); });
     }
 
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
@@ -1513,7 +1510,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         }
 
         if (!_logClients.empty()) {
-            SetLogCallback("LogToClients", std::bind(&FOServer::LogToClients, this, std::placeholders::_1));
+            SetLogCallback("LogToClients", [this](string_view str) { LogToClients(str); });
         }
     } break;
     default:

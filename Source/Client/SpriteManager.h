@@ -239,6 +239,7 @@ public:
     auto operator=(SpriteManager&&) noexcept = delete;
     ~SpriteManager();
 
+    [[nodiscard]] auto GetWindow() { NON_CONST_METHOD_HINT_ONELINE() return _window; }
     [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetWindowPosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
@@ -271,7 +272,6 @@ public:
     void SetAlwaysOnTop(bool enable);
     void BeginScene(uint clear_color);
     void EndScene();
-    void OnResolutionChanged();
     void PushRenderTarget(RenderTarget* rt);
     void PopRenderTarget();
     void DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const IRect* region_from, const IRect* region_to);
@@ -331,10 +331,13 @@ private:
     void RenderModel(ModelInstance* model);
 #endif
 
+    void OnWindowSizeChanged();
+
     RenderSettings& _settings;
     AppWindow* _window;
     FileSystem& _fileSys;
     EffectManager& _effectMngr;
+    EventUnsubscriber _eventUnsubscriber {};
     mat44 _projectionMatrixCm {};
     RenderTarget* _rtMain {};
     RenderTarget* _rtContours {};

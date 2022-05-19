@@ -197,7 +197,6 @@ public:
     void SwitchShowTrack();
 
     void ReloadSprites();
-    void OnResolutionChanged();
 
     void ChangeZoom(int zoom); // < 0 in, > 0 out, 0 normalize
 
@@ -337,12 +336,14 @@ private:
     void RealRebuildLight();
     void CollectLightSources();
 
+    void OnWindowSizeChanged();
+
+    EventUnsubscriber _eventUnsubscriber {};
     vector<CritterHexView*> _critters {};
     map<uint, CritterHexView*> _crittersMap {};
     vector<ItemHexView*> _items {};
     map<uint, ItemHexView*> _itemsMap {};
     vector<MapText> _mapTexts {};
-
     SpriteVec _spritesPool {};
     Sprites _mainTree;
     Sprites _tilesTree;

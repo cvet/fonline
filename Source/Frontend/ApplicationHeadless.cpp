@@ -85,13 +85,6 @@ auto Application::GetName() const -> string_view
     return _name;
 }
 
-auto Application::GetMousePosition() const -> tuple<int, int>
-{
-    auto x = 100;
-    auto y = 100;
-    return {x, y};
-}
-
 auto Application::CreateWindow(int width, int height) -> AppWindow*
 {
     UNUSED_VARIABLE(width);
@@ -147,12 +140,6 @@ auto AppWindow::GetPosition() const -> tuple<int, int>
 }
 
 void AppWindow::SetPosition(int x, int y)
-{
-    UNUSED_VARIABLE(x);
-    UNUSED_VARIABLE(y);
-}
-
-void AppWindow::SetMousePosition(int x, int y)
 {
     UNUSED_VARIABLE(x);
     UNUSED_VARIABLE(y);
@@ -249,6 +236,19 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, string_view de
     return nullptr;
 }
 
+auto AppInput::GetMousePosition() const -> tuple<int, int>
+{
+    auto x = 100;
+    auto y = 100;
+    return {x, y};
+}
+
+void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
+{
+    UNUSED_VARIABLE(x);
+    UNUSED_VARIABLE(y);
+}
+
 auto AppInput::PollEvent(InputEvent& event) -> bool
 {
     UNUSED_VARIABLE(event);
@@ -266,9 +266,9 @@ void AppInput::SetClipboardText(string_view text)
     UNUSED_VARIABLE(text);
 }
 
-auto AppInput::GetClipboardText() -> string
+auto AppInput::GetClipboardText() -> const string&
 {
-    return string();
+    return _clipboardTextStorage;
 }
 
 auto AppAudio::IsEnabled() -> bool

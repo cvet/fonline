@@ -54,36 +54,18 @@ static _CrtMemState CrtMemState;
 
 static ImGuiKey KeycodeToImGuiKey(int keycode);
 
-enum class RenderType
-{
-    Null,
-#if FO_HAVE_OPENGL
-    OpenGL,
-#endif
-#if FO_HAVE_DIRECT_3D
-    Direct3D,
-#endif
-#if FO_HAVE_METAL
-    Metal,
-#endif
-#if FO_HAVE_VULKAN
-    Vulkan,
-#endif
-#if FO_HAVE_GNM
-    GNM,
-#endif
-};
-
-static bool IsTablet {};
-static SDL_Cursor* MouseCursors[ImGuiMouseCursor_COUNT] {};
+// Todo: move all these statics to App class fields
 static Renderer* ActiveRenderer {};
 static RenderType ActiveRendererType {};
 static RenderTexture* RenderTargetTex {};
+
 static vector<InputEvent>* EventsQueue {};
 static vector<InputEvent>* NextFrameEventsQueue {};
+
 static SDL_AudioDeviceID AudioDeviceId {};
 static SDL_AudioSpec AudioSpec {};
 static AppAudio::AudioStreamCallback* AudioStreamWriter {};
+
 static uint MaxAtlasWidth {};
 static uint MaxAtlasHeight {};
 static uint MaxBones {};
@@ -92,21 +74,6 @@ const uint& AppRender::MAX_ATLAS_HEIGHT {MaxAtlasHeight};
 const uint& AppRender::MAX_BONES {MaxBones};
 const int AppAudio::AUDIO_FORMAT_U8 {AUDIO_U8};
 const int AppAudio::AUDIO_FORMAT_S16 {AUDIO_S16};
-static char* ClipboardTextData = nullptr;
-
-static const char* GetClipboardText(void*)
-{
-    if (ClipboardTextData != nullptr) {
-        SDL_free(ClipboardTextData);
-    }
-    ClipboardTextData = SDL_GetClipboardText();
-    return ClipboardTextData;
-}
-
-static void SetClipboardText(void*, const char* text)
-{
-    SDL_SetClipboardText(text);
-}
 
 auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 {
@@ -381,7 +348,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
     IsTablet = true;
 #endif
 #if FO_WINDOWS && !FO_UWP
-    IsTablet = ::GetSystemMetrics(SM_TABLETPC) != 0; // Todo: recognize tablet mode for Windows 10
+    _isTablet = ::GetSystemMetrics(SM_TABLETPC) != 0; // Todo: recognize tablet mode for Windows 10
 #endif
 
     // Initialize video system
@@ -390,7 +357,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
             throw AppInitException("SDL_InitSubSystem SDL_INIT_VIDEO failed", SDL_GetError());
         }
 
-        if (IsTablet) {
+        if (_isTablet) {
             SDL_DisplayMode mode;
             if (const auto r = SDL_GetCurrentDisplayMode(0, &mode); r != 0) {
                 throw AppInitException("SDL_GetCurrentDisplayMode failed", SDL_GetError());
@@ -462,22 +429,11 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
             ImGui::StyleColorsLight(); // Default theme
         }
 
-        io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
         io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 
-        io.GetClipboardTextFn = GetClipboardText;
-        io.SetClipboardTextFn = SetClipboardText;
+        io.GetClipboardTextFn = [](void*) -> const char* { return App->Input.GetClipboardText().c_str(); };
+        io.SetClipboardTextFn = [](void*, const char* text) { App->Input.SetClipboardText(text); };
         io.ClipboardUserData = nullptr;
-
-        MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-        MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-        MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
-        MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
-        MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
-        MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
-        MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
-        MouseCursors[ImGuiMouseCursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
-        MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
 
 #if FO_WINDOWS
         SDL_SysWMinfo info;
@@ -528,16 +484,6 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 auto Application::GetName() const -> string_view
 {
     return _name;
-}
-
-auto Application::GetMousePosition() const -> tuple<int, int>
-{
-    auto x = 100;
-    auto y = 100;
-    if (ActiveRendererType != RenderType::Null) {
-        SDL_GetMouseState(&x, &y);
-    }
-    return {x, y};
 }
 
 auto Application::CreateWindow(int width, int height) -> AppWindow*
@@ -596,7 +542,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
         window_create_flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
     }
 
-    if (IsTablet) {
+    if (_isTablet) {
         window_create_flags |= SDL_WINDOW_FULLSCREEN;
         window_create_flags |= SDL_WINDOW_BORDERLESS;
     }
@@ -799,6 +745,16 @@ void Application::BeginFrame()
             else if (window_event == SDL_WINDOWEVENT_FOCUS_LOST) {
                 io.AddFocusEvent(false);
             }
+            else if (window_event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                auto* resized_window = SDL_GetWindowFromID(sdl_event.window.windowID);
+                RUNTIME_ASSERT(resized_window);
+
+                for (auto* window : copy(_allWindows)) {
+                    if (static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
+                        window->_onWindowSizeChangedDispatcher();
+                    }
+                }
+            }
         } break;
         case SDL_QUIT: {
             Settings.Quit = true;
@@ -856,7 +812,7 @@ void Application::BeginFrame()
 #endif
     if (is_app_focused) {
         if (io.WantSetMousePos) {
-            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(MainWindow._windowHandle), static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y));
+            Input.SetMousePosition(static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y), &MainWindow);
         }
 
         if (_mouseCanUseGlobalState && _mouseButtonsDown == 0) {
@@ -867,17 +823,6 @@ void Application::BeginFrame()
             int window_y;
             SDL_GetWindowPosition(static_cast<SDL_Window*>(MainWindow._windowHandle), &window_x, &window_y);
             io.AddMousePosEvent(static_cast<float>(mouse_x_global - window_x), static_cast<float>(mouse_y_global - window_y));
-        }
-    }
-
-    if ((io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) == 0) {
-        ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
-        if (io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None) {
-            SDL_ShowCursor(SDL_FALSE);
-        }
-        else {
-            SDL_SetCursor(MouseCursors[imgui_cursor] != nullptr ? MouseCursors[imgui_cursor] : MouseCursors[ImGuiMouseCursor_Arrow]);
-            SDL_ShowCursor(SDL_TRUE);
         }
     }
 
@@ -977,6 +922,7 @@ void AppWindow::SetSize(int w, int h)
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle), w, h);
+        _onWindowSizeChangedDispatcher();
     }
 }
 
@@ -996,15 +942,6 @@ void AppWindow::SetPosition(int x, int y)
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_SetWindowPosition(static_cast<SDL_Window*>(_windowHandle), x, y);
-    }
-}
-
-void AppWindow::SetMousePosition(int x, int y)
-{
-    NON_CONST_METHOD_HINT();
-
-    if (ActiveRendererType != RenderType::Null) {
-        SDL_WarpMouseInWindow(static_cast<SDL_Window*>(_windowHandle), x, y);
     }
 }
 
@@ -1145,6 +1082,28 @@ auto AppRender::CreateEffect(EffectUsage usage, string_view name, string_view de
     return ActiveRenderer->CreateEffect(usage, name, defines, loader);
 }
 
+auto AppInput::GetMousePosition() const -> tuple<int, int>
+{
+    auto x = 100;
+    auto y = 100;
+    if (ActiveRendererType != RenderType::Null) {
+        SDL_GetMouseState(&x, &y);
+    }
+    return {x, y};
+}
+
+void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
+{
+    if (ActiveRendererType != RenderType::Null) {
+        if (relative_to != nullptr) {
+            SDL_WarpMouseInWindow(static_cast<SDL_Window*>(relative_to->_windowHandle), x, y);
+        }
+        else {
+            SDL_WarpMouseGlobal(x, y);
+        }
+    }
+}
+
 auto AppInput::PollEvent(InputEvent& event) -> bool
 {
     if (!EventsQueue->empty()) {
@@ -1165,9 +1124,10 @@ void AppInput::SetClipboardText(string_view text)
     SDL_SetClipboardText(string(text).c_str());
 }
 
-auto AppInput::GetClipboardText() -> string
+auto AppInput::GetClipboardText() -> const string&
 {
-    return SDL_GetClipboardText();
+    _clipboardTextStorage = SDL_GetClipboardText();
+    return _clipboardTextStorage;
 }
 
 auto AppAudio::IsEnabled() -> bool
@@ -1532,6 +1492,8 @@ static ImGuiKey KeycodeToImGuiKey(int keycode)
         return ImGuiKey_F11;
     case SDLK_F12:
         return ImGuiKey_F12;
+    default:
+        break;
     }
     return ImGuiKey_None;
 }

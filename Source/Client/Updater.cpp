@@ -70,10 +70,10 @@ Updater::Updater(GlobalSettings& settings, AppWindow* window) : _settings {setti
     _sprMngr.SetDefaultFont(FONT_DEFAULT, COLOR_TEXT);
 
     // Network handlers
-    _conn.AddConnectHandler(std::bind(&Updater::Net_OnConnect, this, std::placeholders::_1));
-    _conn.AddDisconnectHandler(std::bind(&Updater::Net_OnDisconnect, this));
-    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, std::bind(&Updater::Net_OnUpdateFilesResponse, this));
-    _conn.AddMessageHandler(NETMSG_UPDATE_FILE_DATA, std::bind(&Updater::Net_OnUpdateFileData, this));
+    _conn.AddConnectHandler([this](bool success) { Net_OnConnect(success); });
+    _conn.AddDisconnectHandler([this] { Net_OnDisconnect(); });
+    _conn.AddMessageHandler(NETMSG_UPDATE_FILES_LIST, [this] { Net_OnUpdateFilesResponse(); });
+    _conn.AddMessageHandler(NETMSG_UPDATE_FILE_DATA, [this] { Net_OnUpdateFileData(); });
 
     // Connect
     AddText(STR_CONNECT_TO_SERVER, "Connect to server...");

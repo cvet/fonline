@@ -61,18 +61,17 @@ void ImageBaker::AutoBakeImages()
 {
     _errors = 0;
 
-    using namespace std::placeholders;
-    ProcessImages("fofrm", std::bind(&ImageBaker::LoadFofrm, this, _1, _2, _3));
-    ProcessImages("frm", std::bind(&ImageBaker::LoadFrm, this, _1, _2, _3));
-    ProcessImages("fr0", std::bind(&ImageBaker::LoadFrX, this, _1, _2, _3));
-    ProcessImages("rix", std::bind(&ImageBaker::LoadRix, this, _1, _2, _3));
-    ProcessImages("art", std::bind(&ImageBaker::LoadArt, this, _1, _2, _3));
-    ProcessImages("zar", std::bind(&ImageBaker::LoadZar, this, _1, _2, _3));
-    ProcessImages("til", std::bind(&ImageBaker::LoadTil, this, _1, _2, _3));
-    ProcessImages("mos", std::bind(&ImageBaker::LoadMos, this, _1, _2, _3));
-    ProcessImages("bam", std::bind(&ImageBaker::LoadBam, this, _1, _2, _3));
-    ProcessImages("png", std::bind(&ImageBaker::LoadPng, this, _1, _2, _3));
-    ProcessImages("tga", std::bind(&ImageBaker::LoadTga, this, _1, _2, _3));
+    ProcessImages("fofrm", [this](string_view fname, string_view opt, File& file) { return LoadFofrm(fname, opt, file); });
+    ProcessImages("frm", [this](string_view fname, string_view opt, File& file) { return LoadFrm(fname, opt, file); });
+    ProcessImages("fr0", [this](string_view fname, string_view opt, File& file) { return LoadFrX(fname, opt, file); });
+    ProcessImages("rix", [this](string_view fname, string_view opt, File& file) { return LoadRix(fname, opt, file); });
+    ProcessImages("art", [this](string_view fname, string_view opt, File& file) { return LoadArt(fname, opt, file); });
+    ProcessImages("zar", [this](string_view fname, string_view opt, File& file) { return LoadZar(fname, opt, file); });
+    ProcessImages("til", [this](string_view fname, string_view opt, File& file) { return LoadTil(fname, opt, file); });
+    ProcessImages("mos", [this](string_view fname, string_view opt, File& file) { return LoadMos(fname, opt, file); });
+    ProcessImages("bam", [this](string_view fname, string_view opt, File& file) { return LoadBam(fname, opt, file); });
+    ProcessImages("png", [this](string_view fname, string_view opt, File& file) { return LoadPng(fname, opt, file); });
+    ProcessImages("tga", [this](string_view fname, string_view opt, File& file) { return LoadTga(fname, opt, file); });
 
     if (_errors > 0) {
         throw ImageBakerException("Errors during images bakering", _errors);

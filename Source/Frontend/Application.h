@@ -222,10 +222,12 @@ struct InputEvent
     explicit InputEvent(KeyUpEvent ev) : Type {EventType::KeyUpEvent}, KeyUp {ev} { }
 };
 
-struct AppWindow
+class AppWindow
 {
     friend class Application;
+    friend class AppInput;
 
+public:
     [[nodiscard]] auto GetSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetPosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsFocused() const -> bool;
@@ -233,20 +235,23 @@ struct AppWindow
 
     void SetSize(int w, int h);
     void SetPosition(int x, int y);
-    void SetMousePosition(int x, int y);
     void Minimize();
     auto ToggleFullscreen(bool enable) -> bool;
     void Blink();
     void AlwaysOnTop(bool enable);
     void Destroy();
 
+    EventObserver<> OnWindowSizeChanged {};
+
 private:
     WindowInternalHandle* _windowHandle {};
     int _nonConstHelper {};
+    EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
 };
 
-struct AppRender
+class AppRender
 {
+public:
     static constexpr uint MAX_ATLAS_SIZE = 4096;
     static constexpr uint MIN_ATLAS_SIZE = 2048;
     static const uint& MAX_ATLAS_WIDTH;
@@ -264,20 +269,27 @@ struct AppRender
     void DisableScissor();
 };
 
-struct AppInput
+class AppInput
 {
+public:
     static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
 
-    [[nodiscard]] auto GetClipboardText() -> string;
+    [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
+    [[nodiscard]] auto GetClipboardText() -> const string&;
 
     [[nodiscard]] auto PollEvent(InputEvent& event) -> bool;
 
+    void SetMousePosition(int x, int y, const AppWindow* relative_to = nullptr);
     void PushEvent(const InputEvent& event);
     void SetClipboardText(string_view text);
+
+private:
+    string _clipboardTextStorage {};
 };
 
-struct AppAudio
+class AppAudio
 {
+public:
     static const int AUDIO_FORMAT_U8;
     static const int AUDIO_FORMAT_S16;
 
@@ -313,7 +325,6 @@ public:
     ~Application() = default;
 
     [[nodiscard]] auto GetName() const -> string_view;
-    [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
 
     [[nodiscard]] auto CreateWindow(int width, int height) -> AppWindow*;
 
@@ -343,11 +354,13 @@ private:
     string _name {};
     uint64 _time {};
     uint64 _timeFrequency {};
+    bool _isTablet {};
     bool _mouseCanUseGlobalState {};
     int _pendingMouseLeaveFrame {};
     int _mouseButtonsDown {};
     RenderDrawBuffer* _imguiDrawBuf {};
     RenderEffect* _imguiEffect {};
+    vector<AppWindow*> _allWindows {};
     EventDispatcher<> _onFrameBeginDispatcher {OnFrameBegin};
     EventDispatcher<> _onFrameEndDispatcher {OnFrameEnd};
     EventDispatcher<> _onPauseDispatcher {OnPause};
