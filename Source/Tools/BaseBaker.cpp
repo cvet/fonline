@@ -31,44 +31,13 @@
 // SOFTWARE.
 //
 
-#pragma once
-
-#include "Common.h"
-
-#if FO_ENABLE_3D
-
 #include "BaseBaker.h"
-#include "FileSystem.h"
 
-DECLARE_EXCEPTION(ModelBakerException);
+BaseBaker::BaseBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
+    _settings {settings},
+    _allFiles {all_files},
 
-#if FO_HAVE_FBXSDK
-namespace fbxsdk
+    _bakeChecker {std::move(bake_checker)},
+    _writeData {std::move(write_data)}
 {
-    class FbxManager;
-} // namespace fbxsdk
-#endif
-
-class ModelBaker final : public BaseBaker
-{
-public:
-    ModelBaker() = delete;
-    ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
-    ModelBaker(const ModelBaker&) = delete;
-    ModelBaker(ModelBaker&&) noexcept = default;
-    auto operator=(const ModelBaker&) = delete;
-    auto operator=(ModelBaker&&) noexcept = delete;
-    ~ModelBaker() override;
-
-    void AutoBakeModels() override;
-
-private:
-    [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uchar>;
-
-    int _errors {};
-#if FO_HAVE_FBXSDK
-    fbxsdk::FbxManager* _fbxManager {};
-#endif
-};
-
-#endif
+}

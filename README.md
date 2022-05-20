@@ -344,6 +344,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: SetValue for array
 * Properties: GetValue for dict
 * Properties: SetValue for dict
+* ProtoManager: rename ProtoManager to ProtoBaker and move to Baker stuff
 * ScriptSystem: remove commented code
 * Settings-Include: rework global Quit setting
 * Settings: improve editable entry for arrays

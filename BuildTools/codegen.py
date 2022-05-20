@@ -1302,8 +1302,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
     # Make stub for disabled script system
     if (lang == 'AngelScript' and not args.angelscript) or (lang == 'Mono' and not args.csharp) or (lang == 'Native' and not args.native):
         if isASCompiler:
-            writeFile('struct ' + target + 'ScriptSystem { void InitAngelScriptScripting(const char*); };')
-            writeFile('void ' + target + 'ScriptSystem::InitAngelScriptScripting(const char*) { }')
+            writeFile('struct ' + target + 'ScriptSystem { void InitAngelScriptScripting(string_view); };')
+            writeFile('void ' + target + 'ScriptSystem::InitAngelScriptScripting(string_view) { }')
         else:
             writeFile('#include "' + target + 'Scripting.h"')
             writeFile('void ' + target + 'ScriptSystem::Init' + lang + 'Scripting() { }')

@@ -165,7 +165,7 @@ struct BaseEntity : Entity
 #if COMPILER_VALIDATION_MODE
 #define INIT_ARGS FOEngineBase** out_engine
 #else
-#define INIT_ARGS const char* script_path
+#define INIT_ARGS string_view script_path
 #endif
 
 struct SCRIPTING_CLASS : public ScriptSystem

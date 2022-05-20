@@ -56,17 +56,17 @@
 
 auto DiskFileSystem::OpenFile(string_view fname, bool write) -> DiskFile
 {
-    return DiskFile(fname, write, false);
+    return {fname, write, false};
 }
 
 auto DiskFileSystem::OpenFile(string_view fname, bool write, bool write_through) -> DiskFile
 {
-    return DiskFile(fname, write, write_through);
+    return {fname, write, write_through};
 }
 
 auto DiskFileSystem::FindFiles(string_view path, string_view ext) -> DiskFind
 {
-    return DiskFind(path, ext);
+    return {path, ext};
 }
 
 #if FO_WINDOWS
@@ -469,7 +469,7 @@ struct DiskFind::Impl
 
 DiskFind::DiskFind(string_view path, string_view ext)
 {
-    auto query = string(path) + "*";
+    auto query = _str(path).combinePath("*").str();
     if (!ext.empty()) {
         query = "." + string(ext);
     }
@@ -707,7 +707,21 @@ auto DiskFile::Write(const_span<uchar> data) -> bool
     return true;
 }
 
+auto DiskFileSystem::GetWriteTime(string_view path) -> uint64
+{
+    if (const auto file = OpenFile(path, false)) {
+        return file.GetWriteTime();
+    }
+    return 0;
+}
+
 #if !FO_IOS
+auto DiskFileSystem::IsExists(string_view path) -> bool
+{
+    std::error_code ec;
+    return !std::filesystem::exists(path, ec) && !ec;
+}
+
 auto DiskFileSystem::IsDir(string_view path) -> bool
 {
     std::error_code ec;
@@ -761,6 +775,12 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 }
 
 #else
+
+auto DiskFileSystem::IsExists(string_view path) -> bool
+{
+    struct stat st;
+    return ::stat(string(path).c_str(), &st) == 0;
+}
 
 auto DiskFileSystem::IsDir(string_view path) -> bool
 {
@@ -854,24 +874,25 @@ auto DiskFileSystem::DeleteDir(string_view dir) -> bool
 
 static void RecursiveDirLook(string_view base_dir, string_view cur_dir, bool include_subdirs, string_view ext, DiskFileSystem::FileVisitor& visitor)
 {
-    for (auto find = DiskFileSystem::FindFiles(_str("{}{}", base_dir, cur_dir), ""); find; find++) {
+    for (auto find = DiskFileSystem::FindFiles(_str(base_dir).combinePath(cur_dir), ""); find; find++) {
         auto path = find.GetPath();
+        RUNTIME_ASSERT(!path.empty());
         if (path[0] != '.' && path[0] != '~') {
             if (find.IsDir()) {
                 if (path[0] != '_' && include_subdirs) {
-                    RecursiveDirLook(base_dir, _str("{}{}/", cur_dir, path), include_subdirs, ext, visitor);
+                    RecursiveDirLook(base_dir, _str(cur_dir).combinePath(path), include_subdirs, ext, visitor);
                 }
             }
             else {
                 if (ext.empty() || _str(path).getFileExtension() == ext) {
-                    visitor(_str("{}{}", cur_dir, path), find.GetFileSize(), find.GetWriteTime());
+                    visitor(_str(cur_dir).combinePath(path), find.GetFileSize(), find.GetWriteTime());
                 }
             }
         }
     }
 }
 
-void DiskFileSystem::IterateDir(string_view path, string_view ext, bool include_subdirs, FileVisitor visitor)
+void DiskFileSystem::IterateDir(string_view dir, string_view ext, bool include_subdirs, FileVisitor visitor)
 {
-    RecursiveDirLook(path, "", include_subdirs, ext, visitor);
+    RecursiveDirLook(dir, "", include_subdirs, ext, visitor);
 }

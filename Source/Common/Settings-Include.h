@@ -185,6 +185,7 @@ FIXED_SETTING(string, ASMapper);
 SETTING_GROUP_END();
 
 SETTING_GROUP(BakerSettings, virtual DummySettings);
+VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
 VARIABLE_SETTING(vector<string>, BakeContentEntries);
 VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv");

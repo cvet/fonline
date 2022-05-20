@@ -575,7 +575,7 @@ public:
     [[nodiscard]] auto GetAllIds(string_view collection_name) -> vector<uint> override
     {
         vector<uint> ids;
-        DiskFileSystem::IterateDir(_str("{}/{}/", _storageDir, collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
+        DiskFileSystem::IterateDir(_str(_storageDir).combinePath(collection_name), "json", false, [&ids](string_view path, size_t size, uint64 write_time) {
             UNUSED_VARIABLE(size);
             UNUSED_VARIABLE(write_time);
 

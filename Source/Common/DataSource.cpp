@@ -371,7 +371,7 @@ auto NonCachedDir::OpenFile(string_view path, string_view path_lower, size_t& si
 auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
 {
     FileNameVec fnames;
-    DiskFileSystem::IterateDir(_str("{}{}", _basePath, path), "", include_subdirs, [&fnames](string_view path2, size_t size, uint64 write_time) {
+    DiskFileSystem::IterateDir(_str(_basePath).combinePath(path), "", include_subdirs, [&fnames](string_view path2, size_t size, uint64 write_time) {
         UNUSED_VARIABLE(size);
         UNUSED_VARIABLE(write_time);
 

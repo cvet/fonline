@@ -45,7 +45,7 @@
 static auto PngLoad(const uchar* data, uint& result_width, uint& result_height) -> uchar*;
 static auto TgaLoad(const uchar* data, size_t data_size, uint& result_width, uint& result_height) -> uchar*;
 
-ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files) : _settings {settings}, _allFiles {all_files}
+ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
 {
     // Swap palette R&B
     // Todo: swap colors of fo palette once in header
@@ -57,7 +57,7 @@ ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files) : 
     });
 }
 
-void ImageBaker::AutoBakeImages()
+void ImageBaker::AutoBakeModels()
 {
     _errors = 0;
 
@@ -78,34 +78,18 @@ void ImageBaker::AutoBakeImages()
     }
 }
 
-void ImageBaker::BakeImage(string_view fname_with_opt)
-{
-    if (_bakedFiles.count(string(fname_with_opt)) != 0u) {
-        return;
-    }
-
-    const auto collection = LoadAny(fname_with_opt);
-    BakeCollection(fname_with_opt, collection);
-}
-
-void ImageBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
-{
-    for (auto&& [name, data] : _bakedFiles) {
-        baked_files.emplace(name, data);
-    }
-}
-
 void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
 {
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
-            continue;
-        }
 
         string ext = _str(file_header.GetPath()).getFileExtension();
         if (target_ext != ext) {
+            continue;
+        }
+
+        if (!_bakeChecker(file_header)) {
             continue;
         }
 
@@ -128,8 +112,6 @@ void ImageBaker::ProcessImages(string_view target_ext, const LoadFunc& loader)
 
 void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection)
 {
-    RUNTIME_ASSERT(!_bakedFiles.count(string(fname)));
-
     vector<uchar> data;
     auto writer = DataWriter(data);
 
@@ -166,10 +148,10 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     writer.Write<ushort>(check_number);
 
     if (!collection.NewExtension.empty()) {
-        _bakedFiles.emplace(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), std::move(data));
+        _writeData(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), data);
     }
     else {
-        _bakedFiles.emplace(fname, std::move(data));
+        _writeData(fname, data);
     }
 }
 

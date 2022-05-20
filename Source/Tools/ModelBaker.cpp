@@ -191,7 +191,7 @@ struct AnimSet
     vector<vector<string>> BonesHierarchy {};
 };
 
-ModelBaker::ModelBaker(FileCollection& all_files) : _allFiles {all_files}
+ModelBaker::ModelBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
 {
 #if FO_HAVE_FBXSDK
     _fbxManager = FbxManager::Create();
@@ -222,12 +222,13 @@ void ModelBaker::AutoBakeModels()
     _allFiles.ResetCounter();
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
-        if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
-            continue;
-        }
 
         string ext = _str(file_header.GetPath()).getFileExtension();
         if (!(ext == "fbx" || ext == "dae" || ext == "obj")) {
+            continue;
+        }
+
+        if (!_bakeChecker(file_header)) {
             continue;
         }
 
@@ -235,7 +236,7 @@ void ModelBaker::AutoBakeModels()
 
         try {
             auto data = BakeFile(file_header.GetPath(), file);
-            _bakedFiles.emplace(file_header.GetPath(), std::move(data));
+            _writeData(file_header.GetPath(), data);
         }
         catch (const ModelBakerException& ex) {
             ReportExceptionAndContinue(ex);
@@ -249,13 +250,6 @@ void ModelBaker::AutoBakeModels()
 
     if (_errors > 0) {
         throw ModelBakerException("Errors during effects bakering", _errors);
-    }
-}
-
-void ModelBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
-{
-    for (auto&& [name, data] : _bakedFiles) {
-        baked_files.emplace(name, data);
     }
 }
 

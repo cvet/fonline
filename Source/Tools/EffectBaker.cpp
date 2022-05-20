@@ -36,6 +36,7 @@
 #include "EffectBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
+#include "Log.h"
 #include "StringUtils.h"
 
 #include "GlslangToSpv.h"
@@ -152,7 +153,7 @@ constexpr TBuiltInResource GLSLANG_BUILT_IN_RESOURCE = {
         /* .generalConstantMatrixVectorIndexing = */ true,
     }};
 
-EffectBaker::EffectBaker(FileCollection& all_files) : _allFiles {all_files}
+EffectBaker::EffectBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) : BaseBaker(settings, all_files, std::move(bake_checker), std::move(write_data))
 {
     glslang::InitializeProcess();
 }
@@ -162,7 +163,7 @@ EffectBaker::~EffectBaker()
     glslang::FinalizeProcess();
 }
 
-void EffectBaker::AutoBakeEffects()
+void EffectBaker::AutoBakeModels()
 {
     _errors = 0;
 
@@ -174,18 +175,18 @@ void EffectBaker::AutoBakeEffects()
     while (_allFiles.MoveNext()) {
         auto file_header = _allFiles.GetCurFileHeader();
 
+        string ext = _str(file_header.GetPath()).getFileExtension();
+        if (ext != "fofx") {
+            continue;
+        }
+
         {
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            if (_bakedFiles.count(string(file_header.GetPath())) != 0u) {
+            if (!_bakeChecker(file_header)) {
                 continue;
             }
-        }
-
-        string ext = _str(file_header.GetPath()).getFileExtension();
-        if (ext != "fofx") {
-            continue;
         }
 
         auto file = _allFiles.GetCurFile();
@@ -239,7 +240,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 #else
     const auto shader_defines = _str("precision mediump float;\n").str();
 #endif
-    const auto shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
+    const auto* shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
 
     for (auto pass = 1; pass <= passes; pass++) {
         string vertex_pass_content = fofx.GetAppContent(_str("VertexShader Pass{}", pass));
@@ -293,7 +294,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);
 #endif
-            _bakedFiles.emplace(fname, vector<uchar>(content.begin(), content.end()));
+            _writeData(fname, vector<uchar>(content.begin(), content.end()));
         }
     }
 }
@@ -320,7 +321,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.spv", fname_wo_ext), std::move(data));
+        _writeData(_str("{}.spv", fname_wo_ext), data);
     };
 
     // SPIR-V to GLSL
@@ -334,7 +335,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.glsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.glsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to GLSL ES
@@ -348,7 +349,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.glsl-es", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.glsl-es", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to HLSL
@@ -361,7 +362,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.hlsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.hlsl", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal macOS
@@ -374,7 +375,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.msl-mac", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.msl-mac", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
     // SPIR-V to Metal iOS
@@ -387,7 +388,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif
-        _bakedFiles.emplace(_str("{}.msl-ios", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
+        _writeData(_str("{}.msl-ios", fname_wo_ext), vector<uchar>(source.begin(), source.end()));
     };
 
 #if FO_ASYNC_BAKE
@@ -411,15 +412,4 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     make_msl_mac();
     make_msl_ios();
 #endif
-}
-
-void EffectBaker::FillBakedFiles(map<string, vector<uchar>>& baked_files)
-{
-#if FO_ASYNC_BAKE
-    std::lock_guard locker(_bakedFilesLocker);
-#endif
-
-    for (auto&& [name, data] : _bakedFiles) {
-        baked_files.emplace(name, data);
-    }
 }

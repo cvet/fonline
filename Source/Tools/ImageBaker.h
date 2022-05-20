@@ -35,29 +35,28 @@
 
 #include "Common.h"
 
+#include "BaseBaker.h"
 #include "FileSystem.h"
 #include "Settings.h"
 
 DECLARE_EXCEPTION(ImageBakerException);
 
-class ImageBaker final
+class ImageBaker final : public BaseBaker
 {
 public:
     ImageBaker() = delete;
-    explicit ImageBaker(GeometrySettings& settings, FileCollection& all_files);
+    explicit ImageBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data);
     ImageBaker(const ImageBaker&) = delete;
-    ImageBaker(ImageBaker&&) noexcept = delete;
+    ImageBaker(ImageBaker&&) noexcept = default;
     auto operator=(const ImageBaker&) = delete;
     auto operator=(ImageBaker&&) noexcept = delete;
-    ~ImageBaker() = default;
+    ~ImageBaker() override = default;
 
-    void AutoBakeImages();
-    void BakeImage(string_view fname_with_opt);
-    void FillBakedFiles(map<string, vector<uchar>>& baked_files);
+    void AutoBakeModels() override;
 
 private:
-    static const int MAX_FRAME_SEQUENCE = 200;
-    static const int MAX_DIRS_MINUS_ONE = 7;
+    static constexpr int MAX_FRAME_SEQUENCE = 200;
+    static constexpr int MAX_DIRS_MINUS_ONE = 7;
 
     struct FrameShot
     {
@@ -107,9 +106,6 @@ private:
     [[nodiscard]] auto LoadPng(string_view fname, string_view opt, File& file) -> FrameCollection;
     [[nodiscard]] auto LoadTga(string_view fname, string_view opt, File& file) -> FrameCollection;
 
-    GeometrySettings& _settings;
-    FileCollection& _allFiles;
-    map<string, vector<uchar>> _bakedFiles {};
     unordered_map<string, File> _cachedFiles {};
     int _errors {};
     bool _nonConstHelper {};

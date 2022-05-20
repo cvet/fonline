@@ -1373,6 +1373,8 @@ list( APPEND FO_MAPPER_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/NativeScripting-Mapper.cpp" )
 
 list( APPEND FO_BAKER_SOURCE
+	"Source/Tools/BaseBaker.h"
+	"Source/Tools/BaseBaker.cpp"
 	"Source/Tools/EffectBaker.h"
 	"Source/Tools/EffectBaker.cpp"
 	"Source/Tools/F2Palette-Include.h"
@@ -1691,6 +1693,7 @@ if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 	StatusMessage( "+ BakerLib" )
 	add_library( BakerLib STATIC ${FO_BAKER_SOURCE} )
 	add_dependencies( BakerLib CodeGeneration )
+	set_target_properties( BakerLib PROPERTIES COMPILE_DEFINITIONS "FO_ASYNC_BAKE=0" )
 	target_link_libraries( BakerLib CommonLib ${FO_BAKER_SYSTEM_LIBS} ${FO_BAKER_LIBS} )
 	list( APPEND FO_CORE_LIBS_GROUP "BakerLib" )
 endif()
@@ -1811,7 +1814,7 @@ if( FONLINE_BUILD_BAKER )
 	add_executable( FOnlineBaker "Source/Applications/BakerApp.cpp" )
 	set_target_properties( FOnlineBaker PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${FO_BAKER_OUTPUT} )
 	set_target_properties( FOnlineBaker PROPERTIES OUTPUT_NAME "FOnlineBaker" )
-	set_target_properties( FOnlineBaker PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0;FO_ASYNC_BAKE=0" )
+	set_target_properties( FOnlineBaker PROPERTIES COMPILE_DEFINITIONS "FO_TESTING_APP=0" )
 	target_link_libraries( FOnlineBaker "AppHeadless" "BakerLib" )
 	if( FO_ANGELSCRIPT_SCRIPTING )
 		target_link_libraries( FOnlineBaker "ASCompilerLib" )
@@ -1929,11 +1932,18 @@ if( FO_ANGELSCRIPT_SCRIPTING )
 endif()
 
 add_custom_target( BakeResources
-	COMMAND ${bakeResources}
+	COMMAND ${bakeResources} -ForceBakering False
 	DEPENDS CodeGeneration
 	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
 	COMMENT "Bake resources" )
 list( APPEND FO_COMMANDS_GROUP "BakeResources" )
+
+add_custom_target( ForceBakeResources
+	COMMAND ${bakeResources} -ForceBakering True
+	DEPENDS CodeGeneration
+	WORKING_DIRECTORY ${FO_RESOURCES_OUTPUT}
+	COMMENT "Bake resources" )
+list( APPEND FO_COMMANDS_GROUP "ForceBakeResources" )
 
 # Configs
 StatusMessage( "Configs:" )
