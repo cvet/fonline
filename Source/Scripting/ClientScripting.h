@@ -44,7 +44,7 @@ class FOClient;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    ClientScriptSystem(FOClient* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
+    explicit ClientScriptSystem(FOClient* engine) : ScriptSystem(), _engine {engine}
     {
         InitNativeScripting();
         InitAngelScriptScripting();

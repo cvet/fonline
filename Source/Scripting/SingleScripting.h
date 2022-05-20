@@ -44,7 +44,7 @@ class FOSingle;
 class SingleScriptSystem : public ScriptSystem
 {
 public:
-    explicit SingleScriptSystem(FOSingle* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
+    explicit SingleScriptSystem(FOSingle* engine) : ScriptSystem(), _engine {engine}
     {
         InitNativeScripting();
         InitAngelScriptScripting();

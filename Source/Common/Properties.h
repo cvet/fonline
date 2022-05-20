@@ -112,9 +112,11 @@ public:
     [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
     [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
 
-    [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHash; }
+    [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
     [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
-    [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnum; }
+    [[nodiscard]] auto IsBaseTypeEnum() const -> bool { return _isEnumBase; }
+    [[nodiscard]] auto IsBaseScriptFuncType() const -> bool { return !_scriptFuncType.empty(); }
+    [[nodiscard]] auto GetBaseScriptFuncType() const -> const string& { return _scriptFuncType; }
 
     [[nodiscard]] auto IsReadable() const -> bool { return _isReadable; }
     [[nodiscard]] auto IsWritable() const -> bool { return _isWritable; }
@@ -144,15 +146,17 @@ private:
     string _componentName {};
     DataType _dataType {};
 
-    bool _isHash {};
+    bool _isStringBase {};
+    bool _isHashBase {};
     bool _isResourceHash {};
     bool _isInt {};
     bool _isSignedInt {};
     bool _isFloat {};
     bool _isBool {};
-    bool _isEnum {};
+    bool _isEnumBase {};
     uint _baseSize {};
     string _baseTypeName {};
+    string _scriptFuncType {};
 
     bool _isInt8 {};
     bool _isInt16 {};
@@ -179,10 +183,15 @@ private:
     bool _isReadOnly {};
     bool _isReadable {};
     bool _isWritable {};
+    bool _setDefaultValue {};
     bool _checkMinValue {};
     bool _checkMaxValue {};
-    int64 _minValue {};
-    int64 _maxValue {};
+    int64 _defValueI {};
+    int64 _minValueI {};
+    int64 _maxValueI {};
+    double _defValueF {};
+    double _minValueF {};
+    double _maxValueF {};
     bool _isTemporary {};
     bool _isHistorical {};
     ushort _regIndex {};
@@ -259,7 +268,7 @@ public:
     {
         RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
-        RUNTIME_ASSERT(prop->_isHash);
+        RUNTIME_ASSERT(prop->_isHashBase);
         const auto h = *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]);
         return ResolveHash(h);
     }
@@ -269,7 +278,7 @@ public:
     {
         RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
-        RUNTIME_ASSERT(prop->_isHash);
+        RUNTIME_ASSERT(prop->_isHashBase);
         const auto old_value = ResolveHash(*reinterpret_cast<hstring::hash_t*>(_podData[prop->_podDataOffset]));
         if (new_value != old_value) {
             *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = new_value.as_uint();
@@ -410,8 +419,8 @@ public:
         if constexpr (!std::is_same_v<base_type, string>) {
             static_assert(sizeof(base_type) == 1u || sizeof(base_type) == 2u || sizeof(base_type) == 4u || sizeof(base_type) == 8u);
             prop->_baseSize = sizeof(base_type);
-            prop->_isHash = TypeInfo<T>::BaseType::IS_HASH;
-            prop->_isEnum = TypeInfo<T>::BaseType::IS_ENUM;
+            prop->_isHashBase = TypeInfo<T>::BaseType::IS_HASH;
+            prop->_isEnumBase = TypeInfo<T>::BaseType::IS_ENUM;
 
             prop->_isInt = (std::is_integral_v<base_type> && !std::is_same_v<base_type, bool>);
             prop->_isSignedInt = (prop->_isInt && std::is_signed_v<base_type>);
@@ -430,7 +439,7 @@ public:
             prop->_isSingleFloat = (prop->_isFloat && prop->_baseSize == 4u);
             prop->_isDoubleFloat = (prop->_isFloat && prop->_baseSize == 8u);
 
-            if (prop->_isHash) {
+            if (prop->_isHashBase) {
                 prop->_baseTypeName = "hstring";
             }
             else if (prop->_isInt) {
@@ -474,8 +483,8 @@ public:
             static_assert(!std::is_same_v<key_type, bool>);
             static_assert(sizeof(key_type) == 1u || sizeof(key_type) == 2u || sizeof(key_type) == 4u || sizeof(key_type) == 8u);
             prop->_isDictOfArray = TypeInfo<T>::IS_DICT_OF_ARRAY;
-            prop->_isDictOfString = (!prop->_isDictOfArray && std::is_same_v<base_type, string>);
-            prop->_isDictOfArrayOfString = (prop->_isDictOfArray && std::is_same_v<base_type, string>);
+            prop->_isDictOfString = !prop->_isDictOfArray && std::is_same_v<base_type, string>;
+            prop->_isDictOfArrayOfString = prop->_isDictOfArray && std::is_same_v<base_type, string>;
             prop->_dictKeySize = sizeof(key_type);
             prop->_isDictKeyHash = TypeInfo<T>::KeyType::IS_HASH;
             prop->_isDictKeyEnum = TypeInfo<T>::KeyType::IS_ENUM;
@@ -499,6 +508,8 @@ public:
                 }
             }
         }
+
+        prop->_isStringBase = prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfString || prop->_isDictOfArrayOfString;
 
         AppendProperty(prop, flags);
     }

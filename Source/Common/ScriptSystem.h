@@ -36,11 +36,11 @@
 #include "Common.h"
 
 #include "Entity.h"
-#include "Settings.h"
 
 DECLARE_EXCEPTION(ScriptSystemException);
 DECLARE_EXCEPTION(ScriptException);
 DECLARE_EXCEPTION(ScriptInitException);
+DECLARE_EXCEPTION(EntityInitScriptException);
 
 enum class ScriptEnum_uint8 : uchar
 {
@@ -86,66 +86,74 @@ using AbstractCritter = Entity;
 using AbstractMap = Entity;
 using AbstractLocation = Entity;
 
+struct GenericScriptFunc
+{
+    vector<const type_info*> ArgsType {};
+    bool CallNotSupported {};
+    const type_info* RetType {};
+    std::function<bool(initializer_list<void*>, void*)> Call {};
+};
+
 template<typename TRet, typename... Args>
 class ScriptFunc final
 {
-public:
-    using Func = std::function<bool(Args..., TRet&)>;
+    friend class ScriptSystem;
 
+public:
     ScriptFunc() = default;
-    explicit ScriptFunc(Func f) : _func {f} { }
-    explicit operator bool() { return !!_func; }
-    auto operator()(Args... args) -> bool { return _func(std::forward<Args>(args)..., _ret); }
-    auto GetResult() -> TRet { return _ret; }
+    [[nodiscard]] explicit operator bool() const { return _func != nullptr; }
+    [[nodiscard]] auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, &_ret) : false; }
+    [[nodiscard]] auto GetResult() -> TRet { return _ret; }
 
 private:
-    Func _func {};
+    explicit ScriptFunc(GenericScriptFunc* f) : _func {f} { }
+
+    GenericScriptFunc* _func {};
     TRet _ret {};
 };
 
 template<typename... Args>
 class ScriptFunc<void, Args...> final
 {
-public:
-    using Func = std::function<bool(Args...)>;
+    friend class ScriptSystem;
 
+public:
     ScriptFunc() = default;
-    explicit ScriptFunc(Func f) : _func {f} { }
-    explicit operator bool() const { return !!_func; }
-    auto operator()(Args... args) -> bool { return _func(std::forward<Args>(args)...); }
+    [[nodiscard]] explicit operator bool() const { return _func != nullptr; }
+    [[nodiscard]] auto operator()(Args... args) -> bool { return _func != nullptr ? _func->Call({&args...}, nullptr) : false; }
 
 private:
-    Func _func {};
+    explicit ScriptFunc(GenericScriptFunc* f) : _func {f} { }
+
+    GenericScriptFunc* _func {};
 };
 
 class ScriptSystem
 {
 public:
-    ScriptSystem() = delete;
-    explicit ScriptSystem(GlobalSettings& settings);
+    ScriptSystem() = default;
     ScriptSystem(const ScriptSystem&) = delete;
     ScriptSystem(ScriptSystem&&) noexcept = delete;
     auto operator=(const ScriptSystem&) = delete;
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
-    template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    auto FindFunc(string_view func_name) -> ScriptFunc<TRet, Args...>
+    void InitModules();
+
+    template<typename TRet, typename... Args>
+    [[nodiscard]] auto FindFunc(string_view func_name) -> ScriptFunc<TRet, Args...>
     {
-        // Todo: FindFunc
-        UNUSED_VARIABLE(func_name);
-        return ScriptFunc<TRet, Args...>();
+        const auto range = _funcMap.equal_range(string(func_name));
+        for (auto it = range.first; it != range.second; ++it) {
+            if (ValidateArgs(it->second, {&typeid(Args)...}, &typeid(TRet))) {
+                return ScriptFunc<TRet, Args...>(&it->second);
+            }
+        }
+        return {};
     }
 
-    template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    auto FindFunc(string_view func_name) -> ScriptFunc<void, Args...>
-    {
-        UNUSED_VARIABLE(func_name);
-        return ScriptFunc<void, Args...>();
-    }
-
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    auto CallFunc(string_view func_name, Args... args, TRet& ret) -> bool
+    [[nodiscard]] auto CallFunc(string_view func_name, Args... args, TRet& ret) -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
         if (func && func(args...)) {
@@ -156,7 +164,7 @@ public:
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    auto CallFunc(string_view func_name, Args... args) -> bool
+    [[nodiscard]] auto CallFunc(string_view func_name, Args... args) -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
         return func && func(args...);
@@ -170,74 +178,11 @@ public:
     shared_ptr<MonoImpl> MonoData {};
 
 protected:
-    GlobalSettings& _settings;
+    [[nodiscard]] auto ValidateArgs(const GenericScriptFunc& gen_func, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool;
 
-    /*
-public:
-    void RunModuleInitFunctions();
-
-    string GetDeferredCallsStatistics();
-    void ProcessDeferredCalls();
-    / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        bool LoadDeferredCalls();
-    #endif* /
-
-    StrVec GetCustomEntityTypes();
-    / *#if defined(FONLINE_SERVER) || defined(FONLINE_EDITOR)
-        bool RestoreCustomEntity(string_view type_name, uint id, const DataBase::Document& doc);
-    #endif* /
-
-    void RemoveEventsEntity(Entity* entity);
-
-    void HandleRpc(void* context);
-
-    string GetActiveFuncName();
-
-    uint BindByFuncName(string_view func_name, string_view decl, bool is_temp, bool disable_log = false);
-    // uint BindByFunc(asIScriptFunction* func, bool is_temp, bool disable_log = false);
-    uint BindByFuncNum(hash func_num, bool is_temp, bool disable_log = false);
-    // asIScriptFunction* GetBindFunc(uint bind_id);
-    string GetBindFuncName(uint bind_id);
-
-    // hash GetFuncNum(asIScriptFunction* func);
-    // asIScriptFunction* FindFunc(hash func_num);
-    hash BindScriptFuncNumByFuncName(string_view func_name, string_view decl);
-    // hash BindScriptFuncNumByFunc(asIScriptFunction* func);
-    uint GetScriptFuncBindId(hash func_num);
-    void PrepareScriptFuncContext(hash func_num, string_view ctx_info);
-
-    void CacheEnumValues();
-
-
-    void PrepareContext(uint bind_id, string_view ctx_info);
-    void SetArgUChar(uchar value);
-    void SetArgUShort(ushort value);
-    void SetArgUInt(uint value);
-    void SetArgUInt64(uint64 value);
-    void SetArgBool(bool value);
-    void SetArgFloat(float value);
-    void SetArgDouble(double value);
-    void SetArgObject(void* value);
-    void SetArgEntity(Entity* value);
-    void SetArgAddress(void* value);
-    bool RunPrepared();
-    void RunPreparedSuspend();
-    // asIScriptContext* SuspendCurrentContext(uint time);
-    // void ResumeContext(asIScriptContext* ctx);
-    void RunSuspended();
-    void RunMandatorySuspended();
-    // bool CheckContextEntities(asIScriptContext* ctx);
-    uint GetReturnedUInt();
-    bool GetReturnedBool();
-    void* GetReturnedObject();
-    float GetReturnedFloat();
-    double GetReturnedDouble();
-    void* GetReturnedRawAddress();
-
-private:
-    HashIntMap scriptFuncBinds {}; // Func Num -> Bind Id
-    StrIntMap cachedEnums {};
-    map<string, IntStrMap> cachedEnumNames {};*/
+    std::unordered_multimap<string, GenericScriptFunc> _funcMap {};
+    vector<GenericScriptFunc*> _initFunc {};
+    bool _nonConstHelper {};
 };
 
 class ScriptHelpers final
@@ -258,10 +203,12 @@ public:
     {
         if (init_script) {
             if (auto&& init_func = script_sys->FindFunc<void, T*, bool>(init_script)) {
-                init_func(entity, first_time);
+                if (!init_func(entity, first_time)) {
+                    throw EntityInitScriptException("Init func call failed", init_script);
+                }
             }
             else {
-                throw GenericException("Init func not found or has bas signature", init_script);
+                throw EntityInitScriptException("Init func not found or has bad signature", init_script);
             }
         }
     }

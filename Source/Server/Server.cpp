@@ -50,7 +50,7 @@ FOServer::FOServer(GlobalSettings& settings) :
         [&, this]() -> ScriptSystem* {
             extern auto Server_RegisterData(FOEngineBase*)->vector<uchar>;
             RestoreInfoBin = Server_RegisterData(this);
-            return new ServerScriptSystem(this, settings);
+            return new ServerScriptSystem(this);
         }),
 #else
     FOEngineBase(settings, PropertiesRelationType::None, nullptr),
@@ -245,7 +245,9 @@ FOServer::FOServer(GlobalSettings& settings) :
         writer.Write<short>(-1);
     }
 
-    // Initialization script
+    // Scripting
+    ScriptSys->InitModules();
+
     if (OnInit.Fire()) {
         throw ServerInitException("Initialization script failed");
     }
@@ -1022,7 +1024,7 @@ void FOServer::Process_Text(Player* player)
         }
     }
     else {
-        auto* map = MapMngr.GetMap(cr->GetMapId());
+        const auto* map = MapMngr.GetMap(cr->GetMapId());
         const auto pid = (map != nullptr ? map->GetProtoId() : hstring());
         for (auto& tl : _textListeners) {
             if (tl.SayType == how_say && tl.Parameter == pid.as_uint() && _str(string(str).substr(0, tl.FirstStr.length())).compareIgnoreCaseUtf8(tl.FirstStr)) {
@@ -1032,7 +1034,9 @@ void FOServer::Process_Text(Player* player)
     }
 
     for (auto& cb : listen_callbacks) {
-        cb.first(cr, cb.second);
+        if (!cb.first(cr, cb.second)) {
+            // Nop
+        }
     }
 }
 
@@ -1716,7 +1720,9 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
     if (map->IsHexStaticTrigger(from_hx, from_hy)) {
         for (auto* item : map->GetStaticItemTriggers(from_hx, from_hy)) {
             if (item->TriggerScriptFunc) {
-                item->TriggerScriptFunc(cr, item, false, dir);
+                if (!item->TriggerScriptFunc(cr, item, false, dir)) {
+                    // Nop
+                }
             }
 
             OnStaticItemWalk.Fire(item, cr, false, dir);
@@ -1726,7 +1732,9 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
     if (map->IsHexStaticTrigger(to_hx, to_hy)) {
         for (auto* item : map->GetStaticItemTriggers(to_hx, to_hy)) {
             if (item->TriggerScriptFunc) {
-                item->TriggerScriptFunc(cr, item, true, dir);
+                if (!item->TriggerScriptFunc(cr, item, true, dir)) {
+                    // Nop
+                }
             }
 
             OnStaticItemWalk.Fire(item, cr, true, dir);
@@ -3655,7 +3663,9 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
     cl->Talk.Lexems.clear();
     if (!cl->Talk.CurDialog.DlgScriptFunc.empty()) {
         cl->Talk.Locked = true;
-        ScriptSys->CallFunc<string, Critter*, Critter*>(cl->Talk.CurDialog.DlgScriptFunc, cl, npc, cl->Talk.Lexems);
+        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cl->Talk.CurDialog.DlgScriptFunc, cl, npc, cl->Talk.Lexems)) {
+            // Nop
+        }
         cl->Talk.Locked = false;
     }
 
@@ -3843,7 +3853,9 @@ void FOServer::Process_Dialog(Player* player)
     cr->Talk.Lexems.clear();
     if (!cr->Talk.CurDialog.DlgScriptFunc.empty()) {
         cr->Talk.Locked = true;
-        ScriptSys->CallFunc<string, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFunc, cr, npc, cr->Talk.Lexems);
+        if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFunc, cr, npc, cr->Talk.Lexems)) {
+            // Nop
+        }
         cr->Talk.Locked = false;
     }
 

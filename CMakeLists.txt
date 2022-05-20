@@ -1392,6 +1392,7 @@ if( FO_ANGELSCRIPT_SCRIPTING )
 			"Source/Scripting/ServerScripting.h"
 			"Source/Scripting/ClientScripting.h"
 			"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
+			"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
 			"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
 			"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ServerCompiler.cpp"
 			"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp" )
@@ -1399,6 +1400,7 @@ if( FO_ANGELSCRIPT_SCRIPTING )
 		list( APPEND FO_ASCOMPILER_SOURCE
 			"Source/Scripting/SingleScripting.h"
 			"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
+			"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
 			"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp" )
 	endif()
 endif()
@@ -1575,9 +1577,11 @@ list( APPEND FO_CODEGEN_OUTPUT
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Single.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompiler.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ServerCompilerValidation.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-ClientCompiler.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-MapperCompiler.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompiler.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-SingleCompilerValidation.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/MonoScripting-Mapper.cpp"

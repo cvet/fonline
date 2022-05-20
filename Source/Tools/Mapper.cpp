@@ -46,7 +46,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         [&, this]() -> ScriptSystem* {
             extern void Mapper_RegisterData(FOEngineBase*);
             Mapper_RegisterData(this);
-            return new MapperScriptSystem(this, settings);
+            return new MapperScriptSystem(this);
         }),
     FOClient(settings, window, PropertiesRelationType::None, nullptr),
 

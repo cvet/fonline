@@ -35,24 +35,25 @@
 
 #include "Application.h"
 #include "Log.h"
+#include "ScriptSystem.h"
 #include "Settings.h"
 
 #if !FO_SINGLEPLAYER
-struct ServerScriptSystem
+struct ASCompiler_ServerScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
-struct ClientScriptSystem
+struct ASCompiler_ClientScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
 #else
-struct SingleScriptSystem
+struct ASCompiler_SingleScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
 #endif
-struct MapperScriptSystem
+struct ASCompiler_MapperScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
@@ -82,7 +83,7 @@ int main(int argc, char** argv)
             WriteLog("Compile server scripts at {}", App->Settings.ASServer);
 
             try {
-                ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer.c_str());
+                ASCompiler_ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer.c_str());
             }
             catch (std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -97,7 +98,7 @@ int main(int argc, char** argv)
             WriteLog("Compile client scripts at {}", App->Settings.ASClient);
 
             try {
-                ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
+                ASCompiler_ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
             }
             catch (std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -112,7 +113,7 @@ int main(int argc, char** argv)
             WriteLog("Compile game scripts at {}", App->Settings.ASSingle);
 
             try {
-                SingleScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
+                ASCompiler_SingleScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
             }
             catch (std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {
@@ -128,7 +129,7 @@ int main(int argc, char** argv)
             WriteLog("Compile mapper scripts at {}", App->Settings.ASMapper);
 
             try {
-                MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper.c_str());
+                ASCompiler_MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper.c_str());
             }
             catch (std::exception& ex) {
                 if (CompilerPassedMessages.empty()) {

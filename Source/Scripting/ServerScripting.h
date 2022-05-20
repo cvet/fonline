@@ -44,7 +44,7 @@ class FOServer;
 class ServerScriptSystem : public ScriptSystem
 {
 public:
-    ServerScriptSystem(FOServer* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
+    explicit ServerScriptSystem(FOServer* engine) : ScriptSystem(), _engine {engine}
     {
         InitNativeScripting();
         InitAngelScriptScripting();

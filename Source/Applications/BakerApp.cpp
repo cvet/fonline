@@ -47,6 +47,8 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
+DECLARE_EXCEPTION(ProtoValidationException);
+
 class BakerEngine : public FOEngineBase
 {
 public:
@@ -65,24 +67,34 @@ public:
 // Implementation in AngelScriptScripting-*Compiler.cpp
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
-struct ServerScriptSystem
+struct ASCompiler_ServerScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
-struct ClientScriptSystem
+struct ASCompiler_ServerScriptSystem_Validation : public ScriptSystem
+{
+    void InitAngelScriptScripting(FOEngineBase** out_engine);
+};
+struct ASCompiler_ClientScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
 #else
-struct SingleScriptSystem
+struct ASCompiler_SingleScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
+};
+struct ASCompiler_SingleScriptSystem_Validation : public ScriptSystem
+{
+    void InitAngelScriptScripting(FOEngineBase** out_engine);
 };
 #endif
-struct MapperScriptSystem
+struct ASCompiler_MapperScriptSystem : public ScriptSystem
 {
     void InitAngelScriptScripting(const char* script_path);
 };
+
+static void ValidateProtos(const vector<const ProtoEntity*>& protos, ScriptSystem* script_sys, const unordered_set<hstring>& resource_names);
 
 // External variable for compiler messages
 unordered_set<string> CompilerPassedMessages;
@@ -107,26 +119,29 @@ int main(int argc, char** argv)
 
         // AngelScript scripts
 #if FO_ANGELSCRIPT_SCRIPTING
+        auto as_server_compiled = false;
+
         try {
             WriteLog("Compile AngelScript scripts");
 
 #if !FO_SINGLEPLAYER
             WriteLog("Compile server scripts");
             RUNTIME_ASSERT(!App->Settings.ASServer.empty());
-            ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer.c_str());
+            ASCompiler_ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer.c_str());
+            as_server_compiled = true;
 
             WriteLog("Compile client scripts");
             RUNTIME_ASSERT(!App->Settings.ASClient.empty());
-            ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
+            ASCompiler_ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient.c_str());
 #else
             WriteLog("Compile game scripts");
             RUNTIME_ASSERT(!App->Settings.ASSingle.empty());
-            SingleScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
+            ASCompiler_SingleScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle.c_str());
 #endif
 
             WriteLog("Compile mapper scripts");
             RUNTIME_ASSERT(!App->Settings.ASMapper.empty());
-            MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper.c_str());
+            ASCompiler_MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper.c_str());
 
             WriteLog("Compile AngelScript scripts complete!");
         }
@@ -270,7 +285,34 @@ int main(int argc, char** argv)
                 RUNTIME_ASSERT(del_protos_ok);
 
                 proto_mngr.ParseProtos(engine.FileSys);
-                proto_mngr.ValidateProtoResources(resource_names);
+
+                // Protos validation
+                {
+                    unordered_set<hstring> resource_hashes;
+                    for (const auto& name : resource_names) {
+                        resource_hashes.insert(engine.ToHashedString(name));
+                    }
+
+                    FOEngineBase* validation_engine = nullptr;
+
+#if FO_ANGELSCRIPT_SCRIPTING
+                    if (as_server_compiled) {
+#if !FO_SINGLEPLAYER
+                        ASCompiler_ServerScriptSystem_Validation().InitAngelScriptScripting(&validation_engine);
+#else
+                        ASCompiler_SingleScriptSystem_Validation().InitAngelScriptScripting(&validation_engine);
+#endif
+                    }
+                    else {
+                        throw GenericException("AngelScript not compiled for proto validation");
+                    }
+#else
+#error...
+#endif
+
+                    ValidateProtos(proto_mngr.GetAllProtos(), validation_engine->ScriptSys, resource_hashes);
+                }
+
                 auto data = proto_mngr.GetProtosBinaryData();
                 RUNTIME_ASSERT(!data.empty());
 
@@ -409,5 +451,62 @@ int main(int argc, char** argv)
     }
     catch (std::exception& ex) {
         ReportExceptionAndExit(ex);
+    }
+}
+
+struct Item : Entity
+{
+};
+struct Critter : Entity
+{
+};
+struct Map : Entity
+{
+};
+struct Location : Entity
+{
+};
+
+static void ValidateProtos(const vector<const ProtoEntity*>& protos, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes)
+{
+    auto errors = 0;
+
+    unordered_map<string, std::function<bool(string_view)>> script_func_verify = {
+        {"ItemInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Item, bool>(func_name); }},
+        {"CritterInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Critter, bool>(func_name); }},
+        {"MapInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Map, bool>(func_name); }},
+        {"LocationInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location, bool>(func_name); }},
+        {"LocationEntrance", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location, vector<Critter>, uchar>(func_name); }},
+    };
+
+    for (const auto* proto : protos) {
+        const auto* registrator = proto->GetProperties().GetRegistrator();
+
+        for (uint i = 0; i < registrator->GetCount(); i++) {
+            const auto* prop = registrator->GetByIndex(i);
+
+            if (prop->IsBaseTypeResource()) {
+                const auto h = proto->GetProperties().GetValue<hstring>(prop);
+                if (h && resource_hashes.count(h) == 0u) {
+                    WriteLog("Resource '{}' not found for property {} in proto {}", h, prop->GetName(), proto->GetName());
+                    errors++;
+                }
+            }
+
+            if (prop->IsBaseScriptFuncType()) {
+                if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
+                    WriteLog("Invalid script func type '{}' for property {} in proto {}", prop->GetBaseScriptFuncType(), prop->GetName(), proto->GetName());
+                    errors++;
+                }
+                else if (!script_func_verify[prop->GetBaseScriptFuncType()]) {
+                    WriteLog("Verification failed for func type '{}' for property {} in proto {}", prop->GetBaseScriptFuncType(), prop->GetName(), proto->GetName());
+                    errors++;
+                }
+            }
+        }
+    }
+
+    if (errors != 0) {
+        throw ProtoValidationException("Proto resources verification failed");
     }
 }

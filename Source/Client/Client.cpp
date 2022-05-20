@@ -44,7 +44,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const vector<uch
     FOClient(settings, window, PropertiesRelationType::ClientRelative, [&, this]() -> ScriptSystem* {
         extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
         Client_RegisterData(this, restore_info_bin);
-        return new ClientScriptSystem(this, settings);
+        return new ClientScriptSystem(this);
     })
 {
 }
@@ -243,6 +243,8 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemOffsetCoords(entity, prop, new_value, old_value); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemOpened(entity, prop, new_value, old_value); });
     }
+
+    ScriptSys->InitModules();
 
     ScreenFadeOut();
 

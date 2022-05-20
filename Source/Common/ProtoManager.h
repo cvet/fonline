@@ -31,6 +31,8 @@
 // SOFTWARE.
 //
 
+// Todo: rename ProtoManager to ProtoBaker and move to Baker stuff
+
 #pragma once
 
 #include "Common.h"
@@ -60,9 +62,9 @@ public:
     [[nodiscard]] auto GetProtoCritters() const -> const map<hstring, const ProtoCritter*>&;
     [[nodiscard]] auto GetProtoMaps() const -> const map<hstring, const ProtoMap*>&;
     [[nodiscard]] auto GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&;
+    [[nodiscard]] auto GetAllProtos() const -> vector<const ProtoEntity*>;
 
     void ParseProtos(FileSystem& file_sys);
-    void ValidateProtoResources(const unordered_set<string>& resource_names) const;
     void LoadFromResources();
 
 private:

@@ -73,9 +73,6 @@ public:
 
     explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
 
-    // Todo: implement Player InitScript
-    ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp);
     ///@ ExportProperty
@@ -89,7 +86,7 @@ public:
 
     explicit ItemProperties(Properties& props) : EntityProperties(props) { }
 
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = ItemInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Public, ItemOwnership, Ownership);
@@ -109,9 +106,9 @@ public:
     ENTITY_PROPERTY(Public, uint, ContainerStack);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, float, FlyEffectSpeed);
-    ///@ ExportProperty
+    ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
-    ///@ ExportProperty
+    ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicInv);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, short, OffsetX);
@@ -246,7 +243,7 @@ public:
 
     explicit CritterProperties(Properties& props) : EntityProperties(props) { }
 
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = CritterInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, ModelName);
@@ -383,7 +380,7 @@ public:
 
     explicit MapProperties(Properties& props) : EntityProperties(props) { }
 
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = MapInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime1);
@@ -429,7 +426,7 @@ public:
     explicit LocationProperties(Properties& props) : EntityProperties(props) { }
 
     // Todo: implement Location InitScript
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = LocationInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<hstring>, MapProtos);
@@ -443,7 +440,7 @@ public:
     ENTITY_PROPERTY(PrivateServer, bool, AutoGarbage);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, GeckVisible);
-    ///@ ExportProperty
+    ///@ ExportProperty ScriptFuncType = LocationEntrance
     ENTITY_PROPERTY(PrivateServer, hstring, EntranceScript);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, ushort, WorldX);

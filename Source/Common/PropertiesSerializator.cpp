@@ -127,10 +127,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
     if (prop->_dataType == Property::DataType::PlainData) {
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
 
-        if (prop->_isHash) {
+        if (prop->_isHashBase) {
             return string(name_resolver.ResolveHash(*reinterpret_cast<hstring::hash_t*>(&props->_podData[prop->_podDataOffset])));
         }
-        else if (prop->_isEnum) {
+        else if (prop->_isEnumBase) {
             int enum_value = 0;
             memcpy(&enum_value, &props->_podData[prop->_podDataOffset], prop->_baseSize);
             return name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value);
@@ -197,10 +197,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
             arr.reserve(arr_size);
 
             for (uint i = 0; i < arr_size; i++) {
-                if (prop->_isHash) {
+                if (prop->_isHashBase) {
                     arr.push_back(string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data + i * prop->_baseSize))));
                 }
-                else if (prop->_isEnum) {
+                else if (prop->_isEnumBase) {
                     int enum_value = 0;
                     memcpy(&enum_value, data + i * prop->_baseSize, prop->_baseSize);
                     arr.push_back(name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value));
@@ -309,10 +309,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                         }
                         else {
                             for (uint i = 0; i < arr_size; i++) {
-                                if (prop->_isHash) {
+                                if (prop->_isHashBase) {
                                     arr.push_back(string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data + i * sizeof(hstring::hash_t)))));
                                 }
-                                else if (prop->_isEnum) {
+                                else if (prop->_isEnumBase) {
                                     int enum_value = 0;
                                     memcpy(&enum_value, data + i * prop->_baseSize, prop->_baseSize);
                                     arr.push_back(name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value));
@@ -399,10 +399,10 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
 
                     string key_str = get_key_string(pkey);
 
-                    if (prop->_isHash) {
+                    if (prop->_isHashBase) {
                         dict.insert(std::make_pair(std::move(key_str), string(name_resolver.ResolveHash(*reinterpret_cast<const hstring::hash_t*>(pvalue)))));
                     }
-                    else if (prop->_isEnum) {
+                    else if (prop->_isEnumBase) {
                         int enum_value = 0;
                         memcpy(&enum_value, pvalue, prop->_baseSize);
                         dict.insert(std::make_pair(std::move(key_str), name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value)));
@@ -470,7 +470,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
     // Parse value
     if (prop->_dataType == Property::DataType::PlainData) {
-        if (prop->_isHash) {
+        if (prop->_isHashBase) {
             if (value.index() != AnyData::STRING_VALUE) {
                 WriteLog("Wrong hash value type, property {}", prop->GetName());
                 return false;
@@ -479,7 +479,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             const auto h = name_resolver.ToHashedString(std::get<string>(value)).as_hash();
             props->SetRawData(prop, reinterpret_cast<const uchar*>(&h), prop->_baseSize);
         }
-        else if (prop->_isEnum) {
+        else if (prop->_isEnumBase) {
             if (value.index() != AnyData::STRING_VALUE) {
                 WriteLog("Wrong enum value type, property {}", prop->GetName());
                 return false;
@@ -586,7 +586,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             return true;
         }
 
-        if (prop->_isHash) {
+        if (prop->_isHashBase) {
             if (arr[0].index() != AnyData::STRING_VALUE) {
                 WriteLog("Wrong array hash element value type, property {}", prop->GetName());
                 return false;
@@ -604,7 +604,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
             props->SetRawData(prop, data.get(), data_size);
         }
-        else if (prop->_isEnum) {
+        else if (prop->_isEnumBase) {
             if (arr[0].index() != AnyData::STRING_VALUE) {
                 WriteLog("Wrong array enum element value type, property {}", prop->GetName());
                 return false;
@@ -817,7 +817,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
                 data_size += static_cast<uint>(std::get<string>(value2).length());
             }
-            else if (prop->_isHash) {
+            else if (prop->_isHashBase) {
                 if (value2.index() != AnyData::STRING_VALUE) {
                     WriteLog("Wrong dict hash element value type, property {}", prop->GetName());
                     wrong_input = true;
@@ -826,7 +826,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
                 data_size += sizeof(hstring::hash_t);
             }
-            else if (prop->_isEnum) {
+            else if (prop->_isEnumBase) {
                 if (value2.index() != AnyData::STRING_VALUE) {
                     WriteLog("Wrong dict enum element value type, property {}", prop->GetName());
                     wrong_input = true;
@@ -897,7 +897,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 *reinterpret_cast<uint*>(data.get() + data_pos) = static_cast<uint>(arr.size());
                 data_pos += sizeof(uint);
 
-                if (prop->_isEnum) {
+                if (prop->_isEnumBase) {
                     for (const auto& e : arr) {
                         auto is_error = false;
                         const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(e), &is_error);
@@ -909,7 +909,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                         }
                     }
                 }
-                else if (prop->_isHash) {
+                else if (prop->_isHashBase) {
                     for (const auto& e : arr) {
                         *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = name_resolver.ToHashedString(std::get<string>(e)).as_hash();
                         data_pos += sizeof(hstring::hash_t);
@@ -1003,10 +1003,10 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 }
             }
             else {
-                if (prop->_isHash) {
+                if (prop->_isHashBase) {
                     *reinterpret_cast<hstring::hash_t*>(data.get() + data_pos) = name_resolver.ToHashedString(std::get<string>(value2)).as_hash();
                 }
-                else if (prop->_isEnum) {
+                else if (prop->_isEnumBase) {
                     auto is_error = false;
                     const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value2), &is_error);
                     memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);

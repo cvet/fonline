@@ -63,24 +63,6 @@
 #endif
 #endif
 
-#if SERVER_SCRIPTING
-#define SCRIPTING_CLASS ServerScriptSystem
-#define FOEngine FOServer
-#define BaseEntity ServerEntity
-#elif CLIENT_SCRIPTING
-#define SCRIPTING_CLASS ClientScriptSystem
-#define FOEngine FOClient
-#define BaseEntity ClientEntity
-#elif SINGLE_SCRIPTING
-#define SCRIPTING_CLASS SingleScriptSystem
-#define FOEngine FOSingle
-#define BaseEntity ServerEntity
-#elif MAPPER_SCRIPTING
-#define SCRIPTING_CLASS MapperScriptSystem
-#define FOEngine FOMapper
-#define BaseEntity ClientEntity
-#endif
-
 #include "Application.h"
 #include "DiskFileSystem.h"
 #include "EngineBase.h"
@@ -112,18 +94,63 @@
 #include "scriptstdstring/scriptstdstring.h"
 #include "weakref/weakref.h"
 
-#if COMPILER_MODE
-#undef FOEngine
 #if SERVER_SCRIPTING
-#define FOEngine AngelScriptServerCompiler
+#define BaseEntity ServerEntity
 #elif CLIENT_SCRIPTING
-#define FOEngine AngelScriptClientCompiler
+#define BaseEntity ClientEntity
 #elif SINGLE_SCRIPTING
-#define FOEngine AngelScriptSingleCompiler
+#define BaseEntity ServerEntity
 #elif MAPPER_SCRIPTING
-#define FOEngine AngelScriptMapperCompiler
+#define BaseEntity ClientEntity
 #endif
 
+#if !COMPILER_MODE
+#if SERVER_SCRIPTING
+#define FOEngine FOServer
+#define SCRIPTING_CLASS ServerScriptSystem
+#elif CLIENT_SCRIPTING
+#define FOEngine FOClient
+#define SCRIPTING_CLASS ClientScriptSystem
+#elif SINGLE_SCRIPTING
+#define FOEngine FOSingle
+#define SCRIPTING_CLASS SingleScriptSystem
+#elif MAPPER_SCRIPTING
+#define FOEngine FOMapper
+#define SCRIPTING_CLASS MapperScriptSystem
+#endif
+#else
+#if !COMPILER_VALIDATION_MODE
+#if SERVER_SCRIPTING
+#define FOEngine AngelScriptServerCompiler
+#define SCRIPTING_CLASS ASCompiler_ServerScriptSystem
+#elif CLIENT_SCRIPTING
+#define FOEngine AngelScriptClientCompiler
+#define SCRIPTING_CLASS ASCompiler_ClientScriptSystem
+#elif SINGLE_SCRIPTING
+#define FOEngine AngelScriptSingleCompiler
+#define SCRIPTING_CLASS ASCompiler_SingleScriptSystem
+#elif MAPPER_SCRIPTING
+#define FOEngine AngelScriptMapperCompiler
+#define SCRIPTING_CLASS ASCompiler_MapperScriptSystem
+#endif
+#else
+#if SERVER_SCRIPTING
+#define FOEngine AngelScriptServerCompilerValidation
+#define SCRIPTING_CLASS ASCompiler_ServerScriptSystem_Validation
+#elif CLIENT_SCRIPTING
+#define FOEngine AngelScriptClientCompilerValidation
+#define SCRIPTING_CLASS ASCompiler_ClientScriptSystem_Validation
+#elif SINGLE_SCRIPTING
+#define FOEngine AngelScriptSingleCompilerValidation
+#define SCRIPTING_CLASS ASCompiler_SingleScriptSystem_Validation
+#elif MAPPER_SCRIPTING
+#define FOEngine AngelScriptMapperCompilerValidation
+#define SCRIPTING_CLASS ASCompiler_MapperScriptSystem_Validation
+#endif
+#endif
+#endif
+
+#if COMPILER_MODE
 DECLARE_EXCEPTION(ScriptCompilerException);
 
 struct FOServer;
@@ -135,8 +162,13 @@ struct BaseEntity : Entity
 {
 };
 
+#if COMPILER_VALIDATION_MODE
+#define INIT_ARGS FOEngineBase** out_engine
+#else
 #define INIT_ARGS const char* script_path
-struct SCRIPTING_CLASS
+#endif
+
+struct SCRIPTING_CLASS : public ScriptSystem
 {
     void InitAngelScriptScripting(INIT_ARGS);
 };
@@ -147,28 +179,28 @@ class FOEngine : public FOEngineBase
 {
 public:
 #if SERVER_SCRIPTING
-    AngelScriptServerCompiler() :
+    FOEngine() :
         FOEngineBase(Dummy, PropertiesRelationType::ServerRelative, [this] {
             extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
             AngelScript_ServerCompiler_RegisterData(this);
             return nullptr;
         })
 #elif CLIENT_SCRIPTING
-    AngelScriptClientCompiler() :
+    FOEngine() :
         FOEngineBase(Dummy, PropertiesRelationType::ClientRelative, [this] {
             extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
             AngelScript_ClientCompiler_RegisterData(this);
             return nullptr;
         })
 #elif SINGLE_SCRIPTING
-    AngelScriptSingleCompiler() :
+    FOEngine() :
         FOEngineBase(Dummy, PropertiesRelationType::BothRelative, [this] {
             extern void AngelScript_SingleCompiler_RegisterData(FOEngineBase*);
             AngelScript_SingleCompiler_RegisterData(this);
             return nullptr;
         })
 #elif MAPPER_SCRIPTING
-    AngelScriptMapperCompiler() :
+    FOEngine() :
         FOEngineBase(Dummy, PropertiesRelationType::BothRelative, [this] {
             extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
             AngelScript_MapperCompiler_RegisterData(this);
@@ -337,6 +369,41 @@ struct ScriptSystem::AngelScriptImpl
         return true;
     }
 
+    auto CallGenericFunc(GenericScriptFunc* gen, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
+    {
+        RUNTIME_ASSERT(gen);
+        RUNTIME_ASSERT(func);
+        RUNTIME_ASSERT(gen->ArgsType.size() == args.size());
+        RUNTIME_ASSERT(gen->ArgsType.size() == func->GetParamCount());
+
+        if (ret != nullptr) {
+            RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
+            RUNTIME_ASSERT(gen->RetType != &typeid(void));
+        }
+        else {
+            RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
+            RUNTIME_ASSERT(gen->RetType == &typeid(void));
+        }
+
+        auto* ctx = PrepareContext(func);
+
+        for (asUINT i = 0; i < func->GetParamCount(); i++) {
+            // Marshalling
+            // ctx->GetA
+        }
+
+        if (RunContext(ctx, ret == nullptr)) {
+            if (ret != nullptr) {
+                // std::memcpy(ret, func->GetAddressOfReturnLocation(), )
+            }
+
+            ReturnContext(ctx);
+            return true;
+        }
+
+        return false;
+    }
+
     FOEngine* GameEngine {};
     asIScriptEngine* Engine {};
     StorageData* Storage {};
@@ -484,16 +551,20 @@ template<typename T, typename U>
     UNUSED_VARIABLE(type_id);
     return "";
 }
+#endif
 
-[[maybe_unused]] static auto GetASFuncName(asIScriptFunction* func) -> string
+[[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func) -> string
 {
     if (func == nullptr) {
         return "";
     }
 
-    return _str("AngelScript.{}", func->GetName());
+    if (func->GetNamespace() == nullptr) {
+        return _str("{}", func->GetName());
+    }
+
+    return _str("{}::{}", func->GetNamespace(), func->GetName());
 }
-#endif
 
 static auto Entity_IsDestroyed(Entity* self) -> bool
 {
@@ -1134,7 +1205,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
     WriteLog("{}", formatted_message);
 }
 
-#if COMPILER_MODE
+#if COMPILER_MODE && !COMPILER_VALIDATION_MODE
 static void CompileRootModule(asIScriptEngine* engine, string_view script_path);
 #else
 static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_bin);
@@ -1394,7 +1465,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 #endif
 
-#if COMPILER_MODE
+#if COMPILER_MODE && !COMPILER_VALIDATION_MODE
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
@@ -1410,6 +1481,92 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
     RUNTIME_ASSERT(script_file);
     RestoreRootModule(engine, {script_file.GetBuf(), script_file.GetSize()});
+#endif
+
+#if !COMPILER_MODE || COMPILER_VALIDATION_MODE
+    // Index all functions
+    {
+        RUNTIME_ASSERT(engine->GetModuleCount() == 1);
+        auto* mod = engine->GetModuleByIndex(0);
+
+        const auto as_type_to_type_info = [](int type_id, asDWORD flags) -> const std::type_info* {
+            const auto is_ref = (flags & asTM_INOUTREF) != 0;
+
+            switch (flags) {
+            case asTYPEID_VOID:
+                return &typeid(void);
+            case asTYPEID_BOOL:
+                return is_ref ? &typeid(bool&) : &typeid(bool);
+            case asTYPEID_INT8:
+                return is_ref ? &typeid(char&) : &typeid(char);
+            case asTYPEID_INT16:
+                return is_ref ? &typeid(short&) : &typeid(short);
+            case asTYPEID_INT32:
+                return is_ref ? &typeid(int&) : &typeid(int);
+            case asTYPEID_INT64:
+                return is_ref ? &typeid(int64&) : &typeid(int64);
+            case asTYPEID_UINT8:
+                return is_ref ? &typeid(uchar&) : &typeid(uchar);
+            case asTYPEID_UINT16:
+                return is_ref ? &typeid(ushort&) : &typeid(ushort);
+            case asTYPEID_UINT32:
+                return is_ref ? &typeid(uint&) : &typeid(uint);
+            case asTYPEID_UINT64:
+                return is_ref ? &typeid(uint64&) : &typeid(uint64);
+            case asTYPEID_FLOAT:
+                return is_ref ? &typeid(float&) : &typeid(float);
+            case asTYPEID_DOUBLE:
+                return is_ref ? &typeid(double&) : &typeid(double);
+            }
+
+            if ((type_id & asTYPEID_OBJHANDLE) != 0 && (type_id & asTYPEID_APPOBJECT) != 0) {
+            }
+
+            return nullptr;
+        };
+
+        for (asUINT i = 0; i < mod->GetFunctionCount(); i++) {
+            auto* func = mod->GetFunctionByIndex(i);
+
+            // Bind
+            const auto func_name = GetASFuncName(func);
+            const auto it = _funcMap.emplace(std::make_pair(func_name, GenericScriptFunc()));
+            auto& gen_func = it->second;
+
+#if !COMPILER_VALIDATION_MODE
+            gen_func.Call = std::bind(&ScriptSystem::AngelScriptImpl::CallGenericFunc, AngelScriptData.get(), &gen_func, func, std::placeholders::_1, std::placeholders::_2);
+#endif
+
+            for (asUINT p = 0; p < func->GetParamCount(); p++) {
+                int param_type_id;
+                asDWORD param_flags = 0;
+                AS_VERIFY(func->GetParam(p, &param_type_id, &param_flags));
+
+                gen_func.ArgsType.emplace_back(as_type_to_type_info(param_type_id, param_flags));
+            }
+
+            asDWORD ret_flags = 0;
+            int ret_type_id = func->GetReturnTypeId(&ret_flags);
+            gen_func.RetType = as_type_to_type_info(ret_type_id, ret_flags);
+
+            gen_func.CallNotSupported = (gen_func.RetType == nullptr || std::find(gen_func.ArgsType.begin(), gen_func.ArgsType.end(), nullptr) != gen_func.ArgsType.end());
+
+            // Check for special module init function
+            if (gen_func.ArgsType.empty() && gen_func.RetType == &typeid(void)) {
+                RUNTIME_ASSERT(!gen_func.CallNotSupported);
+                const auto func_name_ex = _str(func->GetName());
+                if (func_name_ex.compareIgnoreCase("ModuleInit") || func_name_ex.compareIgnoreCase("module_init")) {
+                    _initFunc.push_back(&gen_func);
+                }
+            }
+        }
+    }
+#endif
+
+#if COMPILER_MODE && COMPILER_VALIDATION_MODE
+    RUNTIME_ASSERT(out_engine);
+    *out_engine = game_engine;
+    game_engine->AddRef();
 #endif
 
     game_engine->Release();
@@ -1449,7 +1606,7 @@ private:
     size_t _writePos {};
 };
 
-#if COMPILER_MODE
+#if COMPILER_MODE && !COMPILER_VALIDATION_MODE
 static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
 {
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
@@ -1608,6 +1765,7 @@ static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_
 
     Preprocessor::LineNumberTranslator* lnt = Preprocessor::RestoreLineNumberTranslator(lnt_data);
     UNUSED_VARIABLE(lnt);
+    mod->SetUserData(lnt);
 
     BinaryStream binary {buf};
     int as_result = mod->LoadByteCode(&binary);

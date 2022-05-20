@@ -67,9 +67,11 @@ genFileList = ['EmbeddedResources-Include.h',
         'AngelScriptScripting-Mapper.cpp',
         'AngelScriptScripting-Single.cpp',
         'AngelScriptScripting-ServerCompiler.cpp',
+        'AngelScriptScripting-ServerCompilerValidation.cpp',
         'AngelScriptScripting-ClientCompiler.cpp',
         'AngelScriptScripting-MapperCompiler.cpp',
         'AngelScriptScripting-SingleCompiler.cpp',
+        'AngelScriptScripting-SingleCompilerValidation.cpp',
         'MonoScripting-Server.cpp',
         'MonoScripting-Client.cpp',
         'MonoScripting-Mapper.cpp',
@@ -262,6 +264,32 @@ gameEntitiesInfo = {}
 entityRelatives = set()
 genericFuncdefs = set()
 
+symTok = set('`~!@#$%^&*()+-=|\\/.,\';][]}{:><"')
+def tokenize(text, specialBehForProp=False):
+    if text is None:
+        return []
+    text = text.strip()
+    result = []
+    curTok = ''
+    def flushTok():
+        if curTok:
+            result.append(curTok)
+        return ''
+    for ch in text:
+        if ch in symTok:
+            if specialBehForProp and len(result) in [2, 3]:
+                curTok += ch
+                continue
+            curTok = flushTok()
+            curTok = ch
+            curTok = flushTok()
+        elif ch in ' \t':
+            curTok = flushTok()
+        else:
+            curTok += ch
+    curTok = flushTok()
+    return result
+
 def parseTags():
     validTypes = set()
     validTypes.update(['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64',
@@ -371,7 +399,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                exportFlags = [s for s in (tagInfo.split(' ') if tagInfo else []) if s]
+                exportFlags = tokenize(tagInfo)
                 
                 firstLine = tagContext[0]
                 assert firstLine.startswith('enum class ')
@@ -401,7 +429,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                tok = [s for s in tagInfo.split(' ') if s]
+                tok = tokenize(tagInfo)
                 grname = tok[0]
                 key = tok[1] if len(tok) > 1 else None
                 value = tok[3] if len(tok) > 3 and tok[2] == '=' else None
@@ -452,13 +480,13 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                exportFlags = tagInfo.split(' ') if tagInfo else []
+                exportFlags = tokenize(tagInfo)
                 assert exportFlags and exportFlags[0] in ['Server', 'Client', 'Mapper', 'Common'], 'Expected target in tag info'
                 target = exportFlags[0]
                 exportFlags = exportFlags[1:]
                 
                 firstLine = tagContext[0]
-                firstLineTok = [t for t in firstLine.split(' ') if t]
+                firstLineTok = tokenize(firstLine)
                 assert len(firstLineTok) >= 2, 'Expected 4 or more tokens in struct'
                 assert firstLineTok[0] == 'struct', 'Expected struct type'
                 
@@ -475,7 +503,8 @@ def parseTags():
                     l = l.lstrip()
                     sep = l.find(' ')
                     assert sep != -1
-                    lTok = [t for t in l.split(' ') if t]
+                    lTok = tokenize(l)
+                    assert len(lTok) >= 2
                     fields.append((engineTypeToMetaType(lTok[0]), lTok[1], []))
                 
                 codeGenTags['ExportObject'].append((target, objName, fields, exportFlags, comment))
@@ -490,7 +519,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
 
             try:
-                exportFlags = [i for i in tagInfo.split(' ') if i]
+                exportFlags = tokenize(tagInfo)
                 
                 name = exportFlags[0]
                 serverClassName = exportFlags[1]
@@ -539,7 +568,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
                 
             try:    
-                exportFlags = tagInfo.split(' ') if tagInfo else []
+                exportFlags = tokenize(tagInfo)
                 
                 entity = tagContext[:tagContext.find(' ')]
                 assert entity in gameEntities, entity
@@ -560,7 +589,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                exportFlags = tagInfo.split(' ') if tagInfo else []
+                exportFlags = tokenize(tagInfo)
                 
                 braceOpenPos = tagContext.find('(')
                 braceClosePos = tagContext.rfind(')')
@@ -595,7 +624,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                exportFlags = tagInfo.split(' ') if tagInfo else []
+                exportFlags = tokenize(tagInfo)
                 
                 target = None
                 entity = None
@@ -633,7 +662,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
              
             try:
-                tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
+                tok = tokenize(tagInfo, True)
                 entity = tok[0]
                 assert entity in gameEntities, entity
                 access = tok[1]
@@ -658,12 +687,12 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
+                tok = tokenize(tagInfo)
                 
                 target = tok[0]
                 assert target in ['Server', 'Client', 'Mapper', 'Common'], target
                 entity = tok[1]
-                eventName = tok[2] if '(' not in tok[2] else tok[2][:tok[2].find('(')]
+                eventName = tok[2]
                 
                 braceOpenPos = tagInfo.find('(')
                 braceClosePos = tagInfo.rfind(')')
@@ -679,7 +708,7 @@ def parseTags():
                         argName = arg[sep + 1:].strip()
                         eventArgs.append((argType, argName))
                 
-                flags = [s for s in tagInfo[braceClosePos + 1:].split(' ') if s]
+                flags = tokenize(tagInfo[braceClosePos + 1:])
 
                 codeGenTags['Event'].append((target, entity, eventName, eventArgs, flags, comment))
                 
@@ -690,10 +719,10 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
+                tok = tokenize(tagInfo)
                 target = tok[0]
                 assert target in ['Server', 'Client'], target
-                funcName = tok[1] if '(' not in tok[1] else tok[1][:tok[1].find('(')]
+                funcName = tok[1]
                 
                 if absPath.endswith('.fos'):
                     subsystem = 'AngelScript'
@@ -716,7 +745,7 @@ def parseTags():
                         argName = arg[sep + 1:].strip()
                         funcArgs.append((argType, argName))
                 
-                flags = [s for s in tagInfo[braceClosePos + 1:].split(' ') if s]
+                flags = tokenize(tagInfo[braceClosePos + 1:])
 
                 codeGenTags['RemoteCall'].append((target, subsystem, funcName, funcArgs, flags, comment))
             
@@ -727,7 +756,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                exportFlags = tagInfo.split(' ') if tagInfo else []
+                exportFlags = tokenize(tagInfo)
                 assert exportFlags and exportFlags[0] in ['Server', 'Client', 'Mapper', 'Common'], 'Expected target in tag info'
                 target = exportFlags[0]
                 exportFlags = exportFlags[1:]
@@ -755,7 +784,7 @@ def parseTags():
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
             try:
-                tok = [s.strip() for s in tagInfo.split(' ') if s.strip()]
+                tok = tokenize(tagInfo)
                 stype = unifiedTypeToMetaType(tok[0])
                 name = tok[1]
                 value = tok[3] if len(tok) > 3 and tok[2] == '=' else None
@@ -784,7 +813,7 @@ def parseTags():
                 else:
                     assert False, fname
                 
-                flags = tagInfo.split(' ')
+                flags = tokenize(tagInfo)
                 assert len(flags) >= 1, 'Invalid CodeGen entry'
                 
                 codeGenTags['CodeGen'].append((templateType, absPath, flags[0], lineIndex, tagContext, flags[1:], comment))
@@ -1267,8 +1296,8 @@ except Exception as ex:
     
 checkErrors()
 
-def genCode(lang, target, isASCompiler=False):
-    createFile(lang + 'Scripting' + '-' + target + ('Compiler' if isASCompiler else '') + '.cpp', args.genoutput)
+def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
+    createFile(lang + 'Scripting' + '-' + target + ('Compiler' if isASCompiler else '') + ('Validation' if isASCompiler and isASCompilerValidation else '') + '.cpp', args.genoutput)
     
     # Make stub for disabled script system
     if (lang == 'AngelScript' and not args.angelscript) or (lang == 'Mono' and not args.csharp) or (lang == 'Native' and not args.native):
@@ -1399,6 +1428,7 @@ def genCode(lang, target, isASCompiler=False):
         defineLines.append('#define SINGLE_SCRIPTING ' + ('1' if target == 'Single' else '0'))
         defineLines.append('#define MAPPER_SCRIPTING ' + ('1' if target == 'Mapper' else '0'))
         defineLines.append('#define COMPILER_MODE ' + ('1' if isASCompiler else '0'))
+        defineLines.append('#define COMPILER_VALIDATION_MODE ' + ('1' if isASCompilerValidation else '0'))
         
         # Storage
         storageLines.append('ASGlobal Global;')
@@ -1790,10 +1820,12 @@ try:
         genCode('AngelScript', 'Server')
         genCode('AngelScript', 'Client')
         genCode('AngelScript', 'Server', True)
+        genCode('AngelScript', 'Server', True, True)
         genCode('AngelScript', 'Client', True)
     if args.singleplayer:
         genCode('AngelScript', 'Single')
         genCode('AngelScript', 'Single', True)
+        genCode('AngelScript', 'Single', True, True)
     genCode('AngelScript', 'Mapper')
     genCode('AngelScript', 'Mapper', True)
     

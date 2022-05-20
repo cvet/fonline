@@ -222,7 +222,7 @@ struct InputEvent
     explicit InputEvent(KeyUpEvent ev) : Type {EventType::KeyUpEvent}, KeyUp {ev} { }
 };
 
-class AppWindow
+class AppWindow final
 {
     friend class Application;
     friend class AppInput;
@@ -244,13 +244,17 @@ public:
     EventObserver<> OnWindowSizeChanged {};
 
 private:
+    AppWindow() = default;
+
     WindowInternalHandle* _windowHandle {};
     int _nonConstHelper {};
     EventDispatcher<> _onWindowSizeChangedDispatcher {OnWindowSizeChanged};
 };
 
-class AppRender
+class AppRender final
 {
+    friend class Application;
+
 public:
     static constexpr uint MAX_ATLAS_SIZE = 4096;
     static constexpr uint MIN_ATLAS_SIZE = 2048;
@@ -267,10 +271,15 @@ public:
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
     void EnableScissor(int x, int y, uint w, uint h);
     void DisableScissor();
+
+private:
+    AppRender() = default;
 };
 
-class AppInput
+class AppInput final
 {
+    friend class Application;
+
 public:
     static constexpr uint DROP_FILE_STRIP_LENGHT = 2048;
 
@@ -284,11 +293,15 @@ public:
     void SetClipboardText(string_view text);
 
 private:
+    AppInput() = default;
+
     string _clipboardTextStorage {};
 };
 
-class AppAudio
+class AppAudio final
 {
+    friend class Application;
+
 public:
     static const int AUDIO_FORMAT_U8;
     static const int AUDIO_FORMAT_S16;
@@ -307,6 +320,8 @@ public:
     void UnlockDevice();
 
 private:
+    AppAudio() = default;
+
     struct AudioConverter;
     vector<AudioConverter*> _converters {};
 };

@@ -42,7 +42,7 @@ class FOMapper;
 class MapperScriptSystem : public ScriptSystem
 {
 public:
-    MapperScriptSystem(FOMapper* engine, GlobalSettings& settings) : ScriptSystem(settings), _engine {engine}
+    explicit MapperScriptSystem(FOMapper* engine) : ScriptSystem(), _engine {engine}
     {
         InitNativeScripting();
         InitAngelScriptScripting();

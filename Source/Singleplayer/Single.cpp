@@ -39,7 +39,7 @@ FOSingle::FOSingle(GlobalSettings& settings, AppWindow* window) :
         [&, this] {
             extern void Single_RegisterData(FOEngineBase*);
             Single_RegisterData(this);
-            return new SingleScriptSystem(this, settings);
+            return new SingleScriptSystem(this);
         }),
     FOServer(settings),
     FOClient(settings, window, PropertiesRelationType::None, nullptr)

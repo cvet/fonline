@@ -77,8 +77,8 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         string log_buffer;
         SetLogCallback("ServerApp", [&log_buffer](auto str) {
             log_buffer += str;
-            if (log_buffer.size() > 100000) {
-                log_buffer = log_buffer.substr(log_buffer.size() - 100000);
+            if (log_buffer.size() > 10000000) {
+                log_buffer = log_buffer.substr(log_buffer.size() - 50000000);
             }
         });
 

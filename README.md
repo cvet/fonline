@@ -287,6 +287,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: remove critter flags
 * Common: remove special OTHER_* params
 * Common: apply scripts strack trace
+* ServerApp: allow instantiate client in separate thread (rendering issues)
 * ServerServiceApp: convert argv from wchar_t** to char**
 * 3dAnimation: add interpolation for tracks more than two
 * 3dStuff: add reverse playing of 3d animation
@@ -323,7 +324,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Entity: improve entity event Priority
 * Entity: improve entity event OneShot
 * Entity: improve entity event Deferred
-* EntityProperties: implement Player InitScript
 * EntityProperties: implement Location InitScript
 * Log: server logs append not rewrite (with checking of size)
 * Log: add timestamps and process id and thread id to file logs
@@ -335,6 +335,7 @@ Please follow these instructions to understand how to use this engine by design:
 * MsgFiles: pass default to fomsg gets
 * Properties: SetValueFromData
 * Properties: convert to hstring
+* Properties: restore quest variables
 * Properties: don't preserve memory for not allocated components in entity
 * Properties: pack bool properties to one bit
 * Properties: remove friend from PropertiesSerializator and use public Property interface
@@ -343,11 +344,11 @@ Please follow these instructions to understand how to use this engine by design:
 * Properties: SetValue for array
 * Properties: GetValue for dict
 * Properties: SetValue for dict
-* ScriptSystem: fill settings to scripts
-* ScriptSystem: FindFunc
+* ScriptSystem: remove commented code
 * Settings-Include: rework global Quit setting
 * Settings: improve editable entry for arrays
 * StringUtils: make isNumber const
+* Application: move all these statics to App class fields
 * Application: recognize tablet mode for Windows 10
 * Application: fix workaround for strange behaviour of button focus
 * ApplicationHeadless: implement effect CanBatch

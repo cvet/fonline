@@ -351,45 +351,6 @@ auto ProtoManager::GetProtosBinaryData() const -> vector<uchar>
     return data;
 }
 
-template<typename T>
-static auto ValidateProtoResourcesExt(const map<hstring, T*>& protos, unordered_set<hstring>& hashes) -> int
-{
-    auto errors = 0;
-    for (auto& kv : protos) {
-        T* proto = kv.second;
-        const auto* registrator = proto->GetProperties().GetRegistrator();
-        for (uint i = 0; i < registrator->GetCount(); i++) {
-            auto* prop = registrator->GetByIndex(i);
-            if (prop->IsBaseTypeResource()) {
-                const auto h = proto->GetProperties().template GetValue<hstring>(prop);
-                if (h && hashes.count(h) == 0u) {
-                    WriteLog("Resource '{}' not found for property {} in prototype {}", h, prop->GetName(), proto->GetName());
-                    errors++;
-                }
-            }
-        }
-    }
-    return errors;
-}
-
-void ProtoManager::ValidateProtoResources(const unordered_set<string>& resource_names) const
-{
-    unordered_set<hstring> hashes;
-    for (const auto& name : resource_names) {
-        hashes.insert(_engine->ToHashedString(name));
-    }
-
-    auto errors = 0;
-    errors += ValidateProtoResourcesExt(_itemProtos, hashes);
-    errors += ValidateProtoResourcesExt(_crProtos, hashes);
-    errors += ValidateProtoResourcesExt(_mapProtos, hashes);
-    errors += ValidateProtoResourcesExt(_locProtos, hashes);
-
-    if (errors != 0) {
-        throw ProtoManagerException("Proto resources verification failed");
-    }
-}
-
 auto ProtoManager::GetProtoItem(hstring proto_id) -> const ProtoItem*
 {
     const auto it = _itemProtos.find(proto_id);
@@ -432,4 +393,25 @@ auto ProtoManager::GetProtoMaps() const -> const map<hstring, const ProtoMap*>&
 auto ProtoManager::GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&
 {
     return _locProtos;
+}
+
+auto ProtoManager::GetAllProtos() const -> vector<const ProtoEntity*>
+{
+    vector<const ProtoEntity*> protos;
+    protos.reserve(_itemProtos.size() + _crProtos.size() + _mapProtos.size() + _locProtos.size());
+
+    for (auto&& [id, proto] : _itemProtos) {
+        protos.push_back(proto);
+    }
+    for (auto&& [id, proto] : _crProtos) {
+        protos.push_back(proto);
+    }
+    for (auto&& [id, proto] : _mapProtos) {
+        protos.push_back(proto);
+    }
+    for (auto&& [id, proto] : _locProtos) {
+        protos.push_back(proto);
+    }
+
+    return protos;
 }

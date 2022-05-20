@@ -301,7 +301,7 @@ auto Properties::LoadPropertyFromText(const Property* prop, string_view text) ->
     const auto is_array = prop->_dataType == Property::DataType::Array || prop->_isDictOfArray;
 
     int value_type;
-    if (prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfArrayOfString || prop->_isHash || prop->_isEnum) {
+    if (prop->_dataType == Property::DataType::String || prop->_isArrayOfString || prop->_isDictOfArrayOfString || prop->_isHashBase || prop->_isEnumBase) {
         value_type = AnyData::STRING_VALUE;
     }
     else if (prop->_isInt64 || prop->_isUInt64) {
@@ -706,11 +706,11 @@ void Properties::SetValueAsIntProps(int property_index, int value)
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
 
-    if (prop->_isHash) {
+    if (prop->_isHashBase) {
         // Todo: convert to hstring
         // SetValue<hstring>(prop, value);
     }
-    else if (prop->_isEnum) {
+    else if (prop->_isEnumBase) {
         if (prop->_baseSize == 1) {
             SetValue<uchar>(prop, static_cast<uchar>(value));
         }
@@ -843,7 +843,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     // string _componentName {};
     prop->_propName = _str(prop->_propName).replace('.', '_');
 
-    if (prop->_isEnum) {
+    if (prop->_isEnumBase) {
         prop->_baseTypeName = "";
     }
     if (prop->_dataType == Property::DataType::Dict && prop->_isDictKeyEnum) {
@@ -851,20 +851,33 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     }
 
     for (size_t i = 0; i < flags.size(); i++) {
+        const auto check_next_param = [&flags, i, prop] {
+            if (i + 2 >= flags.size() || flags[i + 1] != "=") {
+                throw PropertyRegistrationException("Expected property flag = value", prop->_propName, flags[i], i, flags.size());
+            }
+        };
+
         if (flags[i] == "Enum") {
-            RUNTIME_ASSERT(prop->_isEnum);
-            RUNTIME_ASSERT(flags[i + 1] == "=");
+            check_next_param();
+            if (!prop->_isEnumBase) {
+                throw PropertyRegistrationException("Expected hstring for Enum flag", prop->_propName);
+            }
+
             prop->_baseTypeName = flags[i + 2];
             i += 2;
         }
         else if (flags[i] == "KeyEnum") {
-            RUNTIME_ASSERT(prop->_dataType == Property::DataType::Dict);
-            RUNTIME_ASSERT(flags[i + 1] == "=");
+            check_next_param();
+            if (prop->_dataType != Property::DataType::Dict) {
+                throw PropertyRegistrationException("Expected dict for KeyEnum flag", prop->_propName);
+            }
+
             prop->_dictKeyTypeName = flags[i + 2];
             i += 2;
         }
         else if (flags[i] == "Group") {
-            RUNTIME_ASSERT(flags[i + 1] == "=");
+            check_next_param();
+
             const auto& group = flags[i + 2];
             if (const auto it = _propertyGroups.find(group); it != _propertyGroups.end()) {
                 it->second.push_back(prop);
@@ -872,6 +885,85 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             else {
                 _propertyGroups.emplace(group, vector<const Property*> {prop});
             }
+            i += 2;
+        }
+        else if (flags[i] == "ReadOnly") {
+            prop->_isReadOnly = true;
+        }
+        else if (flags[i] == "Temporary") {
+            prop->_isTemporary = true;
+        }
+        else if (flags[i] == "Resource") {
+            if (!prop->_isHashBase) {
+                throw PropertyRegistrationException("Expected hstring for Resource flag", prop->_propName);
+            }
+
+            prop->_isResourceHash = true;
+        }
+        else if (flags[i] == "ScriptFuncType") {
+            check_next_param();
+            if (!prop->_isHashBase) {
+                throw PropertyRegistrationException("Expected hstring for ScriptFunc flag", prop->_propName);
+            }
+
+            prop->_scriptFuncType = flags[i + 2];
+            i += 2;
+        }
+        else if (flags[i] == "Default") {
+            check_next_param();
+            if (!prop->_isInt && !prop->_isFloat) {
+                throw PropertyRegistrationException("Expected numeric type for Default flag", prop->_propName);
+            }
+
+            if (prop->_isInt) {
+                prop->_defValueI = _str(flags[i + 2]).toInt64();
+            }
+            else {
+                prop->_defValueF = _str(flags[i + 2]).toDouble();
+            }
+
+            prop->_setDefaultValue = true;
+            i += 2;
+        }
+        else if (flags[i] == "Max") {
+            check_next_param();
+            if (!prop->_isInt && !prop->_isFloat) {
+                throw PropertyRegistrationException("Expected numeric type for Max flag", prop->_propName);
+            }
+
+            if (prop->_isInt) {
+                prop->_maxValueI = _str(flags[i + 2]).toInt64();
+            }
+            else {
+                prop->_maxValueF = _str(flags[i + 2]).toDouble();
+            }
+
+            prop->_checkMaxValue = true;
+            i += 2;
+        }
+        else if (flags[i] == "Min") {
+            check_next_param();
+            if (!prop->_isInt && !prop->_isFloat) {
+                throw PropertyRegistrationException("Expected numeric type for Min flag", prop->_propName);
+            }
+
+            if (prop->_isInt) {
+                prop->_minValueI = _str(flags[i + 2]).toInt64();
+            }
+            else {
+                prop->_minValueF = _str(flags[i + 2]).toDouble();
+            }
+
+            prop->_checkMinValue = true;
+            i += 2;
+        }
+        else if (flags[i] == "Quest") {
+            // Todo: restore quest variables
+            check_next_param();
+            i += 2;
+        }
+        else {
+            throw PropertyRegistrationException("Invalid property flag", prop->_propName, flags[i]);
         }
     }
 
@@ -890,25 +982,18 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
         prop->_fullTypeName = prop->_baseTypeName;
     }
 
-    RUNTIME_ASSERT(prop->_baseTypeName != "");
+    RUNTIME_ASSERT(!prop->_baseTypeName.empty());
     if (prop->_dataType == Property::DataType::Dict) {
-        RUNTIME_ASSERT(prop->_dictKeyTypeName != "");
+        RUNTIME_ASSERT(!prop->_dictKeyTypeName.empty());
     }
 
-    // bool _isTemporary {};
     // bool _isHistorical {};
     // ushort _regIndex {};
     // uint _getIndex {};
     // uint _podDataOffset {};
     // uint _complexDataIndex {};
 
-    //_isReadOnly
-    // prop->isTemporary = (defaultTemporary || is_temporary);
     // prop->_isHistorical = (defaultNoHistory || is_no_history);
-    // prop->checkMinValue = (min_value != nullptr && (is_int_data_type || is_float_data_type));
-    // prop->checkMaxValue = (max_value != nullptr && (is_int_data_type || is_float_data_type));
-    // prop->minValue = (min_value ? *min_value : 0);
-    // prop->maxValue = (max_value ? *max_value : 0);
 
     const auto reg_index = static_cast<ushort>(_registeredProperties.size());
 
