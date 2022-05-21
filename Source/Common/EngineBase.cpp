@@ -157,7 +157,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
         if (failed != nullptr) {
             WriteLog("Invalid enum {} for resolve value", enum_name);
             *failed = true;
-            return string();
+            return {};
         }
 
         throw EnumResolveException("Invalid enum for resolve value", enum_name, value);
@@ -168,7 +168,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
         if (failed != nullptr) {
             WriteLog("Can't resolve value {} for enum {}", value, enum_name);
             *failed = true;
-            return string();
+            return {};
         }
 
         throw EnumResolveException("Can't resolve value for enum", enum_name, value);
@@ -182,7 +182,7 @@ auto FOEngineBase::ToHashedString(string_view s) const -> hstring
     static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
     if (s.empty()) {
-        return hstring();
+        return {};
     }
 
     const auto hash_value = Hashing::MurmurHash2(s.data(), s.length());
@@ -209,6 +209,10 @@ auto FOEngineBase::ToHashedString(string_view s) const -> hstring
 
 auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
 {
+    if (h == 0u) {
+        return {};
+    }
+
     if (const auto it = _hashStorage.find(h); it != _hashStorage.end()) {
         return hstring(&it->second);
     }
@@ -216,7 +220,7 @@ auto FOEngineBase::ResolveHash(hstring::hash_t h, bool* failed) const -> hstring
     if (failed != nullptr) {
         WriteLog("Can't resolve hash {}", h);
         *failed = true;
-        return hstring();
+        return {};
     }
 
     throw HashResolveException("Can't resolve hash", h);

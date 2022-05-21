@@ -51,7 +51,7 @@ def getGuid(name):
 # Generated file list
 genFileList = ['EmbeddedResources-Include.h',
         'Version-Include.h',
-        'SettingsDefault-Include.h',
+        'DebugSettings-Include.h',
         'EntityProperties-Common.cpp',
         'DataRegistration-Server.cpp',
         'DataRegistration-Client.cpp',
@@ -2904,12 +2904,15 @@ except Exception as ex:
 checkErrors()
 
 # Default settings
-createFile('SettingsDefault-Include.h', args.genoutput)
-writeFile('R"CONFIG(')
+createFile('DebugSettings-Include.h', args.genoutput)
+writeFile('R"CONFIG(# DEBUG SETTINGS BEGIN #')
 for cfg in args.config:
     k, v = cfg.split(',', 1)
-    writeFile(k + ' = ' + v)
-writeFile(')CONFIG"')
+    if len(v) > 0 and v[0] == '+':
+        writeFile(k + ' += ' + v[1:])
+    else:
+        writeFile(k + ' = ' + v)
+writeFile('# DEBUG SETTINGS END #)CONFIG"')
 
 # Version info
 createFile('Version-Include.h', args.genoutput)

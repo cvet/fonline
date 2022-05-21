@@ -1469,7 +1469,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     CompileRootModule(engine, script_path);
     engine->ShutDownAndRelease();
 #else
+#if COMPILER_VALIDATION_MODE
+    game_engine->FileSys.AddDataSource("AngelScript");
+#else
     game_engine->FileSys.AddDataSource(_str(game_engine->Settings.ResourcesDir).combinePath("AngelScript"));
+#endif
 #if SERVER_SCRIPTING
     File script_file = game_engine->FileSys.ReadFile("ServerRootModule.fosb");
 #elif CLIENT_SCRIPTING

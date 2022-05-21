@@ -127,7 +127,7 @@ int main(int argc, char** argv)
 
         // AngelScript scripts
 #if FO_ANGELSCRIPT_SCRIPTING
-        auto as_server_compiled = false;
+        auto as_server_recompiled = false;
 
         try {
             WriteLog("Compile AngelScript scripts");
@@ -135,27 +135,27 @@ int main(int argc, char** argv)
 #if !FO_SINGLEPLAYER
             WriteLog("Compile server scripts");
             RUNTIME_ASSERT(!App->Settings.ASServer.empty());
-            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.ASServer)) {
-                ASCompiler_ServerScriptSystem().InitAngelScriptScripting(App->Settings.ASServer);
-                as_server_compiled = true;
+            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.BakeASServer)) {
+                ASCompiler_ServerScriptSystem().InitAngelScriptScripting(App->Settings.BakeASServer);
+                as_server_recompiled = true;
             }
 
             WriteLog("Compile client scripts");
             RUNTIME_ASSERT(!App->Settings.ASClient.empty());
-            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.ASClient)) {
-                ASCompiler_ClientScriptSystem().InitAngelScriptScripting(App->Settings.ASClient);
+            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.BakeASClient)) {
+                ASCompiler_ClientScriptSystem().InitAngelScriptScripting(App->Settings.BakeASClient);
             }
 #else
             WriteLog("Compile game scripts");
             RUNTIME_ASSERT(!App->Settings.ASSingle.empty());
-            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.ASSingle)) {
-                ASCompiler_SingleScriptSystem().InitAngelScriptScripting(App->Settings.ASSingle);
+            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.BakeASSingle)) {
+                ASCompiler_SingleScriptSystem().InitAngelScriptScripting(App->Settings.BakeASSingle);
             }
 #endif
             WriteLog("Compile mapper scripts");
             RUNTIME_ASSERT(!App->Settings.ASMapper.empty());
-            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.ASMapper)) {
-                ASCompiler_MapperScriptSystem().InitAngelScriptScripting(App->Settings.ASMapper);
+            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.BakeASMapper)) {
+                ASCompiler_MapperScriptSystem().InitAngelScriptScripting(App->Settings.BakeASMapper);
             }
 
             WriteLog("Compile AngelScript scripts complete!");
@@ -337,7 +337,7 @@ int main(int argc, char** argv)
                 }
 
 #if FO_ANGELSCRIPT_SCRIPTING
-                if (as_server_compiled) {
+                if (as_server_recompiled) {
                     parse_protos = true;
                 }
 #endif
@@ -372,7 +372,7 @@ int main(int argc, char** argv)
                     proto_mngr.ParseProtos(engine.FileSys);
 
                     // Protos validation
-                    /*{
+                    {
                         unordered_set<hstring> resource_hashes;
                         for (const auto& name : resource_names) {
                             resource_hashes.insert(engine.ToHashedString(name));
@@ -381,22 +381,17 @@ int main(int argc, char** argv)
                         FOEngineBase* validation_engine = nullptr;
 
 #if FO_ANGELSCRIPT_SCRIPTING
-                        if (as_server_compiled) {
 #if !FO_SINGLEPLAYER
-                            ASCompiler_ServerScriptSystem_Validation().InitAngelScriptScripting(&validation_engine);
+                        ASCompiler_ServerScriptSystem_Validation().InitAngelScriptScripting(&validation_engine);
 #else
-                            ASCompiler_SingleScriptSystem_Validation().InitAngelScriptScripting(&validation_engine);
+                        ASCompiler_SingleScriptSystem_Validation().InitAngelScriptScripting(&validation_engine);
 #endif
-                        }
-                        else {
-                            throw GenericException("AngelScript not compiled for proto validation");
-                        }
 #else
 #error...
 #endif
 
                         ValidateProtos(proto_mngr.GetAllProtos(), validation_engine->ScriptSys, resource_hashes);
-                    }*/
+                    }
 
                     auto data = proto_mngr.GetProtosBinaryData();
                     RUNTIME_ASSERT(!data.empty());

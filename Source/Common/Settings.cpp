@@ -279,7 +279,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 {
     // Default config
     static char default_config[] =
-#include "SettingsDefault-Include.h"
+#include "DebugSettings-Include.h"
         ;
 
     if (const auto config = ConfigFile(default_config, nullptr)) {

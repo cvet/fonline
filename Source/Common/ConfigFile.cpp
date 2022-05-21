@@ -168,13 +168,29 @@ void ConfigFile::ParseStr(string_view str)
                 }
 
                 // Key value format
-                auto separator = line.find('=');
-                if (separator != string::npos) {
-                    string key = _str(line.substr(0, separator)).trim();
-                    string value = _str(line.substr(separator + 1)).trim();
+                const auto separator = line.find('=');
+                if (separator != string::npos && separator > 0) {
+                    if (line[separator - 1] == '+') {
+                        string key = _str(line.substr(0, separator - 1)).trim();
+                        string value = _str(line.substr(separator + 1)).trim();
 
-                    if (!key.empty()) {
-                        (*cur_app)[key] = value;
+                        if (!key.empty()) {
+                            if (cur_app->count(key) != 0) {
+                                (*cur_app)[key] += " ";
+                                (*cur_app)[key] += value;
+                            }
+                            else {
+                                (*cur_app)[key] = value;
+                            }
+                        }
+                    }
+                    else {
+                        string key = _str(line.substr(0, separator)).trim();
+                        string value = _str(line.substr(separator + 1)).trim();
+
+                        if (!key.empty()) {
+                            (*cur_app)[key] = value;
+                        }
                     }
                 }
             }
