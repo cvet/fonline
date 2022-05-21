@@ -323,7 +323,7 @@ auto FileCollection::GetCurFile() const -> File
     const auto& fh = _allFiles[_curFileIndex];
     auto fs = fh._fileSize;
     auto wt = fh._writeTime;
-    auto&& buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+    auto&& buf = fh._dataSource->OpenFile(fh._filePath, fs, wt);
     RUNTIME_ASSERT(buf);
     return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, std::move(buf)};
 }
@@ -355,7 +355,7 @@ auto FileCollection::FindFileByName(string_view name) const -> File
         const auto& fh = _allFiles[it->second];
         auto fs = fh._fileSize;
         auto wt = fh._writeTime;
-        auto&& buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+        auto&& buf = fh._dataSource->OpenFile(fh._filePath, fs, wt);
         RUNTIME_ASSERT(buf);
         return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, std::move(buf)};
     }
@@ -381,7 +381,7 @@ auto FileCollection::FindFileByPath(string_view path) const -> File
         const auto& fh = _allFiles[it->second];
         auto fs = fh._fileSize;
         auto wt = fh._writeTime;
-        auto&& buf = fh._dataSource->OpenFile(fh._filePath, _str(fh._filePath).lower(), fs, wt);
+        auto&& buf = fh._dataSource->OpenFile(fh._filePath, fs, wt);
         RUNTIME_ASSERT(buf);
         return {fh._fileName, fh._filePath, fh._fileSize, fh._writeTime, fh._dataSource, std::move(buf)};
     }
@@ -417,7 +417,7 @@ auto FileSystem::FilterFiles(string_view ext, string_view dir, bool include_subd
 
             size_t size = 0u;
             uint64 write_time = 0u;
-            const auto ok = ds.IsFilePresent(fname, _str(fname).lower(), size, write_time);
+            const auto ok = ds.IsFilePresent(fname, size, write_time);
             RUNTIME_ASSERT(ok);
             const string name = _str(fname).extractFileName().eraseFileExtension();
             auto file_header = FileHeader(name, fname, size, write_time, &ds);
@@ -433,13 +433,12 @@ auto FileSystem::ReadFile(string_view path) -> File
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
-    const string path_lower = _str(path).lower();
     const string name = _str(path).extractFileName().eraseFileExtension();
 
     for (auto& ds : _dataSources) {
         size_t size = 0u;
         uint64 write_time = 0u;
-        if (auto&& buf = ds.OpenFile(path, path_lower, size, write_time)) {
+        if (auto&& buf = ds.OpenFile(path, size, write_time)) {
             return {name, path, size, write_time, &ds, std::move(buf)};
         }
     }
@@ -458,13 +457,12 @@ auto FileSystem::ReadFileHeader(string_view path) -> FileHeader
     RUNTIME_ASSERT(!path.empty());
     RUNTIME_ASSERT(path[0] != '.' && path[0] != '/');
 
-    const string path_lower = _str(path).lower();
     const string name = _str(path).extractFileName().eraseFileExtension();
 
     for (auto& ds : _dataSources) {
         size_t size = 0u;
         uint64 write_time = 0u;
-        if (ds.IsFilePresent(path, path_lower, size, write_time)) {
+        if (ds.IsFilePresent(path, size, write_time)) {
             return {name, path, size, write_time, &ds};
         }
     }

@@ -52,16 +52,16 @@ public:
 
     [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
     [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
-    [[nodiscard]] virtual auto IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool = 0;
-    [[nodiscard]] virtual auto OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> = 0;
+    [[nodiscard]] virtual auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool = 0;
+    [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> = 0;
 };
 
-using FileNameVec = vector<pair<string, string>>;
+using FileNameVec = vector<string>;
 
 static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, bool include_subdirs, string_view ext) -> vector<string>
 {
-    string path_fixed = _str(path).lower().normalizePathSlashes();
+    string path_fixed = _str(path).normalizePathSlashes();
     if (!path_fixed.empty() && path_fixed.back() != '/') {
         path_fixed += "/";
     }
@@ -69,15 +69,15 @@ static auto GetFileNamesGeneric(const FileNameVec& fnames, string_view path, boo
     const auto len = path_fixed.length();
     vector<string> result;
 
-    for (const auto& [fst, snd] : fnames) {
+    for (const auto& fname : fnames) {
         auto add = false;
-        if (fst.compare(0, len, path_fixed) == 0 && (include_subdirs || (len > 0 && fst.find_last_of('/') < len) || (len == 0 && fst.find_last_of('/') == string::npos))) {
-            if (ext.empty() || _str(fst).getFileExtension() == ext) {
+        if (fname.compare(0, len, path_fixed) == 0 && (include_subdirs || (len > 0 && fname.find_last_of('/') < len) || (len == 0 && fname.find_last_of('/') == string::npos))) {
+            if (ext.empty() || _str(fname).getFileExtension() == ext) {
                 add = true;
             }
         }
-        if (add && std::find(result.begin(), result.end(), snd) == result.end()) {
-            result.push_back(snd);
+        if (add && std::find(result.begin(), result.end(), fname) == result.end()) {
+            result.push_back(fname);
         }
     }
     return result;
@@ -95,8 +95,8 @@ public:
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _basePath; }
-    [[nodiscard]] auto IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 
 private:
@@ -115,8 +115,8 @@ public:
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _basePath; }
-    [[nodiscard]] auto IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 
 private:
@@ -145,8 +145,8 @@ public:
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
-    [[nodiscard]] auto IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
 
 private:
@@ -175,8 +175,8 @@ public:
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
-    [[nodiscard]] auto IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
 
 private:
@@ -208,8 +208,8 @@ public:
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
     [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
-    [[nodiscard]] auto IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool override;
-    [[nodiscard]] auto OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
+    [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
+    [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
 
 private:
@@ -311,14 +311,14 @@ auto DataSource::GetPackName() const -> string_view
     return _pImpl->GetPackName();
 }
 
-auto DataSource::IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool
+auto DataSource::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
 {
-    return _pImpl->IsFilePresent(path, path_lower, size, write_time);
+    return _pImpl->IsFilePresent(path, size, write_time);
 }
 
-auto DataSource::OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto DataSource::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
 {
-    return _pImpl->OpenFile(path, path_lower, size, write_time);
+    return _pImpl->OpenFile(path, size, write_time);
 }
 
 auto DataSource::GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string>
@@ -333,10 +333,8 @@ NonCachedDir::NonCachedDir(string_view fname)
     _basePath += "/";
 }
 
-auto NonCachedDir::IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool
+auto NonCachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
 {
-    UNUSED_VARIABLE(path_lower);
-
     const auto file = DiskFileSystem::OpenFile(_str("{}{}", _basePath, path), false);
     if (!file) {
         return false;
@@ -347,10 +345,8 @@ auto NonCachedDir::IsFilePresent(string_view path, string_view path_lower, size_
     return true;
 }
 
-auto NonCachedDir::OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto NonCachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
 {
-    UNUSED_VARIABLE(path_lower);
-
     auto file = DiskFileSystem::OpenFile(_str("{}{}", _basePath, path), false);
     if (!file) {
         return nullptr;
@@ -375,8 +371,7 @@ auto NonCachedDir::GetFileNames(string_view path, bool include_subdirs, string_v
         UNUSED_VARIABLE(size);
         UNUSED_VARIABLE(write_time);
 
-        string name_lower = _str(path2).lower();
-        fnames.push_back(std::make_pair(name_lower, string(path2)));
+        fnames.push_back(string(path2));
     });
 
     return GetFileNamesGeneric(fnames, path, include_subdirs, ext);
@@ -394,17 +389,16 @@ CachedDir::CachedDir(string_view fname, bool recursive)
         fe.FileSize = size;
         fe.WriteTime = write_time;
 
-        string name_lower = _str(path).lower();
-        _filesTree.insert(std::make_pair(name_lower, fe));
-        _filesTreeNames.push_back(std::make_pair(name_lower, string(path)));
+        _filesTree.insert(std::make_pair(string(path), fe));
+        _filesTreeNames.push_back(string(path));
     });
 }
 
-auto CachedDir::IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool
+auto CachedDir::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
 {
     UNUSED_VARIABLE(path);
 
-    const auto it = _filesTree.find(string(path_lower));
+    const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
         return false;
     }
@@ -415,9 +409,9 @@ auto CachedDir::IsFilePresent(string_view path, string_view path_lower, size_t& 
     return true;
 }
 
-auto CachedDir::OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto CachedDir::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
 {
-    const auto it = _filesTree.find(string(path_lower));
+    const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
         return nullptr;
     }
@@ -518,14 +512,13 @@ auto FalloutDat::ReadTree() -> bool
             if (fnsz != 0u && type != 0x400) // Not folder
             {
                 string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
-                string name_lower = _str(name).lower();
 
                 if (type == 2) {
                     *(ptr + 4 + fnsz + 7) = 1; // Compressed
                 }
 
-                _filesTree.insert(std::make_pair(name_lower, ptr + 4 + fnsz + 7));
-                _filesTreeNames.push_back(std::make_pair(name_lower, name));
+                _filesTree.insert(std::make_pair(name, ptr + 4 + fnsz + 7));
+                _filesTreeNames.push_back(name);
             }
 
             ptr += static_cast<size_t>(fnsz) + 24;
@@ -595,10 +588,9 @@ auto FalloutDat::ReadTree() -> bool
 
         if (fnsz != 0u) {
             string name = _str(string(reinterpret_cast<const char*>(ptr) + 4, fnsz)).normalizePathSlashes();
-            string name_lower = _str(name).lower();
 
-            _filesTree.insert(std::make_pair(name_lower, ptr + 4 + fnsz));
-            _filesTreeNames.push_back(std::make_pair(name_lower, name));
+            _filesTree.insert(std::make_pair(name, ptr + 4 + fnsz));
+            _filesTreeNames.push_back(name);
         }
 
         ptr += static_cast<size_t>(fnsz) + 17;
@@ -607,7 +599,7 @@ auto FalloutDat::ReadTree() -> bool
     return true;
 }
 
-auto FalloutDat::IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool
+auto FalloutDat::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
 {
     UNUSED_VARIABLE(path);
 
@@ -615,7 +607,7 @@ auto FalloutDat::IsFilePresent(string_view path, string_view path_lower, size_t&
         return false;
     }
 
-    const auto it = _filesTree.find(string(path_lower));
+    const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
         return false;
     }
@@ -628,9 +620,9 @@ auto FalloutDat::IsFilePresent(string_view path, string_view path_lower, size_t&
     return true;
 }
 
-auto FalloutDat::OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
 {
-    const auto it = _filesTree.find(string(path_lower));
+    const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
         return nullptr;
     }
@@ -884,12 +876,11 @@ auto ZipFile::ReadTree() -> bool
         if ((info.external_fa & 0x10) == 0u) // Not folder
         {
             string name = _str(buf).normalizePathSlashes();
-            string name_lower = _str(name).lower();
 
             zip_info.Pos = pos;
             zip_info.UncompressedSize = static_cast<int>(info.uncompressed_size);
-            _filesTree.insert(std::make_pair(name_lower, zip_info));
-            _filesTreeNames.push_back(std::make_pair(name_lower, name));
+            _filesTree.insert(std::make_pair(name, zip_info));
+            _filesTreeNames.push_back(name);
         }
 
         if (i + 1 < gi.number_entry && unzGoToNextFile(_zipHandle) != UNZ_OK) {
@@ -900,11 +891,11 @@ auto ZipFile::ReadTree() -> bool
     return true;
 }
 
-auto ZipFile::IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool
+auto ZipFile::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
 {
     UNUSED_VARIABLE(path);
 
-    const auto it = _filesTree.find(string(path_lower));
+    const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
         return false;
     }
@@ -915,9 +906,9 @@ auto ZipFile::IsFilePresent(string_view path, string_view path_lower, size_t& si
     return true;
 }
 
-auto ZipFile::OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto ZipFile::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
 {
-    const auto it = _filesTree.find(string(path_lower));
+    const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
         return nullptr;
     }
@@ -980,17 +971,16 @@ AndroidAssets::AndroidAssets()
         fe.FileSize = file.GetSize();
         fe.WriteTime = file.GetWriteTime();
 
-        string name_lower = _str(name).lower();
-        _filesTree.insert(std::make_pair(name_lower, fe));
-        _filesTreeNames.push_back(std::make_pair(name_lower, name));
+        _filesTree.insert(std::make_pair(name, fe));
+        _filesTreeNames.push_back(name);
     }
 }
 
-auto AndroidAssets::IsFilePresent(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> bool
+auto AndroidAssets::IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool
 {
     UNUSED_VARIABLE(path);
 
-    const auto it = _filesTree.find(string(path_lower));
+    const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
         return false;
     }
@@ -1001,9 +991,9 @@ auto AndroidAssets::IsFilePresent(string_view path, string_view path_lower, size
     return true;
 }
 
-auto AndroidAssets::OpenFile(string_view path, string_view path_lower, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
+auto AndroidAssets::OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar>
 {
-    const auto it = _filesTree.find(string(path_lower));
+    const auto it = _filesTree.find(string(path));
     if (it == _filesTree.end()) {
         return nullptr;
     }
