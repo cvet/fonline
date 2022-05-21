@@ -32,6 +32,7 @@
 //
 
 #include "ImageBaker.h"
+#include "Application.h"
 #include "F2Palette-Include.h"
 #include "FileSystem.h"
 #include "GenericUtils.h"

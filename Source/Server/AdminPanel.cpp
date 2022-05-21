@@ -35,11 +35,11 @@
 
 #if !FO_SINGLEPLAYER
 
+#include "Application.h"
 #include "Log.h"
 #include "NetBuffer.h"
 #include "NetCommand.h"
 #include "Server.h"
-#include "Settings.h"
 #include "StringUtils.h"
 #include "Timer.h"
 #include "WinApi-Include.h"

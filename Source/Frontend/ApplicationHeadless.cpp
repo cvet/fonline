@@ -33,9 +33,24 @@
 
 #include "Application.h"
 #include "DiskFileSystem.h"
+#include "Log.h"
 #include "StringUtils.h"
 #include "Version-Include.h"
 #include "WinApi-Include.h"
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+#if !FO_WINDOWS
+#if __has_include(<libunwind.h>)
+#define BACKWARD_HAS_LIBUNWIND 1
+#elif __has_include(<bfd.h>)
+#define BACKWARD_HAS_BFD 1
+#endif
+#endif
+#include "backward.hpp"
+#if FO_WINDOWS
+#undef MessageBox
+#endif
+#endif
 
 Application* App;
 
@@ -51,6 +66,63 @@ const uint& AppRender::MAX_ATLAS_HEIGHT {MAX_ATLAS_HEIGHT_};
 const uint& AppRender::MAX_BONES {MAX_BONES_};
 const int AppAudio::AUDIO_FORMAT_U8 = 0;
 const int AppAudio::AUDIO_FORMAT_S16 = 1;
+
+void InitApp(int argc, char** argv, string_view name_appendix)
+{
+    // Ensure that we call init only once
+    static std::once_flag once;
+    auto first_call = false;
+    std::call_once(once, [&first_call] { first_call = true; });
+    if (!first_call) {
+        throw AppInitException("InitApp must be called only once");
+    }
+
+    // Unhandled exceptions handler
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+    {
+        [[maybe_unused]] static backward::SignalHandling sh;
+        assert(sh.loaded());
+    }
+#endif
+
+    CreateGlobalData();
+
+    App = new Application(argc, argv, name_appendix);
+}
+
+void ExitApp(bool success)
+{
+    const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
+#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
+    std::quick_exit(code);
+#else
+    std::exit(code);
+#endif
+}
+
+void ReportExceptionAndExit(const std::exception& ex)
+{
+    if (!BreakIntoDebugger(ex.what())) {
+        WriteLog(LogType::Error, "\n{}\n", ex.what());
+        CreateDumpMessage("FatalException", ex.what());
+        MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
+    }
+
+    ExitApp(false);
+}
+
+void ReportExceptionAndContinue(const std::exception& ex)
+{
+    if (BreakIntoDebugger(ex.what())) {
+        return;
+    }
+
+    WriteLog(LogType::Error, "\n{}\n", ex.what());
+
+#if FO_DEBUG
+    MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());
+#endif
+}
 
 auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
 {
@@ -85,7 +157,7 @@ auto Application::GetName() const -> string_view
     return _name;
 }
 
-auto Application::CreateWindow(int width, int height) -> AppWindow*
+auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
     UNUSED_VARIABLE(width);
     UNUSED_VARIABLE(height);

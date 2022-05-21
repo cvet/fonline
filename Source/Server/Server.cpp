@@ -34,6 +34,7 @@
 #include "Server.h"
 #include "AdminPanel.h"
 #include "AnyData.h"
+#include "Application.h"
 #include "GenericUtils.h"
 #include "Networking.h"
 #include "PropertiesSerializator.h"

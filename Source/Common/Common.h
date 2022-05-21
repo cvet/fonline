@@ -250,8 +250,6 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 // Engine exception handling
 extern auto GetStackTrace() -> string;
 extern bool BreakIntoDebugger(string_view error_message);
-[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
-extern void ReportExceptionAndContinue(const std::exception& ex);
 extern void CreateDumpMessage(string_view appendix, string_view message);
 
 // Todo: pass name to exceptions context args
@@ -1398,11 +1396,6 @@ public:
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
-
-class Application;
-extern Application* App;
-extern void InitApp(int argc, char** argv, string_view name_appendix);
-[[noreturn]] extern void ExitApp(bool success);
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \

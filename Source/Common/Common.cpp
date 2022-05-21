@@ -32,7 +32,6 @@
 //
 
 #include "Common.h"
-#include "Application.h"
 #include "DiskFileSystem.h"
 #include "Log.h"
 #include "StringUtils.h"
@@ -59,39 +58,6 @@ hstring::entry hstring::_zeroEntry;
 GlobalDataCallback CreateGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 GlobalDataCallback DeleteGlobalDataCallbacks[MAX_GLOBAL_DATA_CALLBACKS];
 int GlobalDataCallbacksCount;
-
-void InitApp(int argc, char** argv, string_view name_appendix)
-{
-    // Ensure that we call init only once
-    static std::once_flag once;
-    auto first_call = false;
-    std::call_once(once, [&first_call] { first_call = true; });
-    if (!first_call) {
-        throw AppInitException("InitApp must be called only once");
-    }
-
-    // Unhandled exceptions handler
-#if FO_WINDOWS || FO_LINUX || FO_MAC
-    {
-        [[maybe_unused]] static backward::SignalHandling sh;
-        assert(sh.loaded());
-    }
-#endif
-
-    CreateGlobalData();
-
-    App = new Application(argc, argv, name_appendix);
-}
-
-void ExitApp(bool success)
-{
-    const auto code = success ? EXIT_SUCCESS : EXIT_FAILURE;
-#if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
-    std::quick_exit(code);
-#else
-    std::exit(code);
-#endif
-}
 
 void CreateGlobalData()
 {
@@ -140,30 +106,6 @@ bool BreakIntoDebugger([[maybe_unused]] string_view error_message)
     return false;
 }
 
-void ReportExceptionAndExit(const std::exception& ex)
-{
-    if (!BreakIntoDebugger(ex.what())) {
-        WriteLog(LogType::Error, "\n{}\n", ex.what());
-        CreateDumpMessage("FatalException", ex.what());
-        MessageBox::ShowErrorMessage("Fatal Error", ex.what(), GetStackTrace());
-    }
-
-    ExitApp(false);
-}
-
-void ReportExceptionAndContinue(const std::exception& ex)
-{
-    if (BreakIntoDebugger(ex.what())) {
-        return;
-    }
-
-    WriteLog(LogType::Error, "\n{}\n", ex.what());
-
-#if FO_DEBUG
-    MessageBox::ShowErrorMessage("Error", ex.what(), GetStackTrace());
-#endif
-}
-
 void CreateDumpMessage(string_view appendix, string_view message)
 {
     const auto traceback = GetStackTrace();
@@ -175,7 +117,7 @@ void CreateDumpMessage(string_view appendix, string_view message)
         file.Write(_str("{}\n", message));
         file.Write(_str("\n"));
         file.Write(_str("Application\n"));
-        file.Write(_str("\tName        {}\n", App->GetName()));
+        file.Write(_str("\tName        {}\n", FO_DEV_NAME));
         file.Write(_str("\tVersion     {}\n", FO_GAME_VERSION));
         file.Write(_str("\tOS          Windows\n"));
         file.Write(_str("\tTimestamp   {:04}.{:02}.{:02} {:02}:{:02}:{:02}\n", dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second));

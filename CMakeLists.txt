@@ -1587,6 +1587,7 @@ foreach( entry ${FO_CODEGEN_META_SOURCE} )
 endforeach()
 
 list( APPEND FO_CODEGEN_OUTPUT
+	"${CMAKE_BINARY_DIR}/GeneratedSource/CodeGenTouch"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DebugSettings-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
@@ -1628,6 +1629,7 @@ set( FO_CODEGEN_COMMAND ${Python3_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/Build
 
 add_custom_command( OUTPUT ${FO_CODEGEN_OUTPUT}
 	COMMAND ${FO_CODEGEN_COMMAND}
+	COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_BINARY_DIR}/GeneratedSource/CodeGenTouch"
 	DEPENDS ${FO_CODEGEN_META_SOURCE}
 	WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 	COMMENT "Code generation" )

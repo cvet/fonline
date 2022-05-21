@@ -341,7 +341,7 @@ public:
 
     [[nodiscard]] auto GetName() const -> string_view;
 
-    [[nodiscard]] auto CreateWindow(int width, int height) -> AppWindow*;
+    [[nodiscard]] auto CreateChildWindow(int width, int height) -> AppWindow*;
 
 #if FO_IOS
     void SetMainLoopCallback(void (*callback)(void*));
@@ -392,3 +392,10 @@ public:
 
     static void ShowErrorMessage(string_view title, string_view message, string_view traceback);
 };
+
+extern Application* App;
+extern void InitApp(int argc, char** argv, string_view name_appendix);
+[[noreturn]] extern void ExitApp(bool success);
+
+[[noreturn]] extern void ReportExceptionAndExit(const std::exception& ex);
+extern void ReportExceptionAndContinue(const std::exception& ex);

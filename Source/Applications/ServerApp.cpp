@@ -129,7 +129,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             // Todo: allow instantiate client in separate thread (rendering issues)
             // std::thread([] {
             try {
-                auto* window = in_separate_window ? App->CreateWindow(800, 600) : &App->MainWindow;
+                auto* window = in_separate_window ? App->CreateChildWindow(800, 600) : &App->MainWindow;
                 Data->SpawnedClient = new FOClient(App->Settings, window, Data->Server->RestoreInfoBin);
             }
             catch (const std::exception& ex) {
