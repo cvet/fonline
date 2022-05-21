@@ -138,6 +138,15 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 
 Application::Application(int argc, char** argv, string_view name_appendix) : Settings(argc, argv)
 {
+    UNUSED_VARIABLE(_time);
+    UNUSED_VARIABLE(_timeFrequency);
+    UNUSED_VARIABLE(_isTablet);
+    UNUSED_VARIABLE(_mouseCanUseGlobalState);
+    UNUSED_VARIABLE(_pendingMouseLeaveFrame);
+    UNUSED_VARIABLE(_mouseButtonsDown);
+    UNUSED_VARIABLE(_imguiDrawBuf);
+    UNUSED_VARIABLE(_imguiEffect);
+    UNUSED_VARIABLE(_nonConstHelper);
     UNUSED_VARIABLE(MainWindow._windowHandle);
 
     // Skip SDL allocations from profiling

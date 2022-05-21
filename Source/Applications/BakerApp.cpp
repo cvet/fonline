@@ -41,6 +41,7 @@
 #include "FileSystem.h"
 #include "ImageBaker.h"
 #include "Log.h"
+#include "MapLoader.h"
 #include "ModelBaker.h"
 #include "ProtoManager.h"
 #include "Settings.h"
@@ -96,7 +97,7 @@ struct ASCompiler_MapperScriptSystem : public ScriptSystem
 };
 
 static auto CheckScriptsUpToDate(string_view script_path) -> bool;
-static void ValidateProtos(const vector<const ProtoEntity*>& protos, ScriptSystem* script_sys, const unordered_set<hstring>& resource_names);
+static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, FileSystem& content_files, NameResolver& name_resolver, const unordered_set<hstring>& resource_names);
 
 // External variable for compiler messages
 unordered_set<string> CompilerPassedMessages;
@@ -390,7 +391,7 @@ int main(int argc, char** argv)
 #error...
 #endif
 
-                        ValidateProtos(proto_mngr.GetAllProtos(), validation_engine->ScriptSys, resource_hashes);
+                        ValidateProtos(proto_mngr, validation_engine->ScriptSys, engine.FileSys, engine, resource_hashes);
                     }
 
                     auto data = proto_mngr.GetProtosBinaryData();
@@ -605,7 +606,7 @@ struct Location : Entity
 {
 };
 
-static void ValidateProtos(const vector<const ProtoEntity*>& protos, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes)
+static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, FileSystem& content_files, NameResolver& name_resolver, const unordered_set<hstring>& resource_hashes)
 {
     auto errors = 0;
 
@@ -617,30 +618,82 @@ static void ValidateProtos(const vector<const ProtoEntity*>& protos, ScriptSyste
         {"LocationEntrance", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location, vector<Critter>, uchar>(func_name); }},
     };
 
-    for (const auto* proto : protos) {
-        const auto* registrator = proto->GetProperties().GetRegistrator();
+    const auto validate_properties = [&errors, &resource_hashes, &script_func_verify](const Properties& props, string_view context_str) {
+        const auto* registrator = props.GetRegistrator();
 
         for (uint i = 0; i < registrator->GetCount(); i++) {
-            const auto* prop = registrator->GetByIndex(i);
+            const auto* prop = registrator->GetByIndex(static_cast<int>(i));
 
             if (prop->IsBaseTypeResource()) {
-                const auto h = proto->GetProperties().GetValue<hstring>(prop);
+                const auto h = props.GetValue<hstring>(prop);
                 if (h && resource_hashes.count(h) == 0u) {
-                    WriteLog("Resource '{}' not found for property {} in proto {}", h, prop->GetName(), proto->GetName());
+                    WriteLog("Resource '{}' not found for property {} in {}", h, prop->GetName(), context_str);
                     errors++;
                 }
             }
 
             if (prop->IsBaseScriptFuncType()) {
                 if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
-                    WriteLog("Invalid script func type '{}' for property {} in proto {}", prop->GetBaseScriptFuncType(), prop->GetName(), proto->GetName());
+                    WriteLog("Invalid script func type '{}' for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
                 else if (!script_func_verify[prop->GetBaseScriptFuncType()]) {
-                    WriteLog("Verification failed for func type '{}' for property {} in proto {}", prop->GetBaseScriptFuncType(), prop->GetName(), proto->GetName());
+                    WriteLog("Verification failed for func type '{}' for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
             }
+        }
+    };
+
+    const auto protos = proto_mngr.GetAllProtos();
+
+    for (const auto* proto : protos) {
+        validate_properties(proto->GetProperties(), _str("proto '{}'", proto->GetName()));
+    }
+
+    for (const auto* some_proto : protos) {
+        const auto* pmap = dynamic_cast<const ProtoMap*>(some_proto);
+        if (pmap == nullptr) {
+            continue;
+        }
+
+        try {
+            MapLoader::Load(
+                pmap->GetName(), content_files, proto_mngr, name_resolver,
+                [&errors, &validate_properties, pmap](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+                    Properties props(proto->GetProperties().GetRegistrator());
+                    if (!props.LoadFromText(kv)) {
+                        WriteLog("Invalid critter '{}' on map '{}' with id {}", proto->GetName(), pmap->GetName(), id);
+                        errors++;
+                    }
+                    else {
+                        validate_properties(props, _str("map '{}' critter '{}' with id {}", pmap->GetName(), proto->GetName(), id));
+                    }
+                    return true;
+                },
+                [&errors, &validate_properties, pmap](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+                    Properties props(proto->GetProperties().GetRegistrator());
+                    if (!props.LoadFromText(kv)) {
+                        WriteLog("Invalid item '{}' on map '{}' with id {}", proto->GetName(), pmap->GetName(), id);
+                        errors++;
+                    }
+                    else {
+                        validate_properties(props, _str("map '{}' item '{}' with id {}", pmap->GetName(), proto->GetName(), id));
+                    }
+                    return true;
+                },
+                [&errors, &resource_hashes, &name_resolver, pmap](MapTile&& tile) -> bool {
+                    const auto tile_name = name_resolver.ResolveHash(tile.NameHash);
+                    if (resource_hashes.count(tile_name) == 0u) {
+                        WriteLog("Invalid tile '{}' on map '{}' at hex {} {}", tile_name, pmap->GetName(), tile.HexX, tile.HexY);
+                        errors++;
+                    }
+                    return true;
+                });
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
+            errors++;
         }
     }
 
