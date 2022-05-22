@@ -88,8 +88,10 @@ using AbstractLocation = Entity;
 
 struct GenericScriptFunc
 {
+    string Name {};
+    string Declaration {};
     vector<const type_info*> ArgsType {};
-    bool CallNotSupported {};
+    bool CallSupported {};
     const type_info* RetType {};
     std::function<bool(initializer_list<void*>, void*)> Call {};
 };

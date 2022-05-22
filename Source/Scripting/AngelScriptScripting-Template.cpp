@@ -1453,15 +1453,15 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterGlobalProperty("RemoteCaller ServerCall", game_engine));
 #endif
 
-    AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", game_engine));
+    AS_VERIFY(engine->RegisterGlobalProperty("Game GameInstance", game_engine));
 
 #if CLIENT_SCRIPTING
 #if !COMPILER_MODE
-    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", game_engine->CurMap));
-    AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", game_engine->_curLocation));
+    AS_VERIFY(engine->RegisterGlobalProperty("Map CurMap", game_engine->CurMap));
+    AS_VERIFY(engine->RegisterGlobalProperty("Location CurLocation", game_engine->_curLocation));
 #else
-    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &dummy));
-    AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &dummy));
+    AS_VERIFY(engine->RegisterGlobalProperty("Map CurMap", &dummy));
+    AS_VERIFY(engine->RegisterGlobalProperty("Location CurLocation", &dummy));
 #endif
 #endif
 
@@ -1495,32 +1495,35 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
         const auto as_type_to_type_info = [](int type_id, asDWORD flags) -> const std::type_info* {
             const auto is_ref = (flags & asTM_INOUTREF) != 0;
+            if (is_ref) {
+                return nullptr;
+            }
 
             switch (flags) {
             case asTYPEID_VOID:
                 return &typeid(void);
             case asTYPEID_BOOL:
-                return is_ref ? &typeid(bool&) : &typeid(bool);
+                return &typeid(bool);
             case asTYPEID_INT8:
-                return is_ref ? &typeid(char&) : &typeid(char);
+                return &typeid(char);
             case asTYPEID_INT16:
-                return is_ref ? &typeid(short&) : &typeid(short);
+                return &typeid(short);
             case asTYPEID_INT32:
-                return is_ref ? &typeid(int&) : &typeid(int);
+                return &typeid(int);
             case asTYPEID_INT64:
-                return is_ref ? &typeid(int64&) : &typeid(int64);
+                return &typeid(int64);
             case asTYPEID_UINT8:
-                return is_ref ? &typeid(uchar&) : &typeid(uchar);
+                return &typeid(uchar);
             case asTYPEID_UINT16:
-                return is_ref ? &typeid(ushort&) : &typeid(ushort);
+                return &typeid(ushort);
             case asTYPEID_UINT32:
-                return is_ref ? &typeid(uint&) : &typeid(uint);
+                return &typeid(uint);
             case asTYPEID_UINT64:
-                return is_ref ? &typeid(uint64&) : &typeid(uint64);
+                return &typeid(uint64);
             case asTYPEID_FLOAT:
-                return is_ref ? &typeid(float&) : &typeid(float);
+                return &typeid(float);
             case asTYPEID_DOUBLE:
-                return is_ref ? &typeid(double&) : &typeid(double);
+                return &typeid(double);
             }
 
             if ((type_id & asTYPEID_OBJHANDLE) != 0 && (type_id & asTYPEID_APPOBJECT) != 0) {
@@ -1536,6 +1539,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             const auto func_name = GetASFuncName(func);
             const auto it = _funcMap.emplace(std::make_pair(func_name, GenericScriptFunc()));
             auto& gen_func = it->second;
+
+            gen_func.Name = func_name;
+            gen_func.Declaration = func->GetDeclaration(true, true, true);
 
 #if !COMPILER_VALIDATION_MODE
             gen_func.Call = std::bind(&ScriptSystem::AngelScriptImpl::CallGenericFunc, AngelScriptData.get(), &gen_func, func, std::placeholders::_1, std::placeholders::_2);
@@ -1553,11 +1559,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             int ret_type_id = func->GetReturnTypeId(&ret_flags);
             gen_func.RetType = as_type_to_type_info(ret_type_id, ret_flags);
 
-            gen_func.CallNotSupported = (gen_func.RetType == nullptr || std::find(gen_func.ArgsType.begin(), gen_func.ArgsType.end(), nullptr) != gen_func.ArgsType.end());
+            gen_func.CallSupported = (gen_func.RetType != nullptr && std::find(gen_func.ArgsType.begin(), gen_func.ArgsType.end(), nullptr) == gen_func.ArgsType.end());
 
             // Check for special module init function
             if (gen_func.ArgsType.empty() && gen_func.RetType == &typeid(void)) {
-                RUNTIME_ASSERT(!gen_func.CallNotSupported);
+                RUNTIME_ASSERT(gen_func.CallSupported);
                 const auto func_name_ex = _str(func->GetName());
                 if (func_name_ex.compareIgnoreCase("ModuleInit") || func_name_ex.compareIgnoreCase("module_init")) {
                     _initFunc.push_back(&gen_func);

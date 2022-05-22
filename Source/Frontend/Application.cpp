@@ -413,10 +413,10 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
 
     // Determine main window size
 #if FO_IOS || FO_ANDROID
-    IsTablet = true;
+    _isTablet = true;
 #endif
 #if FO_WINDOWS && !FO_UWP
-    _isTablet = ::GetSystemMetrics(SM_TABLETPC) != 0; // Todo: recognize tablet mode for Windows 10
+    _isTablet = ::GetSystemMetrics(SM_TABLETPC) != 0;
 #endif
 
     // Initialize video system

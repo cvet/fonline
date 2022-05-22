@@ -36,7 +36,7 @@
 
 auto ScriptSystem::ValidateArgs(const GenericScriptFunc& gen_func, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
 {
-    if (gen_func.CallNotSupported) {
+    if (!gen_func.CallSupported) {
         return false;
     }
 
