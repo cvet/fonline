@@ -32,8 +32,8 @@
 //
 
 #include "Entity.h"
+#include "Application.h"
 #include "Log.h"
-#include "StringUtils.h"
 
 Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
 {
@@ -127,9 +127,7 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
 {
     RUNTIME_ASSERT(callbacks);
 
-    // Todo: events array may be modified during call, need take it into account here
-    for (size_t i = 0; i < callbacks->size(); i++) {
-        const auto& cb = callbacks->at(i);
+    for (const auto& cb : copy(*callbacks)) {
         const auto ex_policy = cb.ExPolicy;
 
         try {
@@ -138,16 +136,17 @@ auto Entity::FireEvent(vector<EventCallbackData>* callbacks, const initializer_l
             }
         }
         catch (const std::exception& ex) {
-            WriteLog("{}\n", ex.what());
+            if (ex_policy == EventExceptionPolicy::PropogateException) {
+                throw;
+            }
+
+            ReportExceptionAndContinue(ex);
 
             if (ex_policy == EventExceptionPolicy::StopChainAndReturnTrue) {
                 return true;
             }
             if (ex_policy == EventExceptionPolicy::StopChainAndReturnFalse) {
                 return false;
-            }
-            if (ex_policy == EventExceptionPolicy::PropogateException) {
-                throw;
             }
         }
     }
@@ -337,7 +336,7 @@ void EntityEventBase::UnsubscribeAll()
 auto EntityEventBase::FireEx(const initializer_list<void*>& args) -> bool
 {
     if (_callbacks == nullptr) {
-        return false;
+        return true;
     }
 
     return _entity->FireEvent(_callbacks, args);

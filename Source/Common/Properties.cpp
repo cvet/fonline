@@ -49,20 +49,9 @@ Properties::Properties(const PropertyRegistrator* registrator) : _registrator {r
 {
     RUNTIME_ASSERT(_registrator);
 
-    // Allocate plain data
-    if (!_registrator->_podDataPool.empty()) {
-        _podData = _registrator->_podDataPool.back();
-        _registrator->_podDataPool.pop_back();
+    if (!_registrator->_registeredProperties.empty()) {
+        AllocData();
     }
-    else {
-        _podData = new uchar[_registrator->_wholePodDataSize];
-    }
-
-    std::memset(_podData, 0, _registrator->_wholePodDataSize);
-
-    // Complex data
-    _complexData.resize(_registrator->_complexPropertiesCount);
-    _complexDataSizes.resize(_registrator->_complexPropertiesCount);
 }
 
 Properties::Properties(const Properties& other) : Properties(other._registrator)
@@ -114,6 +103,27 @@ auto Properties::operator=(const Properties& other) -> Properties&
     }
 
     return *this;
+}
+
+void Properties::AllocData()
+{
+    RUNTIME_ASSERT(_podData == nullptr);
+    RUNTIME_ASSERT(!_registrator->_registeredProperties.empty());
+
+    // Allocate plain data
+    if (!_registrator->_podDataPool.empty()) {
+        _podData = _registrator->_podDataPool.back();
+        _registrator->_podDataPool.pop_back();
+    }
+    else {
+        _podData = new uchar[_registrator->_wholePodDataSize];
+    }
+
+    std::memset(_podData, 0, _registrator->_wholePodDataSize);
+
+    // Complex data
+    _complexData.resize(_registrator->_complexPropertiesCount);
+    _complexDataSizes.resize(_registrator->_complexPropertiesCount);
 }
 
 auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
@@ -1059,6 +1069,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     // Complex property data index
     auto complex_data_index = static_cast<uint>(-1);
     if (prop->_dataType != Property::DataType::PlainData && (!disable_get || !disable_set) && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+        _complexProperties.emplace_back(prop);
         complex_data_index = _complexPropertiesCount++;
         if (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask)) {
             _publicComplexDataProps.push_back(reg_index);
@@ -1083,7 +1094,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     prop->_isReadable = !disable_get;
     prop->_isWritable = !disable_set;
 
-    _registeredProperties.push_back(prop);
+    _registeredProperties.emplace_back(prop);
     _registeredPropertiesLookup.emplace(prop->GetName(), prop);
 
     // Fix plain data data offsets

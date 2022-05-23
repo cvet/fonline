@@ -226,6 +226,7 @@ public:
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
     [[nodiscard]] auto SaveToText(Properties* base) const -> map<string, string>;
 
+    void AllocData();
     void SetEntity(Entity* entity) { _entity = entity; }
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     auto LoadPropertyFromText(const Property* prop, string_view text) -> bool;
@@ -398,6 +399,7 @@ private:
     mutable vector<uchar*> _podDataPool {};
 
     // Complex types info
+    vector<Property*> _complexProperties {};
     uint _complexPropertiesCount {};
     vector<ushort> _publicComplexDataProps {};
     vector<ushort> _protectedComplexDataProps {};

@@ -286,6 +286,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Common: remove all id masks after moving to 64-bit hashes
 * Common: remove critter flags
 * Common: remove special OTHER_* params
+* Common: optimize copy() to pass placement storage for value
 * Common: apply scripts strack trace
 * ServerApp: allow instantiate client in separate thread (rendering issues)
 * ServerServiceApp: convert argv from wchar_t** to char**
@@ -319,7 +320,6 @@ Please follow these instructions to understand how to use this engine by design:
 * CacheStorage: store Cache.bin in player local dir for Windows users?
 * CacheStorage: add in-memory cache storage and fallback to it if can't create default
 * Dialogs: validate script entries, hashes
-* Entity: events array may be modified during call, need take it into account here
 * Entity: improve entity event ExPolicy
 * Entity: improve entity event Priority
 * Entity: improve entity event OneShot
@@ -350,7 +350,6 @@ Please follow these instructions to understand how to use this engine by design:
 * Settings: improve editable entry for arrays
 * StringUtils: make isNumber const
 * Application: move all these statics to App class fields
-* Application: recognize tablet mode for Windows 10
 * Application: fix workaround for strange behaviour of button focus
 * ApplicationHeadless: implement effect CanBatch
 * Rendering-Direct3D: pass additional defines to shaders (passed + internal)

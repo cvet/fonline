@@ -225,7 +225,7 @@ public:
     auto Fire(Args... args) -> bool
     {
         if (_callbacks == nullptr) {
-            return false;
+            return true;
         }
 
         const initializer_list<void*> args_list = {&args...};

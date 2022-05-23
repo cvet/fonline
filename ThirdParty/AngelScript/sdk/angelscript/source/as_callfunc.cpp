@@ -867,7 +867,7 @@ int CallSystemFunction(int id, asCContext *context)
 
 		// Skip the object pointer on the stack
 		// TODO: runtime optimize: This check and increment should have been done in PrepareSystemFunction
-		if( callConv >= ICC_THISCALL ) // Patch && sysFunc->auxiliary == 0 )
+		if( callConv >= ICC_THISCALL && sysFunc->auxiliary == 0 ) // Patch && sysFunc->auxiliary == 0 )
 			args += AS_PTR_SIZE;
 
 		asSSystemFunctionInterface::SClean *clean = sysFunc->cleanArgs.AddressOf();

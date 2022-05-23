@@ -1351,6 +1351,7 @@ constexpr auto xrange(T value)
     return irange_loop<decltype(value.size())> {0, value.size()};
 }
 
+// Todo: optimize copy() to pass placement storage for value
 template<typename T>
 constexpr auto copy(T&& value) -> T
 {

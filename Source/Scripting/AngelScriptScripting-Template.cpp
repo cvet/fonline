@@ -108,44 +108,68 @@
 #if SERVER_SCRIPTING
 #define FOEngine FOServer
 #define SCRIPTING_CLASS ServerScriptSystem
+#define StorageData StorageData_Server
+#define ASGlobal ASGlobal_Server
 #elif CLIENT_SCRIPTING
 #define FOEngine FOClient
 #define SCRIPTING_CLASS ClientScriptSystem
+#define StorageData StorageData_Client
+#define ASGlobal ASGlobal_Client
 #elif SINGLE_SCRIPTING
 #define FOEngine FOSingle
 #define SCRIPTING_CLASS SingleScriptSystem
+#define StorageData StorageData_Single
+#define ASGlobal ASGlobal_Single
 #elif MAPPER_SCRIPTING
 #define FOEngine FOMapper
 #define SCRIPTING_CLASS MapperScriptSystem
+#define StorageData StorageData_Mapper
+#define ASGlobal ASGlobal_Mapper
 #endif
 #else
 #if !COMPILER_VALIDATION_MODE
 #if SERVER_SCRIPTING
 #define FOEngine AngelScriptServerCompiler
 #define SCRIPTING_CLASS ASCompiler_ServerScriptSystem
+#define StorageData StorageData_ServerCompiler
+#define ASGlobal ASGlobal_ServerCompiler
 #elif CLIENT_SCRIPTING
 #define FOEngine AngelScriptClientCompiler
 #define SCRIPTING_CLASS ASCompiler_ClientScriptSystem
+#define StorageData StorageData_ClientCompiler
+#define ASGlobal ASGlobal_ClientCompiler
 #elif SINGLE_SCRIPTING
 #define FOEngine AngelScriptSingleCompiler
 #define SCRIPTING_CLASS ASCompiler_SingleScriptSystem
+#define StorageData StorageData_SingleCompiler
+#define ASGlobal ASGlobal_SingleCompiler
 #elif MAPPER_SCRIPTING
 #define FOEngine AngelScriptMapperCompiler
 #define SCRIPTING_CLASS ASCompiler_MapperScriptSystem
+#define StorageData StorageData_MapperCompiler
+#define ASGlobal ASGlobal_MapperCompiler
 #endif
 #else
 #if SERVER_SCRIPTING
 #define FOEngine AngelScriptServerCompilerValidation
 #define SCRIPTING_CLASS ASCompiler_ServerScriptSystem_Validation
+#define StorageData StorageData_ServerCompilerValidation
+#define ASGlobal ASGlobal_ServerCompilerValidation
 #elif CLIENT_SCRIPTING
 #define FOEngine AngelScriptClientCompilerValidation
 #define SCRIPTING_CLASS ASCompiler_ClientScriptSystem_Validation
+#define StorageData StorageData_ClientCompilerValidation
+#define ASGlobal ASGlobal_ClientCompilerValidation
 #elif SINGLE_SCRIPTING
 #define FOEngine AngelScriptSingleCompilerValidation
 #define SCRIPTING_CLASS ASCompiler_SingleScriptSystem_Validation
+#define StorageData StorageData_SingleCompilerValidation
+#define ASGlobal ASGlobal_SingleCompilerValidation
 #elif MAPPER_SCRIPTING
 #define FOEngine AngelScriptMapperCompilerValidation
 #define SCRIPTING_CLASS ASCompiler_MapperScriptSystem_Validation
+#define StorageData StorageData_MapperCompilerValidation
+#define ASGlobal ASGlobal_MapperCompilerValidation
 #endif
 #endif
 #endif
@@ -236,22 +260,22 @@ public:
 
 #ifdef AS_MAX_PORTABILITY
 #define SCRIPT_FUNC(name) WRAP_FN(name)
-#define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
-#define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
 #define SCRIPT_FUNC_CONV asCALL_GENERIC
+#define SCRIPT_FUNC_THIS(name) WRAP_OBJ_FIRST(name)
 #define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
+#define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
 #define SCRIPT_METHOD_CONV asCALL_GENERIC
+#define SCRIPT_FUNC_FUNCTOR(type, name) WRAP_MFN(type, name)
 #define SCRIPT_FUNC_FUNCTOR_CONV asCALL_GENERIC
-#define SCRIPT_METHOD_FUNCTOR_CONV asCALL_GENERIC
 #else
 #define SCRIPT_FUNC(name) asFUNCTION(name)
-#define SCRIPT_FUNC_THIS(name) asFUNCTION(name)
-#define SCRIPT_METHOD(type, name) asMETHOD(type, name)
 #define SCRIPT_FUNC_CONV asCALL_CDECL
+#define SCRIPT_FUNC_THIS(name) asFUNCTION(name)
 #define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
+#define SCRIPT_METHOD(type, name) asMETHOD(type, name)
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
+#define SCRIPT_FUNC_FUNCTOR(type, name) asMETHOD(type, name)
 #define SCRIPT_FUNC_FUNCTOR_CONV asCALL_THISCALL_ASGLOBAL
-#define SCRIPT_METHOD_FUNCTOR_CONV asCALL_THISCALL_OBJFIRST
 #endif
 
 #if !COMPILER_MODE
@@ -346,6 +370,8 @@ struct ScriptSystem::AngelScriptImpl
 
         if (exec_result == asEXECUTION_SUSPENDED) {
             if (!can_suspend) {
+                ctx->Abort();
+                ReturnContext(ctx);
                 throw ScriptException("Can't yield current routine");
             }
 
@@ -353,16 +379,23 @@ struct ScriptSystem::AngelScriptImpl
         }
 
         if (exec_result != asEXECUTION_FINISHED) {
-            ctx->Abort();
-            ReturnContext(ctx);
-
             if (exec_result == asEXECUTION_EXCEPTION) {
-                throw ScriptException("Script execution exception", ctx->GetExceptionString(), ctx->GetExceptionFunction()->GetName(), ctx->GetExceptionLineNumber());
+                const string ex_string = ctx->GetExceptionString();
+                auto* ex_func = ctx->GetExceptionFunction();
+                const string ex_func_name = ex_func != nullptr ? ex_func->GetName() : "(unknown function)";
+                const auto ex_line = ctx->GetExceptionLineNumber();
+                ctx->Abort();
+                ReturnContext(ctx);
+                throw ScriptException("Script execution exception", ex_string, ex_func_name, ex_line);
             }
+
             if (exec_result == asEXECUTION_ABORTED) {
+                ReturnContext(ctx);
                 throw ScriptException("Execution of script aborted");
             }
 
+            ctx->Abort();
+            ReturnContext(ctx);
             throw ScriptException("Context execution error", exec_result);
         }
 
@@ -566,7 +599,30 @@ template<typename T, typename U>
     return _str("{}::{}", func->GetNamespace(), func->GetName());
 }
 
-static auto Entity_IsDestroyed(Entity* self) -> bool
+template<typename T>
+static void Entity_AddRef(const T* self)
+{
+#if !COMPILER_MODE
+    self->AddRef();
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename T>
+static void Entity_Release(const T* self)
+{
+#if !COMPILER_MODE
+    self->Release();
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename T>
+static auto Entity_IsDestroyed(const T* self) -> bool
 {
 #if !COMPILER_MODE
     // May call on destroyed entity
@@ -577,7 +633,8 @@ static auto Entity_IsDestroyed(Entity* self) -> bool
 #endif
 }
 
-static auto Entity_IsDestroying(Entity* self) -> bool
+template<typename T>
+static auto Entity_IsDestroying(const T* self) -> bool
 {
 #if !COMPILER_MODE
     // May call on destroyed entity
@@ -588,7 +645,8 @@ static auto Entity_IsDestroying(Entity* self) -> bool
 #endif
 }
 
-static auto Entity_Name(Entity* self) -> string
+template<typename T>
+static auto Entity_Name(const T* self) -> string
 {
 #if !COMPILER_MODE
     ENTITY_VERIFY(self);
@@ -599,7 +657,8 @@ static auto Entity_Name(Entity* self) -> string
 #endif
 }
 
-static auto Entity_Id(BaseEntity* self) -> uint
+template<typename T>
+static auto Entity_Id(const T* self) -> uint
 {
 #if !COMPILER_MODE
     ENTITY_VERIFY(self);
@@ -610,7 +669,8 @@ static auto Entity_Id(BaseEntity* self) -> uint
 #endif
 }
 
-static auto Entity_ProtoId(BaseEntity* self) -> hstring
+template<typename T>
+static auto Entity_ProtoId(const T* self) -> hstring
 {
 #if !COMPILER_MODE
     ENTITY_VERIFY(self);
@@ -621,7 +681,23 @@ static auto Entity_ProtoId(BaseEntity* self) -> hstring
 #endif
 }
 
-static auto Entity_Proto(BaseEntity* self) -> const ProtoEntity*
+template<>
+auto Entity_ProtoId(const Entity* self) -> hstring
+{
+#if !COMPILER_MODE
+    ENTITY_VERIFY(self);
+    if (const auto* self_with_proto = dynamic_cast<const EntityWithProto*>(self)) {
+        return self_with_proto->GetProtoId();
+    }
+    return {};
+#else
+    UNUSED_VARIABLE(self);
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename T>
+static auto Entity_Proto(const T* self) -> const ProtoEntity*
 {
 #if !COMPILER_MODE
     ENTITY_VERIFY(self);
@@ -634,11 +710,10 @@ static auto Entity_Proto(BaseEntity* self) -> const ProtoEntity*
 
 ///@ CodeGen Global
 
-static void Property_GetValueAsInt(asIScriptGeneric* gen)
+template<typename T>
+static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
 {
 #if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     ENTITY_VERIFY(entity);
 
     if (prop_index == -1) {
@@ -655,17 +730,19 @@ static void Property_GetValueAsInt(asIScriptGeneric* gen)
         throw ScriptException("Property is not readable");
     }
 
-    new (gen->GetAddressOfReturnLocation()) int(entity->GetValueAsInt(prop));
+    return entity->GetValueAsInt(prop);
+
 #else
-    UNUSED_VARIABLE(gen);
+    UNUSED_VARIABLE(entity);
+    UNUSED_VARIABLE(prop_index);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
-static void Property_SetValueAsInt(asIScriptGeneric* gen)
+template<typename T>
+static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 {
 #if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     ENTITY_VERIFY(entity);
 
     if (prop_index == -1) {
@@ -682,17 +759,20 @@ static void Property_SetValueAsInt(asIScriptGeneric* gen)
         throw ScriptException("Property is not writeble");
     }
 
-    entity->SetValueAsInt(prop, *static_cast<int*>(gen->GetAddressOfArg(1)));
+    entity->SetValueAsInt(prop, value);
+
 #else
-    UNUSED_VARIABLE(gen);
+    UNUSED_VARIABLE(entity);
+    UNUSED_VARIABLE(prop_index);
+    UNUSED_VARIABLE(value);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
-static void Property_GetValueAsFloat(asIScriptGeneric* gen)
+template<typename T>
+static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
 {
 #if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     ENTITY_VERIFY(entity);
 
     if (prop_index == -1) {
@@ -709,17 +789,19 @@ static void Property_GetValueAsFloat(asIScriptGeneric* gen)
         throw ScriptException("Property is not readable");
     }
 
-    new (gen->GetAddressOfReturnLocation()) float(entity->GetValueAsFloat(prop));
+    return entity->GetValueAsFloat(prop);
+
 #else
-    UNUSED_VARIABLE(gen);
+    UNUSED_VARIABLE(entity);
+    UNUSED_VARIABLE(prop_index);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
-static void Property_SetValueAsFloat(asIScriptGeneric* gen)
+template<typename T>
+static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
 {
 #if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
-    const auto prop_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     ENTITY_VERIFY(entity);
 
     if (prop_index == -1) {
@@ -736,16 +818,21 @@ static void Property_SetValueAsFloat(asIScriptGeneric* gen)
         throw ScriptException("Property is not writeble");
     }
 
-    entity->SetValueAsFloat(prop, *static_cast<float*>(gen->GetAddressOfArg(1)));
+    entity->SetValueAsFloat(prop, value);
+
 #else
-    UNUSED_VARIABLE(gen);
+    UNUSED_VARIABLE(entity);
+    UNUSED_VARIABLE(prop_index);
+    UNUSED_VARIABLE(value);
+    throw ScriptCompilerException("Stub");
 #endif
 }
 
+template<typename T>
 static void Property_GetValue(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    const auto* entity = static_cast<Entity*>(gen->GetObject());
+    const auto* entity = static_cast<T*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
     ENTITY_VERIFY(entity);
 
@@ -872,25 +959,26 @@ static void Property_GetValue(asIScriptGeneric* gen)
 #endif
 }
 
+template<typename T>
 static void Property_SetValue(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    auto* entity = static_cast<Entity*>(gen->GetObject());
+    auto* entity = static_cast<T*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
     ENTITY_VERIFY(entity);
 
     auto& props = entity->GetPropertiesForEdit();
-    const auto* data = static_cast<const uchar*>(gen->GetAddressOfArg(0));
+    void* data = gen->GetAddressOfArg(0);
 
     if (prop->IsPlainData()) {
-        props.SetRawData(prop, data, prop->GetBaseSize());
+        props.SetRawData(prop, static_cast<const uchar*>(data), prop->GetBaseSize());
     }
     else if (prop->IsString()) {
-        const auto& str = *reinterpret_cast<const string*>(data);
+        const auto& str = *static_cast<const string*>(data);
         props.SetRawData(prop, reinterpret_cast<const uchar*>(str.data()), static_cast<uint>(str.length()));
     }
     else if (prop->IsArray()) {
-        const auto* arr = reinterpret_cast<const CScriptArray*>(data);
+        const auto* arr = *static_cast<CScriptArray**>(data);
 
         if (prop->IsArrayOfString()) {
             const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
@@ -942,7 +1030,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
         }
     }
     else if (prop->IsDict()) {
-        const auto* dict = reinterpret_cast<const CScriptDict*>(data);
+        const auto* dict = *static_cast<CScriptDict**>(data);
 
         if (prop->IsDictOfArray()) {
             if (dict != nullptr && dict->GetSize() > 0u) {
@@ -1086,7 +1174,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
 #endif
 }
 
-template<class T>
+template<typename T>
 static Entity* EntityDownCast(T* a)
 {
     static_assert(std::is_base_of_v<Entity, T>);
@@ -1098,7 +1186,7 @@ static Entity* EntityDownCast(T* a)
     return static_cast<Entity*>(a);
 }
 
-template<class T>
+template<typename T>
 static T* EntityUpCast(Entity* a)
 {
     static_assert(std::is_base_of_v<Entity, T>);
@@ -1175,6 +1263,8 @@ static uint HashedString_GetUHash(const hstring& self)
 
 struct StorageData
 {
+    unordered_set<CScriptArray*> EnumArrays {};
+
     ///@ CodeGen Storage
 };
 
@@ -1221,7 +1311,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
 #if COMPILER_MODE
-    int dummy = 0;
+    static int dummy = 0;
 #endif
 
     asIScriptEngine* engine = asCreateScriptEngine(ANGELSCRIPT_VERSION);
@@ -1302,13 +1392,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "uint get_uhash() const", SCRIPT_FUNC_THIS(HashedString_GetUHash), SCRIPT_FUNC_THIS_CONV));
 
     // Entity registrators
-#define REGISTER_BASE_ENTITY(class_name) \
+#define REGISTER_BASE_ENTITY(class_name, real_class) \
     AS_VERIFY(engine->RegisterObjectType(class_name, 0, asOBJ_REF)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_METHOD(Entity, AddRef), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_METHOD(Entity, Release), SCRIPT_METHOD_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS(Entity_IsDestroyed), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS(Entity_IsDestroying), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "string get_Name() const", SCRIPT_FUNC_THIS(Entity_Name), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_ADDREF, "void f()", SCRIPT_FUNC_THIS((Entity_AddRef<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectBehaviour(class_name, asBEHAVE_RELEASE, "void f()", SCRIPT_FUNC_THIS((Entity_Release<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroyed() const", SCRIPT_FUNC_THIS((Entity_IsDestroyed<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "bool get_IsDestroying() const", SCRIPT_FUNC_THIS((Entity_IsDestroying<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "string get_Name() const", SCRIPT_FUNC_THIS((Entity_Name<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterFuncdef("bool " class_name "Predicate(" class_name "@+)")); \
     AS_VERIFY(engine->RegisterFuncdef("void " class_name "Callback(" class_name "@+)")); \
     AS_VERIFY(engine->RegisterFuncdef("void " class_name "InitFunc(" class_name "@+, bool)"))
@@ -1319,54 +1409,62 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, base_class_name "@+ opImplCast()", SCRIPT_FUNC_THIS((EntityDownCast<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "const " base_class_name "@+ opImplCast() const", SCRIPT_FUNC_THIS((EntityDownCast<Entity>)), SCRIPT_FUNC_THIS_CONV))
 
-#define REGISTER_GETSET_ENTITY(class_name, prop_class_name) \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsInt(" prop_class_name "Property) const", asFUNCTION(Property_GetValueAsInt), asCALL_GENERIC)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsInt(" prop_class_name "Property, int)", asFUNCTION(Property_SetValueAsInt), asCALL_GENERIC)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsFloat(" prop_class_name "Property) const", asFUNCTION(Property_GetValueAsFloat), asCALL_GENERIC)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsFloat(" prop_class_name "Property, float)", asFUNCTION(Property_SetValueAsFloat), asCALL_GENERIC))
+#define REGISTER_GETSET_ENTITY(class_name, prop_class_name, real_class) \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsInt(" prop_class_name "Property) const", SCRIPT_FUNC_THIS((Property_GetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsInt(" prop_class_name "Property, int)", SCRIPT_FUNC_THIS((Property_SetValueAsInt<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "int GetAsFloat(" prop_class_name "Property) const", SCRIPT_FUNC_THIS((Property_GetValueAsFloat<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsFloat(" prop_class_name "Property, float)", SCRIPT_FUNC_THIS((Property_SetValueAsFloat<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
-    REGISTER_BASE_ENTITY(class_name); \
-    REGISTER_GETSET_ENTITY(class_name, class_name); \
-    entity_is_global.insert(class_name)
+    REGISTER_BASE_ENTITY(class_name, real_class); \
+    REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
+    entity_is_global.emplace(class_name); \
+    entity_get_value_func_ptr.emplace(class_name, asFUNCTION((Property_GetValue<real_class>))); \
+    entity_set_value_func_ptr.emplace(class_name, asFUNCTION((Property_SetValue<real_class>)))
 
 #define REGISTER_ENTITY(class_name, real_class) \
-    REGISTER_BASE_ENTITY(class_name); \
-    REGISTER_BASE_ENTITY("Abstract" class_name); \
+    REGISTER_BASE_ENTITY(class_name, real_class); \
+    REGISTER_BASE_ENTITY("Abstract" class_name, Entity); \
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_ENTITY_CAST(class_name, real_class, "Abstract" class_name); \
-    REGISTER_GETSET_ENTITY(class_name, class_name); \
-    REGISTER_GETSET_ENTITY("Abstract" class_name, class_name); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod("Abstract" class_name, "uint get_Id() const", SCRIPT_FUNC_THIS(Entity_Id), SCRIPT_FUNC_THIS_CONV))
+    REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
+    REGISTER_GETSET_ENTITY("Abstract" class_name, class_name, Entity); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    entity_get_value_func_ptr.emplace("Abstract" class_name, asFUNCTION((Property_GetValue<Entity>))); \
+    entity_get_value_func_ptr.emplace(class_name, asFUNCTION((Property_GetValue<real_class>))); \
+    entity_set_value_func_ptr.emplace(class_name, asFUNCTION((Property_SetValue<real_class>)))
 
-#define REGISTER_ENTITY_PROTO(class_name, proto_real_class) \
-    REGISTER_BASE_ENTITY(class_name "Proto"); \
+#define REGISTER_ENTITY_PROTO(class_name, real_class, proto_real_class) \
+    REGISTER_BASE_ENTITY(class_name "Proto", proto_real_class); \
     REGISTER_ENTITY_CAST(class_name "Proto", proto_real_class, "Entity"); \
     REGISTER_ENTITY_CAST(class_name "Proto", proto_real_class, "Abstract" class_name); \
-    REGISTER_GETSET_ENTITY(class_name "Proto", class_name); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name "Proto", "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod(class_name, class_name "Proto@+ get_Proto() const", SCRIPT_FUNC_THIS(Entity_Proto), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod("Abstract" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
-    entity_has_protos.insert(class_name)
+    REGISTER_GETSET_ENTITY(class_name "Proto", class_name, proto_real_class); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name "Proto", "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, class_name "Proto@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    AS_VERIFY(engine->RegisterObjectMethod("Abstract" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
+    entity_has_protos.emplace(class_name); \
+    entity_get_value_func_ptr.emplace(class_name "Proto", asFUNCTION((Property_GetValue<proto_real_class>)))
 
 #define REGISTER_ENTITY_STATICS(class_name, real_class) \
-    REGISTER_BASE_ENTITY("Static" class_name); \
+    REGISTER_BASE_ENTITY("Static" class_name, real_class); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Entity"); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
-    REGISTER_GETSET_ENTITY("Static" class_name, class_name); \
+    REGISTER_GETSET_ENTITY("Static" class_name, class_name, real_class); \
     if (entity_has_protos.count(class_name)) { \
-        AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS(Entity_ProtoId), SCRIPT_FUNC_THIS_CONV)); \
-        AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, class_name "Proto@+ get_Proto() const", SCRIPT_FUNC_THIS(Entity_Proto), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+        AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, class_name "Proto@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
-    entity_has_statics.insert(class_name)
+    entity_has_statics.emplace(class_name); \
+    entity_get_value_func_ptr.emplace("Static" class_name, asFUNCTION((Property_GetValue<real_class>)))
 
-    REGISTER_BASE_ENTITY("Entity");
+    REGISTER_BASE_ENTITY("Entity", Entity);
 
     unordered_set<string> entity_is_global;
     unordered_set<string> entity_has_protos;
     unordered_set<string> entity_has_statics;
+    unordered_map<string, asSFuncPtr> entity_get_value_func_ptr;
+    unordered_map<string, asSFuncPtr> entity_set_value_func_ptr;
 
     // Events
 #define REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
@@ -1405,6 +1503,14 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         const auto is_global = entity_is_global.count(reg_name) != 0u;
         const auto is_has_protos = entity_has_protos.count(reg_name) != 0u;
         const auto is_has_statics = entity_has_statics.count(reg_name) != 0u;
+        const auto abstract_class_name = "Abstract" + reg_name;
+        const auto proto_class_name = reg_name + "Proto";
+        const auto static_class_name = "Static" + reg_name;
+        const auto get_value_func_ptr = entity_get_value_func_ptr.at(reg_name);
+        const auto get_abstract_value_func_ptr = !is_global ? entity_get_value_func_ptr.at(abstract_class_name) : asSFuncPtr();
+        const auto get_proto_value_func_ptr = is_has_protos ? entity_get_value_func_ptr.at(proto_class_name) : asSFuncPtr();
+        const auto get_static_value_func_ptr = is_has_statics ? entity_get_value_func_ptr.at(static_class_name) : asSFuncPtr();
+        const auto set_value_func_ptr = entity_set_value_func_ptr.at(reg_name);
 
         for (const auto i : xrange(registrator->GetCount())) {
             const auto* prop = registrator->GetByIndex(i);
@@ -1412,22 +1518,22 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             if (prop->IsReadable()) {
                 const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetName()).str();
-                AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_get.c_str(), asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
+                AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_get.c_str(), get_value_func_ptr, asCALL_GENERIC, (void*)prop));
 
                 if (!is_global) {
-                    AS_VERIFY(engine->RegisterObjectMethod(_str("Abstract{}", reg_name).c_str(), decl_get.c_str(), asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
+                    AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, asCALL_GENERIC, (void*)prop));
                 }
                 if (is_has_protos) {
-                    AS_VERIFY(engine->RegisterObjectMethod(_str("{}Proto", reg_name).c_str(), decl_get.c_str(), asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
+                    AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, asCALL_GENERIC, (void*)prop));
                 }
                 if (is_has_statics) {
-                    AS_VERIFY(engine->RegisterObjectMethod(_str("Static{}", reg_name).c_str(), decl_get.c_str(), asFUNCTION(Property_GetValue), asCALL_GENERIC, (void*)prop));
+                    AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, asCALL_GENERIC, (void*)prop));
                 }
             }
 
             if (prop->IsWritable()) {
                 const auto decl_set = _str("void set_{}({}{}{})", prop->GetName(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
-                AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_set.c_str(), asFUNCTION(Property_SetValue), asCALL_GENERIC, (void*)prop));
+                AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_set.c_str(), set_value_func_ptr, asCALL_GENERIC, (void*)prop));
             }
         }
 
@@ -1439,29 +1545,34 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             }
 
 #if !COMPILER_MODE
-            void* as_prop_enums = MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums);
+            const auto it_enum = storage->EnumArrays.emplace(MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
+            RUNTIME_ASSERT(it_enum.second);
+            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), (void*)&(*it_enum.first)));
 #else
-            void* as_prop_enums = &dummy;
+            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), &dummy));
 #endif
-            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[] {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), as_prop_enums));
         }
     }
 
-#if SERVER_SCRIPTING
-    AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
-#elif CLIENT_SCRIPTING
-    AS_VERIFY(engine->RegisterGlobalProperty("RemoteCaller ServerCall", game_engine));
+#if !COMPILER_MODE
+    AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", &_engine));
+#else
+    AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", &dummy));
 #endif
 
-    AS_VERIFY(engine->RegisterGlobalProperty("Game GameInstance", game_engine));
+#if SERVER_SCRIPTING
+    AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
+#endif
 
 #if CLIENT_SCRIPTING
 #if !COMPILER_MODE
-    AS_VERIFY(engine->RegisterGlobalProperty("Map CurMap", game_engine->CurMap));
-    AS_VERIFY(engine->RegisterGlobalProperty("Location CurLocation", game_engine->_curLocation));
+    AS_VERIFY(engine->RegisterGlobalProperty("RemoteCaller ServerCall", &_engine));
+    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &_engine->CurMap));
+    AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &_engine->_curLocation));
 #else
-    AS_VERIFY(engine->RegisterGlobalProperty("Map CurMap", &dummy));
-    AS_VERIFY(engine->RegisterGlobalProperty("Location CurLocation", &dummy));
+    AS_VERIFY(engine->RegisterGlobalProperty("RemoteCaller ServerCall", &dummy));
+    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &dummy));
+    AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &dummy));
 #endif
 #endif
 

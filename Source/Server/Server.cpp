@@ -249,13 +249,13 @@ FOServer::FOServer(GlobalSettings& settings) :
     // Scripting
     ScriptSys->InitModules();
 
-    if (OnInit.Fire()) {
+    if (!OnInit.Fire()) {
         throw ServerInitException("Initialization script failed");
     }
 
     // Init world
     if (globals_doc.empty()) {
-        if (OnGenerateWorld.Fire()) {
+        if (!OnGenerateWorld.Fire()) {
             throw ServerInitException("Generate world script failed");
         }
     }
