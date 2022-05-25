@@ -1434,6 +1434,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     entity_get_value_func_ptr.emplace(class_name, asFUNCTION((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, asFUNCTION((Property_SetValue<real_class>)))
 
+#define REGISTER_ENTITY_ABSTACT(class_name, real_class) \
+    REGISTER_BASE_ENTITY("Abstract" class_name, Entity); \
+    REGISTER_ENTITY_CAST(class_name, real_class, "Abstract" class_name); \
+    REGISTER_GETSET_ENTITY("Abstract" class_name, class_name, Entity); \
+    AS_VERIFY(engine->RegisterObjectMethod("Abstract" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
+    entity_get_value_func_ptr.emplace("Abstract" class_name, asFUNCTION((Property_GetValue<Entity>)))
+
 #define REGISTER_ENTITY_PROTO(class_name, real_class, proto_real_class) \
     REGISTER_BASE_ENTITY(class_name "Proto", proto_real_class); \
     REGISTER_ENTITY_CAST(class_name "Proto", proto_real_class, "Entity"); \
@@ -1442,7 +1449,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name "Proto", "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, class_name "Proto@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectMethod("Abstract" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_has_protos.emplace(class_name); \
     entity_get_value_func_ptr.emplace(class_name "Proto", asFUNCTION((Property_GetValue<proto_real_class>)))
 
@@ -1508,7 +1514,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         const auto proto_class_name = class_name + "Proto";
         const auto static_class_name = "Static" + class_name;
         const auto get_value_func_ptr = entity_get_value_func_ptr.at(class_name);
-        const auto get_abstract_value_func_ptr = !is_global ? entity_get_value_func_ptr.at(abstract_class_name) : asSFuncPtr();
+        const auto get_abstract_value_func_ptr = !is_global && (is_has_protos || is_has_statics) ? entity_get_value_func_ptr.at(abstract_class_name) : asSFuncPtr();
         const auto get_proto_value_func_ptr = is_has_protos ? entity_get_value_func_ptr.at(proto_class_name) : asSFuncPtr();
         const auto get_static_value_func_ptr = is_has_statics ? entity_get_value_func_ptr.at(static_class_name) : asSFuncPtr();
         const auto set_value_func_ptr = entity_set_value_func_ptr.at(class_name);
@@ -1521,7 +1527,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetName()).str();
                 AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), decl_get.c_str(), get_value_func_ptr, asCALL_GENERIC, (void*)prop));
 
-                if (!is_global) {
+                if (!is_global && (is_has_protos || is_has_statics)) {
                     AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, asCALL_GENERIC, (void*)prop));
                 }
                 if (is_has_protos) {

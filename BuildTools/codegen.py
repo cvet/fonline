@@ -90,6 +90,7 @@ codeGenTags = {
         'ExportObject': [], # (target, name, [(type, name, [comment])], [flags], [comment])
         'ExportEntity': [], # (name, serverClassName, clientClassName, [flags], [comment])
         'ExportSettings': [], #(group name, target, [(fixOrVar, keyType, keyName, [initValues], [comment])], [flags], [comment])
+        'Entity': [], # (target, name, [flags], [comment])
         'Enum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
         'Property': [], # (entity, access, type, name, [flags], [comment])
         'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
@@ -535,7 +536,7 @@ def parseTags():
                 gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
                         'HasProto': 'HasProto' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags}
                 
-                assert name + 'Property' not in validTypes
+                assert name + 'Property' not in validTypes, name + 'Property already in valid types'
                 validTypes.add(name + 'Property')
                 assert name + 'Property' not in scriptEnums, 'Enum already added'
                 scriptEnums.add(name + 'Property')
@@ -560,6 +561,55 @@ def parseTags():
                 
             except Exception as ex:
                 showError('Invalid tag ExportEntity', absPath + ' (' + str(lineIndex + 1) + ')', ex)
+        
+        for tagMeta in tagsMetas['Entity']:
+            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
+
+            try:
+                tok = tokenize(tagInfo)
+                target = tok[0]
+                name = tok[1]
+                flags = tok[2:]
+                
+                codeGenTags['Entity'].append((target, name, flags, comment))
+                
+                assert name not in validTypes           
+                validTypes.add(name)
+                assert name not in gameEntities
+                gameEntities.append(name)
+                gameEntitiesInfo[name] = {'Server': 'Server' + name, 'Client': 'Client' + name, 'IsGlobal': 'Global' in flags,
+                        'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags}
+                
+                assert name + 'Property' not in validTypes
+                validTypes.add(name + 'Property')
+                assert name + 'Property' not in scriptEnums, 'Enum already added'
+                scriptEnums.add(name + 'Property')
+                
+                assert target in ['Server', 'Client']
+                assert not gameEntitiesInfo[name]['IsGlobal']
+                assert not gameEntitiesInfo[name]['HasProto']
+                assert not gameEntitiesInfo[name]['HasStatics']
+                
+                if not gameEntitiesInfo[name]['IsGlobal'] and (gameEntitiesInfo[name]['HasProto'] or gameEntitiesInfo[name]['HasStatics']):
+                    assert 'Abstract' + name not in validTypes
+                    validTypes.add('Abstract' + name)
+                    assert 'Abstract' + name not in entityRelatives
+                    entityRelatives.add('Abstract' + name)
+                
+                if gameEntitiesInfo[name]['HasProto']:
+                    assert name + 'Proto' not in validTypes
+                    validTypes.add(name + 'Proto')
+                    assert name + 'Proto' not in entityRelatives
+                    entityRelatives.add(name + 'Proto')
+                
+                if gameEntitiesInfo[name]['HasStatics']:
+                    assert 'Static' + name not in validTypes
+                    validTypes.add('Static' + name)
+                    assert 'Static' + name not in entityRelatives
+                    entityRelatives.add('Static' + name)
+                
+            except Exception as ex:
+                showError('Invalid tag Entity', absPath + ' (' + str(lineIndex + 1) + ')', ex)
                 
     def parseOtherTags():
         global codeGenTags
@@ -1733,6 +1783,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 registerLines.append('REGISTER_GLOBAL_ENTITY("' + entity + '", ' + engineEntityType + ');')
             else:
                 registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
+                if gameEntitiesInfo[entity]['HasProto'] or gameEntitiesInfo[entity]['HasStatics']:
+                    registerLines.append('REGISTER_ENTITY_ABSTACT("' + entity + '", ' + engineEntityType + ');')
             if gameEntitiesInfo[entity]['HasProto']:
                 assert not gameEntitiesInfo[entity]['IsGlobal']
                 registerLines.append('REGISTER_ENTITY_PROTO("' + entity + '", ' + engineEntityType + ', Proto' + entity + ');')
