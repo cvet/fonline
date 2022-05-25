@@ -1416,11 +1416,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsFloat(" prop_class_name "Property, float)", SCRIPT_FUNC_THIS((Property_SetValueAsFloat<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
-    REGISTER_BASE_ENTITY(class_name, real_class); \
-    REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
+    REGISTER_BASE_ENTITY(class_name "Singleton", real_class); \
+    REGISTER_GETSET_ENTITY(class_name "Singleton", class_name, real_class); \
     entity_is_global.emplace(class_name); \
-    entity_get_value_func_ptr.emplace(class_name, asFUNCTION((Property_GetValue<real_class>))); \
-    entity_set_value_func_ptr.emplace(class_name, asFUNCTION((Property_SetValue<real_class>)))
+    entity_get_value_func_ptr.emplace(class_name "Singleton", asFUNCTION((Property_GetValue<real_class>))); \
+    entity_set_value_func_ptr.emplace(class_name "Singleton", asFUNCTION((Property_SetValue<real_class>)))
 
 #define REGISTER_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name, real_class); \
@@ -1467,7 +1467,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     unordered_map<string, asSFuncPtr> entity_set_value_func_ptr;
 
     // Events
-#define REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
+#define REGISTER_ENTITY_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry) \
     AS_VERIFY(engine->RegisterFuncdef("void " entity_name event_name "EventFunc(" as_args_ent as_args ")")); \
     AS_VERIFY(engine->RegisterFuncdef("bool " entity_name event_name "EventFuncBool(" as_args_ent as_args ")")); \
     AS_VERIFY(engine->RegisterObjectType(entity_name event_name "Event", 0, asOBJ_REF | asOBJ_NOHANDLE)); \
@@ -1476,12 +1476,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void UnsubscribeAll()", SCRIPT_FUNC_THIS(func_entry##_UnsubscribeAll), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectProperty(entity_name, entity_name event_name "Event On" event_name, 0))
+    AS_VERIFY(engine->RegisterObjectProperty(is_global_entity ? entity_name "Singleton" : entity_name, entity_name event_name "Event On" event_name, 0))
 
-#define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry)
+#define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry) REGISTER_ENTITY_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry)
 
-#define REGISTER_ENTITY_SCRIPT_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry) \
-    REGISTER_ENTITY_EVENT(entity_name, event_name, as_args_ent, as_args, func_entry); \
+#define REGISTER_ENTITY_SCRIPT_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry) \
+    REGISTER_ENTITY_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "bool Fire(" as_args ")", SCRIPT_FUNC_THIS(func_entry##_Fire), SCRIPT_FUNC_THIS_CONV))
 
     // Settings
@@ -1503,14 +1503,15 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         const auto is_global = entity_is_global.count(reg_name) != 0u;
         const auto is_has_protos = entity_has_protos.count(reg_name) != 0u;
         const auto is_has_statics = entity_has_statics.count(reg_name) != 0u;
-        const auto abstract_class_name = "Abstract" + reg_name;
-        const auto proto_class_name = reg_name + "Proto";
-        const auto static_class_name = "Static" + reg_name;
-        const auto get_value_func_ptr = entity_get_value_func_ptr.at(reg_name);
+        const auto class_name = is_global ? reg_name + "Singleton" : reg_name;
+        const auto abstract_class_name = "Abstract" + class_name;
+        const auto proto_class_name = class_name + "Proto";
+        const auto static_class_name = "Static" + class_name;
+        const auto get_value_func_ptr = entity_get_value_func_ptr.at(class_name);
         const auto get_abstract_value_func_ptr = !is_global ? entity_get_value_func_ptr.at(abstract_class_name) : asSFuncPtr();
         const auto get_proto_value_func_ptr = is_has_protos ? entity_get_value_func_ptr.at(proto_class_name) : asSFuncPtr();
         const auto get_static_value_func_ptr = is_has_statics ? entity_get_value_func_ptr.at(static_class_name) : asSFuncPtr();
-        const auto set_value_func_ptr = entity_set_value_func_ptr.at(reg_name);
+        const auto set_value_func_ptr = entity_set_value_func_ptr.at(class_name);
 
         for (const auto i : xrange(registrator->GetCount())) {
             const auto* prop = registrator->GetByIndex(i);
@@ -1518,7 +1519,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             if (prop->IsReadable()) {
                 const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetName()).str();
-                AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_get.c_str(), get_value_func_ptr, asCALL_GENERIC, (void*)prop));
+                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), decl_get.c_str(), get_value_func_ptr, asCALL_GENERIC, (void*)prop));
 
                 if (!is_global) {
                     AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, asCALL_GENERIC, (void*)prop));
@@ -1533,7 +1534,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             if (prop->IsWritable()) {
                 const auto decl_set = _str("void set_{}({}{}{})", prop->GetName(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
-                AS_VERIFY(engine->RegisterObjectMethod(reg_name.c_str(), decl_set.c_str(), set_value_func_ptr, asCALL_GENERIC, (void*)prop));
+                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), decl_set.c_str(), set_value_func_ptr, asCALL_GENERIC, (void*)prop));
             }
         }
 
@@ -1555,9 +1556,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     }
 
 #if !COMPILER_MODE
-    AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", &_engine));
+    AS_VERIFY(engine->RegisterGlobalProperty("GameSingleton@ Game", &_engine));
 #else
-    AS_VERIFY(engine->RegisterGlobalProperty("Game@ GameInstance", &dummy));
+    AS_VERIFY(engine->RegisterGlobalProperty("GameSingleton@ Game", &dummy));
 #endif
 
 #if SERVER_SCRIPTING

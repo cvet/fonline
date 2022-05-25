@@ -1776,9 +1776,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     asArgs = ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in evArgs])
                     asArgsEnt = metaTypeToASType(entity) + (', ' if evArgs else '') if not gameEntitiesInfo[entity]['IsGlobal'] else ''
                     if isExported:
-                        registerLines.append('REGISTER_ENTITY_EXPORTED_EVENT("' + entity + '", "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
+                        registerLines.append('REGISTER_ENTITY_EXPORTED_EVENT("' + entity + '", ' + ('true' if gameEntitiesInfo[entity]['IsGlobal'] else 'false') + ', "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
                     else:
-                        registerLines.append('REGISTER_ENTITY_SCRIPT_EVENT("' + entity + '", "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
+                        registerLines.append('REGISTER_ENTITY_SCRIPT_EVENT("' + entity + '", ' + ('true' if gameEntitiesInfo[entity]['IsGlobal'] else 'false') + ', "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
         registerLines.append('')
         
         # Register settings

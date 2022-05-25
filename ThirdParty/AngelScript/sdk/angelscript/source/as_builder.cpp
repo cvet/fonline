@@ -1150,7 +1150,6 @@ asCGlobalProperty *asCBuilder::GetGlobalProperty(const char *prop, asSNameSpace 
 	return 0;
 }
 
-bool as_builder_ForceAutoHandles = false; // Patch
 int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *decl, asCScriptFunction *func, bool isSystemFunction, asCArray<bool> *paramAutoHandles, bool *returnAutoHandle, asSNameSpace *ns, asCScriptNode **listPattern, asCObjectType **outParentClass)
 {
 	asASSERT( objType || ns );
@@ -1252,10 +1251,6 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 		// Don't permit void parameters
 		if( type.GetTokenType() == ttVoid )
 			return asINVALID_DECLARATION;
-
-		// Patch
-		if( as_builder_ForceAutoHandles && type.IsObjectHandle() && !(type.GetTypeInfo()->flags & asOBJ_NOCOUNT) )
-			autoHandle = true;
 
 		if( autoHandle && (!type.IsObjectHandle() || type.IsReference()) )
 			return asINVALID_DECLARATION;
