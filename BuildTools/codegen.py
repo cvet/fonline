@@ -92,6 +92,7 @@ codeGenTags = {
         'ExportSettings': [], #(group name, target, [(fixOrVar, keyType, keyName, [initValues], [comment])], [flags], [comment])
         'Entity': [], # (target, name, [flags], [comment])
         'Enum': [], # (group name, underlying type, [(key, value, [comment])], [flags], [comment])
+        'PropertyComponent': [], # (entity, name, [flags], [comment])
         'Property': [], # (entity, access, type, name, [flags], [comment])
         'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
         'RemoteCall': [], # (target, subsystem, name, [(type, name)], [flags], [comment])
@@ -264,6 +265,7 @@ gameEntities = []
 gameEntitiesInfo = {}
 entityRelatives = set()
 genericFuncdefs = set()
+propertyComponents = set()
 
 symTok = set('`~!@#$%^&*()+-=|\\/.,\';][]}{:><"')
 def tokenize(text, specialBehForProp=False):
@@ -708,9 +710,28 @@ def parseTags():
             except Exception as ex:
                 showError('Invalid tag ExportEvent', absPath + ' (' + str(lineIndex + 1) + ')', tagContext, ex)
 
+        for tagMeta in tagsMetas['PropertyComponent']:
+            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
+            
+            try:
+                tok = tokenize(tagInfo)
+                entity = tok[0]
+                assert entity in gameEntities, entity
+                
+                name = tok[1]
+                assert (entity, name) not in propertyComponents, entity + ' component ' + name + ' already added'
+                propertyComponents.add((entity, name))
+                
+                flags = tok[2:]
+                
+                codeGenTags['PropertyComponent'].append((entity, name, flags, comment))
+                
+            except Exception as ex:
+                showError('Invalid tag PropertyComponent', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
+        
         for tagMeta in tagsMetas['Property']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
-             
+            
             try:
                 tok = tokenize(tagInfo, True)
                 entity = tok[0]
@@ -721,12 +742,27 @@ def parseTags():
                         'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid property access ' + access
                 if tok[2] == 'const':
                     ptype = unifiedTypeToMetaType(tok[3])
-                    name = tok[4]
-                    flags = ['ReadOnly'] + tok[5:]
+                    if len(tok) > 5 and tok[5] == '.':
+                        comp = tok[4]
+                        name = comp + '.' + tok[6]
+                        flags = ['ReadOnly'] + tok[7:]
+                    else:
+                        comp = None
+                        name = tok[4]
+                        flags = ['ReadOnly'] + tok[5:]
                 else:
                     ptype = unifiedTypeToMetaType(tok[2])
-                    name = tok[3]
-                    flags = tok[4:]
+                    if len(tok) > 4 and tok[4] == '.':
+                        comp = tok[3]
+                        name = comp + '.' + tok[5]
+                        flags = tok[6:]
+                    else:
+                        comp = None
+                        name = tok[3]
+                        flags = tok[4:]
+                
+                if comp:
+                    assert (entity, comp) in propertyComponents, 'Entity ' + entity + ' does not has component ' + comp
                 
                 codeGenTags['Property'].append((entity, access, ptype, name, flags, comment))
                 
@@ -920,8 +956,13 @@ for contentDir in args.content:
         for file in collectFiles(contentDir):
             def getPidNames(file):
                 result = [os.path.splitext(os.path.basename(file))[0]]
+                verbosePrint('getPidNames', file)
                 with open(file, 'r', encoding='utf-8-sig') as f:
-                    fileLines = f.readlines()
+                    try:
+                        fileLines = f.readlines()
+                    except Exception as ex:
+                        print('[CodeGen]', 'Bad file', file)
+                        raise
                 for fileLine in fileLines:
                     if fileLine.startswith('$Name'):
                         result.append(fileLine[fileLine.find('=') + 1:].strip(' \r\n'))
@@ -1181,6 +1222,11 @@ def genDataRegistration(target, isASCompiler):
         return []
     for entity in gameEntities:
         registerLines.append('registrator = registrators["' + entity + '"];')
+        if target != 'Client' or isASCompiler:
+            for propCompTag in codeGenTags['PropertyComponent']:
+                ent, name, flags, _ = propCompTag
+                if entity == ent:
+                    registerLines.append('registrator->RegisterComponent("' + name + '");')
         for propTag in codeGenTags['ExportProperty']:
             ent, access, type, name, flags, _ = propTag
             if ent == entity:
@@ -1212,6 +1258,14 @@ def genDataRegistration(target, isASCompiler):
     
     # Restore properties info
     if target == 'Server' and not isASCompiler:
+        restoreLines.append('restore_info["PropertyComponents"] =')
+        restoreLines.append('{')
+        for propCompTag in codeGenTags['PropertyComponent']:
+            ent, name, flags, _ = propCompTag
+            restoreLines.append('    "' + ent + ' ' + name + '",')
+        restoreLines.append('};')
+        restoreLines.append('')
+        
         def replaceFakedEnum(t):
             tt = t.split('.')
             if tt[0] == 'dict':

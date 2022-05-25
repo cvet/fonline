@@ -380,7 +380,7 @@ public:
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
 
-    void RegisterComponent(hstring name);
+    void RegisterComponent(string_view name);
 
 private:
     const string _className;

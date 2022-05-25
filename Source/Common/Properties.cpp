@@ -794,10 +794,12 @@ PropertyRegistrator::~PropertyRegistrator()
     }
 }
 
-void PropertyRegistrator::RegisterComponent(hstring name)
+void PropertyRegistrator::RegisterComponent(string_view name)
 {
-    RUNTIME_ASSERT(!_registeredComponents.count(name));
-    _registeredComponents.insert(name);
+    const auto name_hash = _nameResolver.ToHashedString(name);
+
+    RUNTIME_ASSERT(!_registeredComponents.count(name_hash));
+    _registeredComponents.insert(name_hash);
 }
 
 auto PropertyRegistrator::GetClassName() const -> const string&

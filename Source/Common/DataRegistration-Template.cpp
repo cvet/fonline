@@ -198,6 +198,13 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info
         engine->AddEnumGroup(enum_name, *enum_type, std::move(key_values));
     }
 
+    // Restore property components
+    for (const auto& info : restoreInfo["PropertyComponents"]) {
+        const auto tokens = _str(info).split(' ');
+        auto* prop_registrator = engine->GetOrCreatePropertyRegistrator(tokens[0]);
+        prop_registrator->RegisterComponent(tokens[1]);
+    }
+
     // Restore properties
     for (const auto& info : restoreInfo["Properties"]) {
         const auto tokens = _str(info).split(' ');
