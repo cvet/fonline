@@ -1424,13 +1424,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #define REGISTER_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name, real_class); \
-    REGISTER_BASE_ENTITY("Abstract" class_name, Entity); \
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
-    REGISTER_ENTITY_CAST(class_name, real_class, "Abstract" class_name); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
-    REGISTER_GETSET_ENTITY("Abstract" class_name, class_name, Entity); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
-    entity_get_value_func_ptr.emplace("Abstract" class_name, asFUNCTION((Property_GetValue<Entity>))); \
     entity_get_value_func_ptr.emplace(class_name, asFUNCTION((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, asFUNCTION((Property_SetValue<real_class>)))
 

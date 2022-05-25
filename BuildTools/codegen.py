@@ -915,6 +915,7 @@ def parseTags():
             for propTag in codeGenTags['ExportProperty'] + codeGenTags['Property']:
                 ent, _, _, name, _, _ = propTag
                 if ent == entity:
+                    name = name.replace('.', '_')
                     keyValues.append((name, str(index), []))
                     index += 1
             codeGenTags['Enum'].append([entity + 'Property', 'uint16', keyValues, [], []])

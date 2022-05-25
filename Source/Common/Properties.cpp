@@ -923,11 +923,14 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
         }
         else if (flags[i] == "Default") {
             check_next_param();
-            if (!prop->_isInt && !prop->_isFloat) {
+            if (!prop->_isInt && !prop->_isFloat && !prop->_isBool) {
                 throw PropertyRegistrationException("Expected numeric type for Default flag", prop->_propName);
             }
 
-            if (prop->_isInt) {
+            if (prop->_isBool) {
+                prop->_defValueI = _str(flags[i + 2]).toBool() ? 1 : 0;
+            }
+            else if (prop->_isInt) {
                 prop->_defValueI = _str(flags[i + 2]).toInt64();
             }
             else {
