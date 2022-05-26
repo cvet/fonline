@@ -579,8 +579,9 @@ def parseTags():
                 validTypes.add(name)
                 assert name not in gameEntities
                 gameEntities.append(name)
-                gameEntitiesInfo[name] = {'Server': 'Server' + name, 'Client': 'Client' + name, 'IsGlobal': 'Global' in flags,
-                        'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags}
+                gameEntitiesInfo[name] = {'Server': 'Server' + name if target in ['Common', 'Server'] else None,
+                        'Client': 'Client' + name if target in ['Common', 'Client'] else None,
+                        'IsGlobal': 'Global' in flags, 'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags}
                 
                 assert name + 'Property' not in validTypes
                 validTypes.add(name + 'Property')
@@ -953,10 +954,11 @@ for contentDir in args.content:
                 if len(fileParts) > 1 and fileParts[1][1:] in content:
                     result.append(dir + '/' + file)
             return result
-
+        
         for file in collectFiles(contentDir):
             def getPidNames(file):
-                result = [os.path.splitext(os.path.basename(file))[0]]
+                baseName = os.path.splitext(os.path.basename(file))[0]
+                result = [baseName]
                 verbosePrint('getPidNames', file)
                 with open(file, 'r', encoding='utf-8-sig') as f:
                     try:
@@ -966,9 +968,11 @@ for contentDir in args.content:
                         raise
                 for fileLine in fileLines:
                     if fileLine.startswith('$Name'):
-                        result.append(fileLine[fileLine.find('=') + 1:].strip(' \r\n'))
+                        innerName = fileLine[fileLine.find('=') + 1:].strip(' \r\n')
+                        if innerName != baseName:
+                            result.append(innerName)
                 return result
-
+            
             ext = os.path.splitext(os.path.basename(file))[1]
             content[ext[1:]].extend(getPidNames(file))
     
@@ -1320,7 +1324,7 @@ def genDataRegistration(target, isASCompiler):
     #        restoreLines.append('    "Script fix ' + type + ' ' + name + (' ' if flags else '') + ' '.join(flags) + (' |' + initValue if initValue is not None else '') + '",')
     #    restoreLines.append('};')
     #    restoreLines.append('')
-        
+    
     # Property map
     if target == 'Client' and not isASCompiler:
         def addPropMapEntry(e):
@@ -1538,11 +1542,27 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         # Storage
         storageLines.append('ASGlobal Global;')
         
+        # User entities
+        if not isASCompiler:
+            globalLines.append('// User entities')
+            for entTag in codeGenTags['Entity']:
+                targ, entity, flags, _ = entTag
+                engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+                if engineEntityType is None:
+                    continue
+                globalLines.append('class ' + engineEntityType + ' : public BaseEntity')
+                globalLines.append('{')
+                globalLines.append('};')
+            globalLines.append('')
+        
         # Scriptable objects and entity stubs
         if isASCompiler:
             globalLines.append('// Compiler entity stubs')
             for entity in gameEntities:
                 engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+                if engineEntityType is None:
+                    continue
+                engineEntityType = engineEntityType
                 globalLines.append('struct ' + engineEntityType + ' : BaseEntity { };')
                 if gameEntitiesInfo[entity]['HasStatics']:
                     globalLines.append('struct Static' + entity + ' : BaseEntity { };')
@@ -1834,6 +1854,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         registerLines.append('// Register entities')
         for entity in gameEntities:
             engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+            if engineEntityType is None:
+                continue
             if gameEntitiesInfo[entity]['IsGlobal']:
                 registerLines.append('REGISTER_GLOBAL_ENTITY("' + entity + '", ' + engineEntityType + ');')
             else:
