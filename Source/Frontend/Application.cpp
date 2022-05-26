@@ -545,7 +545,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
 #if FO_IOS
 void Application::SetMainLoopCallback(void (*callback)(void*))
 {
-    SDL_iPhoneSetAnimationCallback(SdlWindow, 1, callback, nullptr);
+    SDL_iPhoneSetAnimationCallback(static_cast<SDL_Window*>(MainWindow._windowHandle), 1, callback, nullptr);
 }
 #endif
 
@@ -876,7 +876,7 @@ void Application::BeginFrame()
     SDL_CaptureMouse(_mouseButtonsDown != 0 ? SDL_TRUE : SDL_FALSE);
     const bool is_app_focused = static_cast<SDL_Window*>(MainWindow._windowHandle) == SDL_GetKeyboardFocus();
 #else
-    const bool is_app_focused = (SDL_GetWindowFlags(SdlWindow) & SDL_WINDOW_INPUT_FOCUS) != 0;
+    const bool is_app_focused = (SDL_GetWindowFlags(static_cast<SDL_Window*>(MainWindow._windowHandle)) & SDL_WINDOW_INPUT_FOCUS) != 0;
 #endif
     if (is_app_focused) {
         if (io.WantSetMousePos) {

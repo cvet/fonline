@@ -95,9 +95,11 @@ public:
     ~Property() = default;
 
     [[nodiscard]] auto GetName() const -> const string& { return _propName; }
+    [[nodiscard]] auto GetNameWithoutComponent() const -> const string& { return _propNameWithoutComponent; }
     [[nodiscard]] auto GetFullTypeName() const -> const string& { return _fullTypeName; }
     [[nodiscard]] auto GetBaseTypeName() const -> const string& { return _baseTypeName; }
     [[nodiscard]] auto GetDictKeyTypeName() const -> const string& { return _dictKeyTypeName; }
+    [[nodiscard]] auto GetComponent() const -> const hstring& { return _component; }
 
     [[nodiscard]] auto GetRegIndex() const -> ushort { return _regIndex; }
     [[nodiscard]] auto GetAccess() const -> AccessType { return _accessType; }
@@ -142,8 +144,9 @@ private:
     mutable vector<PropertyChangedCallback> _callbacks {};
 
     string _propName {};
+    string _propNameWithoutComponent {};
     string _fullTypeName {};
-    string _componentName {};
+    hstring _component {};
     DataType _dataType {};
 
     bool _isStringBase {};
@@ -379,6 +382,7 @@ public:
     [[nodiscard]] auto IsComponentRegistered(hstring component_name) const -> bool;
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
+    [[nodiscard]] auto GetComponents() const -> const unordered_set<hstring>&;
 
     void RegisterComponent(string_view name);
 

@@ -849,11 +849,33 @@ auto PropertyRegistrator::GetPropertyGroups() const -> const map<string, vector<
     return _propertyGroups;
 }
 
+auto PropertyRegistrator::GetComponents() const -> const unordered_set<hstring>&
+{
+    return _registeredComponents;
+}
+
 void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& flags)
 {
-    // string _propName {};
-    // string _componentName {};
-    prop->_propName = _str(prop->_propName).replace('.', '_');
+    // Todo: validate property name identifier
+
+    if (const auto dot_pos = prop->_propName.find('.'); dot_pos != string::npos) {
+        prop->_component = _nameResolver.ToHashedString(prop->_propName.substr(0, dot_pos));
+        prop->_propName[dot_pos] = '_';
+        prop->_propNameWithoutComponent = prop->_propName.substr(dot_pos + 1);
+
+        if (!prop->_component) {
+            throw PropertyRegistrationException("Invalid property component part", prop->_propName, prop->_component);
+        }
+        if (prop->_propNameWithoutComponent.empty()) {
+            throw PropertyRegistrationException("Invalid property name part", prop->_propName, prop->_component);
+        }
+        if (_registeredComponents.count(_nameResolver.ToHashedString(prop->_component)) == 0) {
+            throw PropertyRegistrationException("Unknown property component", prop->_propName, prop->_component);
+        }
+    }
+    else {
+        prop->_propNameWithoutComponent = prop->_propName;
+    }
 
     if (prop->_isEnumBase) {
         prop->_baseTypeName = "";

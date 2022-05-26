@@ -1209,6 +1209,22 @@
 }
 
 ///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Critter*> Server_Game_GetAllNpc(FOServer* server)
+{
+    vector<Critter*> npcs;
+
+    for (auto* npc_ : server->CrMngr.GetAllNpc()) {
+        if (!npc_->IsDestroyed()) {
+            npcs.push_back(npc_);
+        }
+    }
+
+    return npcs;
+}
+
+///# ...
 ///# param pid ...
 ///# return ...
 ///@ ExportMethod

@@ -829,6 +829,22 @@ static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
 }
 
 template<typename T>
+static void Property_GetComponent(asIScriptGeneric* gen)
+{
+    auto* entity = static_cast<T*>(gen->GetObject());
+    const auto& component = *static_cast<const hstring*>(gen->GetAuxiliary());
+
+    if (auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
+        if (entity_with_proto->GetProto()->HaveComponent(component)) {
+            *(T**)gen->GetAddressOfReturnLocation() = entity;
+            return;
+        }
+    }
+
+    *(T**)gen->GetAddressOfReturnLocation() = nullptr;
+}
+
+template<typename T>
 static void Property_GetValue(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
@@ -1379,8 +1395,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", asFUNCTION(HashedString_ConstructFromString), asCALL_GENERIC, game_engine));
-    // AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const int &in)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
-    // AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const uint &in)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
     AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
     AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(uint h)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
@@ -1419,6 +1433,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY(class_name "Singleton", real_class); \
     REGISTER_GETSET_ENTITY(class_name "Singleton", class_name, real_class); \
     entity_is_global.emplace(class_name); \
+    entity_get_component_func_ptr.emplace(class_name "Singleton", asFUNCTION((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name "Singleton", asFUNCTION((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name "Singleton", asFUNCTION((Property_SetValue<real_class>)))
 
@@ -1427,6 +1442,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Entity"); \
     REGISTER_GETSET_ENTITY(class_name, class_name, real_class); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "uint get_Id() const", SCRIPT_FUNC_THIS((Entity_Id<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
+    entity_get_component_func_ptr.emplace(class_name, asFUNCTION((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace(class_name, asFUNCTION((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, asFUNCTION((Property_SetValue<real_class>)))
 
@@ -1435,6 +1451,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_ENTITY_CAST(class_name, real_class, "Abstract" class_name); \
     REGISTER_GETSET_ENTITY("Abstract" class_name, class_name, Entity); \
     AS_VERIFY(engine->RegisterObjectMethod("Abstract" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
+    entity_get_component_func_ptr.emplace("Abstract" class_name, asFUNCTION((Property_GetComponent<Entity>))); \
     entity_get_value_func_ptr.emplace("Abstract" class_name, asFUNCTION((Property_GetValue<Entity>)))
 
 #define REGISTER_ENTITY_PROTO(class_name, real_class, proto_real_class) \
@@ -1446,6 +1463,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_has_protos.emplace(class_name); \
+    entity_get_component_func_ptr.emplace("Proto" class_name, asFUNCTION((Property_GetComponent<proto_real_class>))); \
     entity_get_value_func_ptr.emplace("Proto" class_name, asFUNCTION((Property_GetValue<proto_real_class>)))
 
 #define REGISTER_ENTITY_STATICS(class_name, real_class) \
@@ -1458,6 +1476,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
     entity_has_statics.emplace(class_name); \
+    entity_get_component_func_ptr.emplace("Static" class_name, asFUNCTION((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace("Static" class_name, asFUNCTION((Property_GetValue<real_class>)))
 
     REGISTER_BASE_ENTITY("Entity", Entity);
@@ -1465,6 +1484,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     unordered_set<string> entity_is_global;
     unordered_set<string> entity_has_protos;
     unordered_set<string> entity_has_statics;
+    unordered_map<string, asSFuncPtr> entity_get_component_func_ptr;
     unordered_map<string, asSFuncPtr> entity_get_value_func_ptr;
     unordered_map<string, asSFuncPtr> entity_set_value_func_ptr;
 
@@ -1514,29 +1534,57 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         const auto get_proto_value_func_ptr = is_has_protos ? entity_get_value_func_ptr.at(proto_class_name) : asSFuncPtr();
         const auto get_static_value_func_ptr = is_has_statics ? entity_get_value_func_ptr.at(static_class_name) : asSFuncPtr();
         const auto set_value_func_ptr = entity_set_value_func_ptr.at(class_name);
+        const auto get_component_func_ptr = entity_get_component_func_ptr.at(class_name);
+        const auto get_abstract_component_func_ptr = !is_global && (is_has_protos || is_has_statics) ? entity_get_component_func_ptr.at(abstract_class_name) : asSFuncPtr();
+        const auto get_proto_component_func_ptr = is_has_protos ? entity_get_component_func_ptr.at(proto_class_name) : asSFuncPtr();
+        const auto get_static_component_func_ptr = is_has_statics ? entity_get_component_func_ptr.at(static_class_name) : asSFuncPtr();
+
+        for (const auto& component : registrator->GetComponents()) {
+            {
+                const auto component_type = _str("{}{}Component", reg_name, component).str();
+                AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, asCALL_GENERIC, (void*)&component));
+            }
+            if (!is_global && (is_has_protos || is_has_statics)) {
+                const auto component_type = _str("Abstract{}{}Component", reg_name, component).str();
+                AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+                AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, asCALL_GENERIC, (void*)&component));
+            }
+            if (is_has_protos) {
+                const auto component_type = _str("Proto{}{}Component", reg_name, component).str();
+                AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+                AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_proto_component_func_ptr, asCALL_GENERIC, (void*)&component));
+            }
+            if (is_has_statics) {
+                const auto component_type = _str("Static{}{}Component", reg_name, component).str();
+                AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
+                AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_static_component_func_ptr, asCALL_GENERIC, (void*)&component));
+            }
+        }
 
         for (const auto i : xrange(registrator->GetCount())) {
             const auto* prop = registrator->GetByIndex(i);
+            const auto component = prop->GetComponent();
             const auto is_handle = (prop->IsArray() || prop->IsDict());
 
             if (prop->IsReadable()) {
-                const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetName()).str();
-                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), decl_get.c_str(), get_value_func_ptr, asCALL_GENERIC, (void*)prop));
+                const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
+                AS_VERIFY(engine->RegisterObjectMethod(component ? _str("{}{}Component", reg_name, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, asCALL_GENERIC, (void*)prop));
 
                 if (!is_global && (is_has_protos || is_has_statics)) {
-                    AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, asCALL_GENERIC, (void*)prop));
+                    AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Abstract{}{}Component", reg_name, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, asCALL_GENERIC, (void*)prop));
                 }
                 if (is_has_protos) {
-                    AS_VERIFY(engine->RegisterObjectMethod(proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, asCALL_GENERIC, (void*)prop));
+                    AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Proto{}{}Component", reg_name, component).c_str() : proto_class_name.c_str(), decl_get.c_str(), get_proto_value_func_ptr, asCALL_GENERIC, (void*)prop));
                 }
                 if (is_has_statics) {
-                    AS_VERIFY(engine->RegisterObjectMethod(static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, asCALL_GENERIC, (void*)prop));
+                    AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Static{}{}Component", reg_name, component).c_str() : static_class_name.c_str(), decl_get.c_str(), get_static_value_func_ptr, asCALL_GENERIC, (void*)prop));
                 }
             }
 
             if (prop->IsWritable()) {
-                const auto decl_set = _str("void set_{}({}{}{})", prop->GetName(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
-                AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), decl_set.c_str(), set_value_func_ptr, asCALL_GENERIC, (void*)prop));
+                const auto decl_set = _str("void set_{}({}{}{})", prop->GetNameWithoutComponent(), is_handle ? "const " : "", prop->GetFullTypeName(), is_handle ? "@+" : "").str();
+                AS_VERIFY(engine->RegisterObjectMethod(component ? _str("{}{}Component", reg_name, component).c_str() : class_name.c_str(), decl_set.c_str(), set_value_func_ptr, asCALL_GENERIC, (void*)prop));
             }
         }
 

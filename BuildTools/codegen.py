@@ -779,6 +779,7 @@ def parseTags():
                 target = tok[0]
                 assert target in ['Server', 'Client', 'Mapper', 'Common'], target
                 entity = tok[1]
+                assert entity in gameEntities, 'Wrong event entity ' + entity
                 eventName = tok[2]
                 
                 braceOpenPos = tagInfo.find('(')
