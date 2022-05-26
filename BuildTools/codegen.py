@@ -550,10 +550,10 @@ def parseTags():
                     entityRelatives.add('Abstract' + name)
                 
                 if gameEntitiesInfo[name]['HasProto']:
-                    assert name + 'Proto' not in validTypes
-                    validTypes.add(name + 'Proto')
-                    assert name + 'Proto' not in entityRelatives
-                    entityRelatives.add(name + 'Proto')
+                    assert 'Proto' + name not in validTypes
+                    validTypes.add('Proto' + name)
+                    assert 'Proto' + name not in entityRelatives
+                    entityRelatives.add('Proto' + name)
                 
                 if gameEntitiesInfo[name]['HasStatics']:
                     assert 'Static' + name not in validTypes
@@ -599,10 +599,10 @@ def parseTags():
                     entityRelatives.add('Abstract' + name)
                 
                 if gameEntitiesInfo[name]['HasProto']:
-                    assert name + 'Proto' not in validTypes
-                    validTypes.add(name + 'Proto')
-                    assert name + 'Proto' not in entityRelatives
-                    entityRelatives.add(name + 'Proto')
+                    assert 'Proto' + name not in validTypes
+                    validTypes.add('Proto' + name)
+                    assert 'Proto' + name not in entityRelatives
+                    entityRelatives.add('Proto' + name)
                 
                 if gameEntitiesInfo[name]['HasStatics']:
                     assert 'Static' + name not in validTypes

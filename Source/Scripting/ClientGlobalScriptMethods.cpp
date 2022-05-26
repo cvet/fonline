@@ -50,9 +50,9 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemProto* Client_Game_GetItemProto(FOClient* client, hstring pid)
+[[maybe_unused]] ProtoItem* Client_Game_GetProtoItem(FOClient* client, hstring pid)
 {
-    return client->ProtoMngr.GetProtoItem(pid);
+    return const_cast<ProtoItem*>(client->ProtoMngr.GetProtoItem(pid));
 }
 
 ///# ...

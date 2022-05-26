@@ -76,11 +76,6 @@ class ProtoCritter;
 class ProtoMap;
 class ProtoLocation;
 
-using ItemProto = const ProtoItem;
-using CritterProto = const ProtoCritter;
-using MapProto = const ProtoMap;
-using LocationProto = const ProtoLocation;
-
 using AbstractItem = Entity;
 using AbstractCritter = Entity;
 using AbstractMap = Entity;

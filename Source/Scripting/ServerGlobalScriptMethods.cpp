@@ -155,9 +155,9 @@
 ///# param props ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemProto* Server_Game_GetItemProto(FOServer* server, hstring pid)
+[[maybe_unused]] ProtoItem* Server_Game_GetProtoItem(FOServer* server, hstring pid)
 {
-    return server->ProtoMngr.GetProtoItem(pid);
+    return const_cast<ProtoItem*>(server->ProtoMngr.GetProtoItem(pid));
 }
 
 ///# ...
