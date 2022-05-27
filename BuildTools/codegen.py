@@ -48,6 +48,14 @@ assert (args.singleplayer or args.multiplayer) and not (args.singleplayer and ar
 def getGuid(name):
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
 
+def getHash(s):
+    # Todo: exclude mmh3 dependency
+    try:
+        import mmh3 as mmh3
+    except ImportError:
+        import pymmh3 as mmh3
+    return str(mmh3.hash(s, seed=0))
+
 # Generated file list
 genFileList = ['EmbeddedResources-Include.h',
         'Version-Include.h',
@@ -538,9 +546,14 @@ def parseTags():
                 gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
                         'HasProto': 'HasProto' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags}
                 
+                assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
+                validTypes.add(name + 'Component')
+                assert name + 'Component' not in scriptEnums, 'Property component enum already added'
+                scriptEnums.add(name + 'Component')
+                
                 assert name + 'Property' not in validTypes, name + 'Property already in valid types'
                 validTypes.add(name + 'Property')
-                assert name + 'Property' not in scriptEnums, 'Enum already added'
+                assert name + 'Property' not in scriptEnums, 'Property enum already added'
                 scriptEnums.add(name + 'Property')
                 
                 if not gameEntitiesInfo[name]['IsGlobal']:
@@ -583,9 +596,14 @@ def parseTags():
                         'Client': 'Client' + name if target in ['Common', 'Client'] else None,
                         'IsGlobal': 'Global' in flags, 'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags}
                 
-                assert name + 'Property' not in validTypes
+                assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
+                validTypes.add(name + 'Component')
+                assert name + 'Component' not in scriptEnums, 'Property component enum already added'
+                scriptEnums.add(name + 'Component')
+                
+                assert name + 'Property' not in validTypes, name + 'Property already in valid types'
                 validTypes.add(name + 'Property')
-                assert name + 'Property' not in scriptEnums, 'Enum already added'
+                assert name + 'Property' not in scriptEnums, 'Property enum already added'
                 scriptEnums.add(name + 'Property')
                 
                 assert target in ['Server', 'Client']
@@ -910,6 +928,15 @@ def parseTags():
                 showError('Invalid tag CodeGen', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
     
     def postprocessTags():
+        # Generate entity property components enums
+        for entity in gameEntities:
+            keyValues = [('Invalid', '0', [])]
+            for propCompTag in codeGenTags['PropertyComponent']:
+                ent, name, flags, _ = propCompTag
+                if ent == entity:
+                    keyValues.append((name, getHash(name), []))
+            codeGenTags['Enum'].append([entity + 'Component', 'int', keyValues, [], []])
+        
         # Generate entity properties enums
         for entity in gameEntities:
             keyValues = [('Invalid', '0xFFFF', [])]

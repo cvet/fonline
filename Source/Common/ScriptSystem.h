@@ -55,6 +55,14 @@ enum class ScriptEnum_uint : uint
 {
 };
 
+using GameComponent = ScriptEnum_int;
+using PlayerComponent = ScriptEnum_int;
+using ItemComponent = ScriptEnum_int;
+using CritterComponent = ScriptEnum_int;
+using MapComponent = ScriptEnum_int;
+using LocationComponent = ScriptEnum_int;
+static_assert(sizeof(GameComponent) == sizeof(hstring::hash_t));
+
 using GameProperty = ScriptEnum_uint16;
 using PlayerProperty = ScriptEnum_uint16;
 using ItemProperty = ScriptEnum_uint16;

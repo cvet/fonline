@@ -164,9 +164,11 @@ class ProtoEntity : public Entity
 public:
     [[nodiscard]] auto GetName() const -> string_view override;
     [[nodiscard]] auto GetProtoId() const -> hstring;
-    [[nodiscard]] auto HaveComponent(hstring name) const -> bool;
-    [[nodiscard]] auto GetComponents() -> unordered_set<hstring>& { return _components; }
+    [[nodiscard]] auto HasComponent(hstring name) const -> bool;
+    [[nodiscard]] auto HasComponent(hstring::hash_t hash) const -> bool;
     [[nodiscard]] auto GetComponents() const -> unordered_set<hstring> { return _components; }
+
+    void EnableComponent(hstring component);
 
     vector<uint> TextsLang {};
     vector<FOMsg*> Texts {};
@@ -177,6 +179,7 @@ protected:
 
     const hstring _protoId;
     unordered_set<hstring> _components {};
+    unordered_set<hstring::hash_t> _componentHashes {};
 };
 
 class EntityWithProto : public Entity

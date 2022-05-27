@@ -247,7 +247,10 @@ public:
 #define GET_GAME_ENGINE_FROM_AS_ENGINE(as_engine) static_cast<FOEngine*>(as_engine->GetUserData())
 
 #define ENTITY_VERIFY(e) \
-    if ((e) != nullptr && (e)->IsDestroyed()) { \
+    if ((e) == nullptr) { \
+        throw ScriptException("Access to null entity"); \
+    } \
+    if ((e)->IsDestroyed()) { \
         throw ScriptException("Access to destroyed entity"); \
     }
 #endif
@@ -835,13 +838,13 @@ static void Property_GetComponent(asIScriptGeneric* gen)
     const auto& component = *static_cast<const hstring*>(gen->GetAuxiliary());
 
     if (auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
-        if (entity_with_proto->GetProto()->HaveComponent(component)) {
-            *(T**)gen->GetAddressOfReturnLocation() = entity;
+        if (!entity_with_proto->GetProto()->HasComponent(component)) {
+            *(T**)gen->GetAddressOfReturnLocation() = nullptr;
             return;
         }
     }
 
-    *(T**)gen->GetAddressOfReturnLocation() = nullptr;
+    *(T**)gen->GetAddressOfReturnLocation() = entity;
 }
 
 template<typename T>

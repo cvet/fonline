@@ -51,7 +51,7 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, const T*
         writer.WritePtr(proto_name.data(), proto_name.length());
 
         writer.Write<ushort>(static_cast<ushort>(proto_item->GetComponents().size()));
-        for (auto component : proto_item->GetComponents()) {
+        for (const auto& component : proto_item->GetComponents()) {
             const auto component_str = component.as_str();
             writer.Write<ushort>(static_cast<ushort>(component_str.length()));
             writer.WritePtr(component_str.data(), component_str.length());
@@ -88,7 +88,8 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
             const auto component_name_len = reader.Read<ushort>();
             const auto component_name = string(reader.ReadPtr<char>(component_name_len), component_name_len);
             const auto component_name_hashed = name_resolver.ToHashedString(component_name);
-            proto->GetComponents().insert(component_name_hashed);
+            RUNTIME_ASSERT(property_registrator->IsComponentRegistered(component_name_hashed));
+            proto->EnableComponent(component_name_hashed);
         }
 
         const uint data_count = reader.Read<ushort>();
@@ -242,7 +243,7 @@ static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, co
                 if (!proto->GetProperties().GetRegistrator()->IsComponentRegistered(component_name_hashed)) {
                     throw ProtoManagerException("Proto item has invalid component", base_name, component_name);
                 }
-                proto->GetComponents().insert(component_name_hashed);
+                proto->EnableComponent(component_name_hashed);
             }
         }
 

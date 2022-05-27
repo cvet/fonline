@@ -596,6 +596,21 @@
 }
 
 ///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] Item* Server_Critter_GetItem(Critter* self, ItemComponent component)
+{
+    for (auto* item : self->GetInventory()) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            return item;
+        }
+    }
+
+    return nullptr;
+}
+
+///# ...
 ///# param property ...
 ///# param propertyValue ...
 ///# return ...
@@ -619,6 +634,24 @@
 [[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self)
 {
     return self->GetInventory();
+}
+
+///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] vector<Item*> Server_Critter_GetItems(Critter* self, ItemComponent component)
+{
+    vector<Item*> items;
+    items.reserve(self->GetInventory().size());
+
+    for (auto* item : self->GetInventory()) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
 }
 
 ///# ...

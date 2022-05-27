@@ -265,6 +265,21 @@
 }
 
 ///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent component)
+{
+    for (auto* item : self->InvItems) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            return item;
+        }
+    }
+
+    return nullptr;
+}
+
+///# ...
 ///# param property ...
 ///# param propertyValue ...
 ///# return ...
@@ -288,6 +303,24 @@
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 {
     return self->InvItems;
+}
+
+///# ...
+///# param component ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemComponent component)
+{
+    vector<ItemView*> items;
+    items.reserve(self->InvItems.size());
+
+    for (auto* item : self->InvItems) {
+        if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
 }
 
 ///# ...
