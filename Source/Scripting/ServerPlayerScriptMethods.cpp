@@ -75,3 +75,30 @@
 
     return allow;
 }
+
+///# ...
+///# param text ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Player_Message(Player* self, string_view text)
+{
+    self->Send_Text(nullptr, text, SAY_NETMSG);
+}
+
+///# ...
+///# param textMsg ...
+///# param numStr ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Player_Message(Player* self, ushort textMsg, uint numStr)
+{
+    self->Send_TextMsg(nullptr, numStr, SAY_NETMSG, textMsg);
+}
+
+///# ...
+///# param textMsg ...
+///# param numStr ...
+///# param lexems ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Player_Message(Player* self, ushort textMsg, uint numStr, string_view lexems)
+{
+    self->Send_TextMsgLex(nullptr, numStr, SAY_NETMSG, textMsg, lexems);
+}

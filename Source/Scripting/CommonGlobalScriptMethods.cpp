@@ -534,3 +534,50 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 {
     return static_cast<uint>(time(nullptr));
 }
+
+///# ...
+///# param dirAngle ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] int Common_Game_AngleToDir([[maybe_unused]] FOEngineBase* engine, int dirAngle)
+{
+    // Todo: quad tiles fix
+    return dirAngle / 60;
+}
+
+///# ...
+///# param dir ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] int Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uchar dir)
+{
+    // Todo: quad tiles fix
+    return dir * 60 + 30;
+}
+
+///# ...
+///# param dirAngle ...
+///# param clockwise ...
+///# param step ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] int Common_Game_RotateDirAngle([[maybe_unused]] FOEngineBase* engine, int dirAngle, bool clockwise, int step)
+{
+    auto rotated = dirAngle;
+
+    if (clockwise) {
+        rotated += step;
+    }
+    else {
+        rotated -= step;
+    }
+
+    while (rotated < 0) {
+        rotated += 360;
+    }
+    while (rotated >= 360) {
+        rotated -= 360;
+    }
+
+    return rotated;
+}
