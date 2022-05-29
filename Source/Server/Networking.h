@@ -52,6 +52,7 @@ public:
     [[nodiscard]] virtual auto GetHost() const -> string_view = 0;
     [[nodiscard]] virtual auto GetPort() const -> ushort = 0;
     [[nodiscard]] virtual auto IsDisconnected() const -> bool = 0;
+    [[nodiscard]] virtual auto IsWebConnection() const -> bool = 0;
 
     virtual void DisableCompression() = 0;
     virtual void Dispatch() = 0;

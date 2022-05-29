@@ -102,3 +102,11 @@
 {
     self->Send_TextMsgLex(nullptr, numStr, SAY_NETMSG, textMsg, lexems);
 }
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Server_Player_IsWebConnected(Player* self)
+{
+    return self->Connection->IsWebConnection();
+}

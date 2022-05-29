@@ -1381,7 +1381,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RegisterScriptFile(engine);
     RegisterScriptFileSystem(engine);
     RegisterScriptDateTime(engine);
+    AS_VERIFY(engine->SetDefaultNamespace("math"));
     RegisterScriptMath(engine);
+    AS_VERIFY(engine->SetDefaultNamespace(""));
     RegisterScriptWeakRef(engine);
     RegisterScriptReflection(engine);
 

@@ -332,6 +332,8 @@ public:
     auto operator=(NetConnectionAsio&&) noexcept = delete;
     ~NetConnectionAsio() override { delete _socket; }
 
+    [[nodiscard]] auto IsWebConnection() const -> bool override { return false; }
+
 private:
     void NextAsyncRead()
     {
@@ -426,6 +428,8 @@ public:
     auto operator=(const NetConnectionWebSocket&) = delete;
     auto operator=(NetConnectionWebSocket&&) noexcept = delete;
     ~NetConnectionWebSocket() override = default;
+
+    [[nodiscard]] auto IsWebConnection() const -> bool override { return true; }
 
 private:
     void OnMessage(message_ptr msg)

@@ -71,6 +71,7 @@ public:
     [[nodiscard]] auto GetPort() const -> ushort;
     [[nodiscard]] auto IsHardDisconnected() const -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const -> bool;
+    [[nodiscard]] auto IsWebConnection() const -> bool;
 
     void DisableCompression();
     void Dispatch();

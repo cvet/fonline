@@ -73,6 +73,11 @@ auto ClientConnection::IsGracefulDisconnected() const -> bool
     return _gracefulDisconnected;
 }
 
+auto ClientConnection::IsWebConnection() const -> bool
+{
+    return _netConnection->IsWebConnection();
+}
+
 void ClientConnection::DisableCompression()
 {
     NON_CONST_METHOD_HINT();

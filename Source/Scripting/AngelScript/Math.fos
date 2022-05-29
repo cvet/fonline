@@ -62,12 +62,12 @@ float AbsF(float x)
 
 int Distance(int x1, int y1, int x2, int y2)
 {
-    return int(sqrt(Pow2(x1 - x2) + Pow2(y1 - y2)));
+    return int(math::sqrt(Pow2(x1 - x2) + Pow2(y1 - y2)));
 }
 
 float DistanceF(float x1, float y1, float x2, float y2)
 {
-    return float(sqrt(Pow2F(x1 - x2) + Pow2F(y1 - y2)));
+    return float(math::sqrt(Pow2F(x1 - x2) + Pow2F(y1 - y2)));
 }
 
 bool IsCollision(int x1, int y1, int x2, int y2, int w, int h)
@@ -83,4 +83,9 @@ int LbsToGramm(int lbs)
 int NumericalNumber(int num)
 {
     return num % 2 != 0 ? num * num / 2 + 1 : num * num / 2 + num / 2;
+}
+
+int RoundToInt(float x)
+{
+    return math::fraction(x) >= 0.5f ? int(x) + 1 : int(x);
 }
