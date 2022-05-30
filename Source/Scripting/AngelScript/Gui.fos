@@ -234,7 +234,7 @@ funcdef bool DragAndDropHandler(Object obj, Object target);
 //   int UserDataExt
 //   bool UseSorting
 //   Item[] Items
-//   Item GetItem( uint cellIndex )
+//   Item Game.GetItem( uint cellIndex )
 //   void Resort()
 //   void SetUserData( int data )
 //   void SetUserDataExt( int data )
@@ -1171,7 +1171,7 @@ class Panel : Object
     {
         if (Object::IsHit(x, y)) {
             if (_CheckTransparentOnHit && _BackgroundImage != null)
-                return (GetSpritePixelColor(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY) & 0xFF000000) != 0;
+                return (Game.GetSpritePixelColor(_BackgroundImage.Id, _BackgroundImage.Frame, x - _AbsolutePosX, y - _AbsolutePosY) & 0xFF000000) != 0;
             return true;
         }
         return false;
@@ -1183,7 +1183,7 @@ class Panel : Object
 
         bool crop = _CropContent;
         if (crop)
-            PushDrawScissor(AbsolutePosX, AbsolutePosY, Width, Height);
+            Game.PushDrawScissor(AbsolutePosX, AbsolutePosY, Width, Height);
 
         if (callCallback)
             _DrawCallback();
@@ -1198,7 +1198,7 @@ class Panel : Object
             OnPostDraw();
 
         if (crop)
-            PopDrawScissor();
+            Game.PopDrawScissor();
     }
 
     void _DrawImage(Sprite::Sprite image)
@@ -1408,7 +1408,7 @@ class Text : Object
         string text = Text;
         if (text.length() > 0) {
             uint color = (_IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor);
-            DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
+            Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
         }
 
         Object::_Draw(false);
@@ -1439,7 +1439,7 @@ class Text : Object
     void SetTextWithResize(string text)
     {
         int tw = 0, th = 0, lines = 0;
-        GetTextInfo(text, Width, 1000, _TextFont, _TextFlags, tw, th, lines);
+        Game.GetTextInfo(text, Width, 1000, _TextFont, _TextFlags, tw, th, lines);
         SetSize(_Width, th + 5);
         SetText(text);
     }
@@ -1497,7 +1497,7 @@ class TextInput : Text
 
     void _Focus() override
     {
-        CustomCall("SetScreenKeyboard true");
+        Game.CustomCall("SetScreenKeyboard true");
 
         Text::_Focus();
     }
@@ -1505,7 +1505,7 @@ class TextInput : Text
     void _Unfocus() override
     {
         if (CurConsole == null || !CurConsole.Active)
-            CustomCall("SetScreenKeyboard false");
+            Game.CustomCall("SetScreenKeyboard false");
 
         Text::_Unfocus();
     }
@@ -1522,7 +1522,7 @@ class TextInput : Text
             text = "";
             for (uint i = 0; i < rawText.length(); i++)
                 text += _PasswordChar;
-            if (GetTick() - _PasswordTime <= PasswordShowTime)
+            if (Game.GetTick() - _PasswordTime <= PasswordShowTime)
                 text[text.length() - 1] = rawText[text.length() - 1];
         }
         if (_CarriagePos != -1 && _IsFocused) {
@@ -1530,11 +1530,11 @@ class TextInput : Text
                 _CarriagePos = 0;
             if (_CarriagePos > int(text.length()))
                 _CarriagePos = text.length();
-            text = text.substr(0, _CarriagePos) + (GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
+            text = text.substr(0, _CarriagePos) + (Game.GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
         }
         if (text.length() > 0) {
             uint color = (_IsFocused && _TextColorFocused != 0 ? _TextColorFocused : _TextColor);
-            DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
+            Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, color, _TextFont, _TextFlags);
         }
 
         Object::_Draw(false);
@@ -1550,7 +1550,7 @@ class TextInput : Text
         while (_InputLength != 0 && _Text.length() > _InputLength)
             _Text = _Text.substr(0, _Text.length() - 1);
         if (_IsTextPassword)
-            _PasswordTime = (_Text.length() > oldLen ? GetTick() : 0);
+            _PasswordTime = (_Text.length() > oldLen ? Game.GetTick() : 0);
 
         Text::Input(key, text);
     }
@@ -2411,7 +2411,7 @@ class MessageBox : Text
         string messageText;
         if (type >= FOMB_GAME && type <= FOMB_VIEW) {
             uint[] sayColors = {COLOR_DGREEN, COLOR_TEXT, COLOR_DRED, COLOR_DDGREEN};
-            messageText = "|" + sayColors[type] + " " + EncodeUTF8(0x2022) + " |" + COLOR_TEXT + " " + text;
+            messageText = "|" + sayColors[type] + " " + Game.EncodeUTF8(0x2022) + " |" + COLOR_TEXT + " " + text;
         }
         else {
             messageText = text;
@@ -2431,7 +2431,7 @@ class MessageBox : Text
         uint16 minute = 0;
         uint16 second = 0;
         uint16 milliseconds;
-        GetTime(year, month, day, dayOfWeek, hour, minute, second, milliseconds);
+        Game.GetTime(year, month, day, dayOfWeek, hour, minute, second, milliseconds);
         string messageTime = (hour <= 9 ? "0" : "") + hour + ":" + (minute <= 9 ? "0" : "") + minute + ":" + (second <= 9 ? "0" : "") + second + " ";
         _MessageTimes.insertLast(messageTime);
 
@@ -2456,7 +2456,7 @@ class MessageBox : Text
 
         int tw = 0, th = 0;
         int maxLines = 0;
-        GetTextInfo("", _Width, _Height, _TextFont, 0, tw, th, maxLines);
+        Game.GetTextInfo("", _Width, _Height, _TextFont, 0, tw, th, maxLines);
         if (maxLines <= 0) {
             _MaxScroll = 0;
             _ScrollLines = 0;
@@ -2477,7 +2477,7 @@ class MessageBox : Text
             // Skip scrolled lines
             int curLines = lines;
             int skipLines = 0;
-            GetTextInfo(messageText, _Width, 1000, _TextFont, 0, tw, th, skipLines);
+            Game.GetTextInfo(messageText, _Width, 1000, _TextFont, 0, tw, th, skipLines);
             lines += skipLines;
 
             if (_ScrollLines < 0) {
@@ -2609,7 +2609,7 @@ class Console : TextInput
 
     void _ActiveChanged() override
     {
-        CustomCall("SetScreenKeyboard " + (Active ? "true" : "false"));
+        Game.CustomCall("SetScreenKeyboard " + (Active ? "true" : "false"));
 
         TextInput::_ActiveChanged();
     }
@@ -2638,7 +2638,7 @@ class Console : TextInput
             return;
 
         // Load history
-        string name = (GetChosen() != null ? GetChosen().Name : "");
+        string name = (Game.GetChosen() != null ? Game.GetChosen().Name : "");
         string actualStorageName = "";
         if (!_HistoryStorageName.isEmpty() && !name.isEmpty())
             actualStorageName = ConsoleDataPrefix + name + _HistoryStorageName;
@@ -2696,13 +2696,13 @@ class Console : TextInput
         // Send
         bool[] keyPressed = Screen._InputKeyPressed;
         if (keyPressed[KeyCode::Lcontrol] || keyPressed[KeyCode::Rcontrol])
-            CustomCall("ConsoleMessage\n/s" + _Text, "\n");
+            Game.CustomCall("ConsoleMessage\n/s" + _Text, "\n");
         else if (keyPressed[KeyCode::Lmenu] || keyPressed[KeyCode::Rmenu])
-            CustomCall("ConsoleMessage\n/w" + _Text, "\n");
+            Game.CustomCall("ConsoleMessage\n/w" + _Text, "\n");
         else if (keyPressed[KeyCode::Lshift] || keyPressed[KeyCode::Rshift])
-            CustomCall("ConsoleMessage\n/r" + _Text, "\n");
+            Game.CustomCall("ConsoleMessage\n/r" + _Text, "\n");
         else
-            CustomCall("ConsoleMessage\n" + _Text, "\n");
+            Game.CustomCall("ConsoleMessage\n" + _Text, "\n");
 
         // Clear text
         _Text = "";
@@ -2756,8 +2756,8 @@ class Console : TextInput
         if (_CarriagePos > int(text.length()))
             _CarriagePos = text.length();
 
-        text = text.substr(0, _CarriagePos) + (GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
-        DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, _TextColor, _TextFont, _TextFlags);
+        text = text.substr(0, _CarriagePos) + (Game.GetTick() % 800 < 400 ? "!" : ".") + text.substr(_CarriagePos);
+        Game.DrawText(text, _AbsolutePosX, _AbsolutePosY, _Width, _Height, _TextColor, _TextFont, _TextFlags);
 
         Object::_Draw(false);
 
@@ -3219,7 +3219,7 @@ void EngineCallback_Draw()
         Screen screen = Screens[i];
         if (screen.ActiveSelf) {
             if (screen.Index == CLIENT_MAIN_SCREEN_WAIT)
-                CustomCall("DrawWait");
+                Game.CustomCall("DrawWait");
             screen._Draw(true);
         }
     }
@@ -3278,7 +3278,7 @@ void EngineCallback_MouseDown(MouseButton button)
     if (hitObj != null) {
         // Handle pressed object
         PressedObject = hitObj;
-        PressedObjectRepeatTime = GetTick() + 500;
+        PressedObjectRepeatTime = Game.GetTick() + 500;
         LastPressedObject = hitObj;
         PressedObject._MouseDown(button);
 
@@ -3441,7 +3441,7 @@ void EngineCallback_Loop()
 
     GetPressedObject(); // Refresh state
     if (PressedObject != null) {
-        uint tick = GetTick();
+        uint tick = Game.GetTick();
         if (tick >= PressedObjectRepeatTime && PressedObject.IsMouseHit()) {
             PressedObjectRepeatTime = tick + 40;
             Screen screen = GetActiveScreen();
@@ -3530,7 +3530,7 @@ Screen CreateScreen(int screenIndex)
 {
     CreateScreenFunc screenFunc = ScreenCreators[screenIndex];
     Screen screen = screenFunc();
-    Assert(screen != null, screenIndex);
+    Game.Assert(screen != null, screenIndex);
     screen._Index = screenIndex;
     screen._ActiveSelf = false;
     screen._IsRegistered = true;

@@ -16,9 +16,9 @@
 #define TAB_CRITTERS     (12)
 #define TAB_FAST_ITEMS   (13)
 #define TAB_IGNORE_ITEMS (14)
-#define TAB_INVENTORY    (15) // Only for TabSetName(...)
-#define TAB_MESAGE_BOX   (16) // Only for TabSetName(...)
-#define TAB_MAPS         (17) // Only for TabSetName(...)
+#define TAB_INVENTORY    (15) // Only for Game.TabSetName(...)
+#define TAB_MESAGE_BOX   (16) // Only for Game.TabSetName(...)
+#define TAB_MAPS         (17) // Only for Game.TabSetName(...)
 
 // Fonts
 #define FONT_DEFAULT (0)

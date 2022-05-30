@@ -43,14 +43,14 @@ class Serializator
 #ifdef __CLIENT
     void SaveToCache(string name)
     {
-        SetCacheData(name, dataArray, dataSize);
+        Game.SetCacheData(name, dataArray, dataSize);
         Clear();
     }
 
     uint LoadFromCache(string name)
     {
         Clear();
-        dataArray = GetCacheData(name);
+        dataArray = Game.GetCacheData(name);
         if (dataArray != null) {
             bufSize = dataArray.length();
             dataSize = bufSize;

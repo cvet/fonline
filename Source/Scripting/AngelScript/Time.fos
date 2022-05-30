@@ -2,7 +2,7 @@
 // Some stuff for work with time.
 
 // GetNearFullSecond
-// Result is greather than GetFullSecond() at least on one.
+// Result is greather than Game.GetFullSecond() at least on one.
 
 // For client:
 // GetTimeString
@@ -82,11 +82,11 @@ uint GetNearFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint1
         jump = 3;
     }
 
-    uint fullSecond = EvaluateFullSecond(year, month, day, hour, minute, second);
-    while (fullSecond <= GetFullSecond()) {
+    uint fullSecond = Game.EvaluateFullSecond(year, month, day, hour, minute, second);
+    while (fullSecond <= Game.GetFullSecond()) {
         switch (jump) {
         case 0:
-            return GetFullSecond() + 1; // Time expired, call faster
+            return Game.GetFullSecond() + 1; // Time expired, call faster
         case 1:
             year++;
             break;
@@ -112,7 +112,7 @@ uint GetNearFullSecond(uint16 year, uint16 month, uint16 day, uint16 hour, uint1
             break;
         }
 
-        fullSecond = EvaluateFullSecond(year, month, day, hour, minute, second);
+        fullSecond = Game.EvaluateFullSecond(year, month, day, hour, minute, second);
     }
     return fullSecond;
 }
@@ -142,7 +142,7 @@ uint GetDaysInMonth(uint16 year, uint16 month)
 string GetTimeString(const string format, uint fullSecond)
 {
     uint16 year = 0, month = 0, day = 0, dayOfWeek = 0, hour = 0, minute = 0, second = 0;
-    GetGameTime(fullSecond, year, month, day, dayOfWeek, hour, minute, second);
+    Game.GetGameTime(fullSecond, year, month, day, dayOfWeek, hour, minute, second);
     return GetTimeString(format, year, month, day, dayOfWeek, hour, minute, second);
 }
 
@@ -151,23 +151,23 @@ string GetTimeString(const string format, int year, int month, int day, int dayO
     string result = format;
 
     if (year != -1)
-        result = ReplaceText(result, "%YEAR%", year);
+        result = Game.ReplaceText(result, "%YEAR%", year);
     if (month != -1) {
-        result = ReplaceText(result, "%MONTH%", month);
-        result = ReplaceText(result, "%MONTH-STR%", GetMsgStr(TEXTMSG_GAME, STR_MONTH(month)));
+        result = Game.ReplaceText(result, "%MONTH%", month);
+        result = Game.ReplaceText(result, "%MONTH-STR%", Game.GetMsgStr(TEXTMSG_GAME, STR_MONTH(month)));
     }
     if (day != -1)
-        result = ReplaceText(result, "%DAY%", day);
+        result = Game.ReplaceText(result, "%DAY%", day);
     if (dayOfWeek != -1) {
-        result = ReplaceText(result, "%DOW%", dayOfWeek);
-        result = ReplaceText(result, "%DOW-STR%", GetMsgStr(TEXTMSG_GAME, STR_MONTH(dayOfWeek)));
+        result = Game.ReplaceText(result, "%DOW%", dayOfWeek);
+        result = Game.ReplaceText(result, "%DOW-STR%", Game.GetMsgStr(TEXTMSG_GAME, STR_MONTH(dayOfWeek)));
     }
     if (hour != -1)
-        result = ReplaceText(result, "%HOUR%", hour);
+        result = Game.ReplaceText(result, "%HOUR%", hour);
     if (minute != -1)
-        result = ReplaceText(result, "%MINUTE%", minute);
+        result = Game.ReplaceText(result, "%MINUTE%", minute);
     if (second != -1)
-        result = ReplaceText(result, "%SECOND%", second);
+        result = Game.ReplaceText(result, "%SECOND%", second);
 
     return result;
 }
@@ -183,7 +183,7 @@ string DateTimeToString(uint gameTime)
     uint16 hour = 0;
     uint16 minute = 0;
     uint16 second = 0;
-    GetGameTime(gameTime, year, month, day, dayOfWeek, hour, minute, second);
+    Game.GetGameTime(gameTime, year, month, day, dayOfWeek, hour, minute, second);
     return "" + (day > 9 ? ("" + day) : ("0" + day)) + "." + (month > 9 ? ("" + month) : ("0" + month)) + "." + year + " " +
            (hour > 9 ? ("" + hour) : ("0" + hour)) + ":" + (minute > 9 ? ("" + minute) : ("0" + minute));
 }
