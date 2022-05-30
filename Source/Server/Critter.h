@@ -87,7 +87,6 @@ public:
     [[nodiscard]] auto GetOwner() const -> const Player* { return _player; }
     [[nodiscard]] auto GetOwner() -> Player* { return _player; }
     [[nodiscard]] auto GetOfflineTime() const -> uint;
-    [[nodiscard]] auto GetAttackDist(Item* weap, uchar use) -> uint;
     [[nodiscard]] auto IsAlive() const -> bool;
     [[nodiscard]] auto IsDead() const -> bool;
     [[nodiscard]] auto IsKnockout() const -> bool;

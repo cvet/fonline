@@ -677,7 +677,7 @@ void ScriptExtensions::RegisterScriptStdStringExtensions(asIScriptEngine* engine
 
     r = engine->RegisterObjectMethod("string", "string substr(uint start = 0, int count = -1) const", SCRIPT_FUNC_THIS(ScriptString_SubString), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);
-    r = engine->RegisterObjectMethod("string", "int findFirst(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirst), SCRIPT_FUNC_THIS_CONV);
+    r = engine->RegisterObjectMethod("string", "int find(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirst), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("string", "int findFirstOf(const string &in, uint start = 0) const", SCRIPT_FUNC_THIS(ScriptString_FindFirstOf), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);

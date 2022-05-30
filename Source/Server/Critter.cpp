@@ -61,13 +61,6 @@ auto Critter::GetOfflineTime() const -> uint
     return _playerDetached ? _engine->GameTime.FrameTick() - _playerDetachTick : 0u;
 }
 
-auto Critter::GetAttackDist(Item* weap, uchar use) -> uint
-{
-    uint dist = 1;
-    _engine->OnCritterGetAttackDistantion.Fire(this, weap, use, dist);
-    return dist;
-}
-
 auto Critter::IsAlive() const -> bool
 {
     return GetCond() == CritterCondition::Alive;

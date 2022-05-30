@@ -269,6 +269,12 @@ struct ScriptSystem::AngelScriptImpl
         asIScriptContext* Parent {};
     };
 
+    struct EnumInfo
+    {
+        string EnumName {};
+        FOEngine* GameEngine {};
+    };
+
     void CreateContext()
     {
         asIScriptContext* ctx = Engine->CreateContext();
@@ -414,6 +420,7 @@ struct ScriptSystem::AngelScriptImpl
     asIScriptEngine* Engine {};
     unordered_set<CScriptArray*> EnumArrays {};
     unordered_map<string, std::any> SettingsStorage {};
+    unordered_map<string, EnumInfo> EnumInfos {};
     asIScriptContext* CurrentCtx {};
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
@@ -1266,6 +1273,22 @@ static void Entity_Delete(asIScriptGeneric* gen)
 {
 }
 
+static void Enum_Parse(asIScriptGeneric* gen)
+{
+    // Todo: enum helper functions
+#if !COMPILER_MODE
+    // Cast to EnumInfo and ...
+#endif
+}
+
+static void Enum_TryParse(asIScriptGeneric* gen)
+{
+}
+
+static void Enum_ToString(asIScriptGeneric* gen)
+{
+}
+
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
     UNUSED_VARIABLE(param);
@@ -1362,6 +1385,21 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         for (const auto& [key, value] : enum_pairs) {
             AS_VERIFY(engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
         }
+
+#if !COMPILER_MODE
+        auto* enum_info = &AngelScriptData->EnumInfos[enum_name];
+        enum_info->EnumName = enum_name;
+        enum_info->GameEngine = game_engine;
+#else
+        void* enum_info = &dummy;
+#endif
+
+        AS_VERIFY(engine->SetDefaultNamespace("Enum"));
+        AS_VERIFY(engine->RegisterGlobalFunction(_str("{} Parse_{}(string valueName)", enum_name, enum_name).c_str(), asFUNCTION(Enum_Parse), asCALL_GENERIC, enum_info));
+        AS_VERIFY(engine->RegisterGlobalFunction(_str("{} Parse(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), asFUNCTION(Enum_Parse), asCALL_GENERIC, enum_info));
+        AS_VERIFY(engine->RegisterGlobalFunction(_str("bool TryParse({}& value)", enum_name).c_str(), asFUNCTION(Enum_TryParse), asCALL_GENERIC, enum_info));
+        AS_VERIFY(engine->RegisterGlobalFunction(_str("string ToString({} value, bool fullSpecification = false)", enum_name).c_str(), asFUNCTION(Enum_ToString), asCALL_GENERIC, enum_info));
+        AS_VERIFY(engine->SetDefaultNamespace(""));
     }
 
     // Register hstring
