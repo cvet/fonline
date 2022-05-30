@@ -92,77 +92,77 @@ public:
     void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
     ///@ ExportEvent
-    ENTITY_EVENT(Init);
+    ENTITY_EVENT(OnInit);
     ///@ ExportEvent
-    ENTITY_EVENT(GenerateWorld);
+    ENTITY_EVENT(OnGenerateWorld);
     ///@ ExportEvent
-    ENTITY_EVENT(Start);
+    ENTITY_EVENT(OnStart);
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(Loop);
+    ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerRegistration, uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerRegistration, uint /*ip*/, string /*name*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerLogin, uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
+    ENTITY_EVENT(OnPlayerLogin, uint /*ip*/, string /*name*/, uint /*id*/, uint& /*disallowMsgNum*/, uint& /*disallowStrNum*/, string& /*disallowLex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
+    ENTITY_EVENT(OnPlayerGetAccess, Player* /*player*/, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerAllowCommand, Player* /*player*/, string /*arg1*/, uchar /*arg2*/);
+    ENTITY_EVENT(OnPlayerAllowCommand, Player* /*player*/, string /*arg1*/, uchar /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(PlayerLogout, Player* /*player*/);
+    ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapCritterIn, Critter* /*critter*/);
+    ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapCritterOut, Critter* /*critter*/);
+    ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(LocationInit, Location* /*location*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnLocationInit, Location* /*location*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(LocationFinish, Location* /*location*/);
+    ENTITY_EVENT(OnLocationFinish, Location* /*location*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapInit, Map* /*map*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnMapInit, Map* /*map*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapFinish, Map* /*map*/);
+    ENTITY_EVENT(OnMapFinish, Map* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapLoop, Map* /*map*/);
+    ENTITY_EVENT(OnMapLoop, Map* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapLoopEx, Map* /*map*/, uint /*loopIndex*/);
+    ENTITY_EVENT(OnMapLoopEx, Map* /*map*/, uint /*loopIndex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapCritterIn, Map* /*map*/, Critter* /*critter*/);
+    ENTITY_EVENT(OnMapCritterIn, Map* /*map*/, Critter* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapCritterOut, Map* /*map*/, Critter* /*critter*/);
+    ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapCheckLook, Map* /*map*/, Critter* /*critter*/, Critter* /*target*/);
+    ENTITY_EVENT(OnMapCheckLook, Map* /*map*/, Critter* /*critter*/, Critter* /*target*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapCheckTrapLook, Map* /*map*/, Critter* /*critter*/, Item* /*item*/);
+    ENTITY_EVENT(OnMapCheckTrapLook, Map* /*map*/, Critter* /*critter*/, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterInit, Critter* /*critter*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnCritterInit, Critter* /*critter*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterFinish, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterFinish, Critter* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterIdle, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterIdle, Critter* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterGlobalMapIdle, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterGlobalMapIdle, Critter* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterCheckMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnCritterMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterTalk, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    ENTITY_EVENT(OnCritterTalk, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterBarter, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    ENTITY_EVENT(OnCritterBarter, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterGetAttackDistantion, Critter* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInit, Item* /*item*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemFinish, Item* /*item*/);
+    ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemWalk, Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnItemWalk, Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
+    ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(StaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
 
     GeometryHelper GeomHelper;
     GameTimer GameTime;

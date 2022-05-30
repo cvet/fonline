@@ -70,7 +70,7 @@ public:
     auto IsCanDelete() -> bool;
 
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
 
     // Todo: encapsulate Location data
     uint EntranceScriptBindId {};

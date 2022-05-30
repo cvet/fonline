@@ -190,45 +190,45 @@ public:
     void Send_SomeItems(const vector<Item*>* items, int param);
 
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(Idle);
+    ENTITY_EVENT(OnIdle);
     ///@ ExportEvent
-    ENTITY_EVENT(CheckMoveItem, Item* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCheckMoveItem, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemMoved, Item* /*item*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnItemMoved, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAppeared, Critter* /*appearedCr*/);
+    ENTITY_EVENT(OnCritterAppeared, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAppearedDist1, Critter* /*appearedCr*/);
+    ENTITY_EVENT(OnCritterAppearedDist1, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAppearedDist2, Critter* /*appearedCr*/);
+    ENTITY_EVENT(OnCritterAppearedDist2, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAppearedDist3, Critter* /*appearedCr*/);
+    ENTITY_EVENT(OnCritterAppearedDist3, Critter* /*appearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterDisappeared, Critter* /*disappearedCr*/);
+    ENTITY_EVENT(OnCritterDisappeared, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterDisappearedDist1, Critter* /*disappearedCr*/);
+    ENTITY_EVENT(OnCritterDisappearedDist1, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterDisappearedDist2, Critter* /*disappearedCr*/);
+    ENTITY_EVENT(OnCritterDisappearedDist2, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterDisappearedDist3, Critter* /*disappearedCr*/);
+    ENTITY_EVENT(OnCritterDisappearedDist3, Critter* /*disappearedCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemOnMapAppeared, Item* /*item*/, bool /*added*/, Critter* /*fromCr*/);
+    ENTITY_EVENT(OnItemOnMapAppeared, Item* /*item*/, bool /*added*/, Critter* /*fromCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemOnMapDisappeared, Item* /*item*/, bool /*removed*/, Critter* /*toCr*/);
+    ENTITY_EVENT(OnItemOnMapDisappeared, Item* /*item*/, bool /*removed*/, Critter* /*toCr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemOnMapChanged, Item* /*item*/);
+    ENTITY_EVENT(OnItemOnMapChanged, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Talk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    ENTITY_EVENT(OnTalk, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Barter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    ENTITY_EVENT(OnBarter, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapIdle);
+    ENTITY_EVENT(OnGlobalMapIdle);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapIn);
+    ENTITY_EVENT(OnGlobalMapIn);
     ///@ ExportEvent
-    ENTITY_EVENT(GlobalMapOut);
+    ENTITY_EVENT(OnGlobalMapOut);
 
     uint Flags {}; // Todo: move Flags to properties
     string Name {};

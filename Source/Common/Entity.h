@@ -53,7 +53,7 @@
     static ushort prop##_RegIndex
 
 #define ENTITY_EVENT(event_name, ...) \
-    EntityEvent<__VA_ARGS__> On##event_name { this, #event_name }
+    EntityEvent<__VA_ARGS__> event_name { this, #event_name }
 
 class EntityProperties
 {

@@ -113,11 +113,11 @@ public:
     void Send_SomeItems(const vector<Item*>* items, int param);
 
     ///@ ExportEvent
-    ENTITY_EVENT(GetAccess, int /*arg1*/, string& /*arg2*/);
+    ENTITY_EVENT(OnGetAccess, int /*arg1*/, string& /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(AllowCommand, string /*arg1*/, uchar /*arg2*/);
+    ENTITY_EVENT(OnAllowCommand, string /*arg1*/, uchar /*arg2*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Logout);
+    ENTITY_EVENT(OnLogout);
 
     ClientConnection* Connection {};
     int DisableSend {};

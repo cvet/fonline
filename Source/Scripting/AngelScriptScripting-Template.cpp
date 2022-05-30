@@ -1525,7 +1525,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void UnsubscribeAll()", SCRIPT_FUNC_THIS(func_entry##_UnsubscribeAll), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectProperty(is_global_entity ? entity_name "Singleton" : entity_name, entity_name event_name "Event On" event_name, 0))
+    AS_VERIFY(engine->RegisterObjectProperty(is_global_entity ? entity_name "Singleton" : entity_name, entity_name event_name "Event " event_name, 0))
 
 #define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry) REGISTER_ENTITY_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry)
 

@@ -1740,7 +1740,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('        return ' + funcEntry + '_Callback(self, func, args);')
                         globalLines.append('    };')
                         if isExported:
-                            globalLines.append('    self->On' + evName + '.Subscribe(std::move(event_data));')
+                            globalLines.append('    self->' + evName + '.Subscribe(std::move(event_data));')
                         else:
                             globalLines.append('    self->SubscribeEvent(' + funcEntry + '_Name, std::move(event_data));')
                     else:
@@ -1753,7 +1753,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     if not isASCompiler:
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
-                            globalLines.append('    self->On' + evName + '.Unsubscribe(func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
+                            globalLines.append('    self->' + evName + '.Unsubscribe(func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                         else:
                             globalLines.append('    self->UnsubscribeEvent(' + funcEntry + '_Name, func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
                     else:
@@ -1766,7 +1766,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     if not isASCompiler:
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
-                            globalLines.append('    self->On' + evName + '.UnsubscribeAll();')
+                            globalLines.append('    self->' + evName + '.UnsubscribeAll();')
                         else:
                             globalLines.append('    self->UnsubscribeAllEvent(' + funcEntry + '_Name);')
                     else:
@@ -1784,7 +1784,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             for p in evArgs:
                                 globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
                             if isExported:
-                                globalLines.append('    return self->On' + evName + '.Fire(' + ', '.join(['in_' + p[1] for p in evArgs]) + ');')
+                                globalLines.append('    return self->' + evName + '.Fire(' + ', '.join(['in_' + p[1] for p in evArgs]) + ');')
                             else:
                                 globalLines.append('    return self->FireEvent(' + funcEntry + '_Name, {' + ', '.join(['&in_' + p[1] for p in evArgs]) + '});')
                         else:
@@ -2764,10 +2764,10 @@ def genApi(target):
         def writeEvent(tok):
             name, eargs, doc = tok
             writeDoc(8, doc)
-            writeFile('        public static event On' + name + 'Delegate On' + name + ';')
-            writeFile('        public delegate void On' + name + 'Delegate(' + parseArgs(eargs) + ');')
-            writeFile('        public static event On' + name + 'RetDelegate On' + name + 'Ret;')
-            writeFile('        public delegate bool On' + name + 'RetDelegate(' + parseArgs(eargs) + ');')
+            writeFile('        public static event ' + name + 'Delegate ' + name + ';')
+            writeFile('        public delegate void ' + name + 'Delegate(' + parseArgs(eargs) + ');')
+            writeFile('        public static event ' + name + 'RetDelegate ' + name + 'Ret;')
+            writeFile('        public delegate bool ' + name + 'RetDelegate(' + parseArgs(eargs) + ');')
             writeFile('')
         def writeEventExt(tok):
             name, eargs, doc = tok
@@ -2775,7 +2775,7 @@ def genApi(target):
             writeFile('        static bool _' + name + '(' + (pargs + ', ' if pargs else '') + 'out Exception[] exs)')
             writeFile('        {')
             writeFile('            exs = null;')
-            writeFile('            foreach (var eventDelegate in On' + name + '.GetInvocationList().Cast<On' + name + 'Delegate>())')
+            writeFile('            foreach (var eventDelegate in ' + name + '.GetInvocationList().Cast<' + name + 'Delegate>())')
             writeFile('            {')
             writeFile('                try')
             writeFile('                {')
@@ -2786,7 +2786,7 @@ def genApi(target):
             writeFile('                    exs = exs == null ? new Exception[] { ex } : exs.Concat(new Exception[] { ex }).ToArray();')
             writeFile('                }')
             writeFile('            }')
-            writeFile('            foreach (var eventDelegate in On' + name + 'Ret.GetInvocationList().Cast<On' + name + 'RetDelegate>())')
+            writeFile('            foreach (var eventDelegate in ' + name + 'Ret.GetInvocationList().Cast<' + name + 'RetDelegate>())')
             writeFile('            {')
             writeFile('                try')
             writeFile('                {')

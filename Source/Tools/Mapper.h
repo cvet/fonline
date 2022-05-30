@@ -257,13 +257,13 @@ public:
     void DrawIfaceLayer(uint layer);
 
     ///@ ExportEvent
-    ENTITY_EVENT(ConsoleMessage, string& /*text*/);
+    ENTITY_EVENT(OnConsoleMessage, string& /*text*/);
     ///@ ExportEvent
-    ENTITY_EVENT(EditMapLoad, MapView* /*map*/);
+    ENTITY_EVENT(OnEditMapLoad, MapView* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(EditMapSave, MapView* /*map*/);
+    ENTITY_EVENT(OnEditMapSave, MapView* /*map*/);
     ///@ ExportEvent
-    ENTITY_EVENT(InspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
+    ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
     vector<MapView*> LoadedMaps {};
     ConfigFile IfaceIni;

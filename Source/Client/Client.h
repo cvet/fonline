@@ -137,87 +137,87 @@ public:
     void RunScreenScript(bool show, int screen, map<string, string> params);
 
     ///@ ExportEvent
-    ENTITY_EVENT(Start);
+    ENTITY_EVENT(OnStart);
     ///@ ExportEvent
-    ENTITY_EVENT(Finish);
+    ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
-    ENTITY_EVENT(AutoLogin, string /*login*/, string /*password*/);
+    ENTITY_EVENT(OnAutoLogin, string /*login*/, string /*password*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Loop);
+    ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
-    ENTITY_EVENT(GetActiveScreens, vector<int>& /*screens*/);
+    ENTITY_EVENT(OnGetActiveScreens, vector<int>& /*screens*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ScreenChange, bool /*show*/, int /*screen*/, map<string, string> /*data*/);
+    ENTITY_EVENT(OnScreenChange, bool /*show*/, int /*screen*/, map<string, string> /*data*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ScreenScroll, int /*offsetX*/, int /*offsetY*/);
+    ENTITY_EVENT(OnScreenScroll, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent
-    ENTITY_EVENT(RenderIface);
+    ENTITY_EVENT(OnRenderIface);
     ///@ ExportEvent
-    ENTITY_EVENT(RenderMap);
+    ENTITY_EVENT(OnRenderMap);
     ///@ ExportEvent
-    ENTITY_EVENT(MouseDown, MouseButton /*button*/);
+    ENTITY_EVENT(OnMouseDown, MouseButton /*button*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MouseUp, MouseButton /*button*/);
+    ENTITY_EVENT(OnMouseUp, MouseButton /*button*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MouseMove, int /*offsetX*/, int /*offsetY*/);
+    ENTITY_EVENT(OnMouseMove, int /*offsetX*/, int /*offsetY*/);
     ///@ ExportEvent
-    ENTITY_EVENT(KeyDown, KeyCode /*key*/, string /*text*/);
+    ENTITY_EVENT(OnKeyDown, KeyCode /*key*/, string /*text*/);
     ///@ ExportEvent
-    ENTITY_EVENT(KeyUp, KeyCode /*key*/);
+    ENTITY_EVENT(OnKeyUp, KeyCode /*key*/);
     ///@ ExportEvent
-    ENTITY_EVENT(InputLost);
+    ENTITY_EVENT(OnInputLost);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterIn, CritterView* /*critter*/);
+    ENTITY_EVENT(OnCritterIn, CritterView* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterOut, CritterView* /*critter*/);
+    ENTITY_EVENT(OnCritterOut, CritterView* /*critter*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemMapIn, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
+    ENTITY_EVENT(OnItemMapChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemMapOut, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemMapOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInvAllIn);
+    ENTITY_EVENT(OnItemInvAllIn);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInvIn, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemInvIn, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
+    ENTITY_EVENT(OnItemInvChanged, ItemView* /*item*/, ItemView* /*oldItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemInvOut, ItemView* /*item*/);
+    ENTITY_EVENT(OnItemInvOut, ItemView* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapLoad);
+    ENTITY_EVENT(OnMapLoad);
     ///@ ExportEvent
-    ENTITY_EVENT(MapUnload);
+    ENTITY_EVENT(OnMapUnload);
     ///@ ExportEvent
-    ENTITY_EVENT(ReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
+    ENTITY_EVENT(OnReceiveItems, vector<ItemView*> /*items*/, int /*param*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
+    ENTITY_EVENT(OnMapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
-    ENTITY_EVENT(InMessage, string /*text*/, int& /*sayType*/, uint& /*critterId*/, uint& /*delay*/);
+    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, uint& /*critterId*/, uint& /*delay*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OutMessage, string& /*text*/, int& /*sayType*/);
+    ENTITY_EVENT(OnOutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
-    ENTITY_EVENT(MessageBox, string /*text*/, int /*type*/, bool /*scriptCall*/);
+    ENTITY_EVENT(OnMessageBox, string /*text*/, int /*type*/, bool /*scriptCall*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CombatResult, vector<uint> /*result*/);
+    ENTITY_EVENT(OnCombatResult, vector<uint> /*result*/);
     ///@ ExportEvent
-    ENTITY_EVENT(ItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
+    ENTITY_EVENT(OnItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAction, bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
+    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Animation2dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
+    ENTITY_EVENT(OnAnimation2dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
     ///@ ExportEvent
-    ENTITY_EVENT(Animation3dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
+    ENTITY_EVENT(OnAnimation3dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
+    ENTITY_EVENT(OnCritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAnimationSubstitute, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
+    ENTITY_EVENT(OnCritterAnimationSubstitute, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, hstring& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
+    ENTITY_EVENT(OnCritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterCheckMoveItem, CritterView* /*critter*/, ItemView* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*critter*/, ItemView* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(CritterGetAttackDistantion, CritterView* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
 
     GeometryHelper GeomHelper;
     GameTimer GameTime;
