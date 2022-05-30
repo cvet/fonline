@@ -1280,6 +1280,22 @@ static uint HashedString_GetUHash(const hstring& self)
     return self.as_uint();
 }
 
+template<typename T>
+static void Entity_Create(asIScriptGeneric* gen)
+{
+    // Todo: user entity management
+}
+
+template<typename T>
+static void Entity_Get(asIScriptGeneric* gen)
+{
+}
+
+template<typename T>
+static void Entity_Delete(asIScriptGeneric* gen)
+{
+}
+
 struct StorageData
 {
     unordered_set<CScriptArray*> EnumArrays {};
@@ -1483,6 +1499,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     entity_has_statics.emplace(class_name); \
     entity_get_component_func_ptr.emplace("Static" class_name, asFUNCTION((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace("Static" class_name, asFUNCTION((Property_GetValue<real_class>)))
+
+#define REGISTER_ENTITY_MANAGEMENT(class_name, real_class) \
+    AS_VERIFY(engine->RegisterGlobalFunction(class_name "@+ Create" class_name "()", asFUNCTION((Entity_Create<real_class>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterGlobalFunction(class_name "@+ Get" class_name "(uint id)", asFUNCTION((Entity_Get<real_class>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterGlobalFunction("void Delete" class_name "(uint id)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterGlobalFunction("void Delete" class_name "(" class_name "@+ entity)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine))
 
     REGISTER_BASE_ENTITY("Entity", Entity);
 

@@ -544,7 +544,8 @@ def parseTags():
                 assert name not in gameEntities
                 gameEntities.append(name)
                 gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
-                        'HasProto': 'HasProto' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags}
+                        'HasProto': 'HasProto' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags,
+                        'Exported': True}
                 
                 assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
                 validTypes.add(name + 'Component')
@@ -594,7 +595,8 @@ def parseTags():
                 gameEntities.append(name)
                 gameEntitiesInfo[name] = {'Server': 'Server' + name if target in ['Common', 'Server'] else None,
                         'Client': 'Client' + name if target in ['Common', 'Client'] else None,
-                        'IsGlobal': 'Global' in flags, 'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags}
+                        'IsGlobal': 'Global' in flags, 'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags,
+                        'Exported': False}
                 
                 assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
                 validTypes.add(name + 'Component')
@@ -1896,6 +1898,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             if gameEntitiesInfo[entity]['HasStatics']:
                 assert not gameEntitiesInfo[entity]['IsGlobal']
                 registerLines.append('REGISTER_ENTITY_STATICS("' + entity + '", ' + engineEntityType + ');')
+            if not gameEntitiesInfo[entity]['Exported']:
+                registerLines.append('REGISTER_ENTITY_MANAGEMENT("' + entity + '", ' + engineEntityType + ');')
         registerLines.append('')
         
         # Generic funcdefs
