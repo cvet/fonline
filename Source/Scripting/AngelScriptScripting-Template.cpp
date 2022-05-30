@@ -108,68 +108,44 @@
 #if SERVER_SCRIPTING
 #define FOEngine FOServer
 #define SCRIPTING_CLASS ServerScriptSystem
-#define StorageData StorageData_Server
-#define ASGlobal ASGlobal_Server
 #elif CLIENT_SCRIPTING
 #define FOEngine FOClient
 #define SCRIPTING_CLASS ClientScriptSystem
-#define StorageData StorageData_Client
-#define ASGlobal ASGlobal_Client
 #elif SINGLE_SCRIPTING
 #define FOEngine FOSingle
 #define SCRIPTING_CLASS SingleScriptSystem
-#define StorageData StorageData_Single
-#define ASGlobal ASGlobal_Single
 #elif MAPPER_SCRIPTING
 #define FOEngine FOMapper
 #define SCRIPTING_CLASS MapperScriptSystem
-#define StorageData StorageData_Mapper
-#define ASGlobal ASGlobal_Mapper
 #endif
 #else
 #if !COMPILER_VALIDATION_MODE
 #if SERVER_SCRIPTING
 #define FOEngine AngelScriptServerCompiler
 #define SCRIPTING_CLASS ASCompiler_ServerScriptSystem
-#define StorageData StorageData_ServerCompiler
-#define ASGlobal ASGlobal_ServerCompiler
 #elif CLIENT_SCRIPTING
 #define FOEngine AngelScriptClientCompiler
 #define SCRIPTING_CLASS ASCompiler_ClientScriptSystem
-#define StorageData StorageData_ClientCompiler
-#define ASGlobal ASGlobal_ClientCompiler
 #elif SINGLE_SCRIPTING
 #define FOEngine AngelScriptSingleCompiler
 #define SCRIPTING_CLASS ASCompiler_SingleScriptSystem
-#define StorageData StorageData_SingleCompiler
-#define ASGlobal ASGlobal_SingleCompiler
 #elif MAPPER_SCRIPTING
 #define FOEngine AngelScriptMapperCompiler
 #define SCRIPTING_CLASS ASCompiler_MapperScriptSystem
-#define StorageData StorageData_MapperCompiler
-#define ASGlobal ASGlobal_MapperCompiler
 #endif
 #else
 #if SERVER_SCRIPTING
 #define FOEngine AngelScriptServerCompilerValidation
 #define SCRIPTING_CLASS ASCompiler_ServerScriptSystem_Validation
-#define StorageData StorageData_ServerCompilerValidation
-#define ASGlobal ASGlobal_ServerCompilerValidation
 #elif CLIENT_SCRIPTING
 #define FOEngine AngelScriptClientCompilerValidation
 #define SCRIPTING_CLASS ASCompiler_ClientScriptSystem_Validation
-#define StorageData StorageData_ClientCompilerValidation
-#define ASGlobal ASGlobal_ClientCompilerValidation
 #elif SINGLE_SCRIPTING
 #define FOEngine AngelScriptSingleCompilerValidation
 #define SCRIPTING_CLASS ASCompiler_SingleScriptSystem_Validation
-#define StorageData StorageData_SingleCompilerValidation
-#define ASGlobal ASGlobal_SingleCompilerValidation
 #elif MAPPER_SCRIPTING
 #define FOEngine AngelScriptMapperCompilerValidation
 #define SCRIPTING_CLASS ASCompiler_MapperScriptSystem_Validation
-#define StorageData StorageData_MapperCompilerValidation
-#define ASGlobal ASGlobal_MapperCompilerValidation
 #endif
 #endif
 #endif
@@ -268,8 +244,6 @@ public:
 #define SCRIPT_FUNC_THIS_CONV asCALL_GENERIC
 #define SCRIPT_METHOD(type, name) WRAP_MFN(type, name)
 #define SCRIPT_METHOD_CONV asCALL_GENERIC
-#define SCRIPT_FUNC_FUNCTOR(type, name) WRAP_MFN(type, name)
-#define SCRIPT_FUNC_FUNCTOR_CONV asCALL_GENERIC
 #else
 #define SCRIPT_FUNC(name) asFUNCTION(name)
 #define SCRIPT_FUNC_CONV asCALL_CDECL
@@ -277,13 +251,9 @@ public:
 #define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
 #define SCRIPT_METHOD(type, name) asMETHOD(type, name)
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
-#define SCRIPT_FUNC_FUNCTOR(type, name) asMETHOD(type, name)
-#define SCRIPT_FUNC_FUNCTOR_CONV asCALL_THISCALL_ASGLOBAL
 #endif
 
 #if !COMPILER_MODE
-struct StorageData;
-
 static void CallbackException(asIScriptContext* ctx, void* param)
 {
     // string str = ctx->GetExceptionString();
@@ -442,7 +412,7 @@ struct ScriptSystem::AngelScriptImpl
 
     FOEngine* GameEngine {};
     asIScriptEngine* Engine {};
-    StorageData* Storage {};
+    unordered_set<CScriptArray*> EnumArrays {};
     unordered_map<string, std::any> SettingsStorage {};
     asIScriptContext* CurrentCtx {};
     vector<asIScriptContext*> FreeContexts {};
@@ -1296,13 +1266,6 @@ static void Entity_Delete(asIScriptGeneric* gen)
 {
 }
 
-struct StorageData
-{
-    unordered_set<CScriptArray*> EnumArrays {};
-
-    ///@ CodeGen Storage
-};
-
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
 {
     UNUSED_VARIABLE(param);
@@ -1359,16 +1322,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AngelScriptData->GameEngine = game_engine;
     AngelScriptData->Engine = engine;
 #endif
-
-#if COMPILER_MODE
-    StorageData Storage;
-    auto* storage = &Storage;
-#else
-    AngelScriptData->Storage = new StorageData();
-    auto* storage = AngelScriptData->Storage;
-#endif
-
-    storage->Global.self = game_engine;
 
     int as_result;
     AS_VERIFY(engine->SetMessageCallback(asFUNCTION(CallbackMessage), nullptr, asCALL_CDECL));
@@ -1501,10 +1454,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     entity_get_value_func_ptr.emplace("Static" class_name, asFUNCTION((Property_GetValue<real_class>)))
 
 #define REGISTER_ENTITY_MANAGEMENT(class_name, real_class) \
-    AS_VERIFY(engine->RegisterGlobalFunction(class_name "@+ Create" class_name "()", asFUNCTION((Entity_Create<real_class>)), asCALL_GENERIC, game_engine)); \
-    AS_VERIFY(engine->RegisterGlobalFunction(class_name "@+ Get" class_name "(uint id)", asFUNCTION((Entity_Get<real_class>)), asCALL_GENERIC, game_engine)); \
-    AS_VERIFY(engine->RegisterGlobalFunction("void Delete" class_name "(uint id)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine)); \
-    AS_VERIFY(engine->RegisterGlobalFunction("void Delete" class_name "(" class_name "@+ entity)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine))
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Create" class_name "()", asFUNCTION((Entity_Create<real_class>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(uint id)", asFUNCTION((Entity_Get<real_class>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(uint id)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" class_name "@+ entity)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine))
+
+#define REGISTER_ENTITY_METHOD(entity_name, is_global_entity, method_decl, func) AS_VERIFY(engine->RegisterObjectMethod(is_global_entity ? entity_name "Singleton" : entity_name, method_decl, SCRIPT_FUNC_THIS(func), SCRIPT_FUNC_THIS_CONV))
 
     REGISTER_BASE_ENTITY("Entity", Entity);
 
@@ -1623,7 +1578,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             }
 
 #if !COMPILER_MODE
-            const auto it_enum = storage->EnumArrays.emplace(MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
+            const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
             RUNTIME_ASSERT(it_enum.second);
             AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), (void*)&(*it_enum.first)));
 #else

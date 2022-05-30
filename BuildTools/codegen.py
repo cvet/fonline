@@ -1558,7 +1558,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
         
         defineLines = []
-        storageLines = []
         globalLines = []
         registerLines = []
         
@@ -1568,9 +1567,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         defineLines.append('#define MAPPER_SCRIPTING ' + ('1' if target == 'Mapper' else '0'))
         defineLines.append('#define COMPILER_MODE ' + ('1' if isASCompiler else '0'))
         defineLines.append('#define COMPILER_VALIDATION_MODE ' + ('1' if isASCompilerValidation else '0'))
-        
-        # Storage
-        storageLines.append('ASGlobal Global;')
         
         # User entities
         if not isASCompiler:
@@ -1613,8 +1609,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('')
             
         # Marshalling functions
-        def writeMarshalingMethod(entity, targ, name, ret, params, isASGlobal):
-            ident = '    ' if isASGlobal else ''
+        def writeMarshalingMethod(entity, targ, name, ret, params):
             engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
             engineEntityTypeExtern = engineEntityType
             
@@ -1626,57 +1621,43 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 elif targ == 'Mapper':
                     engineEntityTypeExtern = 'FOMapper'
             
-            globalLines.append(ident + ('static ' if not isASGlobal else '') + metaTypeToASEngineType(ret, True) +
+            globalLines.append('static ' + metaTypeToASEngineType(ret, True) +
                     ' AS_' + targ + '_' + entity + '_' + name + '_' + nameMangling(params) + '(' +
-                    (engineEntityType + '* self' + (', ' if params else '') if not isASGlobal else '') +
+                    (engineEntityType + '* self' + (', ' if params else '')) +
                     ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in params]) +')')
-            globalLines.append(ident + '{')
+            globalLines.append('{')
             
             if not isASCompiler:
-                globalLines.append(ident + '    ENTITY_VERIFY(self);')
+                globalLines.append('    ENTITY_VERIFY(self);')
                 for p in params:
                     if p[0] in gameEntities:
-                        globalLines.append(ident + '    ENTITY_VERIFY(' + p[1] + ');')
+                        globalLines.append('    ENTITY_VERIFY(' + p[1] + ');')
                 for p in params:
-                    globalLines.append(ident + '    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
-                globalLines.append(ident + '    extern ' + metaTypeToEngineType(ret, target, False) + ' ' + targ + '_' + entity + '_' + name +
+                    globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
+                globalLines.append('    extern ' + metaTypeToEngineType(ret, target, False) + ' ' + targ + '_' + entity + '_' + name +
                         '(' + engineEntityTypeExtern + '*' + (', ' if params else '') + ', '.join([metaTypeToEngineType(p[0], target, True) for p in params]) + ');')
-                globalLines.append(ident + '    ' + ('auto out_result = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
+                globalLines.append('    ' + ('auto out_result = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
                         '(self' + (', ' if params else '') + ', '.join(['in_' + p[1] for p in params]) + ');')
                 for p in params:
                     pass # Marshall back
                 if ret != 'void':
-                    globalLines.append(ident + '    return ' + marshalBack(ret, 'out_result') + ';')
+                    globalLines.append('    return ' + marshalBack(ret, 'out_result') + ';')
             else:
                 # Stub for compiler
-                globalLines.append(ident + '    UNUSED_VARIABLE(self);')
+                globalLines.append('    UNUSED_VARIABLE(self);')
                 for p in params:
-                    globalLines.append(ident + '    UNUSED_VARIABLE(' + p[1] + ');')
-                globalLines.append(ident + '    throw ScriptCompilerException("Stub");')
+                    globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                globalLines.append('    throw ScriptCompilerException("Stub");')
             
-            globalLines.append(ident + '}')
+            globalLines.append('}')
             globalLines.append('')
             
         globalLines.append('// Marshalling entity methods')
         for entity in gameEntities:
-            if not gameEntitiesInfo[entity]['IsGlobal']:
-                for methodTag in codeGenTags['ExportMethod']:
-                    targ, ent, name, ret, params, exportFlags, comment = methodTag
-                    if targ in allowedTargets and ent == entity:
-                        writeMarshalingMethod(entity, targ, name, ret, params, False)
-        
-        globalLines.append('// Marshalling global functions')
-        globalLines.append('struct ASGlobal')
-        globalLines.append('{')
-        for entity in gameEntities:
-            if gameEntitiesInfo[entity]['IsGlobal']:
-                for methodTag in codeGenTags['ExportMethod']:
-                    targ, ent, name, ret, params, exportFlags, comment = methodTag
-                    if targ in allowedTargets and ent == entity:
-                        writeMarshalingMethod(entity, targ, name, ret, params, True)
-        globalLines.append('    FOEngine* self = nullptr;')
-        globalLines.append('};')
-        globalLines.append('')
+            for methodTag in codeGenTags['ExportMethod']:
+                targ, ent, name, ret, params, exportFlags, comment = methodTag
+                if targ in allowedTargets and ent == entity:
+                    writeMarshalingMethod(entity, targ, name, ret, params)
         
         # Marshal events
         globalLines.append('// Marshalling events')
@@ -1916,14 +1897,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
                 if targ in allowedTargets and ent == entity:
-                    if gameEntitiesInfo[entity]['IsGlobal']:
-                        registerLines.append('AS_VERIFY(engine->RegisterGlobalFunction("' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
-                                ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_FUNCTOR(ASGlobal, AS_' + targ + '_' +
-                                entity + '_' + name + '_' + nameMangling(params) + '), SCRIPT_FUNC_FUNCTOR_CONV, &storage->Global));')
-                    else:
-                        registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("' + entity + '", "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
-                                ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", SCRIPT_FUNC_THIS(AS_' + targ + '_' +
-                                entity + '_' + name + '_' + nameMangling(params) + '), SCRIPT_FUNC_THIS_CONV));')
+                    registerLines.append('REGISTER_ENTITY_METHOD("' + entity+ '", ' + ('true' if gameEntitiesInfo[entity]['IsGlobal'] else 'false') +
+                            ', "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
+                            ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", AS_' + targ + '_' +
+                            entity + '_' + name + '_' + nameMangling(params) + ');')
         registerLines.append('')
         
         # Register events
@@ -1973,7 +1950,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         
         # Modify file content (from bottom to top)
         insertCodeGenLines(registerLines, 'Register')
-        insertCodeGenLines(storageLines, 'Storage')
         insertCodeGenLines(globalLines, 'Global')
         insertCodeGenLines(defineLines, 'Defines')
 

@@ -516,6 +516,52 @@ static float ScriptString_ToFloat(const string& str, float defaultValue)
     return result;
 }
 
+static bool ScriptString_TryToInt(const string& str, int& result)
+{
+    const char* p = str.c_str();
+    while (*p == ' ' || *p == '\t')
+        ++p;
+
+    char* end_str = nullptr;
+    int result_;
+    if (p[0] && p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
+        result_ = (int)strtol(p + 2, &end_str, 16);
+    else
+        result_ = (int)strtol(p, &end_str, 10);
+
+    if (!end_str || end_str == p)
+        return false;
+
+    while (*end_str == ' ' || *end_str == '\t')
+        ++end_str;
+    if (*end_str)
+        return false;
+
+    result = result_;
+    return true;
+}
+
+static bool ScriptString_TryToFloat(const string& str, float& result)
+{
+    const char* p = str.c_str();
+    while (*p == ' ' || *p == '\t')
+        ++p;
+
+    char* end_str = NULL;
+    float result_ = (float)strtod(p, &end_str);
+
+    if (!end_str || end_str == p)
+        return false;
+
+    while (*end_str == ' ' || *end_str == '\t')
+        ++end_str;
+    if (*end_str)
+        return false;
+
+    result = result_;
+    return true;
+}
+
 static bool ScriptString_StartsWith(const string& str, const string& other)
 {
     if (str.length() < other.length())
@@ -654,6 +700,10 @@ void ScriptExtensions::RegisterScriptStdStringExtensions(asIScriptEngine* engine
     r = engine->RegisterObjectMethod("string", "int toInt(int defaultValue = 0) const", SCRIPT_FUNC_THIS(ScriptString_ToInt), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);
     r = engine->RegisterObjectMethod("string", "float toFloat(float defaultValue = 0) const", SCRIPT_FUNC_THIS(ScriptString_ToFloat), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "bool tryToInt(int& result) const", SCRIPT_FUNC_THIS(ScriptString_TryToInt), SCRIPT_FUNC_THIS_CONV);
+    RUNTIME_ASSERT(r >= 0);
+    r = engine->RegisterObjectMethod("string", "bool tryToFloat(float& result) const", SCRIPT_FUNC_THIS(ScriptString_TryToFloat), SCRIPT_FUNC_THIS_CONV);
     RUNTIME_ASSERT(r >= 0);
 
     // Find methods

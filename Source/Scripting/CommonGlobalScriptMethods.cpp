@@ -255,30 +255,10 @@
 
 ///# ...
 ///# param text ...
-///# param result ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Common_Game_StrToInt([[maybe_unused]] FOEngineBase* engine, string_view text, int& result)
+[[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
-    if (!_str(text).isNumber()) {
-        return false;
-    }
-    result = _str(text).toInt();
-    return true;
-}
-
-///# ...
-///# param text ...
-///# param result ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Common_Game_StrToFloat([[maybe_unused]] FOEngineBase* engine, string_view text, float& result)
-{
-    if (!_str(text).isNumber()) {
-        return false;
-    }
-    result = _str(text).toFloat();
-    return true;
+    WriteLog("{}", text);
 }
 
 static void PrintLog(string& log, bool last_call, const std::function<void(string_view)>& log_callback)
@@ -334,18 +314,15 @@ static auto SystemCall(string_view command, const std::function<void(string_view
         return -1;
     }
 
-    STARTUPINFOW si;
-    std::memset(&si, 0, sizeof(STARTUPINFO));
+    STARTUPINFOW si = {};
     si.cb = sizeof(STARTUPINFO);
     si.hStdError = out_write;
     si.hStdOutput = out_write;
     si.dwFlags |= STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_HIDE;
 
-    PROCESS_INFORMATION pi;
-    std::memset(&pi, 0, sizeof(PROCESS_INFORMATION));
-
-    auto* cmd_line = _wcsdup(_str(std::move(command)).toWideChar().c_str());
+    PROCESS_INFORMATION pi = {};
+    auto* cmd_line = _wcsdup(_str(command).toWideChar().c_str());
     const auto result = ::CreateProcessW(nullptr, cmd_line, nullptr, nullptr, TRUE, 0, nullptr, nullptr, &si, &pi);
     ::free(cmd_line);
 
@@ -441,14 +418,6 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 [[maybe_unused]] int Common_Game_Random([[maybe_unused]] FOEngineBase* engine, int minValue, int maxValue)
 {
     return GenericUtils::Random(minValue, maxValue);
-}
-
-///# ...
-///# param text ...
-///@ ExportMethod
-[[maybe_unused]] void Common_Game_Log([[maybe_unused]] FOEngineBase* engine, string_view text)
-{
-    WriteLog("{}", text);
 }
 
 ///# ...
