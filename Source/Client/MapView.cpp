@@ -493,7 +493,7 @@ void MapView::AddItemToField(ItemHexView* item)
     GetField(hx, hy).AddItem(item, nullptr);
 
     if (item->IsNonEmptyBlockLines()) {
-        _engine->GeomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, _maxHexX, _maxHexY, [this, item](auto hx2, auto hy2) { GetField(hx2, hy2).AddItem(nullptr, item); });
+        _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, _maxHexX, _maxHexY, [this, item](auto hx2, auto hy2) { GetField(hx2, hy2).AddItem(nullptr, item); });
     }
 }
 
@@ -505,7 +505,7 @@ void MapView::RemoveItemFromField(ItemHexView* item)
     GetField(hx, hy).EraseItem(item, nullptr);
 
     if (item->IsNonEmptyBlockLines()) {
-        _engine->GeomHelper.ForEachBlockLines(item->GetBlockLines(), hx, hy, _maxHexX, _maxHexY, [this, item](auto hx2, auto hy2) { GetField(hx2, hy2).EraseItem(nullptr, item); });
+        _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, _maxHexX, _maxHexY, [this, item](auto hx2, auto hy2) { GetField(hx2, hy2).EraseItem(nullptr, item); });
     }
 }
 
@@ -644,7 +644,7 @@ void MapView::ProcessItems()
                 const auto hx = item->GetHexX();
                 const auto hy = item->GetHexY();
 
-                const auto [x, y] = _engine->GeomHelper.GetHexInterval(hx, hy, step_hx, step_hy);
+                const auto [x, y] = _engine->Geometry.GetHexInterval(hx, hy, step_hx, step_hy);
                 item->EffOffsX -= static_cast<float>(x);
                 item->EffOffsY -= static_cast<float>(y);
 
@@ -782,13 +782,13 @@ auto MapView::RunEffect(hstring eff_pid, ushort from_hx, ushort from_hy, ushort 
     if (from_hx != to_hx || from_hy != to_hy) {
         item->EffSteps.emplace_back(from_hx, from_hy);
         TraceBullet(from_hx, from_hy, to_hx, to_hy, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, nullptr, &item->EffSteps, false);
-        auto [x, y] = _engine->GeomHelper.GetHexInterval(from_hx, from_hy, to_hx, to_hy);
+        auto [x, y] = _engine->Geometry.GetHexInterval(from_hx, from_hy, to_hx, to_hy);
         y += GenericUtils::Random(5, 25); // Center of body
         std::tie(sx, sy) = GenericUtils::GetStepsCoords(0, 0, x, y);
         dist = GenericUtils::DistSqrt(0, 0, x, y);
     }
 
-    item->SetEffect(sx, sy, dist, _engine->GeomHelper.GetFarDir(from_hx, from_hy, to_hx, to_hy));
+    item->SetEffect(sx, sy, dist, _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy));
 
     AddItemToField(item);
 
@@ -824,7 +824,7 @@ void MapView::SetCursorPos(CritterHexView* cr, int x, int y, bool show_steps, bo
         const auto cy = cr->GetHexY();
         const auto mh = cr->GetMultihex();
 
-        if ((cx == hx && cy == hy) || (field.Flags.IsNotPassed && (mh == 0u || !_engine->GeomHelper.CheckDist(cx, cy, hx, hy, mh)))) {
+        if ((cx == hx && cy == hy) || (field.Flags.IsNotPassed && (mh == 0u || !_engine->Geometry.CheckDist(cx, cy, hx, hy, mh)))) {
             _drawCursorX = -1;
         }
         else {
@@ -1427,7 +1427,7 @@ void MapView::MarkLightEnd(ushort from_hx, ushort from_hy, ushort to_hx, ushort 
         }
     }
 
-    const int dir = _engine->GeomHelper.GetFarDir(from_hx, from_hy, to_hx, to_hy);
+    const int dir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
     if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
         MarkLight(to_hx, to_hy, inten);
         if (is_wall) {
@@ -1468,7 +1468,7 @@ void MapView::MarkLightStep(ushort from_hx, ushort from_hy, ushort to_hx, ushort
     auto& field = GetField(to_hx, to_hy);
     if (field.Flags.IsWallTransp) {
         const auto north_south = (field.Corner == CornerType::NorthSouth || field.Corner == CornerType::North || field.Corner == CornerType::West);
-        const int dir = _engine->GeomHelper.GetFarDir(from_hx, from_hy, to_hx, to_hy);
+        const int dir = _engine->Geometry.GetFarDir(from_hx, from_hy, to_hx, to_hy);
         if (dir == 0 || (north_south && dir == 1) || (!north_south && (dir == 4 || dir == 5))) {
             MarkLight(to_hx, to_hy, inten);
         }
@@ -1658,14 +1658,14 @@ void MapView::ParseLightTriangleFan(LightSource& ls)
             if (seek_start) {
                 // Move to start position
                 for (auto l = 0; l < dist; l++) {
-                    _engine->GeomHelper.MoveHexByDirUnsafe(hx_far, hy_far, _engine->Settings.MapHexagonal ? 0 : 7);
+                    _engine->Geometry.MoveHexByDirUnsafe(hx_far, hy_far, _engine->Settings.MapHexagonal ? 0 : 7);
                 }
                 seek_start = false;
                 j = -1;
             }
             else {
                 // Move to next hex
-                _engine->GeomHelper.MoveHexByDirUnsafe(hx_far, hy_far, dir);
+                _engine->Geometry.MoveHexByDirUnsafe(hx_far, hy_far, dir);
             }
 
             auto hx_ = static_cast<ushort>(std::clamp(hx_far, 0, _maxHexX - 1));
@@ -1682,7 +1682,7 @@ void MapView::ParseLightTriangleFan(LightSource& ls)
                 short* ox = nullptr;
                 short* oy = nullptr;
                 if (static_cast<int>(hx_) != hx_far || static_cast<int>(hy_) != hy_far) {
-                    int a = alpha - _engine->GeomHelper.DistGame(hx, hy, hx_, hy_) * alpha / dist;
+                    int a = alpha - _engine->Geometry.DistGame(hx, hy, hx_, hy_) * alpha / dist;
                     a = std::clamp(a, 0, alpha);
                     color = COLOR_RGBA(a, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
                 }
@@ -1691,7 +1691,7 @@ void MapView::ParseLightTriangleFan(LightSource& ls)
                     ox = ls.OffsX;
                     oy = ls.OffsY;
                 }
-                const auto [x, y] = _engine->GeomHelper.GetHexInterval(hx, hy, hx_, hy_);
+                const auto [x, y] = _engine->Geometry.GetHexInterval(hx, hy, hx_, hy_);
                 points.push_back({base_x + x, base_y + y, color, ox, oy});
                 last_hx = hx_;
                 last_hy = hy_;
@@ -2233,7 +2233,7 @@ void MapView::GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const
     auto& center_hex = _viewField[_hVisible / 2 * _wVisible + _wVisible / 2];
     const auto center_hx = center_hex.HexX;
     const auto center_hy = center_hex.HexY;
-    auto [xx, yy] = _engine->GeomHelper.GetHexInterval(center_hx, center_hy, hx, hy);
+    auto [xx, yy] = _engine->Geometry.GetHexInterval(center_hx, center_hy, hx, hy);
 
     x += center_hex.ScrX;
     y += center_hex.ScrY;
@@ -2452,7 +2452,7 @@ auto MapView::Scroll() -> bool
     if ((AutoScroll.SoftLockedCritter != 0u) && !is_scroll) {
         auto* cr = GetCritter(AutoScroll.SoftLockedCritter);
         if (cr != nullptr && (cr->GetHexX() != AutoScroll.CritterLastHexX || cr->GetHexY() != AutoScroll.CritterLastHexY)) {
-            const auto [ox, oy] = _engine->GeomHelper.GetHexInterval(AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY());
+            const auto [ox, oy] = _engine->Geometry.GetHexInterval(AutoScroll.CritterLastHexX, AutoScroll.CritterLastHexY, cr->GetHexX(), cr->GetHexY());
             ScrollOffset(ox, oy, 0.02f, true);
             AutoScroll.CritterLastHexX = cr->GetHexX();
             AutoScroll.CritterLastHexY = cr->GetHexY();
@@ -2637,13 +2637,13 @@ auto MapView::ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool
         auto hx = static_cast<ushort>(_viewField[pos].HexX);
         auto hy = static_cast<ushort>(_viewField[pos].HexY);
 
-        _engine->GeomHelper.MoveHexByDir(hx, hy, dir1, _maxHexX, _maxHexY);
+        _engine->Geometry.MoveHexByDir(hx, hy, dir1, _maxHexX, _maxHexY);
         if (GetField(hx, hy).Flags.ScrollBlock) {
             return true;
         }
 
         if (dir2 >= 0) {
-            _engine->GeomHelper.MoveHexByDir(hx, hy, dir2, _maxHexX, _maxHexY);
+            _engine->Geometry.MoveHexByDir(hx, hy, dir2, _maxHexX, _maxHexY);
             if (GetField(hx, hy).Flags.ScrollBlock) {
                 return true;
             }
@@ -2755,7 +2755,7 @@ void MapView::ScrollToHex(int hx, int hy, float speed, bool can_stop)
     auto sy = 0;
     GetScreenHexes(sx, sy);
 
-    const auto [ox, oy] = _engine->GeomHelper.GetHexInterval(sx, sy, hx, hy);
+    const auto [ox, oy] = _engine->Geometry.GetHexInterval(sx, sy, hx, hy);
 
     AutoScroll.Active = false;
     ScrollOffset(ox, oy, speed, can_stop);
@@ -3049,19 +3049,19 @@ auto MapView::TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool anim
     cr->SetHexX(hx);
     cr->SetHexY(hy);
 
-    const auto dir = _engine->GeomHelper.GetFarDir(old_hx, old_hy, hx, hy);
+    const auto dir = _engine->Geometry.GetFarDir(old_hx, old_hy, hx, hy);
 
     if (animate) {
         cr->Move(dir);
-        if (_engine->GeomHelper.DistGame(old_hx, old_hy, hx, hy) > 1) {
-            if (_engine->GeomHelper.MoveHexByDir(hx, hy, _engine->GeomHelper.ReverseDir(dir), _maxHexX, _maxHexY)) {
-                const auto [ox, oy] = _engine->GeomHelper.GetHexInterval(hx, hy, old_hx, old_hy);
+        if (_engine->Geometry.DistGame(old_hx, old_hy, hx, hy) > 1) {
+            if (_engine->Geometry.MoveHexByDir(hx, hy, _engine->Geometry.ReverseDir(dir), _maxHexX, _maxHexY)) {
+                const auto [ox, oy] = _engine->Geometry.GetHexInterval(hx, hy, old_hx, old_hy);
                 cr->AddOffsExt(static_cast<short>(ox), static_cast<short>(oy));
             }
         }
     }
     else {
-        const auto [ox, oy] = _engine->GeomHelper.GetHexInterval(hx, hy, old_hx, old_hy);
+        const auto [ox, oy] = _engine->Geometry.GetHexInterval(hx, hy, old_hx, old_hy);
         cr->AddOffsExt(static_cast<short>(ox), static_cast<short>(oy));
     }
 
@@ -3072,7 +3072,7 @@ auto MapView::TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool anim
 void MapView::SetMultihex(ushort hx, ushort hy, uint multihex, bool set)
 {
     if (multihex != 0u) {
-        const auto [sx, sy] = _engine->GeomHelper.GetHexOffsets((hx % 2) != 0);
+        const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
         for (uint i = 0, j = GenericUtils::NumericalNumber(multihex) * _engine->Settings.MapDirCount; i < j; i++) {
             const auto cx = static_cast<short>(hx) + sx[i];
@@ -3110,16 +3110,16 @@ auto MapView::GetHexScreenPos(int x, int y, ushort& hx, ushort& hy) const -> boo
                 if (_picHexMask != nullptr) {
                     const auto r = (_engine->SprMngr.GetPixColor(_picHexMask->Ind[0], static_cast<int>(xf - x_), static_cast<int>(yf - y_), true) & 0x00FF0000) >> 16;
                     if (r == 50) {
-                        _engine->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 5u : 6u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 5u : 6u);
                     }
                     else if (r == 100) {
-                        _engine->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 0u : 0u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 0u : 0u);
                     }
                     else if (r == 150) {
-                        _engine->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 3u : 4u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 3u : 4u);
                     }
                     else if (r == 200) {
-                        _engine->GeomHelper.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 2u : 2u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 2u : 2u);
                     }
                 }
 
@@ -3335,7 +3335,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
             int hx = coords[p].first;
             int hy = coords[p].second;
 
-            const auto [sx, sy] = _engine->GeomHelper.GetHexOffsets((hx % 2) != 0);
+            const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
             for (const auto j : xrange(_engine->Settings.MapDirCount)) {
                 auto nx = hx + sx[j];
@@ -3356,7 +3356,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                     auto nx_ = nx;
                     auto ny_ = ny;
                     for (uint k = 0; k < mh; k++) {
-                        _engine->GeomHelper.MoveHexByDirUnsafe(nx_, ny_, static_cast<uchar>(j));
+                        _engine->Geometry.MoveHexByDirUnsafe(nx_, ny_, static_cast<uchar>(j));
                     }
                     if (nx_ < 0 || ny_ < 0 || nx_ >= _maxHexX || ny_ >= _maxHexY) {
                         continue;
@@ -3377,7 +3377,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                     auto nx_2 = nx_;
                     auto ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
-                        _engine->GeomHelper.MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uchar>(dir_));
+                        _engine->Geometry.MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uchar>(dir_));
                         not_passed = GetField(static_cast<ushort>(nx_2), static_cast<ushort>(ny_2)).Flags.IsNotPassed;
                     }
                     if (not_passed) {
@@ -3393,7 +3393,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                     nx_2 = nx_;
                     ny_2 = ny_;
                     for (uint k = 0; k < steps_count && !not_passed; k++) {
-                        _engine->GeomHelper.MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uchar>(dir_));
+                        _engine->Geometry.MoveHexByDirUnsafe(nx_2, ny_2, static_cast<uchar>(dir_));
                         not_passed = GetField(static_cast<ushort>(nx_2), static_cast<ushort>(ny_2)).Flags.IsNotPassed;
                     }
                     if (not_passed) {
@@ -3404,7 +3404,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
                 GRID(nx, ny) = numindex;
                 coords.emplace_back(nx, ny);
 
-                if (cut >= 0 && _engine->GeomHelper.CheckDist(static_cast<ushort>(nx), static_cast<ushort>(ny), end_x, end_y, cut)) {
+                if (cut >= 0 && _engine->Geometry.CheckDist(static_cast<ushort>(nx), static_cast<ushort>(ny), end_x, end_y, cut)) {
                     end_x = static_cast<ushort>(nx);
                     end_y = static_cast<ushort>(ny);
                     return true;
@@ -3768,7 +3768,7 @@ auto MapView::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist,
     }
 
     if (dist == 0u) {
-        dist = _engine->GeomHelper.DistGame(hx, hy, tx, ty);
+        dist = _engine->Geometry.DistGame(hx, hy, tx, ty);
     }
 
     auto cx = hx;
@@ -3776,7 +3776,7 @@ auto MapView::TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist,
     auto old_cx = cx;
     auto old_cy = cy;
 
-    LineTracer line_tracer(_engine->Settings, hx, hy, tx, ty, _maxHexX, _maxHexY, angle);
+    LineTracer line_tracer(_engine->Geometry, hx, hy, tx, ty, _maxHexX, _maxHexY, angle);
 
     for (uint i = 0; i < dist; i++) {
         if (_engine->Settings.MapHexagonal) {
@@ -3850,7 +3850,7 @@ void MapView::FindSetCenter(int cx, int cy)
         auto i = 0;
 
         for (; i < steps; i++) {
-            if (!_engine->GeomHelper.MoveHexByDir(sx, sy, static_cast<uchar>(dirs[i % dirs_index]), _maxHexX, _maxHexY)) {
+            if (!_engine->Geometry.MoveHexByDir(sx, sy, static_cast<uchar>(dirs[i % dirs_index]), _maxHexX, _maxHexY)) {
                 break;
             }
 
@@ -3868,7 +3868,7 @@ void MapView::FindSetCenter(int cx, int cy)
         }
 
         for (; i < steps; i++) {
-            _engine->GeomHelper.MoveHexByDir(hx, hy, _engine->GeomHelper.ReverseDir(static_cast<uchar>(dirs[i % dirs_index])), _maxHexX, _maxHexY);
+            _engine->Geometry.MoveHexByDir(hx, hy, _engine->Geometry.ReverseDir(static_cast<uchar>(dirs[i % dirs_index])), _maxHexX, _maxHexY);
         }
     };
 
@@ -4124,7 +4124,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushor
     vector<pair<ushort, ushort>> hexes;
 
     if (_engine->Settings.MapHexagonal) {
-        auto [x, y] = _engine->GeomHelper.GetHexInterval(rect.Left, rect.Top, rect.Right, rect.Bottom);
+        auto [x, y] = _engine->Geometry.GetHexInterval(rect.Left, rect.Top, rect.Right, rect.Bottom);
         x = -x;
 
         const auto dx = x / _engine->Settings.MapHexWidth;
@@ -4165,7 +4165,7 @@ auto MapView::GetHexesRect(const IRect& rect) const -> vector<pair<ushort, ushor
         }
     }
     else {
-        auto [rw, rh] = _engine->GeomHelper.GetHexInterval(rect.Left, rect.Top, rect.Right, rect.Bottom);
+        auto [rw, rh] = _engine->Geometry.GetHexInterval(rect.Left, rect.Top, rect.Right, rect.Bottom);
         if (rw == 0) {
             rw = 1;
         }

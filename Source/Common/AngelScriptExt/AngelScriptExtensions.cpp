@@ -422,9 +422,7 @@ static string ScriptString_GetAt(const string& str, int i)
         // Set a script exception
         asIScriptContext* ctx = asGetActiveContext();
         ctx->SetException("Out of range");
-
-        // Return a null pointer
-        return 0;
+        return {};
     }
 
     return string(str.c_str() + i, length);

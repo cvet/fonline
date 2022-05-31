@@ -519,7 +519,7 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
         if (dist == -1) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
-        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
     }
@@ -549,7 +549,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
         if (dist == -1) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
-        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
     }
@@ -579,7 +579,7 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
         if (dist == -1) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
-        else if (_engine->GeomHelper.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
+        else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
     }

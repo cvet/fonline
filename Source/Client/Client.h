@@ -44,7 +44,6 @@
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
-#include "GeometryHelper.h"
 #include "ItemHexView.h"
 #include "ItemView.h"
 #include "Keyboard.h"
@@ -219,7 +218,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
 
-    GeometryHelper GeomHelper;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;

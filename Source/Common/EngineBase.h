@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "EntityProperties.h"
+#include "GeometryHelper.h"
 #include "Properties.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
@@ -70,6 +71,7 @@ public:
     void FinalizeDataRegistration();
 
     GlobalSettings& Settings;
+    GeometryHelper Geometry;
     ScriptSystem* ScriptSys {};
     FileSystem FileSys {};
 

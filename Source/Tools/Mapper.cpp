@@ -1729,7 +1729,7 @@ void FOMapper::IntLMouseDown()
                         vector<uchar> steps;
                         if (CurMap->FindPath(nullptr, hx, hy, SelectHexX1, SelectHexY1, steps, -1)) {
                             for (const auto step : steps) {
-                                if (GeomHelper.MoveHexByDir(hx, hy, step, CurMap->GetWidth(), CurMap->GetHeight())) {
+                                if (Geometry.MoveHexByDir(hx, hy, step, CurMap->GetWidth(), CurMap->GetHeight())) {
                                     cr->MoveSteps.emplace_back(hx, hy);
                                 }
                                 else {
@@ -2665,10 +2665,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             if (Settings.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
+                    Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
                 }
                 for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2u : 5u);
+                    Geometry.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2u : 5u);
                 }
             }
             else {
@@ -2688,10 +2688,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             if (Settings.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
+                    Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
                 }
                 for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
+                    Geometry.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
                 }
             }
             else {
@@ -2737,10 +2737,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             if (Settings.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
+                    Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw & 1) != 0 ? 4 : 3) : ((sw & 1) != 0 ? 0 : 1));
                 }
                 for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
+                    Geometry.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2 : 5);
                 }
             }
             else {
@@ -2791,10 +2791,10 @@ auto FOMapper::SelectMove(bool hex_move, int& offs_hx, int& offs_hy, int& offs_x
             if (Settings.MapHexagonal) {
                 auto sw = switcher;
                 for (auto k = 0, l = std::abs(offs_hx); k < l; k++, sw++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
+                    Geometry.MoveHexByDirUnsafe(hx, hy, offs_hx > 0 ? ((sw % 2) != 0 ? 4u : 3u) : ((sw % 2) != 0 ? 0u : 1u));
                 }
                 for (auto k = 0, l = std::abs(offs_hy); k < l; k++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2u : 5u);
+                    Geometry.MoveHexByDirUnsafe(hx, hy, offs_hy > 0 ? 2u : 5u);
                 }
             }
             else {
@@ -2988,7 +2988,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
             for (auto d = 0; d < 6; d++) {
                 ushort hx_ = hx;
                 ushort hy_ = hy;
-                GeomHelper.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
+                Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
                 if (CurMap->GetField(hx_, hy_).Crit == nullptr) {
                     hx = hx_;
                     hy = hy_;
@@ -3146,7 +3146,7 @@ void FOMapper::BufferPaste(int, int)
                 for (int d = 0; d < 6; d++) {
                     ushort hx_ = entity_buf.HexX;
                     ushort hy_ = entity_buf.HexY;
-                    GeomHelper.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
+                    Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
                     if (CurMap->GetField(hx_, hy_).Crit == nullptr) {
                         hx = hx_;
                         hy = hy_;

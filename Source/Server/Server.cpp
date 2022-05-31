@@ -57,7 +57,6 @@ FOServer::FOServer(GlobalSettings& settings) :
     FOEngineBase(settings, PropertiesRelationType::None, nullptr),
 #endif
 
-    GeomHelper(Settings),
     GameTime(Settings),
     ProtoMngr(this),
     DeferredCallMngr(this),
@@ -1671,7 +1670,7 @@ auto FOServer::MoveCritter(Critter* cr, ushort hx, ushort hy, uint move_params) 
     // Check passed
     const auto fx = cr->GetHexX();
     const auto fy = cr->GetHexY();
-    const auto dir = GeomHelper.GetNearDir(fx, fy, hx, hy);
+    const auto dir = Geometry.GetNearDir(fx, fy, hx, hy);
     const auto multihex = cr->GetMultihex();
 
     if (!map->IsMovePassed(hx, hy, dir, multihex)) {
@@ -2408,7 +2407,7 @@ void FOServer::Process_Move(Player* player)
     }
 
     // Check dist
-    if (!GeomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, 1)) {
+    if (!Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, 1)) {
         cr->Send_Position(cr);
         return;
     }
@@ -2881,7 +2880,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
     // Check for path recalculation
     if (!cr->Moving.Steps.empty() && cr->Moving.TargId != 0u) {
         auto* targ = cr->GetCrSelf(cr->Moving.TargId);
-        if (targ == nullptr || ((cr->Moving.HexX != 0u || cr->Moving.HexY != 0u) && !GeomHelper.CheckDist(targ->GetHexX(), targ->GetHexY(), cr->Moving.HexX, cr->Moving.HexY, 0))) {
+        if (targ == nullptr || ((cr->Moving.HexX != 0u || cr->Moving.HexY != 0u) && !Geometry.CheckDist(targ->GetHexX(), targ->GetHexY(), cr->Moving.HexX, cr->Moving.HexY, 0))) {
             cr->Moving.Steps.clear();
         }
     }
@@ -3007,7 +3006,7 @@ void FOServer::ProcessCritterMoving(Critter* cr)
     const auto& steps = cr->Moving.Steps;
     if (!cr->Moving.Steps.empty() && cr->Moving.Iter < steps.size()) {
         const auto& ps = steps[cr->Moving.Iter];
-        if (!GeomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), ps.HexX, ps.HexY, 1) || !MoveCritter(cr, ps.HexX, ps.HexY, ps.MoveParams)) {
+        if (!Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), ps.HexX, ps.HexY, 1) || !MoveCritter(cr, ps.HexX, ps.HexY, ps.MoveParams)) {
             // Error
             cr->Moving.Steps.clear();
             cr->Broadcast_Position();
@@ -3524,7 +3523,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
             auto talk_distance = npc->GetTalkDistance();
             talk_distance = (talk_distance != 0u ? talk_distance : Settings.TalkDistance) + cl->GetMultihex();
-            if (!GeomHelper.CheckDist(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance)) {
+            if (!Geometry.CheckDist(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY(), talk_distance)) {
                 cl->Send_Position(cl);
                 cl->Send_Position(npc);
                 cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
@@ -3576,8 +3575,8 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
         }
 
         if (!ignore_distance) {
-            const int dir = GeomHelper.GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
-            npc->SetDir(GeomHelper.ReverseDir(dir));
+            const int dir = Geometry.GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
+            npc->SetDir(Geometry.ReverseDir(dir));
             npc->Broadcast_Dir();
             cl->SetDir(dir);
             cl->Broadcast_Dir();
@@ -3586,7 +3585,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
     }
     // Talk with hex
     else {
-        if (!ignore_distance && !GeomHelper.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
+        if (!ignore_distance && !Geometry.CheckDist(cl->GetHexX(), cl->GetHexY(), hx, hy, Settings.TalkDistance + cl->GetMultihex())) {
             cl->Send_Position(cl);
             cl->Send_TextMsg(cl, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             WriteLog("Wrong distance to hexes, hx {}, hy {}, client '{}'", hx, hy, cl->GetName());

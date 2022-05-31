@@ -53,6 +53,11 @@ GeometryHelper::~GeometryHelper()
     }
 }
 
+auto GeometryHelper::IsHexagonal() const -> bool
+{
+    return _settings.MapHexagonal;
+}
+
 void GeometryHelper::InitializeHexOffsets() const
 {
     const auto size = (MAX_HEX_OFFSET * MAX_HEX_OFFSET / 2 + MAX_HEX_OFFSET / 2) * _settings.MapDirCount;

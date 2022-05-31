@@ -883,8 +883,8 @@ auto CritterHexView::GetWalkHexOffsets(uchar dir) const -> tuple<short, short>
 {
     auto hx = 1;
     auto hy = 1;
-    _engine->GeomHelper.MoveHexByDirUnsafe(hx, hy, dir);
-    return _engine->GeomHelper.GetHexInterval(hx, hy, 1, 1);
+    _engine->Geometry.MoveHexByDirUnsafe(hx, hy, dir);
+    return _engine->Geometry.GetHexInterval(hx, hy, 1, 1);
 }
 
 void CritterHexView::SetText(string_view str, uint color, uint text_delay)

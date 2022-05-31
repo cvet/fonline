@@ -53,7 +53,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const vector<uch
 FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
     FOEngineBase(settings, props_relation, register_data_callback),
 
-    GeomHelper(Settings),
     GameTime(Settings),
     ProtoMngr(this),
     EffectMngr(Settings, FileSys),
@@ -363,20 +362,20 @@ void FOClient::LookBordersPrepare()
             if (seek_start) {
                 // Move to start position
                 for (uint l = 0; l < dist; l++) {
-                    GeomHelper.MoveHexByDirUnsafe(hx, hy, Settings.MapHexagonal ? 0 : 7);
+                    Geometry.MoveHexByDirUnsafe(hx, hy, Settings.MapHexagonal ? 0 : 7);
                 }
                 seek_start = false;
                 j = -1;
             }
             else {
                 // Move to next hex
-                GeomHelper.MoveHexByDirUnsafe(hx, hy, static_cast<uchar>(dir));
+                Geometry.MoveHexByDirUnsafe(hx, hy, static_cast<uchar>(dir));
             }
 
             auto hx_ = static_cast<ushort>(std::clamp(hx, 0, maxhx - 1));
             auto hy_ = static_cast<ushort>(std::clamp(hy, 0, maxhy - 1));
             if (IsBitSet(Settings.LookChecks, LOOK_CHECK_DIR)) {
-                const int dir_ = GeomHelper.GetFarDir(base_hx, base_hy, hx_, hy_);
+                const int dir_ = Geometry.GetFarDir(base_hx, base_hy, hx_, hy_);
                 auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
                 if (ii > static_cast<int>(Settings.MapDirCount / 2)) {
                     ii = Settings.MapDirCount - ii;
@@ -395,7 +394,7 @@ void FOClient::LookBordersPrepare()
                 hy_ = block.second;
             }
 
-            auto dist_look = GeomHelper.DistGame(base_hx, base_hy, hx_, hy_);
+            auto dist_look = Geometry.DistGame(base_hx, base_hy, hx_, hy_);
             if (_drawLookBorders) {
                 auto x = 0;
                 auto y = 0;
@@ -415,7 +414,7 @@ void FOClient::LookBordersPrepare()
                 auto x_ = 0;
                 auto y_ = 0;
                 CurMap->GetHexCurrentPosition(hx_2, hy_2, x_, y_);
-                const auto result_shoot_dist = GeomHelper.DistGame(base_hx, base_hy, hx_2, hy_2);
+                const auto result_shoot_dist = Geometry.DistGame(base_hx, base_hy, hx_2, hy_2);
                 auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->SprOx : nullptr);
                 auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->SprOy : nullptr);
                 _shootBorders.push_back({x_ + (Settings.MapHexWidth / 2), y_ + (Settings.MapHexHeight / 2), COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
@@ -1481,7 +1480,7 @@ void FOClient::Net_OnCritterMove()
                 break;
             }
 
-            GeomHelper.MoveHexByDir(new_hx, new_hy, dir, CurMap->GetWidth(), CurMap->GetHeight());
+            Geometry.MoveHexByDir(new_hx, new_hy, dir, CurMap->GetWidth(), CurMap->GetHeight());
 
             if (j < 0) {
                 continue;
@@ -2092,7 +2091,7 @@ void FOClient::Net_OnEffect()
         radius = MAX_HEX_OFFSET;
     }
 
-    const auto [sx, sy] = GeomHelper.GetHexOffsets((hx % 2) != 0);
+    const auto [sx, sy] = Geometry.GetHexOffsets((hx % 2) != 0);
     const auto maxhx = CurMap->GetWidth();
     const auto maxhy = CurMap->GetHeight();
     const auto count = GenericUtils::NumericalNumber(radius) * Settings.MapDirCount;
@@ -3527,7 +3526,7 @@ void FOClient::LmapPrepareMap()
             }
 
             auto is_far = false;
-            const auto dist = GeomHelper.DistGame(chosen->GetHexX(), chosen->GetHexY(), i1, i2);
+            const auto dist = Geometry.DistGame(chosen->GetHexX(), chosen->GetHexY(), i1, i2);
             if (dist > vis) {
                 is_far = true;
             }

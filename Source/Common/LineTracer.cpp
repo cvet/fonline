@@ -35,12 +35,12 @@
 
 constexpr auto BIAS_FLOAT = 0.02f;
 
-LineTracer::LineTracer(GeometrySettings& settings, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) : _settings {settings}, _geomHelper(_settings)
+LineTracer::LineTracer(GeometryHelper& geometry, ushort hx, ushort hy, ushort tx, ushort ty, ushort maxhx, ushort maxhy, float angle) : _geometry {geometry}
 {
     _maxHx = maxhx;
     _maxHy = maxhy;
 
-    if (!_settings.MapHexagonal) {
+    if (!_geometry.IsHexagonal()) {
         _dir = atan2(static_cast<float>(ty - hy), static_cast<float>(tx - hx)) + angle;
         _dx = cos(_dir);
         _dy = sin(_dir);
@@ -121,8 +121,8 @@ auto LineTracer::GetNextHex(ushort& cx, ushort& cy) const -> uchar
     auto t1_y = cy;
     auto t2_y = cy;
 
-    _geomHelper.MoveHexByDir(t1_x, t1_y, _dir1, _maxHx, _maxHy);
-    _geomHelper.MoveHexByDir(t2_x, t2_y, _dir2, _maxHx, _maxHy);
+    _geometry.MoveHexByDir(t1_x, t1_y, _dir1, _maxHx, _maxHy);
+    _geometry.MoveHexByDir(t2_x, t2_y, _dir2, _maxHx, _maxHy);
 
     auto dist1 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t1_y) - static_cast<float>(t1_x & 1) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t1_x));
     auto dist2 = _dx * (_y1 - (SQRT3_X2_FLOAT * static_cast<float>(t2_y) - static_cast<float>(t2_x & 1) * SQRT3_FLOAT)) - _dy * (_x1 - 3 * static_cast<float>(t2_x));
@@ -130,8 +130,8 @@ auto LineTracer::GetNextHex(ushort& cx, ushort& cy) const -> uchar
     dist1 = dist1 > 0 ? dist1 : -dist1;
     dist2 = dist2 > 0 ? dist2 : -dist2;
 
-    if (dist1 <= dist2) // Left hand biased
-    {
+    // Left hand biased
+    if (dist1 <= dist2) {
         cx = t1_x;
         cy = t1_y;
         return _dir1;

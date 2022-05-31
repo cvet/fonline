@@ -177,7 +177,7 @@ auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* m
 
         short hx_ = hx;
         short hy_ = hy;
-        const auto [sx, sy] = _engine->GeomHelper.GetHexOffsets((hx % 2) != 0);
+        const auto [sx, sy] = _engine->Geometry.GetHexOffsets((hx % 2) != 0);
 
         // Find in 2 hex radius
         auto pos = -1;
@@ -482,7 +482,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
             talk_distance = _engine->Settings.TalkDistance + cr->GetMultihex();
         }
 
-        if (cr->GetMapId() != map_id || !_engine->GeomHelper.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, talk_distance)) {
+        if (cr->GetMapId() != map_id || !_engine->Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, talk_distance)) {
             cr->Send_TextMsg(cr, STR_DIALOG_DIST_TOO_LONG, SAY_NETMSG, TEXTMSG_GAME);
             CloseTalk(cr);
         }

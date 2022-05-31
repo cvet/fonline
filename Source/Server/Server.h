@@ -45,7 +45,6 @@
 #include "Dialogs.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
-#include "GeometryHelper.h"
 #include "Item.h"
 #include "ItemManager.h"
 #include "Location.h"
@@ -164,7 +163,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
 
-    GeometryHelper GeomHelper;
     GameTimer GameTime;
     ProtoManager ProtoMngr;
     DeferredCallManager DeferredCallMngr;

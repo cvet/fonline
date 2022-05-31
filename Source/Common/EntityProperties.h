@@ -74,6 +74,8 @@ public:
     explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, string, Password);
+    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<ushort>, ConnectionPort);
@@ -269,8 +271,6 @@ public:
     ENTITY_PROPERTY(PrivateCommon, ushort, HexY);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uchar, Dir);
-    ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, string, Password);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
     ///@ ExportProperty ReadOnly

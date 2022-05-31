@@ -56,18 +56,6 @@
 }
 
 ///# ...
-///# param hx1 ...
-///# param hy1 ...
-///# param hx2 ...
-///# param hy2 ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] int Client_Game_GetDistance(FOClient* client, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
-{
-    return client->GeomHelper.DistGame(hx1, hy1, hx2, hy2);
-}
-
-///# ...
 ///# param cr1 ...
 ///# param cr2 ...
 ///# return ...
@@ -84,32 +72,7 @@
         throw ScriptException("Critter2 arg is null");
     }
 
-    return client->GeomHelper.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
-}
-
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uchar Client_Game_GetDirection(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
-{
-    return client->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy);
-}
-
-///# ...
-///# param fromHx ...
-///# param fromHy ...
-///# param toHx ...
-///# param toHy ...
-///# param offset ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] uchar Client_Game_GetDirection(FOClient* client, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, float offset)
-{
-    return client->GeomHelper.GetFarDir(fromHx, fromHy, toHx, toHy, offset);
+    return client->Geometry.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
 }
 
 ///# ...
@@ -260,12 +223,12 @@
     vector<CritterView*> critters;
 
     for (auto* cr : client->CurMap->GetCritters()) {
-        if (cr->CheckFind(findType) && client->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
+        if (cr->CheckFind(findType) && client->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
             critters.push_back(cr);
         }
     }
 
-    std::sort(critters.begin(), critters.end(), [client, &hx, &hy](CritterView* cr1, CritterView* cr2) { return client->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < client->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
+    std::sort(critters.begin(), critters.end(), [client, &hx, &hy](CritterView* cr1, CritterView* cr2) { return client->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < client->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
 
     return critters;
 }
@@ -949,11 +912,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= client->GeomHelper.MoveHexByDir(hx_, hy_, dir, client->CurMap->GetWidth(), client->CurMap->GetHeight());
+            result |= client->Geometry.MoveHexByDir(hx_, hy_, dir, client->CurMap->GetWidth(), client->CurMap->GetHeight());
         }
     }
     else {
-        result = client->GeomHelper.MoveHexByDir(hx_, hy_, dir, client->CurMap->GetWidth(), client->CurMap->GetHeight());
+        result = client->Geometry.MoveHexByDir(hx_, hy_, dir, client->CurMap->GetWidth(), client->CurMap->GetHeight());
     }
 
     hx = hx_;

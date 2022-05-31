@@ -175,33 +175,35 @@ struct SCRIPTING_CLASS : public ScriptSystem
 
 #define ENTITY_VERIFY(e)
 
+static GlobalSettings DummySettings {};
+
 class FOEngine : public FOEngineBase
 {
 public:
 #if SERVER_SCRIPTING
     FOEngine() :
-        FOEngineBase(Dummy, PropertiesRelationType::ServerRelative, [this] {
+        FOEngineBase(DummySettings, PropertiesRelationType::ServerRelative, [this] {
             extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
             AngelScript_ServerCompiler_RegisterData(this);
             return nullptr;
         })
 #elif CLIENT_SCRIPTING
     FOEngine() :
-        FOEngineBase(Dummy, PropertiesRelationType::ClientRelative, [this] {
+        FOEngineBase(DummySettings, PropertiesRelationType::ClientRelative, [this] {
             extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
             AngelScript_ClientCompiler_RegisterData(this);
             return nullptr;
         })
 #elif SINGLE_SCRIPTING
     FOEngine() :
-        FOEngineBase(Dummy, PropertiesRelationType::BothRelative, [this] {
+        FOEngineBase(DummySettings, PropertiesRelationType::BothRelative, [this] {
             extern void AngelScript_SingleCompiler_RegisterData(FOEngineBase*);
             AngelScript_SingleCompiler_RegisterData(this);
             return nullptr;
         })
 #elif MAPPER_SCRIPTING
     FOEngine() :
-        FOEngineBase(Dummy, PropertiesRelationType::BothRelative, [this] {
+        FOEngineBase(DummySettings, PropertiesRelationType::BothRelative, [this] {
             extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
             AngelScript_MapperCompiler_RegisterData(this);
             return nullptr;
@@ -209,8 +211,6 @@ public:
 #endif
     {
     }
-
-    GlobalSettings Dummy {};
 };
 #endif
 

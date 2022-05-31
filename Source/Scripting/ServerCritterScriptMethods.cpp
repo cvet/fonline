@@ -130,7 +130,7 @@
 
     /*auto hx = self->GetHexX();
     auto hy = self->GetHexY();
-    if (self->GetEngine()->GeomHelper.MoveHexByDir(hx, hy, direction, map->GetWidth(), map->GetHeight())) {
+    if (self->GetEngine()->Geometry.MoveHexByDir(hx, hy, direction, map->GetWidth(), map->GetHeight())) {
         const auto move_flags = static_cast<ushort>(direction | BIN16(00000000, 00111000));
         const auto move = self->GetEngine()->MoveCritter(self, hx, hy, move_flags);
         if (move) {
@@ -439,8 +439,8 @@
     int hx = self->GetHexX();
     int hy = self->GetHexY();
     std::sort(critters.begin(), critters.end(), [self, hx, hy](Critter* cr1, Critter* cr2) {
-        const auto dist1 = self->GetEngine()->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
-        const auto dist2 = self->GetEngine()->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        const auto dist1 = self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
+        const auto dist2 = self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
         return dist1 < dist2;
     });
 
@@ -467,8 +467,8 @@
     int hx = self->GetHexX();
     int hy = self->GetHexY();
     std::sort(result.begin(), result.end(), [self, hx, hy](Critter* cr1, Critter* cr2) {
-        const auto dist1 = self->GetEngine()->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
-        const auto dist2 = self->GetEngine()->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
+        const auto dist1 = self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY());
+        const auto dist2 = self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY());
         return dist1 < dist2;
     });
 

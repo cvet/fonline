@@ -1490,7 +1490,11 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             
         def metaTypeToASType(t, noHandle = False, isRet = False):
             def getHandle():
-                return '' if noHandle else ('@' if isRet else '@+')
+                if noHandle:
+                    return ''
+                if not isRet:
+                    return '@+'
+                return '@' if t.split('.')[0] in ['arr', 'dict'] else '@+'
             tt = t.split('.')
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]

@@ -41,6 +41,7 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
     GameProperties(GetInitRef()),
 
     Settings {settings},
+    Geometry(settings),
     _propsRelation {props_relation}
 {
     RUNTIME_ASSERT(props_relation != PropertiesRelationType::None);

@@ -630,7 +630,7 @@
     }
 
     auto critters = self->GetCrittersHex(hx, hy, radius, findType);
-    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return self->GetEngine()->GeomHelper.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->GeomHelper.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
+    std::sort(critters.begin(), critters.end(), [self, hx, hy](const Critter* cr1, const Critter* cr2) { return self->GetEngine()->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < self->GetEngine()->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
     return critters;
 }
 
@@ -1229,7 +1229,7 @@
     }
 
     for (Critter* cr : self->GetPlayers()) {
-        if (self->GetEngine()->GeomHelper.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
+        if (self->GetEngine()->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius == 0 ? cr->LookCacheValue : radius)) {
             cr->Send_PlaySound(0, soundName);
         }
     }
@@ -1267,11 +1267,11 @@
 
     if (steps > 1) {
         for (uint i = 0; i < steps; i++) {
-            result |= self->GetEngine()->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+            result |= self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
         }
     }
     else {
-        result = self->GetEngine()->GeomHelper.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
+        result = self->GetEngine()->Geometry.MoveHexByDir(hx_, hy_, dir, maxhx, maxhy);
     }
 
     hx = hx_;
@@ -1296,7 +1296,7 @@
 
     auto from_hx = hx;
     auto from_hy = hy;
-    if (self->GetEngine()->GeomHelper.MoveHexByDir(from_hx, from_hy, self->GetEngine()->GeomHelper.ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
+    if (self->GetEngine()->Geometry.MoveHexByDir(from_hx, from_hy, self->GetEngine()->Geometry.ReverseDir(dir), self->GetWidth(), self->GetHeight())) {
         self->GetEngine()->VerifyTrigger(self, cr, from_hx, from_hy, hx, hy, dir);
     }
 }
