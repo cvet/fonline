@@ -1615,13 +1615,15 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 prop_enums.push_back(static_cast<ScriptEnum_uint16>(prop->GetRegIndex()));
             }
 
+            AS_VERIFY(engine->SetDefaultNamespace(_str("{}PropertyGroup", registrator->GetClassName()).c_str()));
 #if !COMPILER_MODE
             const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
             RUNTIME_ASSERT(it_enum.second);
-            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), (void*)&(*it_enum.first)));
+            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}", registrator->GetClassName(), group_name).c_str(), (void*)&(*it_enum.first)));
 #else
-            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}Property{}", registrator->GetClassName(), registrator->GetClassName(), group_name).c_str(), &dummy));
+            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}", registrator->GetClassName(), group_name).c_str(), &dummy));
 #endif
+            AS_VERIFY(engine->SetDefaultNamespace(""));
         }
     }
 
