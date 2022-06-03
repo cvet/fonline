@@ -1635,17 +1635,19 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
 #if SERVER_SCRIPTING
     AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
+#elif CLIENT_SCRIPTING
+    AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ServerCall", 0));
 #endif
 
 #if CLIENT_SCRIPTING
 #if !COMPILER_MODE
-    AS_VERIFY(engine->RegisterGlobalProperty("RemoteCaller ServerCall", &_engine));
     AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &_engine->CurMap));
     AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &_engine->_curLocation));
+    AS_VERIFY(engine->RegisterGlobalProperty("Player@ CurPlayer", &_engine->_curPlayer));
 #else
-    AS_VERIFY(engine->RegisterGlobalProperty("RemoteCaller ServerCall", &dummy));
     AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &dummy));
     AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &dummy));
+    AS_VERIFY(engine->RegisterGlobalProperty("Player@ CurPlayer", &dummy));
 #endif
 #endif
 

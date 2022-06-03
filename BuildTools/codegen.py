@@ -1216,6 +1216,13 @@ def genDataRegistration(target, isASCompiler):
     restoreLines = []
     propertyMapLines = []
     
+    def entityAllowed(entity):
+        if target == 'Server' and gameEntitiesInfo[entity]['Server'] is None:
+            return False
+        if target == 'Client' and gameEntitiesInfo[entity]['Client'] is None:
+            return False
+        return True
+    
     # Enums
     registerLines.append('// Enums')
     for e in codeGenTags['ExportEnum']:
@@ -1242,6 +1249,8 @@ def genDataRegistration(target, isASCompiler):
     registerLines.append('PropertyRegistrator* registrator;')
     registerLines.append('')
     for entity in gameEntities:
+        if not entityAllowed(entity):
+            continue
         registerLines.append('registrators["' + entity + '"] = engine->GetOrCreatePropertyRegistrator("' + entity + '");')
     registerLines.append('')
     
@@ -1256,6 +1265,8 @@ def genDataRegistration(target, isASCompiler):
             return [ename, '=', tt[0]]
         return []
     for entity in gameEntities:
+        if not entityAllowed(entity):
+            continue
         registerLines.append('registrator = registrators["' + entity + '"];')
         if target != 'Client' or isASCompiler:
             for propCompTag in codeGenTags['PropertyComponent']:

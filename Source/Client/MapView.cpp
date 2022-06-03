@@ -2235,8 +2235,8 @@ void MapView::GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const
     const auto center_hy = center_hex.HexY;
     auto [xx, yy] = _engine->Geometry.GetHexInterval(center_hx, center_hy, hx, hy);
 
-    x += center_hex.ScrX;
-    y += center_hex.ScrY;
+    x = center_hex.ScrX;
+    y = center_hex.ScrY;
     x += xx;
     y += yy;
 }
