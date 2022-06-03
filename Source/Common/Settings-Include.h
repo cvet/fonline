@@ -125,6 +125,7 @@ SETTING_GROUP_END();
 SETTING_GROUP(ViewSettings, virtual DummySettings);
 VARIABLE_SETTING(int, ScreenWidth, 1024);
 VARIABLE_SETTING(int, ScreenHeight, 768);
+VARIABLE_SETTING(int, ScreenHudHeight, 0);
 VARIABLE_SETTING(float, SpritesZoom, 1.0f);
 VARIABLE_SETTING(int, ScrOx, 0);
 VARIABLE_SETTING(int, ScrOy, 0);

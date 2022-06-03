@@ -1799,7 +1799,7 @@
     }
 
     if (client->OffscreenSurfaces.empty()) {
-        auto* const rt = client->SprMngr.CreateRenderTarget(false, true, 0, 0, false);
+        auto* const rt = client->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, false);
         if (!rt) {
             throw ScriptException("Can't create offscreen surface");
         }

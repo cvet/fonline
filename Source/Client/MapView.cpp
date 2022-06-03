@@ -299,13 +299,13 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntit
     _rtScreenOx = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
     _rtScreenOy = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));
 
-    _rtMap = _engine->SprMngr.CreateRenderTarget(false, true, 0, 0, false);
+    _rtMap = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
     _rtMap->CustomDrawEffect = _engine->EffectMngr.Effects.FlushMap;
 
-    _rtLight = _engine->SprMngr.CreateRenderTarget(false, true, _rtScreenOx * 2, _rtScreenOy * 2, false);
+    _rtLight = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
     _rtLight->CustomDrawEffect = _engine->EffectMngr.Effects.FlushLight;
 
-    _rtFog = _engine->SprMngr.CreateRenderTarget(false, true, _rtScreenOx * 2, _rtScreenOy * 2, false);
+    _rtFog = _engine->SprMngr.CreateRenderTarget(false, RenderTarget::SizeType::Map, _rtScreenOx * 2, _rtScreenOy * 2, false);
     _rtFog->CustomDrawEffect = _engine->EffectMngr.Effects.FlushFog;
 
     _dayTime[0] = 300;
@@ -467,7 +467,7 @@ auto MapView::GetViewWidth() const -> int
 
 auto MapView::GetViewHeight() const -> int
 {
-    return static_cast<int>(static_cast<float>(_engine->Settings.ScreenHeight / _engine->Settings.MapHexLineHeight + ((_engine->Settings.ScreenHeight % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0)) * _engine->Settings.SpritesZoom);
+    return static_cast<int>(static_cast<float>((_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) / _engine->Settings.MapHexLineHeight + (((_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) % _engine->Settings.MapHexLineHeight) != 0 ? 1 : 0)) * _engine->Settings.SpritesZoom);
 }
 
 void MapView::ReloadSprites()
@@ -1950,7 +1950,7 @@ auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
     const auto bottom = oy + si->OffsY + (_engine->Settings.MapHexLineHeight * 2);
     const auto left = ox + si->OffsX - si->Width / 2 - _engine->Settings.MapHexWidth;
     const auto right = ox + si->OffsX + si->Width / 2 + _engine->Settings.MapHexWidth;
-    const auto zoomed_screen_height = static_cast<int>(std::ceil(static_cast<float>(_engine->Settings.ScreenHeight) * _engine->Settings.SpritesZoom));
+    const auto zoomed_screen_height = static_cast<int>(std::ceil(static_cast<float>(_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight) * _engine->Settings.SpritesZoom));
     const auto zoomed_screen_width = static_cast<int>(std::ceil(static_cast<float>(_engine->Settings.ScreenWidth) * _engine->Settings.SpritesZoom));
     return !(top > zoomed_screen_height || bottom < 0 || left > zoomed_screen_width || right < 0);
 }
@@ -2252,7 +2252,7 @@ void MapView::DrawMap()
     // Prerendered offsets
     const auto ox = static_cast<int>(_rtScreenOx) - static_cast<int>(std::round(static_cast<float>(_engine->Settings.ScrOx) / _engine->Settings.SpritesZoom));
     const auto oy = static_cast<int>(_rtScreenOy) - static_cast<int>(std::round(static_cast<float>(_engine->Settings.ScrOy) / _engine->Settings.SpritesZoom));
-    auto prerenderedRect = IRect(ox, oy, ox + _engine->Settings.ScreenWidth, oy + _engine->Settings.ScreenHeight);
+    const auto prerendered_rect = IRect(ox, oy, ox + _engine->Settings.ScreenWidth, oy + (_engine->Settings.ScreenHeight - _engine->Settings.ScreenHudHeight));
 
     // Separate render target
     if (_rtMap != nullptr) {
@@ -2270,7 +2270,7 @@ void MapView::DrawMap()
 
     // Light
     if (_rtLight != nullptr) {
-        _engine->SprMngr.DrawRenderTarget(_rtLight, true, &prerenderedRect, nullptr);
+        _engine->SprMngr.DrawRenderTarget(_rtLight, true, &prerendered_rect, nullptr);
     }
 
     // Cursor flat
@@ -2289,7 +2289,7 @@ void MapView::DrawMap()
 
     // Fog
     if (!_mapperMode) {
-        _engine->SprMngr.DrawRenderTarget(_rtFog, true, &prerenderedRect, nullptr);
+        _engine->SprMngr.DrawRenderTarget(_rtFog, true, &prerendered_rect, nullptr);
     }
 
     // Cursor

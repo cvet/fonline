@@ -137,9 +137,18 @@ enum class AtlasType
 
 struct RenderTarget
 {
+    enum class SizeType
+    {
+        Custom,
+        Screen,
+        Map,
+    };
+
     unique_ptr<RenderTexture> MainTex {};
     RenderEffect* CustomDrawEffect {};
-    bool ScreenSized {};
+    SizeType Size {};
+    uint BaseWidth {};
+    uint BaseHeight {};
     vector<tuple<int, int, uint>> LastPixelPicks {};
 };
 
@@ -243,7 +252,7 @@ public:
     [[nodiscard]] auto GetWindowSize() const -> tuple<int, int>;
     [[nodiscard]] auto GetWindowPosition() const -> tuple<int, int>;
     [[nodiscard]] auto IsWindowFocused() const -> bool;
-    [[nodiscard]] auto CreateRenderTarget(bool with_depth, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*;
+    [[nodiscard]] auto CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, uint width, uint height, bool linear_filtered) -> RenderTarget*;
     [[nodiscard]] auto GetRenderTargetPixel(RenderTarget* rt, int x, int y) const -> uint;
     [[nodiscard]] auto GetSpritesColor() const -> uint { return _baseColor; }
     [[nodiscard]] auto GetSpritesInfo() -> vector<SpriteInfo*>& { return _sprData; }
@@ -322,6 +331,7 @@ private:
     [[nodiscard]] auto Load3dAnimation(string_view fname) -> AnyFrames*;
 #endif
 
+    void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
     void FillAtlas(SpriteInfo* si);
     void RefreshScissor();
     void EnableScissor();

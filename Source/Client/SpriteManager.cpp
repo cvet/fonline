@@ -126,9 +126,9 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     MatrixHelper::MatrixOrtho(_projectionMatrixCm[0], 0.0f, static_cast<float>(_settings.ScreenWidth), static_cast<float>(_settings.ScreenHeight), 0.0f, -1.0f, 1.0f);
     _projectionMatrixCm.Transpose(); // Convert to column major order
 
-    _rtMain = CreateRenderTarget(false, true, 0, 0, true);
-    _rtContours = CreateRenderTarget(false, true, 0, 0, false);
-    _rtContoursMid = CreateRenderTarget(false, true, 0, 0, false);
+    _rtMain = CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, true);
+    _rtContours = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
+    _rtContoursMid = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
 
     DummyAnimation = new AnyFrames();
     DummyAnimation->CntFrm = 1;
@@ -238,35 +238,53 @@ void SpriteManager::EndScene()
 
 void SpriteManager::OnWindowSizeChanged()
 {
-    // Resize fullscreen render targets
-    for (auto&& rt : _rtAll) {
-        if (!rt->ScreenSized) {
-            continue;
-        }
+    NON_CONST_METHOD_HINT();
 
-        rt->MainTex = nullptr; // Clean up previous resources first
-        rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(_settings.ScreenWidth, _settings.ScreenHeight, rt->MainTex->LinearFiltered, rt->MainTex->WithDepth));
+    // Reallocate fullscreen render targets
+    for (auto&& rt : _rtAll) {
+        if (rt->Size != RenderTarget::SizeType::Custom) {
+            AllocateRenderTargetTexture(rt.get(), rt->MainTex->LinearFiltered, rt->MainTex->WithDepth);
+        }
     }
 }
 
-auto SpriteManager::CreateRenderTarget(bool with_depth, bool screen_sized, uint width, uint height, bool linear_filtered) -> RenderTarget*
+auto SpriteManager::CreateRenderTarget(bool with_depth, RenderTarget::SizeType size, uint width, uint height, bool linear_filtered) -> RenderTarget*
 {
     Flush();
 
-    width = screen_sized ? _settings.ScreenWidth : width;
-    height = screen_sized ? _settings.ScreenHeight : height;
-
     auto rt = std::make_unique<RenderTarget>();
-    rt->ScreenSized = screen_sized;
-    rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(width, height, linear_filtered, with_depth));
+    rt->Size = size;
+    rt->BaseWidth = width;
+    rt->BaseHeight = height;
+
+    AllocateRenderTargetTexture(rt.get(), linear_filtered, with_depth);
+
+    _rtAll.push_back(std::move(rt));
+    return _rtAll.back().get();
+}
+
+void SpriteManager::AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth)
+{
+    NON_CONST_METHOD_HINT();
+
+    auto tex_width = rt->BaseWidth;
+    auto tex_height = rt->BaseHeight;
+
+    if (rt->Size == RenderTarget::SizeType::Screen) {
+        tex_width += _settings.ScreenWidth;
+        tex_height += _settings.ScreenHeight;
+    }
+    else if (rt->Size == RenderTarget::SizeType::Map) {
+        tex_width += _settings.ScreenWidth;
+        tex_height += _settings.ScreenHeight - _settings.ScreenHudHeight;
+    }
+
+    rt->MainTex = unique_ptr<RenderTexture>(App->Render.CreateTexture(tex_width, tex_height, linear_filtered, with_depth));
 
     auto* prev_tex = App->Render.GetRenderTarget();
     App->Render.SetRenderTarget(rt->MainTex.get());
     App->Render.ClearRenderTarget(0, with_depth);
     App->Render.SetRenderTarget(prev_tex);
-
-    _rtAll.push_back(std::move(rt));
-    return _rtAll.back().get();
 }
 
 void SpriteManager::PushRenderTarget(RenderTarget* rt)
@@ -535,7 +553,7 @@ auto SpriteManager::CreateAtlas(uint w, uint h) -> TextureAtlas*
         }
     }
 
-    atlas->RT = CreateRenderTarget(false, false, w, h, true);
+    atlas->RT = CreateRenderTarget(false, RenderTarget::SizeType::Custom, w, h, true);
     atlas->RT->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
     atlas->MainTex = atlas->RT->MainTex.get();
     atlas->Width = w;
@@ -975,7 +993,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
         }
     }
     if (rt == nullptr) {
-        rt = CreateRenderTarget(true, true, si->Width, si->Height, false);
+        rt = CreateRenderTarget(true, RenderTarget::SizeType::Custom, si->Width, si->Height, false);
         _rt3D.push_back(rt);
     }
 
@@ -1593,7 +1611,8 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Check borders
         if (!prerender) {
-            if (static_cast<float>(x) / zoom > static_cast<float>(_settings.ScreenWidth) || static_cast<float>(x + si->Width) / zoom < 0.0f || static_cast<float>(y) / zoom > static_cast<float>(_settings.ScreenHeight) || static_cast<float>(y + si->Height) / zoom < 0.0f) {
+            if (static_cast<float>(x) / zoom > static_cast<float>(_settings.ScreenWidth) || static_cast<float>(x + si->Width) / zoom < 0.0f || //
+                static_cast<float>(y) / zoom > static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) || static_cast<float>(y + si->Height) / zoom < 0.0f) {
                 continue;
             }
         }
@@ -1903,12 +1922,12 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     }
 
     auto borders = IRect(x - 1, y - 1, x + si->Width + 1, y + si->Height + 1);
-    auto* texture = si->Atlas->MainTex;
+    const auto* texture = si->Atlas->MainTex;
     FRect textureuv;
     FRect sprite_border;
 
     const auto zoomed_screen_width = static_cast<int>(static_cast<float>(_settings.ScreenWidth) * _settings.SpritesZoom);
-    const auto zoomed_screen_height = static_cast<int>(static_cast<float>(_settings.ScreenHeight) * _settings.SpritesZoom);
+    const auto zoomed_screen_height = static_cast<int>(static_cast<float>(_settings.ScreenHeight - _settings.ScreenHudHeight) * _settings.SpritesZoom);
     if (borders.Left >= zoomed_screen_width || borders.Right < 0 || borders.Top >= zoomed_screen_height || borders.Bottom < 0) {
         return;
     }

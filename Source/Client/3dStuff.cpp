@@ -1906,6 +1906,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     (*istr) >> buf;
                     (*istr) >> buf;
                     (*istr) >> buf;
+                    (*istr) >> buf;
                 }
             }
             else if (token == "RotX") {
