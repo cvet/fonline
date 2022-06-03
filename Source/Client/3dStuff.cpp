@@ -1145,7 +1145,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance*
 
     // Fix texture coords
     if (mesh_instance->CurTexures[0] != nullptr) {
-        auto* mesh_tex = mesh_instance->CurTexures[0];
+        const auto* mesh_tex = mesh_instance->CurTexures[0];
         for (auto i = vertices_old_size, j = vertices.size(); i < j; i++) {
             vertices[i].TexCoord[0] = (vertices[i].TexCoord[0] * mesh_tex->AtlasOffsetData[2]) + mesh_tex->AtlasOffsetData[0];
             vertices[i].TexCoord[1] = (vertices[i].TexCoord[1] * mesh_tex->AtlasOffsetData[3]) + mesh_tex->AtlasOffsetData[1];
@@ -1169,7 +1169,7 @@ void ModelInstance::CutCombinedMeshes(ModelInstance* base, ModelInstance* cur)
     }
 
     // Fill child
-    for (auto& child_anim : cur->_children) {
+    for (auto* child_anim : cur->_children) {
         CutCombinedMeshes(base, child_anim);
     }
 }
@@ -1237,15 +1237,17 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
     auto& vertices = combined_mesh->DrawMesh->Vertices3D;
     auto& indices = combined_mesh->DrawMesh->Indices;
     auto& cut_layers = cut->Layers;
-    for (auto& shape : cut->Shapes) {
+    for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
         vector<ushort> result_indices;
         vector<uint> result_mesh_vertices;
         vector<uint> result_mesh_indices;
+
         result_vertices.reserve(vertices.size());
         result_indices.reserve(indices.size());
         result_mesh_vertices.reserve(combined_mesh->MeshVertices.size());
         result_mesh_indices.reserve(combined_mesh->MeshIndices.size());
+
         uint i_pos = 0;
         uint i_count = 0;
         for (size_t k = 0, l = combined_mesh->MeshIndices.size(); k < l; k++) {
@@ -1282,58 +1284,74 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
                     continue;
                 }
 
-                // Find intersections
-                Vertex3D i1;
-                Vertex3D i2;
-                Vertex3D i3;
-                auto r1 = SphereLineIntersection(v1, v2, sp, shape.SphereRadius * ss.x, i1);
-                auto r2 = SphereLineIntersection(v2, v3, sp, shape.SphereRadius * ss.x, i2);
-                auto r3 = SphereLineIntersection(v3, v1, sp, shape.SphereRadius * ss.x, i3);
+                if (shape.IsSphere) {
+                    // Find intersections
+                    Vertex3D i1;
+                    int r1 = SphereLineIntersection(v1, v2, sp, shape.SphereRadius * ss.x, i1);
+                    Vertex3D i2;
+                    int r2 = SphereLineIntersection(v2, v3, sp, shape.SphereRadius * ss.x, i2);
+                    Vertex3D i3;
+                    int r3 = SphereLineIntersection(v3, v1, sp, shape.SphereRadius * ss.x, i3);
 
-                // Process intersections
-                auto outside = (r1 == 0 && r2 == 0 && r3 == 0);
-                auto ignore = (r1 == -2 || r2 == -2 || r3 == -2);
-                auto sum = r1 + r2 + r3;
-                if (!ignore && sum == 2) // 1 1 0, corner in
-                {
-                    const auto& vv1 = (r1 == 0 ? v1 : (r2 == 0 ? v2 : v3));
-                    const auto& vv2 = (r1 == 0 ? v2 : (r2 == 0 ? v3 : v1));
-                    const auto& vv3 = (r1 == 0 ? i3 : (r2 == 0 ? i1 : i2));
-                    const auto& vv4 = (r1 == 0 ? i2 : (r2 == 0 ? i3 : i1));
+                    // Process intersections
+                    bool outside = (r1 == 0 && r2 == 0 && r3 == 0);
+                    bool ignore = (r1 == -2 || r2 == -2 || r3 == -2);
+                    int sum = r1 + r2 + r3;
+                    if (!ignore && sum == 2) {
+                        // 1 1 0, corner in
+                        const Vertex3D& vv1 = (r1 == 0 ? v1 : (r2 == 0 ? v2 : v3));
+                        const Vertex3D& vv2 = (r1 == 0 ? v2 : (r2 == 0 ? v3 : v1));
+                        const Vertex3D& vv3 = (r1 == 0 ? i3 : (r2 == 0 ? i1 : i2));
+                        const Vertex3D& vv4 = (r1 == 0 ? i2 : (r2 == 0 ? i3 : i1));
 
-                    // First face
-                    result_vertices.push_back(vv1);
-                    result_vertices.push_back(vv2);
-                    result_vertices.push_back(vv3);
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        // First face
+                        result_vertices.push_back(vv1);
+                        result_vertices.push_back(vv2);
+                        result_vertices.push_back(vv3);
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
 
-                    // Second face
-                    result_vertices.push_back(vv3);
-                    result_vertices.push_back(vv2);
-                    result_vertices.push_back(vv4);
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        // Second face
+                        result_vertices.push_back(vv3);
+                        result_vertices.push_back(vv2);
+                        result_vertices.push_back(vv4);
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                    }
+                    else if (!ignore && sum == 1) {
+                        // 1 1 -1, corner out
+                        const Vertex3D& vv1 = (r1 == -1 ? i3 : (r2 == -1 ? v1 : i1));
+                        const Vertex3D& vv2 = (r1 == -1 ? i2 : (r2 == -1 ? i1 : v2));
+                        const Vertex3D& vv3 = (r1 == -1 ? v3 : (r2 == -1 ? i3 : i2));
+
+                        // One face
+                        result_vertices.push_back(vv1);
+                        result_vertices.push_back(vv2);
+                        result_vertices.push_back(vv3);
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                    }
+                    else if (ignore || outside) {
+                        if (ignore && sum == 0) {
+                            // 1 1 -2
+                            continue;
+                        }
+
+                        result_vertices.push_back(v1);
+                        result_vertices.push_back(v2);
+                        result_vertices.push_back(v3);
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                        result_indices.push_back(static_cast<ushort>(result_indices.size()));
+                    }
                 }
-                else if (!ignore && sum == 1) // 1 1 -1, corner out
-                {
-                    const auto& vv1 = (r1 == -1 ? i3 : (r2 == -1 ? v1 : i1));
-                    const auto& vv2 = (r1 == -1 ? i2 : (r2 == -1 ? i1 : v2));
-                    const auto& vv3 = (r1 == -1 ? v3 : (r2 == -1 ? i3 : i2));
-
-                    // One face
-                    result_vertices.push_back(vv1);
-                    result_vertices.push_back(vv2);
-                    result_vertices.push_back(vv3);
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                    result_indices.push_back(static_cast<ushort>(result_indices.size()));
-                }
-                else if (ignore || outside) {
-                    if (ignore && sum == 0) {
-                        // 1 1 -2
+                else {
+                    if ((v1.Position.x > shape.BBoxMin.x && v1.Position.y > shape.BBoxMin.y && v1.Position.z > shape.BBoxMin.z && v1.Position.x < shape.BBoxMax.x && v1.Position.y < shape.BBoxMax.y && v1.Position.z > shape.BBoxMax.z) || //
+                        (v2.Position.x > shape.BBoxMin.x && v2.Position.y > shape.BBoxMin.y && v2.Position.z > shape.BBoxMin.z && v2.Position.x < shape.BBoxMax.x && v2.Position.y < shape.BBoxMax.y && v2.Position.z > shape.BBoxMax.z) || //
+                        (v3.Position.x > shape.BBoxMin.x && v3.Position.y > shape.BBoxMin.y && v3.Position.z > shape.BBoxMin.z && v3.Position.x < shape.BBoxMax.x && v3.Position.y < shape.BBoxMax.y && v3.Position.z > shape.BBoxMax.z)) {
                         continue;
                     }
 
@@ -1356,18 +1374,28 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
     }
 
     // Unskin
-    if (cut->UnskinBone) {
-        // Find unskin bone
-        ModelBone* unskin_bone = nullptr;
+    if (cut->UnskinBone1 && cut->UnskinBone2) {
+        // Find unskin bones
+        ModelBone* unskin_bone1 = nullptr;
+        float unskin_bone1_index = 0.0f;
+        ModelBone* unskin_bone2 = nullptr;
+        float unskin_bone2_index = 0.0f;
         for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
-            if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone) {
-                unskin_bone = combined_mesh->SkinBones[i];
+            if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone1) {
+                unskin_bone1 = combined_mesh->SkinBones[i];
+                unskin_bone1_index = static_cast<float>(i);
+            }
+            if (combined_mesh->SkinBones[i]->Name == cut->UnskinBone2) {
+                unskin_bone2 = combined_mesh->SkinBones[i];
+                unskin_bone2_index = static_cast<float>(i);
+            }
+            if (unskin_bone1 != nullptr && unskin_bone2 != nullptr) {
                 break;
             }
         }
 
         // Unskin
-        if (unskin_bone != nullptr) {
+        if (unskin_bone1 != nullptr && unskin_bone2 != nullptr) {
             // Process meshes
             size_t v_pos = 0;
             size_t v_count = 0;
@@ -1414,9 +1442,16 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
                         }
 
                         // Skip equal influence side
-                        auto influence_side = (unskin_bone->Find(combined_mesh->SkinBones[static_cast<int>(v.BlendIndices[b])]->Name) != nullptr);
+                        bool influence_side = unskin_bone1->Find(combined_mesh->SkinBones[static_cast<int>(v.BlendIndices[b])]->Name) != nullptr;
                         if (v_side == influence_side) {
                             continue;
+                        }
+
+                        // Last influence, don't reskin
+                        if (w > 1.0f - 0.00001f) {
+                            v.BlendIndices[b] = (influence_side ? unskin_bone2_index : unskin_bone1_index);
+                            v.BlendWeights[b] = 1.0f;
+                            break;
                         }
 
                         // Move influence to other bones
@@ -1608,6 +1643,11 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
     auto x = p.X - _modelMngr._modeWidth / 2;
     auto y = -(p.Y - _modelMngr._modeHeight / 4);
     return tuple {x, y};
+}
+
+auto ModelInstance::GetAnimDuration() const -> uint
+{
+    return static_cast<uint>(_animPosPeriod * 1000.0f);
 }
 
 ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
@@ -1826,19 +1866,19 @@ auto ModelInformation::Load(string_view name) -> bool
                     (*istr) >> buf;
                     auto shapes = _str(buf).split('-');
 
-                    // Unskin bone
+                    // Unskin bones
                     (*istr) >> buf;
-                    cut->UnskinBone = _modelMngr.GetBoneHashedString(buf);
-                    if (buf == "-") {
-                        cut->UnskinBone = hstring();
-                    }
+                    cut->UnskinBone1 = buf != "-" ? _modelMngr.GetBoneHashedString(buf) : hstring();
+
+                    (*istr) >> buf;
+                    cut->UnskinBone2 = buf != "-" ? _modelMngr.GetBoneHashedString(buf) : hstring();
 
                     // Unskin shape
                     (*istr) >> buf;
                     hstring unskin_shape_name;
                     cut->RevertUnskinShape = false;
-                    if (cut->UnskinBone) {
-                        cut->RevertUnskinShape = (!buf.empty() && buf[0] == '~');
+                    if (cut->UnskinBone1 && cut->UnskinBone2) {
+                        cut->RevertUnskinShape = !buf.empty() && buf[0] == '~';
                         unskin_shape_name = _modelMngr.GetBoneHashedString(!buf.empty() && buf[0] == '~' ? buf.substr(1) : buf);
                         for (auto* bone : area->_allDrawBones) {
                             if (unskin_shape_name == bone->Name) {
@@ -2338,8 +2378,10 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
     ModelCutData::Shape shape;
     shape.GlobalTransformationMatrix = mesh->Owner->GlobalTransformationMatrix;
 
-    // Evaluate sphere radius
-    if (!mesh->Vertices.empty()) {
+    if (mesh->Vertices.size() != 36) {
+        shape.IsSphere = true;
+
+        // Evaluate sphere radius
         auto vmin = mesh->Vertices[0].Position.x;
         auto vmax = mesh->Vertices[0].Position.x;
 
@@ -2354,6 +2396,49 @@ auto ModelInformation::CreateCutShape(MeshData* mesh) const -> ModelCutData::Sha
         }
 
         shape.SphereRadius = (vmax - vmin) / 2.0f;
+    }
+    else {
+        shape.IsSphere = false;
+
+        // Calculate bounding box size
+        float vmin[3];
+        float vmax[3];
+
+        for (size_t i = 0, j = mesh->Vertices.size(); i < j; i++) {
+            const Vertex3D& v = mesh->Vertices[i];
+            if (i == 0) {
+                vmin[0] = vmax[0] = v.Position.x;
+                vmin[1] = vmax[1] = v.Position.y;
+                vmin[2] = vmax[2] = v.Position.z;
+            }
+            else {
+                if (vmin[0] < v.Position.x) {
+                    vmin[0] = v.Position.x;
+                }
+                if (vmin[1] < v.Position.y) {
+                    vmin[1] = v.Position.y;
+                }
+                if (vmin[2] < v.Position.z) {
+                    vmin[2] = v.Position.z;
+                }
+                if (vmax[0] > v.Position.x) {
+                    vmax[0] = v.Position.x;
+                }
+                if (vmax[1] > v.Position.y) {
+                    vmax[1] = v.Position.y;
+                }
+                if (vmax[2] > v.Position.z) {
+                    vmax[2] = v.Position.z;
+                }
+            }
+        }
+
+        shape.BBoxMin.x = vmin[0];
+        shape.BBoxMin.y = vmin[1];
+        shape.BBoxMin.z = vmin[2];
+        shape.BBoxMax.x = vmax[0];
+        shape.BBoxMax.y = vmax[1];
+        shape.BBoxMax.z = vmax[2];
     }
 
     return shape;

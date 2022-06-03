@@ -113,12 +113,16 @@ struct ModelCutData
     struct Shape
     {
         mat44 GlobalTransformationMatrix {};
+        bool IsSphere {};
         float SphereRadius {};
+        vec3 BBoxMin {};
+        vec3 BBoxMax {};
     };
 
     vector<Shape> Shapes {};
     vector<int> Layers {};
-    hstring UnskinBone {};
+    hstring UnskinBone1 {};
+    hstring UnskinBone2 {};
     Shape UnskinShape {};
     bool RevertUnskinShape {};
 };
@@ -243,6 +247,7 @@ public:
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
     [[nodiscard]] auto GetDrawSize() const -> tuple<uint, uint>;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
+    [[nodiscard]] auto GetAnimDuration() const -> uint;
 
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;

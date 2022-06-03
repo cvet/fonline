@@ -317,7 +317,16 @@ void CritterHexView::Action(int action, int action_ext, ItemView* item, bool loc
         SetAnim2Dead(action_ext);
         auto* anim = GetCurAnim();
         _needReset = true;
+#if FO_ENABLE_3D
+        if (_model != nullptr) {
+            _resetTick = _engine->GameTime.GameTick() + _model->GetAnimDuration();
+        }
+        else {
+            _resetTick = _engine->GameTime.GameTick() + (anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000);
+        }
+#else
         _resetTick = _engine->GameTime.GameTick() + (anim != nullptr && anim->Anim != nullptr ? anim->Anim->Ticks : 1000);
+#endif
     } break;
     case ACTION_CONNECT:
         UnsetBit(Flags, FCRIT_DISCONNECT);
@@ -825,7 +834,9 @@ void CritterHexView::SetOffs(short set_ox, short set_oy, bool move_text)
 
 #if FO_ENABLE_3D
             if (_model != nullptr) {
-                _textRect.Top += _engine->SprMngr.GetSpriteInfo(SprId)->Height / 6;
+                // Todo: expose text on head offset to some settings
+                // _textRect.Top += _engine->SprMngr.GetSpriteInfo(SprId)->Height / 6;
+                _textRect.Top = _textRect.Bottom - 100;
             }
 #endif
         }

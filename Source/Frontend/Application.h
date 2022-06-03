@@ -256,7 +256,7 @@ class AppRender final
     friend class Application;
 
 public:
-    static constexpr uint MAX_ATLAS_SIZE = 4096;
+    static constexpr uint MAX_ATLAS_SIZE = 8192;
     static constexpr uint MIN_ATLAS_SIZE = 2048;
     static const uint& MAX_ATLAS_WIDTH;
     static const uint& MAX_ATLAS_HEIGHT;

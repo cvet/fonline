@@ -517,8 +517,22 @@ auto SpriteManager::CreateAtlas(uint w, uint h) -> TextureAtlas*
     atlas->Type = std::get<0>(_atlasStack.back());
 
     if (!std::get<1>(_atlasStack.back())) {
-        w = App->Render.MAX_ATLAS_WIDTH;
-        h = App->Render.MAX_ATLAS_HEIGHT;
+        switch (atlas->Type) {
+        case AtlasType::Static:
+            w = std::min(AppRender::MAX_ATLAS_WIDTH, 4096u);
+            h = std::min(AppRender::MAX_ATLAS_HEIGHT, 4096u);
+            break;
+        case AtlasType::Dynamic:
+            w = std::min(AppRender::MAX_ATLAS_WIDTH, 2048u);
+            h = std::max(AppRender::MAX_ATLAS_HEIGHT, 8192u);
+            break;
+        case AtlasType::MeshTextures:
+            w = std::min(AppRender::MAX_ATLAS_WIDTH, 1024u);
+            h = std::min(AppRender::MAX_ATLAS_HEIGHT, 2048u);
+            break;
+        case AtlasType::Splash:
+            throw UnreachablePlaceException(LINE_STR);
+        }
     }
 
     atlas->RT = CreateRenderTarget(false, false, w, h, true);

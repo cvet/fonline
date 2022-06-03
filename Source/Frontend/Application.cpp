@@ -181,7 +181,9 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
         _name.append(name_appendix);
     }
 
+#if !FO_WEB
     LogToFile(_str("{}.log", _name));
+#endif
 
     if (SDL_InitSubSystem(SDL_INIT_TIMER) != 0) {
         throw AppInitException("SDL_InitSubSystem SDL_INIT_TIMER failed", SDL_GetError());
