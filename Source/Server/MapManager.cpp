@@ -1787,7 +1787,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
     if (view_cr->GetMapId() == 0u) {
         RUNTIME_ASSERT(view_cr->GlobalMapGroup);
 
-        if (view_cr->IsPlayer()) {
+        if (view_cr->IsOwnedByPlayer()) {
             for (auto* cr : *view_cr->GlobalMapGroup) {
                 if (view_cr == cr) {
                     SetBit(view_cr->Flags, FCRIT_CHOSEN);

@@ -172,7 +172,7 @@ void Map::AddCritter(Critter* cr)
 {
     RUNTIME_ASSERT(std::find(_mapCritters.begin(), _mapCritters.end(), cr) == _mapCritters.end());
 
-    if (cr->IsPlayer()) {
+    if (cr->IsOwnedByPlayer()) {
         _mapPlayerCritters.push_back(cr);
     }
     if (cr->IsNpc()) {
@@ -188,7 +188,7 @@ void Map::AddCritter(Critter* cr)
 void Map::EraseCritter(Critter* cr)
 {
     // Erase critter from collections
-    if (cr->IsPlayer()) {
+    if (cr->IsOwnedByPlayer()) {
         const auto it = std::find(_mapPlayerCritters.begin(), _mapPlayerCritters.end(), cr);
         RUNTIME_ASSERT(it != _mapPlayerCritters.end());
         _mapPlayerCritters.erase(it);

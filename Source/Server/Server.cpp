@@ -1215,8 +1215,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             return;
         }
 
-        if (!cr->IsPlayer()) {
-            logcb("Founded critter is not a player.");
+        if (!cr->IsOwnedByPlayer()) {
+            logcb("Founded critter is not owned by player.");
             return;
         }
 
@@ -1613,7 +1613,7 @@ void FOServer::ProcessCritter(Critter* cr)
     }
 
     // Remove player critter from game
-    if (cr->IsPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0u && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
+    if (cr->IsOwnedByPlayer() && cr->GetOwner() == nullptr && cr->IsAlive() && cr->GetTimeoutRemoveFromGame() == 0u && cr->GetOfflineTime() >= Settings.MinimumOfflineTime) {
         if (cr->GetClientToDelete()) {
             OnCritterFinish.Fire(cr);
         }
@@ -1674,7 +1674,7 @@ auto FOServer::MoveCritter(Critter* cr, ushort hx, ushort hy, uint move_params) 
     const auto multihex = cr->GetMultihex();
 
     if (!map->IsMovePassed(hx, hy, dir, multihex)) {
-        if (cr->IsPlayer()) {
+        if (cr->IsOwnedByPlayer()) {
             cr->Send_Position(cr);
             auto* cr_hex = map->GetHexCritter(hx, hy, false);
             if (cr_hex != nullptr) {

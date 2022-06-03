@@ -335,7 +335,7 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
     player_critters.reserve(all_critters.size());
 
     for (auto* cr : all_critters) {
-        if (cr->IsPlayer() && (!on_global_map_only || cr->GetMapId() == 0u)) {
+        if (cr->IsOwnedByPlayer() && (!on_global_map_only || cr->GetMapId() == 0u)) {
             player_critters.push_back(dynamic_cast<Critter*>(cr));
         }
     }

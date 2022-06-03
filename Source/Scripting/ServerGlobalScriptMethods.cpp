@@ -994,7 +994,7 @@
     vector<Location*> locations;
 
     for (auto* loc : server->MapMngr.GetLocations()) {
-        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
+        if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsOwnedByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
     }
@@ -1024,7 +1024,7 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsPlayer()) {
+    if (!cr->IsOwnedByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
@@ -1055,7 +1055,7 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsPlayer()) {
+    if (!cr->IsOwnedByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (npc == nullptr) {
@@ -1087,7 +1087,7 @@
     if (cr == nullptr) {
         throw ScriptException("Player arg is null");
     }
-    if (!cr->IsPlayer()) {
+    if (!cr->IsOwnedByPlayer()) {
         throw ScriptException("Player arg is not player");
     }
     if (!server->DlgMngr.GetDialog(dlgPack)) {

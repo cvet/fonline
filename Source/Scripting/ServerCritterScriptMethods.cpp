@@ -87,7 +87,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Server_Critter_IsPlayer(Critter* self)
 {
-    return self->IsPlayer();
+    return self->IsOwnedByPlayer();
 }
 
 ///# ...
@@ -314,7 +314,7 @@
         throw ScriptException("Invalid hexes args");
     }
 
-    if (!self->IsPlayer()) {
+    if (!self->IsOwnedByPlayer()) {
         return;
     }
 
@@ -703,7 +703,7 @@
         throw ScriptException("Item id arg is zero");
     }
 
-    auto* item = self->GetItem(itemId, self->IsPlayer());
+    auto* item = self->GetItem(itemId, self->IsOwnedByPlayer());
     if (!item) {
         throw ScriptException("Item not found");
     }
@@ -996,7 +996,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Critter_Disconnect(Critter* self)
 {
-    if (!self->IsPlayer()) {
+    if (!self->IsOwnedByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 
@@ -1010,7 +1010,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Server_Critter_IsOnline(Critter* self)
 {
-    if (!self->IsPlayer()) {
+    if (!self->IsOwnedByPlayer()) {
         throw ScriptException("Critter is not player");
     }
 

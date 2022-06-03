@@ -82,8 +82,8 @@ public:
     auto operator=(Critter&&) noexcept = delete;
     ~Critter() override;
 
-    [[nodiscard]] auto IsPlayer() const -> bool { return _player != nullptr || _playerDetached; } // Todo: rename to IsOwnedByPlayer
-    [[nodiscard]] auto IsNpc() const -> bool { return _player == nullptr && !_playerDetached; } // Todo: replace to !IsOwnedByPlayer
+    [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _player != nullptr || _playerDetached; }
+    [[nodiscard]] auto IsNpc() const -> bool { return !IsOwnedByPlayer(); }
     [[nodiscard]] auto GetOwner() const -> const Player* { return _player; }
     [[nodiscard]] auto GetOwner() -> Player* { return _player; }
     [[nodiscard]] auto GetOfflineTime() const -> uint;

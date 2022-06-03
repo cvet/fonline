@@ -2469,21 +2469,14 @@ void FOClient::Net_OnLoadMap()
         _curLocation = nullptr;
     }
 
-    if (map_pid) {
-        _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
-        _curLocation->RestoreData(_tempPropertiesDataExt);
-        CurMap = new MapView(this, map_id, ProtoMngr.GetProtoMap(map_pid));
-        CurMap->RestoreData(_tempPropertiesData);
-    }
-
-    Settings.SpritesZoom = 1.0f;
-
-    CurMapPid = map_pid;
-    _curMapLocPid = loc_pid;
-    _curMapIndexInLoc = map_index_in_loc;
     SndMngr.StopSounds();
     ShowMainScreen(SCREEN_WAIT, {});
     ResMngr.ReinitializeDynamicAtlas();
+
+    Settings.SpritesZoom = 1.0f;
+    CurMapPid = map_pid;
+    _curMapLocPid = loc_pid;
+    _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
         /*uint hash_tiles_cl;
@@ -2506,6 +2499,11 @@ void FOClient::Net_OnLoadMap()
         SetDayTime(true);
         _lookBorders.clear();
         _shootBorders.clear();
+
+        _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
+        _curLocation->RestoreData(_tempPropertiesDataExt);
+        CurMap = new MapView(this, map_id, ProtoMngr.GetProtoMap(map_pid));
+        CurMap->RestoreData(_tempPropertiesData);
 
         WriteLog("Local map loaded");
     }
