@@ -147,7 +147,8 @@ FIXED_SETTING(int, MapTileStep, 2);
 FIXED_SETTING(int, MapRoofOffsX, -8); // roof default offsets
 FIXED_SETTING(int, MapRoofOffsY, -66); // roof default offsets
 FIXED_SETTING(int, MapRoofSkipSize, 2); // default length (in hexes/squares) of roof tiles
-FIXED_SETTING(float, MapCameraAngle, 21.671f); // angle for 3d critters rendering
+FIXED_SETTING(float, MapCameraAngle, 25.6589f); // angle for critters moving/rendering
+FIXED_SETTING(bool, MapFreeMovement, false);
 FIXED_SETTING(bool, MapSmoothPath, true); // enable pathfinding path smoothing
 FIXED_SETTING(string, MapDataPrefix, "art/geometry/fallout_"); // path and prefix for names used for geometry sprites
 SETTING_GROUP_END();
@@ -155,6 +156,9 @@ SETTING_GROUP_END();
 ///@ ExportSettings Client
 SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(string, WindowName, "FOnline");
+FIXED_SETTING(uint, Animation3dSmoothTime, 150);
+FIXED_SETTING(uint, Animation3dFPS, 30);
+FIXED_SETTING(vector<string>, LegBones);
 VARIABLE_SETTING(bool, WindowCentered, true);
 VARIABLE_SETTING(bool, NullRenderer, false);
 VARIABLE_SETTING(bool, ForceOpenGL, false);
@@ -162,8 +166,6 @@ VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
 VARIABLE_SETTING(bool, ForceGNM, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
-FIXED_SETTING(uint, Animation3dSmoothTime, 150);
-FIXED_SETTING(uint, Animation3dFPS, 30);
 VARIABLE_SETTING(bool, VSync, false);
 VARIABLE_SETTING(bool, AlwaysOnTop, false);
 VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);

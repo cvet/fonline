@@ -50,33 +50,34 @@ public:
     CritterView(CritterView&&) noexcept = delete;
     auto operator=(const CritterView&) = delete;
     auto operator=(CritterView&&) noexcept = delete;
-    ~CritterView() = default;
+    ~CritterView() override = default;
 
-    [[nodiscard]] auto IsNpc() const -> bool { return IsBitSet(Flags, FCRIT_NPC); }
-    [[nodiscard]] auto IsPlayer() const -> bool { return IsBitSet(Flags, FCRIT_PLAYER); }
-    [[nodiscard]] auto IsChosen() const -> bool { return IsBitSet(Flags, FCRIT_CHOSEN); }
-    [[nodiscard]] auto IsOnline() const -> bool { return !IsBitSet(Flags, FCRIT_DISCONNECT); }
-    [[nodiscard]] auto IsOffline() const -> bool { return IsBitSet(Flags, FCRIT_DISCONNECT); }
+    [[nodiscard]] auto GetName() const -> string_view override { return _nameOnHead; }
+    [[nodiscard]] auto IsNpc() const -> bool { return !_ownedByPlayer; }
+    [[nodiscard]] auto IsOwnedByPlayer() const -> bool { return _ownedByPlayer; }
+    [[nodiscard]] auto IsChosen() const -> bool { return _isChosen; }
+    [[nodiscard]] auto IsPlayerOffline() const -> bool { return _isPlayerOffline; }
     [[nodiscard]] auto IsAlive() const -> bool { return GetCond() == CritterCondition::Alive; }
     [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == CritterCondition::Knockout; }
     [[nodiscard]] auto IsDead() const -> bool { return GetCond() == CritterCondition::Dead; }
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
     [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
-    [[nodiscard]] auto IsFree() const -> bool;
     [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
     [[nodiscard]] auto GetItemByPid(hstring item_pid) -> ItemView*;
 
+    virtual void Init();
+    virtual void Finish();
     virtual void AddItem(ItemView* item);
     virtual void DeleteItem(ItemView* item, bool animate);
     void DeleteAllItems();
-    void TickStart(uint ms);
-    void TickNull();
+    void SetPlayer(bool is_player, bool is_chosen);
+    void SetPlayerOffline(bool is_offline);
 
-    uint Flags {};
-    string AlternateName {};
-    vector<ItemView*> InvItems {};
+    vector<ItemView*> InvItems {}; // Todo: incapsulate InvItems
 
 protected:
-    uint _tickCount {};
-    uint _startTick {};
+    string _nameOnHead {};
+    bool _ownedByPlayer {};
+    bool _isPlayerOffline {};
+    bool _isChosen {};
 };

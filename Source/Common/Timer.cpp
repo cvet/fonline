@@ -76,7 +76,10 @@ GameTimer::GameTimer(TimerSettings& settings) : _settings {settings}
 
 void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier)
 {
+#if FO_SINGLEPLAYER
     _isPaused = false;
+#endif
+
     _gameTimeMultiplier = multiplier;
     _gameTickBase = _gameTickFast = FrameTick();
 
@@ -90,15 +93,20 @@ auto GameTimer::FrameAdvance() -> bool
 {
     _timerTick = static_cast<uint>(Timer::RealtimeTick());
 
-    if (!_isPaused) {
-        const auto dt = GameTick() - _gameTickBase;
-        const auto fs = _fullSecondBase + (dt / 1000 * _gameTimeMultiplier + dt % 1000 * _gameTimeMultiplier / 1000);
-
-        if (_fullSecond != fs) {
-            _fullSecond = fs;
-            return true;
-        }
+#if FO_SINGLEPLAYER
+    if (_isPaused) {
+        return false;
     }
+#endif
+
+    const auto dt = GameTick() - _gameTickBase;
+    const auto fs = _fullSecondBase + (dt / 1000 * _gameTimeMultiplier + dt % 1000 * _gameTimeMultiplier / 1000);
+
+    if (_fullSecond != fs) {
+        _fullSecond = fs;
+        return true;
+    }
+
     return false;
 }
 
@@ -109,9 +117,11 @@ auto GameTimer::FrameTick() const -> uint
 
 auto GameTimer::GameTick() const -> uint
 {
+#if FO_SINGLEPLAYER
     if (_isPaused) {
         return _gameTickBase;
     }
+#endif
     return _gameTickBase + (FrameTick() - _gameTickFast);
 }
 
@@ -155,6 +165,7 @@ auto GameTimer::GameTimeMonthDay(ushort year, ushort month) const -> uint
     }
 }
 
+#if FO_SINGLEPLAYER
 void GameTimer::SetGamePause(bool pause)
 {
     if (_isPaused == pause) {
@@ -170,6 +181,7 @@ auto GameTimer::IsGamePaused() const -> bool
 {
     return _isPaused;
 }
+#endif
 
 auto Timer::RealtimeTick() -> double
 {

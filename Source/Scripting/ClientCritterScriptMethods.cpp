@@ -48,9 +48,9 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsPlayer(CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsOwnedByPlayer(CritterView* self)
 {
-    return self->IsPlayer();
+    return self->IsOwnedByPlayer();
 }
 
 ///# ...
@@ -66,7 +66,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] bool Client_Critter_IsOffline(CritterView* self)
 {
-    return self->IsOffline();
+    return self->IsOwnedByPlayer() && self->IsPlayerOffline();
 }
 
 ///# ...
@@ -96,17 +96,14 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsFree(CritterView* self)
+[[maybe_unused]] bool Client_Critter_IsMoving(CritterView* self)
 {
-    return self->IsFree();
-}
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
 
-///# ...
-///# return ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Client_Critter_IsBusy(CritterView* self)
-{
-    return !self->IsFree();
+    return hex_cr->IsMoving();
 }
 
 ///# ...
@@ -202,14 +199,6 @@
     }
 
     hex_cr->ClearAnim();
-}
-
-///# ...
-///# param ms ...
-///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] void Client_Critter_Wait(CritterView* self, uint ms)
-{
-    self->TickStart(ms);
 }
 
 ///# ...

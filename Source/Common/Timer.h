@@ -66,22 +66,28 @@ public:
     [[nodiscard]] auto EvaluateFullSecond(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second) const -> uint;
     [[nodiscard]] auto GetGameTime(uint full_second) const -> DateTimeStamp;
     [[nodiscard]] auto GameTimeMonthDay(ushort year, ushort month) const -> uint;
+#if FO_SINGLEPLAYER
     [[nodiscard]] auto IsGamePaused() const -> bool;
+#endif
 
     void Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier);
     auto FrameAdvance() -> bool;
+#if FO_SINGLEPLAYER
     void SetGamePause(bool pause);
+#endif
 
 private:
     TimerSettings& _settings;
     uint _timerTick {};
     uint64 _yearStartFullTime {};
     int _gameTimeMultiplier {};
-    bool _isPaused {};
     uint _gameTickBase {};
     uint _gameTickFast {};
     uint _fullSecondBase {};
     uint _fullSecond {};
+#if FO_SINGLEPLAYER
+    bool _isPaused {};
+#endif
 };
 
 class Timer final

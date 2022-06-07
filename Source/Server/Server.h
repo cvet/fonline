@@ -222,6 +222,7 @@ private:
 
     void Process_PlaceToGame(Player* player);
     void Process_Move(Player* player);
+    void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
     void Process_Text(Player* player);
     void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
@@ -248,8 +249,9 @@ private:
     void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
 
     void ProcessCritter(Critter* cr);
-    void ProcessCritterMoving(Critter* cr);
-    auto MoveCritter(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool;
+    void ProcessMove(Critter* cr);
+    void ProcessMoveBySteps(Critter* cr, Map* map);
+    void MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self);
 
     auto DialogScriptDemand(DemandResult& demand, Critter* master, Critter* slave) -> bool;
     auto DialogScriptResult(DemandResult& result, Critter* master, Critter* slave) -> uint;

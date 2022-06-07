@@ -248,11 +248,13 @@ public:
     ///@ ExportProperty ScriptFuncType = CritterInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty
+    ENTITY_PROPERTY(Public, string, NiceName);
+    ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, ModelName);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint, WalkTime);
+    ENTITY_PROPERTY(Protected, uint, WalkSpeed);
     ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint, RunTime);
+    ENTITY_PROPERTY(Protected, uint, RunSpeed);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Protected, uint, Multihex);
     ///@ ExportProperty ReadOnly
@@ -270,7 +272,13 @@ public:
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, ushort, HexY);
     ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, short, HexOffsX);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, short, HexOffsY);
+    ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uchar, Dir);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PrivateCommon, short, DirAngle);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, CritterCondition, Cond);
     ///@ ExportProperty ReadOnly
@@ -352,11 +360,9 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsNoUnarmed);
     ///@ ExportProperty
-    ENTITY_PROPERTY(VirtualProtected, bool, IsNoWalk);
+    ENTITY_PROPERTY(VirtualProtected, bool, IsNoMove);
     ///@ ExportProperty
     ENTITY_PROPERTY(VirtualProtected, bool, IsNoRun);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, bool, IsNoRotate);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoTalk);
     ///@ ExportProperty

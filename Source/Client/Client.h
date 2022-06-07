@@ -107,6 +107,7 @@ public:
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
+    [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _curLang; }
 
     void MainLoop();
     void AddMess(uchar mess_type, string_view msg);
@@ -120,9 +121,9 @@ public:
     void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;
-    auto AnimGetCurSpr(uint anim_id) -> uint;
-    auto AnimGetCurSprCnt(uint anim_id) -> uint;
-    auto AnimGetSprCount(uint anim_id) -> uint;
+    auto AnimGetCurSpr(uint anim_id) const -> uint;
+    auto AnimGetCurSprCnt(uint anim_id) const -> uint;
+    auto AnimGetSprCount(uint anim_id) const -> uint;
     auto AnimGetFrames(uint anim_id) -> AnyFrames*;
     void AnimRun(uint anim_id, uint flags);
 
@@ -197,8 +198,6 @@ public:
     ENTITY_EVENT(OnOutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnMessageBox, string /*text*/, int /*type*/, bool /*scriptCall*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnCombatResult, vector<uint> /*result*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
@@ -312,7 +311,8 @@ protected:
     void Net_SendLoadMapOk();
     void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir();
-    void Net_SendMove(vector<uchar> steps);
+    void Net_SendMove();
+    void Net_SendStopMove();
     void Net_SendPing(uchar ping);
     void Net_SendRefereshMe();
 
@@ -321,7 +321,7 @@ protected:
     void Net_OnUpdateFilesResponse();
     void Net_OnWrongNetProto();
     void Net_OnLoginSuccess();
-    void Net_OnAddCritter(bool is_npc);
+    void Net_OnAddCritter();
     void Net_OnRemoveCritter();
     void Net_OnText();
     void Net_OnTextMsg(bool with_lexems);
@@ -331,7 +331,6 @@ protected:
     void Net_OnAddItemOnMap();
     void Net_OnEraseItemFromMap();
     void Net_OnAnimateItem();
-    void Net_OnCombatResult();
     void Net_OnEffect();
     void Net_OnFlyEffect();
     void Net_OnPlaySound();
@@ -339,13 +338,14 @@ protected:
     void Net_OnProperty(uint data_size);
     void Net_OnCritterDir();
     void Net_OnCritterMove();
+    void Net_OnCritterStopMove();
     void Net_OnSomeItem();
     void Net_OnCritterAction();
     void Net_OnCritterMoveItem();
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
     void Net_OnCustomCommand();
-    void Net_OnCritterCoords();
+    void Net_OnCritterPos();
     void Net_OnAllProperties();
     void Net_OnChosenClearItems();
     void Net_OnChosenAddItem();

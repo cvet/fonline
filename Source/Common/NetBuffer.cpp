@@ -142,7 +142,7 @@ void NetOutBuffer::Push(const void* buf, uint len)
         GrowBuf(len);
     }
 
-    CopyBuf(buf, _bufData.get() + _bufEndPos, EncryptKey(len), len);
+    CopyBuf(buf, _bufData.get() + _bufEndPos, EncryptKey(static_cast<int>(len)), len);
     _bufEndPos += len;
 }
 
@@ -203,7 +203,7 @@ void NetInBuffer::Pop(void* buf, uint len)
         return;
     }
 
-    CopyBuf(_bufData.get() + _bufReadPos, buf, EncryptKey(len), len);
+    CopyBuf(_bufData.get() + _bufReadPos, buf, EncryptKey(static_cast<int>(len)), len);
     _bufReadPos += len;
 }
 
@@ -296,14 +296,12 @@ auto NetInBuffer::NeedProcess() -> bool
         return NETMSG_DIR_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CRITTER_DIR:
         return NETMSG_CRITTER_DIR_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_SEND_MOVE_WALK:
-        return NETMSG_SEND_MOVE_WALK_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_SEND_MOVE_RUN:
-        return NETMSG_SEND_MOVE_RUN_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_CRITTER_MOVE:
-        return NETMSG_CRITTER_MOVE_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_CRITTER_XY:
-        return NETMSG_CRITTER_XY_SIZE + _bufReadPos <= _bufEndPos;
+    case NETMSG_SEND_STOP_MOVE:
+        return NETMSG_SEND_STOP_MOVE_SIZE + _bufReadPos <= _bufEndPos;
+    case NETMSG_CRITTER_STOP_MOVE:
+        return NETMSG_CRITTER_STOP_MOVE_SIZE + _bufReadPos <= _bufEndPos;
+    case NETMSG_CRITTER_POS:
+        return NETMSG_CRITTER_POS_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CUSTOM_COMMAND:
         return NETMSG_CUSTOM_COMMAND_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CLEAR_ITEMS:
@@ -407,8 +405,7 @@ auto NetInBuffer::NeedProcess() -> bool
     case NETMSG_LOADMAP:
     case NETMSG_REGISTER:
     case NETMSG_UPDATE_FILES_LIST:
-    case NETMSG_ADD_PLAYER:
-    case NETMSG_ADD_NPC:
+    case NETMSG_ADD_CRITTER:
     case NETMSG_SEND_COMMAND:
     case NETMSG_SEND_TEXT:
     case NETMSG_CRITTER_TEXT:
@@ -420,7 +417,6 @@ auto NetInBuffer::NeedProcess() -> bool
     case NETMSG_SOME_ITEM:
     case NETMSG_SOME_ITEMS:
     case NETMSG_CRITTER_MOVE_ITEM:
-    case NETMSG_COMBAT_RESULTS:
     case NETMSG_PLAY_SOUND:
     case NETMSG_TALK_NPC:
     case NETMSG_MAP:
@@ -430,6 +426,8 @@ auto NetInBuffer::NeedProcess() -> bool
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
     case NETMSG_ALL_PROPERTIES:
+    case NETMSG_SEND_MOVE:
+    case NETMSG_CRITTER_MOVE:
         return _bufReadPos + msg_len <= _bufEndPos;
     default:
         // Unknown message
@@ -496,17 +494,14 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_CRITTER_DIR:
         size = NETMSG_CRITTER_DIR_SIZE;
         break;
-    case NETMSG_SEND_MOVE_WALK:
-        size = NETMSG_SEND_MOVE_WALK_SIZE;
+    case NETMSG_SEND_STOP_MOVE:
+        size = NETMSG_SEND_STOP_MOVE_SIZE;
         break;
-    case NETMSG_SEND_MOVE_RUN:
-        size = NETMSG_SEND_MOVE_RUN_SIZE;
+    case NETMSG_CRITTER_STOP_MOVE:
+        size = NETMSG_CRITTER_STOP_MOVE_SIZE;
         break;
-    case NETMSG_CRITTER_MOVE:
-        size = NETMSG_CRITTER_MOVE_SIZE;
-        break;
-    case NETMSG_CRITTER_XY:
-        size = NETMSG_CRITTER_XY_SIZE;
+    case NETMSG_CRITTER_POS:
+        size = NETMSG_CRITTER_POS_SIZE;
         break;
     case NETMSG_CUSTOM_COMMAND:
         size = NETMSG_CUSTOM_COMMAND_SIZE;
@@ -640,8 +635,7 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_LOADMAP:
     case NETMSG_REGISTER:
     case NETMSG_UPDATE_FILES_LIST:
-    case NETMSG_ADD_PLAYER:
-    case NETMSG_ADD_NPC:
+    case NETMSG_ADD_CRITTER:
     case NETMSG_SEND_COMMAND:
     case NETMSG_SEND_TEXT:
     case NETMSG_CRITTER_TEXT:
@@ -650,7 +644,6 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_MAP_TEXT_MSG_LEX:
     case NETMSG_SOME_ITEMS:
     case NETMSG_CRITTER_MOVE_ITEM:
-    case NETMSG_COMBAT_RESULTS:
     case NETMSG_PLAY_SOUND:
     case NETMSG_TALK_NPC:
     case NETMSG_MAP:
@@ -662,7 +655,9 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_SOME_ITEM:
     case NETMSG_COMPLEX_PROPERTY:
     case NETMSG_SEND_COMPLEX_PROPERTY:
-    case NETMSG_ALL_PROPERTIES: {
+    case NETMSG_ALL_PROPERTIES:
+    case NETMSG_SEND_MOVE:
+    case NETMSG_CRITTER_MOVE: {
         // Changeable size
         uint msg_len = 0;
         EncryptKey(sizeof(msg));
@@ -675,5 +670,5 @@ void NetInBuffer::SkipMsg(uint msg)
     }
 
     _bufReadPos += size;
-    EncryptKey(size);
+    EncryptKey(static_cast<int>(size));
 }

@@ -69,7 +69,7 @@ public:
 
     void Send_Property(NetProperty type, const Property* prop, Entity* entity);
 
-    void Send_Move(Critter* from_cr, uint move_params);
+    void Send_Move(Critter* from_cr);
     void Send_Dir(Critter* from_cr);
     void Send_AddCritter(Critter* cr);
     void Send_RemoveCritter(Critter* cr);
@@ -97,7 +97,6 @@ public:
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
-    void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
     void Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);

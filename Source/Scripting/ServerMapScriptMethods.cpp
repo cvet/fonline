@@ -916,15 +916,15 @@
 
     FindPathInput input;
     input.MapId = self->GetId();
-    input.FromX = fromHx;
-    input.FromY = fromHy;
-    input.ToX = toHx;
-    input.ToY = toHy;
+    input.FromHexX = fromHx;
+    input.FromHexY = fromHy;
+    input.ToHexX = toHx;
+    input.ToHexY = toHy;
     input.Cut = cut;
 
     const auto output = self->GetEngine()->MapMngr.FindPath(input);
 
-    if (output.Result != FindPathResult::Ok) {
+    if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
     }
 
@@ -951,16 +951,16 @@
     FindPathInput input;
     input.MapId = self->GetId();
     input.FromCritter = cr;
-    input.FromX = cr->GetHexX();
-    input.FromY = cr->GetHexY();
-    input.ToX = toHx;
-    input.ToY = toHy;
+    input.FromHexX = cr->GetHexX();
+    input.FromHexY = cr->GetHexY();
+    input.ToHexX = toHx;
+    input.ToHexY = toHy;
     input.Multihex = cr->GetMultihex();
     input.Cut = cut;
 
     const auto output = self->GetEngine()->MapMngr.FindPath(input);
 
-    if (output.Result != FindPathResult::Ok) {
+    if (output.Result != FindPathOutput::ResultType::Ok) {
         return 0;
     }
 

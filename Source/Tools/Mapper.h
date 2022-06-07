@@ -327,7 +327,7 @@ public:
     vector<const ProtoItem*>* CurItemProtos {};
     vector<hstring>* CurTileNames {};
     vector<const ProtoCritter*>* CurNpcProtos {};
-    int NpcDir {};
+    uchar NpcDir {};
     int* CurProtoScroll {};
     uint ProtoWidth {};
     uint ProtosOnScreen {};

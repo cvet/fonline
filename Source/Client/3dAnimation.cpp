@@ -211,7 +211,7 @@ auto ModelAnimationController::GetNumAnimationSets() const -> uint
     return static_cast<uint>(_sets->size());
 }
 
-void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim)
+void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones)
 {
     _tracks[track].Anim = anim;
     const auto count = anim->GetBoneOutputCount();
@@ -219,10 +219,12 @@ void ModelAnimationController::SetTrackAnimationSet(uint track, const ModelAnima
     for (uint i = 0; i < count; i++) {
         const auto link_name = anim->_boneOutputs[i].BoneName;
         Output* output = nullptr;
-        for (auto& o : *_outputs) {
-            if (o.BoneName == link_name) {
-                output = &o;
-                break;
+        if (allowed_bones == nullptr || allowed_bones->count(link_name) != 0) {
+            for (auto& o : *_outputs) {
+                if (o.BoneName == link_name) {
+                    output = &o;
+                    break;
+                }
             }
         }
         _tracks[track].AnimOutput[i] = output;

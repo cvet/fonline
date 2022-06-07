@@ -819,11 +819,11 @@ void FOServer::ProcessPlayerConnection(Player* player)
             case NETMSG_DIR:
                 Process_Dir(player);
                 break;
-            case NETMSG_SEND_MOVE_WALK:
+            case NETMSG_SEND_MOVE:
                 Process_Move(player);
                 break;
-            case NETMSG_SEND_MOVE_RUN:
-                Process_Move(player);
+            case NETMSG_SEND_STOP_MOVE:
+                Process_StopMove(player);
                 break;
             case NETMSG_SEND_TALK_NPC:
                 Process_Dialog(player);
@@ -1590,12 +1590,14 @@ void FOServer::DispatchLogToClients()
 
 void FOServer::ProcessCritter(Critter* cr)
 {
+#if FO_SINGLEPLAYER
     if (GameTime.IsGamePaused()) {
         return;
     }
+#endif
 
     // Moving
-    ProcessCritterMoving(cr);
+    ProcessMove(cr);
 
     // Idle functions
     OnCritterIdle.Fire(cr);
@@ -1641,78 +1643,6 @@ void FOServer::ProcessCritter(Critter* cr)
 
         cr->Release();
     }
-}
-
-auto FOServer::MoveCritter(Critter* cr, ushort hx, ushort hy, uint move_params) -> bool
-{
-    const auto map_id = cr->GetMapId();
-    if (map_id == 0u) {
-        return false;
-    }
-
-    // Check run/walk
-    auto is_run = IsBitSet(move_params, MOVE_PARAM_RUN);
-    if (is_run && cr->GetIsNoRun()) {
-        // Switch to walk
-        move_params ^= MOVE_PARAM_RUN;
-        is_run = false;
-    }
-    if (!is_run && cr->GetIsNoWalk()) {
-        return false;
-    }
-
-    // Check
-    auto* map = MapMngr.GetMap(map_id);
-    if ((map == nullptr) || map_id != cr->GetMapId() || hx >= map->GetWidth() || hy >= map->GetHeight()) {
-        return false;
-    }
-
-    // Check passed
-    const auto fx = cr->GetHexX();
-    const auto fy = cr->GetHexY();
-    const auto dir = Geometry.GetNearDir(fx, fy, hx, hy);
-    const auto multihex = cr->GetMultihex();
-
-    if (!map->IsMovePassed(hx, hy, dir, multihex)) {
-        if (cr->IsOwnedByPlayer()) {
-            cr->Send_Position(cr);
-            auto* cr_hex = map->GetHexCritter(hx, hy, false);
-            if (cr_hex != nullptr) {
-                cr->Send_Position(cr_hex);
-            }
-        }
-        return false;
-    }
-
-    // Set last move type
-    cr->IsRunning = is_run;
-
-    // Process step
-    const auto is_dead = cr->IsDead();
-    map->UnsetFlagCritter(fx, fy, multihex, is_dead);
-    cr->SetHexX(hx);
-    cr->SetHexY(hy);
-    map->SetFlagCritter(hx, hy, multihex, is_dead);
-
-    // Set dir
-    cr->SetDir(dir);
-
-    if (is_run) {
-        if (cr->GetIsHide()) {
-            cr->SetIsHide(false);
-        }
-    }
-
-    cr->Broadcast_Move(move_params);
-    MapMngr.ProcessVisibleCritters(cr);
-    MapMngr.ProcessVisibleItems(cr);
-
-    // Triggers
-    if (cr->GetMapId() == map->GetId()) {
-        VerifyTrigger(map, cr, fx, fy, hx, hy, dir);
-    }
-
-    return true;
 }
 
 void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir)
@@ -2200,12 +2130,6 @@ void FOServer::Process_PlaceToGame(Player* player)
         RUNTIME_ASSERT(cr->GlobalMapGroup);
 
         cr->Send_GlobalInfo(GM_INFO_ALL, MapMngr);
-        for (auto* cr_ : *cr->GlobalMapGroup) {
-            if (cr_ != cr) {
-                cr_->Send_CustomCommand(cr, OTHER_FLAGS, cr->Flags);
-            }
-        }
-
         cr->Send_AllAutomapsInfo(MapMngr);
 
         if (cr->Talk.Type != TalkType::None) {
@@ -2221,23 +2145,19 @@ void FOServer::Process_PlaceToGame(Player* player)
         }
 
         // Parse to local
-        SetBit(cr->Flags, FCRIT_CHOSEN);
         cr->Send_AddCritter(cr);
-        UnsetBit(cr->Flags, FCRIT_CHOSEN);
 
         // Send all data
         cr->Send_AddAllItems();
         cr->Send_AllAutomapsInfo(MapMngr);
 
         // Send current critters
-        const auto critters = cr->VisCrSelf;
-        for (auto& cr_ : critters) {
-            cr->Send_AddCritter(cr_);
+        for (auto* visible_cr : cr->VisCrSelf) {
+            cr->Send_AddCritter(visible_cr);
         }
 
         // Send current items on map
-        const auto items = cr->VisItem;
-        for (const auto item_id : items) {
+        for (const auto item_id : cr->VisItem) {
             if (auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
                 cr->Send_AddItemOnMap(item);
             }
@@ -2365,55 +2285,10 @@ void FOServer::Process_GiveMap(Player* player)
 
 void FOServer::Process_Move(Player* player)
 {
-    Critter* cr = player->GetOwnedCritter();
+}
 
-    uint move_params = 0;
-    ushort hx = 0;
-    ushort hy = 0;
-
-    player->Connection->Bin >> move_params;
-    player->Connection->Bin >> hx;
-    player->Connection->Bin >> hy;
-
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
-
-    if (cr->GetMapId() == 0u) {
-        return;
-    }
-
-    // The player informs that has stopped
-    if (IsBitSet(move_params, MOVE_PARAM_STEP_DISALLOW)) {
-        // cl->Send_Position(cl);
-        cr->Broadcast_Position();
-        return;
-    }
-
-    // Check running availability
-    auto is_run = IsBitSet(move_params, MOVE_PARAM_RUN);
-    if (is_run) {
-        if (cr->GetIsNoRun() || (Settings.RunOnCombat ? false : cr->GetTimeoutBattle() > GameTime.GetFullSecond()) || (Settings.RunOnTransfer ? false : cr->GetTimeoutTransfer() > GameTime.GetFullSecond())) {
-            // Switch to walk
-            move_params ^= MOVE_PARAM_RUN;
-            is_run = false;
-        }
-    }
-
-    // Check walking availability
-    if (!is_run) {
-        if (cr->GetIsNoWalk()) {
-            cr->Send_Position(cr);
-            return;
-        }
-    }
-
-    // Check dist
-    if (!Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), hx, hy, 1)) {
-        cr->Send_Position(cr);
-        return;
-    }
-
-    // Try move
-    MoveCritter(cr, hx, hy, move_params);
+void FOServer::Process_StopMove(Player* player)
+{
 }
 
 void FOServer::Process_Dir(Player* player)
@@ -2434,7 +2309,7 @@ void FOServer::Process_Dir(Player* player)
         return;
     }
 
-    cr->SetDir(dir);
+    cr->ChangeDir(dir);
     cr->Broadcast_Dir();
 }
 
@@ -2871,155 +2746,401 @@ void FOServer::OnSetItemOpened(Entity* entity, const Property* prop, const void*
     }
 }
 
-void FOServer::ProcessCritterMoving(Critter* cr)
+void FOServer::ProcessMove(Critter* cr)
 {
-    if (cr->Moving.State != MovingState::InProgress) {
+    // Moving
+    if (cr->IsMoving()) {
+        if (cr->Moving.IsRunning && cr->GetIsHide()) {
+            cr->SetIsHide(false);
+        }
+
+        // bool is_run = cr->IsRunning;
+        // if (is_run && cr->GetIsNoRun())
+        //    return false;
+        // if (!is_run && cr->GetIsNoWalk())
+        //    return false;
+
+        auto* map = MapMngr.GetMap(cr->GetMapId());
+        if (map != nullptr && cr->IsAlive()) {
+            ProcessMoveBySteps(cr, map);
+        }
+        else {
+            cr->ClearMove();
+            cr->Send_Move(cr);
+            cr->Broadcast_Move();
+            cr->Send_Position(cr);
+            cr->Broadcast_Position();
+        }
+    }
+
+    if (cr->TargetMoving.State == MovingState::InProgress) {
+        // Check for path recalculation
+        if (cr->IsMoving() && cr->TargetMoving.TargId) {
+            // Critter* targ = cr->GetCritSelf( cr->TargetMoving.TargId );
+            // if( !targ || ( ( cr->TargetMoving.HexX || cr->TargetMoving.HexY ) && !CheckDist( targ->GetHexX(), targ->GetHexY(), cr->TargetMoving.HexX, cr->TargetMoving.HexY, 0 ) ) )
+            //    cr->ClearMove();
+        }
+
+        // Find path if not exist
+        if (!cr->IsMoving()) {
+            ushort hx;
+            ushort hy;
+            uint cut;
+            uint trace_dist;
+            Critter* trace_cr;
+            [[maybe_unused]] bool check_cr = false;
+
+            if (cr->TargetMoving.TargId != 0u) {
+                Critter* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
+                if (targ == nullptr) {
+                    cr->TargetMoving.State = MovingState::TargetNotFound;
+                    cr->Broadcast_Position();
+                    return;
+                }
+
+                hx = targ->GetHexX();
+                hy = targ->GetHexY();
+                cut = cr->TargetMoving.Cut;
+                trace_dist = cr->TargetMoving.TraceDist;
+                trace_cr = targ;
+                check_cr = true;
+            }
+            else {
+                hx = cr->TargetMoving.HexX;
+                hy = cr->TargetMoving.HexY;
+                cut = cr->TargetMoving.Cut;
+                trace_dist = 0;
+                trace_cr = nullptr;
+            }
+
+            FindPathInput find_input;
+            find_input.MapId = cr->GetMapId();
+            find_input.FromCritter = cr;
+            find_input.FromHexX = cr->GetHexX();
+            find_input.FromHexY = cr->GetHexY();
+            find_input.ToHexX = hx;
+            find_input.ToHexY = hy;
+            find_input.IsRun = cr->TargetMoving.IsRun;
+            find_input.Multihex = cr->GetMultihex();
+            find_input.Cut = cut;
+            find_input.TraceDist = trace_dist;
+            find_input.TraceCr = trace_cr;
+            find_input.CheckCritter = true;
+            find_input.CheckGagItems = true;
+
+            if (find_input.IsRun && cr->GetIsNoRun()) {
+                find_input.IsRun = false;
+            }
+
+            if (cr->GetIsNoMove()) {
+                cr->TargetMoving.State = MovingState::CantMove;
+                return;
+            }
+
+            const auto find_path = MapMngr.FindPath(find_input);
+
+            if (find_path.GagCritter != nullptr) {
+                cr->TargetMoving.State = MovingState::GagCritter;
+                cr->TargetMoving.GagEntityId = find_path.GagCritter->GetId();
+                return;
+            }
+
+            if (find_path.GagItem != nullptr) {
+                cr->TargetMoving.State = MovingState::GagItem;
+                cr->TargetMoving.GagEntityId = find_path.GagItem->GetId();
+                return;
+            }
+
+            // Failed
+            if (find_path.Result != FindPathOutput::ResultType::Ok) {
+                if (find_path.Result == FindPathOutput::ResultType::AlreadyHere) {
+                    cr->TargetMoving.State = MovingState::Success;
+                    return;
+                }
+
+                MovingState reason = {};
+                switch (find_path.Result) {
+                case FindPathOutput::ResultType::MapNotFound:
+                    reason = MovingState::InternalError;
+                    break;
+                case FindPathOutput::ResultType::TooFar:
+                    reason = MovingState::HexTooFar;
+                    break;
+                case FindPathOutput::ResultType::InternalError:
+                    reason = MovingState::InternalError;
+                    break;
+                case FindPathOutput::ResultType::InvalidHexes:
+                    reason = MovingState::InternalError;
+                    break;
+                case FindPathOutput::ResultType::TraceTargetNullptr:
+                    reason = MovingState::InternalError;
+                    break;
+                case FindPathOutput::ResultType::HexBusy:
+                    reason = MovingState::HexBusy;
+                    break;
+                case FindPathOutput::ResultType::HexBusyRing:
+                    reason = MovingState::HexBusyRing;
+                    break;
+                case FindPathOutput::ResultType::Deadlock:
+                    reason = MovingState::Deadlock;
+                    break;
+                case FindPathOutput::ResultType::TraceFailed:
+                    reason = MovingState::TraceFailed;
+                    break;
+                case FindPathOutput::ResultType::Unknown:
+                    reason = MovingState::InternalError;
+                    break;
+                case FindPathOutput::ResultType::Ok:
+                    reason = MovingState::InternalError;
+                    break;
+                case FindPathOutput::ResultType::AlreadyHere:
+                    reason = MovingState::InternalError;
+                    break;
+                }
+
+                cr->TargetMoving.State = reason;
+                return;
+            }
+
+            // Success
+            MoveCritter(cr, !cr->GetIsNoRun(), cr->GetHexX(), cr->GetHexY(), find_path.Steps, find_path.ControlSteps, 0, 0, true);
+        }
+    }
+}
+
+void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
+{
+    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+    RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+    RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+
+    const auto move_uid = cr->Moving.Uid;
+    auto normalized_time = static_cast<float>(GameTime.FrameTick() - cr->Moving.StartTick) / cr->Moving.WholeTime;
+    normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
+
+    const auto dist_pos = cr->Moving.WholeDist * normalized_time;
+
+    auto start_hx = cr->Moving.StartHexX;
+    auto start_hy = cr->Moving.StartHexY;
+    auto cur_dist = 0.0f;
+
+    auto control_step_begin = 0;
+    for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
+        auto hx = start_hx;
+        auto hy = start_hy;
+
+        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
+            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            RUNTIME_ASSERT(move_ok);
+        }
+
+        auto&& [ox, oy] = Geometry.GetHexInterval(start_hx, start_hy, hx, hy);
+
+        if (i == 0) {
+            ox -= cr->Moving.StartOx;
+            oy -= cr->Moving.StartOy;
+        }
+        if (i == cr->Moving.ControlSteps.size() - 1) {
+            ox += cr->Moving.EndOx;
+            oy += cr->Moving.EndOy;
+        }
+
+        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
+        auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+        if (dist < 0.0001f) {
+            dist = 0.0001f;
+        }
+
+        if ((normalized_time < 1.0f && dist_pos >= cur_dist && dist_pos <= cur_dist + dist) || (normalized_time == 1.0f && i == cr->Moving.ControlSteps.size() - 1)) {
+            auto normalized_dist = (dist_pos - cur_dist) / dist;
+            normalized_dist = std::clamp(normalized_dist, 0.0f, 1.0f);
+            if (normalized_time == 1.0f)
+                normalized_dist = 1.0f;
+
+            // Evaluate current hex
+            const auto step_index_f = std::round(normalized_dist * static_cast<float>(cr->Moving.ControlSteps[i] - control_step_begin));
+            const auto step_index = control_step_begin + static_cast<int>(step_index_f);
+            RUNTIME_ASSERT(step_index >= control_step_begin);
+            RUNTIME_ASSERT(step_index <= cr->Moving.ControlSteps[i]);
+
+            auto hx2 = start_hx;
+            auto hy2 = start_hy;
+
+            for (auto j2 = control_step_begin; j2 < step_index; j2++) {
+                const auto move_ok = Geometry.MoveHexByDir(hx2, hy2, cr->Moving.Steps[j2], map->GetWidth(), map->GetHeight());
+                RUNTIME_ASSERT(move_ok);
+            }
+
+            const auto old_hx = cr->GetHexX();
+            const auto old_hy = cr->GetHexY();
+
+            if (old_hx != hx2 || old_hy != hy2) {
+                const uchar dir = Geometry.GetFarDir(old_hx, old_hy, hx2, hy2);
+                const uint multihex = cr->GetMultihex();
+
+                if (map->IsMovePassed(cr, hx2, hy2, multihex)) {
+                    const auto is_dead = cr->IsDead();
+                    map->UnsetFlagCritter(old_hx, old_hy, multihex, is_dead);
+                    cr->SetHexX(hx2);
+                    cr->SetHexY(hy2);
+                    map->SetFlagCritter(hx2, hy2, multihex, is_dead);
+
+                    MapMngr.ProcessVisibleCritters(cr);
+                    if (cr->Moving.Uid != move_uid) {
+                        return;
+                    }
+
+                    MapMngr.ProcessVisibleItems(cr);
+                    if (cr->Moving.Uid != move_uid) {
+                        return;
+                    }
+
+                    VerifyTrigger(map, cr, old_hx, old_hy, hx2, hy2, dir);
+                    if (cr->Moving.Uid != move_uid) {
+                        return;
+                    }
+                }
+                else if (map->IsHexBlockItem(hx2, hy2)) {
+                    cr->ClearMove();
+                    cr->Send_Position(cr);
+                    cr->Broadcast_Position();
+                    return;
+                }
+            }
+
+            // Evaluate current position
+            const auto cr_hx = cr->GetHexX();
+            const auto cr_hy = cr->GetHexY();
+            const auto moved = (cr_hx != old_hx || cr_hy != old_hy);
+
+            auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(start_hx, start_hy, cr_hx, cr_hy);
+            if (i == 0) {
+                cr_ox -= cr->Moving.StartOx;
+                cr_oy -= cr->Moving.StartOy;
+            }
+
+            const auto lerp = [](int a, int b, float t) { return static_cast<float>(a) * (1.0f - t) + static_cast<float>(b) * t; };
+
+            auto mx = lerp(0, ox, normalized_dist);
+            auto my = lerp(0, oy, normalized_dist);
+            mx -= static_cast<float>(cr_ox);
+            my -= static_cast<float>(cr_oy);
+
+            const auto mxi = static_cast<short>(std::round(mx));
+            const auto myi = static_cast<short>(std::round(my));
+            if (moved || cr->GetHexOffsX() != mxi || cr->GetHexOffsY() != myi) {
+                cr->SetHexOffsX(mxi);
+                cr->SetHexOffsY(myi);
+            }
+
+            // Evaluate dir angle
+            const auto dir_angle = Geometry.GetLineAngle(0, 0, ox, oy);
+            cr->SetDirAngle(static_cast<short>(dir_angle));
+
+            goto label_Done;
+        }
+
+        RUNTIME_ASSERT(i < cr->Moving.ControlSteps.size() - 1);
+
+        control_step_begin = cr->Moving.ControlSteps[i];
+        start_hx = hx;
+        start_hy = hy;
+        cur_dist += dist;
+    }
+
+label_Done:
+    if (normalized_time == 1.0f) {
+        if (cr->GetHexX() != cr->Moving.EndHexX || cr->GetHexY() != cr->Moving.EndHexY) {
+            cr->Send_Position(cr);
+            cr->Broadcast_Position();
+        }
+
+        cr->ClearMove();
+    }
+}
+
+void FOServer::MoveCritter(Critter* cr, bool is_run, ushort start_hx, ushort start_hy, const vector<uchar>& steps, const vector<ushort>& control_steps, short end_hex_ox, short end_hex_oy, bool send_self)
+{
+    cr->ClearMove();
+
+    const auto* map = MapMngr.GetMap(cr->GetMapId());
+    if (map == nullptr) {
         return;
     }
 
-    // Check for path recalculation
-    if (!cr->Moving.Steps.empty() && cr->Moving.TargId != 0u) {
-        auto* targ = cr->GetCrSelf(cr->Moving.TargId);
-        if (targ == nullptr || ((cr->Moving.HexX != 0u || cr->Moving.HexY != 0u) && !Geometry.CheckDist(targ->GetHexX(), targ->GetHexY(), cr->Moving.HexX, cr->Moving.HexY, 0))) {
-            cr->Moving.Steps.clear();
+    cr->Moving.IsRunning = is_run;
+    cr->Moving.StartTick = GameTime.FrameTick();
+    cr->Moving.Steps = steps;
+    cr->Moving.ControlSteps = control_steps;
+    cr->Moving.StartHexX = start_hx;
+    cr->Moving.StartHexY = start_hy;
+    cr->Moving.StartOx = cr->GetHexOffsX();
+    cr->Moving.StartOy = cr->GetHexOffsY();
+    cr->Moving.EndOx = end_hex_ox;
+    cr->Moving.EndOy = end_hex_oy;
+
+    cr->Moving.WholeTime = 0.0f;
+    cr->Moving.WholeDist = 0.0f;
+
+    const auto base_move_speed = static_cast<float>(cr->Moving.IsRunning ? cr->GetRunSpeed() : cr->GetWalkSpeed());
+
+    auto control_step_begin = 0;
+    for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
+        auto hx = start_hx;
+        auto hy = start_hy;
+
+        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
+            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], map->GetWidth(), map->GetHeight());
+            RUNTIME_ASSERT(move_ok);
         }
+
+        auto&& [ox, oy] = Geometry.GetHexInterval(start_hx, start_hy, hx, hy);
+
+        if (i == 0) {
+            ox -= cr->Moving.StartOx;
+            oy -= cr->Moving.StartOy;
+        }
+        if (i == cr->Moving.ControlSteps.size() - 1) {
+            ox += cr->Moving.EndOx;
+            oy += cr->Moving.EndOy;
+        }
+
+        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
+        const auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+
+        cr->Moving.WholeTime += dist / base_move_speed * 1000.0f;
+        cr->Moving.WholeDist += dist;
+
+        control_step_begin = cr->Moving.ControlSteps[i];
+        start_hx = hx;
+        start_hy = hy;
+
+        cr->Moving.EndHexX = hx;
+        cr->Moving.EndHexY = hy;
     }
 
-    // Find path if not exist
-    if (cr->Moving.Steps.empty()) {
-        ushort hx = 0;
-        ushort hy = 0;
-        uint cut = 0;
-        uint trace = 0;
-        Critter* trace_cr = nullptr;
-
-        if (cr->Moving.TargId != 0u) {
-            auto* targ = cr->GetCrSelf(cr->Moving.TargId);
-            if (targ == nullptr) {
-                cr->Moving.State = MovingState::TargetNotFound;
-                cr->Broadcast_Position();
-                return;
-            }
-
-            hx = targ->GetHexX();
-            hy = targ->GetHexY();
-            cut = cr->Moving.Cut;
-            trace = cr->Moving.Trace;
-            trace_cr = targ;
-        }
-        else {
-            hx = cr->Moving.HexX;
-            hy = cr->Moving.HexY;
-            cut = cr->Moving.Cut;
-            trace = 0;
-            trace_cr = nullptr;
-        }
-
-        FindPathInput input;
-        input.MapId = cr->GetMapId();
-        input.FromCritter = cr;
-        input.FromX = cr->GetHexX();
-        input.FromY = cr->GetHexY();
-        input.ToX = hx;
-        input.ToY = hy;
-        input.IsRun = cr->Moving.IsRun;
-        input.Multihex = cr->GetMultihex();
-        input.Cut = cut;
-        input.Trace = trace;
-        input.TraceCr = trace_cr;
-        input.CheckCrit = true;
-        input.CheckGagItems = true;
-
-        if (input.IsRun && cr->GetIsNoRun()) {
-            input.IsRun = false;
-        }
-        if (!input.IsRun && cr->GetIsNoWalk()) {
-            cr->Moving.State = MovingState::CantMove;
-            return;
-        }
-
-        auto output = MapMngr.FindPath(input);
-        if (output.GagCritter != nullptr) {
-            cr->Moving.State = MovingState::GagCritter;
-            cr->Moving.GagEntityId = output.GagCritter->GetId();
-            return;
-        }
-
-        if (output.GagItem != nullptr) {
-            cr->Moving.State = MovingState::GagItem;
-            cr->Moving.GagEntityId = output.GagItem->GetId();
-            return;
-        }
-
-        // Failed
-        if (output.Result != FindPathResult::Ok) {
-            if (output.Result == FindPathResult::AlreadyHere) {
-                cr->Moving.State = MovingState::Success;
-                return;
-            }
-
-            MovingState reason;
-            switch (output.Result) {
-            case FindPathResult::MapNotFound:
-                reason = MovingState::InternalError;
-                break;
-            case FindPathResult::TooFar:
-                reason = MovingState::HexTooFar;
-                break;
-            case FindPathResult::InternalError:
-                reason = MovingState::InternalError;
-                break;
-            case FindPathResult::InvalidHexes:
-                reason = MovingState::InternalError;
-                break;
-            case FindPathResult::TraceTargetNullptr:
-                reason = MovingState::InternalError;
-                break;
-            case FindPathResult::HexBusy:
-                reason = MovingState::HexBusy;
-                break;
-            case FindPathResult::HexBusyRing:
-                reason = MovingState::HexBusyRing;
-                break;
-            case FindPathResult::Deadlock:
-                reason = MovingState::Deadlock;
-                break;
-            case FindPathResult::TraceFailed:
-                reason = MovingState::TraceFail;
-                break;
-            default:
-                reason = MovingState::InternalError;
-                break;
-            }
-
-            cr->Moving.State = reason;
-            cr->Broadcast_Position();
-            return;
-        }
-
-        // Success
-        cr->Moving.Steps = std::move(output.Steps);
-        cr->Moving.Iter = 0;
+    if (cr->Moving.WholeTime < 0.0001f) {
+        cr->Moving.WholeTime = 0.0001f;
+    }
+    if (cr->Moving.WholeDist < 0.0001f) {
+        cr->Moving.WholeDist = 0.0001f;
     }
 
-    // Get path and move
-    const auto& steps = cr->Moving.Steps;
-    if (!cr->Moving.Steps.empty() && cr->Moving.Iter < steps.size()) {
-        const auto& ps = steps[cr->Moving.Iter];
-        if (!Geometry.CheckDist(cr->GetHexX(), cr->GetHexY(), ps.HexX, ps.HexY, 1) || !MoveCritter(cr, ps.HexX, ps.HexY, ps.MoveParams)) {
-            // Error
-            cr->Moving.Steps.clear();
-            cr->Broadcast_Position();
-        }
-        else {
-            // Next
-            cr->Moving.Iter++;
-        }
+    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+    RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+    RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+
+    if (send_self) {
+        cr->Send_Move(cr);
     }
-    else {
-        // Done
-        cr->Moving.State = MovingState::Success;
-    }
+
+    cr->Broadcast_Move();
 }
 
 auto FOServer::DialogCompile(Critter* npc, Critter* cl, const Dialog& base_dlg, Dialog& compiled_dlg) -> bool
@@ -3575,10 +3696,10 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
         }
 
         if (!ignore_distance) {
-            const int dir = Geometry.GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
-            npc->SetDir(Geometry.ReverseDir(dir));
+            const auto dir = Geometry.GetFarDir(cl->GetHexX(), cl->GetHexY(), npc->GetHexX(), npc->GetHexY());
+            npc->ChangeDir(Geometry.ReverseDir(dir));
             npc->Broadcast_Dir();
-            cl->SetDir(dir);
+            cl->ChangeDir(dir);
             cl->Broadcast_Dir();
             cl->Send_Dir(cl);
         }

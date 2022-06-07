@@ -40,6 +40,45 @@ CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto) :
 {
 }
 
+void CritterView::Init()
+{
+    if (IsNonEmptyNiceName()) {
+        _nameOnHead = GetNiceName();
+    }
+
+    if (_nameOnHead.empty()) {
+        const auto& lang_pack = _engine->GetLangPack();
+
+        if (GetDialogId() && lang_pack.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(GetDialogId().as_uint())) != 0u) {
+            _nameOnHead = lang_pack.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(GetDialogId().as_uint()));
+        }
+        else if (lang_pack.Msg[TEXTMSG_DLG].Count(STR_NPC_PID_NAME(GetProtoId().as_uint())) != 0u) {
+            _nameOnHead = lang_pack.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(GetProtoId().as_uint()));
+        }
+    }
+
+    if (_nameOnHead.empty()) {
+        _nameOnHead = _str("{}", GetId());
+    }
+}
+
+void CritterView::Finish()
+{
+}
+
+void CritterView::SetPlayer(bool is_player, bool is_chosen)
+{
+    _ownedByPlayer = is_player;
+    _isChosen = is_chosen;
+}
+
+void CritterView::SetPlayerOffline(bool is_offline)
+{
+    RUNTIME_ASSERT(_ownedByPlayer);
+
+    _isPlayerOffline = is_offline;
+}
+
 void CritterView::AddItem(ItemView* item)
 {
     item->SetOwnership(ItemOwnership::CritterInventory);
@@ -124,20 +163,4 @@ auto CritterView::CheckFind(CritterFindType find_type) const -> bool
         return false;
     }
     return true;
-}
-
-auto CritterView::IsFree() const -> bool
-{
-    return _engine->GameTime.GameTick() - _startTick >= _tickCount;
-}
-
-void CritterView::TickStart(uint ms)
-{
-    _tickCount = ms;
-    _startTick = _engine->GameTime.GameTick();
-}
-
-void CritterView::TickNull()
-{
-    _tickCount = 0;
 }

@@ -129,17 +129,27 @@ auto ModelBone::Find(hstring bone_name) -> ModelBone*
     return nullptr;
 }
 
-ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) : _settings {settings}, _fileSys {file_sys}, _effectMngr {effect_mngr}, _gameTime {game_time}, _nameResolver {name_resolver}, _animNameResolver {anim_name_resolver}, _meshTexCreator {std::move(std::move(mesh_tex_creator))}
+ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, EffectManager& effect_mngr, GameTimer& game_time, NameResolver& name_resolver, AnimationResolver& anim_name_resolver, MeshTextureCreator mesh_tex_creator) :
+    _settings {settings}, //
+    _fileSys {file_sys},
+    _effectMngr {effect_mngr},
+    _gameTime {game_time},
+    _nameResolver {name_resolver},
+    _animNameResolver {anim_name_resolver},
+    _meshTexCreator {std::move(mesh_tex_creator)},
+    _geometry(settings)
 {
-    // Smoothing
     _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
     if (_moveTransitionTime < 0.001f) {
         _moveTransitionTime = 0.001f;
     }
 
-    // 2D rendering time
     if (_settings.Animation3dFPS != 0u) {
         _animDelay = 1000 / _settings.Animation3dFPS;
+    }
+
+    for (const auto& bone_name : settings.LegBones) {
+        _legBones.emplace(_nameResolver.ToHashedString(bone_name));
     }
 }
 
@@ -365,7 +375,7 @@ auto ModelManager::Convert3dTo2d(vec3 pos) const -> IPoint
 
 auto ModelManager::VecProject(const vec3& v) const -> vec3
 {
-    int viewport[4] = {0, 0, _modeWidth, _modeHeight};
+    const int viewport[4] = {0, 0, _modeWidth, _modeHeight};
     auto x = 0.0f;
     auto y = 0.0f;
     auto z = 0.0f;
@@ -375,7 +385,7 @@ auto ModelManager::VecProject(const vec3& v) const -> vec3
 
 auto ModelManager::VecUnproject(const vec3& v) const -> vec3
 {
-    int viewport[4] = {0, 0, _modeWidth, _modeHeight};
+    const int viewport[4] = {0, 0, _modeWidth, _modeHeight};
     auto x = 0.0f;
     auto y = 0.0f;
     auto z = 0.0f;
@@ -388,7 +398,8 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
     _speedAdjustBase = 1.0f;
     _speedAdjustCur = 1.0f;
     _speedAdjustLink = 1.0f;
-    _dirAngle = (_modelMngr._settings.MapHexagonal ? 150.0f : 135.0f);
+    _lookDirAngle = _modelMngr._geometry.IsHexagonal() ? 150.0f : 135.0f;
+    _moveDirAngle = _lookDirAngle;
     _childChecker = true;
     _useGameTimer = true;
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
@@ -396,15 +407,16 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
 
 ModelInstance::~ModelInstance()
 {
-    delete _animController;
+    delete _bodyAnimController;
+    delete _moveAnimController;
 
-    for (auto* anim : _children) {
+    for (const auto* anim : _children) {
         delete anim;
     }
-    for (auto* mesh : _allMeshes) {
+    for (const auto* mesh : _allMeshes) {
         delete mesh;
     }
-    for (auto* mesh : _combinedMeshes) {
+    for (const auto* mesh : _combinedMeshes) {
         delete mesh;
     }
 }
@@ -650,9 +662,11 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
         }
     }
 
-    if ((_animController != nullptr) && index >= 0) {
+    RefreshMoveAnimation();
+
+    if (_bodyAnimController != nullptr && index >= 0) {
         // Get the animation set from the controller
-        auto* set = _animController->GetAnimationSet(index);
+        const auto* set = _bodyAnimController->GetAnimationSet(index);
 
         // Alternate tracks
         uint new_track = (_currentTrack == 0 ? 1 : 0);
@@ -663,15 +677,15 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
         }
 
         // Assign to our track
-        _animController->SetTrackAnimationSet(new_track, set);
+        _bodyAnimController->SetTrackAnimationSet(new_track, set, nullptr);
 
         // Turn off fast transition bones on other tracks
         if (!fast_transition_bones.empty()) {
-            _animController->ResetBonesTransition(new_track, fast_transition_bones);
+            _bodyAnimController->ResetBonesTransition(new_track, fast_transition_bones);
         }
 
         // Prepare to new tracking
-        _animController->Reset();
+        _bodyAnimController->Reset();
 
         // Smooth time
         auto smooth_time = (IsBitSet(flags, ANIMATION_NO_SMOOTH | ANIMATION_STAY | ANIMATION_INIT) ? 0.0001f : _modelMngr._moveTransitionTime);
@@ -680,31 +694,24 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
             period = start_time + 0.0002f;
         }
 
-        // Add an event key to disable the currently playing track smooth_time seconds in the future
-        _animController->AddEventEnable(_currentTrack, false, smooth_time);
-        // Add an event key to change the speed right away so the animation completes in smooth_time seconds
-        _animController->AddEventSpeed(_currentTrack, 0.0f, 0.0f, smooth_time);
-        // Add an event to change the weighting of the current track (the effect it has blended with the second track)
-        _animController->AddEventWeight(_currentTrack, 0.0f, 0.0f, smooth_time);
+        // Disable current track
+        _bodyAnimController->AddEventEnable(_currentTrack, false, smooth_time);
+        _bodyAnimController->AddEventSpeed(_currentTrack, 0.0f, 0.0f, smooth_time);
+        _bodyAnimController->AddEventWeight(_currentTrack, 0.0f, 0.0f, smooth_time);
 
         // Enable the new track
-        _animController->SetTrackEnable(new_track, true);
-        _animController->SetTrackPosition(new_track, 0.0f);
-        // Add an event key to set the speed of the track
-        _animController->AddEventSpeed(new_track, 1.0f, 0.0f, smooth_time);
+        _bodyAnimController->SetTrackEnable(new_track, true);
+        _bodyAnimController->SetTrackPosition(new_track, 0.0f);
+        _bodyAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, smooth_time);
         if (IsBitSet(flags, ANIMATION_ONE_TIME | ANIMATION_STAY | ANIMATION_INIT)) {
-            _animController->AddEventSpeed(new_track, 0.0f, period - 0.0001f, 0.0);
+            _bodyAnimController->AddEventSpeed(new_track, 0.0f, period - 0.0001f, 0.0f);
         }
-        // Add an event to change the weighting of the current track (the effect it has blended with the first track)
-        // As you can see this will go from 0 effect to total effect(1.0f) in smooth_time seconds and the first track
-        // goes from total to 0.0f in the same time.
-        _animController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
+        _bodyAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
 
-        if (!Math::FloatCompare(start_time, 0.0f)) {
-            _animController->AdvanceTime(start_time);
-        }
-        else {
-            _animController->AdvanceTime(0.0001f);
+        _bodyAnimController->AdvanceTime(start_time != 0.0f ? start_time : 0.0001f);
+
+        if (_isMoving && _moveAnimController != nullptr) {
+            _moveAnimController->AdvanceTime(0.0001f);
         }
 
         // Remember current track
@@ -741,6 +748,77 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
     return mesh_changed;
 }
 
+void ModelInstance::SetMoving(bool enabled, bool is_run)
+{
+    _isMoving = enabled;
+    _isRunning = is_run;
+
+    RefreshMoveAnimation();
+}
+
+void ModelInstance::RefreshMoveAnimation()
+{
+    if (_moveAnimController == nullptr) {
+        return;
+    }
+
+    uint anim1 = ANIM1_UNARMED;
+    uint anim2 = ANIM2_IDLE;
+
+    if (_isMoving) {
+        const auto angle_diff = _modelMngr._geometry.GetDirAngleDiff(_moveDirAngle, _lookDirAngle);
+        if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
+            _isMovingBack = false;
+            anim2 = (_isRunning ? ANIM2_RUN : ANIM2_WALK);
+        }
+        else {
+            _isMovingBack = true;
+            anim2 = (_isRunning ? ANIM2_RUN_BACK : ANIM2_WALK_BACK);
+        }
+    }
+    else {
+        anim1 = _curAnim1;
+        _isMovingBack = false;
+    }
+
+    float speed = 1.0f;
+    const auto index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, _isCombatMode);
+    if (index == _curMovingAnim) {
+        return;
+    }
+
+    _curMovingAnim = index;
+
+    constexpr float smooth_time = 0.0001f;
+
+    if (index >= 0) {
+        const auto* anim_set = _moveAnimController->GetAnimationSet(index);
+        const uint new_track = _currentMoveTrack == 0 ? 1 : 0;
+
+        _moveAnimController->SetTrackAnimationSet(new_track, anim_set, &_modelMngr._legBones);
+        _moveAnimController->Reset();
+
+        _moveAnimController->AddEventEnable(_currentMoveTrack, false, smooth_time);
+        _moveAnimController->AddEventSpeed(_currentMoveTrack, 0.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventWeight(_currentMoveTrack, 0.0f, 0.0f, smooth_time);
+
+        _moveAnimController->SetTrackEnable(new_track, true);
+        _moveAnimController->SetTrackPosition(new_track, 0.0f);
+
+        _moveAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
+
+        _currentMoveTrack = new_track;
+    }
+    else {
+        _moveAnimController->Reset();
+
+        _moveAnimController->AddEventEnable(_currentMoveTrack, false, smooth_time);
+        _moveAnimController->AddEventSpeed(_currentMoveTrack, 0.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventWeight(_currentMoveTrack, 0.0f, 0.0f, smooth_time);
+    }
+}
+
 auto ModelInstance::HasAnimation(uint anim1, uint anim2) const -> bool
 {
     const auto index = static_cast<int>((anim1 << 16) | anim2);
@@ -748,22 +826,17 @@ auto ModelInstance::HasAnimation(uint anim1, uint anim2) const -> bool
     return it != _modelInfo->_animIndexes.end();
 }
 
-auto ModelInstance::EvaluateAnimation() const -> optional<tuple<uint, uint>>
+auto ModelInstance::ResolveAnimation(uint& anim1, uint& anim2) const -> bool
 {
-    auto anim1 = 0u;
-    auto anim2 = 0u;
-    if (_modelInfo->GetAnimationIndex(anim1, anim2, nullptr, false) == -1) {
-        return std::nullopt;
-    }
-    return tuple {ANIM1_UNARMED, ANIM2_IDLE};
+    return _modelInfo->GetAnimationIndex(anim1, anim2, nullptr, false) != -1;
 }
 
-auto ModelInstance::GetAnim1() const -> int
+auto ModelInstance::GetAnim1() const -> uint
 {
     return _currentLayers[LAYERS3D_COUNT] >> 16;
 }
 
-auto ModelInstance::GetAnim2() const -> int
+auto ModelInstance::GetAnim2() const -> uint
 {
     return _currentLayers[LAYERS3D_COUNT] & 0xFFFF;
 }
@@ -776,10 +849,10 @@ auto ModelInstance::IsAnimationPlaying() const -> bool
 auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 {
     auto period = 0.0f;
-    if (_animController != nullptr) {
-        const auto* set = _animController->GetAnimationSet(_modelInfo->_renderAnim);
-        if (set != nullptr) {
-            period = set->GetDuration();
+    if (_bodyAnimController != nullptr) {
+        const auto* anim_set = _bodyAnimController->GetAnimationSet(_modelInfo->_renderAnim);
+        if (anim_set != nullptr) {
+            period = anim_set->GetDuration();
         }
     }
 
@@ -957,13 +1030,34 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
 void ModelInstance::SetDir(uchar dir)
 {
-    const auto dir_angle = (_modelMngr._settings.MapHexagonal ? 150 - dir * 60 : 135 - dir * 45);
-    SetDirAngle(dir_angle);
+    const auto dir_angle = _modelMngr._geometry.DirToAngle(dir);
+
+    SetLookDirAngle(dir_angle);
+    SetLookDirAngle(dir_angle);
 }
 
-void ModelInstance::SetDirAngle(int dir_angle)
+void ModelInstance::SetLookDirAngle(int dir_angle)
 {
-    _dirAngle = static_cast<float>(dir_angle);
+    const auto new_angle = static_cast<float>(180 - dir_angle);
+
+    if (!Math::FloatCompare(new_angle, _lookDirAngle)) {
+        _lookDirAngle = new_angle;
+        RefreshMoveAnimation();
+    }
+}
+
+void ModelInstance::SetMoveDirAngle(int dir_angle)
+{
+    const auto newAngle = static_cast<float>(180 - dir_angle);
+
+    if (!Math::FloatCompare(newAngle, _moveDirAngle)) {
+        _moveDirAngle = newAngle;
+        RefreshMoveAnimation();
+    }
+
+    if (!_modelInfo->_rotationBone) {
+        SetLookDirAngle(dir_angle);
+    }
 }
 
 void ModelInstance::SetRotation(float rx, float ry, float rz)
@@ -1027,7 +1121,7 @@ void ModelInstance::FillCombinedMeshes(ModelInstance* base, ModelInstance* cur)
     }
 
     // Fill child
-    for (auto& child_anim : cur->_children) {
+    for (auto* child_anim : cur->_children) {
         FillCombinedMeshes(base, child_anim);
     }
 }
@@ -1160,7 +1254,7 @@ void ModelInstance::CutCombinedMeshes(ModelInstance* base, ModelInstance* cur)
 {
     // Cut meshes
     if (!cur->_allCuts.empty()) {
-        for (auto& cut : cur->_allCuts) {
+        for (const auto* cut : cur->_allCuts) {
             for (size_t k = 0; k < base->_combinedMeshesSize; k++) {
                 base->CutCombinedMesh(base->_combinedMeshes[k], cut);
             }
@@ -1230,13 +1324,12 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
     return 0;
 }
 
-void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* cut)
+void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut)
 {
     NON_CONST_METHOD_HINT();
 
     auto& vertices = combined_mesh->DrawMesh->Vertices3D;
     auto& indices = combined_mesh->DrawMesh->Indices;
-    auto& cut_layers = cut->Layers;
     for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
         vector<ushort> result_indices;
@@ -1261,7 +1354,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
 
             // Check anim layer
             auto mesh_anim_layer = combined_mesh->MeshAnimLayers[k];
-            auto skip = (std::find(cut_layers.begin(), cut_layers.end(), mesh_anim_layer) == cut_layers.end());
+            auto skip = (std::find(cut->Layers.begin(), cut->Layers.end(), mesh_anim_layer) == cut->Layers.end());
 
             // Process faces
             i_count += combined_mesh->MeshIndices[k];
@@ -1401,7 +1494,7 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* c
             size_t v_count = 0;
             for (size_t i = 0, j = combined_mesh->MeshVertices.size(); i < j; i++) {
                 // Check anim layer
-                if (std::find(cut_layers.begin(), cut_layers.end(), combined_mesh->MeshAnimLayers[i]) == cut_layers.end()) {
+                if (std::find(cut->Layers.begin(), cut->Layers.end(), combined_mesh->MeshAnimLayers[i]) == cut->Layers.end()) {
                     v_count += combined_mesh->MeshVertices[i];
                     v_pos = v_count;
                     continue;
@@ -1499,7 +1592,7 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
         mat44 mat_scale;
         mat44 mat_trans;
         mat44::Scaling(vec3(scale, scale, scale), mat_scale);
-        mat44::RotationY(_dirAngle * PI_FLOAT / 180.0f, mat_rot_y);
+        mat44::RotationY((_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * PI_FLOAT / 180.0f, mat_rot_y);
         mat44::Translation(pos, mat_trans);
         _parentMatrix = mat_trans * _matTransBase * _matRot * mat_rot_y * _matRotBase * mat_scale * _matScale * _matScaleBase;
         _groundPos.x = _parentMatrix.a4;
@@ -1508,15 +1601,19 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Advance animation time
-    auto prev_track_pos = NAN;
-    auto new_track_pos = NAN;
-    if ((_animController != nullptr) && elapsed >= 0.0f) {
-        prev_track_pos = _animController->GetTrackPosition(_currentTrack);
+    auto prev_track_pos = 0.0f;
+    auto new_track_pos = 0.0f;
+    if (_bodyAnimController != nullptr && elapsed >= 0.0f) {
+        prev_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
 
         elapsed *= GetSpeed();
-        _animController->AdvanceTime(elapsed);
 
-        new_track_pos = _animController->GetTrackPosition(_currentTrack);
+        _bodyAnimController->AdvanceTime(elapsed);
+        if (_isMoving && _moveAnimController != nullptr) {
+            _moveAnimController->AdvanceTime(elapsed);
+        }
+
+        new_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
 
         if (_animPosPeriod > 0.0f) {
             _animPosProc = new_track_pos / _animPosPeriod;
@@ -1547,12 +1644,12 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Move child animations
-    for (auto& child_anim : _children) {
+    for (auto* child_anim : _children) {
         child_anim->ProcessAnimation(elapsed, x, y, 1.0f);
     }
 
     // Animation callbacks
-    if ((_animController != nullptr) && elapsed >= 0.0f && _animPosPeriod > 0.0f) {
+    if (_bodyAnimController != nullptr && elapsed >= 0.0f && _animPosPeriod > 0.0f) {
         for (auto& callback : AnimationCallbacks) {
             if (((callback.Anim1 == 0u) || callback.Anim1 == _curAnim1) && ((callback.Anim2 == 0u) || callback.Anim2 == _curAnim2)) {
                 const auto fire_track_pos1 = floorf(prev_track_pos / _animPosPeriod) * _animPosPeriod + callback.NormalizedTime * _animPosPeriod;
@@ -1567,8 +1664,14 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 
 void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix)
 {
-    // If parent matrix exists multiply our bone matrix by it
-    bone->CombinedTransformationMatrix = (*parent_matrix) * bone->TransformationMatrix;
+    if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
+        mat44 mat_rot;
+        mat44::RotationX(((_lookDirAngle - _moveDirAngle) + (_isMovingBack ? 180.0f : 0.0f)) * PI_FLOAT / 180.0f, mat_rot);
+        bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
+    }
+    else {
+        bone->CombinedTransformationMatrix = (*parent_matrix) * bone->TransformationMatrix;
+    }
 
     // Update child
     for (auto it = bone->Children.begin(), end = bone->Children.end(); it != end; ++it) {
@@ -2185,6 +2288,11 @@ auto ModelInformation::Load(string_view name) -> bool
             else if (token == "DisableAnimationInterpolation") {
                 disable_animation_interpolation = true;
             }
+            else if (token == "RotationBone") {
+                (*istr) >> buf;
+
+                _rotationBone = _modelMngr.GetBoneHashedString(buf);
+            }
             else {
                 WriteLog("Unknown token '{}' in file '{}'", token, name);
             }
@@ -2239,7 +2347,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     auto set_index = _animController->GetNumAnimationSets() - 1;
 
                     if (anim.Index == -1) {
-                        _renderAnim = set_index;
+                        _renderAnim = static_cast<int>(set_index);
                     }
                     else if (anim.Index != 0) {
                         _animIndexes.emplace(anim.Index, set_index);
@@ -2252,7 +2360,7 @@ auto ModelInformation::Load(string_view name) -> bool
                 // Add animation bones, not included to base hierarchy
                 // All bones linked with animation in SetupAnimationOutput
                 for (uint i = 0; i < _numAnimationSets; i++) {
-                    auto* set = _animController->GetAnimationSet(i);
+                    const auto* set = _animController->GetAnimationSet(i);
                     const auto& bones_hierarchy = set->GetBonesHierarchy();
                     for (const auto& bone_hierarchy : bones_hierarchy) {
                         auto* bone = _hierarchy->_rootBone.get();
@@ -2368,9 +2476,15 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
 {
     auto* model = new ModelInstance(_modelMngr);
     model->_modelInfo = this;
+
     if (_animController) {
-        model->_animController = _animController->Clone();
+        model->_bodyAnimController = _animController->Clone();
+
+        if (_rotationBone) {
+            model->_moveAnimController = _animController->Clone();
+        }
     }
+
     return model;
 }
 

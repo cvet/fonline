@@ -1444,7 +1444,7 @@ void FOMapper::IntDraw()
         auto hex_thru = false;
         ushort hx = 0;
         ushort hy = 0;
-        if (CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
+        if (CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
             hex_thru = true;
         }
         auto day_time = CurMap->GetDayTime();
@@ -1705,9 +1705,10 @@ void FOMapper::IntLMouseDown()
     if ((!IntVisible || !IsCurInRect(IntWMain, IntX, IntY)) && (!ObjVisible || SelectedEntities.empty() || !IsCurInRect(ObjWMain, ObjX, ObjY))) {
         InContItem = nullptr;
 
-        if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX1, SelectHexY1)) {
+        if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX1, SelectHexY1, nullptr, nullptr)) {
             return;
         }
+
         SelectHexX2 = SelectHexX1;
         SelectHexY2 = SelectHexY1;
         SelectX = Settings.MouseX;
@@ -1717,26 +1718,18 @@ void FOMapper::IntLMouseDown()
             if (Keyb.ShiftDwn) {
                 for (auto* entity : SelectedEntities) {
                     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
-                        const auto is_run = (!cr->MoveSteps.empty() && cr->MoveSteps[cr->MoveSteps.size() - 1].first == SelectHexX1 && cr->MoveSteps[cr->MoveSteps.size() - 1].second == SelectHexY1);
-
-                        cr->MoveSteps.clear();
-                        if (!is_run && cr->GetIsNoWalk()) {
-                            break;
-                        }
-
                         auto hx = cr->GetHexX();
                         auto hy = cr->GetHexY();
-                        vector<uchar> steps;
-                        if (CurMap->FindPath(nullptr, hx, hy, SelectHexX1, SelectHexY1, steps, -1)) {
-                            for (const auto step : steps) {
+
+                        if (const auto find_path = CurMap->FindPath(nullptr, hx, hy, SelectHexX1, SelectHexY1, -1)) {
+                            for (const auto step : find_path->Steps) {
                                 if (Geometry.MoveHexByDir(hx, hy, step, CurMap->GetWidth(), CurMap->GetHeight())) {
-                                    cr->MoveSteps.emplace_back(hx, hy);
+                                    CurMap->TransitCritter(cr, hx, hy, true);
                                 }
                                 else {
                                     break;
                                 }
                             }
-                            cr->IsRunning = is_run;
                         }
 
                         break;
@@ -2140,7 +2133,7 @@ void FOMapper::IntLMouseDown()
 
 void FOMapper::IntLMouseUp()
 {
-    if (IntHold == INT_SELECT && CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX2, SelectHexY2)) {
+    if (IntHold == INT_SELECT && CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX2, SelectHexY2, nullptr, nullptr)) {
         if (CurMode == CUR_MODE_DEFAULT) {
             if (SelectHexX1 != SelectHexX2 || SelectHexY1 != SelectHexY2) {
                 CurMap->ClearHexTrack();
@@ -2238,8 +2231,8 @@ void FOMapper::IntMouseMove()
 {
     if (IntHold == INT_SELECT) {
         CurMap->ClearHexTrack();
-        if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX2, SelectHexY2)) {
-            if ((SelectHexX2 != 0u) || (SelectHexY2 != 0u)) {
+        if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, SelectHexX2, SelectHexY2, nullptr, nullptr)) {
+            if (SelectHexX2 != 0u || SelectHexY2 != 0u) {
                 CurMap->RefreshMap();
                 SelectHexX2 = SelectHexY2 = 0;
             }
@@ -2885,8 +2878,8 @@ auto FOMapper::AddCritter(hstring pid, ushort hx, ushort hy) -> CritterView*
 
     SelectClear();
 
-    CritterView* cr = CurMap->AddCritter(0, proto, hx, hy, {});
-    cr->SetDir(NpcDir);
+    CritterHexView* cr = CurMap->AddCritter(0, proto, hx, hy, {});
+    cr->ChangeDir(NpcDir);
     SelectAdd(cr);
 
     CurMap->RefreshMap();
@@ -3240,7 +3233,7 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
                 break;
             }
 
@@ -3260,7 +3253,7 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
                 break;
             }
 
@@ -3291,7 +3284,7 @@ void FOMapper::CurDraw()
 
             ushort hx = 0;
             ushort hy = 0;
-            if (!CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy)) {
+            if (!CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr)) {
                 break;
             }
 
@@ -3350,7 +3343,7 @@ void FOMapper::CurMMouseDown()
                 if (dir >= Settings.MapDirCount) {
                     dir = 0;
                 }
-                cr->ChangeDir(dir, true);
+                cr->ChangeDir(dir);
             }
         }
     }
@@ -3391,7 +3384,7 @@ auto FOMapper::GetCurHex(ushort& hx, ushort& hy, bool ignore_interface) -> bool
     if (!ignore_interface && IsCurInInterface()) {
         return false;
     }
-    return CurMap->GetHexScreenPos(Settings.MouseX, Settings.MouseY, hx, hy);
+    return CurMap->GetHexAtScreenPos(Settings.MouseX, Settings.MouseY, hx, hy, nullptr, nullptr);
 }
 
 void FOMapper::ConsoleDraw()

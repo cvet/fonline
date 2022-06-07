@@ -99,7 +99,7 @@ public:
     void Reset();
     void RegisterAnimationOutput(hstring bone_name, mat44& output_matrix);
     void RegisterAnimationSet(ModelAnimation* animation);
-    void SetTrackAnimationSet(uint track, const ModelAnimation* anim);
+    void SetTrackAnimationSet(uint track, const ModelAnimation* anim, const unordered_set<hstring>* allowed_bones);
     void ResetBonesTransition(uint skip_track, const vector<hstring>& bone_names);
     void AddEventEnable(uint track, bool enable, float start_time);
     void AddEventSpeed(uint track, float speed, float start_time, float smooth_time);

@@ -41,6 +41,7 @@
 #include "Application.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
+#include "GeometryHelper.h"
 #include "Settings.h"
 #include "Timer.h"
 
@@ -202,7 +203,8 @@ private:
     GameTimer& _gameTime;
     NameResolver& _nameResolver;
     AnimationResolver& _animNameResolver;
-    MeshTextureCreator _meshTexCreator {};
+    MeshTextureCreator _meshTexCreator;
+    GeometryHelper _geometry;
     set<hstring> _processedFiles {};
     vector<unique_ptr<ModelBone, std::function<void(ModelBone*)>>> _loadedModels {};
     vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
@@ -221,6 +223,7 @@ private:
     float _globalSpeedAdjust {1.0f};
     uint _animDelay {};
     color4 _lightColor {};
+    unordered_set<hstring> _legBones {};
 };
 
 class ModelInstance final
@@ -239,9 +242,9 @@ public:
     ~ModelInstance();
 
     [[nodiscard]] auto HasAnimation(uint anim1, uint anim2) const -> bool;
-    [[nodiscard]] auto GetAnim1() const -> int; // Todo: GetAnim1/GetAnim2 int to uint return type
-    [[nodiscard]] auto GetAnim2() const -> int;
-    [[nodiscard]] auto EvaluateAnimation() const -> optional<tuple<uint, uint>>;
+    [[nodiscard]] auto GetAnim1() const -> uint;
+    [[nodiscard]] auto GetAnim2() const -> uint;
+    [[nodiscard]] auto ResolveAnimation(uint& anim1, uint& anim2) const -> bool;
     [[nodiscard]] auto NeedDraw() const -> bool;
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
@@ -252,13 +255,15 @@ public:
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;
     void SetDir(uchar dir);
-    void SetDirAngle(int dir_angle);
+    void SetLookDirAngle(int dir_angle);
+    void SetMoveDirAngle(int dir_angle);
     void SetRotation(float rx, float ry, float rz);
     void SetScale(float sx, float sy, float sz);
     void SetSpeed(float speed);
     void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw(int x, int y, float scale);
+    void SetMoving(bool enabled, bool is_run);
 
     uint SprId {};
     int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
@@ -290,12 +295,13 @@ private:
     void ClearCombinedMesh(CombinedMesh* combined_mesh);
     void BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer);
     void CutCombinedMeshes(ModelInstance* base, ModelInstance* cur);
-    void CutCombinedMesh(CombinedMesh* combined_mesh, ModelCutData* cut);
+    void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
     void ProcessAnimation(float elapsed, int x, int y, float scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
     void DrawCombinedMeshes();
     void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
     void SetAnimData(ModelAnimationData& data, bool clear);
+    void RefreshMoveAnimation();
 
     ModelManager& _modelMngr;
     uint _curAnim1 {};
@@ -306,7 +312,8 @@ private:
     vector<MeshInstance*> _allMeshes {};
     vector<bool> _allMeshesDisabled {};
     ModelInformation* _modelInfo {};
-    ModelAnimationController* _animController {};
+    ModelAnimationController* _bodyAnimController {};
+    ModelAnimationController* _moveAnimController {};
     int _currentLayers[LAYERS3D_COUNT + 1] {}; // +1 for actions
     uint _currentTrack {};
     uint _lastDrawTick {};
@@ -320,7 +327,8 @@ private:
     float _speedAdjustCur {};
     float _speedAdjustLink {};
     bool _shadowDisabled {};
-    float _dirAngle {};
+    float _lookDirAngle {};
+    float _moveDirAngle {};
     vec3 _groundPos {};
     bool _useGameTimer {};
     float _animPosProc {};
@@ -328,7 +336,12 @@ private:
     float _animPosPeriod {};
     bool _allowMeshGeneration {};
     vector<ModelCutData*> _allCuts {};
-    bool _nonConstHelper {};
+    bool _isMoving {};
+    bool _isRunning {};
+    bool _isMovingBack {};
+    int _curMovingAnim {-1};
+    bool _isCombatMode {};
+    uint _currentMoveTrack {};
 
     // Derived animations
     vector<ModelInstance*> _children {};
@@ -339,6 +352,8 @@ private:
     vector<mat44> _linkMatricles {};
     ModelAnimationData _animLink {};
     bool _childChecker {};
+
+    bool _nonConstHelper {};
 };
 
 class ModelInformation final
@@ -385,6 +400,7 @@ private:
     bool _shadowDisabled {};
     uint _drawWidth {DEFAULT_3D_DRAW_WIDTH};
     uint _drawHeight {DEFAULT_3D_DRAW_HEIGHT};
+    hstring _rotationBone {};
 };
 
 class ModelHierarchy final

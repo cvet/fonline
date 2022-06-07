@@ -58,9 +58,8 @@ public:
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
     [[nodiscard]] auto IsCombatMode() const -> bool;
-    [[nodiscard]] auto IsLastHexes() const -> bool;
     [[nodiscard]] auto IsHaveLightSources() const -> bool;
-    [[nodiscard]] auto IsNeedMove() const -> bool { return !MoveSteps.empty() && !IsWalkAnim(); }
+    [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
     [[nodiscard]] auto GetAnim1() const -> uint;
     [[nodiscard]] auto GetAnim2() const -> uint;
@@ -77,38 +76,35 @@ public:
     [[nodiscard]] auto GetModel() -> ModelInstance* { NON_CONST_METHOD_HINT_ONELINE() return _model; }
 #endif
 
-    [[nodiscard]] auto PopLastHex() -> tuple<ushort, ushort>;
-
+    void Init() override;
+    void Finish() override;
     void AddItem(ItemView* item) override;
     void DeleteItem(ItemView* item, bool animate) override;
-    void Init();
-    void Finish();
-    void FixLastHexes();
-    void ChangeDir(uchar dir, bool animate);
+    void ChangeDir(uchar dir);
+    void ChangeDirAngle(int dir_angle);
+    void ChangeLookDirAngle(int dir_angle);
+    void ChangeMoveDirAngle(int dir_angle);
     void Animate(uint anim1, uint anim2, ItemView* item);
     void AnimateStay();
     void Action(int action, int action_ext, ItemView* item, bool local_call);
     void Process();
-    void Move(uchar dir);
     void ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item);
     void ResetOk();
     void SetSprRect();
     void ClearAnim();
-    void SetOffs(short set_ox, short set_oy, bool move_text);
-    void ChangeOffs(short change_ox, short change_oy, bool move_text);
-    void AddOffsExt(short ox, short oy);
+    void SetAnimOffs(int ox, int oy);
+    void AddExtraOffs(int ext_ox, int ext_oy);
+    void RefreshOffs();
     void SetText(string_view str, uint color, uint text_delay);
     void DrawTextOnHead();
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
     void NextAnim(bool erase_front);
+    void ClearMove();
 #if FO_ENABLE_3D
     void RefreshModel();
 #endif
 
     RenderEffect* DrawEffect {};
-    bool IsRunning {};
-    vector<pair<ushort, ushort>> MoveSteps {};
-    int CurMoveStep {};
     bool Visible {true};
     uchar Alpha {};
     IRect DRect {};
@@ -119,6 +115,27 @@ public:
     short SprOy {};
     uint FadingTick {};
 
+    struct
+    {
+        bool IsRunning {};
+        vector<uchar> Steps {};
+        vector<ushort> ControlSteps {};
+        uint StartTick {};
+        uint OffsetTick {};
+        ushort StartHexX {};
+        ushort StartHexY {};
+        ushort EndHexX {};
+        ushort EndHexY {};
+        float WholeTime {};
+        float WholeDist {};
+        short StartOx {};
+        short StartOy {};
+        short EndOx {};
+        short EndOy {};
+        ushort RealHexX {};
+        ushort RealHexY {};
+    } Moving {};
+
 private:
     struct CritterAnim
     {
@@ -126,7 +143,6 @@ private:
         uint AnimTick {};
         uint BeginFrm {};
         uint EndFrm {};
-        bool MoveText {};
         int DirOffs {};
         uint IndAnim1 {};
         uint IndAnim2 {};
@@ -138,6 +154,7 @@ private:
     [[nodiscard]] auto GetCurAnim() -> CritterAnim* { return IsAnim() ? &_animSequence[0] : nullptr; }
 
     void SetFade(bool fade_up);
+    void ProcessMoving();
 
     MapView* _map;
     bool _needReset {};
@@ -157,15 +174,15 @@ private:
     uint _tickStartText {};
     uint _tickTextDelay {};
     uint _textOnHeadColor {COLOR_CRITTER_NAME};
-    short _oxExtI {};
-    short _oyExtI {};
+    int _oxAnim {};
+    int _oyAnim {};
+    int _oxExtI {};
+    int _oyExtI {};
     float _oxExtF {};
     float _oyExtF {};
     float _oxExtSpeed {};
     float _oyExtSpeed {};
     uint _offsExtNextTick {};
-    string _nameOnHead {};
-    vector<tuple<ushort, ushort>> _lastHexes {};
 #if FO_ENABLE_3D
     ModelInstance* _model {};
 #endif

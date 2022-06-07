@@ -45,13 +45,11 @@ Critter::Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* p
     if (_player != nullptr) {
         _player->AddRef();
     }
-
-    SetBit(Flags, _player == nullptr ? FCRIT_NPC : FCRIT_PLAYER);
 }
 
 Critter::~Critter()
 {
-    if (_player) {
+    if (_player != nullptr) {
         _player->Release();
     }
 }
@@ -115,6 +113,24 @@ void Critter::AttachPlayer(Player* owner)
     _playerDetached = false;
     _player = owner;
     _player->AddRef();
+}
+
+void Critter::ClearMove()
+{
+    Moving.Uid++;
+    Moving.Steps = {};
+    Moving.ControlSteps = {};
+    Moving.StartTick = {};
+    Moving.StartHexX = {};
+    Moving.StartHexY = {};
+    Moving.EndHexX = {};
+    Moving.EndHexY = {};
+    Moving.WholeTime = {};
+    Moving.WholeDist = {};
+    Moving.StartOx = {};
+    Moving.StartOy = {};
+    Moving.EndOx = {};
+    Moving.EndOy = {};
 }
 
 void Critter::ClearVisible()
@@ -250,6 +266,30 @@ auto Critter::CountIdVisItem(uint item_id) const -> bool
     return VisItem.count(item_id) != 0;
 }
 
+void Critter::ChangeDir(uchar dir)
+{
+    const auto normalized_dir = static_cast<uchar>(dir % _engine->Settings.MapDirCount);
+
+    if (normalized_dir == GetDir()) {
+        return;
+    }
+
+    SetDirAngle(_engine->Geometry.DirToAngle(normalized_dir));
+    SetDir(normalized_dir);
+}
+
+void Critter::ChangeDirAngle(int dir_angle)
+{
+    const auto normalized_dir_angle = _engine->Geometry.NormalizeAngle(static_cast<short>(dir_angle));
+
+    if (normalized_dir_angle == GetDirAngle()) {
+        return;
+    }
+
+    SetDirAngle(normalized_dir_angle);
+    SetDir(_engine->Geometry.AngleToDir(normalized_dir_angle));
+}
+
 void Critter::SetItem(Item* item)
 {
     RUNTIME_ASSERT(item);
@@ -382,14 +422,14 @@ void Critter::Broadcast_Property(NetProperty type, const Property* prop, ServerE
     }
 }
 
-void Critter::Broadcast_Move(uint move_params)
+void Critter::Broadcast_Move()
 {
     if (VisCr.empty()) {
         return;
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_Move(this, move_params);
+        cr->Send_Move(this);
     }
 }
 
@@ -658,12 +698,12 @@ void Critter::Send_Property(NetProperty type, const Property* prop, ServerEntity
     }
 }
 
-void Critter::Send_Move(Critter* from_cr, uint move_params)
+void Critter::Send_Move(Critter* from_cr)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_Move(from_cr, move_params);
+        _player->Send_Move(from_cr);
     }
 }
 
@@ -907,15 +947,6 @@ void Critter::Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1,
 
     if (_player != nullptr) {
         _player->Send_SetAnims(from_cr, cond, anim1, anim2);
-    }
-}
-
-void Critter::Send_CombatResult(uint* combat_res, uint len)
-{
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_CombatResult(combat_res, len);
     }
 }
 

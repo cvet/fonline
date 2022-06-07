@@ -94,10 +94,11 @@ public:
     [[nodiscard]] auto IsHexPassed(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexRaked(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool;
-    [[nodiscard]] auto IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> bool;
+    [[nodiscard]] auto IsMovePassed(Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool;
     [[nodiscard]] auto IsHexTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexCritter(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexGag(ushort hx, ushort hy) const -> bool;
+    [[nodiscard]] auto IsHexBlockItem(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsHexStaticTrigger(ushort hx, ushort hy) const -> bool;
     [[nodiscard]] auto IsFlagCritter(ushort hx, ushort hy, bool dead) const -> bool;
     [[nodiscard]] auto GetCritter(uint crid) -> Critter*;

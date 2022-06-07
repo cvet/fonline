@@ -55,6 +55,14 @@ public:
     [[nodiscard]] auto GetNearDir(int x1, int y1, int x2, int y2) const -> uchar;
     [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2) const -> uchar;
     [[nodiscard]] auto GetFarDir(int x1, int y1, int x2, int y2, float offset) const -> uchar;
+    [[nodiscard]] auto GetDirAngle(int x1, int y1, int x2, int y2) const -> float;
+    [[nodiscard]] auto GetDirAngleDiff(float a1, float a2) const -> float;
+    [[nodiscard]] auto GetDirAngleDiffSided(float a1, float a2) const -> float;
+    [[nodiscard]] auto GetLineAngle(int x1, int y1, int x2, int y2) const -> float;
+    [[nodiscard]] auto GetYProj() const -> float;
+    [[nodiscard]] auto DirToAngle(uchar dir) const -> short;
+    [[nodiscard]] auto AngleToDir(short dir_angle) const -> uchar;
+    [[nodiscard]] auto NormalizeAngle(short dir_angle) const -> short;
     [[nodiscard]] auto CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool;
     [[nodiscard]] auto ReverseDir(uchar dir) const -> uchar;
     [[nodiscard]] auto GetHexOffsets(bool odd) const -> tuple<const short*, const short*>;

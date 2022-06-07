@@ -134,8 +134,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
     _conn.AddMessageHandler(NETMSG_LOGIN_SUCCESS, [this] { Net_OnLoginSuccess(); });
     _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [] { WriteLog("Registration success"); });
     _conn.AddMessageHandler(NETMSG_END_PARSE_TO_GAME, [this] { Net_OnEndParseToGame(); });
-    _conn.AddMessageHandler(NETMSG_ADD_PLAYER, [this] { Net_OnAddCritter(false); });
-    _conn.AddMessageHandler(NETMSG_ADD_NPC, [this] { Net_OnAddCritter(true); });
+    _conn.AddMessageHandler(NETMSG_ADD_CRITTER, [this] { Net_OnAddCritter(); });
     _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, [this] { Net_OnRemoveCritter(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEM, [this] { Net_OnSomeItem(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ACTION, [this] { Net_OnCritterAction(); });
@@ -144,8 +143,9 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
     _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
     _conn.AddMessageHandler(NETMSG_CUSTOM_COMMAND, [this] { Net_OnCustomCommand(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_STOP_MOVE, [this] { Net_OnCritterStopMove(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
-    _conn.AddMessageHandler(NETMSG_CRITTER_XY, [this] { Net_OnCritterCoords(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_POS, [this] { Net_OnCritterPos(); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 0), [this] { Net_OnProperty(1); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 1), [this] { Net_OnProperty(1); });
     _conn.AddMessageHandler(NETMSG_POD_PROPERTY(1, 2), [this] { Net_OnProperty(1); });
@@ -178,11 +178,10 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
     _conn.AddMessageHandler(NETMSG_MAP, [this] { Net_OnMap(); });
     _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
-    // _conn.AddMessageHandler(NETMSG_RPC, // ScriptSys.HandleRpc(&Bin);
+    // _conn.AddMessageHandler(NETMSG_RPC, // ScriptSys.HandleRpc(&_conn.InBuf);
     _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
     _conn.AddMessageHandler(NETMSG_ERASE_ITEM_FROM_MAP, [this] { Net_OnEraseItemFromMap(); });
     _conn.AddMessageHandler(NETMSG_ANIMATE_ITEM, [this] { Net_OnAnimateItem(); });
-    _conn.AddMessageHandler(NETMSG_COMBAT_RESULTS, [this] { Net_OnCombatResult(); });
     _conn.AddMessageHandler(NETMSG_EFFECT, [this] { Net_OnEffect(); });
     _conn.AddMessageHandler(NETMSG_FLY_EFFECT, [this] { Net_OnFlyEffect(); });
     _conn.AddMessageHandler(NETMSG_PLAY_SOUND, [this] { Net_OnPlaySound(); });
@@ -535,7 +534,7 @@ void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_b
     }
     else {
         uint last_tick = 0;
-        for (auto& e : _screenEffects) {
+        for (const auto& e : _screenEffects) {
             if (e.BeginTick + e.Time > last_tick) {
                 last_tick = e.BeginTick + e.Time;
             }
@@ -758,6 +757,8 @@ void FOClient::Net_OnDisconnect()
 
 void FOClient::Net_SendUpdate()
 {
+    NON_CONST_METHOD_HINT();
+
     // Header
     _conn.OutBuf << NETMSG_UPDATE;
 
@@ -775,7 +776,7 @@ void FOClient::Net_SendLogIn()
 {
     WriteLog("Player login");
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
 
     _conn.OutBuf << NETMSG_LOGIN;
     _conn.OutBuf << msg_len;
@@ -793,9 +794,11 @@ void FOClient::Net_SendLogIn()
 
 void FOClient::Net_SendCreatePlayer()
 {
+    NON_CONST_METHOD_HINT();
+
     WriteLog("Player registration");
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
 
     _conn.OutBuf << NETMSG_REGISTER;
     _conn.OutBuf << msg_len;
@@ -821,7 +824,7 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
         return;
     }
 
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(how_say) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(str.length());
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(how_say) + NetBuffer::STRING_LEN_SIZE + static_cast<uint>(str.length());
 
     _conn.OutBuf << NETMSG_SEND_TEXT;
     _conn.OutBuf << msg_len;
@@ -831,48 +834,70 @@ void FOClient::Net_SendText(string_view send_str, uchar how_say)
 
 void FOClient::Net_SendDir()
 {
-    const auto* chosen = GetMapChosen();
+    const auto* chosen = GetChosen();
     if (chosen == nullptr) {
         return;
     }
 
     _conn.OutBuf << NETMSG_DIR;
-    _conn.OutBuf << chosen->GetDir();
+    _conn.OutBuf << chosen->GetDirAngle();
 }
 
-void FOClient::Net_SendMove(vector<uchar> steps)
+void FOClient::Net_SendMove()
+{
+    auto* chosen = GetMapChosen();
+    if (chosen == nullptr) {
+        return;
+    }
+
+    RUNTIME_ASSERT(!chosen->Moving.Steps.empty());
+
+    if (chosen->Moving.Steps.size() > 500) {
+        chosen->ClearMove();
+        return;
+    }
+
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(bool) + sizeof(ushort) * 2 + //
+        static_cast<uint>(sizeof(uchar) * chosen->Moving.Steps.size()) + //
+        static_cast<uint>(sizeof(ushort) * chosen->Moving.ControlSteps.size()) + sizeof(char) * 2;
+
+    _conn.OutBuf << NETMSG_SEND_MOVE;
+    _conn.OutBuf << msg_len;
+    _conn.OutBuf << CurMap->GetId();
+    _conn.OutBuf << chosen->Moving.IsRunning;
+    _conn.OutBuf << chosen->Moving.StartHexX;
+    _conn.OutBuf << chosen->Moving.StartHexY;
+    _conn.OutBuf << static_cast<ushort>(chosen->Moving.Steps.size());
+    for (auto step : chosen->Moving.Steps) {
+        _conn.OutBuf << step;
+    }
+    _conn.OutBuf << static_cast<ushort>(chosen->Moving.ControlSteps.size());
+    for (auto control_step : chosen->Moving.ControlSteps) {
+        _conn.OutBuf << control_step;
+    }
+    _conn.OutBuf << chosen->Moving.EndOx;
+    _conn.OutBuf << chosen->Moving.EndOy;
+}
+
+void FOClient::Net_SendStopMove()
 {
     const auto* chosen = GetMapChosen();
     if (chosen == nullptr) {
         return;
     }
 
-    uint move_params = 0;
-    for (uint i = 0; i < MOVE_PARAM_STEP_COUNT; i++) {
-        const auto next_i = i + 1;
-        if (next_i >= steps.size()) {
-            break; // Send next steps
-        }
-
-        SetBit(move_params, static_cast<uint>(steps[next_i] << (i * MOVE_PARAM_STEP_BITS)));
-        SetBit(move_params, MOVE_PARAM_STEP_ALLOW << (i * MOVE_PARAM_STEP_BITS));
-    }
-
-    if (chosen->IsRunning) {
-        SetBit(move_params, MOVE_PARAM_RUN);
-    }
-    if (steps.empty()) {
-        SetBit(move_params, MOVE_PARAM_STEP_DISALLOW); // Inform about stopping
-    }
-
-    _conn.OutBuf << (chosen->IsRunning ? NETMSG_SEND_MOVE_RUN : NETMSG_SEND_MOVE_WALK);
-    _conn.OutBuf << move_params;
+    _conn.OutBuf << NETMSG_SEND_STOP_MOVE;
+    _conn.OutBuf << CurMap->GetId();
     _conn.OutBuf << chosen->GetHexX();
     _conn.OutBuf << chosen->GetHexY();
+    _conn.OutBuf << chosen->GetHexOffsX();
+    _conn.OutBuf << chosen->GetHexOffsY();
+    _conn.OutBuf << chosen->GetDirAngle();
 }
 
 void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* entity)
 {
+    NON_CONST_METHOD_HINT();
     RUNTIME_ASSERT(entity);
 
     if (entity == _sendIgnoreEntity && prop == _sendIgnoreProperty) {
@@ -910,7 +935,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
         _conn.OutBuf << NETMSG_SEND_POD_PROPERTY(data_size, additional_args);
     }
     else {
-        uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(uint) + sizeof(ushort) + data_size;
+        const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(char) + additional_args * sizeof(uint) + sizeof(ushort) + data_size;
         _conn.OutBuf << NETMSG_SEND_COMPLEX_PROPERTY;
         _conn.OutBuf << msg_len;
     }
@@ -949,6 +974,8 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
 void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 {
+    NON_CONST_METHOD_HINT();
+
     _conn.OutBuf << NETMSG_SEND_TALK_NPC;
     _conn.OutBuf << is_npc;
     _conn.OutBuf << id_to_talk;
@@ -957,11 +984,15 @@ void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
 
 void FOClient::Net_SendGetGameInfo()
 {
+    NON_CONST_METHOD_HINT();
+
     _conn.OutBuf << NETMSG_SEND_GET_INFO;
 }
 
 void FOClient::Net_SendGiveMap(bool automap, hstring map_pid, uint loc_id, uint tiles_hash, uint scen_hash)
 {
+    NON_CONST_METHOD_HINT();
+
     _conn.OutBuf << NETMSG_SEND_GIVE_MAP;
     _conn.OutBuf << automap;
     _conn.OutBuf << map_pid;
@@ -972,17 +1003,23 @@ void FOClient::Net_SendGiveMap(bool automap, hstring map_pid, uint loc_id, uint 
 
 void FOClient::Net_SendLoadMapOk()
 {
+    NON_CONST_METHOD_HINT();
+
     _conn.OutBuf << NETMSG_SEND_LOAD_MAP_OK;
 }
 
 void FOClient::Net_SendPing(uchar ping)
 {
+    NON_CONST_METHOD_HINT();
+
     _conn.OutBuf << NETMSG_PING;
     _conn.OutBuf << ping;
 }
 
 void FOClient::Net_SendRefereshMe()
 {
+    NON_CONST_METHOD_HINT();
+
     _conn.OutBuf << NETMSG_SEND_REFRESH_ME;
 }
 
@@ -1035,7 +1072,7 @@ void FOClient::Net_OnLoginSuccess()
     _curPlayer->RestoreData(_playerPropertiesData);
 }
 
-void FOClient::Net_OnAddCritter(bool is_npc)
+void FOClient::Net_OnAddCritter()
 {
     uint msg_len;
     _conn.InBuf >> msg_len;
@@ -1043,11 +1080,15 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     uint crid;
     ushort hx;
     ushort hy;
-    uchar dir;
+    short hex_ox;
+    short hex_oy;
+    short dir_angle;
     _conn.InBuf >> crid;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
-    _conn.InBuf >> dir;
+    _conn.InBuf >> hex_ox;
+    _conn.InBuf >> hex_oy;
+    _conn.InBuf >> dir_angle;
 
     CritterCondition cond;
     uint anim1_alive;
@@ -1056,7 +1097,6 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     uint anim2_alive;
     uint anim2_ko;
     uint anim2_dead;
-    uint flags;
     _conn.InBuf >> cond;
     _conn.InBuf >> anim1_alive;
     _conn.InBuf >> anim1_ko;
@@ -1064,21 +1104,18 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     _conn.InBuf >> anim2_alive;
     _conn.InBuf >> anim2_ko;
     _conn.InBuf >> anim2_dead;
-    _conn.InBuf >> flags;
 
-    // Npc
-    hstring npc_pid;
-    if (is_npc) {
-        npc_pid = _conn.InBuf.ReadHashedString(*this);
-    }
+    bool is_owned_by_player;
+    bool is_player_offline;
+    bool is_chosen;
+    _conn.InBuf >> is_owned_by_player;
+    _conn.InBuf >> is_player_offline;
+    _conn.InBuf >> is_chosen;
 
-    // Player
-    string cl_name;
-    if (!is_npc) {
-        _conn.InBuf >> cl_name;
-    }
+    const hstring pid = _conn.InBuf.ReadHashedString(*this);
+    const auto* proto = ProtoMngr.GetProtoCritter(pid);
+    RUNTIME_ASSERT(proto);
 
-    // Properties
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
@@ -1087,11 +1124,10 @@ void FOClient::Net_OnAddCritter(bool is_npc)
         return;
     }
 
-    const auto* proto = ProtoMngr.GetProtoCritter(is_npc ? npc_pid : ToHashedString("Player"));
-    RUNTIME_ASSERT(proto);
-
     auto* cr = CurMap->AddCritter(crid, proto, hx, hy, _tempPropertiesData);
-    cr->SetDir(dir);
+    cr->SetHexOffsX(hex_ox);
+    cr->SetHexOffsY(hex_oy);
+    cr->ChangeDirAngle(dir_angle);
     cr->SetCond(cond);
     cr->SetAnim1Alive(anim1_alive);
     cr->SetAnim1Knockout(anim1_ko);
@@ -1099,19 +1135,8 @@ void FOClient::Net_OnAddCritter(bool is_npc)
     cr->SetAnim2Alive(anim2_alive);
     cr->SetAnim2Knockout(anim2_ko);
     cr->SetAnim2Dead(anim2_dead);
-    cr->Flags = flags;
-
-    if (is_npc) {
-        if (cr->GetDialogId() && _curLang.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(cr->GetDialogId().as_uint())) != 0u) {
-            cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(cr->GetDialogId().as_uint()));
-        }
-        else {
-            cr->AlternateName = _curLang.Msg[TEXTMSG_DLG].GetStr(STR_NPC_PID_NAME(npc_pid.as_uint()));
-        }
-    }
-    else {
-        cr->AlternateName = cl_name;
-    }
+    cr->SetPlayer(is_owned_by_player, is_chosen);
+    cr->SetPlayerOffline(is_player_offline);
 
     if (cr->IsChosen()) {
         _chosen = cr;
@@ -1205,8 +1230,7 @@ void FOClient::Net_OnTextMsg(bool with_lexems)
         return;
     }
 
-    auto& msg = _curLang.Msg[msg_num];
-    if (msg.Count(num_str) != 0u) {
+    if (const auto& msg = _curLang.Msg[msg_num]; msg.Count(num_str) != 0u) {
         auto str = msg.GetStr(num_str);
         FormatTags(str, GetChosen(), CurMap != nullptr ? CurMap->GetCritter(crid) : nullptr, lexems);
         OnText(str, crid, how_say);
@@ -1413,16 +1437,11 @@ void FOClient::Net_OnMapTextMsgLex()
 void FOClient::Net_OnCritterDir()
 {
     uint crid;
-    uchar dir;
+    short dir_angle;
     _conn.InBuf >> crid;
-    _conn.InBuf >> dir;
+    _conn.InBuf >> dir_angle;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    if (dir >= Settings.MapDirCount) {
-        WriteLog("Invalid dir {}", dir);
-        dir = 0;
-    }
 
     if (CurMap == nullptr) {
         return;
@@ -1430,81 +1449,173 @@ void FOClient::Net_OnCritterDir()
 
     auto* cr = CurMap->GetCritter(crid);
     if (cr != nullptr) {
-        cr->ChangeDir(dir, false);
+        cr->ChangeLookDirAngle(dir_angle);
+        if (!cr->IsMoving()) {
+            cr->ChangeMoveDirAngle(dir_angle);
+        }
     }
 }
 
 void FOClient::Net_OnCritterMove()
 {
-    uint crid;
-    uint move_params;
-    ushort new_hx;
-    ushort new_hy;
-    _conn.InBuf >> crid;
-    _conn.InBuf >> move_params;
-    _conn.InBuf >> new_hx;
-    _conn.InBuf >> new_hy;
+    uint msg_len;
+    uint cr_id;
+    uint whole_time;
+    uint offset_time;
+    bool is_run;
+    ushort start_hx;
+    ushort start_hy;
+    ushort steps_count;
+    vector<uchar> steps;
+    ushort control_steps_count;
+    vector<ushort> control_steps;
+    short end_hex_ox;
+    short end_hex_oy;
+
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> cr_id;
+    _conn.InBuf >> whole_time;
+    _conn.InBuf >> offset_time;
+    _conn.InBuf >> is_run;
+    _conn.InBuf >> start_hx;
+    _conn.InBuf >> start_hy;
+    _conn.InBuf >> steps_count;
+    steps.resize(steps_count);
+    for (auto i = 0; i < steps_count; i++) {
+        _conn.InBuf >> steps[i];
+    }
+    _conn.InBuf >> control_steps_count;
+    control_steps.resize(control_steps_count);
+    for (auto i = 0; i < control_steps_count; i++) {
+        _conn.InBuf >> control_steps[i];
+    }
+    _conn.InBuf >> end_hex_ox;
+    _conn.InBuf >> end_hex_oy;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
     if (CurMap == nullptr) {
         return;
     }
-    if (new_hx >= CurMap->GetWidth() || new_hy >= CurMap->GetHeight()) {
-        return;
-    }
 
-    auto* cr = CurMap->GetCritter(crid);
+    auto* cr = CurMap->GetCritter(cr_id);
     if (cr == nullptr) {
         return;
     }
 
-    cr->IsRunning = IsBitSet(move_params, MOVE_PARAM_RUN);
+    cr->ClearMove();
 
-    if (cr->IsChosen()) {
-        cr->MoveSteps.resize(cr->CurMoveStep > 0 ? cr->CurMoveStep : 0);
-        if (cr->CurMoveStep >= 0) {
-            cr->MoveSteps.push_back(std::make_pair(new_hx, new_hy));
+    cr->Moving.IsRunning = is_run;
+    cr->Moving.StartTick = GameTime.FrameTick();
+    cr->Moving.OffsetTick = offset_time;
+    cr->Moving.WholeTime = static_cast<float>(whole_time);
+
+    cr->Moving.Steps = steps;
+    cr->Moving.ControlSteps = control_steps;
+    cr->Moving.StartHexX = start_hx;
+    cr->Moving.StartHexY = start_hy;
+    cr->Moving.StartOx = cr->GetHexOffsX();
+    cr->Moving.StartOy = cr->GetHexOffsY();
+    cr->Moving.EndOx = end_hex_ox;
+    cr->Moving.EndOy = end_hex_oy;
+
+    if (offset_time == 0 && (start_hx != cr->GetHexX() || start_hy != cr->GetHexY())) {
+        auto&& [cr_ox, cr_oy] = Geometry.GetHexInterval(start_hx, start_hy, cr->GetHexX(), cr->GetHexY());
+        cr->Moving.StartOx = static_cast<short>(cr->Moving.StartOx + cr_ox);
+        cr->Moving.StartOy = static_cast<short>(cr->Moving.StartOy + cr_oy);
+    }
+
+    cr->Moving.WholeDist = 0.0f;
+
+    auto control_step_begin = 0;
+    for (size_t i = 0; i < cr->Moving.ControlSteps.size(); i++) {
+        auto hx = start_hx;
+        auto hy = start_hy;
+
+        RUNTIME_ASSERT(control_step_begin <= cr->Moving.ControlSteps[i]);
+        RUNTIME_ASSERT(cr->Moving.ControlSteps[i] <= cr->Moving.Steps.size());
+        for (auto j = control_step_begin; j < cr->Moving.ControlSteps[i]; j++) {
+            const auto move_ok = Geometry.MoveHexByDir(hx, hy, cr->Moving.Steps[j], CurMap->GetWidth(), CurMap->GetHeight());
+            RUNTIME_ASSERT(move_ok);
         }
 
-        for (auto i = 0, j = cr->CurMoveStep + 1; i < static_cast<int>(MOVE_PARAM_STEP_COUNT); i++, j++) {
-            const auto step = (move_params >> (i * MOVE_PARAM_STEP_BITS)) & (MOVE_PARAM_STEP_DIR | MOVE_PARAM_STEP_ALLOW | MOVE_PARAM_STEP_DISALLOW);
-            const uchar dir = step & MOVE_PARAM_STEP_DIR;
+        auto&& [ox, oy] = Geometry.GetHexInterval(start_hx, start_hy, hx, hy);
 
-            const auto disallow = (!IsBitSet(step, MOVE_PARAM_STEP_ALLOW) || IsBitSet(step, MOVE_PARAM_STEP_DISALLOW));
-            if (disallow) {
-                if (j <= 0 && (cr->GetHexX() != new_hx || cr->GetHexY() != new_hy)) {
-                    CurMap->TransitCritter(cr, new_hx, new_hy, true, true);
-                    cr->CurMoveStep = -1;
-                }
-                break;
-            }
-
-            Geometry.MoveHexByDir(new_hx, new_hy, dir, CurMap->GetWidth(), CurMap->GetHeight());
-
-            if (j < 0) {
-                continue;
-            }
-
-            cr->MoveSteps.push_back(std::make_pair(new_hx, new_hy));
+        if (i == 0) {
+            ox -= cr->Moving.StartOx;
+            oy -= cr->Moving.StartOy;
         }
-        cr->CurMoveStep++;
+        if (i == cr->Moving.ControlSteps.size() - 1) {
+            ox += cr->Moving.EndOx;
+            oy += cr->Moving.EndOy;
+        }
+
+        const auto proj_oy = static_cast<float>(oy) * Geometry.GetYProj();
+        const auto dist = std::sqrt(static_cast<float>(ox * ox) + proj_oy * proj_oy);
+
+        cr->Moving.WholeDist += dist;
+
+        control_step_begin = cr->Moving.ControlSteps[i];
+        start_hx = hx;
+        start_hy = hy;
+
+        cr->Moving.EndHexX = hx;
+        cr->Moving.EndHexY = hy;
     }
-    else {
-        cr->MoveSteps.clear();
-        cr->CurMoveStep = 0;
-        CurMap->TransitCritter(cr, new_hx, new_hy, true, true);
+
+    if (cr->Moving.WholeTime < 0.0001f) {
+        cr->Moving.WholeTime = 0.0001f;
     }
+    if (cr->Moving.WholeDist < 0.0001f) {
+        cr->Moving.WholeDist = 0.0001f;
+    }
+
+    RUNTIME_ASSERT(!cr->Moving.Steps.empty());
+    RUNTIME_ASSERT(!cr->Moving.ControlSteps.empty());
+    RUNTIME_ASSERT(cr->Moving.WholeTime > 0.0f);
+    RUNTIME_ASSERT(cr->Moving.WholeDist > 0.0f);
+
+    cr->AnimateStay();
+}
+
+void FOClient::Net_OnCritterStopMove()
+{
+    uint cr_id;
+    ushort start_hx;
+    ushort start_hy;
+    short hex_ox;
+    short hex_oy;
+    short dir_angle;
+
+    _conn.InBuf >> cr_id;
+    _conn.InBuf >> start_hx;
+    _conn.InBuf >> start_hy;
+    _conn.InBuf >> hex_ox;
+    _conn.InBuf >> hex_oy;
+    _conn.InBuf >> dir_angle;
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    if (CurMap == nullptr) {
+        return;
+    }
+
+    auto* cr = CurMap->GetCritter(cr_id);
+    if (cr == nullptr) {
+        return;
+    }
+
+    cr->ClearMove();
+    cr->AnimateStay();
 }
 
 void FOClient::Net_OnSomeItem()
 {
     uint msg_len;
     uint item_id;
-    hstring item_pid;
     _conn.InBuf >> msg_len;
     _conn.InBuf >> item_id;
-    item_pid = _conn.InBuf.ReadHashedString(*this);
+    const hstring item_pid = _conn.InBuf.ReadHashedString(*this);
 
     NET_READ_PROPERTIES(_conn.InBuf, _tempPropertiesData);
 
@@ -1724,17 +1835,6 @@ void FOClient::Net_OnCustomCommand()
         }
 
         switch (index) {
-        case OTHER_BREAK_TIME: {
-            if (value < 0) {
-                value = 0;
-            }
-            cr->TickStart(value);
-            cr->MoveSteps.clear();
-            cr->CurMoveStep = 0;
-        } break;
-        case OTHER_FLAGS: {
-            cr->Flags = value;
-        } break;
         case OTHER_TELEPORT: {
             const ushort hx = (value >> 16) & 0xFFFF;
             const ushort hy = value & 0xFFFF;
@@ -1757,29 +1857,24 @@ void FOClient::Net_OnCustomCommand()
         // Maybe changed some parameter influencing on look borders
         _rebuildLookBordersRequest = true;
     }
-    else {
-        if (index == OTHER_FLAGS) {
-            cr->Flags = value;
-        }
-    }
 }
 
-void FOClient::Net_OnCritterCoords()
+void FOClient::Net_OnCritterPos()
 {
     uint crid;
     ushort hx;
     ushort hy;
-    uchar dir;
+    short hex_ox;
+    short hex_oy;
+    short dir_angle;
     _conn.InBuf >> crid;
     _conn.InBuf >> hx;
     _conn.InBuf >> hy;
-    _conn.InBuf >> dir;
+    _conn.InBuf >> hex_ox;
+    _conn.InBuf >> hex_oy;
+    _conn.InBuf >> dir_angle;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    if (Settings.DebugNet) {
-        AddMess(SAY_NETMSG, _str(" - crid {} hx {} hy {} dir {}.", crid, hx, hy, dir));
-    }
 
     if (CurMap == nullptr) {
         return;
@@ -1790,35 +1885,43 @@ void FOClient::Net_OnCritterCoords()
         return;
     }
 
-    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight() || dir >= Settings.MapDirCount) {
-        WriteLog("Error data, hx {}, hy {}, dir {}", hx, hy, dir);
+    if (hx >= CurMap->GetWidth() || hy >= CurMap->GetHeight()) {
         return;
     }
 
-    if (cr->GetDir() != dir) {
-        cr->ChangeDir(dir, false);
-    }
+    cr->ClearMove();
+
+    cr->ChangeLookDirAngle(dir_angle);
+    cr->ChangeMoveDirAngle(dir_angle);
 
     if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
-        if (const auto& field = CurMap->GetField(hx, hy); field.Crit != nullptr && field.Crit->IsFinishing()) {
-            CurMap->DestroyCritter(field.Crit);
+        const auto& f = CurMap->GetField(hx, hy);
+        if (f.Crit && f.Crit->IsFinishing()) {
+            CurMap->DestroyCritter(f.Crit);
         }
 
-        CurMap->TransitCritter(cr, hx, hy, false, true);
-        cr->AnimateStay();
+        CurMap->TransitCritter(cr, hx, hy, true);
 
         if (cr->IsChosen()) {
-            // Chosen->TickStart(Settings.Breaktime);
-            cr->TickStart(200);
-            // SetAction(CHOSEN_NONE);
-            cr->MoveSteps.clear();
-            cr->CurMoveStep = 0;
             _rebuildLookBordersRequest = true;
         }
     }
 
-    cr->MoveSteps.clear();
-    cr->CurMoveStep = 0;
+    if (cr->GetHexX() != hx || cr->GetHexY() != hy) {
+        cr->Moving.RealHexX = hx;
+        cr->Moving.RealHexY = hy;
+    }
+    else {
+        cr->Moving.RealHexX = 0;
+        cr->Moving.RealHexY = 0;
+    }
+
+    if (cr->GetHexOffsX() != hex_ox || cr->GetHexOffsY() != hex_oy) {
+        cr->AddExtraOffs(cr->GetHexOffsX() - hex_ox, cr->GetHexOffsY() - hex_oy);
+        cr->SetHexOffsX(hex_ox);
+        cr->SetHexOffsY(hex_oy);
+        cr->RefreshOffs();
+    }
 }
 
 void FOClient::Net_OnAllProperties()
@@ -2050,24 +2153,6 @@ void FOClient::Net_OnAnimateItem()
     if (item != nullptr) {
         item->SetAnim(from_frm, to_frm);
     }
-}
-
-void FOClient::Net_OnCombatResult()
-{
-    uint msg_len;
-    uint data_count;
-    vector<uint> data_vec;
-    _conn.InBuf >> msg_len;
-    _conn.InBuf >> data_count;
-
-    if (data_count != 0u) {
-        data_vec.resize(data_count);
-        _conn.InBuf.Pop(data_vec.data(), data_count * sizeof(uint));
-    }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    OnCombatResult.Fire(data_vec);
 }
 
 void FOClient::Net_OnEffect()
@@ -2923,7 +3008,7 @@ auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
     return static_cast<uint>(index);
 }
 
-auto FOClient::AnimGetCurSpr(uint anim_id) -> uint
+auto FOClient::AnimGetCurSpr(uint anim_id) const -> uint
 {
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
@@ -2931,7 +3016,7 @@ auto FOClient::AnimGetCurSpr(uint anim_id) -> uint
     return _ifaceAnimations[anim_id]->Frames->Ind[_ifaceAnimations[anim_id]->CurSpr];
 }
 
-auto FOClient::AnimGetCurSprCnt(uint anim_id) -> uint
+auto FOClient::AnimGetCurSprCnt(uint anim_id) const -> uint
 {
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
@@ -2939,7 +3024,7 @@ auto FOClient::AnimGetCurSprCnt(uint anim_id) -> uint
     return _ifaceAnimations[anim_id]->CurSpr;
 }
 
-auto FOClient::AnimGetSprCount(uint anim_id) -> uint
+auto FOClient::AnimGetSprCount(uint anim_id) const -> uint
 {
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
@@ -2949,6 +3034,8 @@ auto FOClient::AnimGetSprCount(uint anim_id) -> uint
 
 auto FOClient::AnimGetFrames(uint anim_id) -> AnyFrames*
 {
+    NON_CONST_METHOD_HINT();
+
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return 0;
     }
@@ -2957,6 +3044,8 @@ auto FOClient::AnimGetFrames(uint anim_id) -> AnyFrames*
 
 void FOClient::AnimRun(uint anim_id, uint flags)
 {
+    NON_CONST_METHOD_HINT();
+
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
         return;
     }
@@ -2985,6 +3074,8 @@ void FOClient::AnimRun(uint anim_id, uint flags)
 
 void FOClient::AnimProcess()
 {
+    NON_CONST_METHOD_HINT();
+
     const auto cur_tick = GameTime.GameTick();
     for (auto* anim : _ifaceAnimations) {
         if (anim == nullptr || anim->Flags == 0u) {
@@ -3599,7 +3690,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
     }
     else {
-        args.push_back(string(command));
+        args.emplace_back(command);
     }
     if (args.empty()) {
         throw ScriptException("Empty custom call command");
@@ -3645,7 +3736,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             if (SprMngr.DisableFullscreen()) {
                 Settings.FullScreen = false;
 
-                if (_windowResolutionDiffX || _windowResolutionDiffY) {
+                if (_windowResolutionDiffX != 0 || _windowResolutionDiffY != 0) {
                     const auto [x, y] = SprMngr.GetWindowPosition();
                     SprMngr.SetWindowPosition(x - _windowResolutionDiffX, y - _windowResolutionDiffY);
                     _windowResolutionDiffX = _windowResolutionDiffY = 0;
@@ -3837,7 +3928,15 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "ChangeDir" && args.size() == 2) {
         auto dir = _str(args[1]).toInt();
-        GetMapChosen()->ChangeDir(static_cast<uchar>(dir), true);
+        GetMapChosen()->ChangeDir(static_cast<uchar>(dir));
+        Net_SendDir();
+    }
+    else if (cmd == "ChangeDirAngle" && args.size() == 2) {
+        int dir_angle = _str(args[1]).toInt();
+        GetMapChosen()->ChangeLookDirAngle(dir_angle);
+        if (!GetMapChosen()->IsMoving()) {
+            GetMapChosen()->ChangeMoveDirAngle(dir_angle);
+        }
         Net_SendDir();
     }
     else if (cmd == "MoveItem" && args.size() == 5) {
@@ -3887,35 +3986,129 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "SkipRoof" && args.size() == 3) {
         auto hx = _str(args[1]).toUInt();
         auto hy = _str(args[2]).toUInt();
-        CurMap->SetSkipRoof(hx, hy);
+        CurMap->SetSkipRoof(static_cast<ushort>(hx), static_cast<ushort>(hy));
     }
     else if (cmd == "RebuildLookBorders") {
         _rebuildLookBordersRequest = true;
     }
-    else if (cmd == "TransitCritter" && args.size() == 5) {
-        auto hx = _str(args[1]).toInt();
-        auto hy = _str(args[2]).toInt();
-        auto animate = _str(args[3]).toBool();
-        auto force = _str(args[4]).toBool();
+    else if (cmd == "SetMove") {
+        auto* chosen = GetMapChosen();
+        const auto prev_moving = chosen->IsMoving();
 
-        CurMap->TransitCritter(GetMapChosen(), hx, hy, animate, force);
-    }
-    else if (cmd == "SendMove") {
-        vector<uchar> dirs;
-        for (size_t i = 1; i < args.size(); i++) {
-            dirs.push_back(static_cast<uchar>(_str(args[i]).toInt()));
-        }
+        chosen->ClearMove();
 
-        Net_SendMove(dirs);
+        bool try_move = false;
+        ushort hx = 0;
+        ushort hy = 0;
+        short ox = 0;
+        short oy = 0;
+        vector<uchar> steps;
+        vector<ushort> control_steps;
 
-        if (dirs.size() > 1) {
-            GetMapChosen()->MoveSteps.resize(1);
-        }
-        else {
-            GetMapChosen()->MoveSteps.resize(0);
-            if (!GetMapChosen()->IsAnim()) {
-                GetMapChosen()->AnimateStay();
+        if (args.size() == 5) {
+            hx = static_cast<ushort>(_str(args[1]).toInt());
+            hy = static_cast<ushort>(_str(args[2]).toInt());
+            ox = static_cast<short>(_str(args[3]).toInt());
+            oy = static_cast<short>(_str(args[4]).toInt());
+
+            const auto find_path = chosen->GetMap()->FindPath(chosen, chosen->GetHexX(), chosen->GetHexY(), hx, hy, -1);
+            if (find_path && !find_path->Steps.empty()) {
+                steps = find_path->Steps;
+                control_steps = find_path->ControlSteps;
+                try_move = true;
             }
+        }
+        else if (args.size() == 2) {
+            int quad_dir = _str(args[1]).toInt();
+            if (quad_dir != -1) {
+                hx = chosen->GetHexX();
+                hy = chosen->GetHexY();
+                if (chosen->GetMap()->TraceMoveWay(hx, hy, ox, oy, steps, quad_dir)) {
+                    control_steps.push_back(static_cast<ushort>(steps.size()));
+                    try_move = true;
+                }
+            }
+        }
+
+        if (try_move) {
+            chosen->Moving.Steps = steps;
+            chosen->Moving.ControlSteps = control_steps;
+            chosen->Moving.StartTick = GameTime.FrameTick();
+            chosen->Moving.StartHexX = chosen->GetHexX();
+            chosen->Moving.StartHexY = chosen->GetHexY();
+            chosen->Moving.EndHexX = hx;
+            chosen->Moving.EndHexY = hy;
+            chosen->Moving.StartOx = chosen->GetHexOffsX();
+            chosen->Moving.StartOy = chosen->GetHexOffsY();
+            chosen->Moving.EndOx = ox;
+            chosen->Moving.EndOy = oy;
+
+            chosen->Moving.WholeTime = {};
+            chosen->Moving.WholeDist = {};
+
+            const auto base_move_speed = static_cast<float>(chosen->Moving.IsRunning ? chosen->GetRunSpeed() : chosen->GetWalkSpeed());
+
+            auto start_hx = chosen->Moving.StartHexX;
+            auto start_hy = chosen->Moving.StartHexY;
+
+            auto control_step_begin = 0;
+            for (size_t i = 0; i < chosen->Moving.ControlSteps.size(); i++) {
+                auto hx2 = start_hx;
+                auto hy2 = start_hy;
+
+                RUNTIME_ASSERT(control_step_begin <= chosen->Moving.ControlSteps[i]);
+                RUNTIME_ASSERT(chosen->Moving.ControlSteps[i] <= chosen->Moving.Steps.size());
+                for (auto j = control_step_begin; j < chosen->Moving.ControlSteps[i]; j++) {
+                    const auto move_ok = Geometry.MoveHexByDir(hx2, hy2, chosen->Moving.Steps[j], chosen->GetMap()->GetWidth(), chosen->GetMap()->GetHeight());
+                    RUNTIME_ASSERT(move_ok);
+                }
+
+                auto&& [ox2, oy2] = Geometry.GetHexInterval(start_hx, start_hy, hx2, hy2);
+
+                if (i == 0) {
+                    ox2 -= chosen->Moving.StartOx;
+                    oy2 -= chosen->Moving.StartOy;
+                }
+                if (i == chosen->Moving.ControlSteps.size() - 1) {
+                    ox2 += chosen->Moving.EndOx;
+                    oy2 += chosen->Moving.EndOy;
+                }
+
+                const auto proj_oy = static_cast<float>(oy2) * Geometry.GetYProj();
+                const auto dist = std::sqrt(static_cast<float>(ox2 * ox2) + proj_oy * proj_oy);
+
+                chosen->Moving.WholeDist += dist;
+                chosen->Moving.WholeTime += dist / base_move_speed * 1000.0f;
+
+                control_step_begin = chosen->Moving.ControlSteps[i];
+                start_hx = hx2;
+                start_hy = hy2;
+
+                if (i == chosen->Moving.ControlSteps.size() - 1) {
+                    RUNTIME_ASSERT(hx2 == chosen->Moving.EndHexX);
+                    RUNTIME_ASSERT(hy2 == chosen->Moving.EndHexY);
+                }
+            }
+
+            if (chosen->Moving.WholeTime < 0.0001f) {
+                chosen->Moving.WholeTime = 0.0001f;
+            }
+            if (chosen->Moving.WholeDist < 0.0001f) {
+                chosen->Moving.WholeDist = 0.0001f;
+            }
+
+            RUNTIME_ASSERT(!chosen->Moving.Steps.empty());
+            RUNTIME_ASSERT(!chosen->Moving.ControlSteps.empty());
+            RUNTIME_ASSERT(chosen->Moving.WholeTime > 0.0f);
+            RUNTIME_ASSERT(chosen->Moving.WholeDist > 0.0f);
+
+            chosen->AnimateStay();
+            Net_SendMove();
+        }
+
+        if (prev_moving && !chosen->IsMoving()) {
+            chosen->AnimateStay();
+            Net_SendStopMove();
         }
     }
     else if (cmd == "ChosenAlpha" && args.size() == 2) {

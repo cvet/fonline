@@ -46,6 +46,12 @@
 
 MapManager::MapManager(FOServer* engine) : _engine {engine}
 {
+    _mapGrid = new short[(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)];
+}
+
+MapManager::~MapManager()
+{
+    delete[] _mapGrid;
 }
 
 void MapManager::LinkMaps()
@@ -349,7 +355,7 @@ void MapManager::GenerateMapContent(Map* map)
     }
 
     // Add children items
-    for (auto* base_item : map->GetStaticMap()->ChildItemsVec) {
+    for (const auto* base_item : map->GetStaticMap()->ChildItemsVec) {
         // Map id
         uint parent_id = 0;
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
@@ -469,7 +475,7 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
     loc->SetWorldY(wy);
 
     for (const auto map_pid : loc->GetMapProtos()) {
-        auto* map = CreateMap(map_pid, loc);
+        const auto* map = CreateMap(map_pid, loc);
         if (map == nullptr) {
             WriteLog("Create map '{}' for location '{}' failed", map_pid, proto_id);
             for (const auto* map2 : loc->GetMapsRaw()) {
@@ -829,70 +835,46 @@ void MapManager::TraceBullet(TraceData& trace)
     }
 }
 
-static thread_local int MapGridOffsX = 0;
-static thread_local int MapGridOffsY = 0;
-static thread_local short* Grid = nullptr;
-#define GRID(x, y) Grid[((FPATH_MAX_PATH + 1) + (y)-MapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + (x)-MapGridOffsX)]
-
-auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
+auto MapManager::FindPath(const FindPathInput& input) -> FindPathOutput
 {
-    // Allocate temporary grid
-    if (Grid == nullptr) {
-        Grid = new short[(FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2)];
-    }
-
-    // Data
-    auto map_id = pfd.MapId;
-    auto from_hx = pfd.FromX;
-    auto from_hy = pfd.FromY;
-    auto to_hx = pfd.ToX;
-    auto to_hy = pfd.ToY;
-    auto multihex = pfd.Multihex;
-    auto cut = pfd.Cut;
-    auto trace = pfd.Trace;
-    auto is_run = pfd.IsRun;
-    auto check_cr = pfd.CheckCrit;
-    auto check_gag_items = pfd.CheckGagItems;
-    auto dirs_count = _engine->Settings.MapDirCount;
-
     FindPathOutput output;
 
     // Checks
-    if (trace != 0u && pfd.TraceCr == nullptr) {
-        output.Result = FindPathResult::TraceTargetNullptr;
+    if (input.TraceDist > 0 && input.TraceCr == nullptr) {
+        output.Result = FindPathOutput::ResultType::TraceTargetNullptr;
         return output;
     }
 
-    auto* map = GetMap(map_id);
+    auto* map = GetMap(input.MapId);
     if (map == nullptr) {
-        output.Result = FindPathResult::MapNotFound;
+        output.Result = FindPathOutput::ResultType::MapNotFound;
         return output;
     }
 
     const auto maxhx = map->GetWidth();
     const auto maxhy = map->GetHeight();
 
-    if (from_hx >= maxhx || from_hy >= maxhy || to_hx >= maxhx || to_hy >= maxhy) {
-        output.Result = FindPathResult::InvalidHexes;
+    if (input.FromHexX >= maxhx || input.FromHexY >= maxhy || input.ToHexX >= maxhx || input.ToHexY >= maxhy) {
+        output.Result = FindPathOutput::ResultType::InvalidHexes;
         return output;
     }
-    if (_engine->Geometry.CheckDist(from_hx, from_hy, to_hx, to_hy, cut)) {
-        output.Result = FindPathResult::AlreadyHere;
+    if (_engine->Geometry.CheckDist(input.FromHexX, input.FromHexY, input.ToHexX, input.ToHexY, input.Cut)) {
+        output.Result = FindPathOutput::ResultType::AlreadyHere;
         return output;
     }
-    if (cut == 0u && IsBitSet(map->GetHexFlags(to_hx, to_hy), FH_NOWAY)) {
-        output.Result = FindPathResult::HexBusy;
+    if (input.Cut == 0u && IsBitSet(map->GetHexFlags(input.ToHexX, input.ToHexY), FH_NOWAY)) {
+        output.Result = FindPathOutput::ResultType::HexBusy;
         return output;
     }
 
     // Ring check
-    if (cut <= 1u && multihex == 0u) {
-        auto [rsx, rsy] = _engine->Geometry.GetHexOffsets((to_hx % 2) != 0);
+    if (input.Cut <= 1u && input.Multihex == 0u) {
+        auto [rsx, rsy] = _engine->Geometry.GetHexOffsets((input.ToHexX % 2) != 0);
 
         auto i = 0;
-        for (; i < dirs_count; i++, rsx++, rsy++) {
-            const auto xx = static_cast<int>(to_hx + *rsx);
-            const auto yy = static_cast<int>(to_hy + *rsy);
+        for (; i < _engine->Settings.MapDirCount; i++, rsx++, rsy++) {
+            const auto xx = static_cast<int>(input.ToHexX + *rsx);
+            const auto yy = static_cast<int>(input.ToHexY + *rsy);
             if (xx >= 0 && xx < maxhx && yy >= 0 && yy < maxhy) {
                 const auto flags = map->GetHexFlags(static_cast<ushort>(xx), static_cast<ushort>(yy));
                 if (IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
@@ -904,37 +886,22 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
             }
         }
 
-        if (i == dirs_count) {
-            output.Result = FindPathResult::HexBusyRing;
+        if (i == _engine->Settings.MapDirCount) {
+            output.Result = FindPathOutput::ResultType::HexBusyRing;
             return output;
         }
     }
 
-    // Parse previous move params
-    /*UShortPairVec first_steps;
-       uchar first_dir=pfd.MoveParams&7;
-       if(first_dir<settings.MapDirCount)
-       {
-            ushort hx_=from_hx;
-            ushort hy_=from_hy;
-            MoveHexByDir(hx_,hy_,first_dir);
-            if(map->IsHexPassed(hx_,hy_))
-            {
-                    first_steps.push_back(PAIR(hx_,hy_));
-            }
-       }
-       for(int i=0;i<4;i++)
-       {
-
-       }*/
-
     // Prepare
-    MapGridOffsX = from_hx;
-    MapGridOffsY = from_hy;
+    _mapGridOffsX = input.FromHexX;
+    _mapGridOffsY = input.FromHexY;
 
     short numindex = 1;
-    std::memset(Grid, 0, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(short));
-    GRID(from_hx, from_hy) = numindex;
+    std::memset(_mapGrid, 0, (FPATH_MAX_PATH * 2 + 2) * (FPATH_MAX_PATH * 2 + 2) * sizeof(short));
+    GridAt(input.FromHexX, input.FromHexY) = numindex;
+
+    auto to_hx = input.ToHexX;
+    auto to_hy = input.ToHexY;
 
     vector<pair<ushort, ushort>> coords;
     vector<pair<ushort, ushort>> cr_coords;
@@ -944,7 +911,7 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
     gag_coords.reserve(100);
 
     // First point
-    coords.emplace_back(from_hx, from_hy);
+    coords.emplace_back(input.FromHexX, input.FromHexY);
 
     // Begin search
     auto p = 0;
@@ -955,19 +922,21 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
         for (auto i = 0; i < p_togo; i++, p++) {
             cx = coords[p].first;
             cy = coords[p].second;
-            numindex = GRID(cx, cy);
+            numindex = GridAt(cx, cy);
 
-            if (_engine->Geometry.CheckDist(cx, cy, to_hx, to_hy, cut)) {
+            if (_engine->Geometry.CheckDist(cx, cy, to_hx, to_hy, input.Cut)) {
+                to_hx = cx;
+                to_hy = cy;
                 goto label_FindOk;
             }
             if (++numindex > FPATH_MAX_PATH) {
-                output.Result = FindPathResult::TooFar;
+                output.Result = FindPathOutput::ResultType::TooFar;
                 return output;
             }
 
             const auto [sx, sy] = _engine->Geometry.GetHexOffsets((cx & 1) != 0);
 
-            for (auto j = 0; j < dirs_count; j++) {
+            for (auto j = 0; j < _engine->Settings.MapDirCount; j++) {
                 const auto nxi = cx + sx[j];
                 const auto nyi = cy + sy[j];
                 if (nxi < 0 || nyi < 0 || nxi >= maxhx || nyi >= maxhy) {
@@ -976,62 +945,31 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
 
                 const auto nx = static_cast<ushort>(nxi);
                 const auto ny = static_cast<ushort>(nyi);
-                auto& grid_cell = GRID(nx, ny);
+                auto& grid_cell = GridAt(nx, ny);
                 if (grid_cell != 0) {
                     continue;
                 }
 
-                if (multihex == 0u) {
+                if (input.Multihex == 0u) {
                     auto flags = map->GetHexFlags(nx, ny);
                     if (!IsBitSet(flags, FH_NOWAY)) {
                         coords.emplace_back(nx, ny);
                         grid_cell = numindex;
                     }
-                    else if (check_gag_items && IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
+                    else if (input.CheckGagItems && IsBitSet(flags, static_cast<ushort>(FH_GAG_ITEM << 8))) {
                         gag_coords.emplace_back(nx, ny);
-                        grid_cell = numindex | 0x4000;
+                        grid_cell = static_cast<short>(numindex | 0x4000);
                     }
-                    else if (check_cr && IsBitSet(flags, static_cast<ushort>(FH_CRITTER << 8))) {
+                    else if (input.CheckCritter && IsBitSet(flags, static_cast<ushort>(FH_CRITTER << 8))) {
                         cr_coords.emplace_back(nx, ny);
-                        grid_cell = numindex | 0x8000;
+                        grid_cell = static_cast<short>(numindex | 0x8000);
                     }
                     else {
                         grid_cell = -1;
                     }
                 }
                 else {
-                    /*
-                       // Multihex
-                       // Base hex
-                       int hx_=nx,hy_=ny;
-                       for(uint k=0;k<multihex;k++) MoveHexByDirUnsafe(hx_,hy_,j);
-                       if(hx_<0 || hy_<0 || hx_>=maxhx || hy_>=maxhy) continue;
-                       //if(!IsHexPassed(hx_,hy_)) return false;
-
-                       // Clock wise hexes
-                       bool is_square_corner=(!settings.MapHexagonal && (j % 2) != 0);
-                       uint steps_count=(is_square_corner?multihex*2:multihex);
-                       int dir_=(settings.MapHexagonal?((j+2)%6):((j+2)%8));
-                       if(is_square_corner) dir_=(dir_+1)%8;
-                       int hx__=hx_,hy__=hy_;
-                       for(uint k=0;k<steps_count;k++)
-                       {
-                            MoveHexByDirUnsafe(hx__,hy__,dir_);
-                            //if(!IsHexPassed(hx__,hy__)) return false;
-                       }
-
-                       // Counter clock wise hexes
-                       dir_=(settings.MapHexagonal?((j+4)%6):((j+6)%8));
-                       if(is_square_corner) dir_=(dir_+7)%8;
-                       hx__=hx_,hy__=hy_;
-                       for(uint k=0;k<steps_count;k++)
-                       {
-                            MoveHexByDirUnsafe(hx__,hy__,dir_);
-                            //if(!IsHexPassed(hx__,hy__)) return false;
-                       }
-                     */
-
-                    if (map->IsMovePassed(nx, ny, static_cast<uchar>(j), multihex)) {
+                    if (map->IsMovePassed(input.FromCritter, nx, ny, input.Multihex)) {
                         coords.emplace_back(nx, ny);
                         grid_cell = numindex;
                     }
@@ -1044,12 +982,12 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
 
         // Add gag hex after some distance
         if (!gag_coords.empty()) {
-            auto last_index = GRID(coords.back().first, coords.back().second);
+            auto last_index = GridAt(coords.back().first, coords.back().second);
             auto& xy = gag_coords.front();
-            short gag_index = GRID(xy.first, xy.second) ^ 0x4000;
+            auto gag_index = static_cast<short>(GridAt(xy.first, xy.second) ^ static_cast<short>(0x4000));
             if (gag_index + 10 < last_index) // Todo: if path finding not be reworked than migrate magic number to scripts
             {
-                GRID(xy.first, xy.second) = gag_index;
+                GridAt(xy.first, xy.second) = gag_index;
                 coords.push_back(xy);
                 gag_coords.erase(gag_coords.begin());
             }
@@ -1060,14 +998,14 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
         if (p_togo == 0) {
             if (!gag_coords.empty()) {
                 auto& xy = gag_coords.front();
-                GRID(xy.first, xy.second) ^= 0x4000;
+                GridAt(xy.first, xy.second) ^= 0x4000;
                 coords.push_back(xy);
                 gag_coords.erase(gag_coords.begin());
                 p_togo++;
             }
             else if (!cr_coords.empty()) {
                 auto& xy = cr_coords.front();
-                GRID(xy.first, xy.second) ^= 0x8000;
+                GridAt(xy.first, xy.second) ^= static_cast<short>(0x8000);
                 coords.push_back(xy);
                 cr_coords.erase(cr_coords.begin());
                 p_togo++;
@@ -1075,114 +1013,192 @@ auto MapManager::FindPath(const FindPathInput& pfd) -> FindPathOutput
         }
 
         if (p_togo == 0) {
-            output.Result = FindPathResult::Deadlock;
+            output.Result = FindPathOutput::ResultType::Deadlock;
             return output;
         }
     }
 
 label_FindOk:
-    auto& steps = output.Steps;
-    steps.resize(static_cast<size_t>(numindex - 1));
+    vector<uchar> raw_steps;
+    raw_steps.resize(numindex - 1);
 
     // Smooth data
-    if (!_engine->Settings.MapSmoothPath) {
-        _smoothSwitcher = false;
-    }
-
-    auto smooth_count = 0;
-    auto smooth_iteration = 0;
-    if (_engine->Settings.MapSmoothPath && !_engine->Settings.MapHexagonal) {
-        int x1 = cx;
-        int y1 = cy;
-        int x2 = from_hx;
-        int y2 = from_hy;
-        auto dx = abs(x1 - x2);
-        auto dy = abs(y1 - y2);
-        auto d = std::max(dx, dy);
-        auto h1 = abs(dx - dy);
-        auto h2 = d - h1;
-        if (dy < dx) {
-            std::swap(h1, h2);
-        }
-        smooth_count = h1 != 0 && h2 != 0 ? h1 / h2 + 1 : 3;
-        if (smooth_count < 3) {
-            smooth_count = 3;
-        }
-
-        smooth_count = h1 != 0 && h2 != 0 ? std::max(h1, h2) / std::min(h1, h2) + 1 : 0;
-        if (h1 != 0 && h2 != 0 && smooth_count < 2) {
-            smooth_count = 2;
-        }
-        smooth_iteration = h1 != 0 && h2 != 0 ? std::min(h1, h2) % std::max(h1, h2) : 0;
-    }
+    float base_angle = _engine->Geometry.GetDirAngle(to_hx, to_hy, input.FromHexX, input.FromHexY);
 
     while (numindex > 1) {
-        if (_engine->Settings.MapSmoothPath) {
-            if (_engine->Settings.MapHexagonal) {
-                if ((numindex & 1) != 0) {
-                    _smoothSwitcher = !_smoothSwitcher;
+        numindex--;
+
+        const auto find_path_grid = [this, &input, base_angle, &raw_steps, &numindex](ushort& x1, ushort& y1) -> bool {
+            int best_step_dir = -1;
+            float best_step_angle_diff = 0.0f;
+
+            const auto check_hex = [&, this](int dir, int step_hx, int step_hy) {
+                if (GridAt(step_hx, step_hy) == numindex) {
+                    const float angle = _engine->Geometry.GetDirAngle(step_hx, step_hy, input.FromHexX, input.FromHexY);
+                    const float angle_diff = _engine->Geometry.GetDirAngleDiff(base_angle, angle);
+                    if (best_step_dir == -1 || numindex == 0) {
+                        best_step_dir = dir;
+                        best_step_angle_diff = _engine->Geometry.GetDirAngleDiff(base_angle, angle);
+                    }
+                    else {
+                        if (best_step_dir == -1 || angle_diff < best_step_angle_diff) {
+                            best_step_dir = dir;
+                            best_step_angle_diff = angle_diff;
+                        }
+                    }
+                }
+            };
+
+            if ((x1 % 2) != 0) {
+                check_hex(3, x1 - 1, y1 - 1);
+                check_hex(2, x1, y1 - 1);
+                check_hex(5, x1, y1 + 1);
+                check_hex(0, x1 + 1, y1);
+                check_hex(4, x1 - 1, y1);
+                check_hex(1, x1 + 1, y1 - 1);
+
+                if (best_step_dir == 3) {
+                    raw_steps[numindex - 1] = 3;
+                    x1--;
+                    y1--;
+                    return true;
+                }
+                if (best_step_dir == 2) {
+                    raw_steps[numindex - 1] = 2;
+                    y1--;
+                    return true;
+                }
+                if (best_step_dir == 5) {
+                    raw_steps[numindex - 1] = 5;
+                    y1++;
+                    return true;
+                }
+                if (best_step_dir == 0) {
+                    raw_steps[numindex - 1] = 0;
+                    x1++;
+                    return true;
+                }
+                if (best_step_dir == 4) {
+                    raw_steps[numindex - 1] = 4;
+                    x1--;
+                    return true;
+                }
+                if (best_step_dir == 1) {
+                    raw_steps[numindex - 1] = 1;
+                    x1++;
+                    y1--;
+                    return true;
                 }
             }
             else {
-                _smoothSwitcher = smooth_count < 2 || smooth_iteration % smooth_count != 0;
-            }
-        }
+                check_hex(3, x1 - 1, y1);
+                check_hex(2, x1, y1 - 1);
+                check_hex(5, x1, y1 + 1);
+                check_hex(0, x1 + 1, y1 + 1);
+                check_hex(4, x1 - 1, y1 + 1);
+                check_hex(1, x1 + 1, y1);
 
-        numindex--;
-        auto& ps = steps[numindex - 1];
-        ps.HexX = cx;
-        ps.HexY = cy;
-        const auto dir = FindPathGrid(cx, cy, numindex, _smoothSwitcher);
-        if (dir == std::numeric_limits<uchar>::max()) {
-            output.Result = FindPathResult::InternalError;
+                if (best_step_dir == 3) {
+                    raw_steps[numindex - 1] = 3;
+                    x1--;
+                    return true;
+                }
+                if (best_step_dir == 2) {
+                    raw_steps[numindex - 1] = 2;
+                    y1--;
+                    return true;
+                }
+                if (best_step_dir == 5) {
+                    raw_steps[numindex - 1] = 5;
+                    y1++;
+                    return true;
+                }
+                if (best_step_dir == 0) {
+                    raw_steps[numindex - 1] = 0;
+                    x1++;
+                    y1++;
+                    return true;
+                }
+                if (best_step_dir == 4) {
+                    raw_steps[numindex - 1] = 4;
+                    x1--;
+                    y1++;
+                    return true;
+                }
+                if (best_step_dir == 1) {
+                    raw_steps[numindex - 1] = 1;
+                    x1++;
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        if (!find_path_grid(cx, cy)) {
+            output.Result = FindPathOutput::ResultType::InternalError;
             return output;
         }
-        ps.Dir = dir;
-
-        smooth_iteration++;
     }
 
     // Check for closed door and critter
-    if (check_cr || check_gag_items) {
-        for (auto i = 0, j = static_cast<int>(steps.size()); i < j; i++) {
-            auto& ps = steps[i];
-            if (map->IsHexPassed(ps.HexX, ps.HexY)) {
+    if (input.CheckCritter || input.CheckGagItems) {
+        ushort check_hx = input.FromHexX;
+        ushort check_hy = input.FromHexY;
+
+        for (size_t i = 0; i < raw_steps.size(); i++) {
+            const auto move_ok = _engine->Geometry.MoveHexByDir(check_hx, check_hy, raw_steps[i], maxhx, maxhy);
+            RUNTIME_ASSERT(move_ok);
+
+            if (map->IsHexPassed(check_hx, check_hy)) {
                 continue;
             }
 
-            if (check_gag_items && map->IsHexGag(ps.HexX, ps.HexY)) {
-                auto* item = map->GetItemGag(ps.HexX, ps.HexY);
+            if (input.CheckGagItems && map->IsHexGag(check_hx, check_hy)) {
+                Item* item = map->GetItemGag(check_hx, check_hy);
                 if (item == nullptr) {
                     continue;
                 }
+
                 output.GagItem = item;
-                steps.resize(i);
+                to_hx = check_hx;
+                to_hy = check_hy;
+                raw_steps.resize(i);
                 break;
             }
 
-            if (check_cr && map->IsFlagCritter(ps.HexX, ps.HexY, false)) {
-                auto* cr = map->GetHexCritter(ps.HexX, ps.HexY, false);
-                if (cr == nullptr || cr == pfd.FromCritter) {
+            if (input.CheckCritter && map->IsFlagCritter(check_hx, check_hy, false)) {
+                Critter* cr = map->GetHexCritter(check_hx, check_hy, false);
+                if (cr == nullptr || cr == input.FromCritter) {
                     continue;
                 }
+
                 output.GagCritter = cr;
-                steps.resize(i);
+                to_hx = check_hx;
+                to_hy = check_hy;
+                raw_steps.resize(i);
                 break;
             }
         }
     }
 
     // Trace
-    if (trace != 0u) {
+    if (input.TraceDist > 0) {
         vector<int> trace_seq;
-        auto targ_hx = pfd.TraceCr->GetHexX();
-        auto targ_hy = pfd.TraceCr->GetHexY();
-        auto trace_ok = false;
+        ushort targ_hx = input.TraceCr->GetHexX();
+        ushort targ_hy = input.TraceCr->GetHexY();
+        bool trace_ok = false;
 
-        trace_seq.resize(steps.size() + 4);
-        for (auto i = 0, j = static_cast<int>(steps.size()); i < j; i++) {
-            auto& ps = steps[i];
-            if (map->IsHexGag(ps.HexX, ps.HexY)) {
+        trace_seq.resize(raw_steps.size() + 4);
+
+        ushort check_hx = input.FromHexX;
+        ushort check_hy = input.FromHexY;
+
+        for (size_t i = 0; i < raw_steps.size(); i++) {
+            const auto move_ok = _engine->Geometry.MoveHexByDir(check_hx, check_hy, raw_steps[i], maxhx, maxhy);
+            RUNTIME_ASSERT(move_ok);
+
+            if (map->IsHexGag(check_hx, check_hy)) {
                 trace_seq[i + 2 - 2] += 1;
                 trace_seq[i + 2 - 1] += 2;
                 trace_seq[i + 2 - 0] += 3;
@@ -1191,13 +1207,19 @@ label_FindOk:
             }
         }
 
-        TraceData trace_;
-        trace_.TraceMap = map;
-        trace_.EndHx = targ_hx;
-        trace_.EndHy = targ_hy;
-        trace_.FindCr = pfd.TraceCr;
-        for (auto k = 0; k < 5; k++) {
-            for (auto i = 0, j = static_cast<int>(steps.size()); i < j; i++) {
+        TraceData trace;
+        trace.TraceMap = map;
+        trace.EndHx = targ_hx;
+        trace.EndHy = targ_hy;
+        trace.FindCr = input.TraceCr;
+        for (int k = 0; k < 5; k++) {
+            ushort check_hx2 = input.FromHexX;
+            ushort check_hy2 = input.FromHexY;
+
+            for (size_t i = 0; i < raw_steps.size() - 1; i++) {
+                const auto move_ok2 = _engine->Geometry.MoveHexByDir(check_hx2, check_hy2, raw_steps[i], maxhx, maxhy);
+                RUNTIME_ASSERT(move_ok2);
+
                 if (k < 4 && trace_seq[i + 2] != k) {
                     continue;
                 }
@@ -1205,25 +1227,29 @@ label_FindOk:
                     continue;
                 }
 
-                auto& ps = steps[i];
-
-                if (!_engine->Geometry.CheckDist(ps.HexX, ps.HexY, targ_hx, targ_hy, trace)) {
+                if (!_engine->Geometry.CheckDist(check_hx2, check_hy2, targ_hx, targ_hy, input.TraceDist)) {
                     continue;
                 }
 
-                trace_.BeginHx = ps.HexX;
-                trace_.BeginHy = ps.HexY;
-                TraceBullet(trace_);
-                if (trace_.IsCritterFounded) {
+                trace.BeginHx = check_hx2;
+                trace.BeginHy = check_hy2;
+
+                TraceBullet(trace);
+
+                if (trace.IsCritterFounded) {
                     trace_ok = true;
-                    steps.resize(i + 1);
+                    raw_steps.resize(i + 1);
+                    const auto move_ok3 = _engine->Geometry.MoveHexByDir(check_hx2, check_hy2, raw_steps[i + 1], maxhx, maxhy);
+                    RUNTIME_ASSERT(move_ok3);
+                    to_hx = check_hx2;
+                    to_hy = check_hy2;
                     goto label_TraceOk;
                 }
             }
         }
 
         if (!trace_ok && output.GagItem == nullptr && output.GagCritter == nullptr) {
-            output.Result = FindPathResult::TraceFailed;
+            output.Result = FindPathOutput::ResultType::TraceFailed;
             return output;
         }
 
@@ -1234,292 +1260,67 @@ label_FindOk:
         }
     }
 
-    // Parse move params
-    PathSetMoveParams(steps, is_run);
-
-    // Number of path
-    if (steps.empty()) {
-        output.Result = FindPathResult::AlreadyHere;
+    if (raw_steps.empty()) {
+        output.Result = FindPathOutput::ResultType::AlreadyHere;
         return output;
     }
 
-    // New X,Y
-    auto& ps = steps[steps.size() - 1];
-    output.NewToX = ps.HexX;
-    output.NewToY = ps.HexY;
-    output.Result = FindPathResult::Ok;
+    ushort trace_hx = input.FromHexX;
+    ushort trace_hy = input.FromHexY;
+
+    while (true) {
+        ushort trace_tx = to_hx;
+        ushort trace_ty = to_hy;
+
+        for (auto i = static_cast<int>(raw_steps.size()) - 1; i >= 0; i--) {
+            LineTracer tracer(_engine->Geometry, trace_hx, trace_hy, trace_tx, trace_ty, maxhx, maxhy, 0.0f);
+            ushort next_hx = trace_hx;
+            ushort next_hy = trace_hy;
+            vector<uchar> direct_steps;
+            bool failed = false;
+
+            while (true) {
+                uchar dir = tracer.GetNextHex(next_hx, next_hy);
+                direct_steps.push_back(dir);
+
+                if (next_hx == trace_tx && next_hy == trace_ty)
+                    break;
+
+                if (GridAt(next_hx, next_hy) <= 0) {
+                    failed = true;
+                    break;
+                }
+            }
+
+            if (failed) {
+                RUNTIME_ASSERT(i > 0);
+                _engine->Geometry.MoveHexByDir(trace_tx, trace_ty, _engine->Geometry.ReverseDir(raw_steps[i]), maxhx, maxhy);
+                continue;
+            }
+
+            for (const auto& ds : direct_steps) {
+                output.Steps.push_back(ds);
+            }
+
+            output.ControlSteps.emplace_back(static_cast<ushort>(output.Steps.size()));
+
+            trace_hx = trace_tx;
+            trace_hy = trace_ty;
+            break;
+        }
+
+        if (trace_tx == to_hx && trace_ty == to_hy) {
+            break;
+        }
+    }
+
+    RUNTIME_ASSERT(!output.Steps.empty());
+    RUNTIME_ASSERT(!output.ControlSteps.empty());
+
+    output.Result = FindPathOutput::ResultType::Ok;
+    output.NewToX = to_hx;
+    output.NewToY = to_hy;
     return output;
-}
-
-auto MapManager::FindPathGrid(ushort& hx, ushort& hy, int index, bool smooth_switcher) const -> uchar
-{
-    // Hexagonal
-    if (_engine->Settings.MapHexagonal) {
-        if (smooth_switcher) {
-            if ((hx & 1) != 0) {
-                if (GRID(hx - 1, hy - 1) == index) {
-                    hx--;
-                    hy--;
-                    return 3u;
-                } // 0
-                if (GRID(hx, hy - 1) == index) {
-                    hy--;
-                    return 2u;
-                } // 5
-                if (GRID(hx, hy + 1) == index) {
-                    hy++;
-                    return 5u;
-                } // 2
-                if (GRID(hx + 1, hy) == index) {
-                    hx++;
-                    return 0u;
-                } // 3
-                if (GRID(hx - 1, hy) == index) {
-                    hx--;
-                    return 4u;
-                } // 1
-                if (GRID(hx + 1, hy - 1) == index) {
-                    hx++;
-                    hy--;
-                    return 1u;
-                } // 4
-            }
-            else {
-                if (GRID(hx - 1, hy) == index) {
-                    hx--;
-                    return 3u;
-                } // 0
-                if (GRID(hx, hy - 1) == index) {
-                    hy--;
-                    return 2u;
-                } // 5
-                if (GRID(hx, hy + 1) == index) {
-                    hy++;
-                    return 5u;
-                } // 2
-                if (GRID(hx + 1, hy + 1) == index) {
-                    hx++;
-                    hy++;
-                    return 0u;
-                } // 3
-                if (GRID(hx - 1, hy + 1) == index) {
-                    hx--;
-                    hy++;
-                    return 4u;
-                } // 1
-                if (GRID(hx + 1, hy) == index) {
-                    hx++;
-                    return 1u;
-                } // 4
-            }
-        }
-        else {
-            if ((hx & 1) != 0) {
-                if (GRID(hx - 1, hy) == index) {
-                    hx--;
-                    return 4u;
-                } // 1
-                if (GRID(hx + 1, hy - 1) == index) {
-                    hx++;
-                    hy--;
-                    return 1u;
-                } // 4
-                if (GRID(hx, hy - 1) == index) {
-                    hy--;
-                    return 2u;
-                } // 5
-                if (GRID(hx - 1, hy - 1) == index) {
-                    hx--;
-                    hy--;
-                    return 3u;
-                } // 0
-                if (GRID(hx + 1, hy) == index) {
-                    hx++;
-                    return 0u;
-                } // 3
-                if (GRID(hx, hy + 1) == index) {
-                    hy++;
-                    return 5u;
-                } // 2
-            }
-            else {
-                if (GRID(hx - 1, hy + 1) == index) {
-                    hx--;
-                    hy++;
-                    return 4u;
-                } // 1
-                if (GRID(hx + 1, hy) == index) {
-                    hx++;
-                    return 1u;
-                } // 4
-                if (GRID(hx, hy - 1) == index) {
-                    hy--;
-                    return 2u;
-                } // 5
-                if (GRID(hx - 1, hy) == index) {
-                    hx--;
-                    return 3u;
-                } // 0
-                if (GRID(hx + 1, hy + 1) == index) {
-                    hx++;
-                    hy++;
-                    return 0u;
-                } // 3
-                if (GRID(hx, hy + 1) == index) {
-                    hy++;
-                    return 5u;
-                } // 2
-            }
-        }
-    }
-    // Square
-    else {
-        // Without smoothing
-        if (!_engine->Settings.MapSmoothPath) {
-            if (GRID(hx - 1, hy) == index) {
-                hx--;
-                return 0u;
-            } // 0
-            if (GRID(hx, hy - 1) == index) {
-                hy--;
-                return 6u;
-            } // 6
-            if (GRID(hx, hy + 1) == index) {
-                hy++;
-                return 2u;
-            } // 2
-            if (GRID(hx + 1, hy) == index) {
-                hx++;
-                return 4u;
-            } // 4
-            if (GRID(hx - 1, hy + 1) == index) {
-                hx--;
-                hy++;
-                return 1u;
-            } // 1
-            if (GRID(hx + 1, hy - 1) == index) {
-                hx++;
-                hy--;
-                return 5u;
-            } // 5
-            if (GRID(hx + 1, hy + 1) == index) {
-                hx++;
-                hy++;
-                return 3u;
-            } // 3
-            if (GRID(hx - 1, hy - 1) == index) {
-                hx--;
-                hy--;
-                return 7u;
-            } // 7
-        }
-        // With smoothing
-        else {
-            if (smooth_switcher) {
-                if (GRID(hx - 1, hy) == index) {
-                    hx--;
-                    return 0u;
-                } // 0
-                if (GRID(hx, hy + 1) == index) {
-                    hy++;
-                    return 2u;
-                } // 2
-                if (GRID(hx + 1, hy) == index) {
-                    hx++;
-                    return 4u;
-                } // 4
-                if (GRID(hx, hy - 1) == index) {
-                    hy--;
-                    return 6u;
-                } // 6
-                if (GRID(hx + 1, hy + 1) == index) {
-                    hx++;
-                    hy++;
-                    return 3u;
-                } // 3
-                if (GRID(hx - 1, hy - 1) == index) {
-                    hx--;
-                    hy--;
-                    return 7u;
-                } // 7
-                if (GRID(hx - 1, hy + 1) == index) {
-                    hx--;
-                    hy++;
-                    return 1u;
-                } // 1
-                if (GRID(hx + 1, hy - 1) == index) {
-                    hx++;
-                    hy--;
-                    return 5u;
-                } // 5
-            }
-            else {
-                if (GRID(hx + 1, hy + 1) == index) {
-                    hx++;
-                    hy++;
-                    return 3u;
-                } // 3
-                if (GRID(hx - 1, hy - 1) == index) {
-                    hx--;
-                    hy--;
-                    return 7u;
-                } // 7
-                if (GRID(hx - 1, hy) == index) {
-                    hx--;
-                    return 0u;
-                } // 0
-                if (GRID(hx, hy + 1) == index) {
-                    hy++;
-                    return 2u;
-                } // 2
-                if (GRID(hx + 1, hy) == index) {
-                    hx++;
-                    return 4u;
-                } // 4
-                if (GRID(hx, hy - 1) == index) {
-                    hy--;
-                    return 6u;
-                } // 6
-                if (GRID(hx - 1, hy + 1) == index) {
-                    hx--;
-                    hy++;
-                    return 1u;
-                } // 1
-                if (GRID(hx + 1, hy - 1) == index) {
-                    hx++;
-                    hy--;
-                    return 5u;
-                } // 5
-            }
-        }
-    }
-
-    return std::numeric_limits<uchar>::max();
-}
-
-#undef GRID
-
-void MapManager::PathSetMoveParams(vector<PathStep>& path, bool is_run)
-{
-    uint move_params = 0; // Base parameters
-    for (auto i = static_cast<int>(path.size()) - 1; i >= 0; i--) // From end to beginning
-    {
-        auto& ps = path[i];
-
-        // Walk flags
-        if (is_run) {
-            SetBit(move_params, MOVE_PARAM_RUN);
-        }
-        else {
-            UnsetBit(move_params, MOVE_PARAM_RUN);
-        }
-
-        // Store
-        ps.MoveParams = move_params;
-
-        // Add dir to sequence
-        move_params = move_params << MOVE_PARAM_STEP_BITS | ps.Dir | MOVE_PARAM_STEP_ALLOW;
-    }
 }
 
 auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> bool
@@ -1567,6 +1368,8 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
     const auto old_map_id = cr->GetMapId();
     auto* old_map = GetMap(old_map_id);
 
+    cr->ClearMove();
+
     // Recheck after synchronization
     if (cr->GetMapId() != old_map_id) {
         return false;
@@ -1590,7 +1393,7 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 
         cr->LockMapTransfers++;
 
-        cr->SetDir(dir >= _engine->Settings.MapDirCount ? 0 : dir);
+        cr->ChangeDir(dir);
         map->UnsetFlagCritter(cr->GetHexX(), cr->GetHexY(), multihex, cr->IsDead());
         cr->SetHexX(hx);
         cr->SetHexY(hy);
@@ -1657,7 +1460,7 @@ auto MapManager::CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint
     }
     else {
         if (leader_id != 0u && leader_id != cr->GetId()) {
-            auto* leader = _engine->CrMngr.GetCritter(leader_id);
+            const auto* leader = _engine->CrMngr.GetCritter(leader_id);
             if (leader == nullptr || leader->GetMapId() != 0u) {
                 return false;
             }
@@ -1685,7 +1488,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
         cr->SetRefLocationPid(map->GetLocation() != nullptr ? map->GetLocation()->GetProtoId() : hstring());
         cr->SetHexX(hx);
         cr->SetHexY(hy);
-        cr->SetDir(dir);
+        cr->ChangeDir(dir);
 
         map->AddCritter(cr);
 
@@ -1704,7 +1507,7 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
             cr->GlobalMapGroup->push_back(cr);
         }
         else {
-            auto* leader = _engine->CrMngr.GetCritter(leader_id);
+            const auto* leader = _engine->CrMngr.GetCritter(leader_id);
             RUNTIME_ASSERT(leader);
             RUNTIME_ASSERT(!leader->GetMapId());
 
@@ -1714,8 +1517,8 @@ void MapManager::AddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uchar d
             cr->SetRefGlobalMapLeaderId(leader_id);
             cr->SetGlobalMapTripId(leader->GetGlobalMapTripId());
 
-            for (auto& it : *leader->GlobalMapGroup) {
-                it->Send_AddCritter(cr);
+            for (auto* group_cr : *leader->GlobalMapGroup) {
+                group_cr->Send_AddCritter(cr);
             }
 
             cr->GlobalMapGroup = leader->GlobalMapGroup;
@@ -1756,7 +1559,7 @@ void MapManager::EraseCrFromMap(Critter* cr, Map* map)
         cr->GlobalMapGroup->erase(it);
 
         if (!cr->GlobalMapGroup->empty()) {
-            auto* new_leader = *cr->GlobalMapGroup->begin();
+            const auto* new_leader = *cr->GlobalMapGroup->begin();
             for (auto* group_cr : *cr->GlobalMapGroup) {
                 group_cr->SetGlobalMapLeaderId(new_leader->GetId());
                 group_cr->SetRefGlobalMapLeaderId(new_leader->GetId());
@@ -1790,9 +1593,7 @@ void MapManager::ProcessVisibleCritters(Critter* view_cr)
         if (view_cr->IsOwnedByPlayer()) {
             for (auto* cr : *view_cr->GlobalMapGroup) {
                 if (view_cr == cr) {
-                    SetBit(view_cr->Flags, FCRIT_CHOSEN);
                     view_cr->Send_AddCritter(view_cr);
-                    UnsetBit(view_cr->Flags, FCRIT_CHOSEN);
                     view_cr->Send_AddAllItems();
                 }
                 else {

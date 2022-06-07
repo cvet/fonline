@@ -673,66 +673,16 @@ auto Map::IsHexesPassed(ushort hx, ushort hy, uint radius) const -> bool
     return true;
 }
 
-auto Map::IsMovePassed(ushort hx, ushort hy, uchar dir, uint multihex) const -> bool
+auto Map::IsMovePassed(Critter* cr, ushort to_hx, ushort to_hy, uint multihex) -> bool
 {
-    // Single hex
-    if (multihex == 0u) {
-        return IsHexPassed(hx, hy);
+    if (cr != nullptr && !cr->IsDead() && multihex > 0) {
+        UnsetFlagCritter(cr->GetHexX(), cr->GetHexY(), multihex, false);
+        const auto result = IsHexesPassed(to_hx, to_hy, multihex);
+        SetFlagCritter(cr->GetHexX(), cr->GetHexY(), multihex, false);
+        return result;
     }
 
-    // Multihex
-    const auto map_width = GetWidth();
-    const auto map_height = GetHeight();
-
-    int hx_ = hx;
-    int hy_ = hy;
-    for (uint k = 0; k < multihex; k++) {
-        if (!_engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, dir, map_width, map_height)) {
-            return false;
-        }
-    }
-    if (!IsHexPassed(static_cast<ushort>(hx_), static_cast<ushort>(hy_))) {
-        return false;
-    }
-
-    const auto is_square_corner = (!_engine->Settings.MapHexagonal && (dir % 2) != 0);
-    const auto steps_count = (is_square_corner ? multihex * 2 : multihex);
-
-    // Clock wise hexes
-    auto dir_cw = static_cast<uchar>(_engine->Settings.MapHexagonal ? (dir + 2) % 6 : (dir + 2) % 8);
-    if (is_square_corner) {
-        dir_cw = (dir_cw + 1) % 8;
-    }
-
-    auto hx_cw = hx_;
-    auto hy_cw = hy_;
-    for (uint k = 0; k < steps_count; k++) {
-        if (!_engine->Geometry.MoveHexByDirUnsafe(hx_cw, hy_cw, dir_cw, map_width, map_height)) {
-            return false;
-        }
-        if (!IsHexPassed(static_cast<ushort>(hx_cw), static_cast<ushort>(hy_cw))) {
-            return false;
-        }
-    }
-
-    // Counter clock wise hexes
-    auto dir_ccw = static_cast<uchar>(_engine->Settings.MapHexagonal ? (dir + 4) % 6 : (dir + 6) % 8);
-    if (is_square_corner) {
-        dir_ccw = (dir_ccw + 7) % 8;
-    }
-
-    auto hx_ccw = hx_;
-    auto hy_ccw = hy_;
-    for (uint k = 0; k < steps_count; k++) {
-        if (!_engine->Geometry.MoveHexByDirUnsafe(hx_ccw, hy_ccw, dir_ccw, map_width, map_height)) {
-            return false;
-        }
-        if (!IsHexPassed(static_cast<ushort>(hx_ccw), static_cast<ushort>(hy_ccw))) {
-            return false;
-        }
-    }
-
-    return true;
+    return IsHexesPassed(to_hx, to_hy, multihex);
 }
 
 auto Map::IsHexTrigger(ushort hx, ushort hy) const -> bool
@@ -748,6 +698,11 @@ auto Map::IsHexCritter(ushort hx, ushort hy) const -> bool
 auto Map::IsHexGag(ushort hx, ushort hy) const -> bool
 {
     return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_GAG_ITEM);
+}
+
+auto Map::IsHexBlockItem(ushort hx, ushort hy) const -> bool
+{
+    return IsBitSet(_hexFlags[hy * GetWidth() + hx], FH_BLOCK_ITEM);
 }
 
 auto Map::IsHexStaticTrigger(ushort hx, ushort hy) const -> bool

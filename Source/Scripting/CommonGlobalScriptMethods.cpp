@@ -548,7 +548,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param toHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Common_Game_GetDirectionAngle([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] uchar Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
 {
     return 0;
 }
@@ -570,7 +570,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 [[maybe_unused]] short Common_Game_DirToAngle([[maybe_unused]] FOEngineBase* engine, uchar dir)
 {
     // Todo: quad tiles fix
-    return dir * 60 + 30;
+    return static_cast<short>(static_cast<int>(dir) * 60 + 30);
 }
 
 ///# ...
@@ -581,7 +581,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] short Common_Game_RotateDirAngle([[maybe_unused]] FOEngineBase* engine, short dirAngle, bool clockwise, short step)
 {
-    auto rotated = dirAngle;
+    auto rotated = static_cast<int>(dirAngle);
 
     if (clockwise) {
         rotated += step;
@@ -597,5 +597,5 @@ static auto SystemCall(string_view command, const std::function<void(string_view
         rotated -= 360;
     }
 
-    return rotated;
+    return static_cast<short>(rotated);
 }

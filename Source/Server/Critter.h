@@ -40,14 +40,6 @@
 #include "EntityProtos.h"
 #include "ServerEntity.h"
 
-struct PathStep
-{
-    ushort HexX {};
-    ushort HexY {};
-    uint MoveParams {};
-    uchar Dir {};
-};
-
 class Player;
 class MapManager;
 class Item;
@@ -60,20 +52,6 @@ class Critter final : public ServerEntity, public CritterProperties
     friend class CritterManager;
 
 public:
-    struct MovingData
-    {
-        MovingState State {MovingState::Success};
-        uint TargId {};
-        ushort HexX {};
-        ushort HexY {};
-        uint Cut {};
-        bool IsRun {};
-        vector<PathStep> Steps {};
-        uint Iter {};
-        uint Trace {};
-        uint GagEntityId {};
-    };
-
     Critter() = delete;
     Critter(FOServer* engine, uint id, Player* owner, const ProtoCritter* proto);
     Critter(const Critter&) = delete;
@@ -111,6 +89,7 @@ public:
     [[nodiscard]] auto IsTalkedPlayers() const -> bool;
     [[nodiscard]] auto GetBarterPlayers() const -> uint;
     [[nodiscard]] auto IsFreeToTalk() const -> bool;
+    [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
 
     auto AddCrIntoVisVec(Critter* add_cr) -> bool;
     auto DelCrFromVisVec(Critter* del_cr) -> bool;
@@ -126,11 +105,14 @@ public:
 
     void DetachPlayer();
     void AttachPlayer(Player* owner);
+    void ClearMove();
     void ClearVisible();
     void SetItem(Item* item);
+    void ChangeDir(uchar dir);
+    void ChangeDirAngle(int dir_angle);
 
     void Broadcast_Property(NetProperty type, const Property* prop, ServerEntity* entity);
-    void Broadcast_Move(uint move_params);
+    void Broadcast_Move();
     void Broadcast_Position();
     void Broadcast_Action(int action, int action_ext, Item* item);
     void Broadcast_Dir();
@@ -145,7 +127,7 @@ public:
     void SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_str, uchar how_say, ushort num_msg, string_view lexems);
 
     void Send_Property(NetProperty type, const Property* prop, ServerEntity* entity);
-    void Send_Move(Critter* from_cr, uint move_params);
+    void Send_Move(Critter* from_cr);
     void Send_Dir(Critter* from_cr);
     void Send_AddCritter(Critter* cr);
     void Send_RemoveCritter(Critter* cr);
@@ -173,7 +155,6 @@ public:
     void Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar prev_slot);
     void Send_Animate(Critter* from_cr, uint anim1, uint anim2, Item* item, bool clear_sequence, bool delay_play);
     void Send_SetAnims(Critter* from_cr, CritterCondition cond, uint anim1, uint anim2);
-    void Send_CombatResult(uint* combat_res, uint len);
     void Send_AutomapsInfo(void* locs_vec, Location* loc);
     void Send_Effect(hstring eff_pid, ushort hx, ushort hy, ushort radius);
     void Send_FlyEffect(hstring eff_pid, uint from_crid, uint to_crid, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy);
@@ -229,19 +210,23 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnGlobalMapOut);
 
-    uint Flags {}; // Todo: move Flags to properties
-    string Name {};
-    bool IsRunning {};
     int LockMapTransfers {};
     uint AllowedToDownloadMap {};
     vector<Critter*> VisCr {};
     vector<Critter*> VisCrSelf {};
-    map<uint, Critter*> VisCrMap {};
-    map<uint, Critter*> VisCrSelfMap {};
-    set<uint> VisCr1 {};
-    set<uint> VisCr2 {};
-    set<uint> VisCr3 {};
-    set<uint> VisItem {};
+    unordered_map<uint, Critter*> VisCrMap {};
+    unordered_map<uint, Critter*> VisCrSelfMap {};
+    unordered_set<uint> VisCr1 {};
+    unordered_set<uint> VisCr2 {};
+    unordered_set<uint> VisCr3 {};
+    unordered_set<uint> VisItem {};
+
+    uint CacheValuesNextTick {};
+    uint LookCacheValue {};
+    vector<Critter*>* GlobalMapGroup {};
+    uint RadioMessageSended {};
+    TalkData Talk {}; // Todo: incapsulate Critter::Talk
+
     uint ViewMapId {};
     hstring ViewMapPid {};
     ushort ViewMapLook {};
@@ -250,12 +235,37 @@ public:
     uchar ViewMapDir {};
     uint ViewMapLocId {};
     uint ViewMapLocEnt {};
-    MovingData Moving {};
-    uint CacheValuesNextTick {};
-    uint LookCacheValue {};
-    vector<Critter*>* GlobalMapGroup {};
-    uint RadioMessageSended {};
-    TalkData Talk {}; // Todo: incapsulate Critter::Talk
+
+    struct
+    {
+        MovingState State {MovingState::Success};
+        uint TargId {};
+        ushort HexX {};
+        ushort HexY {};
+        uint Cut {};
+        bool IsRun {};
+        uint TraceDist {};
+        uint GagEntityId {};
+    } TargetMoving {};
+
+    struct
+    {
+        bool IsRunning {};
+        uint Uid {};
+        vector<uchar> Steps {};
+        vector<ushort> ControlSteps {};
+        uint StartTick {};
+        ushort StartHexX {};
+        ushort StartHexY {};
+        ushort EndHexX {};
+        ushort EndHexY {};
+        float WholeTime {};
+        float WholeDist {};
+        short StartOx {};
+        short StartOy {};
+        short EndOx {};
+        short EndOy {};
+    } Moving {};
 
 private:
     Player* _player {};

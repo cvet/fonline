@@ -341,16 +341,23 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
+    if (client->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+        if (client->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) > 0 && cut == 0) {
+            return {client->Geometry.GetNearDir(fromHx, fromHy, to_hx, to_hy)};
+        }
+        return {};
+    }
+
     if (cut > 0 && !client->CurMap->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
-        return vector<uchar>();
+        return {};
     }
 
-    vector<uchar> steps;
-    if (!client->CurMap->FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
-        return vector<uchar>();
+    auto result = client->CurMap->FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, -1);
+    if (!result) {
+        return {};
     }
 
-    return steps;
+    return result->Steps;
 }
 
 ///# ...
@@ -374,16 +381,23 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
+    if (client->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+        if (client->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) > cr->GetMultihex() && cut == 0) {
+            return {client->Geometry.GetFarDir(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy)};
+        }
+        return {};
+    }
+
     if (cut > 0 && !client->CurMap->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, cut)) {
-        return vector<uchar>();
+        return {};
     }
 
-    vector<uchar> steps;
-    if (!client->CurMap->FindPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, steps, -1)) {
-        return vector<uchar>();
+    auto result = client->CurMap->FindPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, -1);
+    if (!result) {
+        return {};
     }
 
-    return steps;
+    return result->Steps;
 }
 
 ///# ...
@@ -406,16 +420,20 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
+    if (client->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
+        return cut > 0 ? 0 : 1;
+    }
+
     if (cut > 0 && !client->CurMap->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
         return 0;
     }
 
-    vector<uchar> steps;
-    if (!client->CurMap->FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, steps, -1)) {
-        steps.clear();
+    const auto result = client->CurMap->FindPath(nullptr, fromHx, fromHy, to_hx, to_hy, -1);
+    if (!result) {
+        return 0;
     }
 
-    return static_cast<uint>(steps.size());
+    return static_cast<uint>(result->Steps.size());
 }
 
 ///# ...
@@ -439,16 +457,20 @@
     auto to_hx = toHx;
     auto to_hy = toHy;
 
+    if (client->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
+        return cut > 0 ? 0 : 1;
+    }
+
     if (cut > 0 && !client->CurMap->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, cut)) {
         return 0;
     }
 
-    vector<uchar> steps;
-    if (!client->CurMap->FindPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, steps, -1)) {
-        steps.clear();
+    const auto result = client->CurMap->FindPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, -1);
+    if (!result) {
+        return 0;
     }
 
-    return static_cast<uint>(steps.size());
+    return static_cast<uint>(result->Steps.size());
 }
 
 ///# ...
@@ -511,7 +533,7 @@
 [[maybe_unused]] hstring Client_Game_GetCurMapPid(FOClient* client)
 {
     if (client->CurMap == nullptr) {
-        return hstring();
+        return {};
     }
     return client->CurMapPid;
 }
@@ -950,7 +972,7 @@
 
     const auto* tiles = client->CurMap->GetField(hx, hy).Tiles[roof ? 1 : 0];
     if (tiles == nullptr || tiles->empty()) {
-        return hstring();
+        return {};
     }
 
     for (const auto& tile : *tiles) {
@@ -958,7 +980,7 @@
             return tile.Anim->Name;
         }
     }
-    return hstring();
+    return {};
 }
 
 ///# ...
@@ -1754,7 +1776,8 @@
         client->DrawCritterModelLayers[i] = layers[i];
     }
 
-    model->SetDirAngle(0);
+    model->SetLookDirAngle(0);
+    model->SetMoveDirAngle(0);
     model->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);
@@ -2009,7 +2032,35 @@
     client->Settings.MouseY = y;
     ushort hx_ = 0;
     ushort hy_ = 0;
-    const auto result = client->CurMap->GetHexScreenPos(x, y, hx_, hy_);
+    const auto result = client->CurMap->GetHexAtScreenPos(x, y, hx_, hy_, nullptr, nullptr);
+    client->Settings.MouseX = old_x;
+    client->Settings.MouseY = old_y;
+    if (result) {
+        hx = hx_;
+        hy = hy_;
+        return true;
+    }
+    return false;
+}
+
+///# ...
+///# param x ...
+///# param y ...
+///# param hx ...
+///# param hy ...
+///# param ox ...
+///# param oy ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Game_GetHexByMonitorPos(FOClient* client, int x, int y, ushort& hx, ushort& hy, int& ox, int& oy)
+{
+    const auto old_x = client->Settings.MouseX;
+    const auto old_y = client->Settings.MouseY;
+    client->Settings.MouseX = x;
+    client->Settings.MouseY = y;
+    ushort hx_ = 0;
+    ushort hy_ = 0;
+    const auto result = client->CurMap->GetHexAtScreenPos(x, y, hx_, hy_, &ox, &oy);
     client->Settings.MouseX = old_x;
     client->Settings.MouseY = old_y;
     if (result) {
@@ -2038,7 +2089,22 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Game_GetCritterByMonitorPos(FOClient* client, int x, int y)
 {
-    return client->CurMap->GetCritterAtScreenPos(x, y, false);
+    return client->CurMap->GetCritterAtScreenPos(x, y, false, false);
+}
+
+///# ...
+///# param x ...
+///# param y ...
+///# param wideRange
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] CritterView* Client_Game_GetCritterByMonitorPos(FOClient* client, int x, int y, bool wideRange)
+{
+    auto* cr = client->CurMap->GetCritterAtScreenPos(x, y, false, false);
+    if (cr == nullptr && wideRange) {
+        cr = client->CurMap->GetCritterAtScreenPos(x, y, false, true);
+    }
+    return cr;
 }
 
 ///# ...

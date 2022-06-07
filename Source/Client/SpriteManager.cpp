@@ -924,7 +924,8 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
 
     // Set fir
     if (dir < 0) {
-        model->SetDirAngle(-dir);
+        model->SetLookDirAngle(-dir);
+        model->SetMoveDirAngle(-dir);
     }
     else {
         model->SetDir(static_cast<uchar>(dir));

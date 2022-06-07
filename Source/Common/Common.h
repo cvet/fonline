@@ -1083,13 +1083,6 @@ static constexpr ushort MAXHEX_MAX = 4000;
 #define ANSWER_END (0xF1)
 #define ANSWER_BARTER (0xF2)
 
-// Run-time critters flags
-// Todo: remove critter flags
-static constexpr uint FCRIT_PLAYER = 0x00010000;
-static constexpr uint FCRIT_NPC = 0x00020000;
-static constexpr uint FCRIT_DISCONNECT = 0x00080000;
-static constexpr uint FCRIT_CHOSEN = 0x00100000;
-
 // Show screen modes
 // Ouput: it is 'uint param' in Critter::ShowScreen.
 // Input: I - integer value 'uint answerI', S - string value 'string& answerS' in 'answer_' function.
@@ -1108,9 +1101,6 @@ static constexpr uint FCRIT_CHOSEN = 0x00100000;
 
 // Special send params
 // Todo: remove special OTHER_* params
-#define OTHER_BREAK_TIME (0)
-#define OTHER_WAIT_TIME (1)
-#define OTHER_FLAGS (2)
 #define OTHER_TELEPORT (7)
 
 // Critter actions
@@ -1142,23 +1132,17 @@ static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
 #define ANIM1_UNARMED (1)
 #define ANIM2_IDLE (1)
 #define ANIM2_WALK (3)
+#define ANIM2_WALK_BACK (15)
 #define ANIM2_LIMP (4)
 #define ANIM2_RUN (5)
+#define ANIM2_RUN_BACK (16)
+#define ANIM2_TURN_RIGHT (17)
+#define ANIM2_TURN_LEFT (18)
 #define ANIM2_PANIC_RUN (6)
 #define ANIM2_SNEAK_WALK (7)
 #define ANIM2_SNEAK_RUN (8)
 #define ANIM2_IDLE_PRONE_FRONT (86)
 #define ANIM2_DEAD_FRONT (102)
-
-// Move params
-// 6 next steps (each 5 bit) + stop bit + run bit
-// Step bits: 012 - dir, 3 - allow, 4 - disallow
-static constexpr uint MOVE_PARAM_STEP_COUNT = 6;
-static constexpr uint MOVE_PARAM_STEP_BITS = 5;
-static constexpr uint MOVE_PARAM_STEP_DIR = 0x7;
-static constexpr uint MOVE_PARAM_STEP_ALLOW = 0x8;
-static constexpr uint MOVE_PARAM_STEP_DISALLOW = 0x10;
-static constexpr uint MOVE_PARAM_RUN = 0x80000000;
 
 // Property type in network interaction
 enum class NetProperty : uchar
@@ -1240,7 +1224,7 @@ enum class MovingState : uchar
     HexBusy = 8,
     HexBusyRing = 9,
     Deadlock = 10,
-    TraceFail = 11,
+    TraceFailed = 11,
 };
 
 // Uses

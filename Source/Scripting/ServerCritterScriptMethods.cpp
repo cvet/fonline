@@ -62,30 +62,15 @@
 ///# ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsFree(Critter* self)
+[[maybe_unused]] bool Server_Critter_IsMoving(Critter* self)
 {
-    return false;
-}
-
-///# ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_IsBusy(Critter* self)
-{
-    return false;
-}
-
-///# ...
-///# param ms ...
-///@ ExportMethod
-[[maybe_unused]] void Server_Critter_Wait(Critter* self, uint ms)
-{
+    return self->IsMoving() || self->TargetMoving.State == MovingState::InProgress;
 }
 
 ///# ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] bool Server_Critter_IsPlayer(Critter* self)
+[[maybe_unused]] bool Server_Critter_IsOwnedByPlayer(Critter* self)
 {
     return self->IsOwnedByPlayer();
 }
@@ -115,45 +100,18 @@
 }
 
 ///# ...
-///# param direction ...
-///# return ...
-///@ ExportMethod
-[[maybe_unused]] bool Server_Critter_MoveToDir(Critter* self, uchar direction)
-{
-    auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
-    if (!map) {
-        throw ScriptException("Critter is on global");
-    }
-    if (direction >= self->GetEngine()->Settings.MapDirCount) {
-        throw ScriptException("Invalid direction arg");
-    }
-
-    /*auto hx = self->GetHexX();
-    auto hy = self->GetHexY();
-    if (self->GetEngine()->Geometry.MoveHexByDir(hx, hy, direction, map->GetWidth(), map->GetHeight())) {
-        const auto move_flags = static_cast<ushort>(direction | BIN16(00000000, 00111000));
-        const auto move = self->GetEngine()->MoveCritter(self, hx, hy, move_flags);
-        if (move) {
-            self->Send_Move(self, move_flags);
-        }
-
-        return move;
-    }*/
-    return false;
-}
-
-///# ...
 ///# param hx ...
 ///# param hy ...
 ///# param dir ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToHex(Critter* self, ushort hx, ushort hy, uchar dir)
 {
-    if (self->LockMapTransfers) {
+    if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
+
     auto* map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
-    if (!map) {
+    if (map == nullptr) {
         throw ScriptException("Critter is on global");
     }
     if (hx >= map->GetWidth() || hy >= map->GetHeight()) {
@@ -162,14 +120,14 @@
 
     if (hx != self->GetHexX() || hy != self->GetHexY()) {
         if (dir < self->GetEngine()->Settings.MapDirCount && self->GetDir() != dir) {
-            self->SetDir(dir);
+            self->ChangeDir(dir);
         }
         if (!self->GetEngine()->MapMngr.Transit(self, map, hx, hy, self->GetDir(), 2, 0, true)) {
             throw ScriptException("Transit fail");
         }
     }
     else if (dir < self->GetEngine()->Settings.MapDirCount && self->GetDir() != dir) {
-        self->SetDir(dir);
+        self->ChangeDir(dir);
         self->Send_Dir(self);
         self->Broadcast_Dir();
     }
@@ -183,7 +141,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToMap(Critter* self, Map* map, ushort hx, ushort hy, uchar dir)
 {
-    if (self->LockMapTransfers) {
+    if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
     if (map == nullptr) {
@@ -199,7 +157,7 @@
         throw ScriptException("Transit to map hex fail");
     }
 
-    auto* loc = map->GetLocation();
+    const auto* loc = map->GetLocation();
     if (loc != nullptr && GenericUtils::DistSqrt(self->GetWorldX(), self->GetWorldY(), loc->GetWorldX(), loc->GetWorldY()) > loc->GetRadius()) {
         self->SetWorldX(loc->GetWorldX());
         self->SetWorldY(loc->GetWorldY());
@@ -394,7 +352,7 @@
     if (howSay >= SAY_NETMSG) {
         self->Send_TextMsgLex(self, numStr, howSay, textMsg, lexems);
     }
-    else if (self->GetMapId()) {
+    else if (self->GetMapId() != 0u) {
         self->SendAndBroadcast_MsgLex(self->VisCr, numStr, howSay, textMsg, lexems);
     }
 }
@@ -408,17 +366,29 @@
         throw ScriptException("Invalid direction arg");
     }
 
-    // Direction already set
     if (self->GetDir() == dir) {
         return;
     }
 
-    self->SetDir(dir);
+    self->ChangeDir(dir);
+    self->Send_Dir(self);
+    self->Broadcast_Dir();
+}
 
-    if (self->GetMapId()) {
-        self->Send_Dir(self);
-        self->Broadcast_Dir();
+///# ...
+///# param dir_angle ...
+///@ ExportMethod
+[[maybe_unused]] void Server_Critter_SetDirAngle(Critter* self, short dir_angle)
+{
+    const auto normalized_dir_angle = self->GetEngine()->Geometry.NormalizeAngle(dir_angle);
+
+    if (self->GetDirAngle() == normalized_dir_angle) {
+        return;
     }
+
+    self->ChangeDirAngle(normalized_dir_angle);
+    self->Send_Dir(self);
+    self->Broadcast_Dir();
 }
 
 ///# ...
@@ -1028,12 +998,13 @@
         throw ScriptException("Critter arg is null");
     }
 
-    self->Moving = Critter::MovingData();
-    self->Moving.TargId = target->GetId();
-    self->Moving.HexX = target->GetHexX();
-    self->Moving.HexY = target->GetHexY();
-    self->Moving.Cut = cut;
-    self->Moving.IsRun = isRun;
+    self->TargetMoving = {};
+    self->TargetMoving.State = MovingState::InProgress;
+    self->TargetMoving.TargId = target->GetId();
+    self->TargetMoving.HexX = target->GetHexX();
+    self->TargetMoving.HexY = target->GetHexY();
+    self->TargetMoving.Cut = cut;
+    self->TargetMoving.IsRun = isRun;
 }
 
 ///# ...
@@ -1044,11 +1015,12 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_MoveToHex(Critter* self, ushort hx, ushort hy, uint cut, bool isRun)
 {
-    self->Moving = Critter::MovingData();
-    self->Moving.HexX = hx;
-    self->Moving.HexY = hy;
-    self->Moving.Cut = cut;
-    self->Moving.IsRun = isRun;
+    self->TargetMoving = {};
+    self->TargetMoving.State = MovingState::InProgress;
+    self->TargetMoving.HexX = hx;
+    self->TargetMoving.HexY = hy;
+    self->TargetMoving.Cut = cut;
+    self->TargetMoving.IsRun = isRun;
 }
 
 ///# ...
@@ -1056,15 +1028,17 @@
 ///@ ExportMethod
 [[maybe_unused]] MovingState Server_Critter_GetMovingState(Critter* self)
 {
-    return self->Moving.State;
+    return self->TargetMoving.State;
 }
 
 ///# ...
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self)
 {
-    self->Moving = Critter::MovingData();
-    self->Moving.State = MovingState::Success;
+    self->TargetMoving = {};
+    self->TargetMoving.State = MovingState::Success;
+
+    self->ClearMove();
 }
 
 ///# ...
@@ -1072,8 +1046,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_ResetMovingState(Critter* self, uint& gagId)
 {
-    gagId = self->Moving.GagEntityId;
+    gagId = self->TargetMoving.GagEntityId;
 
-    self->Moving = Critter::MovingData();
-    self->Moving.State = MovingState::Success;
+    self->TargetMoving = {};
+    self->TargetMoving.State = MovingState::Success;
+
+    self->ClearMove();
 }

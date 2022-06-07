@@ -156,14 +156,9 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ADD/REMOVE CRITTER
 // ************************************************************************
 
-#define NETMSG_ADD_PLAYER MAKE_NETMSG_HEADER(11)
+#define NETMSG_ADD_CRITTER MAKE_NETMSG_HEADER(11)
 // ////////////////////////////////////////////////////////////////////////
-// Add player on map.
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_ADD_NPC MAKE_NETMSG_HEADER(12)
-// ////////////////////////////////////////////////////////////////////////
-// Add npc on map.
+// Add critter on map
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_REMOVE_CRITTER MAKE_NETMSG_HEADER(13)
@@ -276,62 +271,95 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ************************************************************************
 
 #define NETMSG_DIR MAKE_NETMSG_HEADER(41)
-#define NETMSG_DIR_SIZE (sizeof(uint) + sizeof(uchar))
+#define NETMSG_DIR_SIZE (sizeof(uint) + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uchar dir
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_CRITTER_DIR MAKE_NETMSG_HEADER(42)
-#define NETMSG_CRITTER_DIR_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uchar))
+#define NETMSG_CRITTER_DIR_SIZE (sizeof(uint) + sizeof(uint) + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// CrID id
-// uchar dir
+// uint cr_id
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_MOVE_WALK MAKE_NETMSG_HEADER(43)
-#define NETMSG_SEND_MOVE_WALK_SIZE (sizeof(uint) + sizeof(uint) + sizeof(ushort) * 2)
+#define NETMSG_SEND_MOVE MAKE_NETMSG_HEADER(45)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint move_params
+// uint msg_len
+// uint map_id
+// bool is_run
+// ushort start_hx
+// ushort start_hy
+// ushort steps_count
+// uchar steps[]
+// ushort control_steps_count
+// ushort control_steps[]
+// char end_hex_ox - -16..16
+// char end_hex_oy - -8..8
+// ////////////////////////////////////////////////////////////////////////
+
+#define NETMSG_SEND_STOP_MOVE MAKE_NETMSG_HEADER(46)
+#define NETMSG_SEND_STOP_MOVE_SIZE (sizeof(uint) + sizeof(uint) * 2 + sizeof(ushort) * 2)
+// ////////////////////////////////////////////////////////////////////////
+//
+// Params:
+// uint map_id
 // ushort hx
 // ushort hy
+// short hex_ox
+// short hex_oy
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_SEND_MOVE_RUN MAKE_NETMSG_HEADER(44)
-#define NETMSG_SEND_MOVE_RUN_SIZE (sizeof(uint) + sizeof(uint) + sizeof(ushort) * 2)
+#define NETMSG_CRITTER_MOVE MAKE_NETMSG_HEADER(47)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint move_params
-// ushort hx
-// ushort hy
+// uint msg_len
+// uint cr_id
+// uint whole_time
+// uint offset_time
+// bool is_run
+// ushort start_hx
+// ushort start_hy
+// ushort steps_count
+// uchar steps[]
+// ushort control_steps_count
+// ushort control_steps[]
+// char end_hex_ox - -16..16
+// char end_hex_oy - -8..8
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CRITTER_MOVE MAKE_NETMSG_HEADER(45)
-#define NETMSG_CRITTER_MOVE_SIZE (sizeof(uint) + sizeof(uint) * 2 + sizeof(ushort) * 2)
+#define NETMSG_CRITTER_STOP_MOVE MAKE_NETMSG_HEADER(48)
+#define NETMSG_CRITTER_STOP_MOVE_SIZE (sizeof(uint) + sizeof(ushort) * 2 + sizeof(short) * 2 + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint id
-// uint move_params
-// ushort hx
-// ushort hy
+// uint cr_id
+// ushort start_hx
+// ushort start_hy
+// short hex_ox
+// short hex_oy
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CRITTER_XY MAKE_NETMSG_HEADER(46)
-#define NETMSG_CRITTER_XY_SIZE (sizeof(uint) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(uchar))
+#define NETMSG_CRITTER_POS MAKE_NETMSG_HEADER(49)
+#define NETMSG_CRITTER_POS_SIZE (sizeof(uint) + sizeof(uint) + sizeof(ushort) * 2 + sizeof(short) * 2 + sizeof(short))
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// CrID crid
+// uint cr_id
 // ushort hex_x
 // ushort hex_y
-// uchar dir
+// short hex_ox
+// short hex_oy
+// short dir_angle
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -495,11 +523,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // CritterCondition cond
 // uint ind1
 // uint ind2
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_COMBAT_RESULTS MAKE_NETMSG_HEADER(97)
-// ////////////////////////////////////////////////////////////////////////
-//
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_EFFECT MAKE_NETMSG_HEADER(98)

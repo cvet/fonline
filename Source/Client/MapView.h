@@ -82,6 +82,12 @@ struct LightSource
     short LastOffsY {};
 };
 
+struct FindPathResult
+{
+    vector<uchar> Steps {};
+    vector<ushort> ControlSteps {};
+};
+
 class Field final
 {
 public:
@@ -189,8 +195,9 @@ public:
     void AddMapText(string_view str, ushort hx, ushort hy, uint color, uint show_time, bool fade, int ox, int oy);
     auto GetRectForText(ushort hx, ushort hy) -> IRect;
 
-    auto FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, vector<uchar>& steps, int cut) -> bool;
+    auto FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> optional<FindPathResult>;
     auto CutPath(CritterHexView* cr, ushort start_x, ushort start_y, ushort& end_x, ushort& end_y, int cut) -> bool;
+    auto TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<uchar>& steps, int quad_dir) -> bool;
     auto TraceBullet(ushort hx, ushort hy, ushort tx, ushort ty, uint dist, float angle, CritterHexView* find_cr, bool find_cr_safe, vector<CritterHexView*>* critters, CritterFindType find_type, pair<ushort, ushort>* pre_block, pair<ushort, ushort>* block, vector<pair<ushort, ushort>>* steps, bool check_passed) -> bool;
 
     void ClearHexTrack();
@@ -225,7 +232,7 @@ public:
     auto GetCritters() -> const vector<CritterHexView*>&;
     auto GetCritters(ushort hx, ushort hy, CritterFindType find_type) -> vector<CritterHexView*>;
     void MoveCritter(CritterHexView* cr, ushort hx, ushort hy);
-    auto TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool animate, bool force) -> bool;
+    auto TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly) -> bool;
     void DestroyCritter(CritterHexView* cr);
 
     void SetCritterContour(uint crid, int contour);
@@ -245,9 +252,9 @@ public:
 
     void SkipItemsFade();
 
-    auto GetHexScreenPos(int x, int y, ushort& hx, ushort& hy) const -> bool;
+    auto GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_ox, int* hex_oy) const -> bool;
     auto GetItemAtScreenPos(int x, int y, bool& item_egg) -> ItemHexView*; // With transparent egg
-    auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen) -> CritterHexView*;
+    auto GetCritterAtScreenPos(int x, int y, bool ignore_dead_and_chosen, bool wide_rangle) -> CritterHexView*;
     auto GetEntityAtScreenPos(int x, int y) -> ClientEntity*;
 
     void ClearHexLight();

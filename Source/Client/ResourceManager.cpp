@@ -545,7 +545,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 }
 
 #if FO_ENABLE_3D
-auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d /* = nullptr */) -> ModelInstance*
+auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*
 {
     if (_critterModels.count(model_name) != 0u) {
         _critterModels[model_name]->SetDir(dir);
