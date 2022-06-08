@@ -1,7 +1,7 @@
 [Effect]
 
 [ShaderCommon]
-const float FogBlackout = 0.2;
+const float FogBlackout = 0.5;
 const float AttackBlackout = 0.4;
 const float AttackAroundShining = 0.4;
 

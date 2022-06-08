@@ -53,7 +53,6 @@ constexpr auto ANIMATION_PERIOD(uint proc) -> uint
 }
 constexpr uint ANIMATION_NO_SMOOTH = 0x08;
 constexpr uint ANIMATION_INIT = 0x10;
-constexpr uint ANIMATION_COMBAT = 0x20;
 
 struct ModelBone;
 class ModelInstance;
@@ -195,7 +194,7 @@ private:
 
     [[nodiscard]] auto LoadModel(string_view fname) -> ModelBone*;
     [[nodiscard]] auto GetInformation(string_view name) -> ModelInformation*;
-    [[nodiscard]] auto GetHierarchy(string_view xname) -> ModelHierarchy*;
+    [[nodiscard]] auto GetHierarchy(string_view name) -> ModelHierarchy*;
 
     RenderSettings& _settings;
     FileSystem& _fileSys;
@@ -210,7 +209,7 @@ private:
     vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
     vector<unique_ptr<MeshTexture>> _loadedMeshTextures {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
-    vector<unique_ptr<ModelHierarchy>> _xFiles {};
+    vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
     int _modeWidth {};
     int _modeHeight {};
     float _modeWidthF {};
@@ -223,6 +222,7 @@ private:
     float _globalSpeedAdjust {1.0f};
     uint _animDelay {};
     color4 _lightColor {};
+    hstring _headBone {};
     unordered_set<hstring> _legBones {};
 };
 
@@ -251,6 +251,7 @@ public:
     [[nodiscard]] auto GetDrawSize() const -> tuple<uint, uint>;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
     [[nodiscard]] auto GetAnimDuration() const -> uint;
+    [[nodiscard]] auto IsCombatMode() const -> bool;
 
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;
@@ -264,6 +265,8 @@ public:
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
     void Draw(int x, int y, float scale);
     void SetMoving(bool enabled, bool is_run);
+    void SetMoveSpeed(float walk_factor, float run_factor);
+    void SetCombatMode(bool enabled);
 
     uint SprId {};
     int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
@@ -329,6 +332,7 @@ private:
     bool _shadowDisabled {};
     float _lookDirAngle {};
     float _moveDirAngle {};
+    float _targetMoveDirAngle {};
     vec3 _groundPos {};
     bool _useGameTimer {};
     float _animPosProc {};
@@ -340,8 +344,11 @@ private:
     bool _isRunning {};
     bool _isMovingBack {};
     int _curMovingAnim {-1};
+    bool _playTurnAnimation {};
     bool _isCombatMode {};
     uint _currentMoveTrack {};
+    float _walkSpeedFactor {1.0f};
+    float _runSpeedFactor {1.0f};
 
     // Derived animations
     vector<ModelInstance*> _children {};

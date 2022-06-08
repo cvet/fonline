@@ -3636,7 +3636,8 @@ bool MapView::TraceMoveWay(ushort& hx, ushort& hy, short& ox, short& oy, vector<
         return false;
     };
 
-    for (auto i = 0, j = (quad_dir == 3 || quad_dir == 7 ? 20 : 40); i < j; i++) {
+    constexpr auto some_big_path_len = 200;
+    for (auto i = 0, j = (quad_dir == 3 || quad_dir == 7 ? some_big_path_len / 2 : some_big_path_len); i < j; i++) {
         if ((quad_dir == 0 && !try_move(hx % 2 == 0 ? 0 : 1)) || //
             (quad_dir == 1 && !try_move(1)) || //
             (quad_dir == 2 && !try_move(2)) || //

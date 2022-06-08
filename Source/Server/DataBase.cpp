@@ -523,8 +523,13 @@ void DataBaseImpl::Delete(string_view collection_name, uint id)
     RUNTIME_ASSERT(_changesStarted);
     RUNTIME_ASSERT(!_deletedRecords[collection_name_str].count(id));
 
-    _deletedRecords[collection_name_str].insert(id);
-    _newRecords[collection_name_str].erase(id);
+    if (_newRecords[collection_name_str].count(id) != 0u) {
+        _newRecords[collection_name_str].erase(id);
+    }
+    else {
+        _deletedRecords[collection_name_str].insert(id);
+    }
+
     _recordChanges[collection_name_str].erase(id);
 }
 

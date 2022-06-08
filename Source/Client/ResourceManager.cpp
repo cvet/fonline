@@ -129,6 +129,10 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
     auto* anim = _sprMngr.LoadAnimation(name, false, true);
     _sprMngr.PopAtlasType();
 
+    if (anim == nullptr) {
+        return nullptr;
+    }
+
     anim->Name = name;
 
     _loadedAnims.insert(std::make_pair(name, LoadedAnim {atlas_type, anim}));
@@ -137,7 +141,7 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
 
 static auto AnimMapId(hstring model_name, uint anim1, uint anim2, bool is_fallout) -> uint
 {
-    uint dw[4] = {model_name.as_uint(), anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
+    const uint dw[4] = {model_name.as_uint(), anim1, anim2, is_fallout ? static_cast<uint>(-1) : 1};
     return Hashing::MurmurHash2(dw, sizeof(dw));
 }
 

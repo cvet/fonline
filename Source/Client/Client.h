@@ -371,6 +371,7 @@ protected:
     void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
 
     void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
     void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
     void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
     void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value, const void* old_value);

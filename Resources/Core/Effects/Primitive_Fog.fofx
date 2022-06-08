@@ -3,8 +3,8 @@ BlendFunc_Pass1 = One One
 BlendEquation_Pass1 = Max
 
 [ShaderCommon]
-const float FogBordersPower = 5.0;
-const float FogBlackout = 0.2;
+const float FogBordersPower = 1.8;
+const float FogBlackout = 0.5;
 const float AttackBordersPower = 7.0;
 
 [VertexShader]

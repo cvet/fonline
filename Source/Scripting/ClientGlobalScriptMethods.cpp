@@ -343,12 +343,19 @@
 
     if (client->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         if (client->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) > 0 && cut == 0) {
-            return {client->Geometry.GetNearDir(fromHx, fromHy, to_hx, to_hy)};
+            return {client->Geometry.GetFarDir(fromHx, fromHy, to_hx, to_hy)};
         }
         return {};
     }
 
+    const auto init_to_hx = to_hx;
+    const auto init_to_hy = to_hy;
+
     if (cut > 0 && !client->CurMap->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
+        return {};
+    }
+
+    if (cut > 0 && client->Geometry.DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && client->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         return {};
     }
 
@@ -388,7 +395,14 @@
         return {};
     }
 
+    const auto init_to_hx = to_hx;
+    const auto init_to_hy = to_hy;
+
     if (cut > 0 && !client->CurMap->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, cut)) {
+        return {};
+    }
+
+    if (cut > 0 && client->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && client->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
         return {};
     }
 
@@ -424,7 +438,14 @@
         return cut > 0 ? 0 : 1;
     }
 
+    const auto init_to_hx = to_hx;
+    const auto init_to_hy = to_hy;
+
     if (cut > 0 && !client->CurMap->CutPath(nullptr, fromHx, fromHy, to_hx, to_hy, cut)) {
+        return 0;
+    }
+
+    if (cut > 0 && client->Geometry.DistGame(fromHx, fromHy, init_to_hx, init_to_hy) <= cut && client->Geometry.DistGame(fromHx, fromHy, to_hx, to_hy) <= 1) {
         return 0;
     }
 
@@ -461,7 +482,14 @@
         return cut > 0 ? 0 : 1;
     }
 
+    const auto init_to_hx = to_hx;
+    const auto init_to_hy = to_hy;
+
     if (cut > 0 && !client->CurMap->CutPath(hex_cr, hex_cr->GetHexX(), hex_cr->GetHexY(), to_hx, to_hy, cut)) {
+        return 0;
+    }
+
+    if (cut > 0 && client->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), init_to_hx, init_to_hy) <= cut + cr->GetMultihex() && client->Geometry.DistGame(cr->GetHexX(), cr->GetHexY(), to_hx, to_hy) <= 1 + cr->GetMultihex()) {
         return 0;
     }
 

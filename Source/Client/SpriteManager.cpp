@@ -2552,6 +2552,10 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         dots = fi.ColorDots;
     }
 
+    constexpr uint dots_history_len = 10;
+    uint dots_history[dots_history_len] = {fi.DefColor};
+    uint dots_history_cur = 0;
+
     while (*str_ != 0) {
         auto* s0 = str_;
         StrGoTo(str_, '|', true);
@@ -2561,7 +2565,28 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
         if (dots != nullptr) {
             size_t d_len = static_cast<uint>(s2 - s1) + 1;
-            auto d = static_cast<uint>(strtoul(s1 + 1, nullptr, 0));
+            uint d;
+
+            if (d_len == 2) {
+                if (dots_history_cur > 0) {
+                    d = dots_history[--dots_history_cur];
+                }
+                else {
+                    d = fi.DefColor;
+                }
+            }
+            else {
+                if (*(s1 + 1) == 'x') {
+                    d = static_cast<uint>(std::strtoul(s1 + 2, nullptr, 16));
+                }
+                else {
+                    d = static_cast<uint>(std::strtoul(s1 + 1, nullptr, 0));
+                }
+
+                if (dots_history_cur < dots_history_len - 1) {
+                    dots_history[++dots_history_cur] = d;
+                }
+            }
 
             dots[static_cast<uint>(s1 - str) - d_offs] = d;
             d_offs += static_cast<uint>(d_len);

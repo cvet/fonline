@@ -201,6 +201,11 @@ auto ModelAnimationController::GetAnimationSetByName(string_view name) const -> 
     return nullptr;
 }
 
+auto ModelAnimationController::GetTrackEnable(uint track) const -> bool
+{
+    return _tracks[track].Enabled;
+}
+
 auto ModelAnimationController::GetTrackPosition(uint track) const -> float
 {
     return _tracks[track].Position;

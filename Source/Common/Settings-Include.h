@@ -158,7 +158,8 @@ SETTING_GROUP(RenderSettings, virtual ViewSettings, virtual GeometrySettings);
 FIXED_SETTING(string, WindowName, "FOnline");
 FIXED_SETTING(uint, Animation3dSmoothTime, 150);
 FIXED_SETTING(uint, Animation3dFPS, 30);
-FIXED_SETTING(vector<string>, LegBones);
+FIXED_SETTING(string, HeadBone); // Todo: move HeadBone to fo3d settings
+FIXED_SETTING(vector<string>, LegBones); // Todo: move LegBones to fo3d settings
 VARIABLE_SETTING(bool, WindowCentered, true);
 VARIABLE_SETTING(bool, NullRenderer, false);
 VARIABLE_SETTING(bool, ForceOpenGL, false);
@@ -173,6 +174,7 @@ VARIABLE_SETTING(bool, FullScreen, false);
 VARIABLE_SETTING(int, Brightness, 20);
 VARIABLE_SETTING(uint, FPS, 0);
 VARIABLE_SETTING(int, FixedFPS, 100);
+VARIABLE_SETTING(int, FogExtraLength, 0);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

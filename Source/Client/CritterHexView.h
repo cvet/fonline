@@ -57,7 +57,6 @@ public:
 
     [[nodiscard]] auto GetMap() -> MapView* { return _map; }
     [[nodiscard]] auto GetMap() const -> const MapView* { return _map; }
-    [[nodiscard]] auto IsCombatMode() const -> bool;
     [[nodiscard]] auto IsHaveLightSources() const -> bool;
     [[nodiscard]] auto IsMoving() const -> bool { return !Moving.Steps.empty(); }
     [[nodiscard]] auto IsNeedReset() const -> bool;
@@ -99,6 +98,8 @@ public:
     void DrawTextOnHead();
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
     void NextAnim(bool erase_front);
+    void RefreshSpeed();
+    void RefreshCombatMode();
     void ClearMove();
 #if FO_ENABLE_3D
     void RefreshModel();

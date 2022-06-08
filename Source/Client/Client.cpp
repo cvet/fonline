@@ -225,6 +225,9 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
         };
 
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetCritterModelName(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::RunSpeed_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetCritterSpeed(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::WalkSpeed_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetCritterSpeed(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ScaleFactor_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetCritterSpeed(entity, prop, new_value, old_value); });
         set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetCritterContourColor(entity, prop, new_value, old_value); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemFlags(entity, prop, new_value, old_value); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemFlags(entity, prop, new_value, old_value); });
@@ -344,7 +347,7 @@ void FOClient::LookBordersPrepare()
         return;
     }
 
-    const auto dist = chosen->GetLookDistance();
+    const auto dist = chosen->GetLookDistance() + Settings.FogExtraLength;
     const auto base_hx = chosen->GetHexX();
     const auto base_hy = chosen->GetHexY();
     int hx = base_hx;
@@ -1450,9 +1453,6 @@ void FOClient::Net_OnCritterDir()
     auto* cr = CurMap->GetCritter(crid);
     if (cr != nullptr) {
         cr->ChangeLookDirAngle(dir_angle);
-        if (!cr->IsMoving()) {
-            cr->ChangeMoveDirAngle(dir_angle);
-        }
     }
 }
 
@@ -3227,11 +3227,23 @@ void FOClient::OnSetCritterModelName(Entity* entity, const Property* prop, const
     UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
-    auto* cr = dynamic_cast<CritterHexView*>(entity);
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
 #if FO_ENABLE_3D
-    cr->RefreshModel();
+        cr->RefreshModel();
 #endif
-    cr->Action(ACTION_REFRESH, 0, nullptr, false);
+        cr->Action(ACTION_REFRESH, 0, nullptr, false);
+    }
+}
+
+void FOClient::OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+{
+    UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(new_value);
+    UNUSED_VARIABLE(old_value);
+
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr) {
+        cr->RefreshSpeed();
+    }
 }
 
 void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
@@ -3239,8 +3251,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop, co
     UNUSED_VARIABLE(prop);
     UNUSED_VARIABLE(old_value);
 
-    auto* cr = dynamic_cast<CritterHexView*>(entity);
-    if (cr->SprDrawValid) {
+    if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->SprDrawValid) {
         cr->SprDraw->SetContour(cr->SprDraw->ContourType, *static_cast<const uint*>(new_value));
     }
 }
@@ -3252,29 +3263,27 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, const void* 
     UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
-    auto* item = dynamic_cast<ItemView*>(entity);
-    if (item->GetOwnership() == ItemOwnership::MapHex && CurMap != nullptr) {
-        auto* hex_item = dynamic_cast<ItemHexView*>(item);
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
         auto rebuild_cache = false;
-        if (prop == hex_item->GetPropertyIsColorize()) {
-            hex_item->RefreshAlpha();
+        if (prop == item->GetPropertyIsColorize()) {
+            item->RefreshAlpha();
         }
-        else if (prop == hex_item->GetPropertyIsBadItem()) {
-            hex_item->SetSprite(nullptr);
+        else if (prop == item->GetPropertyIsBadItem()) {
+            item->SetSprite(nullptr);
         }
-        else if (prop == hex_item->GetPropertyIsShootThru()) {
+        else if (prop == item->GetPropertyIsShootThru()) {
             _rebuildLookBordersRequest = true;
             rebuild_cache = true;
         }
-        else if (prop == hex_item->GetPropertyIsLightThru()) {
-            CurMap->RebuildLight();
+        else if (prop == item->GetPropertyIsLightThru()) {
+            item->GetMap()->RebuildLight();
             rebuild_cache = true;
         }
-        else if (prop == hex_item->GetPropertyIsNoBlock()) {
+        else if (prop == item->GetPropertyIsNoBlock()) {
             rebuild_cache = true;
         }
         if (rebuild_cache) {
-            CurMap->GetField(hex_item->GetHexX(), hex_item->GetHexY()).ProcessCache();
+            item->GetMap()->GetField(item->GetHexX(), item->GetHexY()).ProcessCache();
         }
     }
 }
@@ -3288,8 +3297,8 @@ void FOClient::OnSetItemSomeLight(Entity* entity, const Property* prop, const vo
     UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
-    if (CurMap != nullptr) {
-        CurMap->RebuildLight();
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        item->GetMap()->RebuildLight();
     }
 }
 
@@ -3299,11 +3308,8 @@ void FOClient::OnSetItemPicMap(Entity* entity, const Property* prop, const void*
     UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
-    auto* item = dynamic_cast<ItemView*>(entity);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex) {
-        auto* hex_item = dynamic_cast<ItemHexView*>(item);
-        hex_item->RefreshAnim();
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        item->RefreshAnim();
     }
 }
 
@@ -3315,12 +3321,9 @@ void FOClient::OnSetItemOffsetCoords(Entity* entity, const Property* prop, const
     UNUSED_VARIABLE(new_value);
     UNUSED_VARIABLE(old_value);
 
-    auto* item = dynamic_cast<ItemView*>(entity);
-
-    if (item->GetOwnership() == ItemOwnership::MapHex && CurMap != nullptr) {
-        auto* hex_item = dynamic_cast<ItemHexView*>(item);
-        hex_item->SetAnimOffs();
-        CurMap->ProcessHexBorders(hex_item);
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        item->SetAnimOffs();
+        item->GetMap()->ProcessHexBorders(item);
     }
 }
 
@@ -3328,17 +3331,17 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop, const void*
 {
     UNUSED_VARIABLE(prop);
 
-    auto* item = dynamic_cast<ItemView*>(entity);
-    const auto new_bool = *static_cast<const bool*>(new_value);
-    const auto old_bool = *static_cast<const bool*>(old_value);
+    if (auto* item = dynamic_cast<ItemHexView*>(entity); item != nullptr) {
+        const auto new_bool = *static_cast<const bool*>(new_value);
+        const auto old_bool = *static_cast<const bool*>(old_value);
 
-    if (item->GetIsCanOpen()) {
-        auto* hex_item = dynamic_cast<ItemHexView*>(item);
-        if (!old_bool && new_bool) {
-            hex_item->SetAnimFromStart();
-        }
-        if (old_bool && !new_bool) {
-            hex_item->SetAnimFromEnd();
+        if (item->GetIsCanOpen()) {
+            if (!old_bool && new_bool) {
+                item->SetAnimFromStart();
+            }
+            if (old_bool && !new_bool) {
+                item->SetAnimFromEnd();
+            }
         }
     }
 }
@@ -3934,9 +3937,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     else if (cmd == "ChangeDirAngle" && args.size() == 2) {
         int dir_angle = _str(args[1]).toInt();
         GetMapChosen()->ChangeLookDirAngle(dir_angle);
-        if (!GetMapChosen()->IsMoving()) {
-            GetMapChosen()->ChangeMoveDirAngle(dir_angle);
-        }
         Net_SendDir();
     }
     else if (cmd == "MoveItem" && args.size() == 5) {

@@ -92,6 +92,7 @@ public:
     [[nodiscard]] auto Clone() const -> ModelAnimationController*;
     [[nodiscard]] auto GetAnimationSet(uint index) const -> const ModelAnimation*;
     [[nodiscard]] auto GetAnimationSetByName(string_view name) const -> const ModelAnimation*;
+    [[nodiscard]] auto GetTrackEnable(uint track) const -> bool;
     [[nodiscard]] auto GetTrackPosition(uint track) const -> float;
     [[nodiscard]] auto GetNumAnimationSets() const -> uint;
     [[nodiscard]] auto GetTime() const -> float;

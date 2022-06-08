@@ -148,8 +148,9 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, Effec
         _animDelay = 1000 / _settings.Animation3dFPS;
     }
 
+    _headBone = GetBoneHashedString(settings.HeadBone);
     for (const auto& bone_name : settings.LegBones) {
-        _legBones.emplace(_nameResolver.ToHashedString(bone_name));
+        _legBones.emplace(GetBoneHashedString(bone_name));
     }
 }
 
@@ -321,7 +322,7 @@ void ModelManager::PreloadModel(string_view name)
 auto ModelManager::GetInformation(string_view name) -> ModelInformation*
 {
     // Try find instance
-    for (auto& model_info : _allModelInfos) {
+    for (auto&& model_info : _allModelInfos) {
         if (model_info->_fileName == name) {
             return model_info.get();
         }
@@ -337,28 +338,28 @@ auto ModelManager::GetInformation(string_view name) -> ModelInformation*
     return _allModelInfos.back().get();
 }
 
-auto ModelManager::GetHierarchy(string_view xname) -> ModelHierarchy*
+auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
 {
-    for (auto& x : _xFiles) {
-        if (x->_fileName == xname) {
-            return x.get();
+    for (auto&& model_hierarchy : _hierarchyFiles) {
+        if (model_hierarchy->_fileName == name) {
+            return model_hierarchy.get();
         }
     }
 
     // Load
-    auto* root_bone = LoadModel(xname);
+    auto* root_bone = LoadModel(name);
     if (root_bone == nullptr) {
-        WriteLog("Unable to load 3d file '{}'", xname);
+        WriteLog("Unable to load model hierarchy file '{}'", name);
         return nullptr;
     }
 
-    auto* xfile = new ModelHierarchy(*this);
-    xfile->_fileName = xname;
-    xfile->_rootBone = unique_ptr<ModelBone>(root_bone);
-    xfile->SetupBones();
+    auto model_hierarchy = std::make_unique<ModelHierarchy>(*this);
+    model_hierarchy->_fileName = name;
+    model_hierarchy->_rootBone = unique_ptr<ModelBone>(root_bone);
+    model_hierarchy->SetupBones();
 
-    _xFiles.emplace_back(xfile);
-    return xfile;
+    _hierarchyFiles.emplace_back(std::move(model_hierarchy));
+    return _hierarchyFiles.back().get();
 }
 
 auto ModelManager::Convert2dTo3d(int x, int y) const -> vec3
@@ -370,7 +371,7 @@ auto ModelManager::Convert2dTo3d(int x, int y) const -> vec3
 auto ModelManager::Convert3dTo2d(vec3 pos) const -> IPoint
 {
     const auto coords = VecProject(pos);
-    return IPoint(static_cast<int>(coords.x), static_cast<int>(coords.y));
+    return {static_cast<int>(coords.x), static_cast<int>(coords.y)};
 }
 
 auto ModelManager::VecProject(const vec3& v) const -> vec3
@@ -400,6 +401,7 @@ ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
     _speedAdjustLink = 1.0f;
     _lookDirAngle = _modelMngr._geometry.IsHexagonal() ? 150.0f : 135.0f;
     _moveDirAngle = _lookDirAngle;
+    _targetMoveDirAngle = _moveDirAngle;
     _childChecker = true;
     _useGameTimer = true;
     mat44::RotationX(_modelMngr._settings.MapCameraAngle * PI_FLOAT / 180.0f, _matRot);
@@ -445,7 +447,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
             period_proc = static_cast<float>(anim2) / 10.0f;
         }
         else {
-            index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, IsBitSet(flags, ANIMATION_COMBAT));
+            index = _modelInfo->GetAnimationIndex(anim1, anim2, &speed, _isCombatMode);
         }
     }
 
@@ -465,7 +467,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
 
     // Animation layers
     if (auto it = _modelInfo->_animLayerValues.find(anim_pair); it != _modelInfo->_animLayerValues.end()) {
-        for (auto& [index, value] : it->second) {
+        for (auto&& [index, value] : it->second) {
             new_layers[index] = value;
         }
     }
@@ -515,8 +517,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
         }
 
         // Get unused layers and meshes
-        bool unused_layers[LAYERS3D_COUNT];
-        std::memset(unused_layers, 0, sizeof(unused_layers));
+        bool unused_layers[LAYERS3D_COUNT] = {};
         for (auto i = 0; i < LAYERS3D_COUNT; i++) {
             if (new_layers[i] == 0) {
                 continue;
@@ -710,7 +711,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
 
         _bodyAnimController->AdvanceTime(start_time != 0.0f ? start_time : 0.0001f);
 
-        if (_isMoving && _moveAnimController != nullptr) {
+        if ((_isMoving || _playTurnAnimation) && _moveAnimController != nullptr) {
             _moveAnimController->AdvanceTime(0.0001f);
         }
 
@@ -756,6 +757,22 @@ void ModelInstance::SetMoving(bool enabled, bool is_run)
     RefreshMoveAnimation();
 }
 
+void ModelInstance::SetMoveSpeed(float walk_factor, float run_factor)
+{
+    _walkSpeedFactor = walk_factor;
+    _runSpeedFactor = run_factor;
+}
+
+auto ModelInstance::IsCombatMode() const -> bool
+{
+    return _isCombatMode;
+}
+
+void ModelInstance::SetCombatMode(bool enabled)
+{
+    _isCombatMode = enabled;
+}
+
 void ModelInstance::RefreshMoveAnimation()
 {
     if (_moveAnimController == nullptr) {
@@ -766,19 +783,40 @@ void ModelInstance::RefreshMoveAnimation()
     uint anim2 = ANIM2_IDLE;
 
     if (_isMoving) {
-        const auto angle_diff = _modelMngr._geometry.GetDirAngleDiff(_moveDirAngle, _lookDirAngle);
+        const auto angle_diff = _modelMngr._geometry.GetDirAngleDiff(_targetMoveDirAngle, _lookDirAngle);
         if ((!_isMovingBack && angle_diff <= 95.0f) || (_isMovingBack && angle_diff <= 85.0f)) {
             _isMovingBack = false;
-            anim2 = (_isRunning ? ANIM2_RUN : ANIM2_WALK);
+            anim2 = _isRunning ? ANIM2_RUN : ANIM2_WALK;
         }
         else {
             _isMovingBack = true;
-            anim2 = (_isRunning ? ANIM2_RUN_BACK : ANIM2_WALK_BACK);
+            anim2 = _isRunning ? ANIM2_RUN_BACK : ANIM2_WALK_BACK;
         }
+
+        _playTurnAnimation = false;
     }
     else {
+        if (_isMovingBack) {
+            _moveDirAngle = _targetMoveDirAngle = _lookDirAngle;
+        }
+
         anim1 = _curAnim1;
         _isMovingBack = false;
+
+        const auto angle_diff = _modelMngr._geometry.GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
+        if (std::abs(angle_diff) > 120.0f) {
+            _targetMoveDirAngle = _lookDirAngle;
+
+            if (_playTurnAnimation) {
+                return;
+            }
+
+            anim2 = (angle_diff < 0.0f ? ANIM2_TURN_RIGHT : ANIM2_TURN_LEFT);
+            _playTurnAnimation = true;
+        }
+        else if (_playTurnAnimation) {
+            return;
+        }
     }
 
     float speed = 1.0f;
@@ -788,6 +826,10 @@ void ModelInstance::RefreshMoveAnimation()
     }
 
     _curMovingAnim = index;
+
+    if (_isMoving) {
+        speed *= _isRunning ? _runSpeedFactor : _walkSpeedFactor;
+    }
 
     constexpr float smooth_time = 0.0001f;
 
@@ -805,8 +847,12 @@ void ModelInstance::RefreshMoveAnimation()
         _moveAnimController->SetTrackEnable(new_track, true);
         _moveAnimController->SetTrackPosition(new_track, 0.0f);
 
-        _moveAnimController->AddEventSpeed(new_track, 1.0f, 0.0f, smooth_time);
+        _moveAnimController->AddEventSpeed(new_track, speed, 0.0f, smooth_time);
         _moveAnimController->AddEventWeight(new_track, 1.0f, 0.0f, smooth_time);
+
+        if (_playTurnAnimation) {
+            _moveAnimController->AddEventEnable(new_track, false, anim_set->GetDuration() / speed);
+        }
 
         _currentMoveTrack = new_track;
     }
@@ -828,7 +874,7 @@ auto ModelInstance::HasAnimation(uint anim1, uint anim2) const -> bool
 
 auto ModelInstance::ResolveAnimation(uint& anim1, uint& anim2) const -> bool
 {
-    return _modelInfo->GetAnimationIndex(anim1, anim2, nullptr, false) != -1;
+    return _modelInfo->GetAnimationIndex(anim1, anim2, nullptr, _isCombatMode) != -1;
 }
 
 auto ModelInstance::GetAnim1() const -> uint
@@ -1048,10 +1094,10 @@ void ModelInstance::SetLookDirAngle(int dir_angle)
 
 void ModelInstance::SetMoveDirAngle(int dir_angle)
 {
-    const auto newAngle = static_cast<float>(180 - dir_angle);
+    const auto new_angle = static_cast<float>(180 - dir_angle);
 
-    if (!Math::FloatCompare(newAngle, _moveDirAngle)) {
-        _moveDirAngle = newAngle;
+    if (!Math::FloatCompare(new_angle, _targetMoveDirAngle)) {
+        _targetMoveDirAngle = new_angle;
         RefreshMoveAnimation();
     }
 
@@ -1600,6 +1646,12 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
         _groundPos.z = _parentMatrix.c4;
     }
 
+    // Rotate body
+    if (!Math::FloatCompare(_moveDirAngle, _targetMoveDirAngle)) {
+        const auto diff = _modelMngr._geometry.GetDirAngleDiffSided(_moveDirAngle, _targetMoveDirAngle);
+        _moveDirAngle += std::clamp(diff * elapsed * 10.0f, -std::abs(diff), std::abs(diff));
+    }
+
     // Advance animation time
     auto prev_track_pos = 0.0f;
     auto new_track_pos = 0.0f;
@@ -1609,8 +1661,14 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
         elapsed *= GetSpeed();
 
         _bodyAnimController->AdvanceTime(elapsed);
-        if (_isMoving && _moveAnimController != nullptr) {
+
+        if ((_isMoving || _playTurnAnimation) && _moveAnimController) {
             _moveAnimController->AdvanceTime(elapsed);
+
+            if (_playTurnAnimation && !_moveAnimController->GetTrackEnable(_currentMoveTrack)) {
+                _playTurnAnimation = false;
+                RefreshMoveAnimation();
+            }
         }
 
         new_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
@@ -1666,7 +1724,12 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 {
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX(((_lookDirAngle - _moveDirAngle) + (_isMovingBack ? 180.0f : 0.0f)) * PI_FLOAT / 180.0f, mat_rot);
+        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) / -2.0f) * PI_FLOAT / 180.0f, mat_rot);
+        bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
+    }
+    else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
+        mat44 mat_rot;
+        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) / -2.0f) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
     }
     else {
