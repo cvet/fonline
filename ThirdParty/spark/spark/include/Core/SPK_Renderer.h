@@ -59,7 +59,8 @@ namespace SPK
 	SPK_START_DESCRIPTION
 	SPK_PARENT_ATTRIBUTES(SPKObject)
 	SPK_ATTRIBUTE("active",ATTRIBUTE_TYPE_BOOL)
-	SPK_ATTRIBUTE("rendering options",ATTRIBUTE_TYPE_INT32)
+	SPK_ATTRIBUTE("alpha test", ATTRIBUTE_TYPE_BOOL)
+	SPK_ATTRIBUTE("depth write", ATTRIBUTE_TYPE_BOOL)
 	SPK_ATTRIBUTE("alpha threshold",ATTRIBUTE_TYPE_FLOAT)
 	SPK_END_DESCRIPTION
 
@@ -119,6 +120,9 @@ namespace SPK
 		/////////////////
 
 		Renderer(bool NEEDS_DATASET);
+
+		void innerImport(const IO::Descriptor& descriptor) override;
+		void innerExport(IO::Descriptor& descriptor) const override;
 
 	private :
 

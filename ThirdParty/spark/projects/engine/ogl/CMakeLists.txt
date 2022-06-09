@@ -38,7 +38,7 @@ file(GLOB_RECURSE SRC_FILES
 include_directories(${SPARK_DIR}/include)
 #!include_directories(${SPARK_DIR}/external/glew/src)
 #!link_directories(${SPARK_DIR}/lib/${SPARK_GENERATOR}/external/glew)
-add_definitions(-DSPK_GL_NO_EXT) #!
+#add_definitions(-DSPK_GL_NO_EXT) #!
 if(${SPARK_STATIC_BUILD})
 #!	set(SPARK_OUTPUT_TYPE static)
 else()
@@ -55,6 +55,9 @@ endif()
 if(MSVC)
 	set_target_properties(SPARK_Core PROPERTIES COMPILE_FLAGS "/fp:fast")
 endif()
+
+target_link_libraries(SPARK_OpenGL SPARK_Core) #!
+
 #!target_link_libraries(SPARK_OpenGL
 #!	debug glew_d
 #!	debug SPARK_debug

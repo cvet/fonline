@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SPK_GL_NO_EXT
-#include <GL/glew.h>
+#include "GL/glew.h"
 #endif
 
 #include <SPARK_Core.h>

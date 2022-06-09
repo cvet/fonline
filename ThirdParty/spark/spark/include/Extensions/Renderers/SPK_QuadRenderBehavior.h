@@ -34,6 +34,8 @@ namespace SPK
 	{
 		TEXTURE_MODE_NONE,	/**< Constant telling no texturing is used */
 		TEXTURE_MODE_2D,	/**< Constant telling a 2D texture is used */
+		TEXTURE_MODE_2D_NO_ALPHA,	/**< Constant telling a 2D texture is used */
+		TEXTURE_MODE_2D_ONLY_ALPHA,	/**< Constant telling a 2D texture is used */
 		TEXTURE_MODE_3D,	/**< Constant telling a 3D texture is used */
 	};
 

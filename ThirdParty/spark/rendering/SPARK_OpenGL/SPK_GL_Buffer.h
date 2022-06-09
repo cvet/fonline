@@ -48,9 +48,12 @@ namespace GL
 		void setNbTexCoords(size_t nb);
 		size_t getNbTexCoords();
 
-		void render(GLuint primitive,size_t nbVertices);
+		void render(GLuint primitive,size_t nbVertices, bool useTextureColor, bool useTextureAlpha);
 
 	private :
+
+		GLuint vbo;
+		GLuint ibo;
 
 		const size_t nbVertices;
 		size_t nbTexCoords;

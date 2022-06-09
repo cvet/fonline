@@ -51,7 +51,22 @@ namespace GL
 	{
         SPK_IMPLEMENT_OBJECT(GLQuadRenderer);
 
+		SPK_START_DESCRIPTION
+		SPK_PARENT_ATTRIBUTES(GLRenderer)
+		SPK_ATTRIBUTE("texture", ATTRIBUTE_TYPE_STRING)
+		SPK_ATTRIBUTE("texturing mode", ATTRIBUTE_TYPE_STRING)
+		SPK_ATTRIBUTE("scale", ATTRIBUTE_TYPE_FLOATS)
+		SPK_ATTRIBUTE("atlas dimensions", ATTRIBUTE_TYPE_UINT32S)
+		SPK_ATTRIBUTE("look orientation", ATTRIBUTE_TYPE_STRING)
+		SPK_ATTRIBUTE("up orientation", ATTRIBUTE_TYPE_STRING)
+		SPK_ATTRIBUTE("locked axis", ATTRIBUTE_TYPE_STRING)
+		SPK_ATTRIBUTE("locked look vector", ATTRIBUTE_TYPE_VECTOR)
+		SPK_ATTRIBUTE("locked up vector", ATTRIBUTE_TYPE_VECTOR)
+		SPK_END_DESCRIPTION
+
 	public :
+
+		static void setTextureLoader(GLuint(*loader)(const std::string&));
 
 		/**
 		* @brief Creates and registers a new GLQuadRenderer
@@ -68,6 +83,9 @@ namespace GL
 		virtual bool setTexturingMode(TextureMode mode);
 
 		void setTexture(GLuint textureIndex);
+		
+		void setTextureName(const std::string& textureName);
+		std::string getTextureName() const;
 
 		/////////////
 		// Getters //
@@ -79,9 +97,16 @@ namespace GL
 		*/
 		GLuint getTexture() const;
 
+	protected:
+
+		void innerImport(const IO::Descriptor& descriptor) override;
+		void innerExport(IO::Descriptor& descriptor) const override;
+
 	private :
 
 		static GLboolean* const SPK_GL_TEXTURE_3D_EXT;
+
+		std::string textureName;
 
 		mutable float modelView[16];
 		mutable float invModelView[16];
@@ -135,7 +160,9 @@ namespace GL
 		renderBuffer.setNextVertex(particle.position() - quadSide() - quadUp());	// bottom left vertex
 		renderBuffer.setNextVertex(particle.position() + quadSide() - quadUp());	// bottom right vertex
 		
-		renderBuffer.skipNextColors(3);
+		renderBuffer.setNextColor(particle.getColor());
+		renderBuffer.setNextColor(particle.getColor());
+		renderBuffer.setNextColor(particle.getColor());
 		renderBuffer.setNextColor(particle.getColor());
 	}
 

@@ -605,7 +605,7 @@ namespace SPK
 				validGraph = false;
 		}
 
-		if (validGraph && (attrib = descriptor.getAttributeWithValue("graph values")))
+		if (validGraph && (attrib = descriptor.getAttributeWithValue("graph values 2")))
 		{
 			std::vector<T> values1 = attrib->getValues<T>();
 			if (values1.size() == nbEntries)

@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 #ifndef SPK_GL_NO_EXT
-#include <GL/glew.h>
+#include "GL/glew.h"
 #endif
 
 #include <SPARK_Core.h>
@@ -99,4 +99,36 @@ namespace GL
 		return false;	
 	}
 #endif
+
+	void GLRenderer::innerImport(const IO::Descriptor& descriptor)
+	{
+		Renderer::innerImport(descriptor);
+
+		setBlendMode(BLEND_MODE_NONE);
+		
+		const IO::Attribute* attrib = nullptr;
+
+		if ((attrib = descriptor.getAttributeWithValue("blend mode")))
+		{
+			const auto blendMode = attrib->getValue<std::string>();
+			if (blendMode == "BLEND_MODE_NONE")
+				setBlendMode(BLEND_MODE_NONE);
+			else if (blendMode == "BLEND_MODE_ALPHA")
+				setBlendMode(BLEND_MODE_ALPHA);
+			else if (blendMode == "BLEND_MODE_ADD")
+				setBlendMode(BLEND_MODE_ADD);
+		}
+	}
+
+	void GLRenderer::innerExport(IO::Descriptor& descriptor) const
+	{
+		Renderer::innerExport(descriptor);
+
+		if (!blendingEnabled)
+			descriptor.getAttribute("blend mode")->setValue(std::string("BLEND_MODE_NONE"));
+		else if (destBlending == GL_ONE_MINUS_SRC_ALPHA)
+			descriptor.getAttribute("blend mode")->setValue(std::string("BLEND_MODE_ALPHA"));
+		else
+			descriptor.getAttribute("blend mode")->setValue(std::string("BLEND_MODE_ADD"));
+	}
 }}
