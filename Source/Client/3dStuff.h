@@ -53,6 +53,7 @@ constexpr auto ANIMATION_PERIOD(uint proc) -> uint
 }
 constexpr uint ANIMATION_NO_SMOOTH = 0x08;
 constexpr uint ANIMATION_INIT = 0x10;
+constexpr uint ANIMATION_NO_ROTATE = 0x20;
 
 struct ModelBone;
 class ModelInstance;
@@ -255,9 +256,9 @@ public:
 
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;
-    void SetDir(uchar dir);
+    void SetDir(uchar dir, bool smooth_rotation);
     void SetLookDirAngle(int dir_angle);
-    void SetMoveDirAngle(int dir_angle);
+    void SetMoveDirAngle(int dir_angle, bool smooth_rotation);
     void SetRotation(float rx, float ry, float rz);
     void SetScale(float sx, float sy, float sz);
     void SetSpeed(float speed);
@@ -349,6 +350,8 @@ private:
     uint _currentMoveTrack {};
     float _walkSpeedFactor {1.0f};
     float _runSpeedFactor {1.0f};
+    bool _noRotate {};
+    float _deferredLookDirAngle {};
 
     // Derived animations
     vector<ModelInstance*> _children {};

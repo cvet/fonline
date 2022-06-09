@@ -715,7 +715,7 @@ void Player::Send_AllProperties()
     CONNECTION_OUTPUT_END(Connection);
 }
 
-void Player::Send_CustomCommand(Critter* cr, ushort cmd, int val)
+void Player::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
 {
     NON_CONST_METHOD_HINT();
 
@@ -724,10 +724,10 @@ void Player::Send_CustomCommand(Critter* cr, ushort cmd, int val)
     }
 
     CONNECTION_OUTPUT_BEGIN(Connection);
-    Connection->Bout << NETMSG_CUSTOM_COMMAND;
+    Connection->Bout << NETMSG_CRITTER_TELEPORT;
     Connection->Bout << cr->GetId();
-    Connection->Bout << cmd;
-    Connection->Bout << val;
+    Connection->Bout << to_hx;
+    Connection->Bout << to_hy;
     CONNECTION_OUTPUT_END(Connection);
 }
 

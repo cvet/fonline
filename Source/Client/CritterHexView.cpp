@@ -410,7 +410,7 @@ void CritterHexView::NextAnim(bool erase_front)
     if (_model != nullptr) {
         SetAnimOffs(0, 0);
 
-        _model->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetLayers3dData(), cr_anim.DirOffs != 0 ? 0 : ANIMATION_ONE_TIME);
+        _model->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetLayers3dData(), ANIMATION_ONE_TIME | ANIMATION_NO_ROTATE);
 
         return;
     }
@@ -446,7 +446,7 @@ void CritterHexView::Animate(uint anim1, uint anim2, ItemView* item)
 #if FO_ENABLE_3D
     if (_model != nullptr) {
         if (_model->ResolveAnimation(anim1, anim2)) {
-            _animSequence.push_back({nullptr, 0, 0, 0, 0, anim1, anim2, item});
+            _animSequence.push_back({nullptr, 0, 0, 0, anim1, anim2, item});
             if (_animSequence.size() == 1) {
                 NextAnim(false);
             }
@@ -469,7 +469,7 @@ void CritterHexView::Animate(uint anim1, uint anim2, ItemView* item)
         return;
     }
 
-    _animSequence.push_back({anim, anim->Ticks, 0, anim->CntFrm - 1, 0, anim->Anim1, anim->Anim2, item});
+    _animSequence.push_back({anim, anim->Ticks, 0, anim->CntFrm - 1, anim->Anim1, anim->Anim2, item});
     if (_animSequence.size() == 1) {
         NextAnim(false);
     }
@@ -670,7 +670,7 @@ void CritterHexView::RefreshModel()
             _model = model;
 
             _model->SetLookDirAngle(GetDirAngle());
-            _model->SetMoveDirAngle(GetDirAngle());
+            _model->SetMoveDirAngle(GetDirAngle(), false);
 
             SprId = _model->SprId;
 
@@ -725,7 +725,7 @@ void CritterHexView::ChangeMoveDirAngle(int dir_angle)
 
 #if FO_ENABLE_3D
     if (_model != nullptr) {
-        _model->SetMoveDirAngle(dir_angle);
+        _model->SetMoveDirAngle(dir_angle, true);
     }
 #endif
 }
@@ -807,7 +807,7 @@ void CritterHexView::Process()
 
     if (!_animSequence.empty()) {
         // Move offsets
-        if (cr_anim.DirOffs != 0) {
+        if (false) {
             // auto&& [ox, oy] = GetWalkHexOffsets(static_cast<uchar>(cr_anim.DirOffs - 1));
             // SetOffs(static_cast<short>(ox - ox * anim_proc / 100), static_cast<short>(oy - oy * anim_proc / 100), true);
 

@@ -373,14 +373,14 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // Properties
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_CUSTOM_COMMAND MAKE_NETMSG_HEADER(52)
-#define NETMSG_CUSTOM_COMMAND_SIZE (sizeof(uint) + sizeof(ushort) + sizeof(int))
+#define NETMSG_CRITTER_TELEPORT MAKE_NETMSG_HEADER(52)
+#define NETMSG_CRITTER_TELEPORT_SIZE (sizeof(uint) + sizeof(ushort) * 2)
 // ////////////////////////////////////////////////////////////////////////
 //
 // Params:
-// uint crid
-// ushort cmd
-// int val
+// uint cr_id
+// ushort to_hx
+// ushort to_hy
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************

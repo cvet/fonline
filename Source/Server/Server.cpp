@@ -3776,7 +3776,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
     cl->Talk.DialogPackId = dlg_pack_id;
     cl->Talk.LastDialogId = go_dialog;
     cl->Talk.StartTick = GameTime.GameTick();
-    cl->Talk.TalkTime = Settings.DlgTalkMinTime;
+    cl->Talk.TalkTime = Settings.DlgTalkMaxTime;
     cl->Talk.Barter = false;
     cl->Talk.IgnoreDistance = ignore_distance;
 
@@ -3920,7 +3920,7 @@ void FOServer::Process_Dialog(Player* player)
             if (!npc->OnBarter.Fire(cr, true, npc->GetBarterPlayers() + 1) || !OnCritterBarter.Fire(npc, cr, true, npc->GetBarterPlayers() + 1)) {
                 cr->Talk.Barter = true;
                 cr->Talk.StartTick = GameTime.GameTick();
-                cr->Talk.TalkTime = Settings.DlgBarterMinTime;
+                cr->Talk.TalkTime = Settings.DlgBarterMaxTime;
             }
             return;
         case static_cast<uint>(-2):
@@ -3997,7 +3997,7 @@ void FOServer::Process_Dialog(Player* player)
     }
 
     cr->Talk.StartTick = GameTime.GameTick();
-    cr->Talk.TalkTime = Settings.DlgTalkMinTime;
+    cr->Talk.TalkTime = Settings.DlgTalkMaxTime;
     cr->Send_Talk();
 }
 

@@ -212,7 +212,7 @@ auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* m
 
     _engine->EntityMngr.RegisterEntity(npc);
 
-    auto* loc = map->GetLocation();
+    const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
 
     if (dir >= _engine->Settings.MapDirCount) {

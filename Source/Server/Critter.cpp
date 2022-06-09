@@ -466,14 +466,14 @@ void Critter::Broadcast_Dir()
     }
 }
 
-void Critter::Broadcast_CustomCommand(ushort num_param, int val)
+void Critter::Broadcast_Teleport(ushort to_hx, ushort to_hy)
 {
     if (VisCr.empty()) {
         return;
     }
 
     for (auto* cr : VisCr) {
-        cr->Send_CustomCommand(this, num_param, val);
+        cr->Send_Teleport(this, to_hx, to_hy);
     }
 }
 
@@ -824,12 +824,12 @@ void Critter::Send_GlobalMapFog(ushort zx, ushort zy, uchar fog)
     }
 }
 
-void Critter::Send_CustomCommand(Critter* cr, ushort cmd, int val)
+void Critter::Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_CustomCommand(cr, cmd, val);
+        _player->Send_Teleport(cr, to_hx, to_hy);
     }
 }
 

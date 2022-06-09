@@ -141,7 +141,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE_ITEM, [this] { Net_OnCritterMoveItem(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_ANIMATE, [this] { Net_OnCritterAnimate(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_SET_ANIMS, [this] { Net_OnCritterSetAnims(); });
-    _conn.AddMessageHandler(NETMSG_CUSTOM_COMMAND, [this] { Net_OnCustomCommand(); });
+    _conn.AddMessageHandler(NETMSG_CRITTER_TELEPORT, [this] { Net_OnCritterTeleport(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_MOVE, [this] { Net_OnCritterMove(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_STOP_MOVE, [this] { Net_OnCritterStopMove(); });
     _conn.AddMessageHandler(NETMSG_CRITTER_DIR, [this] { Net_OnCritterDir(); });
@@ -389,7 +389,7 @@ void FOClient::LookBordersPrepare()
                 hy_ = block.second;
             }
 
-            if (IsBitSet(Settings.LookChecks, LOOK_CHECK_TRACE)) {
+            if (IsBitSet(Settings.LookChecks, LOOK_CHECK_TRACE_CLIENT)) {
                 pair<ushort, ushort> block = {};
                 CurMap->TraceBullet(base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
                 hx_ = block.first;
@@ -860,9 +860,9 @@ void FOClient::Net_SendMove()
         return;
     }
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(bool) + sizeof(ushort) * 2 + //
-        static_cast<uint>(sizeof(uchar) * chosen->Moving.Steps.size()) + //
-        static_cast<uint>(sizeof(ushort) * chosen->Moving.ControlSteps.size()) + sizeof(char) * 2;
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) + sizeof(bool) + sizeof(ushort) * 2 + //
+        sizeof(ushort) + static_cast<uint>(sizeof(uchar) * chosen->Moving.Steps.size()) + //
+        sizeof(ushort) + static_cast<uint>(sizeof(ushort) * chosen->Moving.ControlSteps.size()) + sizeof(short) * 2;
 
     _conn.OutBuf << NETMSG_SEND_MOVE;
     _conn.OutBuf << msg_len;
@@ -1809,14 +1809,14 @@ void FOClient::Net_OnCritterSetAnims()
     }
 }
 
-void FOClient::Net_OnCustomCommand()
+void FOClient::Net_OnCritterTeleport()
 {
     uint crid;
-    ushort index;
-    int value;
+    ushort to_hx;
+    ushort to_hy;
     _conn.InBuf >> crid;
-    _conn.InBuf >> index;
-    _conn.InBuf >> value;
+    _conn.InBuf >> to_hx;
+    _conn.InBuf >> to_hy;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -1829,30 +1829,15 @@ void FOClient::Net_OnCustomCommand()
         return;
     }
 
+    CurMap->MoveCritter(cr, to_hx, to_hy);
+
     if (cr->IsChosen()) {
-        if (Settings.DebugNet) {
-            AddMess(SAY_NETMSG, _str(" - index {} value {}.", index, value));
+        if (CurMap->AutoScroll.HardLockedCritter == cr->GetId() || CurMap->AutoScroll.SoftLockedCritter == cr->GetId()) {
+            CurMap->AutoScroll.CritterLastHexX = cr->GetHexX();
+            CurMap->AutoScroll.CritterLastHexY = cr->GetHexY();
         }
 
-        switch (index) {
-        case OTHER_TELEPORT: {
-            const ushort hx = (value >> 16) & 0xFFFF;
-            const ushort hy = value & 0xFFFF;
-            if (hx < CurMap->GetWidth() && hy < CurMap->GetHeight()) {
-                auto* hex_cr = CurMap->GetField(hx, hy).Crit;
-                if (cr == hex_cr) {
-                    break;
-                }
-                if (!cr->IsDead() && hex_cr != nullptr) {
-                    CurMap->DestroyCritter(hex_cr);
-                }
-                CurMap->MoveCritter(cr, hx, hy);
-                CurMap->ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.1f, true);
-            }
-        } break;
-        default:
-            break;
-        }
+        CurMap->ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.1f, false);
 
         // Maybe changed some parameter influencing on look borders
         _rebuildLookBordersRequest = true;
@@ -3926,6 +3911,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto countour_type = _str(args[1]).toInt();
         CurMap->SetCrittersContour(countour_type);
     }
+    else if (cmd == "SetCritterContour" && args.size() == 3) {
+        int countour_type = _str(args[1]).toInt();
+        uint cr_id = _str(args[2]).toInt();
+        CurMap->SetCritterContour(cr_id, countour_type);
+    }
     else if (cmd == "DrawWait") {
         WaitDraw();
     }
@@ -4129,6 +4119,12 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
                     SDL_StopTextInput();
             }
         }*/
+    }
+    else if (cmd == "Message" && args.size() >= 2) {
+        MessageBox::ShowErrorMessage("Info", args[1], "");
+    }
+    else if (cmd == "Exit") {
+        Settings.Quit = true;
     }
     else {
         throw ScriptException("Invalid custom call command");

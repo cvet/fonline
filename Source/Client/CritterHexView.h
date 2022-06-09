@@ -144,7 +144,6 @@ private:
         uint AnimTick {};
         uint BeginFrm {};
         uint EndFrm {};
-        int DirOffs {};
         uint IndAnim1 {};
         uint IndAnim2 {};
         ItemView* ActiveItem {};

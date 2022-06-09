@@ -372,6 +372,7 @@ private:
     vector<int> _scissorStack {};
     IRect _scissorRect {};
     bool _contoursAdded {};
+    bool _contourClearMid {};
     bool _eggValid {};
     ushort _eggHx {};
     ushort _eggHy {};

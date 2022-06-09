@@ -552,7 +552,7 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2, uchar dir, int* layers3d) -> ModelInstance*
 {
     if (_critterModels.count(model_name) != 0u) {
-        _critterModels[model_name]->SetDir(dir);
+        _critterModels[model_name]->SetDir(dir, false);
         _critterModels[model_name]->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
         return _critterModels[model_name];
     }
@@ -568,7 +568,7 @@ auto ResourceManager::GetCritterModel(hstring model_name, uint anim1, uint anim2
     _critterModels[model_name] = model;
 
     model->SetAnimation(anim1, anim2, layers3d, ANIMATION_STAY | ANIMATION_NO_SMOOTH);
-    model->SetDir(dir);
+    model->SetDir(dir, false);
     model->StartMeshGeneration();
     return model;
 }

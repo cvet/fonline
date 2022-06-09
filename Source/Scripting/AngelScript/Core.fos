@@ -103,6 +103,7 @@
 #define LOOK_CHECK_TRACE        (0x08) // Tracing for wall aviablility
 #define LOOK_CHECK_SCRIPT       (0x10) // Allow bool check_look(...) in main.fos, all other defines ignored
 #define LOOK_CHECK_ITEM_SCRIPT  (0x20) // Allow bool check_trap_look(...) in main.fos, for items with ITEM_TRAP flag
+#define LOOK_CHECK_TRACE_CLIENT (0x40) // Tracing for wall aviablility (client side)
 
 // Radio
 // Flags, Item::RadioFlags

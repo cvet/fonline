@@ -344,7 +344,7 @@ protected:
     void Net_OnCritterMoveItem();
     void Net_OnCritterAnimate();
     void Net_OnCritterSetAnims();
-    void Net_OnCustomCommand();
+    void Net_OnCritterTeleport();
     void Net_OnCritterPos();
     void Net_OnAllProperties();
     void Net_OnChosenClearItems();

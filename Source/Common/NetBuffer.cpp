@@ -302,8 +302,8 @@ auto NetInBuffer::NeedProcess() -> bool
         return NETMSG_CRITTER_STOP_MOVE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CRITTER_POS:
         return NETMSG_CRITTER_POS_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_CUSTOM_COMMAND:
-        return NETMSG_CUSTOM_COMMAND_SIZE + _bufReadPos <= _bufEndPos;
+    case NETMSG_CRITTER_TELEPORT:
+        return NETMSG_CRITTER_TELEPORT_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_CLEAR_ITEMS:
         return NETMSG_CLEAR_ITEMS_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_REMOVE_ITEM:
@@ -503,8 +503,8 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_CRITTER_POS:
         size = NETMSG_CRITTER_POS_SIZE;
         break;
-    case NETMSG_CUSTOM_COMMAND:
-        size = NETMSG_CUSTOM_COMMAND_SIZE;
+    case NETMSG_CRITTER_TELEPORT:
+        size = NETMSG_CRITTER_TELEPORT_SIZE;
         break;
     case NETMSG_CLEAR_ITEMS:
         size = NETMSG_CLEAR_ITEMS_SIZE;

@@ -116,7 +116,7 @@ public:
     void Broadcast_Position();
     void Broadcast_Action(int action, int action_ext, Item* item);
     void Broadcast_Dir();
-    void Broadcast_CustomCommand(ushort num_param, int val);
+    void Broadcast_Teleport(ushort to_hx, ushort to_hy);
 
     void SendAndBroadcast_Action(int action, int action_ext, Item* item);
     void SendAndBroadcast_MoveItem(Item* item, uchar action, uchar prev_slot);
@@ -141,7 +141,7 @@ public:
     void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
     void Send_GlobalLocation(Location* loc, bool add);
     void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog);
-    void Send_CustomCommand(Critter* cr, ushort cmd, int val);
+    void Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy);
     void Send_AllProperties();
     void Send_Talk();
     void Send_GameInfo(Map* map);

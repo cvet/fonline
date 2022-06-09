@@ -77,8 +77,8 @@ SETTING_GROUP(ServerGameplaySettings, virtual CommonGameplaySettings)
 FIXED_SETTING(uint, MinimumOfflineTime, 180000);
 FIXED_SETTING(uint, RegistrationTimeout, 5);
 FIXED_SETTING(uint, NpcMaxTalkers, 1);
-FIXED_SETTING(uint, DlgTalkMinTime, 0);
-FIXED_SETTING(uint, DlgBarterMinTime, 0);
+FIXED_SETTING(uint, DlgTalkMaxTime, 0);
+FIXED_SETTING(uint, DlgBarterMaxTime, 0);
 FIXED_SETTING(uint, WhisperDist, 2);
 FIXED_SETTING(uint, ShoutDist, 200);
 FIXED_SETTING(bool, NoAnswerShuffle, false);
@@ -174,7 +174,10 @@ VARIABLE_SETTING(bool, FullScreen, false);
 VARIABLE_SETTING(int, Brightness, 20);
 VARIABLE_SETTING(uint, FPS, 0);
 VARIABLE_SETTING(int, FixedFPS, 100);
-VARIABLE_SETTING(int, FogExtraLength, 0);
+FIXED_SETTING(int, FogExtraLength, 0);
+FIXED_SETTING(float, CritterTurnAngle, 100.0f);
+FIXED_SETTING(float, CritterBodyTurnFactor, 0.6f);
+FIXED_SETTING(float, CritterHeadTurnFactor, 0.4f);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common

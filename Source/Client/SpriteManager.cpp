@@ -925,10 +925,10 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     // Set fir
     if (dir < 0) {
         model->SetLookDirAngle(-dir);
-        model->SetMoveDirAngle(-dir);
+        model->SetMoveDirAngle(-dir, false);
     }
     else {
-        model->SetDir(static_cast<uchar>(dir));
+        model->SetDir(static_cast<uchar>(dir), false);
     }
 
     // Calculate needed information
@@ -1067,7 +1067,7 @@ void SpriteManager::RefreshModelSprite(ModelInstance* model)
 
     // Find already created place for rendering
     uint index = 0;
-    for (size_t i = 0, j = _sprData.size(); i < j; i++) {
+    for (size_t i = 0; i < _sprData.size(); i++) {
         const auto* si = _sprData[i];
         if (si != nullptr && si->UsedForModel && si->Model == nullptr && si->Width == draw_width && si->Height == draw_height && si->Atlas->Type == static_cast<AtlasType>(model->SprAtlasType)) {
             index = static_cast<uint>(i);
@@ -1908,9 +1908,14 @@ void SpriteManager::DrawContours()
         PushRenderTarget(_rtContours);
         ClearCurrentRenderTarget(0);
         PopRenderTarget();
-        PushRenderTarget(_rtContoursMid);
-        ClearCurrentRenderTarget(0);
-        PopRenderTarget();
+
+        if (_contourClearMid) {
+            _contourClearMid = false;
+
+            PushRenderTarget(_rtContoursMid);
+            ClearCurrentRenderTarget(0);
+            PopRenderTarget();
+        }
 
         _contoursAdded = false;
     }
@@ -1934,11 +1939,25 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     }
 
     if (_settings.SpritesZoom == 1.0f) {
-        const auto& sr = si->SprRect;
-        const auto txw = texture->SizeData[2];
-        const auto txh = texture->SizeData[3];
-        textureuv = {sr.Left - txw, sr.Top - txh, sr.Right + txw, sr.Bottom + txh};
-        sprite_border = textureuv;
+#if FO_ENABLE_3D
+        if (si->Model != nullptr) {
+            const auto& sr = si->SprRect;
+            textureuv = sr;
+            sprite_border = sr;
+            borders.Left++;
+            borders.Top++;
+            borders.Right--;
+            borders.Bottom--;
+        }
+        else
+#endif
+        {
+            const auto& sr = si->SprRect;
+            const float txw = texture->SizeData[2];
+            const float txh = texture->SizeData[3];
+            textureuv = FRect(sr.Left - txw, sr.Top - txh, sr.Right + txw, sr.Bottom + txh);
+            sprite_border = sr;
+        }
     }
     else {
         const auto& sr = si->SprRect;
@@ -1951,6 +1970,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
         const auto mid_height = _rtContoursMid->MainTex->SizeData[1];
 
         PushRenderTarget(_rtContoursMid);
+        _contourClearMid = true;
 
         auto& vbuf = _flushDrawBuf->Vertices2D;
         auto pos = 0;
@@ -2038,8 +2058,12 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     vbuf[pos].TV = textureuv.Bottom;
     vbuf[pos].Diffuse = contour_color;
 
-    // _effectMngr.Effects.Contour->MapSpriteBuf->
-    // _dipQueue.back().SpriteBorder = sprite_border;
+    auto& border_buf = _effectMngr.Effects.Contour->BorderBuf->SpriteBorder;
+    border_buf[0] = sprite_border[0];
+    border_buf[1] = sprite_border[1];
+    border_buf[2] = sprite_border[2];
+    border_buf[3] = sprite_border[3];
+
     _effectMngr.Effects.Contour->DrawBuffer(_contourDrawBuf);
 
     PopRenderTarget();
@@ -2951,7 +2975,6 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
     if (color == 0u && _defFontColor != 0u) {
         color = _defFontColor;
     }
-    color = COLOR_SWAP_RB(color);
 
     FontFormatInfo fi {font, flags, r};
     Str::Copy(fi.Str, str);
@@ -2960,6 +2983,8 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
     if (fi.IsError) {
         return;
     }
+
+    color = COLOR_SWAP_RB(color);
 
     auto* str_ = fi.PStr;
     const auto offs_col = fi.OffsColDots;

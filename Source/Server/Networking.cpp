@@ -330,24 +330,34 @@ public:
     NetConnectionAsio(NetConnectionAsio&&) noexcept = delete;
     auto operator=(const NetConnectionAsio&) = delete;
     auto operator=(NetConnectionAsio&&) noexcept = delete;
-    ~NetConnectionAsio() override { delete _socket; }
+    ~NetConnectionAsio() override
+    {
+        if (!_isDisconnected) {
+            _socket->shutdown(asio::ip::tcp::socket::shutdown_both, _dummyError);
+            _socket->close(_dummyError);
+        }
+    }
 
     [[nodiscard]] auto IsWebConnection() const -> bool override { return false; }
 
 private:
     void NextAsyncRead()
     {
-        async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), [this](std::error_code error, size_t bytes) { AsyncRead(error, bytes); });
+        async_read(*_socket, asio::buffer(_inBuf), asio::transfer_at_least(1), [this_ = this, socket = _socket](std::error_code error, size_t bytes) { AsyncRead(this_, socket, error, bytes); });
     }
 
-    void AsyncRead(std::error_code error, size_t bytes)
+    static void AsyncRead(NetConnectionAsio* this_, asio::ip::tcp::socket* socket, std::error_code error, size_t bytes)
     {
         if (!error) {
-            ReceiveCallback(_inBuf, static_cast<uint>(bytes));
-            NextAsyncRead();
+            this_->ReceiveCallback(this_->_inBuf, static_cast<uint>(bytes));
+            this_->NextAsyncRead();
         }
         else {
-            Disconnect();
+            if (socket->is_open()) {
+                this_->Disconnect();
+            }
+
+            delete socket;
         }
     }
 
@@ -427,7 +437,14 @@ public:
     NetConnectionWebSocket(NetConnectionWebSocket&&) noexcept = delete;
     auto operator=(const NetConnectionWebSocket&) = delete;
     auto operator=(NetConnectionWebSocket&&) noexcept = delete;
-    ~NetConnectionWebSocket() override = default;
+
+    ~NetConnectionWebSocket() override
+    {
+        if (_isDisconnected) {
+            std::error_code error;
+            _connection->terminate(error);
+        }
+    }
 
     [[nodiscard]] auto IsWebConnection() const -> bool override { return true; }
 

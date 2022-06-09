@@ -1147,6 +1147,9 @@ label_FindOk:
         ushort check_hy = input.FromHexY;
 
         for (size_t i = 0; i < raw_steps.size(); i++) {
+            const auto prev_check_hx = check_hx;
+            const auto prev_check_hy = check_hy;
+
             const auto move_ok = _engine->Geometry.MoveHexByDir(check_hx, check_hy, raw_steps[i], maxhx, maxhy);
             RUNTIME_ASSERT(move_ok);
 
@@ -1161,8 +1164,8 @@ label_FindOk:
                 }
 
                 output.GagItem = item;
-                to_hx = check_hx;
-                to_hy = check_hy;
+                to_hx = prev_check_hx;
+                to_hy = prev_check_hy;
                 raw_steps.resize(i);
                 break;
             }
@@ -1174,8 +1177,8 @@ label_FindOk:
                 }
 
                 output.GagCritter = cr;
-                to_hx = check_hx;
-                to_hy = check_hy;
+                to_hx = prev_check_hx;
+                to_hy = prev_check_hy;
                 raw_steps.resize(i);
                 break;
             }
@@ -1398,7 +1401,8 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
         cr->SetHexX(hx);
         cr->SetHexY(hy);
         map->SetFlagCritter(hx, hy, multihex, cr->IsDead());
-        cr->Send_CustomCommand(cr, OTHER_TELEPORT, cr->GetHexX() << 16 | cr->GetHexY());
+        cr->Send_Teleport(cr, cr->GetHexX(), cr->GetHexY());
+        cr->Broadcast_Teleport(cr->GetHexX(), cr->GetHexY());
         cr->ClearVisible();
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);

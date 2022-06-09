@@ -1805,7 +1805,7 @@
     }
 
     model->SetLookDirAngle(0);
-    model->SetMoveDirAngle(0);
+    model->SetMoveDirAngle(0, false);
     model->SetRotation(rx * PI_FLOAT / 180.0f, ry * PI_FLOAT / 180.0f, rz * PI_FLOAT / 180.0f);
     model->SetScale(sx, sy, sz);
     model->SetSpeed(speed);

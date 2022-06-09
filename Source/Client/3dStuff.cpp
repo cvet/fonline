@@ -436,6 +436,19 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
     _curAnim1 = anim1;
     _curAnim2 = anim2;
 
+    // Restore rotation
+    if (const auto no_rotate = IsBitSet(flags, ANIMATION_NO_ROTATE); no_rotate != _noRotate) {
+        _noRotate = no_rotate;
+
+        if (_noRotate) {
+            _deferredLookDirAngle = _lookDirAngle;
+        }
+        else if (!Math::FloatCompare(_deferredLookDirAngle, _lookDirAngle)) {
+            _lookDirAngle = _deferredLookDirAngle;
+            RefreshMoveAnimation();
+        }
+    }
+
     // Get animation index
     const auto anim_pair = static_cast<int>((anim1 << 16) | anim2);
     auto speed = 1.0f;
@@ -804,7 +817,7 @@ void ModelInstance::RefreshMoveAnimation()
         _isMovingBack = false;
 
         const auto angle_diff = _modelMngr._geometry.GetDirAngleDiffSided(_targetMoveDirAngle, _lookDirAngle);
-        if (std::abs(angle_diff) > 120.0f) {
+        if (std::abs(angle_diff) > _modelMngr._settings.CritterTurnAngle) {
             _targetMoveDirAngle = _lookDirAngle;
 
             if (_playTurnAnimation) {
@@ -1074,11 +1087,11 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
     }
 }
 
-void ModelInstance::SetDir(uchar dir)
+void ModelInstance::SetDir(uchar dir, bool smooth_rotation)
 {
     const auto dir_angle = _modelMngr._geometry.DirToAngle(dir);
 
-    SetLookDirAngle(dir_angle);
+    SetMoveDirAngle(dir_angle, smooth_rotation);
     SetLookDirAngle(dir_angle);
 }
 
@@ -1086,18 +1099,28 @@ void ModelInstance::SetLookDirAngle(int dir_angle)
 {
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
-    if (!Math::FloatCompare(new_angle, _lookDirAngle)) {
-        _lookDirAngle = new_angle;
-        RefreshMoveAnimation();
+    if (!_noRotate) {
+        if (!Math::FloatCompare(new_angle, _lookDirAngle)) {
+            _lookDirAngle = new_angle;
+            RefreshMoveAnimation();
+        }
+        else {
+            _deferredLookDirAngle = new_angle;
+        }
     }
 }
 
-void ModelInstance::SetMoveDirAngle(int dir_angle)
+void ModelInstance::SetMoveDirAngle(int dir_angle, bool smooth_rotation)
 {
     const auto new_angle = static_cast<float>(180 - dir_angle);
 
     if (!Math::FloatCompare(new_angle, _targetMoveDirAngle)) {
         _targetMoveDirAngle = new_angle;
+
+        if (!smooth_rotation) {
+            _moveDirAngle = _targetMoveDirAngle;
+        }
+
         RefreshMoveAnimation();
     }
 
@@ -1724,12 +1747,12 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
 {
     if (_modelInfo->_rotationBone && bone->Name == _modelInfo->_rotationBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) / -2.0f) * PI_FLOAT / 180.0f, mat_rot);
+        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterBodyTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
     }
     else if (_modelInfo->_rotationBone && bone->Name == _modelMngr._headBone && !Math::FloatCompare(_lookDirAngle, _moveDirAngle)) {
         mat44 mat_rot;
-        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) / -2.0f) * PI_FLOAT / 180.0f, mat_rot);
+        mat44::RotationX((_modelMngr._geometry.GetDirAngleDiffSided(_lookDirAngle + (_isMovingBack ? 180.0f : 0.0f), _moveDirAngle) * -_modelMngr._settings.CritterHeadTurnFactor) * PI_FLOAT / 180.0f, mat_rot);
         bone->CombinedTransformationMatrix = (*parent_matrix) * mat_rot * bone->TransformationMatrix;
     }
     else {

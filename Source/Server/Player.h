@@ -83,7 +83,7 @@ public:
     void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
     void Send_GlobalLocation(Location* loc, bool add);
     void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog);
-    void Send_CustomCommand(Critter* cr, ushort cmd, int val);
+    void Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy);
     void Send_AllProperties();
     void Send_Talk();
     void Send_GameInfo(Map* map);

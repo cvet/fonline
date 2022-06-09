@@ -1099,10 +1099,6 @@ static constexpr ushort MAXHEX_MAX = 4000;
 #define SHOW_SCREEN_PIPBOY (10) // Pip-boy.
 #define SHOW_SCREEN_MINIMAP (11) // Mini-map.
 
-// Special send params
-// Todo: remove special OTHER_* params
-#define OTHER_TELEPORT (7)
-
 // Critter actions
 // Flags for chosen:
 // l - hardcoded local call
@@ -1127,6 +1123,7 @@ static constexpr uint LOOK_CHECK_SNEAK_DIR = 0x02;
 static constexpr uint LOOK_CHECK_TRACE = 0x08;
 static constexpr uint LOOK_CHECK_SCRIPT = 0x10;
 static constexpr uint LOOK_CHECK_ITEM_SCRIPT = 0x20;
+static constexpr uint LOOK_CHECK_TRACE_CLIENT = 0x40;
 
 // Anims
 #define ANIM1_UNARMED (1)
