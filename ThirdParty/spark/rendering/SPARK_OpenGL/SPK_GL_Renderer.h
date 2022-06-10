@@ -74,7 +74,7 @@ namespace GL
 		* @param dest : the destination blending function of this GLRenderer
 		*/
 		void setBlendingFunctions(GLuint src,GLuint dest);
-		virtual void setBlendMode(BlendMode blendMode);
+		void setBlendMode(BlendMode blendMode) override;
 
 		/////////////
 		// Getters //

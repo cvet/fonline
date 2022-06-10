@@ -59,7 +59,7 @@ namespace GL
 		*/
 		static  Ref<GLPointRenderer> create(float screenSize = 1.0f);
 
-		virtual bool setType(PointType type);
+		bool setType(PointType type) override;
 
 		/**
 		* @brief Sets the way size of points is computed in this GLPointRenderer
@@ -72,7 +72,7 @@ namespace GL
 		* @param worldSizeEnabled : true to enable universe size, false to use screen size
 		* @return true the type of size can be set, false otherwise
 		*/
-		bool enableWorldSize(bool worldSizeEnabled);
+		bool enableWorldSize(bool worldSizeEnabled) override;
 
 		/**
 		* @brief Sets the texture of this GLPointRenderer
@@ -117,8 +117,8 @@ namespace GL
 		GLPointRenderer(float screenSize = 1.0f);
 		GLPointRenderer(const GLPointRenderer& renderer);
 
-		virtual void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const;
-		virtual void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const;
+		void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const override;
+		void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const override;
 	};
 
 	inline GLPointRenderer::GLPointRenderer(float screenSize) :

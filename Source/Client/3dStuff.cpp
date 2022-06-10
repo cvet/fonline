@@ -137,7 +137,8 @@ ModelManager::ModelManager(RenderSettings& settings, FileSystem& file_sys, Effec
     _nameResolver {name_resolver},
     _animNameResolver {anim_name_resolver},
     _meshTexCreator {std::move(mesh_tex_creator)},
-    _geometry(settings)
+    _geometry(settings),
+    _particleMngr(settings, file_sys)
 {
     _moveTransitionTime = static_cast<float>(_settings.Animation3dSmoothTime) / 1000.0f;
     if (_moveTransitionTime < 0.001f) {
@@ -258,32 +259,7 @@ void ModelManager::DestroyTextures()
     _loadedMeshTextures.clear();
 }
 
-void ModelManager::SetScreenSize(int width, int height)
-{
-    if (width == _modeWidth && height == _modeHeight) {
-        return;
-    }
-
-    // Build orthogonal projection
-    _modeWidth = width;
-    _modeHeight = height;
-    _modeWidthF = static_cast<float>(_modeWidth);
-    _modeHeightF = static_cast<float>(_modeHeight);
-
-    // Projection
-    const auto k = static_cast<float>(_modeHeight) / 768.0f;
-    MatrixHelper::MatrixOrtho(_matrixProjRMaj[0], 0.0f, 18.65f * k * _modeWidthF / _modeHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
-    _matrixProjCMaj = _matrixProjRMaj;
-    _matrixProjCMaj.Transpose();
-    _matrixEmptyRMaj = mat44();
-    _matrixEmptyCMaj = _matrixEmptyRMaj;
-    _matrixEmptyCMaj.Transpose();
-
-    // View port
-    // GL(glViewport(0, 0, modeWidth, modeHeight));
-}
-
-auto ModelManager::GetModel(string_view name, bool /*is_child*/) -> ModelInstance*
+auto ModelManager::CreateModel(string_view name) -> ModelInstance*
 {
     auto* model_info = GetInformation(name);
     if (model_info == nullptr) {
@@ -362,38 +338,6 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
     return _hierarchyFiles.back().get();
 }
 
-auto ModelManager::Convert2dTo3d(int x, int y) const -> vec3
-{
-    const auto pos = VecUnproject(vec3(static_cast<float>(x), static_cast<float>(y), 0.0f));
-    return {pos.x, pos.y, 0.0f};
-}
-
-auto ModelManager::Convert3dTo2d(vec3 pos) const -> IPoint
-{
-    const auto coords = VecProject(pos);
-    return {static_cast<int>(coords.x), static_cast<int>(coords.y)};
-}
-
-auto ModelManager::VecProject(const vec3& v) const -> vec3
-{
-    const int viewport[4] = {0, 0, _modeWidth, _modeHeight};
-    auto x = 0.0f;
-    auto y = 0.0f;
-    auto z = 0.0f;
-    MatrixHelper::MatrixProject(v.x, v.y, v.z, _matrixEmptyCMaj[0], _matrixProjCMaj[0], viewport, &x, &y, &z);
-    return {x, y, z};
-}
-
-auto ModelManager::VecUnproject(const vec3& v) const -> vec3
-{
-    const int viewport[4] = {0, 0, _modeWidth, _modeHeight};
-    auto x = 0.0f;
-    auto y = 0.0f;
-    auto z = 0.0f;
-    MatrixHelper::MatrixUnproject(v.x, _modeHeightF - v.y, v.z, _matrixEmptyCMaj[0], _matrixProjCMaj[0], viewport, &x, &y, &z);
-    return {x, y, z};
-}
-
 ModelInstance::ModelInstance(ModelManager& model_mngr) : _modelMngr(model_mngr)
 {
     _speedAdjustBase = 1.0f;
@@ -421,6 +365,47 @@ ModelInstance::~ModelInstance()
     for (const auto* mesh : _combinedMeshes) {
         delete mesh;
     }
+}
+
+void ModelInstance::SetupFrame()
+{
+    auto draw_width = _modelInfo->_drawWidth;
+    auto draw_height = _modelInfo->_drawHeight;
+
+    const auto draw_size_scale = std::max(std::max(_matScaleBase.a1, _matScaleBase.b2), _matScaleBase.c3);
+    draw_width = static_cast<uint>(static_cast<float>(draw_width) * draw_size_scale);
+    draw_height = static_cast<uint>(static_cast<float>(draw_height) * draw_size_scale);
+
+    _frameWidth = static_cast<int>(draw_width) * FRAME_SCALE;
+    _frameHeight = static_cast<int>(draw_height) * FRAME_SCALE;
+
+    _frameWidthF = static_cast<float>(_frameWidth);
+    _frameHeightF = static_cast<float>(_frameHeight);
+
+    // Projection
+    const auto k = static_cast<float>(_frameHeight) / 768.0f;
+    MatrixHelper::MatrixOrtho(_frameProjRowMaj[0], 0.0f, 18.65f * k * _frameWidthF / _frameHeightF, 0.0f, 18.65f * k, -10.0f, 10.0f);
+    _frameProjColMaj = _frameProjRowMaj;
+    _frameProjColMaj.Transpose();
+}
+
+auto ModelInstance::Convert3dTo2d(vec3 v) const -> IPoint
+{
+    const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
+    vec3 out;
+    MatrixHelper::MatrixProject(v.x, v.y, v.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    return {static_cast<int>(std::round(out.x / static_cast<float>(FRAME_SCALE))), static_cast<int>(std::round(out.y / static_cast<float>(FRAME_SCALE)))};
+}
+
+auto ModelInstance::Convert2dTo3d(int x, int y) const -> vec3
+{
+    const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
+    const auto xf = static_cast<float>(x) * static_cast<float>(FRAME_SCALE);
+    const auto yf = static_cast<float>(y) * static_cast<float>(FRAME_SCALE);
+    vec3 out;
+    MatrixHelper::MatrixUnproject(xf, _frameHeightF - yf, 0.0f, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    out.z = 0.0f;
+    return out;
 }
 
 void ModelInstance::StartMeshGeneration()
@@ -566,6 +551,8 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
         }
 
         // Append animations
+        set<uint> keep_alive_particles;
+
         for (auto i = 0; i < LAYERS3D_COUNT; i++) {
             if (unused_layers[i] || new_layers[i] == 0) {
                 continue;
@@ -578,55 +565,78 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
                         continue;
                     }
 
-                    auto available = false;
-                    for (auto* model : _children) {
-                        if (model->_animLink.Id == link.Id) {
-                            model->_childChecker = true;
-                            available = true;
-                            break;
+                    if (link.IsParticles) {
+                        bool available = false;
+
+                        for (auto&& particle_system : _particleSystems) {
+                            if (particle_system.Id == link.Id) {
+                                available = true;
+                                break;
+                            }
                         }
+
+                        if (!available) {
+                            if (const auto* to_bone = FindBone(link.LinkBone)) {
+                                if (auto&& particles = _modelMngr._particleMngr.CreateParticles(link.ChildName)) {
+                                    _particleSystems.push_back({link.Id, std::move(particles), to_bone, vec3(link.MoveX, link.MoveY, link.MoveZ), link.RotY});
+                                }
+                            }
+                        }
+
+                        keep_alive_particles.insert(link.Id);
                     }
+                    else {
+                        bool available = false;
 
-                    if (!available) {
-                        ModelInstance* model = nullptr;
+                        for (auto* model : _children) {
+                            if (model->_animLink.Id == link.Id) {
+                                model->_childChecker = true;
+                                available = true;
+                                break;
+                            }
+                        }
 
-                        // Link to main bone
-                        if (link.LinkBone) {
-                            auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
-                            if (to_bone != nullptr) {
-                                model = _modelMngr.GetModel(link.ChildName, true);
+                        if (!available) {
+                            ModelInstance* model = nullptr;
+
+                            // Link to main bone
+                            if (link.LinkBone) {
+                                auto* to_bone = _modelInfo->_hierarchy->_rootBone->Find(link.LinkBone);
+                                if (to_bone != nullptr) {
+                                    model = _modelMngr.CreateModel(link.ChildName);
+                                    if (model != nullptr) {
+                                        mesh_changed = true;
+                                        model->_parent = this;
+                                        model->_parentBone = to_bone;
+                                        model->_animLink = link;
+                                        model->SetAnimData(link, false);
+                                        _children.push_back(model);
+                                    }
+
+                                    if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0u) {
+                                        fast_transition_bones.push_back(link.LinkBone);
+                                    }
+                                }
+                            }
+                            // Link all bones
+                            else {
+                                model = _modelMngr.CreateModel(link.ChildName);
                                 if (model != nullptr) {
+                                    for (auto* child_bone : model->_modelInfo->_hierarchy->_allBones) {
+                                        auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
+                                        if (root_bone != nullptr) {
+                                            model->_linkBones.push_back(root_bone);
+                                            model->_linkBones.push_back(child_bone);
+                                        }
+                                    }
+
                                     mesh_changed = true;
                                     model->_parent = this;
-                                    model->_parentBone = to_bone;
+                                    model->_parentBone = _modelInfo->_hierarchy->_rootBone.get();
                                     model->_animLink = link;
                                     model->SetAnimData(link, false);
                                     _children.push_back(model);
                                 }
-
-                                if (_modelInfo->_fastTransitionBones.count(link.LinkBone) != 0u) {
-                                    fast_transition_bones.push_back(link.LinkBone);
-                                }
-                            }
-                        }
-                        // Link all bones
-                        else {
-                            model = _modelMngr.GetModel(link.ChildName, true);
-                            if (model != nullptr) {
-                                for (auto* child_bone : model->_modelInfo->_hierarchy->_allBones) {
-                                    auto* root_bone = _modelInfo->_hierarchy->_rootBone->Find(child_bone->Name);
-                                    if (root_bone != nullptr) {
-                                        model->_linkBones.push_back(root_bone);
-                                        model->_linkBones.push_back(child_bone);
-                                    }
-                                }
-
-                                mesh_changed = true;
-                                model->_parent = this;
-                                model->_parentBone = _modelInfo->_hierarchy->_rootBone.get();
-                                model->_animLink = link;
-                                model->SetAnimData(link, false);
-                                _children.push_back(model);
                             }
                         }
                     }
@@ -641,6 +651,15 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
                 mesh_changed = true;
                 delete model;
                 it = _children.erase(it);
+            }
+            else {
+                ++it;
+            }
+        }
+
+        for (auto it = _particleSystems.begin(); it != _particleSystems.end();) {
+            if (it->Id != 0u && keep_alive_particles.count(it->Id) == 0u) {
+                _particleSystems.erase(it);
             }
             else {
                 ++it;
@@ -760,6 +779,16 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
     }
 
     return mesh_changed;
+}
+
+void ModelInstance::MoveModel(int ox, int oy)
+{
+    const vec3 pos_zero = Convert2dTo3d(0, 0);
+    const vec3 pos = Convert2dTo3d(ox, oy);
+    const vec3 diff = pos - pos_zero;
+
+    _moveOffset += diff;
+    _forceRedraw = true;
 }
 
 void ModelInstance::SetMoving(bool enabled, bool is_run)
@@ -924,10 +953,7 @@ auto ModelInstance::GetRenderFramesData() const -> tuple<float, int, int, int>
 
 auto ModelInstance::GetDrawSize() const -> tuple<uint, uint>
 {
-    const auto scale = std::ceil(std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3));
-    const auto w = static_cast<float>(_modelInfo->_drawWidth) * scale;
-    const auto h = static_cast<float>(_modelInfo->_drawHeight) * scale;
-    return tuple {static_cast<uint>(w), static_cast<uint>(h)};
+    return {_frameWidth / FRAME_SCALE, _frameHeight / FRAME_SCALE};
 }
 
 auto ModelInstance::GetSpeed() const -> float
@@ -1630,33 +1656,39 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 
 auto ModelInstance::NeedDraw() const -> bool
 {
+    if (_forceRedraw) {
+        return true;
+    }
+
     return _combinedMeshesSize != 0u && (_lastDrawTick == 0u || GetTick() - _lastDrawTick >= _modelMngr._animDelay);
 }
 
-void ModelInstance::Draw(int x, int y, float scale)
+void ModelInstance::Draw()
 {
-    // Skip drawing if no meshes generated
-    if (_combinedMeshesSize == 0u) {
-        return;
-    }
+    _forceRedraw = false;
 
     // Move timer
     const auto tick = GetTick();
-    const auto elapsed = (_lastDrawTick != 0u ? 0.001f * static_cast<float>(tick - _lastDrawTick) : 0.0f);
+    const auto elapsed = _lastDrawTick != 0u ? 0.001f * static_cast<float>(tick - _lastDrawTick) : 0.0f;
     _lastDrawTick = tick;
 
     // Move animation
-    ProcessAnimation(elapsed, x != 0 ? x : _modelMngr._modeWidth / 2, y != 0 ? y : _modelMngr._modeHeight - _modelMngr._modeHeight / 4, scale);
+    const auto w = _frameWidth / FRAME_SCALE;
+    const auto h = _frameHeight / FRAME_SCALE;
+    ProcessAnimation(elapsed, w / 2, h - h / 4, static_cast<float>(FRAME_SCALE));
 
-    // Draw mesh
-    DrawCombinedMeshes();
+    if (_combinedMeshesSize != 0u) {
+        DrawCombinedMeshes();
+    }
+
+    DrawAllParticles();
 }
 
 void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
 {
     // Update world matrix, only for root
     if (_parentBone == nullptr) {
-        const auto pos = _modelMngr.Convert2dTo3d(x, y);
+        const auto pos = Convert2dTo3d(x, y);
         mat44 mat_rot_y;
         mat44 mat_scale;
         mat44 mat_trans;
@@ -1681,12 +1713,10 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     if (_bodyAnimController != nullptr && elapsed >= 0.0f) {
         prev_track_pos = _bodyAnimController->GetTrackPosition(_currentTrack);
 
-        elapsed *= GetSpeed();
+        _bodyAnimController->AdvanceTime(elapsed * GetSpeed());
 
-        _bodyAnimController->AdvanceTime(elapsed);
-
-        if ((_isMoving || _playTurnAnimation) && _moveAnimController) {
-            _moveAnimController->AdvanceTime(elapsed);
+        if ((_isMoving || _playTurnAnimation) && _moveAnimController != nullptr) {
+            _moveAnimController->AdvanceTime(elapsed * GetSpeed());
 
             if (_playTurnAnimation && !_moveAnimController->GetTrackEnable(_currentMoveTrack)) {
                 _playTurnAnimation = false;
@@ -1722,6 +1752,25 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     for (auto* child : _children) {
         child->_groundPos = _groundPos;
         child->_parentMatrix = child->_parentBone->CombinedTransformationMatrix * child->_matTransBase * child->_matRotBase * child->_matScaleBase;
+    }
+
+    // Particles
+    for (auto&& particle_system : _particleSystems) {
+        if (particle_system.Id == 0u) {
+            particle_system.Particles->Update(elapsed, particle_system.Bone->CombinedTransformationMatrix, particle_system.Move, particle_system.Rot, _moveOffset);
+        }
+        else {
+            particle_system.Particles->Update(elapsed, particle_system.Bone->CombinedTransformationMatrix, particle_system.Move, particle_system.Rot + _lookDirAngle, _moveOffset);
+        }
+    }
+
+    for (auto it = _particleSystems.begin(); it != _particleSystems.end();) {
+        if (!it->Particles->IsActive()) {
+            it = _particleSystems.erase(it);
+        }
+        else {
+            ++it;
+        }
     }
 
     // Move child animations
@@ -1772,11 +1821,11 @@ void ModelInstance::DrawCombinedMeshes()
     }
 }
 
-void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_disabled*/)
+void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled)
 {
     auto* effect = combined_mesh->DrawEffect;
 
-    std::memcpy(effect->ProjBuf.ProjMatrix, _modelMngr._matrixProjCMaj[0], 16 * sizeof(float));
+    std::memcpy(effect->ProjBuf.ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
 
     effect->MainTex = combined_mesh->Textures[0]->MainTex;
     std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
@@ -1789,7 +1838,7 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_
         wm += 16;
     }
 
-    std::memcpy(effect->ModelBuf->GroundPosition, &_groundPos[0], 3 * sizeof(float));
+    std::memcpy(effect->ModelBuf->GroundPosition, &_groundPos, 3 * sizeof(float));
     effect->ModelBuf->GroundPosition[3] = 0.0f;
 
     if (effect->CustomTexBuf) {
@@ -1808,7 +1857,20 @@ void ModelInstance::DrawCombinedMesh(CombinedMesh* combined_mesh, bool /*shadow_
     effect->DrawBuffer(combined_mesh->DrawMesh);
 }
 
-auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>
+void ModelInstance::DrawAllParticles()
+{
+    NON_CONST_METHOD_HINT();
+
+    for (auto&& particle_system : _particleSystems) {
+        particle_system.Particles->Draw(_frameProjColMaj, _moveOffset);
+    }
+
+    for (auto* child : _children) {
+        child->DrawAllParticles();
+    }
+}
+
+auto ModelInstance::FindBone(hstring bone_name) const -> const ModelBone*
 {
     const auto* bone = _modelInfo->_hierarchy->_rootBone->Find(bone_name);
     if (bone == nullptr) {
@@ -1820,6 +1882,12 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
         }
     }
 
+    return bone;
+}
+
+auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>
+{
+    const auto* bone = FindBone(bone_name);
     if (bone == nullptr) {
         return std::nullopt;
     }
@@ -1828,15 +1896,24 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<tuple<int, i
     quaternion rot;
     bone->CombinedTransformationMatrix.DecomposeNoScaling(rot, pos);
 
-    const auto p = _modelMngr.Convert3dTo2d(pos);
-    auto x = p.X - _modelMngr._modeWidth / 2;
-    auto y = -(p.Y - _modelMngr._modeHeight / 4);
+    const auto p = Convert3dTo2d(pos);
+    const auto x = p.X - _frameWidth / FRAME_SCALE / 2;
+    const auto y = -(p.Y - _frameHeight / FRAME_SCALE / 4);
     return tuple {x, y};
 }
 
 auto ModelInstance::GetAnimDuration() const -> uint
 {
     return static_cast<uint>(_animPosPeriod * 1000.0f);
+}
+
+void ModelInstance::RunParticles(string_view particles_name, hstring bone_name, vec3 move)
+{
+    if (const auto* to_bone = FindBone(bone_name)) {
+        if (auto&& particles = _modelMngr._particleMngr.CreateParticles(particles_name)) {
+            _particleSystems.push_back({0u, std::move(particles), to_bone, move, _lookDirAngle});
+        }
+    }
 }
 
 ModelInformation::ModelInformation(ModelManager& model_mngr) : _modelMngr {model_mngr}
@@ -2004,7 +2081,7 @@ auto ModelInformation::Load(string_view name) -> bool
             }
             else if (token == "Attach") {
                 (*istr) >> buf;
-                if (layer < 0 || (layer_val == 0)) {
+                if (layer < 0 || layer_val == 0) {
                     continue;
                 }
 
@@ -2015,6 +2092,23 @@ auto ModelInformation::Load(string_view name) -> bool
 
                 string fname = _str(name).extractDir().combinePath(buf);
                 link->ChildName = fname;
+                link->IsParticles = false;
+
+                mesh = hstring();
+            }
+            else if (token == "AttachParticles") {
+                (*istr) >> buf;
+                if (layer < 0 || layer_val == 0) {
+                    continue;
+                }
+
+                link = &_animData.emplace_back();
+                link->Id = ++link_id;
+                link->Layer = layer;
+                link->LayerValue = layer_val;
+
+                link->ChildName = buf;
+                link->IsParticles = true;
 
                 mesh = hstring();
             }
@@ -2562,6 +2656,7 @@ auto ModelInformation::CreateInstance() -> ModelInstance*
 {
     auto* model = new ModelInstance(_modelMngr);
     model->_modelInfo = this;
+    model->SetupFrame();
 
     if (_animController) {
         model->_bodyAnimController = _animController->Clone();

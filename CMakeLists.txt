@@ -1047,9 +1047,13 @@ StatusMessage( "+ Spark" )
 set( FO_SPARK_DIR "ThirdParty/spark" )
 set( SPARK_STATIC_BUILD ON CACHE BOOL "Forced by FOnline" FORCE )
 add_subdirectory( "${FO_SPARK_DIR}/projects/engine/core" )
-include_directories( "${FOnlineProject_BINARY_DIR}/${FO_SPARK_DIR}/include" )
-list( APPEND FO_CLIENT_LIBS "SPARK_Core" )
-DisableLibWarnings( SPARK_Core )
+add_subdirectory( "${FO_SPARK_DIR}/projects/engine/ogl" )
+add_subdirectory( "${FO_SPARK_DIR}/projects/external/pugi" )
+include_directories( "${FO_SPARK_DIR}/spark/include" )
+include_directories( "${FO_SPARK_DIR}/rendering" )
+include_directories( "${FO_SPARK_DIR}/thirdparty/PugiXML" )
+list( APPEND FO_CLIENT_LIBS "SPARK_Core" "SPARK_OpenGL" "PugiXML" )
+DisableLibWarnings( SPARK_Core SPARK_OpenGL PugiXML )
 
 # glslang & SPIRV-Cross
 if( FONLINE_BUILD_BAKER OR FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
@@ -1312,6 +1316,8 @@ list( APPEND FO_CLIENT_BASE_SOURCE
 	"Source/Client/LocationView.h"
 	"Source/Client/MapView.cpp"
 	"Source/Client/MapView.h"
+	"Source/Client/Particles.cpp"
+	"Source/Client/Particles.h"
 	"Source/Client/PlayerView.cpp"
 	"Source/Client/PlayerView.h"
 	"Source/Client/ResourceManager.cpp"

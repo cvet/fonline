@@ -379,6 +379,46 @@
 }
 
 ///# ...
+///# param x ...
+///# param y ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_GetTextPos(CritterView* self, int& x, int& y)
+{
+    const auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+    hex_cr->GetNameTextPos(x, y);
+}
+
+///# ...
+///# param particlesName ...
+///# param boneName ...
+///# param moveX ...
+///# param moveY ...
+///# param moveZ ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Critter_RunParticles(CritterView* self, string_view particlesName, hstring boneName, float moveX, float moveY, float moveZ)
+{
+    auto* hex_cr = dynamic_cast<CritterHexView*>(self);
+    if (hex_cr == nullptr) {
+        throw ScriptException("Critter is not on map");
+    }
+
+#if FO_ENABLE_3D
+    if (!hex_cr->IsModel()) {
+        throw ScriptException("Critter is not 3D model");
+    }
+
+    hex_cr->GetModel()->RunParticles(particlesName, boneName, vec3(moveX, moveY, moveZ));
+
+#else
+    throw NotEnabled3DException("3D submodule not enabled");
+#endif
+}
+
+///# ...
 ///# param anim1 ...
 ///# param anim2 ...
 ///# param normalizedTime ...

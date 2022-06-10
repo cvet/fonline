@@ -80,7 +80,7 @@ namespace GL
 		// Setters //
 		/////////////
 
-		virtual bool setTexturingMode(TextureMode mode);
+		bool setTexturingMode(TextureMode mode) override;
 
 		void setTexture(GLuint textureIndex);
 		
@@ -116,10 +116,10 @@ namespace GL
 		GLQuadRenderer(float scaleX = 1.0f,float scaleY = 1.0f);
 		GLQuadRenderer(const GLQuadRenderer& renderer);
 
-		virtual RenderBuffer* attachRenderBuffer(const Group& group) const;
+		RenderBuffer* attachRenderBuffer(const Group& group) const override;
 
-		virtual void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const;
-		virtual void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const;
+		void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const override;
+		void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const override;
 
 		void invertModelView() const;
 

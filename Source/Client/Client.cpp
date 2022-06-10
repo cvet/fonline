@@ -2993,6 +2993,16 @@ auto FOClient::AnimLoad(hstring name, AtlasType res_type) -> uint
     return static_cast<uint>(index);
 }
 
+void FOClient::AnimFree(uint anim_id)
+{
+    RUNTIME_ASSERT(anim_id < _ifaceAnimations.size());
+
+    if (_ifaceAnimations[anim_id]) {
+        delete _ifaceAnimations[anim_id];
+        _ifaceAnimations[anim_id] = nullptr;
+    }
+}
+
 auto FOClient::AnimGetCurSpr(uint anim_id) const -> uint
 {
     if (anim_id >= _ifaceAnimations.size() || (_ifaceAnimations[anim_id] == nullptr)) {
@@ -3754,7 +3764,6 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
     }
     else if (cmd == "SetMousePos" && args.size() == 4) {
-#if !FO_WEB
         /*int x = _str(args[1]).toInt();
         int y = _str(args[2]).toInt();
         bool motion = _str(args[3]).toBool();
@@ -3770,7 +3779,13 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             Settings.MouseX = Settings.LastMouseX = x;
             Settings.MouseY = Settings.LastMouseY = y;
         }*/
-#endif
+    }
+    else if (cmd == "MouseMove" && args.size() == 2) {
+        /*bool enabled = _str(args[1]).toBool();
+        if (enabled)
+            SDL_EventState(SDL_MOUSEMOTION, SDL_ENABLE);
+        else
+            SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);*/
     }
     else if (cmd == "SetCursorPos") {
         if (CurMap != nullptr) {

@@ -42,6 +42,7 @@
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "GeometryHelper.h"
+#include "Particles.h"
 #include "Settings.h"
 #include "Timer.h"
 
@@ -135,6 +136,7 @@ struct ModelAnimationData
     int LayerValue {};
     hstring LinkBone {};
     string ChildName {};
+    bool IsParticles {};
     float RotX {};
     float RotY {};
     float RotZ {};
@@ -150,6 +152,15 @@ struct ModelAnimationData
     vector<tuple<string, hstring, int>> TextureInfo {}; // Name, mesh, num
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ModelCutData*> CutInfo {};
+};
+
+struct ModelParticleSystem
+{
+    uint Id {};
+    unique_ptr<ParticleSystem> Particles {};
+    const ModelBone* Bone {};
+    vec3 Move {};
+    float Rot {};
 };
 
 struct ModelAnimationCallback
@@ -178,21 +189,15 @@ public:
     ~ModelManager() = default;
 
     [[nodiscard]] auto GetBoneHashedString(string_view name) const -> hstring;
-    [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
-    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
 
-    [[nodiscard]] auto GetModel(string_view name, bool is_child) -> ModelInstance*;
+    [[nodiscard]] auto CreateModel(string_view name) -> ModelInstance*;
     [[nodiscard]] auto LoadAnimation(string_view anim_fname, string_view anim_name) -> ModelAnimation*;
     [[nodiscard]] auto LoadTexture(string_view texture_name, string_view model_path) -> MeshTexture*;
 
     void DestroyTextures();
-    void SetScreenSize(int width, int height);
     void PreloadModel(string_view name);
 
 private:
-    [[nodiscard]] auto VecProject(const vec3& v) const -> vec3;
-    [[nodiscard]] auto VecUnproject(const vec3& v) const -> vec3;
-
     [[nodiscard]] auto LoadModel(string_view fname) -> ModelBone*;
     [[nodiscard]] auto GetInformation(string_view name) -> ModelInformation*;
     [[nodiscard]] auto GetHierarchy(string_view name) -> ModelHierarchy*;
@@ -205,20 +210,13 @@ private:
     AnimationResolver& _animNameResolver;
     MeshTextureCreator _meshTexCreator;
     GeometryHelper _geometry;
+    ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
     vector<unique_ptr<ModelBone, std::function<void(ModelBone*)>>> _loadedModels {};
     vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
     vector<unique_ptr<MeshTexture>> _loadedMeshTextures {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
     vector<unique_ptr<ModelHierarchy>> _hierarchyFiles {};
-    int _modeWidth {};
-    int _modeHeight {};
-    float _modeWidthF {};
-    float _modeHeightF {};
-    mat44 _matrixProjRMaj {}; // Row or column major order
-    mat44 _matrixEmptyRMaj {};
-    mat44 _matrixProjCMaj {};
-    mat44 _matrixEmptyCMaj {};
     float _moveTransitionTime {0.25f};
     float _globalSpeedAdjust {1.0f};
     uint _animDelay {};
@@ -234,6 +232,8 @@ class ModelInstance final
     friend class ModelHierarchy;
 
 public:
+    constexpr static int FRAME_SCALE = 2;
+
     ModelInstance() = delete;
     explicit ModelInstance(ModelManager& model_mngr);
     ModelInstance(const ModelInstance&) = default;
@@ -242,6 +242,8 @@ public:
     auto operator=(ModelInstance&&) noexcept = delete;
     ~ModelInstance();
 
+    [[nodiscard]] auto Convert2dTo3d(int x, int y) const -> vec3;
+    [[nodiscard]] auto Convert3dTo2d(vec3 pos) const -> IPoint;
     [[nodiscard]] auto HasAnimation(uint anim1, uint anim2) const -> bool;
     [[nodiscard]] auto GetAnim1() const -> uint;
     [[nodiscard]] auto GetAnim2() const -> uint;
@@ -250,10 +252,12 @@ public:
     [[nodiscard]] auto IsAnimationPlaying() const -> bool;
     [[nodiscard]] auto GetRenderFramesData() const -> tuple<float, int, int, int>;
     [[nodiscard]] auto GetDrawSize() const -> tuple<uint, uint>;
+    [[nodiscard]] auto FindBone(hstring bone_name) const -> const ModelBone*;
     [[nodiscard]] auto GetBonePos(hstring bone_name) const -> optional<tuple<int, int>>;
     [[nodiscard]] auto GetAnimDuration() const -> uint;
     [[nodiscard]] auto IsCombatMode() const -> bool;
 
+    void SetupFrame();
     void StartMeshGeneration();
     auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;
     void SetDir(uchar dir, bool smooth_rotation);
@@ -264,10 +268,12 @@ public:
     void SetSpeed(float speed);
     void SetTimer(bool use_game_timer);
     void EnableShadow(bool enabled) { _shadowDisabled = !enabled; }
-    void Draw(int x, int y, float scale);
+    void Draw();
+    void MoveModel(int ox, int oy);
     void SetMoving(bool enabled, bool is_run);
     void SetMoveSpeed(float walk_factor, float run_factor);
     void SetCombatMode(bool enabled);
+    void RunParticles(string_view particles_name, hstring bone_name, vec3 move);
 
     uint SprId {};
     int SprAtlasType {}; // Todo: fix AtlasType referencing in 3dStuff
@@ -303,11 +309,18 @@ private:
     void ProcessAnimation(float elapsed, int x, int y, float scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
     void DrawCombinedMeshes();
-    void DrawCombinedMesh(CombinedMesh* combined_mesh, bool shadow_disabled);
+    void DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled);
+    void DrawAllParticles();
     void SetAnimData(ModelAnimationData& data, bool clear);
     void RefreshMoveAnimation();
 
     ModelManager& _modelMngr;
+    int _frameWidth {};
+    int _frameHeight {};
+    float _frameWidthF {};
+    float _frameHeightF {};
+    mat44 _frameProjRowMaj {};
+    mat44 _frameProjColMaj {};
     uint _curAnim1 {};
     uint _curAnim2 {};
     vector<CombinedMesh*> _combinedMeshes {};
@@ -352,6 +365,9 @@ private:
     float _runSpeedFactor {1.0f};
     bool _noRotate {};
     float _deferredLookDirAngle {};
+    vector<ModelParticleSystem> _particleSystems {};
+    vec3 _moveOffset {};
+    bool _forceRedraw {};
 
     // Derived animations
     vector<ModelInstance*> _children {};

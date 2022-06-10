@@ -912,7 +912,7 @@ auto SpriteManager::Load3dAnimation(string_view fname) -> AnyFrames*
     RUNTIME_ASSERT(_modelMngr);
 
     // Load 3d animation
-    auto&& model = unique_ptr<ModelInstance>(_modelMngr->GetModel(fname, false));
+    auto&& model = unique_ptr<ModelInstance>(_modelMngr->CreateModel(fname));
     if (model == nullptr) {
         return nullptr;
     }
@@ -986,25 +986,26 @@ void SpriteManager::RenderModel(ModelInstance* model)
 
     // Find place for render
     const auto* si = _sprData[model->SprId];
+    const uint frame_width = si->Width * ModelInstance::FRAME_SCALE;
+    const uint frame_height = si->Height * ModelInstance::FRAME_SCALE;
+
     RenderTarget* rt = nullptr;
     for (auto* rt_ : _rt3D) {
-        if (rt_->MainTex->Width == si->Width && rt_->MainTex->Height == si->Height) {
+        if (rt_->MainTex->Width == frame_width && rt_->MainTex->Height == frame_height) {
             rt = rt_;
             break;
         }
     }
     if (rt == nullptr) {
-        rt = CreateRenderTarget(true, RenderTarget::SizeType::Custom, si->Width, si->Height, false);
+        rt = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, false);
         _rt3D.push_back(rt);
     }
 
     PushRenderTarget(rt);
     ClearCurrentRenderTarget(0, true);
 
-    _modelMngr->SetScreenSize(rt->MainTex->Width, rt->MainTex->Height);
-
     // Draw model
-    model->Draw(0, 0, 2.0f);
+    model->Draw();
 
     // Restore render target
     PopRenderTarget();
@@ -1037,7 +1038,7 @@ auto SpriteManager::LoadModel(string_view fname, bool auto_redraw) -> ModelInsta
     RUNTIME_ASSERT(_modelMngr);
 
     // Fill data
-    auto* model = _modelMngr->GetModel(fname, false);
+    auto* model = _modelMngr->CreateModel(fname);
     if (model == nullptr) {
         return nullptr;
     }
@@ -1063,7 +1064,8 @@ void SpriteManager::RefreshModelSprite(ModelInstance* model)
     }
 
     // Render size
-    const auto [draw_width, draw_height] = model->GetDrawSize();
+    model->SetupFrame();
+    auto&& [draw_width, draw_height] = model->GetDrawSize();
 
     // Find already created place for rendering
     uint index = 0;

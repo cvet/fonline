@@ -64,10 +64,10 @@ namespace GL
 		GLLineRenderer(float length = 1.0f,float width = 1.0f);
 		GLLineRenderer(const GLLineRenderer& renderer);
 
-		virtual RenderBuffer* attachRenderBuffer(const Group& group) const;
+		RenderBuffer* attachRenderBuffer(const Group& group) const override;
 
-		virtual void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const;
-		virtual void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const;
+		void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const override;
+		void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const override;
 	};
 
 	inline Ref<GLLineRenderer> GLLineRenderer::create(float length,float width)

@@ -121,6 +121,7 @@ public:
     void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;
+    void AnimFree(uint anim_id);
     auto AnimGetCurSpr(uint anim_id) const -> uint;
     auto AnimGetCurSprCnt(uint anim_id) const -> uint;
     auto AnimGetSprCount(uint anim_id) const -> uint;

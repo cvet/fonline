@@ -2773,16 +2773,19 @@ void FOServer::ProcessMove(Critter* cr)
         }
     }
 
-    if (cr->TargetMoving.State == MovingState::InProgress) {
-        // Check for path recalculation
-        if (cr->IsMoving() && cr->TargetMoving.TargId) {
-            // Critter* targ = cr->GetCritSelf( cr->TargetMoving.TargId );
-            // if( !targ || ( ( cr->TargetMoving.HexX || cr->TargetMoving.HexY ) && !CheckDist( targ->GetHexX(), targ->GetHexY(), cr->TargetMoving.HexX, cr->TargetMoving.HexY, 0 ) ) )
-            //    cr->ClearMove();
-        }
+    // Check for path recalculation
+    auto recalculate = false;
 
+    if (cr->IsMoving() && cr->TargetMoving.TargId != 0u && (cr->TargetMoving.HexX != 0u || cr->TargetMoving.HexY != 0u)) {
+        const auto* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
+        if (targ != nullptr && !Geometry.CheckDist(targ->GetHexX(), targ->GetHexY(), cr->TargetMoving.HexX, cr->TargetMoving.HexY, 0)) {
+            recalculate = true;
+        }
+    }
+
+    if (cr->TargetMoving.State == MovingState::InProgress || recalculate) {
         // Find path if not exist
-        if (!cr->IsMoving()) {
+        if (!cr->IsMoving() || recalculate) {
             ushort hx;
             ushort hy;
             uint cut;
@@ -2804,6 +2807,9 @@ void FOServer::ProcessMove(Critter* cr)
                 trace_dist = cr->TargetMoving.TraceDist;
                 trace_cr = targ;
                 check_cr = true;
+
+                cr->TargetMoving.HexX = hx;
+                cr->TargetMoving.HexY = hy;
             }
             else {
                 hx = cr->TargetMoving.HexX;
@@ -2903,6 +2909,7 @@ void FOServer::ProcessMove(Critter* cr)
             }
 
             // Success
+            cr->TargetMoving.State = MovingState::Success;
             MoveCritter(cr, !cr->GetIsNoRun(), cr->GetHexX(), cr->GetHexY(), find_path.Steps, find_path.ControlSteps, 0, 0, true);
         }
     }

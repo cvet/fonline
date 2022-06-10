@@ -311,6 +311,8 @@ public:
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Knockout);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateCommon, uint, Anim2Dead);
+    ///@ ExportProperty
+    ENTITY_PROPERTY(Public, short, NameOffset);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, vector<uchar>, GlobalMapFog);
     ///@ ExportProperty

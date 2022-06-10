@@ -1322,18 +1322,26 @@
 
 ///# ...
 ///# param sprId ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_FreeSprite(FOClient* client, uint sprId)
+{
+    client->AnimFree(sprId);
+}
+
+///# ...
+///# param sprId ...
 ///# param frameIndex ...
 ///# return ...
 ///@ ExportMethod
 [[maybe_unused]] int Client_Game_GetSpriteWidth(FOClient* client, uint sprId, int frameIndex)
 {
-    auto* anim = client->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* anim = client->AnimGetFrames(sprId);
+    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
         return 0;
     }
 
     const auto* si = client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
-    if (!si) {
+    if (si == nullptr) {
         return 0;
     }
 
@@ -1347,12 +1355,13 @@
 ///@ ExportMethod
 [[maybe_unused]] int Client_Game_GetSpriteHeight(FOClient* client, uint sprId, int frameIndex)
 {
-    auto* anim = client->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* anim = client->AnimGetFrames(sprId);
+    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
         return 0;
     }
+
     const auto* si = client->SprMngr.GetSpriteInfo(frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
-    if (!si) {
+    if (si == nullptr) {
         return 0;
     }
 
@@ -1365,8 +1374,8 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_GetSpriteCount(FOClient* client, uint sprId)
 {
-    auto* const anim = client->AnimGetFrames(sprId);
-    return anim ? anim->CntFrm : 0;
+    const auto* anim = client->AnimGetFrames(sprId);
+    return anim != nullptr ? anim->CntFrm : 0;
 }
 
 ///# ...
@@ -1375,8 +1384,8 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_GetSpriteTicks(FOClient* client, uint sprId)
 {
-    auto* const anim = client->AnimGetFrames(sprId);
-    return anim ? anim->Ticks : 0;
+    const auto* anim = client->AnimGetFrames(sprId);
+    return anim != nullptr ? anim->Ticks : 0;
 }
 
 ///# ...
@@ -1392,8 +1401,8 @@
         return 0;
     }
 
-    auto* anim = client->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* anim = client->AnimGetFrames(sprId);
+    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
         return 0;
     }
 

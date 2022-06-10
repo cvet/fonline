@@ -471,7 +471,7 @@ DiskFind::DiskFind(string_view path, string_view ext)
 {
     auto query = _str(path).combinePath("*").str();
     if (!ext.empty()) {
-        query = "." + string(ext);
+        query += "." + string(ext);
     }
 
     WIN32_FIND_DATAW fd;

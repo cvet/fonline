@@ -860,6 +860,12 @@ void CritterHexView::ProcessMoving()
     RUNTIME_ASSERT(Moving.WholeTime > 0.0f);
     RUNTIME_ASSERT(Moving.WholeDist > 0.0f);
 
+    if (!IsAlive()) {
+        ClearMove();
+        AnimateStay();
+        return;
+    }
+
     auto normalized_time = static_cast<float>(_engine->GameTime.FrameTick() - Moving.StartTick + Moving.OffsetTick) / Moving.WholeTime;
     normalized_time = std::clamp(normalized_time, 0.0f, 1.0f);
 
@@ -929,12 +935,13 @@ void CritterHexView::ProcessMoving()
             const auto cur_hy = GetHexY();
             const auto moved = (cur_hx != old_hx || cur_hy != old_hy);
 
-            // if (moved) {
-            //     ReSetOk();
-            //
-            //     if (IsChosen())
-            //         RebuildLookBorders = true;
-            // }
+            if (moved) {
+                ResetOk();
+
+                if (IsChosen()) {
+                    // RebuildLookBorders = true;
+                }
+            }
 
             // Evaluate current position
             const auto cr_hx = GetHexX();
@@ -957,6 +964,19 @@ void CritterHexView::ProcessMoving()
             const auto mxi = static_cast<short>(std::round(mx));
             const auto myi = static_cast<short>(std::round(my));
             if (moved || GetHexOffsX() != mxi || GetHexOffsY() != myi) {
+#if FO_ENABLE_3D
+                if (_model != nullptr) {
+                    int model_ox = 0;
+                    int model_oy = 0;
+                    if (moved) {
+                        std::tie(model_ox, model_oy) = _engine->Geometry.GetHexInterval(old_hx, old_hy, cur_hx, cur_hy);
+                    }
+                    model_ox -= GetHexOffsX() - mxi;
+                    model_oy -= GetHexOffsY() - myi;
+                    _model->MoveModel(model_ox, model_oy);
+                }
+#endif
+
                 SetHexOffsX(mxi);
                 SetHexOffsY(myi);
                 RefreshOffs();
@@ -964,7 +984,6 @@ void CritterHexView::ProcessMoving()
 
             // Evaluate dir angle
             const auto dir_angle = _engine->Geometry.GetLineAngle(0, 0, ox, oy);
-            // const auto dir_angle = GetDirAngle(start_hx, start_hy, hx, hy);
             ChangeMoveDirAngle(static_cast<int>(dir_angle));
 
             done = true;
@@ -1077,6 +1096,14 @@ void CritterHexView::SetText(string_view str, uint color, uint text_delay)
     _textOnHeadColor = color;
 }
 
+void CritterHexView::GetNameTextPos(int& x, int& y) const
+{
+    const auto tr = GetTextRect();
+    const auto tr_half_width = tr.Width() / 2;
+    x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f);
+    y = static_cast<int>(static_cast<float>(tr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f) + GetNameOffset();
+}
+
 void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const
 {
     name_visible = false;
@@ -1105,10 +1132,7 @@ void CritterHexView::GetNameTextInfo(bool& name_visible, int& x, int& y, int& w,
         str = _strTextOnHead;
     }
 
-    const auto tr = GetTextRect();
-    const auto tr_half_width = tr.Width() / 2;
-    x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f);
-    y = static_cast<int>(static_cast<float>(tr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f);
+    GetNameTextPos(x, y);
 
     if (_engine->SprMngr.GetTextInfo(200, 70, str, -1, FT_CENTERX | FT_BOTTOM | FT_BORDERED, w, h, lines)) {
         x += 100 - w / 2;
@@ -1128,11 +1152,10 @@ void CritterHexView::DrawTextOnHead()
     }
 
     if (SprDrawValid) {
-        const auto tr = GetTextRect();
-        const auto tr_half_width = tr.Width() / 2;
-        const auto x = static_cast<int>(static_cast<float>(tr.Left + tr_half_width + _engine->Settings.ScrOx) / _engine->Settings.SpritesZoom - 100.0f);
-        const auto y = static_cast<int>(static_cast<float>(tr.Top + _engine->Settings.ScrOy) / _engine->Settings.SpritesZoom - 70.0f);
-        const IRect r(x, y, x + 200, y + 70);
+        int x = 0;
+        int y = 0;
+        GetNameTextPos(x, y);
+        const auto r = IRect(x, y, x + 200, y + 70);
 
         string str;
         uint color;

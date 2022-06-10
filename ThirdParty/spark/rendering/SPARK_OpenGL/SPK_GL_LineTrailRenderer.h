@@ -133,12 +133,12 @@ namespace GL
 		*/
 		void setDegeneratedLines(Color color);
 
-		virtual void enableBlending(bool blendingEnabled);
+		void enableBlending(bool blendingEnabled) override;
 
 	protected :
 
-		virtual void createData(DataSet& dataSet,const Group& group) const override;
-		virtual void checkData(DataSet& dataSet,const Group& group) const override;
+		void createData(DataSet& dataSet,const Group& group) const override;
+		void checkData(DataSet& dataSet,const Group& group) const override;
 
 	private :
 
@@ -163,11 +163,11 @@ namespace GL
 		GLLineTrailRenderer(size_t nbSamples = 8,float duration = 1.0f,float width = 1.0f);
 		GLLineTrailRenderer(const GLLineTrailRenderer& renderer);
 
-		virtual void init(const Particle& particle,DataSet* dataSet) const;
-		virtual void update(const Group& group,DataSet* dataSet) const;
+		void init(const Particle& particle,DataSet* dataSet) const override;
+		void update(const Group& group,DataSet* dataSet) const override;
 
-		virtual void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const;
-		virtual void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const;
+		void render(const Group& group,const DataSet* dataSet,RenderBuffer* renderBuffer) const override;
+		void computeAABB(Vector3D& AABBMin,Vector3D& AABBMax,const Group& group,const DataSet* dataSet) const override;
 	};
 
 	inline Ref<GLLineTrailRenderer> GLLineTrailRenderer::create(size_t nbSamples,float duration,float width)

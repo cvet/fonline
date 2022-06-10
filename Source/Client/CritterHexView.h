@@ -96,6 +96,7 @@ public:
     void RefreshOffs();
     void SetText(string_view str, uint color, uint text_delay);
     void DrawTextOnHead();
+    void GetNameTextPos(int& x, int& y) const;
     void GetNameTextInfo(bool& name_visible, int& x, int& y, int& w, int& h, int& lines) const;
     void NextAnim(bool erase_front);
     void RefreshSpeed();
