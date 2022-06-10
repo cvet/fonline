@@ -898,6 +898,9 @@ def parseTags():
                 value = tok[3] if len(tok) > 3 and tok[2] == '=' else None
                 flags = tok[2 if len(tok) < 3 or tok[2] != '=' else 4:]
                 
+                assert not [1 for tag in codeGenTags['Setting'] if tag[1] == name], 'Setting ' + name + ' already added'
+                assert not [1 for tag in codeGenTags['ExportSettings'] if [1 for sett in tag[2] if sett[2] == name]], 'Setting ' + name + ' already added'
+                
                 codeGenTags['Setting'].append((stype, name, value, flags, comment))
                 
             except Exception as ex:

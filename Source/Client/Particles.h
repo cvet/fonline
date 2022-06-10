@@ -63,7 +63,7 @@ private:
 
 class ParticleSystem final
 {
-    friend class ParticlesManager;
+    friend class ParticleManager;
 
 public:
     ParticleSystem(const ParticleSystem&) = delete;
