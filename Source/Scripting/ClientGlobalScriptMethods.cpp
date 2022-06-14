@@ -46,6 +46,64 @@
 // ReSharper disable CppInconsistentNaming
 
 ///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Game_IsConnecting(FOClient* client)
+{
+    return client->IsConnecting();
+}
+
+///# ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] bool Client_Game_IsConnected(FOClient* client)
+{
+    return client->IsConnected();
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void> func)
+{
+    return 0u;
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, int> func, int value)
+{
+    return 0u;
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, uint> func, uint value)
+{
+    return 0u;
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
+{
+    return 0u;
+}
+
+///@ ExportMethod
+[[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
+{
+    return 0u;
+}
+
+///@ ExportMethod
+[[maybe_unused]] bool Client_Game_IsDeferredCallPending(FOClient* client, uint id)
+{
+    return false;
+}
+
+///@ ExportMethod
+[[maybe_unused]] bool Client_Game_CancelDeferredCall(FOClient* client, uint id)
+{
+    return false;
+}
+
+///# ...
 ///# param pid ...
 ///# param props ...
 ///# return ...
@@ -60,7 +118,7 @@
 ///# param cr2 ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] int Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
+[[maybe_unused]] uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
     if (client->CurMap == nullptr) {
         throw ScriptException("Map is not loaded");
@@ -208,27 +266,18 @@
 }
 
 ///# ...
-///# param hx ...
-///# param hy ...
-///# param radius ...
 ///# param findType ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, ushort hx, ushort hy, uint radius, CritterFindType findType)
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, CritterFindType findType)
 {
-    if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
-        throw ScriptException("Invalid hexes args");
-    }
-
     vector<CritterView*> critters;
 
     for (auto* cr : client->CurMap->GetCritters()) {
-        if (cr->CheckFind(findType) && client->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
+        if (cr->CheckFind(findType)) {
             critters.push_back(cr);
         }
     }
-
-    std::sort(critters.begin(), critters.end(), [client, &hx, &hy](CritterView* cr1, CritterView* cr2) { return client->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < client->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
 
     return critters;
 }
@@ -256,6 +305,32 @@
             }
         }
     }
+
+    return critters;
+}
+
+///# ...
+///# param hx ...
+///# param hy ...
+///# param radius ...
+///# param findType ...
+///# return ...
+///@ ExportMethod ExcludeInSingleplayer
+[[maybe_unused]] vector<CritterView*> Client_Game_GetCritters(FOClient* client, ushort hx, ushort hy, uint radius, CritterFindType findType)
+{
+    if (hx >= client->CurMap->GetWidth() || hy >= client->CurMap->GetHeight()) {
+        throw ScriptException("Invalid hexes args");
+    }
+
+    vector<CritterView*> critters;
+
+    for (auto* cr : client->CurMap->GetCritters()) {
+        if (cr->CheckFind(findType) && client->Geometry.CheckDist(hx, hy, cr->GetHexX(), cr->GetHexY(), radius)) {
+            critters.push_back(cr);
+        }
+    }
+
+    std::sort(critters.begin(), critters.end(), [client, &hx, &hy](CritterView* cr1, CritterView* cr2) { return client->Geometry.DistGame(hx, hy, cr1->GetHexX(), cr1->GetHexY()) < client->Geometry.DistGame(hx, hy, cr2->GetHexX(), cr2->GetHexY()); });
 
     return critters;
 }
@@ -571,7 +646,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg)
 {
-    client->AddMess(SAY_NETMSG, msg, true);
+    client->AddMess(SAY_NETMSG, msg);
 }
 
 ///# ...
@@ -580,7 +655,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, int type, string_view msg)
 {
-    client->AddMess(static_cast<uchar>(type), msg, true);
+    client->AddMess(static_cast<uchar>(type), msg);
 }
 
 ///# ...
@@ -593,7 +668,7 @@
         throw ScriptException("Invalid text msg arg");
     }
 
-    client->AddMess(SAY_NETMSG, client->GetCurLang().Msg[textMsg].GetStr(strNum), true);
+    client->AddMess(SAY_NETMSG, client->GetCurLang().Msg[textMsg].GetStr(strNum));
 }
 
 ///# ...
@@ -607,7 +682,7 @@
         throw ScriptException("Invalid text msg arg");
     }
 
-    client->AddMess(static_cast<uchar>(type), client->GetCurLang().Msg[textMsg].GetStr(strNum), true);
+    client->AddMess(static_cast<uchar>(type), client->GetCurLang().Msg[textMsg].GetStr(strNum));
 }
 
 ///# ...
@@ -1432,6 +1507,31 @@
 ///# param frameIndex ...
 ///# param x ...
 ///# param y ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y)
+{
+    if (!client->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    if (sprId == 0u) {
+        return;
+    }
+
+    const auto* anim = client->AnimGetFrames(sprId);
+    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+        return;
+    }
+
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
+    client->SprMngr.DrawSprite(spr_id, x, y, COLOR_SCRIPT_SPRITE(0));
+}
+
+///# ...
+///# param sprId ...
+///# param frameIndex ...
+///# param x ...
+///# param y ...
 ///# param color ...
 ///# param offs ...
 ///@ ExportMethod
@@ -1445,18 +1545,18 @@
         return;
     }
 
-    auto* anim = client->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* anim = client->AnimGetFrames(sprId);
+    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
         return;
     }
 
     auto xx = x;
     auto yy = y;
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
     if (offs) {
-        const auto* si = client->SprMngr.GetSpriteInfo(spr_id_);
-        if (!si) {
+        const auto* si = client->SprMngr.GetSpriteInfo(spr_id);
+        if (si == nullptr) {
             return;
         }
 
@@ -1464,7 +1564,34 @@
         yy += -si->Height + si->OffsY;
     }
 
-    client->SprMngr.DrawSprite(spr_id_, xx, yy, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSprite(spr_id, xx, yy, COLOR_SCRIPT_SPRITE(color));
+}
+
+///# ...
+///# param sprId ...
+///# param frameIndex ...
+///# param x ...
+///# param y ...
+///# param w ...
+///# param h ...
+///@ ExportMethod
+[[maybe_unused]] void Client_Game_DrawSprite(FOClient* client, uint sprId, int frameIndex, int x, int y, int w, int h)
+{
+    if (!client->CanDrawInScripts) {
+        throw ScriptException("You can use this function only in RenderIface event");
+    }
+
+    if (sprId == 0u) {
+        return;
+    }
+
+    const auto* anim = client->AnimGetFrames(sprId);
+    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
+        return;
+    }
+
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
+    client->SprMngr.DrawSpriteSizeExt(spr_id, x, y, w, h, true, true, true, COLOR_SCRIPT_SPRITE(0));
 }
 
 ///# ...
@@ -1488,18 +1615,18 @@
         return;
     }
 
-    auto* anim = client->AnimGetFrames(sprId);
-    if (!anim || frameIndex >= static_cast<int>(anim->CntFrm)) {
+    const auto* anim = client->AnimGetFrames(sprId);
+    if (anim == nullptr || frameIndex >= static_cast<int>(anim->CntFrm)) {
         return;
     }
 
     auto xx = x;
     auto yy = y;
 
-    const auto spr_id_ = (frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex));
+    const auto spr_id = frameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(frameIndex);
     if (offs) {
-        const auto* si = client->SprMngr.GetSpriteInfo(spr_id_);
-        if (!si) {
+        const auto* si = client->SprMngr.GetSpriteInfo(spr_id);
+        if (si == nullptr) {
             return;
         }
 
@@ -1507,7 +1634,7 @@
         yy += si->OffsY;
     }
 
-    client->SprMngr.DrawSpriteSizeExt(spr_id_, xx, yy, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
+    client->SprMngr.DrawSpriteSizeExt(spr_id, xx, yy, w, h, zoom, true, true, COLOR_SCRIPT_SPRITE(color));
 }
 
 ///# ...
@@ -2040,7 +2167,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_GetHexMonitorPos(FOClient* client, ushort hx, ushort hy, int& x, int& y)
+[[maybe_unused]] bool Client_Game_GetHexScreenPos(FOClient* client, ushort hx, ushort hy, int& x, int& y)
 {
     x = y = 0;
     if (client->CurMap != nullptr && hx < client->CurMap->GetWidth() && hy < client->CurMap->GetHeight()) {
@@ -2061,7 +2188,7 @@
 ///# param hy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_GetHexByMonitorPos(FOClient* client, int x, int y, ushort& hx, ushort& hy)
+[[maybe_unused]] bool Client_Game_GetHexAtScreenPos(FOClient* client, int x, int y, ushort& hx, ushort& hy)
 {
     const auto old_x = client->Settings.MouseX;
     const auto old_y = client->Settings.MouseY;
@@ -2089,7 +2216,7 @@
 ///# param oy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Client_Game_GetHexByMonitorPos(FOClient* client, int x, int y, ushort& hx, ushort& hy, int& ox, int& oy)
+[[maybe_unused]] bool Client_Game_GetHexAtScreenPos(FOClient* client, int x, int y, ushort& hx, ushort& hy, int& ox, int& oy)
 {
     const auto old_x = client->Settings.MouseX;
     const auto old_y = client->Settings.MouseY;
@@ -2113,7 +2240,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ItemView* Client_Game_GetItemByMonitorPos(FOClient* client, int x, int y)
+[[maybe_unused]] ItemView* Client_Game_GetItemAtScreenPos(FOClient* client, int x, int y)
 {
     bool item_egg;
     return client->CurMap->GetItemAtScreenPos(x, y, item_egg);
@@ -2124,7 +2251,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Client_Game_GetCritterByMonitorPos(FOClient* client, int x, int y)
+[[maybe_unused]] CritterView* Client_Game_GetCritterAtScreenPos(FOClient* client, int x, int y)
 {
     return client->CurMap->GetCritterAtScreenPos(x, y, false, false);
 }
@@ -2135,7 +2262,7 @@
 ///# param wideRange
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] CritterView* Client_Game_GetCritterByMonitorPos(FOClient* client, int x, int y, bool wideRange)
+[[maybe_unused]] CritterView* Client_Game_GetCritterAtScreenPos(FOClient* client, int x, int y, bool wideRange)
 {
     auto* cr = client->CurMap->GetCritterAtScreenPos(x, y, false, false);
     if (cr == nullptr && wideRange) {
@@ -2149,7 +2276,7 @@
 ///# param y ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] ClientEntity* Client_Game_GetEntityByMonitorPos(FOClient* client, int x, int y)
+[[maybe_unused]] ClientEntity* Client_Game_GetEntityAtScreenPos(FOClient* client, int x, int y)
 {
     return client->CurMap->GetEntityAtScreenPos(x, y);
 }

@@ -158,7 +158,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message)
 {
     throw ScriptException(message);
 }
@@ -166,7 +166,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1)
 {
     throw ScriptException(message, obj1);
 }
@@ -174,7 +174,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2)
 {
     throw ScriptException(message, obj1, obj2);
 }
@@ -182,7 +182,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3)
 {
     throw ScriptException(message, obj1, obj2, obj3);
 }
@@ -190,7 +190,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4)
 {
     throw ScriptException(message, obj1, obj2, obj3, obj4);
 }
@@ -198,7 +198,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5)
 {
     throw ScriptException(message, obj1, obj2, obj3, obj4, obj5);
 }
@@ -206,7 +206,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6)
 {
     throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6);
 }
@@ -214,7 +214,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7)
 {
     throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7);
 }
@@ -222,7 +222,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8)
 {
     throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8);
 }
@@ -230,7 +230,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9)
 {
     throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9);
 }
@@ -238,7 +238,7 @@
 ///# ...
 ///# param message ...
 ///@ ExportMethod AngelScriptOnly
-[[maybe_unused]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9, ObjInfo<10> obj10)
+[[maybe_unused]] [[noreturn]] void Common_Game_ThrowException([[maybe_unused]] FOEngineBase* engine, string_view message, ObjInfo<1> obj1, ObjInfo<2> obj2, ObjInfo<3> obj3, ObjInfo<4> obj4, ObjInfo<5> obj5, ObjInfo<6> obj6, ObjInfo<7> obj7, ObjInfo<8> obj8, ObjInfo<9> obj9, ObjInfo<10> obj10)
 {
     throw ScriptException(message, obj1, obj2, obj3, obj4, obj5, obj6, obj7, obj8, obj9, obj10);
 }
@@ -469,7 +469,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///@ ExportMethod
 [[maybe_unused]] string Common_Game_SHA2([[maybe_unused]] FOEngineBase* engine, string_view text)
 {
-    const uint digest_size = 32;
+    constexpr uint digest_size = 32;
     uchar digest[digest_size];
     sha256(reinterpret_cast<const uchar*>(text.data()), static_cast<uint>(text.length()), digest);
 
@@ -478,7 +478,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     for (uint i = 0; i < sizeof(hex_digest); i++) {
         hex_digest[i] = nums[(i % 2) != 0u ? digest[i / 2] & 0xF : digest[i / 2] >> 4];
     }
-    return string(hex_digest, sizeof(hex_digest));
+    return {hex_digest, sizeof(hex_digest)};
 }
 
 ///# ...
@@ -511,7 +511,7 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param hy2 ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
+[[maybe_unused]] uint Common_Game_GetDistance([[maybe_unused]] FOEngineBase* engine, ushort hx1, ushort hy1, ushort hx2, ushort hy2)
 {
     return engine->Geometry.DistGame(hx1, hy1, hx2, hy2);
 }
@@ -548,9 +548,21 @@ static auto SystemCall(string_view command, const std::function<void(string_view
 ///# param toHy ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] uchar Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
+[[maybe_unused]] short Common_Game_GetDirAngle([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy)
 {
-    return 0;
+    return static_cast<short>(engine->Geometry.GetDirAngle(fromHx, fromHy, toHx, toHy));
+}
+
+///# ...
+///# param fromX ...
+///# param fromY ...
+///# param toX ...
+///# param toY ...
+///# return ...
+///@ ExportMethod
+[[maybe_unused]] short Common_Game_GetLineDirAngle([[maybe_unused]] FOEngineBase* engine, int fromX, int fromY, int toX, int toY)
+{
+    return static_cast<short>(engine->Geometry.GetLineDirAngle(fromX, fromY, toX, toY));
 }
 
 ///# ...
@@ -598,4 +610,17 @@ static auto SystemCall(string_view command, const std::function<void(string_view
     }
 
     return static_cast<short>(rotated);
+}
+
+///# ...
+///# param fromHx ...
+///# param fromHy ...
+///# param toHx ...
+///# param toHy ...
+///# param ox ...
+///# param oy ...
+///@ ExportMethod
+[[maybe_unused]] void Common_Game_GetHexInterval([[maybe_unused]] FOEngineBase* engine, ushort fromHx, ushort fromHy, ushort toHx, ushort toHy, int& ox, int& oy)
+{
+    std::tie(ox, oy) = engine->Geometry.GetHexInterval(fromHx, fromHy, toHx, toHy);
 }

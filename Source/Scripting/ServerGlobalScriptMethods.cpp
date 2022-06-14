@@ -165,7 +165,7 @@
 ///# param cr2 ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] int Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
+[[maybe_unused]] uint Server_Game_GetDistance(FOServer* server, Critter* cr1, Critter* cr2)
 {
     if (cr1 == nullptr) {
         throw ScriptException("Critter1 arg is null");
@@ -200,8 +200,8 @@
     }
 
     auto* item = server->ItemMngr.GetItem(itemId);
-    if (!item || item->IsDestroyed()) {
-        return static_cast<Item*>(nullptr);
+    if (item == nullptr || item->IsDestroyed()) {
+        return nullptr;
     }
 
     return item;
@@ -860,7 +860,7 @@
     const auto id = server->MakePlayerId(name);
     const auto doc = server->DbStorage.Get("Players", id);
     if (doc.empty()) {
-        return static_cast<Player*>(nullptr);
+        return nullptr;
     }
 
     // Find online

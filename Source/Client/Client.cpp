@@ -273,6 +273,16 @@ auto FOClient::ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& ar
     return OnCritterAnimationFallout.Fire(arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
+auto FOClient::IsConnecting() const -> bool
+{
+    return _conn.IsConnecting();
+}
+
+auto FOClient::IsConnected() const -> bool
+{
+    return _conn.IsConnected();
+}
+
 auto FOClient::GetChosen() -> CritterView*
 {
     NON_CONST_METHOD_HINT();
@@ -3360,12 +3370,7 @@ void FOClient::GameDraw()
 
 void FOClient::AddMess(uchar mess_type, string_view msg)
 {
-    OnMessageBox.Fire(string(msg), mess_type, false);
-}
-
-void FOClient::AddMess(uchar mess_type, string_view msg, bool script_call)
-{
-    OnMessageBox.Fire(string(msg), mess_type, script_call);
+    OnMessageBox.Fire(mess_type, string(msg));
 }
 
 // Todo: move targs formatting to scripts

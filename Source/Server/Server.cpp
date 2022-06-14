@@ -3044,7 +3044,7 @@ void FOServer::ProcessMoveBySteps(Critter* cr, Map* map)
             }
 
             // Evaluate dir angle
-            const auto dir_angle = Geometry.GetLineAngle(0, 0, ox, oy);
+            const auto dir_angle = Geometry.GetLineDirAngle(0, 0, ox, oy);
             cr->SetDirAngle(static_cast<short>(dir_angle));
 
             goto label_Done;

@@ -3436,7 +3436,7 @@ void EngineCallback_InputLost()
 
 void EngineCallback_Loop()
 {
-    if (Settings.IsConnecting || Settings.IsUpdating)
+    if (Game.IsConnecting())
         Input::ReleaseMouse();
 
     GetPressedObject(); // Refresh state

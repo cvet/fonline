@@ -58,7 +58,7 @@ public:
     [[nodiscard]] auto GetDirAngle(int x1, int y1, int x2, int y2) const -> float;
     [[nodiscard]] auto GetDirAngleDiff(float a1, float a2) const -> float;
     [[nodiscard]] auto GetDirAngleDiffSided(float a1, float a2) const -> float;
-    [[nodiscard]] auto GetLineAngle(int x1, int y1, int x2, int y2) const -> float;
+    [[nodiscard]] auto GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float;
     [[nodiscard]] auto GetYProj() const -> float;
     [[nodiscard]] auto DirToAngle(uchar dir) const -> short;
     [[nodiscard]] auto AngleToDir(short dir_angle) const -> uchar;

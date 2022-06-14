@@ -87,7 +87,7 @@ public:
     void AnimateStay();
     void Action(int action, int action_ext, ItemView* item, bool local_call);
     void Process();
-    void ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item);
+    void ProcessAnim(bool animate_stay, uint anim1, uint anim2, ItemView* item);
     void ResetOk();
     void SetSprRect();
     void ClearAnim();

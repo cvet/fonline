@@ -102,6 +102,8 @@ public:
     [[nodiscard]] auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool override;
     [[nodiscard]] auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool override;
 
+    [[nodiscard]] auto IsConnecting() const -> bool;
+    [[nodiscard]] auto IsConnected() const -> bool;
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
@@ -111,7 +113,6 @@ public:
 
     void MainLoop();
     void AddMess(uchar mess_type, string_view msg);
-    void AddMess(uchar mess_type, string_view msg, bool script_call);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
     void ScreenFadeIn() { ScreenFade(1000, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
@@ -168,9 +169,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnInputLost);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterIn, CritterView* /*critter*/);
+    ENTITY_EVENT(OnCritterIn, CritterView* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterOut, CritterView* /*critter*/);
+    ENTITY_EVENT(OnCritterOut, CritterView* /*cr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemMapIn, ItemView* /*item*/);
     ///@ ExportEvent
@@ -194,19 +195,17 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnMapMessage, string& /*text*/, ushort& /*hexX*/, ushort& /*hexY*/, uint& /*color*/, uint& /*delay*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, uint& /*critterId*/, uint& /*delay*/);
+    ENTITY_EVENT(OnInMessage, string /*text*/, int& /*sayType*/, uint& /*crId*/, uint& /*delay*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnOutMessage, string& /*text*/, int& /*sayType*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMessageBox, string /*text*/, int /*type*/, bool /*scriptCall*/);
+    ENTITY_EVENT(OnMessageBox, int /*type*/, string /*text*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemCheckMove, ItemView* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*critter*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
+    ENTITY_EVENT(OnCritterAction, bool /*localCall*/, CritterView* /*cr*/, int /*action*/, int /*actionExt*/, AbstractItem* /*actionItem*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnAnimation2dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
-    ///@ ExportEvent
-    ENTITY_EVENT(OnAnimation3dProcess, bool /*arg1*/, CritterView* /*arg2*/, uint /*arg3*/, uint /*arg4*/, AbstractItem* /*arg5*/);
+    ENTITY_EVENT(OnCritterAnimationProcess, bool /*animateStay*/, CritterView* /*cr*/, uint /*anim1*/, uint /*anim2*/, AbstractItem* /*item*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAnimation, hstring /*arg1*/, uint /*arg2*/, uint /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, int& /*arg6*/, int& /*arg7*/, string& /*arg8*/);
     ///@ ExportEvent
@@ -214,9 +213,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterAnimationFallout, hstring /*arg1*/, uint& /*arg2*/, uint& /*arg3*/, uint& /*arg4*/, uint& /*arg5*/, uint& /*arg6*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*critter*/, ItemView* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, CritterView* /*cr*/, ItemView* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
 
     GameTimer GameTime;
     ProtoManager ProtoMngr;

@@ -416,7 +416,7 @@ void CritterHexView::NextAnim(bool erase_front)
     }
 #endif
 
-    ProcessAnim(false, true, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ActiveItem);
+    ProcessAnim(false, cr_anim.IndAnim1, cr_anim.IndAnim2, cr_anim.ActiveItem);
 
     _lastEndSpr = cr_anim.EndFrm;
     _curSpr = cr_anim.BeginFrm;
@@ -508,7 +508,7 @@ void CritterHexView::AnimateStay()
             anim2 = ANIM2_IDLE;
         }
 
-        ProcessAnim(true, false, anim1, anim2, nullptr);
+        ProcessAnim(false, anim1, anim2, nullptr);
 
         if (GetCond() == CritterCondition::Alive || GetCond() == CritterCondition::Knockout) {
             _model->SetAnimation(anim1, anim2, GetLayers3dData(), 0);
@@ -527,7 +527,7 @@ void CritterHexView::AnimateStay()
     }
 
     if (_stayAnim.Anim != anim) {
-        ProcessAnim(true, true, anim1, anim2, nullptr);
+        ProcessAnim(true, anim1, anim2, nullptr);
 
         _stayAnim.Anim = anim;
         _stayAnim.AnimTick = anim->Ticks;
@@ -618,14 +618,9 @@ auto CritterHexView::GetAnim2() const -> uint
     return ANIM2_IDLE;
 }
 
-void CritterHexView::ProcessAnim(bool animate_stay, bool is2d, uint anim1, uint anim2, ItemView* item)
+void CritterHexView::ProcessAnim(bool animate_stay, uint anim1, uint anim2, ItemView* item)
 {
-    if (is2d) {
-        _engine->OnAnimation2dProcess.Fire(animate_stay, this, anim1, anim2, item);
-    }
-    else {
-        _engine->OnAnimation3dProcess.Fire(animate_stay, this, anim1, anim2, item);
-    }
+    _engine->OnCritterAnimationProcess.Fire(animate_stay, this, anim1, anim2, item);
 }
 
 auto CritterHexView::GetLayers3dData() -> int*
@@ -983,7 +978,7 @@ void CritterHexView::ProcessMoving()
             }
 
             // Evaluate dir angle
-            const auto dir_angle = _engine->Geometry.GetLineAngle(0, 0, ox, oy);
+            const auto dir_angle = _engine->Geometry.GetLineDirAngle(0, 0, ox, oy);
             ChangeMoveDirAngle(static_cast<int>(dir_angle));
 
             done = true;

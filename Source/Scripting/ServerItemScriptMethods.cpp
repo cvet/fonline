@@ -91,15 +91,15 @@
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritId());
-        if (!cr) {
+        const auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritId());
+        if (cr == nullptr) {
             throw ScriptException("Critter accessory, critter not found");
         }
 
-        if (!cr->GetMapId()) {
+        if (cr->GetMapId() == 0u) {
             hx = cr->GetWorldX();
             hy = cr->GetWorldY();
-            return static_cast<Map*>(nullptr);
+            return nullptr;
         }
 
         map = self->GetEngine()->MapMngr.GetMap(cr->GetMapId());
@@ -112,7 +112,7 @@
     } break;
     case ItemOwnership::MapHex: {
         map = self->GetEngine()->MapMngr.GetMap(self->GetMapId());
-        if (!map) {
+        if (map == nullptr) {
             throw ScriptException("Hex accessory, map not found");
         }
 
@@ -125,7 +125,7 @@
         }
 
         auto* cont = self->GetEngine()->ItemMngr.GetItem(self->GetContainerId());
-        if (!cont) {
+        if (cont == nullptr) {
             throw ScriptException("Container accessory, container not found");
         }
 

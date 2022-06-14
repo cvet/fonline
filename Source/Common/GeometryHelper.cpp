@@ -419,7 +419,7 @@ auto GeometryHelper::GetDirAngleDiffSided(float a1, float a2) const -> float
     return r;
 }
 
-auto GeometryHelper::GetLineAngle(int x1, int y1, int x2, int y2) const -> float
+auto GeometryHelper::GetLineDirAngle(int x1, int y1, int x2, int y2) const -> float
 {
     const auto x1_f = static_cast<float>(x1);
     const auto y1_f = static_cast<float>(y1) * GetYProj();
