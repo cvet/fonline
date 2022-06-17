@@ -1045,7 +1045,9 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
         disable_get = true;
         disable_set = true;
     }
-    if (_relation == PropertiesRelationType::ClientRelative && (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
+    if (_relation == PropertiesRelationType::ClientRelative && //
+        (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && //
+        !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
         disable_set = true;
     }
     if (prop->_accessType == Property::AccessType::PublicStatic) {

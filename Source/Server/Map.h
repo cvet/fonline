@@ -58,7 +58,7 @@ struct StaticMap
     vector<Item*> ChildItemsVec {};
     vector<StaticItem*> StaticItemsVec {};
     vector<StaticItem*> TriggerItemsVec {};
-    uchar* HexFlags {};
+    vector<uchar> HexFlags {};
     vector<MapTile> Tiles {};
 };
 

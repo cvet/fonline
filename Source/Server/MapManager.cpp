@@ -131,41 +131,8 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
     // Bind scripts
     auto errors = 0;
 
-    // Todo: need attention!
-    if (pmap->GetInitScript()) {
-        /*hstring func_num =
-            scriptSys.BindScriptFuncNumByFuncName(pmap->GetInitScript(), "void %s(Map, bool)");
-        if (!func_num)
-        {
-            WriteLog(
-                "Map '{}', can't bind map function '{}'", pmap->GetName(), pmap->GetInitScript());
-            errors++;
-        }*/
-    }
-
-    /*for (auto& cr : static_map.CrittersVec) {
-        if (cr->GetInitScript())
-        {
-            string func_name = cr->GetInitScript();
-            hstring func_num = scriptSys.BindScriptFuncNumByFuncName(func_name, "void %s(Critter, bool)");
-            if (!func_num)
-            {
-                WriteLog("Map '{}', can't bind critter function '{}'", pmap->GetName(), func_name);
-                errors++;
-            }
-        }
-    }*/
-
     for (auto* item : static_map.AllItemsVec) {
-        if (!item->IsStatic() && item->GetInitScript()) {
-            const auto func_name = item->GetInitScript();
-            const auto func = _engine->ScriptSys->FindFunc<void, Item*, bool>(func_name);
-            if (!func) {
-                WriteLog("Map '{}', can't bind item function '{}'", pmap->GetName(), func_name);
-                errors++;
-            }
-        }
-        else if (item->IsStatic() && item->GetInitScript()) {
+        if (item->IsStatic() && item->GetInitScript()) {
             const auto func_name = item->GetInitScript();
             ScriptFunc<bool, Critter*, StaticItem*, bool, int> scenery_func;
             ScriptFunc<void, Critter*, StaticItem*, bool, uchar> trigger_func;
@@ -186,15 +153,10 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
         }
     }
 
-    if (errors != 0) {
-        throw MapManagerException("Load map failed");
-    }
-
     // Parse objects
-    auto maxhx = pmap->GetWidth();
-    auto maxhy = pmap->GetHeight();
-    static_map.HexFlags = new uchar[maxhx * maxhy];
-    std::memset(static_map.HexFlags, 0, maxhx * maxhy);
+    const auto maxhx = pmap->GetWidth();
+    const auto maxhy = pmap->GetHeight();
+    static_map.HexFlags.resize(static_cast<size_t>(maxhx * maxhy), 0u);
 
     uint scenery_count = 0;
     vector<uchar> scenery_data;
@@ -202,21 +164,24 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
     for (auto* item : static_map.AllItemsVec) {
         if (!item->IsStatic()) {
             item->AddRef();
+
             if (item->GetOwnership() == ItemOwnership::MapHex) {
                 static_map.HexItemsVec.push_back(item);
             }
             else {
                 static_map.ChildItemsVec.push_back(item);
             }
+
             continue;
         }
 
         RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
 
-        auto hx = item->GetHexX();
-        auto hy = item->GetHexY();
+        const auto hx = item->GetHexX();
+        const auto hy = item->GetHexY();
         if (hx >= maxhx || hy >= maxhy) {
             WriteLog("Invalid item '{}' position on map '{}', hex x {}, hex y {}", item->GetName(), pmap->GetName(), hx, hy);
+            errors++;
             continue;
         }
 
@@ -298,6 +263,10 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
     static_map.TriggerItemsVec.shrink_to_fit();
     static_map.Tiles.shrink_to_fit();
 
+    if (errors != 0) {
+        throw MapManagerException("Load map failed");
+    }
+
     _staticMaps.emplace(pmap, std::move(static_map));
 }
 
@@ -359,7 +328,7 @@ void MapManager::GenerateMapContent(Map* map)
         // Map id
         uint parent_id = 0;
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {
-            parent_id = base_item->GetCritId();
+            parent_id = base_item->GetCritterId();
         }
         else if (base_item->GetOwnership() == ItemOwnership::ItemContainer) {
             parent_id = base_item->GetContainerId();

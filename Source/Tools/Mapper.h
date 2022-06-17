@@ -179,7 +179,7 @@ public:
     auto operator=(FOMapper&&) noexcept = delete;
     ~FOMapper() override = default;
 
-    auto InitIface() -> int;
+    void InitIface();
     auto IfaceLoadRect(IRect& comp, string_view name) -> bool;
     void MapperMainLoop();
     void RefreshTiles(int tab);
@@ -243,18 +243,18 @@ public:
     void ConsoleKeyUp(KeyCode dik);
     void ConsoleProcess();
     void ParseCommand(string_view command);
-    void LoadMap(string_view map_name, int start_hx, int start_hy);
-    void UnloadMap();
+    auto LoadMap(string_view map_name) -> MapView*;
+    void ShowMap(MapView* map);
+    void SaveMap(MapView* map, string_view custom_name);
+    void UnloadMap(MapView* map);
+    void ResizeMap(MapView* map, ushort width, ushort height);
 
-    void MessBoxGenerate();
     void AddMess(string_view message_text);
     void MessBoxDraw();
-    auto SaveLogFile() -> bool;
 
-    void RunStartScript();
-    void RunMapLoadScript(MapView* map);
-    void RunMapSaveScript(MapView* map);
     void DrawIfaceLayer(uint layer);
+
+    auto GetEntityInnerItems(ClientEntity* entity) -> vector<ItemView*>;
 
     ///@ ExportEvent
     ENTITY_EVENT(OnConsoleMessage, string& /*text*/);

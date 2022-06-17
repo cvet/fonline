@@ -957,7 +957,7 @@ void FOClient::Net_SendProperty(NetProperty type, const Property* prop, Entity* 
 
     switch (type) {
     case NetProperty::CritterItem:
-        _conn.OutBuf << dynamic_cast<ItemView*>(client_entity)->GetCritId();
+        _conn.OutBuf << dynamic_cast<ItemView*>(client_entity)->GetCritterId();
         _conn.OutBuf << client_entity->GetId();
         break;
     case NetProperty::Critter:
@@ -1717,7 +1717,7 @@ void FOClient::Net_OnCritterMoveItem()
 
     if (!cr->IsChosen()) {
         int64 prev_hash_sum = 0;
-        for (const auto* item : cr->InvItems) {
+        for (const auto* item : cr->GetItems()) {
             prev_hash_sum += item->LightGetHash();
         }
 
@@ -1725,16 +1725,12 @@ void FOClient::Net_OnCritterMoveItem()
 
         for (ushort i = 0; i < slots_data_count; i++) {
             const auto* proto_item = ProtoMngr.GetProtoItem(slots_data_pid[i]);
-            if (proto_item != nullptr) {
-                auto* item = new ItemView(this, slots_data_id[i], proto_item);
-                item->RestoreData(slots_data_data[i]);
-                item->SetCritSlot(slots_data_slot[i]);
-                cr->AddItem(item);
-            }
+            RUNTIME_ASSERT(proto_item != nullptr);
+            cr->AddItem(slots_data_id[i], proto_item, slots_data_slot[i], slots_data_data[i]);
         }
 
         int64 hash_sum = 0;
-        for (const auto* item : cr->InvItems) {
+        for (const auto* item : cr->GetItems()) {
             hash_sum += item->LightGetHash();
         }
         if (hash_sum != prev_hash_sum) {
@@ -1989,7 +1985,7 @@ void FOClient::Net_OnChosenAddItem()
     uchar prev_slot = 0;
     uint prev_light_hash = 0;
     if (prev_item != nullptr) {
-        prev_slot = prev_item->GetCritSlot();
+        prev_slot = prev_item->GetCritterSlot();
         prev_light_hash = prev_item->LightGetHash();
         chosen->DeleteItem(prev_item, false);
     }
@@ -1997,16 +1993,9 @@ void FOClient::Net_OnChosenAddItem()
     const auto* proto_item = ProtoMngr.GetProtoItem(pid);
     RUNTIME_ASSERT(proto_item);
 
-    auto* item = new ItemView(this, item_id, proto_item);
-    item->RestoreData(_tempPropertiesData);
-    item->SetOwnership(ItemOwnership::CritterInventory);
-    item->SetCritId(chosen->GetId());
-    item->SetCritSlot(slot);
-    RUNTIME_ASSERT(!item->GetIsHidden());
+    auto* item = chosen->AddItem(item_id, proto_item, slot, _tempPropertiesData);
 
     item->AddRef();
-
-    chosen->AddItem(item);
 
     _rebuildLookBordersRequest = true;
     if (item->LightGetHash() != prev_light_hash && (slot != 0u || prev_slot != 0u)) {
@@ -2039,9 +2028,9 @@ void FOClient::Net_OnChosenEraseItem()
         return;
     }
 
-    auto* item_clone = item->Clone();
+    auto* item_clone = item->CreateRefClone();
 
-    const auto rebuild_light = (item->GetIsLight() && item->GetCritSlot() != 0u);
+    const auto rebuild_light = (item->GetIsLight() && item->GetCritterSlot() != 0u);
     chosen->DeleteItem(item, true);
     if (rebuild_light) {
         CurMap->RebuildLight();
@@ -3173,7 +3162,7 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop, const void*
 
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && item->GetId() != 0u) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-            const auto* cr = CurMap->GetCritter(item->GetCritId());
+            const auto* cr = CurMap->GetCritter(item->GetCritterId());
             if (cr != nullptr && cr->IsChosen()) {
                 Net_SendProperty(NetProperty::ChosenItem, prop, item);
             }
@@ -3956,8 +3945,8 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         auto to_slot = _str(args[4]).toInt();
         auto* item = GetChosen()->GetItem(item_id);
         auto* item_swap = (item_swap_id ? GetChosen()->GetItem(item_swap_id) : nullptr);
-        auto* old_item = item->Clone();
-        int from_slot = item->GetCritSlot();
+        auto* old_item = item->CreateRefClone();
+        int from_slot = item->GetCritterSlot();
 
         // Move
         auto is_light = item->GetIsLight();
@@ -3972,9 +3961,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             }
         }
         else {
-            item->SetCritSlot(static_cast<uchar>(to_slot));
+            item->SetCritterSlot(static_cast<uchar>(to_slot));
             if (item_swap) {
-                item_swap->SetCritSlot(static_cast<uchar>(from_slot));
+                item_swap->SetCritterSlot(static_cast<uchar>(from_slot));
             }
 
             GetMapChosen()->Action(ACTION_MOVE_ITEM, from_slot, item, true);

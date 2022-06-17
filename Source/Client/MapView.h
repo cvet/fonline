@@ -288,6 +288,8 @@ public:
     void ClearIgnorePids();
     void MarkPassedHexes();
 
+    auto GenerateEntityId() -> uint;
+
     AutoScrollInfo AutoScroll {};
     uchar SelectAlpha {100};
     ProtoMap* CurProtoMap {};

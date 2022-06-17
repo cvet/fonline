@@ -91,87 +91,85 @@ public:
     ///@ ExportProperty ScriptFuncType = ItemInit
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ItemOwnership, Ownership);
+    ENTITY_PROPERTY(PrivateCommon, ItemOwnership, Ownership);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, MapId);
+    ENTITY_PROPERTY(PrivateCommon, uint, MapId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, HexX);
+    ENTITY_PROPERTY(PrivateCommon, ushort, HexX);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, HexY);
+    ENTITY_PROPERTY(PrivateCommon, ushort, HexY);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, CritId);
+    ENTITY_PROPERTY(PrivateCommon, uint, CritterId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, CritSlot);
+    ENTITY_PROPERTY(PrivateCommon, uchar, CritterSlot);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, ContainerId);
+    ENTITY_PROPERTY(PrivateCommon, uint, ContainerId);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uint, ContainerStack);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, float, FlyEffectSpeed);
+    ENTITY_PROPERTY(PrivateCommon, uint, ContainerStack);
     ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicMap);
     ///@ ExportProperty Resource
     ENTITY_PROPERTY(Public, hstring, PicInv);
     ///@ ExportProperty
+    ENTITY_PROPERTY(Public, bool, Opened);
+    ///@ ExportProperty
     ENTITY_PROPERTY(Public, short, OffsetX);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, short, OffsetY);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, Stackable);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, GroundLevel);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, Opened);
+    ENTITY_PROPERTY(PublicStatic, float, FlyEffectSpeed);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, CornerType, Corner);
+    ENTITY_PROPERTY(PublicStatic, bool, Stackable);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, Slot);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, Weight);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, uint, Volume);
+    ENTITY_PROPERTY(PublicStatic, bool, GroundLevel);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, DisableEgg);
+    ENTITY_PROPERTY(PublicStatic, CornerType, Corner);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitBase);
+    ENTITY_PROPERTY(PublicStatic, uint, Weight);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitRndMin);
+    ENTITY_PROPERTY(PublicStatic, uint, Volume);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, ushort, AnimWaitRndMax);
+    ENTITY_PROPERTY(PublicStatic, bool, DisableEgg);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimStay0);
+    ENTITY_PROPERTY(PublicStatic, ushort, AnimWaitBase);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimStay1);
+    ENTITY_PROPERTY(PublicStatic, ushort, AnimWaitRndMin);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimShow0);
+    ENTITY_PROPERTY(PublicStatic, ushort, AnimWaitRndMax);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimShow1);
+    ENTITY_PROPERTY(PublicStatic, uchar, AnimStay0);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimHide0);
+    ENTITY_PROPERTY(PublicStatic, uchar, AnimStay1);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, uchar, AnimHide1);
+    ENTITY_PROPERTY(PublicStatic, uchar, AnimShow0);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, char, DrawOrderOffsetHexY);
+    ENTITY_PROPERTY(PublicStatic, uchar, AnimShow1);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, vector<uchar>, BlockLines);
+    ENTITY_PROPERTY(PublicStatic, uchar, AnimHide0);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(Public, bool, IsStatic);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsScenery);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsWall);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsCanOpen);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsScrollBlock);
+    ENTITY_PROPERTY(PublicStatic, uchar, AnimHide1);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, char, DrawOrderOffsetHexY);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, vector<uchar>, BlockLines);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, bool, IsStatic);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, bool, IsScenery);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, bool, IsWall);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, bool, IsCanOpen);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, bool, IsScrollBlock);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsHidden);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsHiddenPicture);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsHiddenInStatic);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Public, bool, IsFlat);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, bool, IsHiddenPicture);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, bool, IsHiddenInStatic);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(PublicStatic, bool, IsFlat);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, bool, IsNoBlock);
     ///@ ExportProperty

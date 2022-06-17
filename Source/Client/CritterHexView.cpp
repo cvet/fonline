@@ -113,13 +113,15 @@ auto CritterHexView::GetFadeAlpha() -> uchar
     return static_cast<uchar>(alpha);
 }
 
-void CritterHexView::AddItem(ItemView* item)
+auto CritterHexView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
-    CritterView::AddItem(item);
+    auto* item = CritterView::AddItem(id, proto, slot, properties_data);
 
-    if (item->GetCritSlot() != 0u && !IsAnim()) {
+    if (item->GetCritterSlot() != 0u && !IsAnim()) {
         AnimateStay();
     }
+
+    return item;
 }
 
 void CritterHexView::DeleteItem(ItemView* item, bool animate)
@@ -440,7 +442,7 @@ void CritterHexView::Animate(uint anim1, uint anim2, ItemView* item)
         anim1 = GetAnim1();
     }
     if (item != nullptr) {
-        item = item->Clone();
+        item = item->CreateRefClone();
     }
 
 #if FO_ENABLE_3D
@@ -562,15 +564,15 @@ auto CritterHexView::IsWalkAnim() const -> bool
 
 void CritterHexView::ClearAnim()
 {
-    for (const auto& i : _animSequence) {
-        i.ActiveItem->Release();
+    for (const auto& anim : _animSequence) {
+        anim.ActiveItem->Release();
     }
     _animSequence.clear();
 }
 
 auto CritterHexView::IsHaveLightSources() const -> bool
 {
-    for (const auto* item : InvItems) {
+    for (const auto* item : _items) {
         if (item->GetIsLight()) {
             return true;
         }

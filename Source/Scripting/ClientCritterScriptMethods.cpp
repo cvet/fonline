@@ -207,7 +207,14 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Critter_CountItem(CritterView* self, hstring protoId)
 {
-    return self->CountItemPid(protoId);
+    uint result = 0;
+    for (const auto* item : self->GetItems()) {
+        if (!protoId || item->GetProtoId() == protoId) {
+            result += item->GetCount();
+        }
+    }
+
+    return result;
 }
 
 ///# ...
@@ -231,7 +238,7 @@
     }
 
     if (proto_item->GetStackable()) {
-        for (auto* item : self->InvItems) {
+        for (auto* item : self->GetItems()) {
             if (item->GetProtoId() == protoId) {
                 return item;
             }
@@ -239,9 +246,9 @@
     }
     else {
         ItemView* another_slot = nullptr;
-        for (auto* item : self->InvItems) {
+        for (auto* item : self->GetItems()) {
             if (item->GetProtoId() == protoId) {
-                if (item->GetCritSlot() == 0) {
+                if (item->GetCritterSlot() == 0) {
                     return item;
                 }
                 another_slot = item;
@@ -259,7 +266,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] ItemView* Client_Critter_GetItem(CritterView* self, ItemComponent component)
 {
-    for (auto* item : self->InvItems) {
+    for (auto* item : self->GetItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             return item;
         }
@@ -277,7 +284,7 @@
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
-    for (auto* item : self->InvItems) {
+    for (auto* item : self->GetItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             return item;
         }
@@ -291,7 +298,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self)
 {
-    return self->InvItems;
+    return self->GetItems();
 }
 
 ///# ...
@@ -301,9 +308,9 @@
 [[maybe_unused]] vector<ItemView*> Client_Critter_GetItems(CritterView* self, ItemComponent component)
 {
     vector<ItemView*> items;
-    items.reserve(self->InvItems.size());
+    items.reserve(self->GetItems().size());
 
-    for (auto* item : self->InvItems) {
+    for (auto* item : self->GetItems()) {
         if (item->GetProto()->HasComponent(static_cast<hstring::hash_t>(component))) {
             items.push_back(item);
         }
@@ -322,9 +329,9 @@
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<ItemView>(self->GetEngine(), property);
 
     vector<ItemView*> items;
-    items.reserve(self->InvItems.size());
+    items.reserve(self->GetItems().size());
 
-    for (auto* item : self->InvItems) {
+    for (auto* item : self->GetItems()) {
         if (item->GetValueAsInt(prop) == propertyValue) {
             items.push_back(item);
         }

@@ -50,7 +50,6 @@ public:
     auto operator=(ItemView&&) noexcept = delete;
     ~ItemView() override = default;
 
-    [[nodiscard]] auto Clone() const -> ItemView*;
     [[nodiscard]] auto IsStatic() const -> bool;
     [[nodiscard]] auto IsAnyScenery() const -> bool;
     [[nodiscard]] auto IsScenery() const -> bool;
@@ -60,4 +59,13 @@ public:
     [[nodiscard]] auto GetAlpha() const -> uchar;
     [[nodiscard]] auto GetInvColor() const -> uint;
     [[nodiscard]] auto LightGetHash() const -> uint;
+    [[nodiscard]] auto GetInnerItems() -> vector<ItemView*>;
+
+    [[nodiscard]] auto CreateRefClone() const -> ItemView*;
+
+    auto AddInnerItem(uint id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*;
+    void DeleteInnerItem(ItemView* item);
+
+protected:
+    vector<ItemView*> _innerItems {};
 };

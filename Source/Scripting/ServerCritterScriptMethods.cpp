@@ -168,11 +168,11 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToGlobal(Critter* self)
 {
-    if (self->LockMapTransfers) {
+    if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
 
-    if (self->GetMapId() && !self->GetEngine()->MapMngr.TransitToGlobal(self, 0, true)) {
+    if (self->GetMapId() != 0u && !self->GetEngine()->MapMngr.TransitToGlobal(self, 0, true)) {
         throw ScriptException("Transit to global failed");
     }
 }
@@ -182,10 +182,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToGlobalWithGroup(Critter* self, const vector<Critter*>& group)
 {
-    if (self->LockMapTransfers) {
+    if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
-    if (!self->GetMapId()) {
+    if (self->GetMapId() == 0u) {
         throw ScriptException("Critter already on global");
     }
 
@@ -205,10 +205,10 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_TransitToGlobalGroup(Critter* self, Critter* leader)
 {
-    if (self->LockMapTransfers) {
+    if (self->LockMapTransfers > 0) {
         throw ScriptException("Transfers locked");
     }
-    if (!self->GetMapId()) {
+    if (self->GetMapId() == 0u) {
         throw ScriptException("Critter already on global");
     }
     if (leader == nullptr) {
@@ -313,7 +313,7 @@
     if (howSay >= SAY_NETMSG) {
         self->Send_Text(self, howSay != SAY_FLASH_WINDOW ? text : " ", howSay);
     }
-    else if (self->GetMapId()) {
+    else if (self->GetMapId() != 0u) {
         self->SendAndBroadcast_Text(self->VisCr, text, howSay, false);
     }
 }
@@ -326,13 +326,13 @@
 [[maybe_unused]] void Server_Critter_SayMsg(Critter* self, uchar howSay, ushort textMsg, uint numStr)
 {
     if (self->IsNpc() && !self->IsAlive()) {
-        return; // throw ScriptException("Npc is not life";
+        return;
     }
 
     if (howSay >= SAY_NETMSG) {
         self->Send_TextMsg(self, numStr, howSay, textMsg);
     }
-    else if (self->GetMapId()) {
+    else if (self->GetMapId() != 0u) {
         self->SendAndBroadcast_Msg(self->VisCr, numStr, howSay, textMsg);
     }
 }
@@ -679,7 +679,7 @@
     }
 
     // To slot arg is equal of current item slot
-    if (item->GetCritSlot() == slot) {
+    if (item->GetCritterSlot() == slot) {
         return;
     }
 
@@ -692,11 +692,11 @@
     }
 
     auto* item_swap = (slot ? self->GetItemSlot(slot) : nullptr);
-    const auto from_slot = item->GetCritSlot();
+    const auto from_slot = item->GetCritterSlot();
 
-    item->SetCritSlot(slot);
+    item->SetCritterSlot(slot);
     if (item_swap) {
-        item_swap->SetCritSlot(from_slot);
+        item_swap->SetCritterSlot(from_slot);
     }
 
     self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
@@ -833,7 +833,7 @@
     }
 
     auto* loc = self->GetEngine()->MapMngr.GetLocation(locId);
-    if (!loc) {
+    if (loc == nullptr) {
         throw ScriptException("Location not found");
     }
 
@@ -843,7 +843,7 @@
         self->Send_AutomapsInfo(nullptr, loc);
     }
 
-    if (!self->GetMapId()) {
+    if (self->GetMapId() == 0u) {
         self->Send_GlobalLocation(loc, true);
     }
 
@@ -862,7 +862,7 @@
     if (gmap_mask.Get2Bit(zx, zy) == GM_FOG_FULL) {
         gmap_mask.Set2Bit(zx, zy, GM_FOG_HALF);
         self->SetGlobalMapFog(gmap_fog);
-        if (!self->GetMapId()) {
+        if (self->GetMapId() == 0u) {
             self->Send_GlobalMapFog(zx, zy, GM_FOG_HALF);
         }
     }

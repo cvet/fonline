@@ -402,17 +402,7 @@
 ///@ ExportMethod
 [[maybe_unused]] MapView* Mapper_Game_LoadMap(FOMapper* mapper, string_view fileName)
 {
-    // Todo: need attention!
-    // auto* pmap = new ProtoMap(mapper->ToHashedString(fileName), mapper->GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME));
-    // if (!pmap->EditorLoad(mapper->ServerFileSys, mapper->ProtoMngr, mapper->SprMngr, mapper->ResMngr))
-    //     return nullptr;
-
-    // auto* map = new MapView(0, pmap);
-    // mapper->LoadedMaps.push_back(map);
-    // mapper->RunMapLoadScript(map);
-
-    // return map;
-    return nullptr;
+    return mapper->LoadMap(fileName);
 }
 
 ///# ...
@@ -420,64 +410,24 @@
 ///@ ExportMethod
 [[maybe_unused]] void Mapper_Game_UnloadMap(FOMapper* mapper, MapView* map)
 {
-    if (map == nullptr) {
-        throw ScriptException("Proto map arg nullptr");
-    }
-
-    const auto it = std::find(mapper->LoadedMaps.begin(), mapper->LoadedMaps.end(), map);
-    if (it != mapper->LoadedMaps.end()) {
-        mapper->LoadedMaps.erase(it);
-    }
-
-    if (map == mapper->CurMap) {
-        mapper->UnloadMap();
-    }
-
-    map->GetProto()->Release();
-    map->Release();
+    mapper->UnloadMap(map);
 }
 
 ///# ...
 ///# param map ...
 ///# param customName ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Mapper_Game_SaveMap(FOMapper* mapper, MapView* map, string_view customName)
+[[maybe_unused]] void Mapper_Game_SaveMap(FOMapper* mapper, MapView* map, string_view customName)
 {
-    if (map == nullptr) {
-        throw ScriptException("Proto map arg nullptr");
-    }
-
-    // Todo: need attention!
-    //((ProtoMap*)map->Proto)->EditorSave(mapper->ServerFileSys, customName);
-    mapper->RunMapSaveScript(map);
-    return true;
+    mapper->SaveMap(map, customName);
 }
 
 ///# ...
 ///# param map ...
-///# return ...
 ///@ ExportMethod
-[[maybe_unused]] bool Mapper_Game_ShowMap(FOMapper* mapper, MapView* map)
+[[maybe_unused]] void Mapper_Game_ShowMap(FOMapper* mapper, MapView* map)
 {
-    if (map == nullptr) {
-        throw ScriptException("Proto map arg nullptr");
-    }
-
-    if (mapper->CurMap == map) {
-        return true;
-    }
-
-    mapper->SelectClear();
-    // Todo: need attention!
-    // if (!mapper->CurMap->SetProtoMap(*static_cast<const ProtoMap*>(map->GetProto()))) {
-    //  return false;
-    //}
-
-    mapper->CurMap->FindSetCenter(map->GetWorkHexX(), map->GetWorkHexY());
-    mapper->CurMap = map;
-
-    return true;
+    mapper->ShowMap(map);
 }
 
 ///# ...
@@ -524,72 +474,7 @@
         throw ScriptException("Map not loaded");
     }
 
-    RUNTIME_ASSERT(mapper->CurMap);
-    auto* pmap = const_cast<ProtoMap*>(dynamic_cast<const ProtoMap*>(mapper->CurMap->GetProto()));
-
-    // Unload current
-    // Todo: need attention!
-    // mapper->CurMap->GetProtoMap(*pmap);
-    // mapper->SelectClear();
-    mapper->UnloadMap();
-
-    // Check size
-    auto maxhx = std::clamp(width, MAXHEX_MIN, MAXHEX_MAX);
-    auto maxhy = std::clamp(height, MAXHEX_MIN, MAXHEX_MAX);
-    const auto old_maxhx = pmap->GetWidth();
-    const auto old_maxhy = pmap->GetHeight();
-
-    maxhx = std::clamp(maxhx, MAXHEX_MIN, MAXHEX_MAX);
-    maxhy = std::clamp(maxhy, MAXHEX_MIN, MAXHEX_MAX);
-
-    if (pmap->GetWorkHexX() >= maxhx) {
-        pmap->SetWorkHexX(maxhx - 1);
-    }
-    if (pmap->GetWorkHexY() >= maxhy) {
-        pmap->SetWorkHexY(maxhy - 1);
-    }
-
-    pmap->SetWidth(maxhx);
-    pmap->SetHeight(maxhy);
-
-    // Delete truncated entities
-    if (maxhx < old_maxhx || maxhy < old_maxhy) {
-        // Todo: need attention!
-        /*for (auto it = pmap->AllEntities.begin(); it != pmap->AllEntities.end();)
-        {
-            ClientEntity* entity = *it;
-            int hx = (entity->Type == EntityType::CritterView ? ((CritterView*)entity)->GetHexX() :
-                                                                ((ItemHexView*)entity)->GetHexX());
-            int hy = (entity->Type == EntityType::CritterView ? ((CritterView*)entity)->GetHexY() :
-                                                                ((ItemHexView*)entity)->GetHexY());
-            if (hx >= maxhx || hy >= maxhy)
-            {
-                entity->Release();
-                it = pmap->AllEntities.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }*/
-    }
-
-    // Delete truncated tiles
-    if (maxhx < old_maxhx || maxhy < old_maxhy) {
-        // Todo: need attention!
-        /*for (auto it = pmap->Tiles.begin(); it != pmap->Tiles.end();)
-        {
-            MapTile& tile = *it;
-            if (tile.HexX >= maxhx || tile.HexY >= maxhy)
-                it = pmap->Tiles.erase(it);
-            else
-                ++it;
-        }*/
-    }
-
-    // Update visibility
-    // mapper->CurMap->SetProtoMap(*pmap);
-    mapper->CurMap->FindSetCenter(pmap->GetWorkHexX(), pmap->GetWorkHexY());
+    mapper->ResizeMap(mapper->CurMap, width, height);
 }
 
 ///# ...

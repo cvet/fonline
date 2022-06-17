@@ -91,7 +91,7 @@
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritId());
+        const auto* cr = self->GetEngine()->CrMngr.GetCritter(self->GetCritterId());
         if (cr == nullptr) {
             throw ScriptException("Critter accessory, critter not found");
         }

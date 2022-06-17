@@ -1752,9 +1752,9 @@ void MapView::CollectLightSources()
     // Items in critters slots
     for (auto* cr : _critters) {
         auto added = false;
-        for (const auto* inv_item : cr->InvItems) {
-            if (inv_item->GetIsLight() && inv_item->GetCritSlot() != 0u) {
-                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), inv_item->GetLightColor(), inv_item->GetLightDistance(), inv_item->GetLightFlags(), inv_item->GetLightIntensity(), &cr->SprOx, &cr->SprOy});
+        for (const auto* item : cr->GetItems()) {
+            if (item->GetIsLight() && item->GetCritterSlot() != 0u) {
+                _lightSources.push_back({cr->GetHexX(), cr->GetHexY(), item->GetLightColor(), item->GetLightDistance(), item->GetLightFlags(), item->GetLightIntensity(), &cr->SprOx, &cr->SprOy});
                 added = true;
             }
         }
@@ -4150,4 +4150,10 @@ void MapView::MarkPassedHexes()
     }
 
     RefreshMap();
+}
+
+auto MapView::GenerateEntityId() -> uint
+{
+    // Todo: generate unique entity id
+    return 0u;
 }

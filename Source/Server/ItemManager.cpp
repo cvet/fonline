@@ -55,9 +55,9 @@ void ItemManager::LinkItems()
 
         switch (item->GetOwnership()) {
         case ItemOwnership::CritterInventory: {
-            Critter* cr = _engine->CrMngr.GetCritter(item->GetCritId());
+            Critter* cr = _engine->CrMngr.GetCritter(item->GetCritterId());
             if (cr == nullptr) {
-                throw EntitiesLoadException("Item critter not found", item->GetName(), item->GetId(), item->GetCritId());
+                throw EntitiesLoadException("Item critter not found", item->GetName(), item->GetId(), item->GetCritterId());
             }
 
             cr->SetItem(item);
@@ -98,7 +98,7 @@ auto ItemManager::GetItemHolder(Item* item) -> Entity*
 {
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory:
-        return _engine->CrMngr.GetCritter(item->GetCritId());
+        return _engine->CrMngr.GetCritter(item->GetCritterId());
     case ItemOwnership::MapHex:
         return _engine->MapMngr.GetMap(item->GetMapId());
     case ItemOwnership::ItemContainer:
@@ -119,21 +119,23 @@ void ItemManager::EraseItemHolder(Item* item, Entity* holder)
         else if (item->GetIsRadio()) {
             RegisterRadio(item);
         }
-        item->SetCritId(0);
-        item->SetCritSlot(0);
+        item->SetCritterId(0u);
+        item->SetCritterSlot(0u);
     } break;
     case ItemOwnership::MapHex: {
         if (holder != nullptr) {
             dynamic_cast<Map*>(holder)->EraseItem(item->GetId());
         }
-        item->SetMapId(0);
+        item->SetMapId(0u);
+        item->SetHexX(0u);
+        item->SetHexY(0u);
     } break;
     case ItemOwnership::ItemContainer: {
         if (holder != nullptr) {
             EraseItemFromContainer(dynamic_cast<Item*>(holder), item);
         }
-        item->SetContainerId(0);
-        item->SetContainerStack(0);
+        item->SetContainerId(0u);
+        item->SetContainerStack(0u);
     } break;
     default:
         break;
@@ -171,7 +173,7 @@ void ItemManager::AddItemToContainer(Item* cont, Item*& item, uint stack_id)
     if (item->GetStackable()) {
         auto* item_ = cont->ContGetItemByPid(item->GetProtoId(), stack_id);
         if (item_ != nullptr) {
-            item_->ChangeCount(item->GetCount());
+            item_->SetCount(item_->GetCount() + item->GetCount());
             DeleteItem(item);
             item = item_;
             return;
@@ -312,13 +314,15 @@ auto ItemManager::SplitItem(Item* item, uint count) -> Item*
     }
 
     new_item->SetOwnership(ItemOwnership::Nowhere);
-    new_item->SetCritId(0);
-    new_item->SetCritSlot(0);
-    new_item->SetMapId(0);
-    new_item->SetContainerId(0);
-    new_item->SetContainerStack(0);
+    new_item->SetCritterId(0u);
+    new_item->SetCritterSlot(0u);
+    new_item->SetMapId(0u);
+    new_item->SetHexX(0u);
+    new_item->SetHexY(0u);
+    new_item->SetContainerId(0u);
+    new_item->SetContainerStack(0u);
 
-    item->ChangeCount(-static_cast<int>(count));
+    item->SetCount(item_count - count);
 
     // Radio collection
     if (new_item->GetIsRadio()) {
@@ -340,7 +344,7 @@ auto ItemManager::GetItem(uint item_id) const -> const Item*
 
 void ItemManager::MoveItem(Item* item, uint count, Critter* to_cr, bool skip_checks)
 {
-    if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritId() == to_cr->GetId()) {
+    if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == to_cr->GetId()) {
         return;
     }
 
@@ -428,7 +432,7 @@ auto ItemManager::AddItemContainer(Item* cont, hstring pid, uint count, uint sta
 
     if (item != nullptr) {
         if (item->GetStackable()) {
-            item->ChangeCount(count);
+            item->SetCount(item->GetCount() + count);
             result = item;
         }
         else {
@@ -488,7 +492,7 @@ auto ItemManager::AddItemCritter(Critter* cr, hstring pid, uint count) -> Item*
     Item* result = nullptr;
 
     if (item != nullptr && item->GetStackable()) {
-        item->ChangeCount(count);
+        item->SetCount(item->GetCount() + count);
         result = item;
     }
     else {
@@ -552,7 +556,8 @@ auto ItemManager::SubItemCritter(Critter* cr, hstring pid, uint count, vector<It
                 }
             }
             else {
-                item->ChangeCount(-static_cast<int>(count));
+                RUNTIME_ASSERT(count > item->GetCount());
+                item->SetCount(item->GetCount() - count);
             }
         }
     }
@@ -680,7 +685,7 @@ void ItemManager::RadioSendTextEx(ushort channel, uchar broadcast_type, uint fro
             }
 
             if (radio->GetOwnership() == ItemOwnership::CritterInventory) {
-                auto* cr = _engine->CrMngr.GetCritter(radio->GetCritId());
+                auto* cr = _engine->CrMngr.GetCritter(radio->GetCritterId());
                 if (cr != nullptr && cr->RadioMessageSended != msg_count) {
                     if (broadcast != RADIO_BROADCAST_FORCE_ALL) {
                         if (broadcast == RADIO_BROADCAST_MAP) {

@@ -72,7 +72,6 @@ public:
     [[nodiscard]] auto ContIsItems() const -> bool;
 
     void EvaluateSortValue(const vector<Item*>& items);
-    void ChangeCount(int val);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnFinish);
@@ -88,5 +87,4 @@ public:
 
 private:
     vector<Item*>* _childItems {};
-    bool _nonConstHelper {};
 };

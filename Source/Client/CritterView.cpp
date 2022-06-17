@@ -79,25 +79,31 @@ void CritterView::SetPlayerOffline(bool is_offline)
     _isPlayerOffline = is_offline;
 }
 
-void CritterView::AddItem(ItemView* item)
+auto CritterView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
+    auto* item = new ItemView(_engine, id, proto);
+    item->RestoreData(properties_data);
+
     item->SetOwnership(ItemOwnership::CritterInventory);
-    item->SetCritId(GetId());
+    item->SetCritterId(GetId());
+    item->SetCritterSlot(slot);
 
-    InvItems.push_back(item);
+    _items.push_back(item);
 
-    std::sort(InvItems.begin(), InvItems.end(), [](ItemView* l, ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+    std::sort(_items.begin(), _items.end(), [](const ItemView* l, const ItemView* r) { return l->GetSortValue() < r->GetSortValue(); });
+
+    return item;
 }
 
 void CritterView::DeleteItem(ItemView* item, bool animate)
 {
-    item->SetOwnership(ItemOwnership::Nowhere);
-    item->SetCritId(0);
-    item->SetCritSlot(0);
+    const auto it = std::find(_items.begin(), _items.end(), item);
+    RUNTIME_ASSERT(it != _items.end());
+    _items.erase(it);
 
-    const auto it = std::find(InvItems.begin(), InvItems.end(), item);
-    RUNTIME_ASSERT(it != InvItems.end());
-    InvItems.erase(it);
+    item->SetOwnership(ItemOwnership::Nowhere);
+    item->SetCritterId(0u);
+    item->SetCritterSlot(0u);
 
     item->MarkAsDestroyed();
     item->Release();
@@ -105,8 +111,8 @@ void CritterView::DeleteItem(ItemView* item, bool animate)
 
 void CritterView::DeleteAllItems()
 {
-    while (!InvItems.empty()) {
-        DeleteItem(*InvItems.begin(), false);
+    while (!_items.empty()) {
+        DeleteItem(*_items.begin(), false);
     }
 }
 
@@ -114,7 +120,7 @@ auto CritterView::GetItem(uint item_id) -> ItemView*
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : InvItems) {
+    for (auto* item : _items) {
         if (item->GetId() == item_id) {
             return item;
         }
@@ -126,7 +132,7 @@ auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : InvItems) {
+    for (auto* item : _items) {
         if (item->GetProtoId() == item_pid) {
             return item;
         }
@@ -134,15 +140,11 @@ auto CritterView::GetItemByPid(hstring item_pid) -> ItemView*
     return nullptr;
 }
 
-auto CritterView::CountItemPid(hstring item_pid) const -> uint
+auto CritterView::GetItems() -> const vector<ItemView*>&
 {
-    uint result = 0;
-    for (const auto* item : InvItems) {
-        if (item->GetProtoId() == item_pid) {
-            result += item->GetCount();
-        }
-    }
-    return result;
+    NON_CONST_METHOD_HINT();
+
+    return _items;
 }
 
 auto CritterView::CheckFind(CritterFindType find_type) const -> bool

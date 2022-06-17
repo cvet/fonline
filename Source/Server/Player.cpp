@@ -244,7 +244,7 @@ void Player::Send_Property(NetProperty type, const Property* prop, Entity* entit
 
     switch (type) {
     case NetProperty::CritterItem:
-        Connection->Bout << dynamic_cast<Item*>(entity)->GetCritId();
+        Connection->Bout << dynamic_cast<Item*>(entity)->GetCritterId();
         Connection->Bout << dynamic_cast<ServerEntity*>(entity)->GetId();
         break;
     case NetProperty::Critter:
@@ -370,7 +370,7 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     vector<const Item*> items;
     items.reserve(inv_items.size());
     for (const auto* item_ : inv_items) {
-        const auto slot = item_->GetCritSlot();
+        const auto slot = item_->GetCritterSlot();
         if (slot < _engine->Settings.CritterSlotEnabled.size() && _engine->Settings.CritterSlotEnabled[slot] && slot < _engine->Settings.CritterSlotSendData.size() && _engine->Settings.CritterSlotSendData[slot]) {
             items.push_back(item_);
         }
@@ -394,7 +394,7 @@ void Player::Send_MoveItem(Critter* from_cr, Item* item, uchar action, uchar pre
     Connection->Bout << static_cast<ushort>(items.size());
     for (const auto i : xrange(items)) {
         const auto* item_ = items[i];
-        Connection->Bout << item_->GetCritSlot();
+        Connection->Bout << item_->GetCritterSlot();
         Connection->Bout << item_->GetId();
         Connection->Bout << item_->GetProtoId();
         NET_WRITE_PROPERTIES(Connection->Bout, items_data[i], items_data_sizes[i]);
@@ -521,7 +521,7 @@ void Player::Send_AddItem(Item* item)
     Connection->Bout << msg_len;
     Connection->Bout << item->GetId();
     Connection->Bout << item->GetProtoId();
-    Connection->Bout << item->GetCritSlot();
+    Connection->Bout << item->GetCritterSlot();
     NET_WRITE_PROPERTIES(Connection->Bout, data, data_sizes);
     CONNECTION_OUTPUT_END(Connection);
 }

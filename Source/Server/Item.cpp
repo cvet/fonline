@@ -51,16 +51,11 @@ void Item::EvaluateSortValue(const vector<Item*>& items)
         }
 
         if (sort_value >= item->GetSortValue()) {
-            sort_value = item->GetSortValue() - 1;
+            sort_value = static_cast<short>(item->GetSortValue() - 1);
         }
     }
 
     SetSortValue(sort_value);
-}
-
-void Item::ChangeCount(int val)
-{
-    SetCount(GetCount() + val);
 }
 
 auto Item::ContGetItem(uint item_id, bool skip_hidden) -> Item*

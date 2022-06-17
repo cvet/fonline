@@ -61,23 +61,22 @@ public:
     [[nodiscard]] auto IsKnockout() const -> bool { return GetCond() == CritterCondition::Knockout; }
     [[nodiscard]] auto IsDead() const -> bool { return GetCond() == CritterCondition::Dead; }
     [[nodiscard]] auto CheckFind(CritterFindType find_type) const -> bool;
-    [[nodiscard]] auto CountItemPid(hstring item_pid) const -> uint;
     [[nodiscard]] auto GetItem(uint item_id) -> ItemView*;
     [[nodiscard]] auto GetItemByPid(hstring item_pid) -> ItemView*;
+    [[nodiscard]] auto GetItems() -> const vector<ItemView*>&;
 
     virtual void Init();
     virtual void Finish();
-    virtual void AddItem(ItemView* item);
+    virtual auto AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*;
     virtual void DeleteItem(ItemView* item, bool animate);
     void DeleteAllItems();
     void SetPlayer(bool is_player, bool is_chosen);
     void SetPlayerOffline(bool is_offline);
-
-    vector<ItemView*> InvItems {}; // Todo: incapsulate InvItems
 
 protected:
     string _nameOnHead {};
     bool _ownedByPlayer {};
     bool _isPlayerOffline {};
     bool _isChosen {};
+    vector<ItemView*> _items {};
 };

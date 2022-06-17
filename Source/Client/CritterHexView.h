@@ -77,7 +77,7 @@ public:
 
     void Init() override;
     void Finish() override;
-    void AddItem(ItemView* item) override;
+    auto AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView* override;
     void DeleteItem(ItemView* item, bool animate) override;
     void ChangeDir(uchar dir);
     void ChangeDirAngle(int dir_angle);

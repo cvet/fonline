@@ -107,7 +107,7 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
             const auto count = item->GetCount();
             _engine->ItemMngr.DeleteItem(item);
             item = item_already;
-            item->ChangeCount(count);
+            item->SetCount(item->GetCount() + count);
             return;
         }
     }
@@ -118,7 +118,7 @@ void CritterManager::AddItemToCritter(Critter* cr, Item*& item, bool send)
     // Send
     if (send) {
         cr->Send_AddItem(item);
-        if (item->GetCritSlot() != 0u) {
+        if (item->GetCritterSlot() != 0u) {
             cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
         }
     }
@@ -143,11 +143,11 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     if (send) {
         cr->Send_EraseItem(item);
     }
-    if (item->GetCritSlot() != 0u) {
+    if (item->GetCritterSlot() != 0u) {
         cr->SendAndBroadcast_MoveItem(item, ACTION_REFRESH, 0);
     }
 
-    _engine->OnCritterMoveItem.Fire(cr, item, item->GetCritSlot());
+    _engine->OnCritterMoveItem.Fire(cr, item, item->GetCritterSlot());
 }
 
 auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
@@ -413,7 +413,7 @@ auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> I
         Item* another_slot = nullptr;
         for (auto* item : cr->_invItems) {
             if (item->GetProtoId() == item_pid) {
-                if (item->GetCritSlot() == 0u) {
+                if (item->GetCritterSlot() == 0u) {
                     return item;
                 }
                 another_slot = item;

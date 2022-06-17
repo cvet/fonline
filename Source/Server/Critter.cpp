@@ -171,7 +171,9 @@ auto Critter::GetCrSelf(uint crid) -> Critter*
 
 auto Critter::GetCrFromVisCr(CritterFindType find_type, bool vis_cr_self) -> vector<Critter*>
 {
-    auto& vis_cr = (vis_cr_self ? VisCrSelf : VisCr);
+    NON_CONST_METHOD_HINT();
+
+    const auto& vis_cr = vis_cr_self ? VisCrSelf : VisCr;
 
     vector<Critter*> critters;
     for (auto* cr : vis_cr) {
@@ -297,11 +299,11 @@ void Critter::SetItem(Item* item)
     _invItems.push_back(item);
 
     if (item->GetOwnership() != ItemOwnership::CritterInventory) {
-        item->SetCritSlot(0);
+        item->SetCritterSlot(0);
     }
 
     item->SetOwnership(ItemOwnership::CritterInventory);
-    item->SetCritId(GetId());
+    item->SetCritterId(GetId());
 }
 
 auto Critter::GetItem(uint item_id, bool skip_hide) -> Item*
@@ -340,7 +342,7 @@ auto Critter::GetItemByPidSlot(hstring item_pid, int slot) -> Item*
     NON_CONST_METHOD_HINT();
 
     for (auto* item : _invItems) {
-        if (item->GetProtoId() == item_pid && item->GetCritSlot() == slot) {
+        if (item->GetProtoId() == item_pid && item->GetCritterSlot() == slot) {
             return item;
         }
     }
@@ -352,7 +354,7 @@ auto Critter::GetItemSlot(int slot) -> Item*
     NON_CONST_METHOD_HINT();
 
     for (auto* item : _invItems) {
-        if (item->GetCritSlot() == slot) {
+        if (item->GetCritterSlot() == slot) {
             return item;
         }
     }
@@ -367,7 +369,7 @@ auto Critter::GetItemsSlot(int slot) -> vector<Item*>
     items.reserve(_invItems.size());
 
     for (auto* item : _invItems) {
-        if (slot < 0 || item->GetCritSlot() == slot) {
+        if (slot < 0 || item->GetCritterSlot() == slot) {
             items.push_back(item);
         }
     }
@@ -543,7 +545,8 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
         return;
     }
 
-    auto dist = -1;
+    auto dist = static_cast<uint>(-1);
+
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
         dist = _engine->Settings.ShoutDist + GetMultihex();
     }
@@ -556,7 +559,7 @@ void Critter::SendAndBroadcast_Text(const vector<Critter*>& to_cr, string_view t
             continue;
         }
 
-        if (dist == -1) {
+        if (dist == static_cast<uint>(-1)) {
             cr->Send_TextEx(from_id, text, how_say, unsafe_text);
         }
         else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
@@ -573,7 +576,8 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
         return;
     }
 
-    auto dist = -1;
+    auto dist = static_cast<uint>(-1);
+
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
         dist = _engine->Settings.ShoutDist + GetMultihex();
     }
@@ -586,7 +590,7 @@ void Critter::SendAndBroadcast_Msg(const vector<Critter*>& to_cr, uint num_str, 
             continue;
         }
 
-        if (dist == -1) {
+        if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsg(this, num_str, how_say, num_msg);
         }
         else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {
@@ -603,7 +607,8 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
         return;
     }
 
-    auto dist = -1;
+    auto dist = static_cast<uint>(-1);
+
     if (how_say == SAY_SHOUT || how_say == SAY_SHOUT_ON_HEAD) {
         dist = _engine->Settings.ShoutDist + GetMultihex();
     }
@@ -616,7 +621,7 @@ void Critter::SendAndBroadcast_MsgLex(const vector<Critter*>& to_cr, uint num_st
             continue;
         }
 
-        if (dist == -1) {
+        if (dist == static_cast<uint>(-1)) {
             cr->Send_TextMsgLex(this, num_str, how_say, num_msg, lexems);
         }
         else if (_engine->Geometry.CheckDist(GetHexX(), GetHexY(), cr->GetHexX(), cr->GetHexY(), dist + cr->GetMultihex())) {

@@ -2564,7 +2564,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void*
 
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             if (is_public || is_protected) {
-                auto* cr = CrMngr.GetCritter(item->GetCritId());
+                auto* cr = CrMngr.GetCritter(item->GetCritterId());
                 if (cr != nullptr) {
                     if (is_public || is_protected) {
                         cr->Send_Property(NetProperty::ChosenItem, prop, item);
@@ -2647,7 +2647,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const v
         }
     }
     else if (item->GetOwnership() == ItemOwnership::CritterInventory) {
-        auto* cr = CrMngr.GetCritter(item->GetCritId());
+        auto* cr = CrMngr.GetCritter(item->GetCritterId());
         if (cr != nullptr) {
             const auto value = *static_cast<const bool*>(new_value);
             if (value) {

@@ -42,7 +42,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self)
 {
-    return self->Clone();
+    return self->CreateRefClone();
 }
 
 ///# ...
@@ -51,7 +51,7 @@
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Item_Clone(ItemView* self, uint count)
 {
-    auto* cloned_item = self->Clone();
+    auto* cloned_item = self->CreateRefClone();
     cloned_item->SetCount(count);
     return cloned_item;
 }
@@ -69,7 +69,7 @@
 
     switch (self->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
-        const auto* cr = self->GetEngine()->CurMap->GetCritter(self->GetCritId());
+        const auto* cr = self->GetEngine()->CurMap->GetCritter(self->GetCritterId());
         if (!cr) {
             throw ScriptException("CritterCl accessory, CritterCl not found");
         }
@@ -111,13 +111,9 @@
 }
 
 ///# ...
-///# param stackId ...
 ///# return ...
 ///@ ExportMethod ExcludeInSingleplayer
-[[maybe_unused]] vector<ItemView*> Client_Item_GetItems(ItemView* self, uint stackId)
+[[maybe_unused]] vector<ItemView*> Client_Item_GetInnerItems(ItemView* self)
 {
-    vector<ItemView*> items;
-    // Todo: need attention!
-    // self->ContGetItems(items, stackId);
-    return items;
+    return self->GetInnerItems();
 }
