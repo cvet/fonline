@@ -817,7 +817,10 @@ def parseTags():
                         eventArgs.append((argType, argName))
                 
                 flags = tokenize(tagInfo[braceClosePos + 1:])
-
+                
+                assert not [1 for tag in codeGenTags['Event'] + codeGenTags['ExportEvent'] if tag[0] == target and tag[1] == entity and tag[2] == eventName], \
+                        'Event ' + target + ' ' + entity + ' ' + eventName + ' already added'
+                
                 codeGenTags['Event'].append((target, entity, eventName, eventArgs, flags, comment))
                 
             except Exception as ex:
@@ -1220,11 +1223,13 @@ def genDataRegistration(target, isASCompiler):
     propertyMapLines = []
     
     def entityAllowed(entity):
-        if target == 'Server' and gameEntitiesInfo[entity]['Server'] is None:
-            return False
-        if target == 'Client' and gameEntitiesInfo[entity]['Client'] is None:
-            return False
-        return True
+        if target == 'Server':
+            return gameEntitiesInfo[entity]['Server'] is not None
+        if target in ['Client', 'Mapper']:
+            return gameEntitiesInfo[entity]['Client'] is not None
+        if target in ['Baker', 'Single']:
+            return True
+        assert False, target
     
     # Enums
     registerLines.append('// Enums')
