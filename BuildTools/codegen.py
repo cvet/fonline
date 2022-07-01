@@ -648,7 +648,7 @@ def parseTags():
                 toks = [t.strip() for t in tagContext[tagContext.find('(') + 1:tagContext.find(')')].split(',')]
                 access = toks[0]
                 assert access in ['PrivateCommon', 'PrivateClient', 'PrivateServer', 'Public', 'PublicModifiable',
-                        'PublicFullModifiable', 'PublicStatic', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
+                        'PublicFullModifiable', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
                         'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid export property access ' + access
                 ptype = engineTypeToMetaType(toks[1])
                 name = toks[2]
@@ -759,7 +759,7 @@ def parseTags():
                 assert entity in gameEntities, entity
                 access = tok[1]
                 assert access in ['PrivateCommon', 'PrivateClient', 'PrivateServer', 'Public', 'PublicModifiable',
-                        'PublicFullModifiable', 'PublicStatic', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
+                        'PublicFullModifiable', 'Protected', 'ProtectedModifiable', 'VirtualPrivateCommon',
                         'VirtualPrivateClient', 'VirtualPrivateServer', 'VirtualPublic', 'VirtualProtected'], 'Invalid property access ' + access
                 if tok[2] == 'const':
                     ptype = unifiedTypeToMetaType(tok[3])

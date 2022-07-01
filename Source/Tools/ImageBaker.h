@@ -52,7 +52,7 @@ public:
     auto operator=(ImageBaker&&) noexcept = delete;
     ~ImageBaker() override = default;
 
-    void AutoBakeModels() override;
+    void AutoBake() override;
 
 private:
     static constexpr int MAX_FRAME_SEQUENCE = 200;

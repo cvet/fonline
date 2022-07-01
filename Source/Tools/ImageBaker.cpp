@@ -58,7 +58,7 @@ ImageBaker::ImageBaker(GeometrySettings& settings, FileCollection& all_files, Ba
     });
 }
 
-void ImageBaker::AutoBakeModels()
+void ImageBaker::AutoBake()
 {
     _errors = 0;
 

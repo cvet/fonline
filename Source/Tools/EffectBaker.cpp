@@ -163,7 +163,7 @@ EffectBaker::~EffectBaker()
     glslang::FinalizeProcess();
 }
 
-void EffectBaker::AutoBakeModels()
+void EffectBaker::AutoBake()
 {
     _errors = 0;
 

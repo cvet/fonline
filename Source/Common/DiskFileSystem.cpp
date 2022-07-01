@@ -77,7 +77,7 @@ static auto FileTimeToUInt64(FILETIME ft) -> uint64
 
 static auto WinMultiByteToWideChar(string_view mb) -> std::wstring
 {
-    return _str(mb).replace('/', '\\').toWideChar();
+    return _str(mb).toWideChar();
 }
 
 static auto WinWideCharToMultiByte(const wchar_t* wc) -> string

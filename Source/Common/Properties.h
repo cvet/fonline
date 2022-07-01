@@ -70,7 +70,6 @@ public:
         Public = 0x0100,
         PublicModifiable = 0x0200,
         PublicFullModifiable = 0x0400,
-        PublicStatic = 0x0800,
         Protected = 0x1000,
         ProtectedModifiable = 0x2000,
         VirtualPrivateCommon = 0x0011,
@@ -144,6 +143,7 @@ private:
     mutable vector<PropertyChangedCallback> _callbacks {};
 
     string _propName {};
+    vector<string> _propNameAliases {};
     string _propNameWithoutComponent {};
     string _fullTypeName {};
     hstring _component {};
@@ -404,7 +404,6 @@ private:
 
     // Complex types info
     vector<Property*> _complexProperties {};
-    uint _complexPropertiesCount {};
     vector<ushort> _publicComplexDataProps {};
     vector<ushort> _protectedComplexDataProps {};
     vector<ushort> _publicProtectedComplexDataProps {};

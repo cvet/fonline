@@ -325,7 +325,7 @@ auto _str::isNumber() -> bool
         return false;
     }
 
-    if (_s.empty() || (std::isdigit(_s[0]) == 0 && _s[0] != '-' && _s[0] != '+')) {
+    if (_s.empty() || ((_s[0] < '0' || _s[0] > '9') && _s[0] != '-' && _s[0] != '+')) {
         return false;
     }
 

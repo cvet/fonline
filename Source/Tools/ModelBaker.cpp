@@ -215,7 +215,7 @@ ModelBaker::~ModelBaker()
 #endif
 }
 
-void ModelBaker::AutoBakeModels()
+void ModelBaker::AutoBake()
 {
     _errors = 0;
 
@@ -387,7 +387,7 @@ auto ModelBaker::BakeFile(string_view fname, File& file) -> vector<uchar>
         auto* fbx_anim_evaluator = fbx_scene->GetAnimationEvaluator();
         auto fbx_anim_stack_criteria = FbxCriteria::ObjectType(fbx_scene->GetCurrentAnimationStack()->GetClassId());
         for (auto i = 0, j = fbx_scene->GetSrcObjectCount(fbx_anim_stack_criteria); i < j; i++) {
-            auto* fbx_anim_stack = dynamic_cast<FbxAnimStack*>(fbx_scene->GetSrcObject(fbx_anim_stack_criteria, i));
+            auto* fbx_anim_stack = static_cast<FbxAnimStack*>(fbx_scene->GetSrcObject(fbx_anim_stack_criteria, i));
             fbx_scene->SetCurrentAnimationStack(fbx_anim_stack);
 
             auto* take_info = fbx_importer->GetTakeInfo(i);
@@ -626,7 +626,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         if (prop_diffuse.IsValid() && prop_diffuse.GetSrcObjectCount() > 0) {
             for (auto i = 0, j = prop_diffuse.GetSrcObjectCount(); i < j; i++) {
                 if (string(prop_diffuse.GetSrcObject(i)->GetClassId().GetName()) == "FbxFileTexture") {
-                    auto* fbx_file_texture = dynamic_cast<FbxFileTexture*>(prop_diffuse.GetSrcObject(i));
+                    auto* fbx_file_texture = static_cast<FbxFileTexture*>(prop_diffuse.GetSrcObject(i));
                     mesh->DiffuseTexture = _str(fbx_file_texture->GetFileName()).extractFileName();
                     break;
                 }
@@ -634,7 +634,7 @@ static void ConvertFbxPass2(Bone* root_bone, Bone* bone, FbxNode* fbx_node)
         }
 
         // Skinning
-        auto* fbx_skin = dynamic_cast<FbxSkin*>(fbx_mesh->GetDeformer(0, FbxDeformer::eSkin));
+        auto* fbx_skin = static_cast<FbxSkin*>(fbx_mesh->GetDeformer(0, FbxDeformer::eSkin));
         if (fbx_skin != nullptr) {
             // 3DS Max specific - Geometric transform
             mat44 ms;

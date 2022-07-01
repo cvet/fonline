@@ -60,7 +60,7 @@ public:
     auto operator=(ModelBaker&&) noexcept = delete;
     ~ModelBaker() override;
 
-    void AutoBakeModels() override;
+    void AutoBake() override;
 
 private:
     [[nodiscard]] auto BakeFile(string_view fname, File& file) -> vector<uchar>;

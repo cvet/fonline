@@ -54,16 +54,14 @@ DECLARE_EXCEPTION(ProtoValidationException);
 class BakerEngine : public FOEngineBase
 {
 public:
-    BakerEngine() :
-        FOEngineBase(Dummy, PropertiesRelationType::BothRelative, [this] {
+    explicit BakerEngine(GlobalSettings& settings) :
+        FOEngineBase(settings, PropertiesRelationType::BothRelative, [this] {
             extern void Baker_RegisterData(FOEngineBase*);
             Baker_RegisterData(this);
             return nullptr;
         })
     {
     }
-
-    GlobalSettings Dummy {};
 };
 
 // Implementation in AngelScriptScripting-*Compiler.cpp
@@ -191,7 +189,7 @@ int main(int argc, char** argv)
 
                     FileSystem res_files;
                     for (const auto& path : paths) {
-                        WriteLog("Add resource pack {} entry '{}'", pack_name, path);
+                        WriteLog("Add resource pack {} entry {}", pack_name, path);
                         res_files.AddDataSource(path);
                     }
 
@@ -208,6 +206,48 @@ int main(int argc, char** argv)
                     size_t baked_files = 0;
 
                     WriteLog("Create resource pack {} from {} files", pack_name, resources.GetFilesCount());
+
+                    // Check resource names
+                    bool has_wrong_path = false;
+
+                    const auto is_valid_res_char = [](const char ch) {
+                        if (ch >= 'a' && ch <= 'z') {
+                            return true;
+                        }
+                        if (ch >= 'A' && ch <= 'Z') {
+                            return true;
+                        }
+                        if (ch >= '0' && ch <= '9') {
+                            return true;
+                        }
+                        if (ch == '_' || ch == '.' || ch == '/' || ch == '-') {
+                            return true;
+                        }
+                        return false;
+                    };
+
+                    resources.ResetCounter();
+                    while (resources.MoveNext()) {
+                        auto file_header = resources.GetCurFileHeader();
+                        auto path = file_header.GetPath();
+
+                        if (!std::all_of(path.begin(), path.end(), is_valid_res_char)) {
+                            WriteLog("Invalid character(s) in resource path: {}", path);
+                            has_wrong_path = true;
+                        }
+                        if (std::count(path.begin(), path.end(), '.') != 1) {
+                            WriteLog("Resource path must have only one dot for extension: {}", path);
+                            has_wrong_path = true;
+                        }
+                        if (path.rfind('/') != string::npos && path.rfind('/') > path.rfind('.')) {
+                            WriteLog("Wrong dot position of extension: {}", path);
+                            has_wrong_path = true;
+                        }
+                    }
+
+                    if (has_wrong_path) {
+                        throw GenericException("Wrong resource path");
+                    }
 
                     // Bake files
                     auto pack_resource_names = unordered_set<string>();
@@ -248,7 +288,7 @@ int main(int argc, char** argv)
 #endif
 
                         for (auto&& baker : bakers) {
-                            baker->AutoBakeModels();
+                            baker->AutoBake();
                         }
                     }
 
@@ -290,7 +330,7 @@ int main(int argc, char** argv)
                         if (pack_resource_names.count(exclude_all_ext(path)) == 0u) {
                             const auto path_in_pack = _str(pack_name).combinePath(path).str();
                             DiskFileSystem::DeleteFile(path_in_pack);
-                            WriteLog("Delete outdated file '{}'", path_in_pack);
+                            WriteLog("Delete outdated file {}", path_in_pack);
                         }
                     });
 
@@ -315,10 +355,10 @@ int main(int argc, char** argv)
 
             RUNTIME_ASSERT(!App->Settings.BakeContentEntries.empty());
 
-            BakerEngine engine;
+            auto engine = BakerEngine(App->Settings);
 
             for (const auto& dir : App->Settings.BakeContentEntries) {
-                WriteLog("Add content entry '{}'", dir);
+                WriteLog("Add content entry {}", dir);
                 engine.FileSys.AddDataSource(dir, DataSourceType::DirRoot);
             }
 
@@ -625,20 +665,41 @@ static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, F
             const auto* prop = registrator->GetByIndex(static_cast<int>(i));
 
             if (prop->IsBaseTypeResource()) {
-                const auto h = props.GetValue<hstring>(prop);
-                if (h && resource_hashes.count(h) == 0u) {
-                    WriteLog("Resource '{}' not found for property {} in {}", h, prop->GetName(), context_str);
+                if (prop->IsPlainData()) {
+                    const auto h = props.GetValue<hstring>(prop);
+                    if (h && resource_hashes.count(h) == 0u) {
+                        WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
+                        errors++;
+                    }
+                }
+                else if (prop->IsArray()) {
+                    const auto hashes = props.GetValue<vector<hstring>>(prop);
+                    for (const auto h : hashes) {
+                        if (h && resource_hashes.count(h) == 0u) {
+                            WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
+                            errors++;
+                        }
+                    }
+                }
+                else {
+                    WriteLog("Resource {} can be as standalone or in array in {}", prop->GetName(), context_str);
                     errors++;
                 }
             }
 
             if (prop->IsBaseScriptFuncType()) {
-                if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
-                    WriteLog("Invalid script func type '{}' for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
-                    errors++;
+                if (prop->IsPlainData()) {
+                    if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
+                        WriteLog("Invalid script func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                        errors++;
+                    }
+                    else if (!script_func_verify[prop->GetBaseScriptFuncType()]) {
+                        WriteLog("Verification failed for func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                        errors++;
+                    }
                 }
-                else if (!script_func_verify[prop->GetBaseScriptFuncType()]) {
-                    WriteLog("Verification failed for func type '{}' for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                else {
+                    WriteLog("Script {} must be as standalone (not in array or dict) in {}", prop->GetName(), context_str);
                     errors++;
                 }
             }
@@ -648,7 +709,7 @@ static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, F
     const auto protos = proto_mngr.GetAllProtos();
 
     for (const auto* proto : protos) {
-        validate_properties(proto->GetProperties(), _str("proto '{}'", proto->GetName()));
+        validate_properties(proto->GetProperties(), _str("proto {}", proto->GetName()));
     }
 
     for (const auto* some_proto : protos) {
@@ -663,29 +724,29 @@ static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, F
                 [&errors, &validate_properties, pmap](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
                     Properties props(proto->GetProperties().GetRegistrator());
                     if (!props.LoadFromText(kv)) {
-                        WriteLog("Invalid critter '{}' on map '{}' with id {}", proto->GetName(), pmap->GetName(), id);
+                        WriteLog("Invalid critter {} on map {} with id {}", proto->GetName(), pmap->GetName(), id);
                         errors++;
                     }
                     else {
-                        validate_properties(props, _str("map '{}' critter '{}' with id {}", pmap->GetName(), proto->GetName(), id));
+                        validate_properties(props, _str("map {} critter {} with id {}", pmap->GetName(), proto->GetName(), id));
                     }
                     return true;
                 },
                 [&errors, &validate_properties, pmap](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
                     Properties props(proto->GetProperties().GetRegistrator());
                     if (!props.LoadFromText(kv)) {
-                        WriteLog("Invalid item '{}' on map '{}' with id {}", proto->GetName(), pmap->GetName(), id);
+                        WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), pmap->GetName(), id);
                         errors++;
                     }
                     else {
-                        validate_properties(props, _str("map '{}' item '{}' with id {}", pmap->GetName(), proto->GetName(), id));
+                        validate_properties(props, _str("map {} item {} with id {}", pmap->GetName(), proto->GetName(), id));
                     }
                     return true;
                 },
                 [&errors, &resource_hashes, &name_resolver, pmap](MapTile&& tile) -> bool {
                     const auto tile_name = name_resolver.ResolveHash(tile.NameHash);
                     if (resource_hashes.count(tile_name) == 0u) {
-                        WriteLog("Invalid tile '{}' on map '{}' at hex {} {}", tile_name, pmap->GetName(), tile.HexX, tile.HexY);
+                        WriteLog("Invalid tile {} on map {} at hex {} {}", tile_name, pmap->GetName(), tile.HexX, tile.HexY);
                         errors++;
                     }
                     return true;

@@ -32,11 +32,11 @@
 //
 
 #include "BaseBaker.h"
+#include "Log.h"
 
 BaseBaker::BaseBaker(GeometrySettings& settings, FileCollection& all_files, BakeCheckerCallback bake_checker, WriteDataCallback write_data) :
-    _settings {settings},
+    _settings {settings}, //
     _allFiles {all_files},
-
     _bakeChecker {std::move(bake_checker)},
     _writeData {std::move(write_data)}
 {

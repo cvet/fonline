@@ -56,7 +56,7 @@ public:
     auto operator=(EffectBaker&&) noexcept = delete;
     ~EffectBaker() override;
 
-    void AutoBakeModels() override;
+    void AutoBake() override;
 
 private:
     void BakeShaderProgram(string_view fname, string_view content);

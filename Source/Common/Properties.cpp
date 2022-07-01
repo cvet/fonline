@@ -122,8 +122,8 @@ void Properties::AllocData()
     std::memset(_podData, 0, _registrator->_wholePodDataSize);
 
     // Complex data
-    _complexData.resize(_registrator->_complexPropertiesCount);
-    _complexDataSizes.resize(_registrator->_complexPropertiesCount);
+    _complexData.resize(_registrator->_complexProperties.size());
+    _complexDataSizes.resize(_registrator->_complexProperties.size());
 }
 
 auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
@@ -999,6 +999,11 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             check_next_param();
             i += 2;
         }
+        else if (flags[i] == "Alias") {
+            check_next_param();
+            prop->_propNameAliases.push_back(flags[i + 2]);
+            i += 2;
+        }
         else {
             throw PropertyRegistrationException("Invalid property flag", prop->_propName, flags[i]);
         }
@@ -1025,11 +1030,6 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     }
 
     // bool _isHistorical {};
-    // ushort _regIndex {};
-    // uint _getIndex {};
-    // uint _podDataOffset {};
-    // uint _complexDataIndex {};
-
     // prop->_isHistorical = (defaultNoHistory || is_no_history);
 
     const auto reg_index = static_cast<ushort>(_registeredProperties.size());
@@ -1037,6 +1037,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     // Disallow set or get accessors
     auto disable_get = false;
     auto disable_set = false;
+
     if (_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
         disable_get = true;
         disable_set = true;
@@ -1048,16 +1049,19 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     if (_relation == PropertiesRelationType::ClientRelative && //
         (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && //
         !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
+        RUNTIME_ASSERT(!disable_get);
         disable_set = true;
     }
-    if (prop->_accessType == Property::AccessType::PublicStatic) {
+    if (prop->_isReadOnly) {
         disable_set = true;
     }
 
     // PlainData property data offset
     const auto prev_public_space_size = _publicPodDataSpace.size();
     const auto prev_protected_space_size = _protectedPodDataSpace.size();
+
     auto data_base_offset = static_cast<uint>(-1);
+
     if (prop->_dataType == Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
         const auto is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask);
@@ -1097,9 +1101,11 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
 
     // Complex property data index
     auto complex_data_index = static_cast<uint>(-1);
-    if (prop->_dataType != Property::DataType::PlainData && (!disable_get || !disable_set) && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+
+    if (prop->_dataType != Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+        complex_data_index = static_cast<uint>(_complexProperties.size());
         _complexProperties.emplace_back(prop);
-        complex_data_index = _complexPropertiesCount++;
+
         if (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask)) {
             _publicComplexDataProps.push_back(reg_index);
             _publicProtectedComplexDataProps.push_back(reg_index);
@@ -1124,14 +1130,23 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     prop->_isWritable = !disable_set;
 
     _registeredProperties.emplace_back(prop);
-    _registeredPropertiesLookup.emplace(prop->GetName(), prop);
+
+    RUNTIME_ASSERT(_registeredPropertiesLookup.count(prop->_propName) == 0);
+    _registeredPropertiesLookup.emplace(prop->_propName, prop);
+
+    for (const auto& alias : prop->_propNameAliases) {
+        RUNTIME_ASSERT(_registeredPropertiesLookup.count(alias) == 0);
+        _registeredPropertiesLookup.emplace(alias, prop);
+    }
 
     // Fix plain data data offsets
-    if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
-        prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
-    }
-    else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-        prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+    if (prop->_podDataOffset != static_cast<uint>(-1)) {
+        if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
+            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
+        }
+        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
+            prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
+        }
     }
 
     for (auto* other_prop : _registeredProperties) {
@@ -1143,9 +1158,8 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
             other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size());
         }
-        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size);
-            other_prop->_podDataOffset -= static_cast<uint>(prev_protected_space_size);
+        else if (IsEnumSet(other_prop->_accessType, Property::AccessType::PrivateMask)) {
+            other_prop->_podDataOffset -= static_cast<uint>(prev_public_space_size) + static_cast<uint>(prev_protected_space_size);
             other_prop->_podDataOffset += static_cast<uint>(_publicPodDataSpace.size()) + static_cast<uint>(_protectedPodDataSpace.size());
         }
     }

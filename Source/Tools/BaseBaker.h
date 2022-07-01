@@ -52,7 +52,7 @@ public:
     auto operator=(BaseBaker&&) noexcept = delete;
     virtual ~BaseBaker() = default;
 
-    virtual void AutoBakeModels() = 0;
+    virtual void AutoBake() = 0;
 
 protected:
     GeometrySettings& _settings;
