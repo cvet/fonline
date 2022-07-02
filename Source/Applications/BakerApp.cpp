@@ -207,54 +207,12 @@ int main(int argc, char** argv)
 
                     WriteLog("Create resource pack {} from {} files", pack_name, resources.GetFilesCount());
 
-                    // Check resource names
-                    bool has_wrong_path = false;
-
-                    const auto is_valid_res_char = [](const char ch) {
-                        if (ch >= 'a' && ch <= 'z') {
-                            return true;
-                        }
-                        if (ch >= 'A' && ch <= 'Z') {
-                            return true;
-                        }
-                        if (ch >= '0' && ch <= '9') {
-                            return true;
-                        }
-                        if (ch == '_' || ch == '.' || ch == '/' || ch == '-') {
-                            return true;
-                        }
-                        return false;
-                    };
-
-                    resources.ResetCounter();
-                    while (resources.MoveNext()) {
-                        auto file_header = resources.GetCurFileHeader();
-                        auto path = file_header.GetPath();
-
-                        if (!std::all_of(path.begin(), path.end(), is_valid_res_char)) {
-                            WriteLog("Invalid character(s) in resource path: {}", path);
-                            has_wrong_path = true;
-                        }
-                        if (std::count(path.begin(), path.end(), '.') != 1) {
-                            WriteLog("Resource path must have only one dot for extension: {}", path);
-                            has_wrong_path = true;
-                        }
-                        if (path.rfind('/') != string::npos && path.rfind('/') > path.rfind('.')) {
-                            WriteLog("Wrong dot position of extension: {}", path);
-                            has_wrong_path = true;
-                        }
-                    }
-
-                    if (has_wrong_path) {
-                        throw GenericException("Wrong resource path");
-                    }
-
                     // Bake files
                     auto pack_resource_names = unordered_set<string>();
 
                     const auto exclude_all_ext = [](string_view path) -> string {
-                        size_t pos = path.find_last_of('/');
-                        pos = path.find_first_of('.', pos != string::npos ? pos : 0);
+                        size_t pos = path.rfind('/');
+                        pos = path.find('.', pos != string::npos ? pos : 0);
                         return pos != string::npos ? string(path.substr(0, pos)) : string(path);
                     };
 

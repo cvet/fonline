@@ -3072,14 +3072,14 @@ checkErrors()
 
 # Default settings
 createFile('DebugSettings-Include.h', args.genoutput)
-writeFile('R"CONFIG(# DEBUG SETTINGS BEGIN #')
+writeFile('R"CONFIG(###DefaultConfig###')
 for cfg in args.config:
     k, v = cfg.split(',', 1)
     if len(v) > 0 and v[0] == '+':
         writeFile(k + ' += ' + v[1:])
     else:
         writeFile(k + ' = ' + v)
-writeFile('# DEBUG SETTINGS END #)CONFIG"')
+writeFile('###DefaultConfigEnd###)CONFIG"')
 
 # Version info
 createFile('Version-Include.h', args.genoutput)

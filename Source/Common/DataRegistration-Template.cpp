@@ -113,7 +113,6 @@ static void RestoreProperty(PropertyRegistrator* registrator, string_view access
         {"Public", Property::AccessType::Public},
         {"PublicModifiable", Property::AccessType::PublicModifiable},
         {"PublicFullModifiable", Property::AccessType::PublicFullModifiable},
-        {"PublicStatic", Property::AccessType::PublicStatic},
         {"Protected", Property::AccessType::Protected},
         {"ProtectedModifiable", Property::AccessType::ProtectedModifiable},
         {"VirtualPrivateCommon", Property::AccessType::VirtualPrivateCommon},

@@ -2968,7 +2968,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
 
         if (CurMap->GetField(hx, hy).Crit != nullptr) {
             auto place_found = false;
-            for (auto d = 0; d < 6; d++) {
+            for (uchar d = 0; d < 6; d++) {
                 ushort hx_ = hx;
                 ushort hy_ = hy;
                 Geometry.MoveHexByDir(hx_, hy_, d, CurMap->GetWidth(), CurMap->GetHeight());
