@@ -48,7 +48,12 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
     RUNTIME_ASSERT(register_data_callback);
 
     _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());
+
     ScriptSys = register_data_callback();
+    if (ScriptSys != nullptr) {
+        ScriptSys->InitSubsystems();
+    }
+
     GetPropertiesForEdit().AllocData();
     FinalizeDataRegistration();
 }

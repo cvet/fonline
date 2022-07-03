@@ -143,6 +143,7 @@ public:
     auto operator=(ScriptSystem&&) noexcept = delete;
     virtual ~ScriptSystem() = default;
 
+    virtual void InitSubsystems() { }
     void InitModules();
 
     template<typename TRet, typename... Args>

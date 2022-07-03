@@ -1705,7 +1705,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             globalLines.append('    auto&& arg_' + p[1] + ' = ' +
                                     marshalBack(p[0], '*reinterpret_cast<' + argType + '*>(const_cast<void*>(*(args.begin() + ' + str(argIndex) + ')))') + ';') 
                             argIndex += 1
-                        globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_AS_ENGINE(func->GetEngine());')
+                        globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
                         globalLines.append('    auto* ctx = script_sys->PrepareContext(func);')
                         if not isGlobal:
                             globalLines.append('    ctx->SetArgObject(0, self);')
@@ -1920,8 +1920,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
                 if targ in allowedTargets and ent == entity:
-                    registerLines.append('REGISTER_ENTITY_METHOD("' + entity+ '", ' + ('true' if gameEntitiesInfo[entity]['IsGlobal'] else 'false') +
-                            ', "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
+                    registerLines.append('REGISTER_ENTITY_METHOD("' + (entity + 'Singleton' if gameEntitiesInfo[entity]['IsGlobal'] else entity) +
+                            '", "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
                             ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", AS_' + targ + '_' +
                             entity + '_' + name + '_' + nameMangling(params) + ');')
         registerLines.append('')
@@ -1936,10 +1936,12 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     funcEntry = 'ASEvent_' + entity + '_' + evName
                     asArgs = ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in evArgs])
                     asArgsEnt = metaTypeToASType(entity) + (', ' if evArgs else '') if not gameEntitiesInfo[entity]['IsGlobal'] else ''
+                    className = entity + 'Singleton' if gameEntitiesInfo[entity]['IsGlobal'] else entity
+                    realClass = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
                     if isExported:
-                        registerLines.append('REGISTER_ENTITY_EXPORTED_EVENT("' + entity + '", ' + ('true' if gameEntitiesInfo[entity]['IsGlobal'] else 'false') + ', "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
+                        registerLines.append('REGISTER_ENTITY_EXPORTED_EVENT("' + entity + '", "' + className + '", ' + realClass + ', "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
                     else:
-                        registerLines.append('REGISTER_ENTITY_SCRIPT_EVENT("' + entity + '", ' + ('true' if gameEntitiesInfo[entity]['IsGlobal'] else 'false') + ', "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
+                        registerLines.append('REGISTER_ENTITY_SCRIPT_EVENT("' + entity + '", "' + className + '", ' + realClass + ', "' + evName + '", "' + asArgsEnt + '", "' + asArgs + '", ' + funcEntry + ');')
         registerLines.append('')
         
         # Register settings

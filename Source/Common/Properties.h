@@ -258,7 +258,7 @@ public:
     {
         RUNTIME_ASSERT(sizeof(T) == prop->_baseSize);
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
-        T old_value = *reinterpret_cast<T*>(_podData[prop->_podDataOffset]);
+        T old_value = *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]);
         if (new_value != old_value) {
             *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
             for (const auto& callback : prop->_callbacks) {

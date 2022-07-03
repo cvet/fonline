@@ -44,14 +44,16 @@ class FOSingle;
 class SingleScriptSystem : public ScriptSystem
 {
 public:
-    explicit SingleScriptSystem(FOSingle* engine) : ScriptSystem(), _engine {engine}
+    explicit SingleScriptSystem(FOSingle* engine) : _engine {engine} { }
+
+private:
+    void InitSubsystems() override
     {
         InitNativeScripting();
         InitAngelScriptScripting();
         InitMonoScripting();
     }
 
-private:
     void InitNativeScripting();
     void InitAngelScriptScripting();
     void InitMonoScripting();

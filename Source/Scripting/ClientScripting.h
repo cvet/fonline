@@ -44,14 +44,16 @@ class FOClient;
 class ClientScriptSystem : public ScriptSystem
 {
 public:
-    explicit ClientScriptSystem(FOClient* engine) : ScriptSystem(), _engine {engine}
+    explicit ClientScriptSystem(FOClient* engine) : _engine {engine} { }
+
+private:
+    void InitSubsystems() override
     {
         InitNativeScripting();
         InitAngelScriptScripting();
         InitMonoScripting();
     }
 
-private:
     void InitNativeScripting();
     void InitAngelScriptScripting();
     void InitMonoScripting();

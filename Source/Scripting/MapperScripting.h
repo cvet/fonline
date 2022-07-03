@@ -42,14 +42,16 @@ class FOMapper;
 class MapperScriptSystem : public ScriptSystem
 {
 public:
-    explicit MapperScriptSystem(FOMapper* engine) : ScriptSystem(), _engine {engine}
+    explicit MapperScriptSystem(FOMapper* engine) : _engine {engine} { }
+
+private:
+    void InitSubsystems() override
     {
         InitNativeScripting();
         InitAngelScriptScripting();
         InitMonoScripting();
     }
 
-private:
     void InitNativeScripting();
     void InitAngelScriptScripting();
     void InitMonoScripting();

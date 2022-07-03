@@ -219,8 +219,6 @@ public:
 
 #define GET_AS_ENGINE_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData->Engine
 #define GET_SCRIPT_SYS_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData.get()
-#define GET_SCRIPT_SYS_FROM_AS_ENGINE(as_engine) static_cast<FOEngine*>(as_engine->GetUserData())->ScriptSys->AngelScriptData.get()
-#define GET_GAME_ENGINE_FROM_AS_ENGINE(as_engine) static_cast<FOEngine*>(as_engine->GetUserData())
 
 #define ENTITY_VERIFY(e) \
     if ((e) == nullptr) { \
@@ -251,6 +249,12 @@ public:
 #define SCRIPT_FUNC_THIS_CONV asCALL_CDECL_OBJFIRST
 #define SCRIPT_METHOD(type, name) asMETHOD(type, name)
 #define SCRIPT_METHOD_CONV asCALL_THISCALL
+#endif
+
+#if !COMPILER_MODE
+#define PTR_OR_DUMMY(ptr) (void*)&(ptr)
+#else
+#define PTR_OR_DUMMY(ptr) (void*)&dummy
 #endif
 
 #if !COMPILER_MODE
@@ -689,6 +693,28 @@ static auto Entity_Proto(const T* self) -> const ProtoEntity*
 }
 
 ///@ CodeGen Global
+
+template<typename T>
+static void Global_Get(asIScriptGeneric* gen)
+{
+#if !COMPILER_MODE
+    auto* ptr = *static_cast<T**>(gen->GetAuxiliary());
+    *(T**)gen->GetAddressOfReturnLocation() = ptr;
+#else
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
+template<typename T>
+static auto Entity_GetSelf(T* entity) -> T*
+{
+#if !COMPILER_MODE
+    ENTITY_VERIFY(entity);
+    return entity;
+#else
+    throw ScriptCompilerException("Stub");
+#endif
+}
 
 template<typename T>
 static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
@@ -1202,8 +1228,9 @@ static void HashedString_Construct(hstring* self)
 static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    const auto& str = *static_cast<const string*>(gen->GetArgObject(0));
-    auto hstr = GET_GAME_ENGINE_FROM_AS_ENGINE(gen->GetEngine())->ToHashedString(str);
+    const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    auto hstr = engine->ToHashedString(*str);
     new (gen->GetObject()) hstring(hstr);
 #endif
 }
@@ -1211,9 +1238,10 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 static void HashedString_ConstructFromHash(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    const auto& hash = *static_cast<const uint*>(gen->GetArgObject(0));
-    auto hstr = GET_GAME_ENGINE_FROM_AS_ENGINE(gen->GetEngine())->ResolveHash(hash);
-    new (gen->GetObject()) hstring(hstr);
+    const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    auto hstr = engine->ResolveHash(hash);
+    new (gen->GetAddressOfReturnLocation()) hstring(hstr);
 #endif
 }
 
@@ -1497,7 +1525,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(uint id)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine)); \
     AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" class_name "@+ entity)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine))
 
-#define REGISTER_ENTITY_METHOD(entity_name, is_global_entity, method_decl, func) AS_VERIFY(engine->RegisterObjectMethod(is_global_entity ? entity_name "Singleton" : entity_name, method_decl, SCRIPT_FUNC_THIS(func), SCRIPT_FUNC_THIS_CONV))
+#define REGISTER_ENTITY_METHOD(class_name, method_decl, func) AS_VERIFY(engine->RegisterObjectMethod(class_name, method_decl, SCRIPT_FUNC_THIS(func), SCRIPT_FUNC_THIS_CONV))
 
     REGISTER_BASE_ENTITY("Entity", Entity);
 
@@ -1509,21 +1537,21 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     unordered_map<string, asSFuncPtr> entity_set_value_func_ptr;
 
     // Events
-#define REGISTER_ENTITY_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry) \
+#define REGISTER_ENTITY_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry) \
     AS_VERIFY(engine->RegisterFuncdef("void " entity_name event_name "EventFunc(" as_args_ent as_args ")")); \
     AS_VERIFY(engine->RegisterFuncdef("bool " entity_name event_name "EventFuncBool(" as_args_ent as_args ")")); \
-    AS_VERIFY(engine->RegisterObjectType(entity_name event_name "Event", 0, asOBJ_REF | asOBJ_NOHANDLE)); \
+    AS_VERIFY(engine->RegisterObjectType(entity_name event_name "Event", 0, asOBJ_REF | asOBJ_NOCOUNT)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Subscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Subscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Subscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Subscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFunc@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void Unsubscribe(" entity_name event_name "EventFuncBool@+)", SCRIPT_FUNC_THIS(func_entry##_Unsubscribe), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "void UnsubscribeAll()", SCRIPT_FUNC_THIS(func_entry##_UnsubscribeAll), SCRIPT_FUNC_THIS_CONV)); \
-    AS_VERIFY(engine->RegisterObjectProperty(is_global_entity ? entity_name "Singleton" : entity_name, entity_name event_name "Event " event_name, 0))
+    AS_VERIFY(engine->RegisterObjectMethod(class_name, entity_name event_name "Event@ get_" event_name "()", SCRIPT_FUNC_THIS((Entity_GetSelf<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
-#define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry) REGISTER_ENTITY_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry)
+#define REGISTER_ENTITY_EXPORTED_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry) REGISTER_ENTITY_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry)
 
-#define REGISTER_ENTITY_SCRIPT_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry) \
-    REGISTER_ENTITY_EVENT(entity_name, is_global_entity, event_name, as_args_ent, as_args, func_entry); \
+#define REGISTER_ENTITY_SCRIPT_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry) \
+    REGISTER_ENTITY_EVENT(entity_name, class_name, real_class, event_name, as_args_ent, as_args, func_entry); \
     AS_VERIFY(engine->RegisterObjectMethod(entity_name event_name "Event", "bool Fire(" as_args ")", SCRIPT_FUNC_THIS(func_entry##_Fire), SCRIPT_FUNC_THIS_CONV))
 
     // Settings
@@ -1619,19 +1647,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #if !COMPILER_MODE
             const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
             RUNTIME_ASSERT(it_enum.second);
-            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}", registrator->GetClassName(), group_name).c_str(), (void*)&(*it_enum.first)));
-#else
-            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}", registrator->GetClassName(), group_name).c_str(), &dummy));
 #endif
+            AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}", registrator->GetClassName(), group_name).c_str(), PTR_OR_DUMMY(*it_enum.first)));
             AS_VERIFY(engine->SetDefaultNamespace(""));
         }
     }
 
-#if !COMPILER_MODE
-    AS_VERIFY(engine->RegisterGlobalProperty("GameSingleton@ Game", &_engine));
-#else
-    AS_VERIFY(engine->RegisterGlobalProperty("GameSingleton@ Game", &dummy));
-#endif
+    AS_VERIFY(engine->RegisterGlobalFunction("GameSingleton@+ get_Game()", asFUNCTION((Global_Get<FOEngine>)), asCALL_GENERIC, PTR_OR_DUMMY(_engine)));
 
 #if SERVER_SCRIPTING
     AS_VERIFY(engine->RegisterObjectProperty("Player", "RemoteCaller ClientCall", 0));
@@ -1640,15 +1662,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
 #if CLIENT_SCRIPTING
-#if !COMPILER_MODE
-    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &_engine->CurMap));
-    AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &_engine->_curLocation));
-    AS_VERIFY(engine->RegisterGlobalProperty("Player@ CurPlayer", &_engine->_curPlayer));
-#else
-    AS_VERIFY(engine->RegisterGlobalProperty("Map@ CurMap", &dummy));
-    AS_VERIFY(engine->RegisterGlobalProperty("Location@ CurLocation", &dummy));
-    AS_VERIFY(engine->RegisterGlobalProperty("Player@ CurPlayer", &dummy));
-#endif
+    AS_VERIFY(engine->RegisterGlobalFunction("Map@+ get_CurMap()", asFUNCTION((Global_Get<MapView>)), asCALL_GENERIC, PTR_OR_DUMMY(_engine->CurMap)));
+    AS_VERIFY(engine->RegisterGlobalFunction("Location@+ get_CurLocation()", asFUNCTION((Global_Get<LocationView>)), asCALL_GENERIC, PTR_OR_DUMMY(_engine->_curLocation)));
+    AS_VERIFY(engine->RegisterGlobalFunction("Player@+ get_CurPlayer()", asFUNCTION((Global_Get<PlayerView>)), asCALL_GENERIC, PTR_OR_DUMMY(_engine->_curPlayer)));
 #endif
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
