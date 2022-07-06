@@ -59,7 +59,7 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, const T*
 
         vector<uchar*>* props_data = nullptr;
         vector<uint>* props_data_sizes = nullptr;
-        proto_item->StoreData(true, &props_data, &props_data_sizes);
+        proto_item->GetProperties().StoreAllData(&props_data, &props_data_sizes);
 
         writer.Write<ushort>(static_cast<ushort>(props_data->size()));
         for (size_t i = 0; i < props_data->size(); i++) {
@@ -311,27 +311,27 @@ void ProtoManager::ParseProtos(FileSystem& file_sys)
     for (auto&& [pid, proto] : _crProtos) {
         const_cast<ProtoCritter*>(proto)->CollectionName = "all";
     }
-
-    // Check player proto
-    if (_crProtos.count(_engine->ToHashedString("Player")) == 0u) {
-        throw ProtoManagerException("Player proto 'Player.focr' not loaded");
-    }
-
-    // Check maps for locations
-    for (auto&& [pid, proto] : _locProtos) {
-        for (auto map_pid : proto->GetMapProtos()) {
-            if (_mapProtos.count(map_pid) == 0u) {
-                throw ProtoManagerException("Proto map not found for proto location", map_pid, proto->GetName());
-            }
-        }
-    }
 }
 
 void ProtoManager::LoadFromResources()
 {
-    const auto protos_file = _engine->FileSys.ReadFile("Protos.foprob");
+    string protos_fname;
+
+    switch (_engine->GetPropertiesRelation()) {
+    case PropertiesRelationType::BothRelative:
+        protos_fname = "Protos.foprob";
+        break;
+    case PropertiesRelationType::ServerRelative:
+        protos_fname = "ServerProtos.foprob";
+        break;
+    case PropertiesRelationType::ClientRelative:
+        protos_fname = "ClientProtos.foprob";
+        break;
+    }
+
+    const auto protos_file = _engine->FileSys.ReadFile(protos_fname);
     if (!protos_file) {
-        throw ProtoManagerException("Protos.foprob not found");
+        throw ProtoManagerException("Protos binary file not found", protos_fname);
     }
 
     auto reader = DataReader({protos_file.GetBuf(), protos_file.GetSize()});

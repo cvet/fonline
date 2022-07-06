@@ -1563,12 +1563,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             tt = t.split('.')
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                return 'MarshalBackScalarDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + \
+                return 'MarshalBackDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + \
                         '>(GET_AS_ENGINE_FROM_SELF(), "dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>", ' + v + ')'
             elif tt[0] == 'arr':
-                if tt[1] in gameEntities or tt[1] in userObjects or tt[1] in entityRelatives:
-                    return 'MarshalBackRefArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
-                return 'MarshalBackScalarArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
+                return 'MarshalBackArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
             elif tt[0] == 'callback' or tt[0] == 'predicate':
                 return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], target, False)
             return v

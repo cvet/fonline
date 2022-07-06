@@ -37,14 +37,12 @@
 #include "StringUtils.h"
 
 FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
-    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this)),
+    Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this)), //
     GameProperties(GetInitRef()),
-
     Settings {settings},
     Geometry(settings),
     _propsRelation {props_relation}
 {
-    RUNTIME_ASSERT(props_relation != PropertiesRelationType::None);
     RUNTIME_ASSERT(register_data_callback);
 
     _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());

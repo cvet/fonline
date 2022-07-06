@@ -31,8 +31,6 @@
 // SOFTWARE.
 //
 
-// Todo: rename ProtoManager to ProtoBaker and move to Baker stuff
-
 #pragma once
 
 #include "Common.h"

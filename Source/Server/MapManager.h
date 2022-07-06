@@ -163,7 +163,7 @@ public:
     [[nodiscard]] auto CreateMap(hstring proto_id, Location* loc) -> Map*;
 
     void LinkMaps();
-    void LoadStaticMaps(FileSystem& file_sys);
+    void LoadStaticMaps();
     void DeleteLocation(Location* loc, vector<Critter*>* gmap_player_critters);
     void LocationGarbager();
     void RegenerateMap(Map* map);
@@ -182,7 +182,7 @@ public:
 private:
     [[nodiscard]] auto GridAt(int x, int y) -> short& { return _mapGrid[((FPATH_MAX_PATH + 1) + y - _mapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + x - _mapGridOffsX)]; }
 
-    void LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap);
+    void LoadStaticMap(const ProtoMap* pmap);
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 

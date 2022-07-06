@@ -781,7 +781,7 @@
     // Create and generate location
     auto* loc = server->MapMngr.CreateLocation(locPid, wx, wy);
     if (loc == nullptr) {
-        throw ScriptException("Unable to create location '{}'.", locPid);
+        throw ScriptException("Unable to create location {}", locPid);
     }
 
     // Add known locations to critters
@@ -1304,5 +1304,5 @@
         return false;
     }
 
-    return staticItem->SceneryScriptFunc(cr, staticItem, false, param) && staticItem->SceneryScriptFunc.GetResult();
+    return staticItem->SceneryScriptFunc(cr, staticItem, param) && staticItem->SceneryScriptFunc.GetResult();
 }

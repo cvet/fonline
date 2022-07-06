@@ -191,6 +191,9 @@ FOServer::FOServer(GlobalSettings& settings) :
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
     ProtoMngr.LoadFromResources();
 
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
+    MapMngr.LoadStaticMaps();
+
     // Globals
     const auto globals_doc = DbStorage.Get("Game", 1);
     if (globals_doc.empty()) {

@@ -134,7 +134,9 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     _storeData.resize(0u);
     _storeDataSizes.resize(0u);
 
-    const auto preserve_size = 1u + (!_storeDataComplexIndicies.empty() ? 1u + _storeDataComplexIndicies.size() : 0u);
+    _storeDataComplexIndices = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
+
+    const auto preserve_size = 1u + (!_storeDataComplexIndices.empty() ? 1u + _storeDataComplexIndices.size() : 0u);
     _storeData.reserve(preserve_size);
     _storeDataSizes.reserve(preserve_size);
 
@@ -143,13 +145,12 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     _storeDataSizes.push_back(static_cast<uint>(_registrator->_publicPodDataSpace.size()) + (with_protected ? static_cast<uint>(_registrator->_protectedPodDataSpace.size()) : 0));
     whole_size += _storeDataSizes.back();
 
-    // Calculate complex data to send
-    _storeDataComplexIndicies = with_protected ? _registrator->_publicProtectedComplexDataProps : _registrator->_publicComplexDataProps;
-    for (size_t i = 0; i < _storeDataComplexIndicies.size();) {
-        const auto* prop = _registrator->_registeredProperties[_storeDataComplexIndicies[i]];
+    // Filter complex data to send
+    for (size_t i = 0; i < _storeDataComplexIndices.size();) {
+        const auto* prop = _registrator->_registeredProperties[_storeDataComplexIndices[i]];
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         if (_complexDataSizes[prop->_complexDataIndex] == 0u) {
-            _storeDataComplexIndicies.erase(_storeDataComplexIndicies.begin() + static_cast<int>(i));
+            _storeDataComplexIndices.erase(_storeDataComplexIndices.begin() + static_cast<int>(i));
         }
         else {
             i++;
@@ -157,12 +158,12 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     }
 
     // Store complex properties data
-    if (!_storeDataComplexIndicies.empty()) {
-        _storeData.push_back(reinterpret_cast<uchar*>(&_storeDataComplexIndicies[0]));
-        _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndicies.size()) * sizeof(short));
+    if (!_storeDataComplexIndices.empty()) {
+        _storeData.push_back(reinterpret_cast<uchar*>(&_storeDataComplexIndices[0]));
+        _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndices.size()) * sizeof(ushort));
         whole_size += _storeDataSizes.back();
 
-        for (const auto index : _storeDataComplexIndicies) {
+        for (const auto index : _storeDataComplexIndices) {
             const auto* prop = _registrator->_registeredProperties[index];
             _storeData.push_back(_complexData[prop->_complexDataIndex]);
             _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
@@ -173,14 +174,57 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     return whole_size;
 }
 
+void Properties::StoreAllData(vector<uchar*>** all_data, vector<uint>** all_data_sizes) const
+{
+    *all_data = &_storeData;
+    *all_data_sizes = &_storeDataSizes;
+    _storeData.resize(0u);
+    _storeDataSizes.resize(0u);
+
+    _storeDataComplexIndices = _registrator->_allComplexDataProps;
+
+    const auto preserve_size = 1u + (!_storeDataComplexIndices.empty() ? 1u + _storeDataComplexIndices.size() : 0u);
+    _storeData.reserve(preserve_size);
+    _storeDataSizes.reserve(preserve_size);
+
+    // Store plain properties data
+    _storeData.push_back(_podData);
+    _storeDataSizes.push_back(_registrator->_wholePodDataSize);
+
+    // Filter complex data to send
+    for (size_t i = 0; i < _storeDataComplexIndices.size();) {
+        const auto* prop = _registrator->_registeredProperties[_storeDataComplexIndices[i]];
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        if (_complexDataSizes[prop->_complexDataIndex] == 0u) {
+            _storeDataComplexIndices.erase(_storeDataComplexIndices.begin() + static_cast<int>(i));
+        }
+        else {
+            i++;
+        }
+    }
+
+    // Store complex properties data
+    if (!_storeDataComplexIndices.empty()) {
+        _storeData.push_back(reinterpret_cast<uchar*>(&_storeDataComplexIndices[0]));
+        _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndices.size()) * sizeof(ushort));
+
+        for (const auto index : _storeDataComplexIndices) {
+            const auto* prop = _registrator->_registeredProperties[index];
+            _storeData.push_back(_complexData[prop->_complexDataIndex]);
+            _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
+        }
+    }
+}
+
 void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
 {
     // Restore plain data
-    RUNTIME_ASSERT(all_data_sizes.size() > 0);
+    RUNTIME_ASSERT(!all_data_sizes.empty());
     RUNTIME_ASSERT(all_data.size() == all_data_sizes.size());
     const auto public_size = static_cast<uint>(_registrator->_publicPodDataSpace.size());
     const auto protected_size = static_cast<uint>(_registrator->_protectedPodDataSpace.size());
-    RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size);
+    const auto private_size = static_cast<uint>(_registrator->_privatePodDataSpace.size());
+    RUNTIME_ASSERT(all_data_sizes[0] == public_size || all_data_sizes[0] == public_size + protected_size || all_data_sizes[0] == public_size + protected_size + private_size);
     if (all_data_sizes[0] != 0u) {
         std::memcpy(_podData, all_data[0], all_data_sizes[0]);
     }
@@ -218,7 +262,7 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
 {
     bool is_error = false;
 
-    for (const auto& [key, value] : key_values) {
+    for (auto&& [key, value] : key_values) {
         // Skip technical fields
         if (key.empty() || key[0] == '$' || key[0] == '_') {
             continue;
@@ -231,6 +275,13 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
                 WriteLog("Unknown property {}", key);
             }
             else {
+                if (_registrator->_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
+                    continue;
+                }
+                if (_registrator->_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
+                    continue;
+                }
+
                 WriteLog("Invalid property {} for reading", prop->GetName());
             }
 
@@ -717,8 +768,7 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     }
 
     if (prop->_isHashBase) {
-        // Todo: convert to hstring
-        // SetValue<hstring>(prop, value);
+        SetValue<hstring>(prop, _registrator->_nameResolver.ResolveHash(value));
     }
     else if (prop->_isEnumBase) {
         if (prop->_baseSize == 1) {
@@ -1105,20 +1155,15 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     if (prop->_dataType != Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
         complex_data_index = static_cast<uint>(_complexProperties.size());
         _complexProperties.emplace_back(prop);
+        _allComplexDataProps.emplace_back(reg_index);
 
         if (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask)) {
-            _publicComplexDataProps.push_back(reg_index);
-            _publicProtectedComplexDataProps.push_back(reg_index);
+            _publicComplexDataProps.emplace_back(reg_index);
+            _publicProtectedComplexDataProps.emplace_back(reg_index);
         }
         else if (IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) {
-            _protectedComplexDataProps.push_back(reg_index);
-            _publicProtectedComplexDataProps.push_back(reg_index);
-        }
-        else if (IsEnumSet(prop->_accessType, Property::AccessType::PrivateMask)) {
-            _privateComplexDataProps.push_back(reg_index);
-        }
-        else {
-            throw UnreachablePlaceException(LINE_STR);
+            _protectedComplexDataProps.emplace_back(reg_index);
+            _publicProtectedComplexDataProps.emplace_back(reg_index);
         }
     }
 

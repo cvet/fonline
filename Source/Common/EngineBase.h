@@ -56,6 +56,7 @@ public:
 
     [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
+    [[nodiscard]] auto GetPropertiesRelation() const { return _propsRelation; }
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;

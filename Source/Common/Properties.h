@@ -49,10 +49,9 @@ using PropertyChangedCallback = std::function<void(Entity*, const Property*, con
 
 enum class PropertiesRelationType
 {
-    None,
+    BothRelative,
     ServerRelative,
     ClientRelative,
-    BothRelative,
 };
 
 class Property final
@@ -112,6 +111,7 @@ public:
     [[nodiscard]] auto IsDictOfString() const -> bool { return _isDictOfString; }
     [[nodiscard]] auto IsDictOfArray() const -> bool { return _isDictOfArray; }
     [[nodiscard]] auto IsDictOfArrayOfString() const -> bool { return _isDictOfArrayOfString; }
+    [[nodiscard]] auto IsDictKeyHash() const -> bool { return _isDictKeyHash; }
 
     [[nodiscard]] auto IsBaseTypeHash() const -> bool { return _isHashBase; }
     [[nodiscard]] auto IsBaseTypeResource() const -> bool { return _isResourceHash; }
@@ -234,6 +234,7 @@ public:
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     auto LoadPropertyFromText(const Property* prop, string_view text) -> bool;
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
+    void StoreAllData(vector<uchar*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uchar>>& all_data);
     void SetRawData(const Property* prop, const uchar* data, uint data_size);
@@ -244,6 +245,7 @@ public:
     void SetValueAsFloat(int property_index, float value);
     void SetValueAsIntByName(string_view property_name, int value);
     void SetValueAsIntProps(int property_index, int value);
+    auto ResolveHash(hstring::hash_t h) const -> hstring;
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
     [[nodiscard]] auto GetValue(const Property* prop) const -> T
@@ -315,8 +317,50 @@ public:
     {
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-        // Todo: GetValue for array
-        return {};
+
+        const auto* data = _complexData[prop->_complexDataIndex];
+        const auto data_size = _complexDataSizes[prop->_complexDataIndex];
+
+        T result;
+
+        if (data_size > 0u) {
+            if constexpr (std::is_same_v<T, vector<string>>) {
+                RUNTIME_ASSERT(prop->IsArrayOfString());
+
+                uint arr_size;
+                std::memcpy(&arr_size, data, sizeof(arr_size));
+                data += sizeof(arr_size);
+                result.resize(arr_size);
+
+                for (const auto i : xrange(arr_size)) {
+                    uint str_size;
+                    std::memcpy(&str_size, data, sizeof(str_size));
+                    data += sizeof(str_size);
+                    result[i] = string(reinterpret_cast<const char*>(data), str_size);
+                    data += str_size;
+                }
+            }
+            else if constexpr (std::is_same_v<T, vector<hstring>>) {
+                RUNTIME_ASSERT(prop->IsBaseTypeHash());
+                RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+                const auto arr_size = data_size / sizeof(hstring::hash_t);
+                result.resize(arr_size);
+
+                for (const auto i : xrange(arr_size)) {
+                    const auto hvalue = ResolveHash(*reinterpret_cast<const hstring::hash_t*>(data));
+                    result[i] = hvalue;
+                    data += sizeof(hstring::hash_t);
+                }
+            }
+            else {
+                RUNTIME_ASSERT(data_size % prop->GetBaseSize() == 0);
+                result.resize(data_size / prop->GetBaseSize());
+                std::memcpy(result.data(), data, data_size);
+            }
+        }
+
+        return result;
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, vector>::value, int> = 0>
@@ -347,15 +391,13 @@ public:
     }
 
 private:
-    auto ResolveHash(hstring::hash_t h) const -> hstring;
-
     const PropertyRegistrator* _registrator;
     uchar* _podData {};
     vector<uchar*> _complexData {};
     vector<uint> _complexDataSizes {};
     mutable vector<uchar*> _storeData {};
     mutable vector<uint> _storeDataSizes {};
-    mutable vector<ushort> _storeDataComplexIndicies {};
+    mutable vector<ushort> _storeDataComplexIndices {};
     Entity* _entity {};
     bool _nonConstHelper {};
 };
@@ -404,10 +446,10 @@ private:
 
     // Complex types info
     vector<Property*> _complexProperties {};
+    vector<ushort> _allComplexDataProps {};
     vector<ushort> _publicComplexDataProps {};
     vector<ushort> _protectedComplexDataProps {};
     vector<ushort> _publicProtectedComplexDataProps {};
-    vector<ushort> _privateComplexDataProps {};
 
 public:
     template<typename T>

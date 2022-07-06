@@ -90,6 +90,10 @@ public:
 
     ///@ ExportProperty ScriptFuncType = ItemInit Alias = ScriptId
     ENTITY_PROPERTY(PrivateServer, hstring, InitScript);
+    ///@ ExportProperty ScriptFuncType = ItemScenery
+    ENTITY_PROPERTY(PrivateServer, hstring, SceneryScript);
+    ///@ ExportProperty ScriptFuncType = ItemTrigger
+    ENTITY_PROPERTY(PrivateServer, hstring, TriggerScript);
     ///@ ExportProperty ReadOnly Alias = Accessory
     ENTITY_PROPERTY(PrivateCommon, ItemOwnership, Ownership);
     ///@ ExportProperty ReadOnly

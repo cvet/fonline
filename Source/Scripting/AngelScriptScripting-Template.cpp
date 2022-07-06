@@ -481,7 +481,7 @@ template<typename T>
 }
 
 template<typename T>
-[[maybe_unused]] static auto MarshalBackScalarArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
+[[maybe_unused]] static auto MarshalBackArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
 {
     auto* as_array = CreateASArray(as_engine, type);
 
@@ -489,23 +489,11 @@ template<typename T>
         as_array->Resize(static_cast<asUINT>(vec.size()));
         for (const auto i : xrange(vec)) {
             *reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
-        }
-    }
 
-    return as_array;
-}
-
-template<typename T>
-[[maybe_unused]] static auto MarshalBackRefArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
-{
-    auto* as_array = CreateASArray(as_engine, type);
-
-    if (!vec.empty()) {
-        as_array->Resize(static_cast<asUINT>(vec.size()));
-        for (const auto i : xrange(vec)) {
-            *reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
-            if (vec[i]) {
-                vec[i]->AddRef();
+            if constexpr (std::is_pointer_v<T>) {
+                if (vec[i] != nullptr) {
+                    vec[i]->AddRef();
+                }
             }
         }
     }
@@ -545,7 +533,7 @@ template<typename T, typename U>
 }
 
 template<typename T, typename U>
-[[maybe_unused]] static auto MarshalBackScalarDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
+[[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
     // Todo: MarshalBackScalarDict
     auto* as_dict = CreateASDict(as_engine, type);
@@ -861,9 +849,20 @@ static void Property_GetValue(asIScriptGeneric* gen)
     uint data_size;
     const auto* data = entity->GetProperties().GetRawData(prop, data_size);
 
+    const auto resolve_hash = [entity](const void* hptr) -> hstring {
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(hptr);
+        return entity->GetProperties().ResolveHash(hash);
+    };
+
     if (prop->IsPlainData()) {
-        RUNTIME_ASSERT(data_size);
-        memcpy(gen->GetAddressOfReturnLocation(), data, data_size);
+        if (prop->IsBaseTypeHash()) {
+            RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
+            new (gen->GetAddressOfReturnLocation()) hstring(resolve_hash(data));
+        }
+        else {
+            RUNTIME_ASSERT(data_size != 0);
+            memcpy(gen->GetAddressOfReturnLocation(), data, data_size);
+        }
     }
     else if (prop->IsString()) {
         new (gen->GetAddressOfReturnLocation()) string(reinterpret_cast<const char*>(data), data_size);
@@ -888,6 +887,21 @@ static void Property_GetValue(asIScriptGeneric* gen)
                     arr->SetValue(i, &str);
 
                     data += str_size;
+                }
+            }
+        }
+        else if (prop->IsBaseTypeHash()) {
+            if (data_size > 0u) {
+                RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+                const auto count = data_size / prop->GetBaseSize();
+                arr->Resize(count);
+
+                for (const auto i : xrange(count)) {
+                    const auto hvalue = resolve_hash(data);
+                    arr->SetValue(i, (void*)&hvalue);
+
+                    data += sizeof(hstring::hash_t);
                 }
             }
         }
@@ -932,6 +946,18 @@ static void Property_GetValue(asIScriptGeneric* gen)
                                 data += str_size;
                             }
                         }
+                        else if (prop->IsBaseTypeHash()) {
+                            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+                            arr->Resize(arr_size);
+
+                            for (const auto i : xrange(arr_size)) {
+                                const auto hvalue = resolve_hash(data);
+                                arr->SetValue(i, (void*)&hvalue);
+
+                                data += sizeof(hstring::hash_t);
+                            }
+                        }
                         else {
                             arr->Resize(arr_size);
 
@@ -940,7 +966,14 @@ static void Property_GetValue(asIScriptGeneric* gen)
                         }
                     }
 
-                    dict->Set((void*)key, &arr);
+                    if (prop->IsDictKeyHash()) {
+                        const auto hkey = resolve_hash(key);
+                        dict->Set((void*)&hkey, &arr);
+                    }
+                    else {
+                        dict->Set((void*)key, &arr);
+                    }
+
                     arr->Release();
                 }
             }
@@ -956,7 +989,14 @@ static void Property_GetValue(asIScriptGeneric* gen)
                     data += sizeof(uint);
 
                     string str(reinterpret_cast<const char*>(data), str_size);
-                    dict->Set((void*)key, &str);
+
+                    if (prop->IsDictKeyHash()) {
+                        const auto hkey = resolve_hash(key);
+                        dict->Set((void*)&hkey, &str);
+                    }
+                    else {
+                        dict->Set((void*)key, &str);
+                    }
 
                     data += str_size;
                 }
@@ -966,7 +1006,28 @@ static void Property_GetValue(asIScriptGeneric* gen)
                 const auto dict_size = data_size / whole_element_size;
 
                 for (uint i = 0; i < dict_size; i++) {
-                    dict->Set((void*)(data + i * whole_element_size), (void*)(data + i * whole_element_size + prop->GetDictKeySize()));
+                    const auto* key = data + i * whole_element_size;
+                    const auto* value = data + i * whole_element_size + prop->GetDictKeySize();
+
+                    if (prop->IsDictKeyHash()) {
+                        const auto hkey = resolve_hash(key);
+                        if (prop->IsBaseTypeHash()) {
+                            const auto hvalue = resolve_hash(value);
+                            dict->Set((void*)&hkey, (void*)&hvalue);
+                        }
+                        else {
+                            dict->Set((void*)&hkey, (void*)&value);
+                        }
+                    }
+                    else {
+                        if (prop->IsBaseTypeHash()) {
+                            const auto hvalue = resolve_hash(value);
+                            dict->Set((void*)key, (void*)&hvalue);
+                        }
+                        else {
+                            dict->Set((void*)key, (void*)&value);
+                        }
+                    }
                 }
             }
         }
@@ -1645,7 +1706,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             AS_VERIFY(engine->SetDefaultNamespace(_str("{}PropertyGroup", registrator->GetClassName()).c_str()));
 #if !COMPILER_MODE
-            const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackScalarArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
+            const auto it_enum = AngelScriptData->EnumArrays.emplace(MarshalBackArray(engine, _str("{}Property[]", registrator->GetClassName()).c_str(), prop_enums));
             RUNTIME_ASSERT(it_enum.second);
 #endif
             AS_VERIFY(engine->RegisterGlobalProperty(_str("{}Property[]@ {}", registrator->GetClassName(), group_name).c_str(), PTR_OR_DUMMY(*it_enum.first)));
@@ -1695,13 +1756,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         RUNTIME_ASSERT(engine->GetModuleCount() == 1);
         auto* mod = engine->GetModuleByIndex(0);
 
-        const auto as_type_to_type_info = [](int type_id, asDWORD flags) -> const std::type_info* {
+        const auto as_type_to_type_info = [engine](int type_id, asDWORD flags) -> const std::type_info* {
             const auto is_ref = (flags & asTM_INOUTREF) != 0;
             if (is_ref) {
                 return nullptr;
             }
 
-            switch (flags) {
+            switch (type_id) {
             case asTYPEID_VOID:
                 return &typeid(void);
             case asTYPEID_BOOL:
@@ -1726,9 +1787,32 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 return &typeid(float);
             case asTYPEID_DOUBLE:
                 return &typeid(double);
+            default:
+                break;
             }
 
             if ((type_id & asTYPEID_OBJHANDLE) != 0 && (type_id & asTYPEID_APPOBJECT) != 0) {
+#define CHECK_CLASS(entity_name, real_class) \
+    if (string_view(type_info->GetName()) == entity_name) { \
+        return &typeid(real_class*); \
+    }
+                auto* type_info = engine->GetTypeInfoById(type_id);
+#if SERVER_SCRIPTING
+                CHECK_CLASS("Player", Player);
+                CHECK_CLASS("Item", Item);
+                CHECK_CLASS("StaticItem", StaticItem);
+                CHECK_CLASS("Critter", Critter);
+                CHECK_CLASS("Map", Map);
+                CHECK_CLASS("Location", Location);
+#else
+                CHECK_CLASS("Player", PlayerView);
+                CHECK_CLASS("Item", ItemView);
+                CHECK_CLASS("StaticItem", ItemView);
+                CHECK_CLASS("Critter", CritterView);
+                CHECK_CLASS("Map", MapView);
+                CHECK_CLASS("Location", LocationView);
+#endif
+#undef CHECK_CLASS
             }
 
             return nullptr;

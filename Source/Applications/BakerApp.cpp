@@ -54,8 +54,8 @@ DECLARE_EXCEPTION(ProtoValidationException);
 class BakerEngine : public FOEngineBase
 {
 public:
-    explicit BakerEngine(GlobalSettings& settings) :
-        FOEngineBase(settings, PropertiesRelationType::BothRelative, [this] {
+    BakerEngine(GlobalSettings& settings, PropertiesRelationType props_relation) :
+        FOEngineBase(settings, props_relation, [this] {
             extern void Baker_RegisterData(FOEngineBase*);
             Baker_RegisterData(this);
             return nullptr;
@@ -313,7 +313,7 @@ int main(int argc, char** argv)
 
             RUNTIME_ASSERT(!App->Settings.BakeContentEntries.empty());
 
-            auto engine = BakerEngine(App->Settings);
+            auto engine = BakerEngine(App->Settings, PropertiesRelationType::BothRelative);
 
             for (const auto& dir : App->Settings.BakeContentEntries) {
                 WriteLog("Add content entry {}", dir);
@@ -368,6 +368,7 @@ int main(int argc, char** argv)
                 }
 
                 if (parse_protos) {
+                    WriteLog("Parse protos");
                     proto_mngr.ParseProtos(engine.FileSys);
 
                     // Protos validation
@@ -381,27 +382,78 @@ int main(int argc, char** argv)
 
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
-                        ASCompiler_ServerScriptSystem_Validation().InitAngelScriptScripting(&validation_engine);
+                        ASCompiler_ServerScriptSystem_Validation script_sys;
+                        script_sys.InitAngelScriptScripting(&validation_engine);
+                        validation_engine->ScriptSys = &script_sys;
 #else
-                        ASCompiler_SingleScriptSystem_Validation().InitAngelScriptScripting(&validation_engine);
+                        ASCompiler_SingleScriptSystem_Validation script_sys;
+                        script_sys.InitAngelScriptScripting(&validation_engine);
+                        validation_engine->ScriptSys = &script_sys;
 #endif
 #else
 #error...
 #endif
 
+                        WriteLog("Validate protos");
                         ValidateProtos(proto_mngr, validation_engine->ScriptSys, engine.FileSys, engine, resource_hashes);
                     }
 
-                    auto data = proto_mngr.GetProtosBinaryData();
-                    RUNTIME_ASSERT(!data.empty());
+                    const auto write_protos = [](const ProtoManager& protos, string_view fname) {
+                        const auto data = protos.GetProtosBinaryData();
+                        RUNTIME_ASSERT(!data.empty());
+                        auto protos_file = DiskFileSystem::OpenFile(fname, true);
+                        RUNTIME_ASSERT(protos_file);
+                        const auto protos_write_ok = protos_file.Write(data.data(), data.size());
+                        RUNTIME_ASSERT(protos_write_ok);
+                    };
 
-                    auto protos_file = DiskFileSystem::OpenFile("Protos/Protos.foprob", true);
-                    RUNTIME_ASSERT(protos_file);
-                    auto protos_write_ok = protos_file.Write(data.data(), data.size());
-                    RUNTIME_ASSERT(protos_write_ok);
+                    WriteLog("Write protos");
+                    write_protos(proto_mngr, "Protos/Protos.foprob");
+
+                    {
+                        WriteLog("Process server protos");
+                        auto server_engine = BakerEngine(App->Settings, PropertiesRelationType::ServerRelative);
+                        auto server_proto_mngr = ProtoManager(&server_engine);
+                        server_proto_mngr.ParseProtos(engine.FileSys);
+                        write_protos(server_proto_mngr, "Protos/ServerProtos.foprob");
+                    }
+                    {
+                        WriteLog("Process client protos");
+                        auto client_engine = BakerEngine(App->Settings, PropertiesRelationType::ClientRelative);
+                        auto client_proto_mngr = ProtoManager(&client_engine);
+                        client_proto_mngr.ParseProtos(engine.FileSys);
+                        write_protos(client_proto_mngr, "Protos/ClientProtos.foprob");
+                    }
                 }
 
                 WriteLog("Bake protos complete!");
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                errors++;
+            }
+
+            // Maps
+            try {
+                WriteLog("Bake maps");
+
+                if (App->Settings.ForceBakering) {
+                    auto del_maps_ok = DiskFileSystem::DeleteDir("Maps");
+                    RUNTIME_ASSERT(del_maps_ok);
+                }
+
+                auto maps = engine.FileSys.FilterFiles("fomap");
+                WriteLog("Maps count {}", maps.GetFilesCount());
+
+                while (maps.MoveNext()) {
+                    auto file = maps.GetCurFile();
+                    auto map_file = DiskFileSystem::OpenFile(_str("Maps/{}.fomap", file.GetName()), true);
+                    RUNTIME_ASSERT(map_file);
+                    auto map_file_write_ok = map_file.Write(file.GetBuf(), file.GetSize());
+                    RUNTIME_ASSERT(map_file_write_ok);
+                }
+
+                WriteLog("Bake maps complete!");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
@@ -594,6 +646,9 @@ static auto CheckScriptsUpToDate(string_view script_path) -> bool
 struct Item : Entity
 {
 };
+struct StaticItem : Entity
+{
+};
 struct Critter : Entity
 {
 };
@@ -609,11 +664,13 @@ static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, F
     auto errors = 0;
 
     unordered_map<string, std::function<bool(string_view)>> script_func_verify = {
-        {"ItemInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Item, bool>(func_name); }},
-        {"CritterInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Critter, bool>(func_name); }},
-        {"MapInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Map, bool>(func_name); }},
-        {"LocationInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location, bool>(func_name); }},
-        {"LocationEntrance", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location, vector<Critter>, uchar>(func_name); }},
+        {"ItemInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
+        {"ItemScenery", [script_sys](string_view func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, int>(func_name); }},
+        {"ItemTrigger", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(func_name); }},
+        {"CritterInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
+        {"MapInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
+        {"LocationInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
+        {"LocationEntrance", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location*, vector<Critter*>, uchar>(func_name); }},
     };
 
     const auto validate_properties = [&errors, &resource_hashes, &script_func_verify](const Properties& props, string_view context_str) {
@@ -647,11 +704,12 @@ static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, F
 
             if (prop->IsBaseScriptFuncType()) {
                 if (prop->IsPlainData()) {
+                    const auto func_name = props.GetValue<hstring>(prop);
                     if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
                         WriteLog("Invalid script func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                         errors++;
                     }
-                    else if (!script_func_verify[prop->GetBaseScriptFuncType()]) {
+                    else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name)) {
                         WriteLog("Verification failed for func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                         errors++;
                     }
@@ -713,6 +771,29 @@ static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, F
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
             errors++;
+        }
+    }
+
+    // Check player proto
+    {
+        const auto& cr_protos = proto_mngr.GetProtoCritters();
+        if (cr_protos.count(name_resolver.ToHashedString("Player")) == 0u) {
+            WriteLog("Player proto 'Player.focr' not loaded");
+            errors++;
+        }
+    }
+
+    // Check maps for locations
+    {
+        const auto& loc_protos = proto_mngr.GetProtoLocations();
+        const auto& map_protos = proto_mngr.GetProtoMaps();
+        for (auto&& [pid, proto] : loc_protos) {
+            for (auto map_pid : proto->GetMapProtos()) {
+                if (map_protos.count(map_pid) == 0u) {
+                    WriteLog("Proto map {} not found for proto location {}", map_pid, proto->GetName());
+                    errors++;
+                }
+            }
         }
     }
 

@@ -90,19 +90,19 @@ void MapManager::LinkMaps()
     WriteLog("Link maps complete");
 }
 
-void MapManager::LoadStaticMaps(FileSystem& file_sys)
+void MapManager::LoadStaticMaps()
 {
-    for (const auto& [pid, proto] : _engine->ProtoMngr.GetProtoMaps()) {
-        LoadStaticMap(file_sys, proto);
+    for (auto&& [pid, proto] : _engine->ProtoMngr.GetProtoMaps()) {
+        LoadStaticMap(proto);
     }
 }
 
-void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
+void MapManager::LoadStaticMap(const ProtoMap* pmap)
 {
     StaticMap static_map;
 
     MapLoader::Load(
-        pmap->GetName(), file_sys, _engine->ProtoMngr, *_engine,
+        pmap->GetName(), _engine->FileSys, _engine->ProtoMngr, *_engine,
         [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
             auto* cr = new Critter(_engine, id, nullptr, proto);
             if (!cr->LoadFromText(kv)) {
@@ -129,27 +129,21 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
         });
 
     // Bind scripts
-    auto errors = 0;
-
     for (auto* item : static_map.AllItemsVec) {
-        if (item->IsStatic() && item->GetInitScript()) {
-            const auto func_name = item->GetInitScript();
-            ScriptFunc<bool, Critter*, StaticItem*, bool, int> scenery_func;
-            ScriptFunc<void, Critter*, StaticItem*, bool, uchar> trigger_func;
-            if (item->GetIsTrigger() || item->GetIsTrap()) {
-                trigger_func = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(func_name);
-            }
-            else {
-                scenery_func = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, bool, int>(func_name);
+        if (item->IsStatic()) {
+            if (item->GetSceneryScript()) {
+                item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, int>(item->GetSceneryScript());
+                if (!item->SceneryScriptFunc) {
+                    throw MapManagerException("Can't bind static item scenery function", pmap->GetName(), item->GetSceneryScript());
+                }
             }
 
-            if (!scenery_func && !trigger_func) {
-                WriteLog("Map '{}', can't bind static item function '{}'", pmap->GetName(), func_name);
-                errors++;
+            if (item->GetTriggerScript()) {
+                item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(item->GetTriggerScript());
+                if (!item->TriggerScriptFunc) {
+                    throw MapManagerException("Can't bind static item trigger function", pmap->GetName(), item->GetTriggerScript());
+                }
             }
-
-            item->SceneryScriptFunc = scenery_func;
-            item->TriggerScriptFunc = trigger_func;
         }
     }
 
@@ -180,9 +174,7 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
         const auto hx = item->GetHexX();
         const auto hy = item->GetHexY();
         if (hx >= maxhx || hy >= maxhy) {
-            WriteLog("Invalid item '{}' position on map '{}', hex x {}, hex y {}", item->GetName(), pmap->GetName(), hx, hy);
-            errors++;
-            continue;
+            throw MapManagerException("Invalid item position on map", pmap->GetName(), item->GetName(), hx, hy);
         }
 
         if (!item->GetIsHiddenInStatic()) {
@@ -262,10 +254,6 @@ void MapManager::LoadStaticMap(FileSystem& file_sys, const ProtoMap* pmap)
     static_map.StaticItemsVec.shrink_to_fit();
     static_map.TriggerItemsVec.shrink_to_fit();
     static_map.Tiles.shrink_to_fit();
-
-    if (errors != 0) {
-        throw MapManagerException("Load map failed");
-    }
 
     _staticMaps.emplace(pmap, std::move(static_map));
 }
@@ -430,13 +418,11 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
 {
     const auto* proto = _engine->ProtoMngr.GetProtoLocation(proto_id);
     if (proto == nullptr) {
-        WriteLog("Location proto '{}' is not loaded", proto_id);
-        return nullptr;
+        throw MapManagerException("Location proto is not loaded", proto_id);
     }
 
     if (wx >= GM_MAXZONEX * _engine->Settings.GlobalMapZoneLength || wy >= GM_MAXZONEY * _engine->Settings.GlobalMapZoneLength) {
-        WriteLog("Invalid location '{}' coordinates", proto_id);
-        return nullptr;
+        throw MapManagerException("Invalid location coordinates", proto_id);
     }
 
     auto* loc = new Location(_engine, 0, proto);
@@ -446,12 +432,12 @@ auto MapManager::CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Locat
     for (const auto map_pid : loc->GetMapProtos()) {
         const auto* map = CreateMap(map_pid, loc);
         if (map == nullptr) {
-            WriteLog("Create map '{}' for location '{}' failed", map_pid, proto_id);
             for (const auto* map2 : loc->GetMapsRaw()) {
                 map2->Release();
             }
             loc->Release();
-            return nullptr;
+
+            throw MapManagerException("Create map for location failed", proto_id, map_pid);
         }
     }
 
@@ -483,8 +469,7 @@ auto MapManager::CreateMap(hstring proto_id, Location* loc) -> Map*
 {
     const auto* proto_map = _engine->ProtoMngr.GetProtoMap(proto_id);
     if (proto_map == nullptr) {
-        WriteLog("Proto map '{}' is not loaded", proto_id);
-        return nullptr;
+        throw MapManagerException("Proto map is not loaded", proto_id);
     }
 
     const auto it = _staticMaps.find(proto_map);
@@ -1308,7 +1293,7 @@ auto MapManager::TransitToGlobal(Critter* cr, uint leader_id, bool force) -> boo
 auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir, uint radius, uint leader_id, bool force) -> bool
 {
     // Check location deletion
-    auto* loc = map != nullptr ? map->GetLocation() : nullptr;
+    const auto* loc = map != nullptr ? map->GetLocation() : nullptr;
     if (loc != nullptr && loc->GetToGarbage()) {
         WriteLog("Transfer to deleted location, critter '{}'", cr->GetName());
         return false;

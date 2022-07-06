@@ -48,7 +48,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
             Mapper_RegisterData(this);
             return new MapperScriptSystem(this);
         }),
-    FOClient(settings, window, PropertiesRelationType::None, nullptr),
+    FOClient(settings, window, PropertiesRelationType::BothRelative, nullptr),
 
     IfaceIni("", *this)
 {

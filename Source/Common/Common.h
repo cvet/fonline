@@ -737,7 +737,7 @@ public:
     void VerifyEnd() const
     {
         if (_readPos != _dataBuf.size()) {
-            throw DataReadingException("Not all data readed");
+            throw DataReadingException("Not all data read");
         }
     }
 
