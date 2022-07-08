@@ -3646,9 +3646,13 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     auto* new_map = new_map_holder.get();
     new_map->EnableMapperMode();
 
+    const auto map_files = FileSys.FilterFiles("fomap");
+    const auto map_file = map_files.FindFileByName(map_name);
+    RUNTIME_ASSERT(map_file);
+
     try {
         MapLoader::Load(
-            map_name, FileSys, ProtoMngr, *this,
+            map_name, map_file.GetStr(), ProtoMngr, *this,
             [new_map](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
                 const auto* new_critter = new_map->AddCritter(id, proto, kv);
                 return new_critter != nullptr;

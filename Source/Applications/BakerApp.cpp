@@ -95,7 +95,7 @@ struct ASCompiler_MapperScriptSystem : public ScriptSystem
 };
 
 static auto CheckScriptsUpToDate(string_view script_path) -> bool;
-static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, FileSystem& content_files, NameResolver& name_resolver, const unordered_set<hstring>& resource_names);
+static auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
 
 // External variable for compiler messages
 unordered_set<string> CompilerPassedMessages;
@@ -372,30 +372,60 @@ int main(int argc, char** argv)
                     proto_mngr.ParseProtos(engine.FileSys);
 
                     // Protos validation
-                    {
-                        unordered_set<hstring> resource_hashes;
-                        for (const auto& name : resource_names) {
-                            resource_hashes.insert(engine.ToHashedString(name));
-                        }
+                    unordered_set<hstring> resource_hashes;
+                    for (const auto& name : resource_names) {
+                        resource_hashes.insert(engine.ToHashedString(name));
+                    }
 
-                        FOEngineBase* validation_engine = nullptr;
+                    FOEngineBase* validation_engine = nullptr;
 
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
-                        ASCompiler_ServerScriptSystem_Validation script_sys;
-                        script_sys.InitAngelScriptScripting(&validation_engine);
-                        validation_engine->ScriptSys = &script_sys;
+                    ASCompiler_ServerScriptSystem_Validation script_sys;
+                    script_sys.InitAngelScriptScripting(&validation_engine);
+                    validation_engine->ScriptSys = &script_sys;
 #else
-                        ASCompiler_SingleScriptSystem_Validation script_sys;
-                        script_sys.InitAngelScriptScripting(&validation_engine);
-                        validation_engine->ScriptSys = &script_sys;
+                    ASCompiler_SingleScriptSystem_Validation script_sys;
+                    script_sys.InitAngelScriptScripting(&validation_engine);
+                    validation_engine->ScriptSys = &script_sys;
 #endif
 #else
 #error...
 #endif
 
-                        WriteLog("Validate protos");
-                        ValidateProtos(proto_mngr, validation_engine->ScriptSys, engine.FileSys, engine, resource_hashes);
+                    WriteLog("Validate protos");
+
+                    auto proto_errors = 0;
+
+                    for (const auto* proto : proto_mngr.GetAllProtos()) {
+                        proto_errors += ValidateProperties(proto->GetProperties(), _str("proto {}", proto->GetName()), validation_engine->ScriptSys, resource_hashes);
+                    }
+
+                    // Check player proto
+                    {
+                        const auto& cr_protos = proto_mngr.GetProtoCritters();
+                        if (cr_protos.count(engine.ToHashedString("Player")) == 0u) {
+                            WriteLog("Player proto 'Player.focr' not loaded");
+                            proto_errors++;
+                        }
+                    }
+
+                    // Check maps for locations
+                    {
+                        const auto& loc_protos = proto_mngr.GetProtoLocations();
+                        const auto& map_protos = proto_mngr.GetProtoMaps();
+                        for (auto&& [pid, proto] : loc_protos) {
+                            for (auto map_pid : proto->GetMapProtos()) {
+                                if (map_protos.count(map_pid) == 0u) {
+                                    WriteLog("Proto map {} not found for proto location {}", map_pid, proto->GetName());
+                                    proto_errors++;
+                                }
+                            }
+                        }
+                    }
+
+                    if (proto_errors != 0) {
+                        throw ProtoValidationException("Proto resources verification failed");
                     }
 
                     const auto write_protos = [](const ProtoManager& protos, string_view fname) {
@@ -410,50 +440,150 @@ int main(int argc, char** argv)
                     WriteLog("Write protos");
                     write_protos(proto_mngr, "Protos/Protos.foprob");
 
-                    {
-                        WriteLog("Process server protos");
-                        auto server_engine = BakerEngine(App->Settings, PropertiesRelationType::ServerRelative);
-                        auto server_proto_mngr = ProtoManager(&server_engine);
-                        server_proto_mngr.ParseProtos(engine.FileSys);
-                        write_protos(server_proto_mngr, "Protos/ServerProtos.foprob");
+                    WriteLog("Process server protos");
+                    auto server_engine = BakerEngine(App->Settings, PropertiesRelationType::ServerRelative);
+                    auto server_proto_mngr = ProtoManager(&server_engine);
+                    server_proto_mngr.ParseProtos(engine.FileSys);
+                    write_protos(server_proto_mngr, "Protos/ServerProtos.foprob");
+
+                    WriteLog("Process client protos");
+                    auto client_engine = BakerEngine(App->Settings, PropertiesRelationType::ClientRelative);
+                    auto client_proto_mngr = ProtoManager(&client_engine);
+                    client_proto_mngr.ParseProtos(engine.FileSys);
+                    write_protos(client_proto_mngr, "Protos/ClientProtos.foprob");
+
+                    // Maps
+                    WriteLog("Process maps");
+
+                    if (App->Settings.ForceBakering) {
+                        auto del_maps_ok = DiskFileSystem::DeleteDir("Maps");
+                        RUNTIME_ASSERT(del_maps_ok);
                     }
-                    {
-                        WriteLog("Process client protos");
-                        auto client_engine = BakerEngine(App->Settings, PropertiesRelationType::ClientRelative);
-                        auto client_proto_mngr = ProtoManager(&client_engine);
-                        client_proto_mngr.ParseProtos(engine.FileSys);
-                        write_protos(client_proto_mngr, "Protos/ClientProtos.foprob");
+
+                    const auto fomap_files = engine.FileSys.FilterFiles("fomap");
+
+                    for (const auto& proto_entry : proto_mngr.GetProtoMaps()) {
+                        const auto* proto_map = proto_entry.second;
+
+                        auto map_file = fomap_files.FindFileByName(proto_map->GetName());
+                        RUNTIME_ASSERT(map_file);
+
+                        // Skip if up to date
+                        if (!App->Settings.ForceBakering) {
+                            if (DiskFileSystem::GetWriteTime("Maps/{}.fomapb") > map_file.GetWriteTime()) {
+                                continue;
+                            }
+                        }
+
+                        uint map_cr_count = 0u;
+                        uint map_item_count = 0u;
+                        uint map_tile_count = 0u;
+                        vector<uchar> map_cr_data;
+                        vector<uchar> map_item_data;
+                        vector<uchar> map_tile_data;
+                        auto map_cr_data_writer = DataWriter(map_cr_data);
+                        auto map_item_data_writer = DataWriter(map_item_data);
+                        auto map_tile_data_writer = DataWriter(map_tile_data);
+                        auto map_errors = 0;
+
+                        try {
+                            MapLoader::Load(
+                                proto_map->GetName(), map_file.GetStr(), server_proto_mngr, server_engine,
+                                [&](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
+                                    Properties props(proto->GetProperties().GetRegistrator());
+                                    if (props.LoadFromText(kv)) {
+                                        map_errors += ValidateProperties(props, _str("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
+
+                                        map_cr_count++;
+                                        map_cr_data_writer.Write<uint>(id);
+                                        map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
+
+                                        vector<uchar*>* props_data = nullptr;
+                                        vector<uint>* props_data_sizes = nullptr;
+                                        props.StoreAllData(&props_data, &props_data_sizes);
+
+                                        map_cr_data_writer.Write<ushort>(static_cast<ushort>(props_data->size()));
+                                        for (size_t i = 0; i < props_data->size(); i++) {
+                                            const auto cur_size = props_data_sizes->at(i);
+                                            map_cr_data_writer.Write<uint>(cur_size);
+                                            map_cr_data_writer.WritePtr(props_data->at(i), cur_size);
+                                        }
+                                    }
+                                    else {
+                                        WriteLog("Invalid critter {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
+                                        map_errors++;
+                                    }
+
+                                    return true;
+                                },
+                                [&](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
+                                    Properties props(proto->GetProperties().GetRegistrator());
+                                    if (props.LoadFromText(kv)) {
+                                        map_errors += ValidateProperties(props, _str("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
+
+                                        map_item_count++;
+                                        map_item_data_writer.Write<uint>(id);
+                                        map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
+
+                                        vector<uchar*>* props_data = nullptr;
+                                        vector<uint>* props_data_sizes = nullptr;
+                                        props.StoreAllData(&props_data, &props_data_sizes);
+
+                                        map_item_data_writer.Write<ushort>(static_cast<ushort>(props_data->size()));
+                                        for (size_t i = 0; i < props_data->size(); i++) {
+                                            const auto cur_size = props_data_sizes->at(i);
+                                            map_item_data_writer.Write<uint>(cur_size);
+                                            map_item_data_writer.WritePtr(props_data->at(i), cur_size);
+                                        }
+                                    }
+                                    else {
+                                        WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
+                                        map_errors++;
+                                    }
+
+                                    return true;
+                                },
+                                [&](MapTile&& tile) -> bool {
+                                    const auto tile_name = engine.ResolveHash(tile.NameHash);
+                                    if (resource_hashes.count(tile_name) != 0u) {
+                                        map_tile_count++;
+                                        map_tile_data_writer.WritePtr<MapTile>(&tile);
+                                    }
+                                    else {
+                                        WriteLog("Invalid tile {} on map {} at hex {} {}", tile_name, proto_map->GetName(), tile.HexX, tile.HexY);
+                                        map_errors++;
+                                    }
+
+                                    return true;
+                                });
+                        }
+                        catch (const std::exception& ex) {
+                            ReportExceptionAndContinue(ex);
+                            map_errors++;
+                        }
+
+                        if (map_errors == 0) {
+                            vector<uchar> map_data;
+                            auto final_writer = DataWriter(map_data);
+                            final_writer.Write<uint>(map_cr_count);
+                            final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
+                            final_writer.Write<uint>(map_item_count);
+                            final_writer.WritePtr(map_item_data.data(), map_item_data.size());
+                            final_writer.Write<uint>(map_tile_count);
+                            final_writer.WritePtr(map_tile_data.data(), map_tile_data.size());
+
+                            auto map_file = DiskFileSystem::OpenFile(_str("Maps/{}.fomapb", proto_map->GetName()), true);
+                            RUNTIME_ASSERT(map_file);
+                            auto map_file_write_ok = map_file.Write(map_data);
+                            RUNTIME_ASSERT(map_file_write_ok);
+                        }
+                        else {
+                            errors++;
+                        }
                     }
                 }
 
                 WriteLog("Bake protos complete!");
-            }
-            catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
-                errors++;
-            }
-
-            // Maps
-            try {
-                WriteLog("Bake maps");
-
-                if (App->Settings.ForceBakering) {
-                    auto del_maps_ok = DiskFileSystem::DeleteDir("Maps");
-                    RUNTIME_ASSERT(del_maps_ok);
-                }
-
-                auto maps = engine.FileSys.FilterFiles("fomap");
-                WriteLog("Maps count {}", maps.GetFilesCount());
-
-                while (maps.MoveNext()) {
-                    auto file = maps.GetCurFile();
-                    auto map_file = DiskFileSystem::OpenFile(_str("Maps/{}.fomap", file.GetName()), true);
-                    RUNTIME_ASSERT(map_file);
-                    auto map_file_write_ok = map_file.Write(file.GetBuf(), file.GetSize());
-                    RUNTIME_ASSERT(map_file_write_ok);
-                }
-
-                WriteLog("Bake maps complete!");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
@@ -659,10 +789,8 @@ struct Location : Entity
 {
 };
 
-static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, FileSystem& content_files, NameResolver& name_resolver, const unordered_set<hstring>& resource_hashes)
+static auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int
 {
-    auto errors = 0;
-
     unordered_map<string, std::function<bool(string_view)>> script_func_verify = {
         {"ItemInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
         {"ItemScenery", [script_sys](string_view func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, int>(func_name); }},
@@ -673,131 +801,54 @@ static void ValidateProtos(ProtoManager& proto_mngr, ScriptSystem* script_sys, F
         {"LocationEntrance", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location*, vector<Critter*>, uchar>(func_name); }},
     };
 
-    const auto validate_properties = [&errors, &resource_hashes, &script_func_verify](const Properties& props, string_view context_str) {
-        const auto* registrator = props.GetRegistrator();
+    int errors = 0;
 
-        for (uint i = 0; i < registrator->GetCount(); i++) {
-            const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+    const auto* registrator = props.GetRegistrator();
 
-            if (prop->IsBaseTypeResource()) {
-                if (prop->IsPlainData()) {
-                    const auto h = props.GetValue<hstring>(prop);
+    for (uint i = 0; i < registrator->GetCount(); i++) {
+        const auto* prop = registrator->GetByIndex(static_cast<int>(i));
+
+        if (prop->IsBaseTypeResource()) {
+            if (prop->IsPlainData()) {
+                const auto h = props.GetValue<hstring>(prop);
+                if (h && resource_hashes.count(h) == 0u) {
+                    WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
+                    errors++;
+                }
+            }
+            else if (prop->IsArray()) {
+                const auto hashes = props.GetValue<vector<hstring>>(prop);
+                for (const auto h : hashes) {
                     if (h && resource_hashes.count(h) == 0u) {
                         WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
                         errors++;
                     }
                 }
-                else if (prop->IsArray()) {
-                    const auto hashes = props.GetValue<vector<hstring>>(prop);
-                    for (const auto h : hashes) {
-                        if (h && resource_hashes.count(h) == 0u) {
-                            WriteLog("Resource {} not found for property {} in {}", h, prop->GetName(), context_str);
-                            errors++;
-                        }
-                    }
+            }
+            else {
+                WriteLog("Resource {} can be as standalone or in array in {}", prop->GetName(), context_str);
+                errors++;
+            }
+        }
+
+        if (prop->IsBaseScriptFuncType()) {
+            if (prop->IsPlainData()) {
+                const auto func_name = props.GetValue<hstring>(prop);
+                if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
+                    WriteLog("Invalid script func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                    errors++;
                 }
-                else {
-                    WriteLog("Resource {} can be as standalone or in array in {}", prop->GetName(), context_str);
+                else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name)) {
+                    WriteLog("Verification failed for func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
             }
-
-            if (prop->IsBaseScriptFuncType()) {
-                if (prop->IsPlainData()) {
-                    const auto func_name = props.GetValue<hstring>(prop);
-                    if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
-                        WriteLog("Invalid script func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
-                        errors++;
-                    }
-                    else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name)) {
-                        WriteLog("Verification failed for func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
-                        errors++;
-                    }
-                }
-                else {
-                    WriteLog("Script {} must be as standalone (not in array or dict) in {}", prop->GetName(), context_str);
-                    errors++;
-                }
-            }
-        }
-    };
-
-    const auto protos = proto_mngr.GetAllProtos();
-
-    for (const auto* proto : protos) {
-        validate_properties(proto->GetProperties(), _str("proto {}", proto->GetName()));
-    }
-
-    for (const auto* some_proto : protos) {
-        const auto* pmap = dynamic_cast<const ProtoMap*>(some_proto);
-        if (pmap == nullptr) {
-            continue;
-        }
-
-        try {
-            MapLoader::Load(
-                pmap->GetName(), content_files, proto_mngr, name_resolver,
-                [&errors, &validate_properties, pmap](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
-                    Properties props(proto->GetProperties().GetRegistrator());
-                    if (!props.LoadFromText(kv)) {
-                        WriteLog("Invalid critter {} on map {} with id {}", proto->GetName(), pmap->GetName(), id);
-                        errors++;
-                    }
-                    else {
-                        validate_properties(props, _str("map {} critter {} with id {}", pmap->GetName(), proto->GetName(), id));
-                    }
-                    return true;
-                },
-                [&errors, &validate_properties, pmap](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
-                    Properties props(proto->GetProperties().GetRegistrator());
-                    if (!props.LoadFromText(kv)) {
-                        WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), pmap->GetName(), id);
-                        errors++;
-                    }
-                    else {
-                        validate_properties(props, _str("map {} item {} with id {}", pmap->GetName(), proto->GetName(), id));
-                    }
-                    return true;
-                },
-                [&errors, &resource_hashes, &name_resolver, pmap](MapTile&& tile) -> bool {
-                    const auto tile_name = name_resolver.ResolveHash(tile.NameHash);
-                    if (resource_hashes.count(tile_name) == 0u) {
-                        WriteLog("Invalid tile {} on map {} at hex {} {}", tile_name, pmap->GetName(), tile.HexX, tile.HexY);
-                        errors++;
-                    }
-                    return true;
-                });
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
-        }
-    }
-
-    // Check player proto
-    {
-        const auto& cr_protos = proto_mngr.GetProtoCritters();
-        if (cr_protos.count(name_resolver.ToHashedString("Player")) == 0u) {
-            WriteLog("Player proto 'Player.focr' not loaded");
-            errors++;
-        }
-    }
-
-    // Check maps for locations
-    {
-        const auto& loc_protos = proto_mngr.GetProtoLocations();
-        const auto& map_protos = proto_mngr.GetProtoMaps();
-        for (auto&& [pid, proto] : loc_protos) {
-            for (auto map_pid : proto->GetMapProtos()) {
-                if (map_protos.count(map_pid) == 0u) {
-                    WriteLog("Proto map {} not found for proto location {}", map_pid, proto->GetName());
-                    errors++;
-                }
+            else {
+                WriteLog("Script {} must be as standalone (not in array or dict) in {}", prop->GetName(), context_str);
+                errors++;
             }
         }
     }
 
-    if (errors != 0) {
-        throw ProtoValidationException("Proto resources verification failed");
-    }
+    return errors;
 }

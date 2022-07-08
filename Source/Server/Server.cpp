@@ -192,7 +192,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     ProtoMngr.LoadFromResources();
 
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
-    MapMngr.LoadStaticMaps();
+    MapMngr.LoadFromResources();
 
     // Globals
     const auto globals_doc = DbStorage.Get("Game", 1);
@@ -264,10 +264,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     else {
         const auto loc_fabric = [this](uint id, const ProtoLocation* proto) { return new Location(this, id, proto); };
         const auto map_fabric = [this](uint id, const ProtoMap* proto) {
-            const auto* static_map = MapMngr.FindStaticMap(proto);
-            if (static_map == nullptr) {
-                throw EntitiesLoadException("Static map not found", proto->GetName());
-            }
+            const auto* static_map = MapMngr.GetStaticMap(proto);
             return new Map(this, id, proto, nullptr, static_map);
         };
         const auto cr_fabric = [this](uint id, const ProtoCritter* proto) { return new Critter(this, id, nullptr, proto); };
@@ -2236,9 +2233,7 @@ void FOServer::Process_GiveMap(Player* player)
     }
 
     {
-        const auto* static_map = MapMngr.FindStaticMap(proto_map);
-        RUNTIME_ASSERT(static_map);
-
+        const auto* static_map = MapMngr.GetStaticMap(proto_map);
         const auto send_tiles = static_map->HashTiles != hash_tiles;
         const auto send_scenery = static_map->HashScen != hash_scen;
 

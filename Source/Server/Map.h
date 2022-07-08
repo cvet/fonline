@@ -49,17 +49,17 @@ class Location;
 
 struct StaticMap
 {
+    vector<pair<uint, const Critter*>> CritterBillets {};
+    vector<pair<uint, const Item*>> ItemBillets {};
+    vector<pair<uint, const Item*>> HexItemBillets {};
+    vector<pair<uint, const Item*>> ChildItemBillets {};
+    vector<StaticItem*> StaticItems {};
+    vector<StaticItem*> TriggerItems {};
+    vector<uchar> HexFlags {};
     vector<uchar> SceneryData {};
+    vector<MapTile> Tiles {};
     uint HashTiles {};
     uint HashScen {};
-    vector<Critter*> CrittersVec {};
-    vector<Item*> AllItemsVec {};
-    vector<Item*> HexItemsVec {};
-    vector<Item*> ChildItemsVec {};
-    vector<StaticItem*> StaticItemsVec {};
-    vector<StaticItem*> TriggerItemsVec {};
-    vector<uchar> HexFlags {};
-    vector<MapTile> Tiles {};
 };
 
 class Map final : public ServerEntity, public MapProperties

@@ -954,7 +954,7 @@ auto Map::GetStaticItemTriggers(ushort hx, ushort hy) -> vector<StaticItem*>
     NON_CONST_METHOD_HINT();
 
     vector<StaticItem*> triggers;
-    for (auto* item : _staticMap->TriggerItemsVec) {
+    for (auto* item : _staticMap->TriggerItems) {
         if (item->GetHexX() == hx && item->GetHexY() == hy) {
             triggers.push_back(item);
         }
@@ -966,7 +966,7 @@ auto Map::GetStaticItem(ushort hx, ushort hy, hstring pid) -> StaticItem*
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* item : _staticMap->StaticItemsVec) {
+    for (auto* item : _staticMap->StaticItems) {
         if ((!pid || item->GetProtoId() == pid) && item->GetHexX() == hx && item->GetHexY() == hy) {
             return item;
         }
@@ -979,7 +979,7 @@ auto Map::GetStaticItemsHex(ushort hx, ushort hy) -> vector<StaticItem*>
     NON_CONST_METHOD_HINT();
 
     vector<StaticItem*> items;
-    for (auto* item : _staticMap->StaticItemsVec) {
+    for (auto* item : _staticMap->StaticItems) {
         if (item->GetHexX() == hx && item->GetHexY() == hy) {
             items.push_back(item);
         }
@@ -992,7 +992,7 @@ auto Map::GetStaticItemsHexEx(ushort hx, ushort hy, uint radius, hstring pid) ->
     NON_CONST_METHOD_HINT();
 
     vector<StaticItem*> items;
-    for (auto* item : _staticMap->StaticItemsVec) {
+    for (auto* item : _staticMap->StaticItems) {
         if ((!pid || item->GetProtoId() == pid) && _engine->Geometry.DistGame(item->GetHexX(), item->GetHexY(), hx, hy) <= radius) {
             items.push_back(item);
         }
@@ -1005,7 +1005,7 @@ auto Map::GetStaticItemsByPid(hstring pid) -> vector<StaticItem*>
     NON_CONST_METHOD_HINT();
 
     vector<StaticItem*> items;
-    for (auto* item : _staticMap->StaticItemsVec) {
+    for (auto* item : _staticMap->StaticItems) {
         if (!pid || item->GetProtoId() == pid) {
             items.push_back(item);
         }

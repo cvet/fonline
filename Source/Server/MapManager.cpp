@@ -38,7 +38,6 @@
 #include "ItemManager.h"
 #include "LineTracer.h"
 #include "Log.h"
-#include "MapLoader.h"
 #include "ProtoManager.h"
 #include "Server.h"
 #include "Settings.h"
@@ -90,140 +89,221 @@ void MapManager::LinkMaps()
     WriteLog("Link maps complete");
 }
 
-void MapManager::LoadStaticMaps()
+void MapManager::LoadFromResources()
 {
-    for (auto&& [pid, proto] : _engine->ProtoMngr.GetProtoMaps()) {
-        LoadStaticMap(proto);
-    }
-}
+    RUNTIME_ASSERT(_staticMaps.empty());
 
-void MapManager::LoadStaticMap(const ProtoMap* pmap)
-{
-    StaticMap static_map;
+    auto map_files = _engine->FileSys.FilterFiles("fomapb");
+    while (map_files.MoveNext()) {
+        auto map_file = map_files.GetCurFile();
+        auto reader = DataReader({map_file.GetBuf(), map_file.GetSize()});
 
-    MapLoader::Load(
-        pmap->GetName(), _engine->FileSys, _engine->ProtoMngr, *_engine,
-        [&static_map, this](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
-            auto* cr = new Critter(_engine, id, nullptr, proto);
-            if (!cr->LoadFromText(kv)) {
-                cr->Release();
-                return false;
-            }
+        const auto pid = _engine->ToHashedString(map_file.GetName());
+        const auto* pmap = _engine->ProtoMngr.GetProtoMap(pid);
+        RUNTIME_ASSERT(pmap);
 
-            static_map.CrittersVec.push_back(cr);
-            return true;
-        },
-        [&static_map, this](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
-            auto* item = new Item(_engine, id, proto);
-            if (!item->LoadFromText(kv)) {
-                item->Release();
-                return false;
-            }
+        StaticMap static_map;
 
-            static_map.AllItemsVec.push_back(item);
-            return true;
-        },
-        [&static_map](MapTile&& tile) -> bool {
-            static_map.Tiles.emplace_back(tile);
-            return true;
-        });
+        const auto maxhx = pmap->GetWidth();
+        const auto maxhy = pmap->GetHeight();
 
-    // Bind scripts
-    for (auto* item : static_map.AllItemsVec) {
-        if (item->IsStatic()) {
-            if (item->GetSceneryScript()) {
-                item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, int>(item->GetSceneryScript());
-                if (!item->SceneryScriptFunc) {
-                    throw MapManagerException("Can't bind static item scenery function", pmap->GetName(), item->GetSceneryScript());
+        // Read entities
+        {
+            vector<const uchar*> props_data;
+            vector<uint> props_data_sizes;
+
+            const auto read_props = [&] {
+                const uint data_count = reader.Read<ushort>();
+                props_data.resize(data_count);
+                props_data_sizes.resize(data_count);
+                for (uint j = 0; j < data_count; j++) {
+                    props_data_sizes[j] = reader.Read<uint>();
+                    const auto* const_props_data = reader.ReadPtr<uchar>(props_data_sizes[j]);
+                    props_data[j] = const_cast<uchar*>(const_props_data);
+                }
+            };
+
+            // Read critters
+            {
+                const auto cr_count = reader.Read<uint>();
+                static_map.CritterBillets.reserve(cr_count);
+
+                for (const auto _ : xrange(cr_count)) {
+                    const auto cr_id = reader.Read<uint>();
+
+                    const auto cr_pid_hash = reader.Read<hstring::hash_t>();
+                    const auto cr_pid = _engine->ResolveHash(cr_pid_hash);
+                    const auto* cr_proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
+
+                    auto cr_props = Properties(_engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME));
+                    read_props();
+                    cr_props.RestoreData(props_data, props_data_sizes);
+
+                    auto* cr = new Critter(_engine, 0u, nullptr, cr_proto);
+                    cr->SetProperties(cr_props);
+
+                    static_map.CritterBillets.emplace_back(cr_id, cr);
+
+                    // Checks
+                    const auto hx = cr->GetHexX();
+                    const auto hy = cr->GetHexY();
+                    if (hx >= maxhx || hy >= maxhy) {
+                        throw MapManagerException("Invalid critter position on map", pmap->GetName(), cr->GetName(), hx, hy);
+                    }
                 }
             }
 
-            if (item->GetTriggerScript()) {
-                item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(item->GetTriggerScript());
-                if (!item->TriggerScriptFunc) {
-                    throw MapManagerException("Can't bind static item trigger function", pmap->GetName(), item->GetTriggerScript());
+            // Read items
+            {
+                const auto item_count = reader.Read<uint>();
+                static_map.ItemBillets.reserve(item_count);
+
+                for (const auto _ : xrange(item_count)) {
+                    const auto item_id = reader.Read<uint>();
+
+                    const auto item_pid_hash = reader.Read<hstring::hash_t>();
+                    const auto item_pid = _engine->ResolveHash(item_pid_hash);
+                    const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
+
+                    auto item_props = Properties(_engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME));
+                    read_props();
+                    item_props.RestoreData(props_data, props_data_sizes);
+
+                    auto* item = new Item(_engine, 0u, item_proto);
+                    item->SetProperties(item_props);
+
+                    static_map.ItemBillets.emplace_back(item_id, item);
+
+                    // Checks
+                    if (item->GetOwnership() == ItemOwnership::MapHex) {
+                        const auto hx = item->GetHexX();
+                        const auto hy = item->GetHexY();
+                        if (hx >= maxhx || hy >= maxhy) {
+                            throw MapManagerException("Invalid item position on map", pmap->GetName(), item->GetName(), hx, hy);
+                        }
+                    }
+
+                    // Bind scripts
+                    if (item->IsStatic()) {
+                        if (item->GetSceneryScript()) {
+                            item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, int>(item->GetSceneryScript());
+                            if (!item->SceneryScriptFunc) {
+                                throw MapManagerException("Can't bind static item scenery function", pmap->GetName(), item->GetSceneryScript());
+                            }
+                        }
+
+                        if (item->GetTriggerScript()) {
+                            item->TriggerScriptFunc = _engine->ScriptSys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(item->GetTriggerScript());
+                            if (!item->TriggerScriptFunc) {
+                                throw MapManagerException("Can't bind static item trigger function", pmap->GetName(), item->GetTriggerScript());
+                            }
+                        }
+                    }
+
+                    // Sort
+                    if (item->IsStatic()) {
+                        RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
+
+                        if (!item->GetIsHiddenInStatic()) {
+                            static_map.StaticItems.emplace_back(item);
+                        }
+                        if (item->GetIsTrigger() || item->GetIsTrap()) {
+                            static_map.TriggerItems.emplace_back(item);
+                        }
+                    }
+                    else {
+                        if (item->GetOwnership() == ItemOwnership::MapHex) {
+                            static_map.HexItemBillets.emplace_back(item_id, item);
+                        }
+                        else {
+                            static_map.ChildItemBillets.emplace_back(item_id, item);
+                        }
+                    }
                 }
             }
         }
-    }
 
-    // Parse objects
-    const auto maxhx = pmap->GetWidth();
-    const auto maxhy = pmap->GetHeight();
-    static_map.HexFlags.resize(static_cast<size_t>(maxhx * maxhy), 0u);
+        // Read tiles
+        {
+            const auto tiles_count = reader.Read<uint>();
+            static_map.Tiles.resize(tiles_count);
 
-    uint scenery_count = 0;
-    vector<uchar> scenery_data;
-    auto writer = DataWriter(scenery_data);
-    for (auto* item : static_map.AllItemsVec) {
-        if (!item->IsStatic()) {
-            item->AddRef();
+            for (const auto i : xrange(tiles_count)) {
+                reader.ReadPtr<MapTile>(&static_map.Tiles[i]);
 
-            if (item->GetOwnership() == ItemOwnership::MapHex) {
-                static_map.HexItemsVec.push_back(item);
-            }
-            else {
-                static_map.ChildItemsVec.push_back(item);
-            }
-
-            continue;
-        }
-
-        RUNTIME_ASSERT(item->GetOwnership() == ItemOwnership::MapHex);
-
-        const auto hx = item->GetHexX();
-        const auto hy = item->GetHexY();
-        if (hx >= maxhx || hy >= maxhy) {
-            throw MapManagerException("Invalid item position on map", pmap->GetName(), item->GetName(), hx, hy);
-        }
-
-        if (!item->GetIsHiddenInStatic()) {
-            item->AddRef();
-            static_map.StaticItemsVec.push_back(item);
-        }
-
-        if (!item->GetIsNoBlock()) {
-            SetBit(static_map.HexFlags[hy * maxhx + hx], FH_BLOCK);
-        }
-
-        if (!item->GetIsShootThru()) {
-            SetBit(static_map.HexFlags[hy * maxhx + hx], FH_BLOCK);
-            SetBit(static_map.HexFlags[hy * maxhx + hx], FH_NOTRAKE);
-        }
-
-        // Block around scroll blocks
-        if (item->GetIsScrollBlock()) {
-            for (uchar k = 0; k < 6; k++) {
-                auto hx_ = hx;
-                auto hy_ = hy;
-                if (_engine->Geometry.MoveHexByDir(hx_, hy_, k, maxhx, maxhy)) {
-                    SetBit(static_map.HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
+                // Checks
+                const auto hx = static_map.Tiles[i].HexX;
+                const auto hy = static_map.Tiles[i].HexY;
+                if (hx >= maxhx || hy >= maxhy) {
+                    throw MapManagerException("Invalid tile position on map", pmap->GetName(), hx, hy);
                 }
             }
         }
 
-        if (item->GetIsTrigger() || item->GetIsTrap()) {
-            item->AddRef();
-            static_map.TriggerItemsVec.push_back(item);
+        reader.VerifyEnd();
 
-            SetBit(static_map.HexFlags[hy * maxhx + hx], FH_STATIC_TRIGGER);
-        }
+        // Fill hex flags
+        static_map.HexFlags.resize(static_cast<size_t>(maxhx * maxhy), 0u);
 
-        if (item->IsNonEmptyBlockLines()) {
-            auto raked = item->GetIsShootThru();
-            _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, maxhx, maxhy, [&static_map, maxhx, raked](auto hx2, auto hy2) {
-                SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_BLOCK);
-                if (!raked) {
-                    SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_NOTRAKE);
+        for (auto&& [item_id, item] : static_map.ItemBillets) {
+            if (!item->IsStatic()) {
+                continue;
+            }
+
+            const auto hx = item->GetHexX();
+            const auto hy = item->GetHexY();
+
+            if (!item->GetIsNoBlock()) {
+                SetBit(static_map.HexFlags[hy * maxhx + hx], FH_BLOCK);
+            }
+
+            if (!item->GetIsShootThru()) {
+                SetBit(static_map.HexFlags[hy * maxhx + hx], FH_BLOCK);
+                SetBit(static_map.HexFlags[hy * maxhx + hx], FH_NOTRAKE);
+            }
+
+            // Block around scroll blocks
+            if (item->GetIsScrollBlock()) {
+                for (uchar k = 0; k < 6; k++) {
+                    auto hx_ = hx;
+                    auto hy_ = hy;
+                    if (_engine->Geometry.MoveHexByDir(hx_, hy_, k, maxhx, maxhy)) {
+                        SetBit(static_map.HexFlags[hy_ * maxhx + hx_], FH_BLOCK);
+                    }
                 }
-            });
+            }
+
+            if (item->GetIsTrigger() || item->GetIsTrap()) {
+                SetBit(static_map.HexFlags[hy * maxhx + hx], FH_STATIC_TRIGGER);
+            }
+
+            if (item->IsNonEmptyBlockLines()) {
+                const auto shooted = item->GetIsShootThru();
+                _engine->Geometry.ForEachBlockLines(item->GetBlockLines(), hx, hy, maxhx, maxhy, [&static_map, maxhx, shooted](auto hx2, auto hy2) {
+                    SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_BLOCK);
+                    if (!shooted) {
+                        SetBit(static_map.HexFlags[hy2 * maxhx + hx2], FH_NOTRAKE);
+                    }
+                });
+            }
         }
 
         // Data for client
-        if (!item->GetIsHidden()) {
+        uint scenery_count = 0;
+        vector<uchar> scenery_data;
+        auto writer = DataWriter(scenery_data);
+
+        for (auto&& [item_id, item] : static_map.ItemBillets) {
+            if (!item->IsStatic()) {
+                continue;
+            }
+            if (item->GetIsHidden()) {
+                continue;
+            }
+
             scenery_count++;
             writer.Write<uint>(item->GetId());
-            writer.Write<uint>(item->GetProtoId().as_uint());
+            writer.Write<hstring::hash_t>(item->GetProtoId().as_hash());
             vector<uchar*>* all_data = nullptr;
             vector<uint>* all_data_sizes = nullptr;
             item->StoreData(false, &all_data, &all_data_sizes);
@@ -233,35 +313,36 @@ void MapManager::LoadStaticMap(const ProtoMap* pmap)
                 writer.WritePtr(all_data->at(i), all_data_sizes->at(i));
             }
         }
+
+        auto final_writer = DataWriter(static_map.SceneryData);
+        final_writer.Write<uint>(scenery_count);
+        final_writer.WritePtr(scenery_data.data(), scenery_data.size());
+
+        // Generate hashes
+        static_map.HashTiles = Hashing::MurmurHash2(static_map.Tiles.data(), static_map.Tiles.size() * sizeof(MapTile));
+        static_map.HashScen = Hashing::MurmurHash2(static_map.SceneryData.data(), static_map.SceneryData.size());
+
+        // Shrink the vector capacities to fit their contents and reduce memory use
+        static_map.SceneryData.shrink_to_fit();
+        static_map.CritterBillets.shrink_to_fit();
+        static_map.ItemBillets.shrink_to_fit();
+        static_map.HexItemBillets.shrink_to_fit();
+        static_map.ChildItemBillets.shrink_to_fit();
+        static_map.StaticItems.shrink_to_fit();
+        static_map.TriggerItems.shrink_to_fit();
+        static_map.Tiles.shrink_to_fit();
+
+        _staticMaps.emplace(pmap, std::move(static_map));
     }
 
-    auto final_writer = DataWriter(static_map.SceneryData);
-    final_writer.Write<uint>(scenery_count);
-    final_writer.WritePtr(scenery_data.data(), scenery_data.size());
-
-    // Generate hashes
-    static_map.HashTiles = maxhx * maxhy;
-    static_map.HashTiles = Hashing::MurmurHash2(static_map.Tiles.data(), static_map.Tiles.size() * sizeof(MapTile));
-    static_map.HashScen = maxhx * maxhy;
-    static_map.HashScen = Hashing::MurmurHash2(static_map.SceneryData.data(), static_map.SceneryData.size());
-
-    // Shrink the vector capacities to fit their contents and reduce memory use
-    static_map.SceneryData.shrink_to_fit();
-    static_map.CrittersVec.shrink_to_fit();
-    static_map.AllItemsVec.shrink_to_fit();
-    static_map.HexItemsVec.shrink_to_fit();
-    static_map.ChildItemsVec.shrink_to_fit();
-    static_map.StaticItemsVec.shrink_to_fit();
-    static_map.TriggerItemsVec.shrink_to_fit();
-    static_map.Tiles.shrink_to_fit();
-
-    _staticMaps.emplace(pmap, std::move(static_map));
+    RUNTIME_ASSERT(_engine->ProtoMngr.GetProtoMaps().size() == _staticMaps.size());
 }
 
-auto MapManager::FindStaticMap(const ProtoMap* proto_map) const -> const StaticMap*
+auto MapManager::GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*
 {
     const auto it = _staticMaps.find(proto_map);
-    return it != _staticMaps.end() ? &it->second : nullptr;
+    RUNTIME_ASSERT(it != _staticMaps.end());
+    return &it->second;
 }
 
 void MapManager::GenerateMapContent(Map* map)
@@ -271,14 +352,14 @@ void MapManager::GenerateMapContent(Map* map)
     std::map<uint, uint> id_map;
 
     // Generate npc
-    for (const auto* base_cr : map->GetStaticMap()->CrittersVec) {
+    for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
         auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
         if (npc == nullptr) {
             WriteLog("Create npc '{}' on map '{}' fail, continue generate", base_cr->GetName(), map->GetName());
             continue;
         }
 
-        id_map.insert(std::make_pair(base_cr->GetId(), npc->GetId()));
+        id_map.insert(std::make_pair(base_cr_id, npc->GetId()));
 
         // Check condition
         if (npc->GetCond() == CritterCondition::Dead) {
@@ -291,14 +372,14 @@ void MapManager::GenerateMapContent(Map* map)
     }
 
     // Generate hex items
-    for (const auto* base_item : map->GetStaticMap()->HexItemsVec) {
+    for (auto&& [base_item_id, base_item] : map->GetStaticMap()->HexItemBillets) {
         // Create item
         auto* item = _engine->ItemMngr.CreateItem(base_item->GetProtoId(), 0, &base_item->GetProperties());
         if (item == nullptr) {
             WriteLog("Create item '{}' on map '{}' fail, continue generate", base_item->GetName(), map->GetName());
             continue;
         }
-        id_map.insert(std::make_pair(base_item->GetId(), item->GetId()));
+        id_map.insert(std::make_pair(base_item_id, item->GetId()));
 
         // Other values
         if (item->GetIsCanOpen() && item->GetOpened()) {
@@ -312,7 +393,7 @@ void MapManager::GenerateMapContent(Map* map)
     }
 
     // Add children items
-    for (const auto* base_item : map->GetStaticMap()->ChildItemsVec) {
+    for (auto&& [base_item_id, base_item] : map->GetStaticMap()->ChildItemBillets) {
         // Map id
         uint parent_id = 0;
         if (base_item->GetOwnership() == ItemOwnership::CritterInventory) {

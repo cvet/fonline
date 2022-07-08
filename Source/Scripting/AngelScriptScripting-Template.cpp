@@ -355,6 +355,7 @@ struct ScriptSystem::AngelScriptImpl
             if (!can_suspend) {
                 ctx->Abort();
                 ReturnContext(ctx);
+
                 throw ScriptException("Can't yield current routine");
             }
 
@@ -368,17 +369,25 @@ struct ScriptSystem::AngelScriptImpl
                 const string ex_func_name = ex_func != nullptr ? ex_func->GetName() : "(unknown function)";
                 const auto ex_line = ctx->GetExceptionLineNumber();
                 ctx->Abort();
+
+                auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ex_func->GetModule()->GetUserData());
+                const auto ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
+                const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
+
                 ReturnContext(ctx);
-                throw ScriptException("Script execution exception", ex_string, ex_func_name, ex_line);
+
+                throw ScriptException("Script execution exception", ex_string, ex_orig_file, ex_func_name, ex_orig_line);
             }
 
             if (exec_result == asEXECUTION_ABORTED) {
                 ReturnContext(ctx);
+
                 throw ScriptException("Execution of script aborted");
             }
 
             ctx->Abort();
             ReturnContext(ctx);
+
             throw ScriptException("Context execution error", exec_result);
         }
 
@@ -1296,7 +1305,17 @@ static void HashedString_ConstructFromString(asIScriptGeneric* gen)
 #endif
 }
 
-static void HashedString_ConstructFromHash(asIScriptGeneric* gen)
+static void HashedString_CreateFromString(asIScriptGeneric* gen)
+{
+#if !COMPILER_MODE
+    const auto* str = *static_cast<const string**>(gen->GetAddressOfArg(0));
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    auto hstr = engine->ToHashedString(*str);
+    new (gen->GetAddressOfReturnLocation()) hstring(hstr);
+#endif
+}
+
+static void HashedString_CreateFromHash(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
     const auto& hash = *static_cast<const uint*>(gen->GetAddressOfArg(0));
@@ -1496,8 +1515,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f()", SCRIPT_FUNC_THIS(HashedString_Construct), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_ConstructCopy), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectBehaviour("hstring", asBEHAVE_CONSTRUCT, "void f(const string &in)", asFUNCTION(HashedString_ConstructFromString), asCALL_GENERIC, game_engine));
-    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
-    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(uint h)", asFUNCTION(HashedString_ConstructFromHash), asCALL_GENERIC, game_engine));
+    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromString(const string &in)", asFUNCTION(HashedString_CreateFromString), asCALL_GENERIC, game_engine));
+    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(int h)", asFUNCTION(HashedString_CreateFromHash), asCALL_GENERIC, game_engine));
+    AS_VERIFY(engine->RegisterGlobalFunction("hstring hstring_fromHash(uint h)", asFUNCTION(HashedString_CreateFromHash), asCALL_GENERIC, game_engine));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "hstring &opAssign(const hstring &in)", SCRIPT_FUNC_THIS(HashedString_Assign), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const hstring &in) const", SCRIPT_FUNC_THIS(HashedString_Equals), SCRIPT_FUNC_THIS_CONV));
     AS_VERIFY(engine->RegisterObjectMethod("hstring", "bool opEquals(const string &in) const", SCRIPT_FUNC_THIS(HashedString_EqualsString), SCRIPT_FUNC_THIS_CONV));

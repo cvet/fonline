@@ -140,7 +140,7 @@ public:
     auto operator=(MapManager&&) noexcept = delete;
     ~MapManager();
 
-    [[nodiscard]] auto FindStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
+    [[nodiscard]] auto GetStaticMap(const ProtoMap* proto_map) const -> const StaticMap*;
     [[nodiscard]] auto GetLocation(uint loc_id) -> Location*;
     [[nodiscard]] auto GetLocation(uint loc_id) const -> const Location*;
     [[nodiscard]] auto GetLocationByMap(uint map_id) -> Location*;
@@ -159,11 +159,10 @@ public:
     [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
     [[nodiscard]] auto GetLocationAndMapsStatistics() const -> string;
 
-    [[nodiscard]] auto CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*;
-    [[nodiscard]] auto CreateMap(hstring proto_id, Location* loc) -> Map*;
-
+    void LoadFromResources();
+    auto CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*;
+    auto CreateMap(hstring proto_id, Location* loc) -> Map*;
     void LinkMaps();
-    void LoadStaticMaps();
     void DeleteLocation(Location* loc, vector<Critter*>* gmap_player_critters);
     void LocationGarbager();
     void RegenerateMap(Map* map);
@@ -182,7 +181,6 @@ public:
 private:
     [[nodiscard]] auto GridAt(int x, int y) -> short& { return _mapGrid[((FPATH_MAX_PATH + 1) + y - _mapGridOffsY) * (FPATH_MAX_PATH * 2 + 2) + ((FPATH_MAX_PATH + 1) + x - _mapGridOffsX)]; }
 
-    void LoadStaticMap(const ProtoMap* pmap);
     void GenerateMapContent(Map* map);
     void DeleteMapContent(Map* map);
 

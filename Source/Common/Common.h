@@ -726,6 +726,13 @@ public:
     }
 
     template<class T>
+    void ReadPtr(T* ptr)
+    {
+        _readPos += sizeof(T);
+        std::memcpy(ptr, &_dataBuf[_readPos - sizeof(T)], sizeof(T));
+    }
+
+    template<class T>
     void ReadPtr(T* ptr, size_t size)
     {
         if (size > 0u) {
@@ -764,6 +771,14 @@ public:
         const auto cur = _dataBuf.size();
         _dataBuf.resize(cur + sizeof(data));
         std::memcpy(&_dataBuf[cur], &data, sizeof(data));
+    }
+
+    template<class T>
+    void WritePtr(const T* data)
+    {
+        const auto cur = _dataBuf.size();
+        _dataBuf.resize(cur + sizeof(T));
+        std::memcpy(&_dataBuf[cur], data, sizeof(T));
     }
 
     template<class T>
@@ -1365,7 +1380,7 @@ public:
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int = 0;
     [[nodiscard]] virtual auto ResolveEnumValueName(string_view enum_name, int value, bool* failed = nullptr) const -> string = 0;
-    [[nodiscard]] virtual auto ToHashedString(string_view s) const -> hstring = 0;
+    [[nodiscard]] virtual auto ToHashedString(string_view s, bool mustExists = false) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveHash(hstring::hash_t h, bool* failed = nullptr) const -> hstring = 0;
     [[nodiscard]] virtual auto ResolveGenericValue(string_view str, bool* failed = nullptr) -> int = 0;
 };

@@ -182,7 +182,7 @@ auto FOEngineBase::ResolveEnumValueName(string_view enum_name, int value, bool* 
     return value_it->second;
 }
 
-auto FOEngineBase::ToHashedString(string_view s) const -> hstring
+auto FOEngineBase::ToHashedString(string_view s, bool mustExists) const -> hstring
 {
     static_assert(std::is_same_v<hstring::hash_t, decltype(Hashing::MurmurHash2({}, {}))>);
 
@@ -204,6 +204,10 @@ auto FOEngineBase::ToHashedString(string_view s) const -> hstring
         }
 
         return hstring(&it->second);
+    }
+
+    if (mustExists) {
+        throw HashInsertException("String value is not in hash storage", s);
     }
 
     const auto [it, inserted] = _hashStorage.emplace(hash_value, hstring::entry {hash_value, string(s)});

@@ -37,17 +37,9 @@
 
 // Todo: restore supporting of the map old text format
 
-void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
+void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load)
 {
-    // Find file
-    auto maps = file_sys.FilterFiles("fomap");
-    auto map_file = maps.FindFileByName(name);
-    if (!map_file) {
-        throw MapLoaderException("Map not found", name);
-    }
-
     // Load from file
-    const auto buf = map_file.GetStr();
     const auto is_old_format = buf.find("[Header]") != string::npos && buf.find("[Tiles]") != string::npos && buf.find("[Objects]") != string::npos;
     if (is_old_format) {
         throw MapLoaderException("Unable to load map from old map format", name);
@@ -61,7 +53,7 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
 
     // Critters
     vector<string> errors;
-    for (auto& pkv : map_data.GetApps("Critter")) {
+    for (const auto& pkv : map_data.GetApps("Critter")) {
         auto& kv = *pkv;
         if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
             errors.emplace_back("Proto critter invalid data");
@@ -80,7 +72,7 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
     }
 
     // Items
-    for (auto& pkv : map_data.GetApps("Item")) {
+    for (const auto& pkv : map_data.GetApps("Item")) {
         auto& kv = *pkv;
         if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
             errors.emplace_back("Proto item invalid data");
@@ -99,7 +91,7 @@ void MapLoader::Load(string_view name, FileSystem& file_sys, ProtoManager& proto
     }
 
     // Tiles
-    for (auto& pkv : map_data.GetApps("Tile")) {
+    for (const auto& pkv : map_data.GetApps("Tile")) {
         auto& kv = *pkv;
         if (kv.count("PicMap") == 0u || kv.count("HexX") == 0u || kv.count("HexY") == 0u) {
             errors.emplace_back("Tile invalid data");

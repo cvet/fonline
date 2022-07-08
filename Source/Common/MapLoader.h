@@ -50,6 +50,7 @@ struct MapTile
     bool IsRoof {};
     bool IsSelected {}; // Todo: remove mapper specific IsSelected from MapTile
 };
+static_assert(std::is_standard_layout_v<MapTile>);
 
 class MapLoader final
 {
@@ -60,5 +61,5 @@ public:
 
     MapLoader() = delete;
 
-    static void Load(string_view name, FileSystem& file_sys, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
+    static void Load(string_view name, const string& buf, ProtoManager& proto_mngr, NameResolver& name_resolver, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load, const TileLoadFunc& tile_load);
 };
