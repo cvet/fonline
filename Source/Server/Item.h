@@ -81,7 +81,7 @@ public:
     ENTITY_EVENT(OnCheckMove, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
 
     bool ViewPlaceOnMap {};
-    ScriptFunc<bool, Critter*, StaticItem*, int> SceneryScriptFunc {};
+    ScriptFunc<bool, Critter*, StaticItem*, Item*, int> SceneryScriptFunc {};
     ScriptFunc<void, Critter*, StaticItem*, bool, uchar> TriggerScriptFunc {};
     Critter* ViewByCritter {};
 

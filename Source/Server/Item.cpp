@@ -39,7 +39,6 @@
 Item::Item(FOServer* engine, uint id, const ProtoItem* proto) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), ItemProperties(GetInitRef())
 {
     RUNTIME_ASSERT(proto);
-    RUNTIME_ASSERT(GetCount() > 0);
 }
 
 void Item::EvaluateSortValue(const vector<Item*>& items)

@@ -126,6 +126,107 @@ void Properties::AllocData()
     _complexDataSizes.resize(_registrator->_complexProperties.size());
 }
 
+void Properties::StoreAllData(vector<uchar>& all_data) const
+{
+    all_data.clear();
+    auto writer = DataWriter(all_data);
+
+    // Store plain properties data
+    writer.Write<uint>(_registrator->_wholePodDataSize);
+    writer.WritePtr(_podData, _registrator->_wholePodDataSize);
+
+    // Store complex properties
+    writer.Write<uint>(static_cast<uint>(_registrator->_complexProperties.size()));
+    for (const auto* prop : _registrator->_complexProperties) {
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        writer.Write<uint>(_complexDataSizes[prop->_complexDataIndex]);
+        writer.WritePtr(_complexData[prop->_complexDataIndex], _complexDataSizes[prop->_complexDataIndex]);
+    }
+
+    // Store hashes
+    vector<string> str_hashes;
+    str_hashes.reserve(64);
+
+    for (const auto* prop : _registrator->_registeredProperties) {
+        if (prop->IsReadable() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
+            const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
+
+            if (value.index() == AnyData::STRING_VALUE) {
+                str_hashes.emplace_back(std::get<AnyData::STRING_VALUE>(value));
+            }
+            else if (value.index() == AnyData::ARRAY_VALUE) {
+                const auto arr = std::get<AnyData::ARRAY_VALUE>(value);
+                for (auto&& arr_entry : arr) {
+                    str_hashes.emplace_back(std::get<AnyData::STRING_VALUE>(arr_entry));
+                }
+            }
+            else if (value.index() == AnyData::DICT_VALUE) {
+                const auto dict = std::get<AnyData::DICT_VALUE>(value);
+
+                if (prop->IsDictKeyHash()) {
+                    for (auto&& dict_entry : dict) {
+                        str_hashes.emplace_back(dict_entry.first);
+                    }
+                }
+
+                if (prop->IsBaseTypeHash()) {
+                    for (auto&& dict_entry : dict) {
+                        if (dict_entry.second.index() == AnyData::ARRAY_VALUE) {
+                            const auto dict_arr = std::get<AnyData::ARRAY_VALUE>(dict_entry.second);
+                            for (auto&& dict_arr_entry : dict_arr) {
+                                str_hashes.emplace_back(std::get<AnyData::STRING_VALUE>(dict_arr_entry));
+                            }
+                        }
+                        else {
+                            str_hashes.emplace_back(std::get<AnyData::STRING_VALUE>(dict_entry.second));
+                        }
+                    }
+                }
+            }
+            else {
+                throw UnreachablePlaceException(LINE_STR);
+            }
+        }
+    }
+
+    writer.Write<uint>(static_cast<uint>(str_hashes.size()));
+    for (const auto& str : str_hashes) {
+        writer.Write<uint>(static_cast<uint>(str.length()));
+        writer.WritePtr(str.data(), str.size());
+    }
+}
+
+void Properties::RestoreAllData(const vector<uchar>& all_data)
+{
+    auto reader = DataReader(all_data);
+
+    // Read plain properties data
+    const auto pod_data_size = reader.Read<uint>();
+    RUNTIME_ASSERT(pod_data_size == _registrator->_wholePodDataSize);
+    std::memcpy(_podData, reader.ReadPtr<uchar>(pod_data_size), pod_data_size);
+
+    // Read complex properties
+    const auto complex_props_count = reader.Read<uint>();
+    RUNTIME_ASSERT(complex_props_count == _registrator->_complexProperties.size());
+    for (const auto* prop : _registrator->_complexProperties) {
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+        const auto data_size = reader.Read<uint>();
+        SetRawData(prop, reader.ReadPtr<uchar>(data_size), data_size);
+    }
+
+    // Read hashes
+    const auto str_hashes_count = reader.Read<uint>();
+    for (const auto i : xrange(str_hashes_count)) {
+        UNUSED_VARIABLE(i);
+        const auto str_size = reader.Read<uint>();
+        const auto str = string(reader.ReadPtr<char>(str_size), str_size);
+        const auto hstr = _registrator->_nameResolver.ToHashedString(str);
+        UNUSED_VARIABLE(hstr);
+    }
+
+    reader.VerifyEnd();
+}
+
 auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint
 {
     uint whole_size = 0u;
@@ -172,48 +273,6 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
     }
 
     return whole_size;
-}
-
-void Properties::StoreAllData(vector<uchar*>** all_data, vector<uint>** all_data_sizes) const
-{
-    *all_data = &_storeData;
-    *all_data_sizes = &_storeDataSizes;
-    _storeData.resize(0u);
-    _storeDataSizes.resize(0u);
-
-    _storeDataComplexIndices = _registrator->_allComplexDataProps;
-
-    const auto preserve_size = 1u + (!_storeDataComplexIndices.empty() ? 1u + _storeDataComplexIndices.size() : 0u);
-    _storeData.reserve(preserve_size);
-    _storeDataSizes.reserve(preserve_size);
-
-    // Store plain properties data
-    _storeData.push_back(_podData);
-    _storeDataSizes.push_back(_registrator->_wholePodDataSize);
-
-    // Filter complex data to send
-    for (size_t i = 0; i < _storeDataComplexIndices.size();) {
-        const auto* prop = _registrator->_registeredProperties[_storeDataComplexIndices[i]];
-        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-        if (_complexDataSizes[prop->_complexDataIndex] == 0u) {
-            _storeDataComplexIndices.erase(_storeDataComplexIndices.begin() + static_cast<int>(i));
-        }
-        else {
-            i++;
-        }
-    }
-
-    // Store complex properties data
-    if (!_storeDataComplexIndices.empty()) {
-        _storeData.push_back(reinterpret_cast<uchar*>(&_storeDataComplexIndices[0]));
-        _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndices.size()) * sizeof(ushort));
-
-        for (const auto index : _storeDataComplexIndices) {
-            const auto* prop = _registrator->_registeredProperties[index];
-            _storeData.push_back(_complexData[prop->_complexDataIndex]);
-            _storeDataSizes.push_back(_complexDataSizes[prop->_complexDataIndex]);
-        }
-    }
 }
 
 void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes)
@@ -1155,7 +1214,6 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     if (prop->_dataType != Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
         complex_data_index = static_cast<uint>(_complexProperties.size());
         _complexProperties.emplace_back(prop);
-        _allComplexDataProps.emplace_back(reg_index);
 
         if (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask)) {
             _publicComplexDataProps.emplace_back(reg_index);

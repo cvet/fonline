@@ -41,23 +41,12 @@
 static constexpr uint ANIM_FLAG_FIRST_FRAME = 0x01;
 static constexpr uint ANIM_FLAG_LAST_FRAME = 0x02;
 
-ResourceManager::ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver, NameResolver& name_resolver) : _fileSys {file_sys}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}, _nameResolver {name_resolver}
+ResourceManager::ResourceManager(FileSystem& file_sys, SpriteManager& spr_mngr, AnimationResolver& anim_name_resolver) : _fileSys {file_sys}, _sprMngr {spr_mngr}, _animNameResolver {anim_name_resolver}
 {
 }
 
 void ResourceManager::IndexFiles()
 {
-    {
-        auto allFiles = _fileSys.FilterFiles("", "", true);
-        while (allFiles.MoveNext()) {
-            auto file_header = allFiles.GetCurFileHeader();
-            const auto h1 = _nameResolver.ToHashedString(file_header.GetPath());
-            UNUSED_VARIABLE(h1);
-            const auto h2 = _nameResolver.ToHashedString(file_header.GetName());
-            UNUSED_VARIABLE(h2);
-        }
-    }
-
     for (const auto* splash_ext : {"rix", "png", "jpg"}) {
         auto splashes = _fileSys.FilterFiles(splash_ext, "Splash/", true);
         while (splashes.MoveNext()) {

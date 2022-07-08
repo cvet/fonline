@@ -233,8 +233,9 @@ public:
     void SetEntity(Entity* entity) { _entity = entity; }
     auto LoadFromText(const map<string, string>& key_values) -> bool;
     auto LoadPropertyFromText(const Property* prop, string_view text) -> bool;
+    void StoreAllData(vector<uchar>& all_data) const;
+    void RestoreAllData(const vector<uchar>& all_data);
     auto StoreData(bool with_protected, vector<uchar*>** all_data, vector<uint>** all_data_sizes) const -> uint;
-    void StoreAllData(vector<uchar*>** all_data, vector<uint>** all_data_sizes) const;
     void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uchar>>& all_data);
     void SetRawData(const Property* prop, const uchar* data, uint data_size);
@@ -285,7 +286,7 @@ public:
         RUNTIME_ASSERT(sizeof(hstring::hash_t) == prop->_baseSize);
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::PlainData);
         RUNTIME_ASSERT(prop->_isHashBase);
-        const auto old_value = ResolveHash(*reinterpret_cast<hstring::hash_t*>(_podData[prop->_podDataOffset]));
+        const auto old_value = ResolveHash(*reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]));
         if (new_value != old_value) {
             *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = new_value.as_uint();
             for (const auto& callback : prop->_callbacks) {
@@ -446,7 +447,6 @@ private:
 
     // Complex types info
     vector<Property*> _complexProperties {};
-    vector<ushort> _allComplexDataProps {};
     vector<ushort> _publicComplexDataProps {};
     vector<ushort> _protectedComplexDataProps {};
     vector<ushort> _publicProtectedComplexDataProps {};

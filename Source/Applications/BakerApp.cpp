@@ -475,6 +475,7 @@ int main(int argc, char** argv)
                             }
                         }
 
+                        vector<uchar> props_data;
                         uint map_cr_count = 0u;
                         uint map_item_count = 0u;
                         uint map_tile_count = 0u;
@@ -498,16 +499,9 @@ int main(int argc, char** argv)
                                         map_cr_data_writer.Write<uint>(id);
                                         map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
 
-                                        vector<uchar*>* props_data = nullptr;
-                                        vector<uint>* props_data_sizes = nullptr;
-                                        props.StoreAllData(&props_data, &props_data_sizes);
-
-                                        map_cr_data_writer.Write<ushort>(static_cast<ushort>(props_data->size()));
-                                        for (size_t i = 0; i < props_data->size(); i++) {
-                                            const auto cur_size = props_data_sizes->at(i);
-                                            map_cr_data_writer.Write<uint>(cur_size);
-                                            map_cr_data_writer.WritePtr(props_data->at(i), cur_size);
-                                        }
+                                        props.StoreAllData(props_data);
+                                        map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                                        map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
                                     }
                                     else {
                                         WriteLog("Invalid critter {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
@@ -525,16 +519,9 @@ int main(int argc, char** argv)
                                         map_item_data_writer.Write<uint>(id);
                                         map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
 
-                                        vector<uchar*>* props_data = nullptr;
-                                        vector<uint>* props_data_sizes = nullptr;
-                                        props.StoreAllData(&props_data, &props_data_sizes);
-
-                                        map_item_data_writer.Write<ushort>(static_cast<ushort>(props_data->size()));
-                                        for (size_t i = 0; i < props_data->size(); i++) {
-                                            const auto cur_size = props_data_sizes->at(i);
-                                            map_item_data_writer.Write<uint>(cur_size);
-                                            map_item_data_writer.WritePtr(props_data->at(i), cur_size);
-                                        }
+                                        props.StoreAllData(props_data);
+                                        map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                                        map_item_data_writer.WritePtr(props_data.data(), props_data.size());
                                     }
                                     else {
                                         WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
@@ -793,12 +780,12 @@ static auto ValidateProperties(const Properties& props, string_view context_str,
 {
     unordered_map<string, std::function<bool(string_view)>> script_func_verify = {
         {"ItemInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
-        {"ItemScenery", [script_sys](string_view func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, int>(func_name); }},
+        {"ItemScenery", [script_sys](string_view func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
         {"ItemTrigger", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(func_name); }},
         {"CritterInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
         {"MapInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
         {"LocationInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
-        {"LocationEntrance", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location*, vector<Critter*>, uchar>(func_name); }},
+        {"LocationEntrance", [script_sys](string_view func_name) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uchar>(func_name); }},
     };
 
     int errors = 0;
@@ -835,11 +822,11 @@ static auto ValidateProperties(const Properties& props, string_view context_str,
             if (prop->IsPlainData()) {
                 const auto func_name = props.GetValue<hstring>(prop);
                 if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
-                    WriteLog("Invalid script func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                    WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
                 else if (func_name && !script_func_verify[prop->GetBaseScriptFuncType()](func_name)) {
-                    WriteLog("Verification failed for func type {} for property {} in {}", prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
+                    WriteLog("Verification failed for func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }
             }

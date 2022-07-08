@@ -109,26 +109,16 @@ void MapManager::LoadFromResources()
 
         // Read entities
         {
-            vector<const uchar*> props_data;
-            vector<uint> props_data_sizes;
-
-            const auto read_props = [&] {
-                const uint data_count = reader.Read<ushort>();
-                props_data.resize(data_count);
-                props_data_sizes.resize(data_count);
-                for (uint j = 0; j < data_count; j++) {
-                    props_data_sizes[j] = reader.Read<uint>();
-                    const auto* const_props_data = reader.ReadPtr<uchar>(props_data_sizes[j]);
-                    props_data[j] = const_cast<uchar*>(const_props_data);
-                }
-            };
+            vector<uchar> props_data;
 
             // Read critters
             {
                 const auto cr_count = reader.Read<uint>();
                 static_map.CritterBillets.reserve(cr_count);
 
-                for (const auto _ : xrange(cr_count)) {
+                for (const auto i : xrange(cr_count)) {
+                    UNUSED_VARIABLE(i);
+
                     const auto cr_id = reader.Read<uint>();
 
                     const auto cr_pid_hash = reader.Read<hstring::hash_t>();
@@ -136,8 +126,10 @@ void MapManager::LoadFromResources()
                     const auto* cr_proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
 
                     auto cr_props = Properties(_engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME));
-                    read_props();
-                    cr_props.RestoreData(props_data, props_data_sizes);
+                    const auto props_data_size = reader.Read<uint>();
+                    props_data.resize(props_data_size);
+                    reader.ReadPtr<uchar>(props_data.data(), props_data_size);
+                    cr_props.RestoreAllData(props_data);
 
                     auto* cr = new Critter(_engine, 0u, nullptr, cr_proto);
                     cr->SetProperties(cr_props);
@@ -158,7 +150,9 @@ void MapManager::LoadFromResources()
                 const auto item_count = reader.Read<uint>();
                 static_map.ItemBillets.reserve(item_count);
 
-                for (const auto _ : xrange(item_count)) {
+                for (const auto i : xrange(item_count)) {
+                    UNUSED_VARIABLE(i);
+
                     const auto item_id = reader.Read<uint>();
 
                     const auto item_pid_hash = reader.Read<hstring::hash_t>();
@@ -166,8 +160,10 @@ void MapManager::LoadFromResources()
                     const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
                     auto item_props = Properties(_engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME));
-                    read_props();
-                    item_props.RestoreData(props_data, props_data_sizes);
+                    const auto props_data_size = reader.Read<uint>();
+                    props_data.resize(props_data_size);
+                    reader.ReadPtr<uchar>(props_data.data(), props_data_size);
+                    item_props.RestoreAllData(props_data);
 
                     auto* item = new Item(_engine, 0u, item_proto);
                     item->SetProperties(item_props);
@@ -186,7 +182,7 @@ void MapManager::LoadFromResources()
                     // Bind scripts
                     if (item->IsStatic()) {
                         if (item->GetSceneryScript()) {
-                            item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, int>(item->GetSceneryScript());
+                            item->SceneryScriptFunc = _engine->ScriptSys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(item->GetSceneryScript());
                             if (!item->SceneryScriptFunc) {
                                 throw MapManagerException("Can't bind static item scenery function", pmap->GetName(), item->GetSceneryScript());
                             }
@@ -359,7 +355,7 @@ void MapManager::GenerateMapContent(Map* map)
             continue;
         }
 
-        id_map.insert(std::make_pair(base_cr_id, npc->GetId()));
+        id_map.emplace(base_cr_id, npc->GetId());
 
         // Check condition
         if (npc->GetCond() == CritterCondition::Dead) {
@@ -379,7 +375,7 @@ void MapManager::GenerateMapContent(Map* map)
             WriteLog("Create item '{}' on map '{}' fail, continue generate", base_item->GetName(), map->GetName());
             continue;
         }
-        id_map.insert(std::make_pair(base_item_id, item->GetId()));
+        id_map.emplace(base_item_id, item->GetId());
 
         // Other values
         if (item->GetIsCanOpen() && item->GetOpened()) {

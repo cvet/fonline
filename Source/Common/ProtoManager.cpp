@@ -43,6 +43,8 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, const T*
     auto writer = DataWriter(data);
     writer.Write<uint>(static_cast<uint>(protos.size()));
 
+    vector<uchar> props_data;
+
     for (auto& kv : protos) {
         auto* proto_item = kv.second;
 
@@ -57,24 +59,17 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, const T*
             writer.WritePtr(component_str.data(), component_str.length());
         }
 
-        vector<uchar*>* props_data = nullptr;
-        vector<uint>* props_data_sizes = nullptr;
-        proto_item->GetProperties().StoreAllData(&props_data, &props_data_sizes);
-
-        writer.Write<ushort>(static_cast<ushort>(props_data->size()));
-        for (size_t i = 0; i < props_data->size(); i++) {
-            const auto cur_size = props_data_sizes->at(i);
-            writer.Write<uint>(cur_size);
-            writer.WritePtr(props_data->at(i), cur_size);
-        }
+        proto_item->GetProperties().StoreAllData(props_data);
+        writer.Write<uint>(static_cast<uint>(props_data.size()));
+        writer.WritePtr(props_data.data(), props_data.size());
     }
 }
 
 template<class T>
 static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, map<hstring, const T*>& protos)
 {
-    vector<const uchar*> props_data;
-    vector<uint> props_data_sizes;
+    vector<uchar> props_data;
+
     const auto protos_count = reader.Read<uint>();
     for (uint i = 0; i < protos_count; i++) {
         const auto proto_name_len = reader.Read<ushort>();
@@ -92,17 +87,13 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
             proto->EnableComponent(component_name_hashed);
         }
 
-        const uint data_count = reader.Read<ushort>();
-        props_data.resize(data_count);
-        props_data_sizes.resize(data_count);
-        for (uint j = 0; j < data_count; j++) {
-            props_data_sizes[j] = reader.Read<uint>();
-            const auto* const_props_data = reader.ReadPtr<uchar>(props_data_sizes[j]);
-            props_data[j] = const_cast<uchar*>(const_props_data);
-        }
-        proto->RestoreData(props_data, props_data_sizes);
+        const uint data_size = reader.Read<uint>();
+        props_data.resize(data_size);
+        reader.ReadPtr<uchar>(props_data.data(), data_size);
+        proto->GetPropertiesForEdit().RestoreAllData(props_data);
+
         RUNTIME_ASSERT(!protos.count(proto_id));
-        protos.insert(std::make_pair(proto_id, proto));
+        protos.emplace(proto_id, proto);
     }
 }
 

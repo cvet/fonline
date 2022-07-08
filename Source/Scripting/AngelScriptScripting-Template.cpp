@@ -401,6 +401,7 @@ struct ScriptSystem::AngelScriptImpl
         RUNTIME_ASSERT(gen->ArgsType.size() == args.size());
         RUNTIME_ASSERT(gen->ArgsType.size() == func->GetParamCount());
 
+        // Todo: CallGenericFunc
         if (ret != nullptr) {
             RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
             RUNTIME_ASSERT(gen->RetType != &typeid(void));
@@ -1811,10 +1812,13 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 break;
             }
 
-            if ((type_id & asTYPEID_OBJHANDLE) != 0 && (type_id & asTYPEID_APPOBJECT) != 0) {
+            if ((type_id & asTYPEID_OBJHANDLE) != 0) {
 #define CHECK_CLASS(entity_name, real_class) \
     if (string_view(type_info->GetName()) == entity_name) { \
         return &typeid(real_class*); \
+    } \
+    if (string_view(type_info->GetName()) == "array" && type_info->GetSubType() != nullptr && string_view(type_info->GetSubType()->GetName()) == entity_name) { \
+        return &typeid(vector<real_class*>); \
     }
                 auto* type_info = engine->GetTypeInfoById(type_id);
 #if SERVER_SCRIPTING
@@ -1843,7 +1847,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             // Bind
             const auto func_name = GetASFuncName(func);
-            const auto it = _funcMap.emplace(std::make_pair(func_name, GenericScriptFunc()));
+            const auto it = _funcMap.emplace(func_name, GenericScriptFunc());
             auto& gen_func = it->second;
 
             gen_func.Name = func_name;
@@ -1855,7 +1859,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 
             for (asUINT p = 0; p < func->GetParamCount(); p++) {
                 int param_type_id;
-                asDWORD param_flags = 0;
+                asDWORD param_flags;
                 AS_VERIFY(func->GetParam(p, &param_type_id, &param_flags));
 
                 gen_func.ArgsType.emplace_back(as_type_to_type_info(param_type_id, param_flags));

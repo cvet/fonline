@@ -722,7 +722,7 @@ public:
     auto ReadPtr(size_t size) -> const T*
     {
         _readPos += size;
-        return size ? reinterpret_cast<const T*>(&_dataBuf[_readPos - size]) : nullptr;
+        return size != 0u ? reinterpret_cast<const T*>(&_dataBuf[_readPos - size]) : nullptr;
     }
 
     template<class T>
@@ -735,7 +735,7 @@ public:
     template<class T>
     void ReadPtr(T* ptr, size_t size)
     {
-        if (size > 0u) {
+        if (size != 0u) {
             _readPos += size;
             std::memcpy(ptr, &_dataBuf[_readPos - size], size);
         }

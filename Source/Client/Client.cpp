@@ -51,13 +51,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const vector<uch
 #endif
 
 FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
-    FOEngineBase(settings, props_relation, register_data_callback),
-
+    FOEngineBase(settings, props_relation, register_data_callback), //
     GameTime(Settings),
     ProtoMngr(this),
     EffectMngr(Settings, FileSys),
     SprMngr(Settings, window, FileSys, EffectMngr),
-    ResMngr(FileSys, SprMngr, *this, *this),
+    ResMngr(FileSys, SprMngr, *this),
     SndMngr(Settings, FileSys),
     Keyb(Settings, SprMngr),
     Cache("Data/Cache.fobin"),

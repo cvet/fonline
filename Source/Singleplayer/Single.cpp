@@ -42,7 +42,7 @@ FOSingle::FOSingle(GlobalSettings& settings, AppWindow* window) :
             return new SingleScriptSystem(this);
         }),
     FOServer(settings),
-    FOClient(settings, window, PropertiesRelationType::None, nullptr)
+    FOClient(settings, window, PropertiesRelationType::BothRelative, nullptr)
 {
 }
 

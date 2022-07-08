@@ -54,7 +54,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             return new ServerScriptSystem(this);
         }),
 #else
-    FOEngineBase(settings, PropertiesRelationType::None, nullptr),
+    FOEngineBase(settings, PropertiesRelationType::BothRelative, nullptr),
 #endif
 
     GameTime(Settings),
