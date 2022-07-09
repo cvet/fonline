@@ -182,7 +182,7 @@ protected:
     unordered_set<hstring::hash_t> _componentHashes {};
 };
 
-class EntityWithProto : public Entity
+class EntityWithProto
 {
 public:
     EntityWithProto() = delete;
@@ -191,13 +191,12 @@ public:
     auto operator=(const EntityWithProto&) = delete;
     auto operator=(EntityWithProto&&) noexcept = delete;
 
-    [[nodiscard]] auto GetName() const -> string_view override;
     [[nodiscard]] auto GetProtoId() const -> hstring;
     [[nodiscard]] auto GetProto() const -> const ProtoEntity*;
 
 protected:
-    EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto);
-    ~EntityWithProto() override;
+    EntityWithProto(Entity* owner, const ProtoEntity* proto);
+    virtual ~EntityWithProto();
 
     const ProtoEntity* _proto;
 };

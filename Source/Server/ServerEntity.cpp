@@ -36,7 +36,7 @@
 #include "Server.h"
 #include "StringUtils.h"
 
-ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto) : EntityWithProto(registrator, proto), _engine {engine}, _id {id}
+ServerEntity::ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
 {
 }
 
@@ -55,4 +55,9 @@ auto ServerEntity::GetEngine() -> FOServer*
     NON_CONST_METHOD_HINT();
 
     return _engine;
+}
+
+auto ServerEntity::GetName() const -> string_view
+{
+    return GetProperties().GetRegistrator()->GetClassName();
 }

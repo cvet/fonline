@@ -62,7 +62,7 @@ struct StaticMap
     uint HashScen {};
 };
 
-class Map final : public ServerEntity, public MapProperties
+class Map final : public ServerEntity, public EntityWithProto, public MapProperties
 {
     friend class MapManager;
 

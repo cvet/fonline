@@ -197,7 +197,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     // Globals
     const auto globals_doc = DbStorage.Get("Game", 1);
     if (globals_doc.empty()) {
-        DbStorage.Insert("Game", 1, {{"_Proto", string("")}});
+        DbStorage.Insert("Game", 1, {});
     }
     else {
         if (!PropertiesSerializator::LoadFromDocument(&GetPropertiesForEdit(), globals_doc, *this)) {
@@ -1901,11 +1901,11 @@ void FOServer::Process_Register(ClientConnection* connection)
 
     // Register
     auto reg_ip = AnyData::Array();
-    reg_ip.push_back(static_cast<int>(connection->GetIp()));
+    reg_ip.emplace_back(static_cast<int>(connection->GetIp()));
     auto reg_port = AnyData::Array();
-    reg_port.push_back(static_cast<int>(connection->GetPort()));
+    reg_port.emplace_back(static_cast<int>(connection->GetPort()));
 
-    DbStorage.Insert("Players", player_id, {{"_Proto", string("Player")}, {"Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
+    DbStorage.Insert("Players", player_id, {{"Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
 
     // Notify
     connection->Send_TextMsg(STR_NET_REG_SUCCESS);
@@ -2010,16 +2010,12 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Kick previous
-    if (auto* player = EntityMngr.GetPlayer(player_id); player != nullptr) {
+    if (const auto* player = EntityMngr.GetPlayer(player_id); player != nullptr) {
         connection->HardDisconnect();
     }
 
     // Create new
-    const auto player_proto_id = ToHashedString("Player");
-    const auto* player_proto = ProtoMngr.GetProtoCritter(player_proto_id);
-    RUNTIME_ASSERT(player_proto);
-
-    auto* player = new Player(this, player_id, name, connection, player_proto);
+    auto* player = new Player(this, player_id, name, connection);
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *this)) {
         player->Release();

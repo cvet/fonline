@@ -132,7 +132,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
         }
         else if (prop->_isEnumBase) {
             int enum_value = 0;
-            memcpy(&enum_value, &props->_podData[prop->_podDataOffset], prop->_baseSize);
+            std::memcpy(&enum_value, &props->_podData[prop->_podDataOffset], prop->_baseSize);
             return name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value);
         }
         else if (prop->_isInt || prop->_isFloat || prop->_isBool) {
@@ -202,7 +202,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                 }
                 else if (prop->_isEnumBase) {
                     int enum_value = 0;
-                    memcpy(&enum_value, data + i * prop->_baseSize, prop->_baseSize);
+                    std::memcpy(&enum_value, data + i * prop->_baseSize, prop->_baseSize);
                     arr.push_back(name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value));
                 }
                 else {
@@ -264,7 +264,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                 }
                 else if (prop->_isDictKeyEnum) {
                     int enum_value = 0;
-                    memcpy(&enum_value, p, prop->_dictKeySize);
+                    std::memcpy(&enum_value, p, prop->_dictKeySize);
                     return name_resolver.ResolveEnumValueName(prop->_dictKeyTypeName, enum_value);
                 }
                 else if (prop->_dictKeySize == 1u) {
@@ -314,7 +314,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                                 }
                                 else if (prop->_isEnumBase) {
                                     int enum_value = 0;
-                                    memcpy(&enum_value, data + i * prop->_baseSize, prop->_baseSize);
+                                    std::memcpy(&enum_value, data + i * prop->_baseSize, prop->_baseSize);
                                     arr.push_back(name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value));
                                 }
                                 else {
@@ -404,7 +404,7 @@ auto PropertiesSerializator::SavePropertyToValue(const Properties* props, const 
                     }
                     else if (prop->_isEnumBase) {
                         int enum_value = 0;
-                        memcpy(&enum_value, pvalue, prop->_baseSize);
+                        std::memcpy(&enum_value, pvalue, prop->_baseSize);
                         dict.insert(std::make_pair(std::move(key_str), name_resolver.ResolveEnumValueName(prop->_baseTypeName, enum_value)));
                     }
                     else {
@@ -618,7 +618,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
 
                 auto is_error = false;
                 int e = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(arr[i]), &is_error);
-                memcpy(data.get() + i * prop->_baseSize, &e, prop->_baseSize);
+                std::memcpy(data.get() + i * prop->_baseSize, &e, prop->_baseSize);
 
                 if (is_error) {
                     return false;
@@ -866,7 +866,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
             else if (prop->_isDictKeyEnum) {
                 auto is_error = false;
                 int enum_value = name_resolver.ResolveEnumValue(prop->_dictKeyTypeName, key2, &is_error);
-                memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
+                std::memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
 
                 if (is_error) {
                     return false;
@@ -901,7 +901,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                     for (const auto& e : arr) {
                         auto is_error = false;
                         const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(e), &is_error);
-                        memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
+                        std::memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
                         data_pos += prop->_baseSize;
 
                         if (is_error) {
@@ -1009,7 +1009,7 @@ auto PropertiesSerializator::LoadPropertyFromValue(Properties* props, const Prop
                 else if (prop->_isEnumBase) {
                     auto is_error = false;
                     const int enum_value = name_resolver.ResolveEnumValue(prop->_baseTypeName, std::get<string>(value2), &is_error);
-                    memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
+                    std::memcpy(data.get() + data_pos, &enum_value, prop->_baseSize);
 
                     if (is_error) {
                         return false;

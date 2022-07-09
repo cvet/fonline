@@ -65,7 +65,7 @@ public:
     auto operator=(EntityManager&&) noexcept = delete;
     ~EntityManager() = default;
 
-    [[nodiscard]] auto FindCritterItems(uint crid) -> vector<Item*>;
+    [[nodiscard]] auto FindCritterItems(uint cr_id) -> vector<Item*>;
     [[nodiscard]] auto GetEntity(uint id) -> ServerEntity*;
     [[nodiscard]] auto GetEntities() -> vector<ServerEntity*>;
     [[nodiscard]] auto GetPlayer(uint id) -> Player*;
@@ -73,7 +73,7 @@ public:
     [[nodiscard]] auto GetPlayers() const -> vector<const Player*>;
     [[nodiscard]] auto GetItem(uint id) -> Item*;
     [[nodiscard]] auto GetItems() -> vector<Item*>;
-    [[nodiscard]] auto GetCritter(uint crid) -> Critter*;
+    [[nodiscard]] auto GetCritter(uint id) -> Critter*;
     [[nodiscard]] auto GetCritters() -> vector<Critter*>;
     [[nodiscard]] auto GetMap(uint id) -> Map*;
     [[nodiscard]] auto GetMapByPid(hstring pid, uint skip_count) -> Map*;
@@ -81,15 +81,18 @@ public:
     [[nodiscard]] auto GetLocation(uint id) -> Location*;
     [[nodiscard]] auto GetLocationByPid(hstring pid, uint skip_count) -> Location*;
     [[nodiscard]] auto GetLocations() -> vector<Location*>;
+    [[nodiscard]] auto GetCustomEntity(string_view entity_class_name, uint id) -> ServerEntity*;
 
     void LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric);
     void InitAfterLoad();
     void RegisterEntity(ServerEntity* entity);
     void UnregisterEntity(ServerEntity* entity);
     void FinalizeEntities();
+    auto CreateCustomEntity(string_view entity_class_name) -> ServerEntity*;
+    void DeleteCustomEntity(string_view entity_class_name, uint id);
 
 private:
     FOServer* _engine;
-    map<uint, ServerEntity*> _allEntities {};
+    unordered_map<uint, ServerEntity*> _allEntities {}; // Todo: optimize entities lookup
     bool _nonConstHelper {};
 };

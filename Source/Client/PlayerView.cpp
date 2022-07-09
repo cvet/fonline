@@ -34,6 +34,6 @@
 #include "PlayerView.h"
 #include "Client.h"
 
-PlayerView::PlayerView(FOClient* engine, uint id, const ProtoPlayer* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), PlayerProperties(GetInitRef())
+PlayerView::PlayerView(FOClient* engine, uint id) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), PlayerProperties(GetInitRef())
 {
 }

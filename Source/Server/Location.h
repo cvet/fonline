@@ -42,7 +42,7 @@
 class Map;
 class Location;
 
-class Location final : public ServerEntity, public LocationProperties
+class Location final : public ServerEntity, public EntityWithProto, public LocationProperties
 {
 public:
     Location() = delete;

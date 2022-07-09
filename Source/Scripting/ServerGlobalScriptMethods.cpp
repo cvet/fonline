@@ -853,7 +853,7 @@
 ///# ...
 ///# param name ...
 ///# return ...
-///@ ExportMethod ExcludeInSingleplayer
+///@ ExportMethod ExcludeInSingleplayer PassOwnership
 [[maybe_unused]] Player* Server_Game_GetPlayer(FOServer* server, string_view name)
 {
     // Check existence
@@ -871,13 +871,11 @@
     }
 
     // Load from db
-    const auto player_proto_id = server->ToHashedString("Player");
-    const auto* player_proto = server->ProtoMngr.GetProtoCritter(player_proto_id);
-    RUNTIME_ASSERT(player_proto);
-
-    player = new Player(server, id, name, nullptr, player_proto);
+    player = new Player(server, 0u, name, nullptr);
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server)) {
+        player->MarkAsDestroyed();
+        player->Release();
         throw ScriptException("Player data db read failed");
     }
 

@@ -220,11 +220,12 @@ public:
 #define GET_AS_ENGINE_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData->Engine
 #define GET_SCRIPT_SYS_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData.get()
 
-#define ENTITY_VERIFY(e) \
+#define ENTITY_VERIFY_NULL(e) \
     if ((e) == nullptr) { \
         throw ScriptException("Access to null entity"); \
-    } \
-    if ((e)->IsDestroyed()) { \
+    }
+#define ENTITY_VERIFY(e) \
+    if ((e) != nullptr && (e)->IsDestroyed()) { \
         throw ScriptException("Access to destroyed entity"); \
     }
 #endif
@@ -871,7 +872,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
         }
         else {
             RUNTIME_ASSERT(data_size != 0);
-            memcpy(gen->GetAddressOfReturnLocation(), data, data_size);
+            std::memcpy(gen->GetAddressOfReturnLocation(), data, data_size);
         }
     }
     else if (prop->IsString()) {
@@ -881,7 +882,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
         auto* arr = CreateASArray(gen->GetEngine(), prop->GetFullTypeName().c_str());
 
         if (prop->IsArrayOfString()) {
-            if (data_size > 0u) {
+            if (data_size != 0u) {
                 uint arr_size;
                 std::memcpy(&arr_size, data, sizeof(arr_size));
                 data += sizeof(arr_size);
@@ -901,7 +902,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
             }
         }
         else if (prop->IsBaseTypeHash()) {
-            if (data_size > 0u) {
+            if (data_size != 0u) {
                 RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
 
                 const auto count = data_size / prop->GetBaseSize();
@@ -916,7 +917,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
             }
         }
         else {
-            if (data_size > 0u) {
+            if (data_size != 0u) {
                 arr->Resize(data_size / prop->GetBaseSize());
 
                 std::memcpy(arr->At(0), data, data_size);
@@ -928,7 +929,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
     else if (prop->IsDict()) {
         CScriptDict* dict = CreateASDict(gen->GetEngine(), prop->GetFullTypeName().c_str());
 
-        if (data_size > 0u) {
+        if (data_size != 0u) {
             if (prop->IsDictOfArray()) {
                 const auto* data_end = data + data_size;
 
@@ -942,7 +943,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
 
                     auto* arr = CreateASArray(gen->GetEngine(), _str("{}[]", prop->GetBaseTypeName()).c_str());
 
-                    if (arr_size > 0u) {
+                    if (arr_size != 0u) {
                         if (prop->IsDictOfArrayOfString()) {
                             arr->Resize(arr_size);
 
@@ -1052,6 +1053,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
 #endif
 }
 
+// Todo: use some stack allocation for Property_SetValue and heap if limit reached
 template<typename T>
 static void Property_SetValue(asIScriptGeneric* gen)
 {
@@ -1064,7 +1066,13 @@ static void Property_SetValue(asIScriptGeneric* gen)
     void* data = gen->GetAddressOfArg(0);
 
     if (prop->IsPlainData()) {
-        props.SetRawData(prop, static_cast<const uchar*>(data), prop->GetBaseSize());
+        if (prop->IsBaseTypeHash()) {
+            const auto hash = static_cast<const hstring*>(data)->as_hash();
+            props.SetRawData(prop, reinterpret_cast<const uchar*>(&hash), prop->GetBaseSize());
+        }
+        else {
+            props.SetRawData(prop, static_cast<const uchar*>(data), prop->GetBaseSize());
+        }
     }
     else if (prop->IsString()) {
         const auto& str = *static_cast<const string*>(data);
@@ -1076,7 +1084,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
         if (prop->IsArrayOfString()) {
             const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
 
-            if (arr_size > 0u) {
+            if (arr_size != 0u) {
                 // Calculate size
                 uint data_size = sizeof(uint);
                 for (uint i = 0; i < arr_size; i++) {
@@ -1091,14 +1099,14 @@ static void Property_SetValue(asIScriptGeneric* gen)
                 std::memcpy(buf, &arr_size, sizeof(arr_size));
                 buf += sizeof(uint);
 
-                for (uint i = 0; i < arr_size; i++) {
+                for (const auto i : xrange(arr_size)) {
                     const auto& str = *static_cast<const string*>(arr->At(i));
 
                     uint str_size = static_cast<uint>(str.length());
                     std::memcpy(buf, &str_size, sizeof(str_size));
                     buf += sizeof(str_size);
 
-                    if (str_size > 0u) {
+                    if (str_size != 0u) {
                         std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
@@ -1114,8 +1122,23 @@ static void Property_SetValue(asIScriptGeneric* gen)
         else {
             const auto data_size = (arr != nullptr ? arr->GetSize() * prop->GetBaseSize() : 0u);
 
-            if (data_size > 0u) {
-                props.SetRawData(prop, static_cast<const uchar*>(arr->At(0)), data_size);
+            if (data_size != 0u) {
+                if (prop->IsBaseTypeHash()) {
+                    auto* init_buf = new uchar[data_size];
+                    auto* buf = init_buf;
+
+                    for (const auto i : xrange(arr->GetSize())) {
+                        const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), sizeof(hstring::hash_t));
+                        buf += prop->GetBaseSize();
+                    }
+
+                    props.SetRawData(prop, init_buf, data_size);
+                    delete[] init_buf;
+                }
+                else {
+                    props.SetRawData(prop, static_cast<const uchar*>(arr->At(0)), data_size);
+                }
             }
             else {
                 props.SetRawData(prop, nullptr, 0u);
@@ -1126,13 +1149,13 @@ static void Property_SetValue(asIScriptGeneric* gen)
         const auto* dict = *static_cast<CScriptDict**>(data);
 
         if (prop->IsDictOfArray()) {
-            if (dict != nullptr && dict->GetSize() > 0u) {
+            if (dict != nullptr && dict->GetSize() != 0u) {
                 // Calculate size
                 uint data_size = 0u;
                 vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
-                for (const auto& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict_map) {
                     const auto* arr = *static_cast<const CScriptArray**>(value);
                     uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
                     data_size += prop->GetDictKeySize() + sizeof(arr_size);
@@ -1152,16 +1175,22 @@ static void Property_SetValue(asIScriptGeneric* gen)
                 auto* init_buf = new uchar[data_size];
                 auto* buf = init_buf;
 
-                for (const auto& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict_map) {
                     const auto* arr = *static_cast<const CScriptArray**>(value);
-                    std::memcpy(buf, key, prop->GetDictKeySize());
+                    if (prop->IsDictKeyHash()) {
+                        const auto hash = static_cast<const hstring*>(key)->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), prop->GetDictKeySize());
+                    }
+                    else {
+                        std::memcpy(buf, key, prop->GetDictKeySize());
+                    }
                     buf += prop->GetDictKeySize();
 
                     const uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
                     std::memcpy(buf, &arr_size, sizeof(uint));
                     buf += sizeof(arr_size);
 
-                    if (arr_size > 0u) {
+                    if (arr_size != 0u) {
                         if (prop->IsDictOfArrayOfString()) {
                             for (uint i = 0; i < arr_size; i++) {
                                 const auto& str = *static_cast<const string*>(arr->At(i));
@@ -1170,10 +1199,17 @@ static void Property_SetValue(asIScriptGeneric* gen)
                                 std::memcpy(buf, &str_size, sizeof(uint));
                                 buf += sizeof(str_size);
 
-                                if (str_size > 0u) {
+                                if (str_size != 0u) {
                                     std::memcpy(buf, str.c_str(), str_size);
                                     buf += arr_size;
                                 }
+                            }
+                        }
+                        else if (prop->IsBaseTypeHash()) {
+                            for (uint i = 0; i < arr_size; i++) {
+                                const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
+                                std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), sizeof(hstring::hash_t));
+                                buf += sizeof(hstring::hash_t);
                             }
                         }
                         else {
@@ -1191,14 +1227,14 @@ static void Property_SetValue(asIScriptGeneric* gen)
             }
         }
         else if (prop->IsDictOfString()) {
-            if (dict != nullptr && dict->GetSize() > 0u) {
+            if (dict != nullptr && dict->GetSize() != 0u) {
                 // Calculate size
                 uint data_size = 0u;
 
                 vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
-                for (const auto& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict_map) {
                     const auto& str = *static_cast<const string*>(value);
                     const auto str_size = static_cast<uint>(str.length());
 
@@ -1209,16 +1245,22 @@ static void Property_SetValue(asIScriptGeneric* gen)
                 uchar* init_buf = new uchar[data_size];
                 uchar* buf = init_buf;
 
-                for (const auto& [key, value] : dict_map) {
+                for (auto&& [key, value] : dict_map) {
                     const auto& str = *static_cast<const string*>(value);
-                    std::memcpy(buf, key, prop->GetDictKeySize());
+                    if (prop->IsDictKeyHash()) {
+                        const auto hash = static_cast<const hstring*>(key)->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), prop->GetDictKeySize());
+                    }
+                    else {
+                        std::memcpy(buf, key, prop->GetDictKeySize());
+                    }
                     buf += prop->GetDictKeySize();
 
                     const auto str_size = static_cast<uint>(str.length());
                     std::memcpy(buf, &str_size, sizeof(uint));
                     buf += sizeof(str_size);
 
-                    if (str_size > 0u) {
+                    if (str_size != 0u) {
                         std::memcpy(buf, str.c_str(), str_size);
                         buf += str_size;
                     }
@@ -1237,17 +1279,30 @@ static void Property_SetValue(asIScriptGeneric* gen)
             const auto whole_element_size = key_element_size + value_element_size;
             const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0u);
 
-            if (data_size > 0u) {
+            if (data_size != 0u) {
                 auto* init_buf = new uchar[data_size];
                 auto* buf = init_buf;
 
                 vector<pair<void*, void*>> dict_map;
                 dict->GetMap(dict_map);
 
-                for (const auto& [key, value] : dict_map) {
-                    std::memcpy(buf, key, key_element_size);
+                for (auto&& [key, value] : dict_map) {
+                    if (prop->IsDictKeyHash()) {
+                        const auto hash = static_cast<const hstring*>(key)->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), key_element_size);
+                    }
+                    else {
+                        std::memcpy(buf, key, key_element_size);
+                    }
                     buf += key_element_size;
-                    std::memcpy(buf, value, value_element_size);
+
+                    if (prop->IsBaseTypeHash()) {
+                        const auto hash = static_cast<const hstring*>(value)->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), value_element_size);
+                    }
+                    else {
+                        std::memcpy(buf, value, value_element_size);
+                    }
                     buf += value_element_size;
                 }
 
@@ -1366,20 +1421,49 @@ static uint HashedString_GetUHash(const hstring& self)
     return self.as_uint();
 }
 
-template<typename T>
-static void Entity_Create(asIScriptGeneric* gen)
+template<typename T, typename U>
+static void CustomEntity_Create(asIScriptGeneric* gen)
 {
-    // Todo: user entity management
+#if !COMPILER_MODE && SERVER_SCRIPTING
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    T* entity = engine->EntityMngr.CreateCustomEntity(U::ENTITY_CLASS_NAME);
+    new (gen->GetAddressOfReturnLocation()) T*(entity);
+#endif
 }
 
-template<typename T>
-static void Entity_Get(asIScriptGeneric* gen)
+template<typename T, typename U>
+static void CustomEntity_Get(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE && SERVER_SCRIPTING
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    const auto& entity_id = *static_cast<const uint*>(gen->GetAddressOfArg(0));
+    T* entity = engine->EntityMngr.GetCustomEntity(U::ENTITY_CLASS_NAME, entity_id);
+    ENTITY_VERIFY(entity);
+    new (gen->GetAddressOfReturnLocation()) T*(entity);
+#endif
 }
 
-template<typename T>
-static void Entity_Delete(asIScriptGeneric* gen)
+template<typename T, typename U>
+static void CustomEntity_DeleteById(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE && SERVER_SCRIPTING
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    const auto& entity_id = *static_cast<const uint*>(gen->GetAddressOfArg(0));
+    engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, entity_id);
+#endif
+}
+
+template<typename T, typename U>
+static void CustomEntity_DeleteByRef(asIScriptGeneric* gen)
+{
+#if !COMPILER_MODE && SERVER_SCRIPTING
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    T* entity = *static_cast<T**>(gen->GetAddressOfArg(0));
+    ENTITY_VERIFY(entity);
+    if (entity != nullptr) {
+        engine->EntityMngr.DeleteCustomEntity(U::ENTITY_CLASS_NAME, entity->GetId());
+    }
+#endif
 }
 
 static void Enum_Parse(asIScriptGeneric* gen)
@@ -1489,9 +1573,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     RegisterScriptReflection(engine);
 
     // Register enums
-    for (const auto& [enum_name, enum_pairs] : game_engine->GetAllEnums()) {
+    for (auto&& [enum_name, enum_pairs] : game_engine->GetAllEnums()) {
         AS_VERIFY(engine->RegisterEnum(enum_name.c_str()));
-        for (const auto& [key, value] : enum_pairs) {
+        for (auto&& [key, value] : enum_pairs) {
             AS_VERIFY(engine->RegisterEnumValue(enum_name.c_str(), key.c_str(), value));
         }
 
@@ -1601,11 +1685,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     entity_get_component_func_ptr.emplace("Static" class_name, asFUNCTION((Property_GetComponent<real_class>))); \
     entity_get_value_func_ptr.emplace("Static" class_name, asFUNCTION((Property_GetValue<real_class>)))
 
-#define REGISTER_ENTITY_MANAGEMENT(class_name, real_class) \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Create" class_name "()", asFUNCTION((Entity_Create<real_class>)), asCALL_GENERIC, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(uint id)", asFUNCTION((Entity_Get<real_class>)), asCALL_GENERIC, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(uint id)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine)); \
-    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" class_name "@+ entity)", asFUNCTION((Entity_Delete<real_class>)), asCALL_GENERIC, game_engine))
+#define REGISTER_ENTITY_MANAGEMENT(class_name, real_class, entity_info) \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Create" class_name "()", asFUNCTION((CustomEntity_Create<real_class, entity_info>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", class_name "@+ Get" class_name "(uint id)", asFUNCTION((CustomEntity_Get<real_class, entity_info>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(uint id)", asFUNCTION((CustomEntity_DeleteById<real_class, entity_info>)), asCALL_GENERIC, game_engine)); \
+    AS_VERIFY(engine->RegisterObjectMethod("GameSingleton", "void Delete" class_name "(" class_name "@+ entity)", asFUNCTION((CustomEntity_DeleteByRef<real_class, entity_info>)), asCALL_GENERIC, game_engine))
 
 #define REGISTER_ENTITY_METHOD(class_name, method_decl, func) AS_VERIFY(engine->RegisterObjectMethod(class_name, method_decl, SCRIPT_FUNC_THIS(func), SCRIPT_FUNC_THIS_CONV))
 
@@ -1651,7 +1735,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     ///@ CodeGen Register
 
     // Register properties
-    for (const auto& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
+    for (auto&& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
         const auto is_global = entity_is_global.count(reg_name) != 0u;
         const auto is_has_protos = entity_has_protos.count(reg_name) != 0u;
         const auto is_has_statics = entity_has_statics.count(reg_name) != 0u;
@@ -1718,7 +1802,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             }
         }
 
-        for (const auto& [group_name, properties] : registrator->GetPropertyGroups()) {
+        for (auto&& [group_name, properties] : registrator->GetPropertyGroups()) {
             vector<ScriptEnum_uint16> prop_enums;
             prop_enums.reserve(properties.size());
             for (const auto* prop : properties) {

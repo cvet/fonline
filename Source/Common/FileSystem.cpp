@@ -80,7 +80,7 @@ File::File(string_view name, string_view path, size_t size, uint64 write_time, D
 
 File::File(const vector<uchar>& buf) : FileHeader("", "", static_cast<uint>(buf.size()), 0, nullptr), _fileBuf(new uchar[buf.size()])
 {
-    memcpy(_fileBuf.get(), buf.data(), buf.size());
+    std::memcpy(_fileBuf.get(), buf.data(), buf.size());
 }
 
 auto File::GetStr() const -> string

@@ -294,7 +294,7 @@ void Field::UnvalidateSpriteChain() const
     }
 }
 
-MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), MapProperties(GetInitRef()), _mainTree(engine->SprMngr, _spritesPool), _tilesTree(engine->SprMngr, _spritesPool), _roofTree(engine->SprMngr, _spritesPool)
+MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), MapProperties(GetInitRef()), _mainTree(engine->SprMngr, _spritesPool), _tilesTree(engine->SprMngr, _spritesPool), _roofTree(engine->SprMngr, _spritesPool)
 {
     _rtScreenOx = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexWidth) / MIN_ZOOM));
     _rtScreenOy = static_cast<uint>(std::ceil(static_cast<float>(_engine->Settings.MapHexLineHeight * 2) / MIN_ZOOM));

@@ -51,10 +51,16 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
 
         entity->SetId(id);
 
-        const auto* proto = entity->GetProto();
-        auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), proto != nullptr ? &proto->GetProperties() : nullptr, *_engine);
-        doc["_Proto"] = string(proto != nullptr ? proto->GetName() : "");
-        _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
+        if (const auto* entity_with_proto = dynamic_cast<EntityWithProto*>(entity); entity_with_proto != nullptr) {
+            const auto* proto = entity_with_proto->GetProto();
+            auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine);
+            doc["_Proto"] = string(proto->GetName());
+            _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
+        }
+        else {
+            const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine);
+            _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
+        }
     }
 
     const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
@@ -153,13 +159,13 @@ auto EntityManager::GetItems() -> vector<Item*>
     return items;
 }
 
-auto EntityManager::FindCritterItems(uint crid) -> vector<Item*>
+auto EntityManager::FindCritterItems(uint cr_id) -> vector<Item*>
 {
     vector<Item*> items;
 
     for (auto&& [id, entity] : _allEntities) {
         if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-            if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == crid) {
+            if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == cr_id) {
                 items.push_back(item);
             }
         }
@@ -426,5 +432,53 @@ void EntityManager::FinalizeEntities()
             WriteLog("Entities finalizations fuse fired!");
             break;
         }
+    }
+}
+
+auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> ServerEntity*
+{
+    auto* entity = GetEntity(id);
+
+    // Load if not exists
+    if (entity == nullptr) {
+        const auto doc = _engine->DbStorage.Get(_str("{}s", entity_class_name), id);
+        if (doc.empty()) {
+            return nullptr;
+        }
+
+        const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
+        auto props = Properties(registrator);
+        if (!PropertiesSerializator::LoadFromDocument(&props, doc, *_engine)) {
+            return nullptr;
+        }
+
+        entity = new ServerEntity(_engine, id, registrator);
+        entity->SetProperties(props);
+        RegisterEntity(entity);
+        return entity;
+    }
+
+    if (entity->GetClassName() != entity_class_name) {
+        return nullptr;
+    }
+
+    return entity;
+}
+
+auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerEntity*
+{
+    const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
+    auto* entity = new ServerEntity(_engine, 0u, registrator);
+    RegisterEntity(entity);
+    return entity;
+}
+
+void EntityManager::DeleteCustomEntity(string_view entity_class_name, uint id)
+{
+    auto* entity = GetCustomEntity(entity_class_name, id);
+    if (entity != nullptr) {
+        UnregisterEntity(entity);
+        entity->MarkAsDestroyed();
+        entity->Release();
     }
 }

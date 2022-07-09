@@ -44,7 +44,7 @@ class Item;
 class Critter;
 using StaticItem = Item;
 
-class Item final : public ServerEntity, public ItemProperties
+class Item final : public ServerEntity, public EntityWithProto, public ItemProperties
 {
     friend class Entity;
     friend class ItemManager;

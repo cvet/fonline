@@ -41,6 +41,8 @@
 #include <string.h>
 #include <string>
 
+#include "Common.h"
+
 using namespace std;
 
 BEGIN_AS_NAMESPACE
@@ -79,6 +81,7 @@ struct DictMapComparator
 };
 
 static int stringTypeId;
+static int hstringTypeId;
 
 typedef map<void*, void*, DictMapComparator> DictMap;
 
@@ -233,8 +236,6 @@ void RegisterScriptDict(asIScriptEngine* engine)
         RegisterScriptDict_Native(engine);
     else
         RegisterScriptDict_Generic(engine);
-
-    stringTypeId = engine->GetTypeIdByDecl("string");
 }
 
 static void RegisterScriptDict_Native(asIScriptEngine* engine)
@@ -280,8 +281,6 @@ static void RegisterScriptDict_Native(asIScriptEngine* engine)
     r = engine->RegisterObjectMethod("dict<T1,T2>", "void setIfNotExist(const T1&in, const T2&in)", asMETHOD(CScriptDict, SetIfNotExist), asCALL_THISCALL);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "bool remove(const T1&in)", asMETHOD(CScriptDict, Remove), asCALL_THISCALL);
-    assert(r >= 0);
-    r = engine->RegisterObjectMethod("dict<T1,T2>", "uint removeValues(const T2&in)", asMETHOD(CScriptDict, RemoveValues), asCALL_THISCALL);
     assert(r >= 0);
     r = engine->RegisterObjectMethod("dict<T1,T2>", "uint length() const", asMETHOD(CScriptDict, GetSize), asCALL_THISCALL);
     assert(r >= 0);
@@ -752,11 +751,29 @@ static void DestroyObject(asITypeInfo* objType, int subTypeIndex, void* value)
     }
 }
 
+// Todo: rework objects in dict comparing (detect opLess/opEqual automatically)
+static void InitTypeId()
+{
+    if (stringTypeId == 0) {
+        stringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("string");
+        RUNTIME_ASSERT(stringTypeId > 0);
+        hstringTypeId = asGetActiveContext()->GetEngine()->GetTypeIdByDecl("hstring");
+        RUNTIME_ASSERT(hstringTypeId > 0);
+    }
+}
+
 static bool Less(int typeId, const void* a, const void* b)
 {
+    InitTypeId();
+
     if (typeId == stringTypeId) {
         const std::string& aStr = *(const std::string*)a;
         const std::string& bStr = *(const std::string*)b;
+        return aStr < bStr;
+    }
+    if (typeId == hstringTypeId) {
+        const hstring& aStr = *(const hstring*)a;
+        const hstring& bStr = *(const hstring*)b;
         return aStr < bStr;
     }
 
@@ -787,14 +804,26 @@ static bool Less(int typeId, const void* a, const void* b)
 #undef COMPARE
         }
     }
-    return a < b;
+
+    if ((typeId & asTYPEID_OBJHANDLE)) {
+        return a < b;
+    }
+
+    throw UnreachablePlaceException(LINE_STR);
 }
 
 static bool Equals(int typeId, const void* a, const void* b)
 {
+    InitTypeId();
+
     if (typeId == stringTypeId) {
         const std::string& aStr = *(const std::string*)a;
         const std::string& bStr = *(const std::string*)b;
+        return aStr == bStr;
+    }
+    if (typeId == hstringTypeId) {
+        const hstring& aStr = *(const hstring*)a;
+        const hstring& bStr = *(const hstring*)b;
         return aStr == bStr;
     }
 
@@ -825,7 +854,12 @@ static bool Equals(int typeId, const void* a, const void* b)
 #undef COMPARE
         }
     }
-    return a == b;
+
+    if ((typeId & asTYPEID_OBJHANDLE)) {
+        return a == b;
+    }
+
+    throw UnreachablePlaceException(LINE_STR);
 }
 
 static CScriptDict* CScriptDict_Create(asITypeInfo* ti)

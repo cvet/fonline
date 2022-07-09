@@ -1080,7 +1080,7 @@ void FOClient::Net_OnLoginSuccess()
         _curPlayer = nullptr;
     }
 
-    _curPlayer = new PlayerView(this, player_id, nullptr); // Todo: proto player?
+    _curPlayer = new PlayerView(this, player_id);
     _curPlayer->RestoreData(_playerPropertiesData);
 }
 

@@ -41,7 +41,7 @@
 
 class FOClient;
 
-class ClientEntity : public EntityWithProto
+class ClientEntity : public Entity
 {
 public:
     ClientEntity() = delete;
@@ -53,11 +53,12 @@ public:
 
     [[nodiscard]] auto GetId() const -> uint;
     [[nodiscard]] auto GetEngine() -> FOClient*;
+    [[nodiscard]] auto GetName() const -> string_view override;
 
     void SetId(uint id);
 
 protected:
-    ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto);
+    ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator);
 
     FOClient* _engine;
 

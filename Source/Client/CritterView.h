@@ -41,7 +41,7 @@
 
 class ItemView;
 
-class CritterView : public ClientEntity, public CritterProperties
+class CritterView : public ClientEntity, public EntityWithProto, public CritterProperties
 {
 public:
     CritterView() = delete;

@@ -147,7 +147,7 @@ public:
     CornerType Corner {};
 };
 
-class MapView final : public ClientEntity, public MapProperties
+class MapView final : public ClientEntity, public EntityWithProto, public MapProperties
 {
 public:
     struct AutoScrollInfo

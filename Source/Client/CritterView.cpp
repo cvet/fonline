@@ -36,7 +36,7 @@
 #include "ItemView.h"
 #include "Timer.h"
 
-CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME), proto), CritterProperties(GetInitRef())
+CritterView::CritterView(FOClient* engine, uint id, const ProtoCritter* proto) : ClientEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), EntityWithProto(this, proto), CritterProperties(GetInitRef())
 {
 }
 

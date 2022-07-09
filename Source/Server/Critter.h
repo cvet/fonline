@@ -46,7 +46,7 @@ class Item;
 class Map;
 class Location;
 
-class Critter final : public ServerEntity, public CritterProperties
+class Critter final : public ServerEntity, public EntityWithProto, public CritterProperties
 {
     friend class Player;
     friend class CritterManager;

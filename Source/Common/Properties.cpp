@@ -146,18 +146,23 @@ void Properties::StoreAllData(vector<uchar>& all_data) const
     // Store hashes
     vector<string> str_hashes;
     str_hashes.reserve(64);
+    const auto add_hash = [&str_hashes](const string& str) {
+        if (!str.empty()) {
+            str_hashes.emplace_back(str);
+        }
+    };
 
     for (const auto* prop : _registrator->_registeredProperties) {
         if (prop->IsReadable() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
             const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
 
             if (value.index() == AnyData::STRING_VALUE) {
-                str_hashes.emplace_back(std::get<AnyData::STRING_VALUE>(value));
+                add_hash(std::get<AnyData::STRING_VALUE>(value));
             }
             else if (value.index() == AnyData::ARRAY_VALUE) {
                 const auto arr = std::get<AnyData::ARRAY_VALUE>(value);
                 for (auto&& arr_entry : arr) {
-                    str_hashes.emplace_back(std::get<AnyData::STRING_VALUE>(arr_entry));
+                    add_hash(std::get<AnyData::STRING_VALUE>(arr_entry));
                 }
             }
             else if (value.index() == AnyData::DICT_VALUE) {
@@ -165,7 +170,7 @@ void Properties::StoreAllData(vector<uchar>& all_data) const
 
                 if (prop->IsDictKeyHash()) {
                     for (auto&& dict_entry : dict) {
-                        str_hashes.emplace_back(dict_entry.first);
+                        add_hash(dict_entry.first);
                     }
                 }
 
@@ -174,11 +179,11 @@ void Properties::StoreAllData(vector<uchar>& all_data) const
                         if (dict_entry.second.index() == AnyData::ARRAY_VALUE) {
                             const auto dict_arr = std::get<AnyData::ARRAY_VALUE>(dict_entry.second);
                             for (auto&& dict_arr_entry : dict_arr) {
-                                str_hashes.emplace_back(std::get<AnyData::STRING_VALUE>(dict_arr_entry));
+                                add_hash(std::get<AnyData::STRING_VALUE>(dict_arr_entry));
                             }
                         }
                         else {
-                            str_hashes.emplace_back(std::get<AnyData::STRING_VALUE>(dict_entry.second));
+                            add_hash(std::get<AnyData::STRING_VALUE>(dict_entry.second));
                         }
                     }
                 }

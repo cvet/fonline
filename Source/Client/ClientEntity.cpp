@@ -32,8 +32,9 @@
 //
 
 #include "ClientEntity.h"
+#include "StringUtils.h"
 
-ClientEntity::ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator, const ProtoEntity* proto) : EntityWithProto(registrator, proto), _engine {engine}, _id {id}
+ClientEntity::ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator) : Entity(registrator), _engine {engine}, _id {id}
 {
 }
 
@@ -52,4 +53,9 @@ auto ClientEntity::GetEngine() -> FOClient*
     NON_CONST_METHOD_HINT();
 
     return _engine;
+}
+
+auto ClientEntity::GetName() const -> string_view
+{
+    return GetProperties().GetRegistrator()->GetClassName();
 }

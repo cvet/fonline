@@ -593,8 +593,8 @@ def parseTags():
                 validTypes.add(name)
                 assert name not in gameEntities
                 gameEntities.append(name)
-                gameEntitiesInfo[name] = {'Server': 'Server' + name if target in ['Common', 'Server'] else None,
-                        'Client': 'Client' + name if target in ['Common', 'Client'] else None,
+                gameEntitiesInfo[name] = {'Server': 'ServerEntity' if target in ['Common', 'Server'] else None,
+                        'Client': 'ClientEntity' if target in ['Common', 'Client'] else None,
                         'IsGlobal': 'Global' in flags, 'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags,
                         'Exported': False}
                 
@@ -1590,17 +1590,17 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         defineLines.append('#define COMPILER_VALIDATION_MODE ' + ('1' if isASCompilerValidation else '0'))
         
         # User entities
-        if not isASCompiler:
-            globalLines.append('// User entities')
-            for entTag in codeGenTags['Entity']:
-                targ, entity, flags, _ = entTag
-                engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
-                if engineEntityType is None:
-                    continue
-                globalLines.append('class ' + engineEntityType + ' : public BaseEntity')
-                globalLines.append('{')
-                globalLines.append('};')
-            globalLines.append('')
+        globalLines.append('// User entities info')
+        for entTag in codeGenTags['Entity']:
+            targ, entity, flags, _ = entTag
+            engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
+            if engineEntityType is None:
+                continue
+            globalLines.append('struct ' + entity + 'Info')
+            globalLines.append('{')
+            globalLines.append('    static constexpr string_view ENTITY_CLASS_NAME = "' + entity + '";')
+            globalLines.append('};')
+        globalLines.append('')
         
         # Scriptable objects and entity stubs
         if isASCompiler:
@@ -1608,6 +1608,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             for entity in gameEntities:
                 engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
                 if engineEntityType is None:
+                    continue
+                if not gameEntitiesInfo[entity]['Exported']:
                     continue
                 engineEntityType = engineEntityType
                 globalLines.append('struct ' + engineEntityType + ' : BaseEntity { };')
@@ -1719,7 +1721,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             elif p[0] in ['string']:
                                 globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &arg_' + p[1] + ');')
                             elif p[0] in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64', 'bool', 'float', 'double', 'hstring'] or p[0] in engineEnums or p[0] in scriptEnums:
-                                globalLines.append('    memcpy(ctx->GetAddressOfArg(' + str(setIndex) + '), &arg_' + p[1] + ', sizeof(arg_' + p[1] + '));')
+                                globalLines.append('    std::memcpy(ctx->GetAddressOfArg(' + str(setIndex) + '), &arg_' + p[1] + ', sizeof(arg_' + p[1] + '));')
                             else:
                                 globalLines.append('    static_assert(false, "Invalid configuration");')
                             setIndex += 1
@@ -1901,7 +1903,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 assert not gameEntitiesInfo[entity]['IsGlobal']
                 registerLines.append('REGISTER_ENTITY_STATICS("' + entity + '", ' + engineEntityType + ');')
             if not gameEntitiesInfo[entity]['Exported']:
-                registerLines.append('REGISTER_ENTITY_MANAGEMENT("' + entity + '", ' + engineEntityType + ');')
+                registerLines.append('REGISTER_ENTITY_MANAGEMENT("' + entity + '", ' + engineEntityType + ', ' + entity + 'Info);')
         registerLines.append('')
         
         # Generic funcdefs
@@ -1918,8 +1920,14 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             for methodTag in codeGenTags['ExportMethod']:
                 targ, ent, name, ret, params, exportFlags, comment = methodTag
                 if targ in allowedTargets and ent == entity:
+                    def passOwnership(asRet):
+                        if 'PassOwnership' in exportFlags:
+                            assert asRet[-1] == '+'
+                            return asRet[:-1]
+                        else:
+                            return asRet
                     registerLines.append('REGISTER_ENTITY_METHOD("' + (entity + 'Singleton' if gameEntitiesInfo[entity]['IsGlobal'] else entity) +
-                            '", "' + metaTypeToASType(ret, isRet=True) + ' ' + name + '(' +
+                            '", "' + passOwnership(metaTypeToASType(ret, isRet=True)) + ' ' + name + '(' +
                             ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in params]) + ')", AS_' + targ + '_' +
                             entity + '_' + name + '_' + nameMangling(params) + ');')
         registerLines.append('')

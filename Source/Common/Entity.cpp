@@ -281,23 +281,17 @@ auto ProtoEntity::HasComponent(hstring::hash_t hash) const -> bool
     return _componentHashes.count(hash) != 0u;
 }
 
-EntityWithProto::EntityWithProto(const PropertyRegistrator* registrator, const ProtoEntity* proto) : Entity(registrator), _proto {proto}
+EntityWithProto::EntityWithProto(Entity* owner, const ProtoEntity* proto) : _proto {proto}
 {
     RUNTIME_ASSERT(_proto);
 
     _proto->AddRef();
-
-    SetProperties(_proto->GetProperties());
+    owner->SetProperties(_proto->GetProperties());
 }
 
 EntityWithProto::~EntityWithProto()
 {
     _proto->Release();
-}
-
-auto EntityWithProto::GetName() const -> string_view
-{
-    return _proto->GetName();
 }
 
 auto EntityWithProto::GetProtoId() const -> hstring

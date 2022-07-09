@@ -39,7 +39,7 @@
 #include "EntityProperties.h"
 #include "EntityProtos.h"
 
-class ItemView : public ClientEntity, public ItemProperties
+class ItemView : public ClientEntity, public EntityWithProto, public ItemProperties
 {
 public:
     ItemView() = delete;

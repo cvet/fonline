@@ -50,7 +50,7 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, uint id, string_view name, ClientConnection* connection, const ProtoCritter* proto);
+    Player(FOServer* engine, uint id, string_view name, ClientConnection* connection);
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;

@@ -3050,7 +3050,7 @@ void FOMapper::BufferCopy()
         entity_buf->HexY = hy;
         entity_buf->IsCritter = dynamic_cast<CritterHexView*>(entity) != nullptr;
         entity_buf->IsItem = dynamic_cast<ItemHexView*>(entity) != nullptr;
-        entity_buf->Proto = entity->GetProto();
+        entity_buf->Proto = dynamic_cast<EntityWithProto*>(entity)->GetProto();
         entity_buf->Props = new Properties(entity->GetProperties());
 
         for (auto* child : GetEntityInnerItems(entity)) {
