@@ -10,13 +10,13 @@ class Sprite
     Sprite(string name)
     {
         bool ok = Load(name);
-        Game.Assert(ok, name);
+        Assert(ok, name);
     }
 
     Sprite(hstring name)
     {
         bool ok = Load(name);
-        Game.Assert(ok, name);
+        Assert(ok, name);
     }
 
     bool Load(string name)

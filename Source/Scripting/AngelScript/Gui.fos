@@ -3530,7 +3530,7 @@ Screen CreateScreen(int screenIndex)
 {
     CreateScreenFunc screenFunc = ScreenCreators[screenIndex];
     Screen screen = screenFunc();
-    Game.Assert(screen != null, screenIndex);
+    Assert(screen != null, screenIndex);
     screen._Index = screenIndex;
     screen._ActiveSelf = false;
     screen._IsRegistered = true;

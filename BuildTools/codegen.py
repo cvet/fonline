@@ -1495,7 +1495,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         return 'ScriptEnum_' + e[1]
                 assert False, 'Enum not found ' + tt[0]
             elif tt[0] == 'ObjInfo':
-                return '[[maybe_unused]] void* obj' + tt[1] + 'Ptr, int'
+                return 'void* obj' + tt[1] + 'Ptr, int'
             elif tt[0] == 'ScriptFuncName':
                 return 'asIScriptFunction*'
             else:
