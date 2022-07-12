@@ -40,9 +40,14 @@ Property::Property(const PropertyRegistrator* registrator) : _registrator {regis
 {
 }
 
-void Property::AddCallback(PropertyChangedCallback callback) const
+void Property::SetGetter(PropertyGetCallback getter) const
 {
-    _callbacks.emplace_back(std::move(callback));
+    _getter = std::move(getter);
+}
+
+void Property::AddSetter(PropertySetCallback setter) const
+{
+    _setters.emplace(_setters.begin(), std::move(setter));
 }
 
 Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
@@ -153,7 +158,7 @@ void Properties::StoreAllData(vector<uchar>& all_data) const
     };
 
     for (const auto* prop : _registrator->_registeredProperties) {
-        if (prop->IsReadable() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
+        if (!prop->IsDisabled() && (prop->IsBaseTypeHash() || prop->IsDictKeyHash())) {
             const auto value = PropertiesSerializator::SavePropertyToValue(this, prop, _registrator->_nameResolver);
 
             if (value.index() == AnyData::STRING_VALUE) {
@@ -368,13 +373,13 @@ auto Properties::SaveToText(Properties* base) const -> map<string, string>
 
     map<string, string> key_values;
     for (auto* prop : _registrator->_registeredProperties) {
-        // Skip pure virtual properties
-        if (prop->_podDataOffset == static_cast<uint>(-1) && prop->_complexDataIndex == static_cast<uint>(-1)) {
+        if (prop->IsDisabled()) {
             continue;
         }
-
-        // Skip temporary properties
-        if (prop->_isTemporary) {
+        if (prop->IsVirtual()) {
+            continue;
+        }
+        if (prop->IsTemporary()) {
             continue;
         }
 
@@ -739,8 +744,8 @@ auto Properties::GetValueAsInt(int property_index) const -> int
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
     }
-    if (!prop->IsReadable()) {
-        throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
 
     return GetPlainDataValueAsInt(prop);
@@ -756,8 +761,8 @@ auto Properties::GetValueAsFloat(int property_index) const -> float
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't retreive integer value from non PlainData property", prop->GetName());
     }
-    if (!prop->IsReadable()) {
-        throw PropertiesException("Can't retreive integer value from non readable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't retreive integer value from disabled property", prop->GetName());
     }
 
     return GetPlainDataValueAsFloat(prop);
@@ -773,8 +778,8 @@ void Properties::SetValueAsInt(int property_index, int value)
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
     }
-    if (!prop->IsWritable()) {
-        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
     }
 
     SetPlainDataValueAsInt(prop, value);
@@ -790,28 +795,11 @@ void Properties::SetValueAsFloat(int property_index, float value)
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
     }
-    if (!prop->IsWritable()) {
-        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
     }
 
     SetPlainDataValueAsFloat(prop, value);
-}
-
-void Properties::SetValueAsIntByName(string_view property_name, int value)
-{
-    const auto* prop = _registrator->Find(property_name);
-
-    if (prop == nullptr) {
-        throw PropertiesException("Property not found", property_name);
-    }
-    if (!prop->IsPlainData()) {
-        throw PropertiesException("Can't set by name integer value from non PlainData property", prop->GetName());
-    }
-    if (!prop->IsWritable()) {
-        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
-    }
-
-    SetPlainDataValueAsInt(prop, value);
 }
 
 void Properties::SetValueAsIntProps(int property_index, int value)
@@ -824,10 +812,10 @@ void Properties::SetValueAsIntProps(int property_index, int value)
     if (!prop->IsPlainData()) {
         throw PropertiesException("Can't set integer value to non PlainData property", prop->GetName());
     }
-    if (!prop->IsWritable()) {
-        throw PropertiesException("Can't set integer value to non writable property", prop->GetName());
+    if (prop->IsDisabled()) {
+        throw PropertiesException("Can't set integer value to disabled property", prop->GetName());
     }
-    if (IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+    if (prop->IsVirtual()) {
         throw PropertiesException("Can't set integer value to virtual property", prop->GetName());
     }
 
@@ -998,6 +986,10 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
         prop->_dictKeyTypeName = "";
     }
 
+    if (IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+        prop->_isVirtual = true;
+    }
+
     for (size_t i = 0; i < flags.size(); i++) {
         const auto check_next_param = [&flags, i, prop] {
             if (i + 2 >= flags.size() || flags[i + 1] != "=") {
@@ -1149,25 +1141,20 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     const auto reg_index = static_cast<ushort>(_registeredProperties.size());
 
     // Disallow set or get accessors
-    auto disable_get = false;
-    auto disable_set = false;
+    auto disabled = false;
 
     if (_relation == PropertiesRelationType::ServerRelative && IsEnumSet(prop->_accessType, Property::AccessType::ClientOnlyMask)) {
-        disable_get = true;
-        disable_set = true;
+        disabled = true;
     }
     if (_relation == PropertiesRelationType::ClientRelative && IsEnumSet(prop->_accessType, Property::AccessType::ServerOnlyMask)) {
-        disable_get = true;
-        disable_set = true;
+        disabled = true;
     }
+
     if (_relation == PropertiesRelationType::ClientRelative && //
         (IsEnumSet(prop->_accessType, Property::AccessType::PublicMask) || IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask)) && //
         !IsEnumSet(prop->_accessType, Property::AccessType::ModifiableMask)) {
-        RUNTIME_ASSERT(!disable_get);
-        disable_set = true;
-    }
-    if (prop->_isReadOnly) {
-        disable_set = true;
+        RUNTIME_ASSERT(!disabled);
+        prop->_isReadOnly = true;
     }
 
     // PlainData property data offset
@@ -1176,7 +1163,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
 
     auto data_base_offset = static_cast<uint>(-1);
 
-    if (prop->_dataType == Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+    if (prop->_dataType == Property::DataType::PlainData && !disabled && !prop->IsVirtual()) {
         const auto is_public = IsEnumSet(prop->_accessType, Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->_accessType, Property::AccessType::ProtectedMask);
         auto& space = (is_public ? _publicPodDataSpace : (is_protected ? _protectedPodDataSpace : _privatePodDataSpace));
@@ -1216,7 +1203,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     // Complex property data index
     auto complex_data_index = static_cast<uint>(-1);
 
-    if (prop->_dataType != Property::DataType::PlainData && !disable_get && !IsEnumSet(prop->_accessType, Property::AccessType::VirtualMask)) {
+    if (prop->_dataType != Property::DataType::PlainData && !disabled && !prop->IsVirtual()) {
         complex_data_index = static_cast<uint>(_complexProperties.size());
         _complexProperties.emplace_back(prop);
 
@@ -1234,8 +1221,7 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     prop->_regIndex = reg_index;
     prop->_complexDataIndex = complex_data_index;
     prop->_podDataOffset = data_base_offset;
-    prop->_isReadable = !disable_get;
-    prop->_isWritable = !disable_set;
+    prop->_isDisabled = disabled;
 
     _registeredProperties.emplace_back(prop);
 

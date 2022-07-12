@@ -92,11 +92,11 @@ static auto GetPropEnumIndex(FOEngineBase* engine, string_view str, bool is_dema
         }
     }
 
-    if (is_demand && !prop->IsReadable()) {
-        throw DialogParseException("DR property is not readable", str);
+    if (prop->IsDisabled()) {
+        throw DialogParseException("DR property is disabled", str);
     }
-    if (!is_demand && !prop->IsWritable()) {
-        throw DialogParseException("DR property is not writable", str);
+    if (!is_demand && prop->IsReadOnly()) {
+        throw DialogParseException("DR property is read only", str);
     }
 
     is_hash = prop->IsBaseTypeHash();

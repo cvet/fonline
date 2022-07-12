@@ -125,13 +125,13 @@ FOServer::FOServer(GlobalSettings& settings) :
                 continue;
             }
 
-            prop->AddCallback([this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSaveEntityValue(entity, prop, new_value, old_value); });
+            prop->AddSetter([this](Entity* entity, const Property* prop, const void* new_value) { OnSaveEntityValue(entity, prop, new_value); });
         }
     }
 
     // Properties that sending to clients
     {
-        const auto set_send_callbacks = [](const auto* registrator, const PropertyChangedCallback& callback) {
+        const auto set_send_callbacks = [](const auto* registrator, const PropertySetCallback& callback) {
             const auto count = static_cast<int>(registrator->GetCount());
             for (auto i = 0; i < count; i++) {
                 const auto* prop = registrator->GetByIndex(i);
@@ -151,38 +151,38 @@ FOServer::FOServer(GlobalSettings& settings) :
                     continue;
                 }
 
-                prop->AddCallback(callback);
+                prop->AddSetter(callback);
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendGlobalValue(entity, prop, new_value, old_value); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendPlayerValue(entity, prop, new_value, old_value); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendItemValue(entity, prop, new_value, old_value); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendCritterValue(entity, prop, new_value, old_value); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendMapValue(entity, prop, new_value, old_value); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSendLocationValue(entity, prop, new_value, old_value); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendGlobalValue(entity, prop, new_value); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendPlayerValue(entity, prop, new_value); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendItemValue(entity, prop, new_value); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendCritterValue(entity, prop, new_value); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendMapValue(entity, prop, new_value); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendLocationValue(entity, prop, new_value); });
     }
 
     // Properties with custom behaviours
     {
-        const auto set_callback = [](const auto* registrator, int prop_index, PropertyChangedCallback callback) {
+        const auto set_callback = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
             const auto* prop = registrator->GetByIndex(prop_index);
-            prop->AddCallback(std::move(callback));
+            prop->AddSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemCount(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemChangeView(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemChangeView(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemChangeView(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemChangeView(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemRecacheHex(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemRecacheHex(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemRecacheHex(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemRecacheHex(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemBlockLines(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemIsGeck(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemIsRadio(entity, prop, new_value, old_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value, const void* old_value) { OnSetItemOpened(entity, prop, new_value, old_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemCount(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemChangeView(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemChangeView(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemChangeView(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemChangeView(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemRecacheHex(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemRecacheHex(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemRecacheHex(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemRecacheHex(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemBlockLines(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemIsGeck(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemIsRadio(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemOpened(entity, prop, new_value); });
     }
 
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
@@ -2479,7 +2479,7 @@ void FOServer::Process_Property(Player* player, uint data_size)
     }
 }
 
-void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop, const void* new_value)
 {
     NON_CONST_METHOD_HINT();
 
@@ -2519,7 +2519,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop, const voi
     }
 }
 
-void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto* player : EntityMngr.GetPlayers()) {
@@ -2528,14 +2528,14 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop, const voi
     }
 }
 
-void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value)
 {
     auto* player = dynamic_cast<Player*>(entity);
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
 
-void FOServer::OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value)
 {
     auto* cr = dynamic_cast<Critter*>(entity);
 
@@ -2550,7 +2550,7 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop, const vo
     }
 }
 
-void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void* new_value)
 {
     if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
@@ -2584,7 +2584,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void*
     }
 }
 
-void FOServer::OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSendMapValue(Entity* entity, const Property* prop, const void* new_value)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
@@ -2592,7 +2592,7 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop, const void* 
     }
 }
 
-void FOServer::OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
@@ -2602,14 +2602,14 @@ void FOServer::OnSendLocationValue(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* new_value)
 {
     NON_CONST_METHOD_HINT();
     UNUSED_VARIABLE(prop);
 
     auto* item = dynamic_cast<Item*>(entity);
     const auto new_count = *static_cast<const uint*>(new_value);
-    const auto old_count = *static_cast<const uint*>(old_value);
+    const auto old_count = entity->GetProperties().GetValue<uint>(prop);
     if (static_cast<int>(new_count) > 0 && (item->GetStackable() || new_count == 1)) {
         const auto diff = static_cast<int>(item->GetCount()) - static_cast<int>(old_count);
         ItemMngr.ChangeItemStatistics(item->GetProtoId(), diff);
@@ -2624,10 +2624,8 @@ void FOServer::OnSetItemCount(Entity* entity, const Property* prop, const void* 
     }
 }
 
-void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value)
 {
-    UNUSED_VARIABLE(old_value);
-
     // IsHidden, IsAlwaysView, IsTrap, TrapValue
     auto* item = dynamic_cast<Item*>(entity);
 
@@ -2655,10 +2653,9 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value)
 {
     UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(old_value);
 
     // IsNoBlock, IsShootThru, IsGag, IsTrigger
     const auto* item = dynamic_cast<Item*>(entity);
@@ -2671,7 +2668,7 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value)
 {
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
@@ -2683,7 +2680,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const v
     }
 }
 
-void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop, const void* new_value)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto value = *static_cast<const bool*>(new_value);
@@ -2696,7 +2693,7 @@ void FOServer::OnSetItemIsGeck(Entity* entity, const Property* prop, const void*
     }
 }
 
-void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop, const void* new_value)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto value = *static_cast<const bool*>(new_value);
@@ -2709,14 +2706,13 @@ void FOServer::OnSetItemIsRadio(Entity* entity, const Property* prop, const void
     }
 }
 
-void FOServer::OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value)
+void FOServer::OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value)
 {
     auto* item = dynamic_cast<Item*>(entity);
     const auto new_opened = *static_cast<const bool*>(new_value);
-    const auto old_opened = *static_cast<const bool*>(old_value);
 
     if (item->GetIsCanOpen()) {
-        if (!old_opened && new_opened) {
+        if (new_opened) {
             item->SetIsLightThru(true);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {
@@ -2726,7 +2722,7 @@ void FOServer::OnSetItemOpened(Entity* entity, const Property* prop, const void*
                 }
             }
         }
-        if (old_opened && !new_opened) {
+        else {
             item->SetIsLightThru(false);
 
             if (item->GetOwnership() == ItemOwnership::MapHex) {

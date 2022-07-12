@@ -1495,7 +1495,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         return 'ScriptEnum_' + e[1]
                 assert False, 'Enum not found ' + tt[0]
             elif tt[0] == 'ObjInfo':
-                return 'void* obj' + tt[1] + 'Ptr, int'
+                return '[[maybe_unused]] void* obj' + tt[1] + 'Ptr, int'
             elif tt[0] == 'ScriptFuncName':
                 return 'asIScriptFunction*'
             else:
@@ -1890,20 +1890,21 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             engineEntityType = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
             if engineEntityType is None:
                 continue
-            if gameEntitiesInfo[entity]['IsGlobal']:
+            if not gameEntitiesInfo[entity]['Exported']:
+                assert not gameEntitiesInfo[entity]['IsGlobal']
+                registerLines.append('REGISTER_CUSTOM_ENTITY("' + entity + '", ' + engineEntityType + ', ' + entity + 'Info);')
+            elif gameEntitiesInfo[entity]['IsGlobal']:
                 registerLines.append('REGISTER_GLOBAL_ENTITY("' + entity + '", ' + engineEntityType + ');')
             else:
                 registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
-                if gameEntitiesInfo[entity]['HasProto'] or gameEntitiesInfo[entity]['HasStatics']:
-                    registerLines.append('REGISTER_ENTITY_ABSTACT("' + entity + '", ' + engineEntityType + ');')
+            if gameEntitiesInfo[entity]['HasProto'] or gameEntitiesInfo[entity]['HasStatics']:
+                registerLines.append('REGISTER_ENTITY_ABSTACT("' + entity + '", ' + engineEntityType + ');')
             if gameEntitiesInfo[entity]['HasProto']:
                 assert not gameEntitiesInfo[entity]['IsGlobal']
                 registerLines.append('REGISTER_ENTITY_PROTO("' + entity + '", ' + engineEntityType + ', Proto' + entity + ');')
             if gameEntitiesInfo[entity]['HasStatics']:
                 assert not gameEntitiesInfo[entity]['IsGlobal']
                 registerLines.append('REGISTER_ENTITY_STATICS("' + entity + '", ' + engineEntityType + ');')
-            if not gameEntitiesInfo[entity]['Exported']:
-                registerLines.append('REGISTER_ENTITY_MANAGEMENT("' + entity + '", ' + engineEntityType + ', ' + entity + 'Info);')
         registerLines.append('')
         
         # Generic funcdefs

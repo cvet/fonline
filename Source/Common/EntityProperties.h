@@ -253,10 +253,10 @@ public:
     ENTITY_PROPERTY(PrivateClient, string, NiceName);
     ///@ ExportProperty
     ENTITY_PROPERTY(Public, hstring, ModelName);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint, WalkSpeed);
-    ///@ ExportProperty
-    ENTITY_PROPERTY(Protected, uint, RunSpeed);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(VirtualPublic, uint, WalkSpeed);
+    ///@ ExportProperty ReadOnly
+    ENTITY_PROPERTY(VirtualPublic, uint, RunSpeed);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(Protected, uint, Multihex);
     ///@ ExportProperty ReadOnly

@@ -77,8 +77,8 @@ auto ScriptHelpers::GetIntConvertibleEntityProperty(const FOEngineBase* engine, 
     if (prop == nullptr) {
         throw ScriptException("Invalid property index", class_name, prop_index);
     }
-    if (!prop->IsReadable()) {
-        throw ScriptException("Property is not readable", class_name, prop_index);
+    if (prop->IsDisabled()) {
+        throw ScriptException("Property is disabled", class_name, prop_index);
     }
     if (!prop->IsPlainData()) {
         throw ScriptException("Property is not plain data", class_name, prop_index);

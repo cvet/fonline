@@ -1,5 +1,3 @@
 [ProtoCritter]
 $Inject = All
-WalkSpeed = 80
-RunSpeed = 160
 Cond = Alive

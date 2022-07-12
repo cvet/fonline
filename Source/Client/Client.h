@@ -363,21 +363,21 @@ protected:
     void OnText(string_view str, uint crid, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value);
+    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value);
+    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value);
+    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value);
+    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value);
+    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value);
 
-    void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
-    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value, const void* old_value);
+    void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetCritterContourColor(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemFlags(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemSomeLight(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemPicMap(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemOffsetCoords(Entity* entity, const Property* prop, const void* new_value);
+    void OnSetItemOpened(Entity* entity, const Property* prop, const void* new_value);
 
     void AnimProcess();
 
