@@ -438,9 +438,9 @@ struct ScriptSystem::AngelScriptImpl
                 result += _str("  ??? : Line ???\n");
             }
 
-            const auto stack_size = ctx->GetCallstackSize();
+            const asUINT stack_size = ctx->GetCallstackSize();
 
-            for (int i = 1; i < stack_size; i++) {
+            for (asUINT i = 1; i < stack_size; i++) {
                 func = ctx->GetFunction(i);
                 line = ctx->GetLineNumber(i);
                 if (func != nullptr) {
