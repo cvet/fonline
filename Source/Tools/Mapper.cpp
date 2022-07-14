@@ -313,6 +313,7 @@ void FOMapper::ChangeGameTime()
 
 void FOMapper::ProcessInputEvent(const InputEvent& event)
 {
+    throw NotImplementedException(LINE_STR);
     // Process events
     /*for (uint i = 0; i < events.size(); i += 2)
     {
@@ -2999,6 +3000,7 @@ auto FOMapper::CloneEntity(Entity* entity) -> Entity*
     // Todo: clone children
     std::function<void(Entity*, Entity*)> add_entity_children = [&add_entity_children](Entity* from, Entity* to) {
         UNUSED_VARIABLE(add_entity_children);
+        throw NotImplementedException(LINE_STR);
         /*for (auto* from_child : from->GetChildren())
         {
             RUNTIME_ASSERT(from_child->Type == EntityType::Item);
@@ -3128,6 +3130,7 @@ void FOMapper::BufferPaste(int, int)
 
             UNUSED_VARIABLE(hx);
             UNUSED_VARIABLE(hy);
+            throw NotImplementedException(LINE_STR);
             // CritterView* cr = 0; // Todo: need attention!
             //  new CritterView(--((ProtoMap*)ActiveMap->Proto)->LastEntityId,
             //   (ProtoCritter*)entity_buf.Proto, Settings, SprMngr, ResMngr);
@@ -3140,6 +3143,7 @@ void FOMapper::BufferPaste(int, int)
             // owner = cr;
         }
         else if (entity_buf.IsItem) {
+            throw NotImplementedException(LINE_STR);
             const uint id = 0; // Todo: need attention!
             // CurMap->AddItem(
             //  --((ProtoMap*)CurMap->Proto)->LastEntityId, entity_buf.Proto->ProtoId, hx, hy, false, nullptr);
@@ -3151,6 +3155,7 @@ void FOMapper::BufferPaste(int, int)
 
         // Todo: need attention!
         UNUSED_VARIABLE(owner);
+        throw NotImplementedException(LINE_STR);
         /*auto* pmap = dynamic_cast<ProtoMap*>(CurMap->Proto);
         std::function<void(EntityBuf*, Entity*)> add_entity_children = [&add_entity_children, &pmap](EntityBuf* entity_buf) {
             for (auto& child_buf : entity_buf->Children) {
@@ -3704,6 +3709,7 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     RUNTIME_ASSERT(it != LoadedMaps.end());
 
     // Todo: map saving
+    throw NotImplementedException(LINE_STR);
     UNUSED_VARIABLE(custom_name);
 
     OnEditMapSave.Fire(CurMap);
@@ -3731,6 +3737,7 @@ void FOMapper::ResizeMap(MapView* map, ushort width, ushort height)
     RUNTIME_ASSERT(!map->IsDestroyed());
 
     // Todo: map resizing
+    throw NotImplementedException(LINE_STR);
 
     // Check size
     auto maxhx = std::clamp(width, MAXHEX_MIN, MAXHEX_MAX);

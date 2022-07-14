@@ -208,12 +208,12 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendGlobalValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendPlayerValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendItemValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendCritterValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendMapValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendLocationValue(entity, prop, new_value); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendGlobalValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendPlayerValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendItemValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendCritterValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendMapValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendLocationValue(entity, prop, data.GetPtrAs<void>()); });
     }
 
     // Properties with custom behaviours
@@ -223,25 +223,25 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
             prop->AddSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetCritterModelName(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::RunSpeed_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetCritterSpeed(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::WalkSpeed_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetCritterSpeed(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ScaleFactor_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetCritterSpeed(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetCritterContourColor(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemFlags(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemFlags(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemFlags(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemFlags(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemFlags(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemSomeLight(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemSomeLight(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemSomeLight(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemSomeLight(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemSomeLight(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemPicMap(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemOffsetCoords(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemOffsetCoords(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemOpened(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ModelName_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterModelName(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::RunSpeed_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterSpeed(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::WalkSpeed_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterSpeed(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ScaleFactor_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterSpeed(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), CritterView::ContourColor_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetCritterContourColor(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsColorize_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsBadItem_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLightThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemFlags(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::IsLight_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightIntensity_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightDistance_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightFlags_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::LightColor_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemSomeLight(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::PicMap_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemPicMap(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetX_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOffsetCoords(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOffsetCoords(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
     }
 
     ScriptSys->InitModules();
@@ -720,6 +720,7 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
 
         // Todo: handle mouse wheel
         UNUSED_VARIABLE(wheel_delta);
+        throw NotImplementedException(LINE_STR);
     }
 }
 
@@ -2925,6 +2926,7 @@ void FOClient::SetDayTime(bool refresh)
 void FOClient::ProcessGlobalMap()
 {
     // Todo: global map critters
+    throw NotImplementedException(LINE_STR);
 }
 
 void FOClient::TryExit()
@@ -3350,6 +3352,8 @@ void FOClient::AddMess(uchar mess_type, string_view msg)
 // Todo: move targs formatting to scripts
 void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems)
 {
+    NON_CONST_METHOD_HINT();
+
     if (text == "error") {
         text = "Text not found!";
         return;

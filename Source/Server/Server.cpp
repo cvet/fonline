@@ -125,7 +125,7 @@ FOServer::FOServer(GlobalSettings& settings) :
                 continue;
             }
 
-            prop->AddSetter([this](Entity* entity, const Property* prop, const void* new_value) { OnSaveEntityValue(entity, prop, new_value); });
+            prop->AddSetter([this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSaveEntityValue(entity, prop, data.GetPtrAs<void>()); });
         }
     }
 
@@ -155,12 +155,12 @@ FOServer::FOServer(GlobalSettings& settings) :
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendGlobalValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendPlayerValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendItemValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendCritterValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendMapValue(entity, prop, new_value); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, const void* new_value) { OnSendLocationValue(entity, prop, new_value); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendGlobalValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendPlayerValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendItemValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendCritterValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendMapValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendLocationValue(entity, prop, data.GetPtrAs<void>()); });
     }
 
     // Properties with custom behaviours
@@ -170,19 +170,19 @@ FOServer::FOServer(GlobalSettings& settings) :
             prop->AddSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemCount(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemChangeView(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemChangeView(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemChangeView(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemChangeView(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemRecacheHex(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemRecacheHex(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemRecacheHex(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemRecacheHex(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemBlockLines(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemIsGeck(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemIsRadio(entity, prop, new_value); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, const void* new_value) { OnSetItemOpened(entity, prop, new_value); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemBlockLines(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsGeck(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsRadio(entity, prop, data.GetPtrAs<void>()); });
+        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
     }
 
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
@@ -292,7 +292,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     }
 
     // Start script
-    if (OnStart.Fire()) {
+    if (!OnStart.Fire()) {
         throw ServerInitException("Start script failed");
     }
 
@@ -624,6 +624,7 @@ auto FOServer::GetIngamePlayersStatistics() const -> string
 void FOServer::GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names)
 {
     // Todo: restore settings
+    throw NotImplementedException(LINE_STR);
     // client = _str(MainConfig->GetStr("", "Access_client")).split(' ');
     // tester = _str(MainConfig->GetStr("", "Access_tester")).split(' ');
     // moder = _str(MainConfig->GetStr("", "Access_moder")).split(' ');
@@ -2026,6 +2027,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     // Attach critter
     // Todo: attach critter to player
+    throw NotImplementedException(LINE_STR);
     /*EntityMngr.RegisterEntity(cl);
     const auto can = MapMngr.CanAddCrToMap(cl, nullptr, 0, 0, 0);
     RUNTIME_ASSERT(can);
@@ -2487,6 +2489,8 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop, const voi
         return;
     }
 
+    const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
+
     uint entry_id;
 
     if (const auto* server_entity = dynamic_cast<ServerEntity*>(entity); server_entity != nullptr) {
@@ -2495,13 +2499,14 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop, const voi
         }
 
         entry_id = server_entity->GetId();
+
+        DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
     }
     else {
         entry_id = 1u;
-    }
 
-    const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
-    DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
+        DbStorage.Update(entity->GetClassName(), entry_id, prop->GetName(), value);
+    }
 
     if (DbHistory && prop->IsHistorical()) {
         const auto history_id = GetHistoryRecordsId();
@@ -2580,6 +2585,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void*
         else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
             // Todo: add container properties changing notifications
             // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
+            throw NotImplementedException(LINE_STR);
         }
     }
 }
@@ -2676,6 +2682,7 @@ void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const v
         auto* map = MapMngr.GetMap(item->GetMapId());
         if (map != nullptr) {
             // Todo: make BlockLines changable in runtime
+            throw NotImplementedException(LINE_STR);
         }
     }
 }
@@ -3450,6 +3457,7 @@ auto FOServer::DialogUseResult(Critter* npc, Critter* cl, DialogAnswer& answer) 
 
             // Todo: restore DialogUseResult
             UNUSED_VARIABLE(prop_registrator);
+            throw NotImplementedException(LINE_STR);
             /*const auto* prop = prop_registrator->GetByIndex(index);
             int val = 0;
             CScriptDict* dict = nullptr;

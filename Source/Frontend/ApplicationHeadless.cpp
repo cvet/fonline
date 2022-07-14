@@ -133,6 +133,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
     // Todo: implement effect CanBatch
     UNUSED_VARIABLE(other);
+    throw NotImplementedException(LINE_STR);
     return false;
 }
 

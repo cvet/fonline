@@ -957,6 +957,12 @@ def parseTags():
                     index += 1
             codeGenTags['Enum'].append([entity + 'Property', 'uint16', keyValues, [], []])
         
+        # Check for zero key entry in enums
+        for e in codeGenTags['ExportEnum'] + codeGenTags['Enum']:
+            gname, _, keyValues, _, _ = e
+            if not [1 for kv in keyValues if int(kv[1], 0) == 0]:
+                showError('Zero entry not found in enum group ' + gname)
+        
         # Check uniquiness of enums
         for e in codeGenTags['ExportEnum'] + codeGenTags['Enum']:
             gname, _, keyValues, _, _ = e

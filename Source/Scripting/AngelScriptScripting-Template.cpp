@@ -400,42 +400,6 @@ struct ScriptSystem::AngelScriptImpl
         return true;
     }
 
-    auto CallGenericFunc(GenericScriptFunc* gen, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
-    {
-        RUNTIME_ASSERT(gen);
-        RUNTIME_ASSERT(func);
-        RUNTIME_ASSERT(gen->ArgsType.size() == args.size());
-        RUNTIME_ASSERT(gen->ArgsType.size() == func->GetParamCount());
-
-        // Todo: CallGenericFunc
-        if (ret != nullptr) {
-            RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
-            RUNTIME_ASSERT(gen->RetType != &typeid(void));
-        }
-        else {
-            RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
-            RUNTIME_ASSERT(gen->RetType == &typeid(void));
-        }
-
-        auto* ctx = PrepareContext(func);
-
-        for (asUINT i = 0; i < func->GetParamCount(); i++) {
-            // Marshalling
-            // ctx->GetA
-        }
-
-        if (RunContext(ctx, ret == nullptr)) {
-            if (ret != nullptr) {
-                // std::memcpy(ret, func->GetAddressOfReturnLocation(), )
-            }
-
-            ReturnContext(ctx);
-            return true;
-        }
-
-        return false;
-    }
-
     FOEngine* GameEngine {};
     asIScriptEngine* Engine {};
     unordered_set<CScriptArray*> EnumArrays {};
@@ -533,6 +497,7 @@ template<typename T, typename U>
 [[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
 {
     // Todo: MarshalDict
+    throw NotImplementedException(LINE_STR);
     UNUSED_VARIABLE(as_engine);
 
     if (as_dict == nullptr || as_dict->GetSize() == 0u) {
@@ -552,6 +517,7 @@ template<typename T, typename U>
 [[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
     // Todo: MarshalBackScalarDict
+    throw NotImplementedException(LINE_STR);
     auto* as_dict = CreateASDict(as_engine, type);
 
     if (!map.empty()) {
@@ -618,6 +584,477 @@ template<typename T, typename U>
 
     return _str("{}::{}", func->GetNamespace(), func->GetName());
 }
+
+#if !COMPILER_MODE
+static auto CalcConstructAddrSpace(const Property* prop) -> size_t
+{
+    if (prop->IsPlainData()) {
+        if (prop->IsBaseTypeHash()) {
+            return sizeof(hstring);
+        }
+        else if (prop->IsBaseTypeEnum()) {
+            return sizeof(int);
+        }
+        else {
+            return prop->GetBaseSize();
+        }
+    }
+    else if (prop->IsString()) {
+        return sizeof(string);
+    }
+    else if (prop->IsArray()) {
+        return sizeof(void*);
+    }
+    else if (prop->IsDict()) {
+        return sizeof(void*);
+    }
+    else {
+        throw UnreachablePlaceException(LINE_STR);
+    }
+}
+
+static void FreeConstructAddrSpace(const Property* prop, void* construct_addr)
+{
+    if (prop->IsPlainData()) {
+        if (prop->IsBaseTypeHash()) {
+            (*static_cast<hstring*>(construct_addr)).~hstring();
+        }
+    }
+    else if (prop->IsString()) {
+        (*static_cast<string*>(construct_addr)).~string();
+    }
+    else if (prop->IsArray()) {
+        (*static_cast<CScriptArray**>(construct_addr))->Release();
+    }
+    else if (prop->IsDict()) {
+        (*static_cast<CScriptDict**>(construct_addr))->Release();
+    }
+    else {
+        throw UnreachablePlaceException(LINE_STR);
+    }
+}
+
+static void PropsToAS(const Property* prop, PropertyRawData& prop_data, void* construct_addr, asIScriptEngine* as_engine)
+{
+    const auto resolve_hash = [prop](const void* hptr) -> hstring {
+        const auto hash = *reinterpret_cast<const hstring::hash_t*>(hptr);
+        const auto& name_resolver = prop->GetRegistrator()->GetNameResolver();
+        return name_resolver.ResolveHash(hash);
+    };
+
+    const auto* data = prop_data.GetPtrAs<uchar>();
+    const auto data_size = prop_data.GetSize();
+
+    if (prop->IsPlainData()) {
+        if (prop->IsBaseTypeHash()) {
+            RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
+            new (construct_addr) hstring(resolve_hash(data));
+        }
+        else {
+            RUNTIME_ASSERT(data_size != 0);
+            std::memcpy(construct_addr, data, data_size);
+        }
+    }
+    else if (prop->IsString()) {
+        new (construct_addr) string(reinterpret_cast<const char*>(data), data_size);
+    }
+    else if (prop->IsArray()) {
+        auto* arr = CreateASArray(as_engine, prop->GetFullTypeName().c_str());
+
+        if (prop->IsArrayOfString()) {
+            if (data_size != 0u) {
+                uint arr_size;
+                std::memcpy(&arr_size, data, sizeof(arr_size));
+                data += sizeof(arr_size);
+
+                arr->Resize(arr_size);
+
+                for (uint i = 0; i < arr_size; i++) {
+                    uint str_size;
+                    std::memcpy(&str_size, data, sizeof(str_size));
+                    data += sizeof(str_size);
+
+                    string str(reinterpret_cast<const char*>(data), str_size);
+                    arr->SetValue(i, &str);
+
+                    data += str_size;
+                }
+            }
+        }
+        else if (prop->IsBaseTypeHash()) {
+            if (data_size != 0u) {
+                RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+                const auto count = data_size / prop->GetBaseSize();
+                arr->Resize(count);
+
+                for (const auto i : xrange(count)) {
+                    const auto hvalue = resolve_hash(data);
+                    arr->SetValue(i, (void*)&hvalue);
+
+                    data += sizeof(hstring::hash_t);
+                }
+            }
+        }
+        else {
+            if (data_size != 0u) {
+                arr->Resize(data_size / prop->GetBaseSize());
+
+                std::memcpy(arr->At(0), data, data_size);
+            }
+        }
+
+        *static_cast<CScriptArray**>(construct_addr) = arr;
+    }
+    else if (prop->IsDict()) {
+        CScriptDict* dict = CreateASDict(as_engine, prop->GetFullTypeName().c_str());
+
+        if (data_size != 0u) {
+            if (prop->IsDictOfArray()) {
+                const auto* data_end = data + data_size;
+
+                while (data < data_end) {
+                    const auto* key = data;
+                    data += prop->GetDictKeySize();
+
+                    uint arr_size;
+                    std::memcpy(&arr_size, data, sizeof(arr_size));
+                    data += sizeof(arr_size);
+
+                    auto* arr = CreateASArray(as_engine, _str("{}[]", prop->GetBaseTypeName()).c_str());
+
+                    if (arr_size != 0u) {
+                        if (prop->IsDictOfArrayOfString()) {
+                            arr->Resize(arr_size);
+
+                            for (uint i = 0; i < arr_size; i++) {
+                                uint str_size;
+                                std::memcpy(&str_size, data, sizeof(str_size));
+                                data += sizeof(str_size);
+
+                                string str(reinterpret_cast<const char*>(data), str_size);
+                                arr->SetValue(i, &str);
+                                data += str_size;
+                            }
+                        }
+                        else if (prop->IsBaseTypeHash()) {
+                            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+
+                            arr->Resize(arr_size);
+
+                            for (const auto i : xrange(arr_size)) {
+                                const auto hvalue = resolve_hash(data);
+                                arr->SetValue(i, (void*)&hvalue);
+
+                                data += sizeof(hstring::hash_t);
+                            }
+                        }
+                        else {
+                            arr->Resize(arr_size);
+
+                            std::memcpy(arr->At(0), data, arr_size * prop->GetBaseSize());
+                            data += arr_size * prop->GetBaseSize();
+                        }
+                    }
+
+                    if (prop->IsDictKeyHash()) {
+                        const auto hkey = resolve_hash(key);
+                        dict->Set((void*)&hkey, &arr);
+                    }
+                    else {
+                        dict->Set((void*)key, &arr);
+                    }
+
+                    arr->Release();
+                }
+            }
+            else if (prop->IsDictOfString()) {
+                const auto* data_end = data + data_size;
+
+                while (data < data_end) {
+                    const auto* key = data;
+                    data += prop->GetDictKeySize();
+
+                    uint str_size;
+                    std::memcpy(&str_size, data, sizeof(str_size));
+                    data += sizeof(uint);
+
+                    string str(reinterpret_cast<const char*>(data), str_size);
+
+                    if (prop->IsDictKeyHash()) {
+                        const auto hkey = resolve_hash(key);
+                        dict->Set((void*)&hkey, &str);
+                    }
+                    else {
+                        dict->Set((void*)key, &str);
+                    }
+
+                    data += str_size;
+                }
+            }
+            else {
+                const auto whole_element_size = prop->GetDictKeySize() + prop->GetBaseSize();
+                const auto dict_size = data_size / whole_element_size;
+
+                for (uint i = 0; i < dict_size; i++) {
+                    const auto* key = data + i * whole_element_size;
+                    const auto* value = data + i * whole_element_size + prop->GetDictKeySize();
+
+                    if (prop->IsDictKeyHash()) {
+                        const auto hkey = resolve_hash(key);
+                        if (prop->IsBaseTypeHash()) {
+                            const auto hvalue = resolve_hash(value);
+                            dict->Set((void*)&hkey, (void*)&hvalue);
+                        }
+                        else {
+                            dict->Set((void*)&hkey, (void*)&value);
+                        }
+                    }
+                    else {
+                        if (prop->IsBaseTypeHash()) {
+                            const auto hvalue = resolve_hash(value);
+                            dict->Set((void*)key, (void*)&hvalue);
+                        }
+                        else {
+                            dict->Set((void*)key, (void*)&value);
+                        }
+                    }
+                }
+            }
+        }
+
+        *static_cast<CScriptDict**>(construct_addr) = dict;
+    }
+    else {
+        throw UnreachablePlaceException(LINE_STR);
+    }
+}
+
+static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
+{
+    PropertyRawData prop_data;
+
+    if (prop->IsPlainData()) {
+        if (prop->IsBaseTypeHash()) {
+            const auto hash = static_cast<const hstring*>(as_obj)->as_hash();
+            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hash));
+            prop_data.SetAs<hstring::hash_t>(hash);
+        }
+        else {
+            prop_data.Set(as_obj, prop->GetBaseSize());
+        }
+    }
+    else if (prop->IsString()) {
+        const auto& str = *static_cast<const string*>(as_obj);
+        prop_data.Pass(str.data(), str.length());
+    }
+    else if (prop->IsArray()) {
+        const auto* arr = *static_cast<CScriptArray**>(as_obj);
+
+        if (prop->IsArrayOfString()) {
+            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+
+            if (arr_size != 0u) {
+                // Calculate size
+                size_t data_size = sizeof(uint);
+
+                for (uint i = 0; i < arr_size; i++) {
+                    const auto& str = *static_cast<const string*>(arr->At(i));
+                    data_size += sizeof(uint) + static_cast<uint>(str.length());
+                }
+
+                // Make buffer
+                auto* buf = prop_data.Alloc(data_size);
+
+                std::memcpy(buf, &arr_size, sizeof(arr_size));
+                buf += sizeof(uint);
+
+                for (const auto i : xrange(arr_size)) {
+                    const auto& str = *static_cast<const string*>(arr->At(i));
+
+                    uint str_size = static_cast<uint>(str.length());
+                    std::memcpy(buf, &str_size, sizeof(str_size));
+                    buf += sizeof(str_size);
+
+                    if (str_size != 0u) {
+                        std::memcpy(buf, str.c_str(), str_size);
+                        buf += str_size;
+                    }
+                }
+            }
+        }
+        else {
+            size_t data_size = (arr != nullptr ? arr->GetSize() * prop->GetBaseSize() : 0u);
+
+            if (data_size != 0u) {
+                if (prop->IsBaseTypeHash()) {
+                    auto* buf = prop_data.Alloc(data_size);
+
+                    for (const auto i : xrange(arr->GetSize())) {
+                        const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), sizeof(hstring::hash_t));
+                        buf += prop->GetBaseSize();
+                    }
+                }
+                else {
+                    prop_data.Pass(arr->At(0), data_size);
+                }
+            }
+        }
+    }
+    else if (prop->IsDict()) {
+        const auto* dict = *static_cast<CScriptDict**>(as_obj);
+        if (prop->IsDictOfArray()) {
+            if (dict != nullptr && dict->GetSize() != 0u) {
+                // Calculate size
+                size_t data_size = 0u;
+                vector<pair<void*, void*>> dict_map;
+                dict->GetMap(dict_map);
+
+                for (auto&& [key, value] : dict_map) {
+                    const auto* arr = *static_cast<const CScriptArray**>(value);
+                    uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+                    data_size += prop->GetDictKeySize() + sizeof(arr_size);
+
+                    if (prop->IsDictOfArrayOfString()) {
+                        for (uint i = 0; i < arr_size; i++) {
+                            const auto& str = *static_cast<const string*>(arr->At(i));
+                            data_size += sizeof(uint) + static_cast<uint>(str.length());
+                        }
+                    }
+                    else {
+                        data_size += arr_size * prop->GetBaseSize();
+                    }
+                }
+
+                // Make buffer
+                auto* buf = prop_data.Alloc(data_size);
+
+                for (auto&& [key, value] : dict_map) {
+                    const auto* arr = *static_cast<const CScriptArray**>(value);
+                    if (prop->IsDictKeyHash()) {
+                        const auto hash = static_cast<const hstring*>(key)->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), prop->GetDictKeySize());
+                    }
+                    else {
+                        std::memcpy(buf, key, prop->GetDictKeySize());
+                    }
+                    buf += prop->GetDictKeySize();
+
+                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
+                    std::memcpy(buf, &arr_size, sizeof(uint));
+                    buf += sizeof(arr_size);
+
+                    if (arr_size != 0u) {
+                        if (prop->IsDictOfArrayOfString()) {
+                            for (uint i = 0; i < arr_size; i++) {
+                                const auto& str = *static_cast<const string*>(arr->At(i));
+                                const auto str_size = static_cast<uint>(str.length());
+
+                                std::memcpy(buf, &str_size, sizeof(uint));
+                                buf += sizeof(str_size);
+
+                                if (str_size != 0u) {
+                                    std::memcpy(buf, str.c_str(), str_size);
+                                    buf += arr_size;
+                                }
+                            }
+                        }
+                        else if (prop->IsBaseTypeHash()) {
+                            for (uint i = 0; i < arr_size; i++) {
+                                const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
+                                std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), sizeof(hstring::hash_t));
+                                buf += sizeof(hstring::hash_t);
+                            }
+                        }
+                        else {
+                            std::memcpy(buf, arr->At(0), arr_size * prop->GetBaseSize());
+                            buf += arr_size * prop->GetBaseSize();
+                        }
+                    }
+                }
+            }
+        }
+        else if (prop->IsDictOfString()) {
+            if (dict != nullptr && dict->GetSize() != 0u) {
+                // Calculate size
+                size_t data_size = 0u;
+                vector<pair<void*, void*>> dict_map;
+                dict->GetMap(dict_map);
+
+                for (auto&& [key, value] : dict_map) {
+                    const auto& str = *static_cast<const string*>(value);
+                    const auto str_size = static_cast<uint>(str.length());
+
+                    data_size += prop->GetDictKeySize() + sizeof(str_size) + str_size;
+                }
+
+                // Make buffer
+                uchar* buf = prop_data.Alloc(data_size);
+
+                for (auto&& [key, value] : dict_map) {
+                    const auto& str = *static_cast<const string*>(value);
+                    if (prop->IsDictKeyHash()) {
+                        const auto hash = static_cast<const hstring*>(key)->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), prop->GetDictKeySize());
+                    }
+                    else {
+                        std::memcpy(buf, key, prop->GetDictKeySize());
+                    }
+                    buf += prop->GetDictKeySize();
+
+                    const auto str_size = static_cast<uint>(str.length());
+                    std::memcpy(buf, &str_size, sizeof(uint));
+                    buf += sizeof(str_size);
+
+                    if (str_size != 0u) {
+                        std::memcpy(buf, str.c_str(), str_size);
+                        buf += str_size;
+                    }
+                }
+            }
+        }
+        else {
+            const auto key_element_size = prop->GetDictKeySize();
+            const auto value_element_size = prop->GetBaseSize();
+            const auto whole_element_size = key_element_size + value_element_size;
+            const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0u);
+
+            if (data_size != 0u) {
+                auto* buf = prop_data.Alloc(data_size);
+
+                vector<pair<void*, void*>> dict_map;
+                dict->GetMap(dict_map);
+
+                for (auto&& [key, value] : dict_map) {
+                    if (prop->IsDictKeyHash()) {
+                        const auto hash = static_cast<const hstring*>(key)->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), key_element_size);
+                    }
+                    else {
+                        std::memcpy(buf, key, key_element_size);
+                    }
+                    buf += key_element_size;
+
+                    if (prop->IsBaseTypeHash()) {
+                        const auto hash = static_cast<const hstring*>(value)->as_hash();
+                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), value_element_size);
+                    }
+                    else {
+                        std::memcpy(buf, value, value_element_size);
+                    }
+                    buf += value_element_size;
+                }
+            }
+        }
+    }
+    else {
+        throw UnreachablePlaceException(LINE_STR);
+    }
+
+    return prop_data;
+}
+#endif
 
 template<typename T>
 static void Entity_AddRef(const T* self)
@@ -1064,6 +1501,7 @@ static void Global_Yield(uint time)
 {
 #if !COMPILER_MODE
     // Todo: Global_Yield
+    throw NotImplementedException(LINE_STR);
     UNUSED_VARIABLE(time);
 // Script::SuspendCurrentContext(time);
 #else
@@ -1071,8 +1509,87 @@ static void Global_Yield(uint time)
 #endif
 }
 
+#if !COMPILER_MODE
+static auto ASGenericCall(ScriptSystem::AngelScriptImpl* script_sys, GenericScriptFunc* gen_func, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
+{
+    static unordered_map<const std::type_info*, std::function<void(asIScriptContext*, asUINT, void*)>> CtxSetValueMap = {
+        {&typeid(bool), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<bool*>(ptr)); }},
+        {&typeid(char), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<char*>(ptr)); }},
+        {&typeid(short), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<short*>(ptr)); }},
+        {&typeid(int), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<int*>(ptr)); }},
+        {&typeid(int64), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<int64*>(ptr)); }},
+        {&typeid(uchar), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<uchar*>(ptr)); }},
+        {&typeid(ushort), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgWord(index, *static_cast<ushort*>(ptr)); }},
+        {&typeid(uint), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDWord(index, *static_cast<uint*>(ptr)); }},
+        {&typeid(uint64), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgQWord(index, *static_cast<uint64*>(ptr)); }},
+        {&typeid(float), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgFloat(index, *static_cast<float*>(ptr)); }},
+        {&typeid(double), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgDouble(index, *static_cast<double*>(ptr)); }},
+#if SERVER_SCRIPTING
+        {&typeid(Player*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Player**>(ptr)); }},
+        {&typeid(Item*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Item**>(ptr)); }},
+        {&typeid(StaticItem*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<StaticItem**>(ptr)); }},
+        {&typeid(Critter*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Critter**>(ptr)); }},
+        {&typeid(Map*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Map**>(ptr)); }},
+        {&typeid(Location*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<Location**>(ptr)); }},
+        {&typeid(vector<Player*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Player[]", *static_cast<vector<Player*>*>(ptr))); }},
+        {&typeid(vector<Item*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Item[]", *static_cast<vector<Item*>*>(ptr))); }},
+        {&typeid(vector<StaticItem*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "StaticItem[]", *static_cast<vector<StaticItem*>*>(ptr))); }},
+        {&typeid(vector<Critter*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Critter[]", *static_cast<vector<Critter*>*>(ptr))); }},
+        {&typeid(vector<Map*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<Map*>*>(ptr))); }},
+        {&typeid(vector<Location*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<Location*>*>(ptr))); }},
+#else
+        {&typeid(PlayerView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<PlayerView**>(ptr)); }},
+        {&typeid(ItemView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<ItemView**>(ptr)); }},
+        {&typeid(CritterView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<CritterView**>(ptr)); }},
+        {&typeid(MapView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<MapView**>(ptr)); }},
+        {&typeid(LocationView*), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, *static_cast<LocationView**>(ptr)); }},
+        {&typeid(vector<PlayerView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Player[]", *static_cast<vector<PlayerView*>*>(ptr))); }},
+        {&typeid(vector<ItemView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Item[]", *static_cast<vector<ItemView*>*>(ptr))); }},
+        {&typeid(vector<CritterView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Critter[]", *static_cast<vector<CritterView*>*>(ptr))); }},
+        {&typeid(vector<MapView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<MapView*>*>(ptr))); }},
+        {&typeid(vector<LocationView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<LocationView*>*>(ptr))); }},
+#endif
+    };
+
+    RUNTIME_ASSERT(gen_func);
+    RUNTIME_ASSERT(func);
+    RUNTIME_ASSERT(gen_func->ArgsType.size() == args.size());
+    RUNTIME_ASSERT(gen_func->ArgsType.size() == func->GetParamCount());
+
+    if (ret != nullptr) {
+        RUNTIME_ASSERT(func->GetReturnTypeId() != asTYPEID_VOID);
+        RUNTIME_ASSERT(gen_func->RetType != &typeid(void));
+    }
+    else {
+        RUNTIME_ASSERT(func->GetReturnTypeId() == asTYPEID_VOID);
+        RUNTIME_ASSERT(gen_func->RetType == &typeid(void));
+    }
+
+    auto* ctx = script_sys->PrepareContext(func);
+
+    if (args.size() != 0u) {
+        auto it = args.begin();
+        for (asUINT i = 0; i < args.size(); i++, it++) {
+            CtxSetValueMap[gen_func->ArgsType[i]](ctx, i, *it);
+        }
+    }
+
+    if (script_sys->RunContext(ctx, ret == nullptr)) {
+        if (ret != nullptr) {
+            // std::memcpy(ret, func->GetAddressOfReturnLocation(), )
+            throw NotImplementedException(LINE_STR);
+        }
+
+        script_sys->ReturnContext(ctx);
+        return true;
+    }
+
+    return false;
+}
+#endif
+
 template<typename T>
-static void Global_SetPropertyGetter(asIScriptGeneric* gen)
+static void ASPropertyGetter(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
     auto* self = static_cast<FOEngine*>(gen->GetAuxiliary());
@@ -1118,7 +1635,7 @@ static void Global_SetPropertyGetter(asIScriptGeneric* gen)
         }
     }
 
-    prop->SetGetter([&](Entity* entity, const Property*, void* buf) -> void* {
+    prop->SetGetter([prop, func, script_sys](Entity* entity, const Property*) -> PropertyRawData {
         ENTITY_VERIFY_NULL(entity);
         ENTITY_VERIFY(entity);
 
@@ -1140,12 +1657,10 @@ static void Global_SetPropertyGetter(asIScriptGeneric* gen)
         }
 
         if (script_sys->RunContext(ctx, false)) {
-            // convert return value from AS to Props
-            // std::memcpy(ret, func->GetAddressOfReturnLocation(), )
-            void* result = nullptr;
-
+            auto prop_data = ASToProps(prop, ctx->GetAddressOfReturnValue());
+            prop_data.StoreIfPassed();
             script_sys->ReturnContext(ctx);
-            return result;
+            return prop_data;
         }
 
         throw UnreachablePlaceException(LINE_STR);
@@ -1156,7 +1671,7 @@ static void Global_SetPropertyGetter(asIScriptGeneric* gen)
 }
 
 template<typename T, typename U>
-static void Global_AddPropertySetter(asIScriptGeneric* gen)
+static void ASPropertySetter(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
     auto* self = static_cast<FOEngine*>(gen->GetAuxiliary());
@@ -1224,7 +1739,7 @@ static void Global_AddPropertySetter(asIScriptGeneric* gen)
         throw ScriptException("Invalid setter function");
     }
 
-    prop->AddSetter([&](Entity* entity, const Property*, const void* buf) -> void {
+    prop->AddSetter([prop, func, script_sys, deferred, as_engine, has_proto_enum, has_value_ref](Entity* entity, const Property*, PropertyRawData& prop_data) -> void {
         ENTITY_VERIFY_NULL(entity);
         ENTITY_VERIFY(entity);
 
@@ -1245,15 +1760,21 @@ static void Global_AddPropertySetter(asIScriptGeneric* gen)
             ctx->SetArgDWord(1, prop->GetRegIndex());
         }
 
-        void* value = nullptr;
+        PropertyRawData value_ref_space;
 
         if (has_value_ref) {
-            // convert from Props to AS and pass address
-            // ctx->SetArgAddress(has_proto_enum ? 2 : 1, );
+            auto* construct_addr = value_ref_space.Alloc(CalcConstructAddrSpace(prop));
+            PropsToAS(prop, prop_data, construct_addr, as_engine);
+            ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr);
         }
 
         if (!deferred && script_sys->RunContext(ctx, !has_value_ref)) {
-            // convert address value from AS to Props
+            if (has_value_ref) {
+                auto* construct_addr = value_ref_space.GetPtrAs<void>();
+                prop_data = ASToProps(prop, construct_addr);
+                prop_data.StoreIfPassed();
+                FreeConstructAddrSpace(prop, construct_addr);
+            }
 
             script_sys->ReturnContext(ctx);
         }
@@ -1429,469 +1950,57 @@ template<typename T>
 static void Property_GetValue(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    const auto* entity = static_cast<T*>(gen->GetObject());
+    auto* entity = static_cast<T*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
+    auto& getter = prop->GetGetter();
     ENTITY_VERIFY(entity);
 
-    uint data_size;
-    const auto* data = entity->GetProperties().GetRawData(prop, data_size);
+    PropertyRawData prop_data;
 
-    const auto resolve_hash = [entity](const void* hptr) -> hstring {
-        const auto hash = *reinterpret_cast<const hstring::hash_t*>(hptr);
-        return entity->GetProperties().ResolveHash(hash);
-    };
-
-    if (prop->IsPlainData()) {
-        if (prop->IsBaseTypeHash()) {
-            RUNTIME_ASSERT(data_size == sizeof(hstring::hash_t));
-            new (gen->GetAddressOfReturnLocation()) hstring(resolve_hash(data));
-        }
-        else {
-            RUNTIME_ASSERT(data_size != 0);
-            std::memcpy(gen->GetAddressOfReturnLocation(), data, data_size);
-        }
-    }
-    else if (prop->IsString()) {
-        new (gen->GetAddressOfReturnLocation()) string(reinterpret_cast<const char*>(data), data_size);
-    }
-    else if (prop->IsArray()) {
-        auto* arr = CreateASArray(gen->GetEngine(), prop->GetFullTypeName().c_str());
-
-        if (prop->IsArrayOfString()) {
-            if (data_size != 0u) {
-                uint arr_size;
-                std::memcpy(&arr_size, data, sizeof(arr_size));
-                data += sizeof(arr_size);
-
-                arr->Resize(arr_size);
-
-                for (uint i = 0; i < arr_size; i++) {
-                    uint str_size;
-                    std::memcpy(&str_size, data, sizeof(str_size));
-                    data += sizeof(str_size);
-
-                    string str(reinterpret_cast<const char*>(data), str_size);
-                    arr->SetValue(i, &str);
-
-                    data += str_size;
-                }
-            }
-        }
-        else if (prop->IsBaseTypeHash()) {
-            if (data_size != 0u) {
-                RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-
-                const auto count = data_size / prop->GetBaseSize();
-                arr->Resize(count);
-
-                for (const auto i : xrange(count)) {
-                    const auto hvalue = resolve_hash(data);
-                    arr->SetValue(i, (void*)&hvalue);
-
-                    data += sizeof(hstring::hash_t);
-                }
-            }
-        }
-        else {
-            if (data_size != 0u) {
-                arr->Resize(data_size / prop->GetBaseSize());
-
-                std::memcpy(arr->At(0), data, data_size);
-            }
+    if (prop->IsVirtual()) {
+        if (!getter) {
+            throw ScriptException("Getter not set");
         }
 
-        *static_cast<CScriptArray**>(gen->GetAddressOfReturnLocation()) = arr;
-    }
-    else if (prop->IsDict()) {
-        CScriptDict* dict = CreateASDict(gen->GetEngine(), prop->GetFullTypeName().c_str());
-
-        if (data_size != 0u) {
-            if (prop->IsDictOfArray()) {
-                const auto* data_end = data + data_size;
-
-                while (data < data_end) {
-                    const auto* key = data;
-                    data += prop->GetDictKeySize();
-
-                    uint arr_size;
-                    std::memcpy(&arr_size, data, sizeof(arr_size));
-                    data += sizeof(arr_size);
-
-                    auto* arr = CreateASArray(gen->GetEngine(), _str("{}[]", prop->GetBaseTypeName()).c_str());
-
-                    if (arr_size != 0u) {
-                        if (prop->IsDictOfArrayOfString()) {
-                            arr->Resize(arr_size);
-
-                            for (uint i = 0; i < arr_size; i++) {
-                                uint str_size;
-                                std::memcpy(&str_size, data, sizeof(str_size));
-                                data += sizeof(str_size);
-
-                                string str(reinterpret_cast<const char*>(data), str_size);
-                                arr->SetValue(i, &str);
-                                data += str_size;
-                            }
-                        }
-                        else if (prop->IsBaseTypeHash()) {
-                            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
-
-                            arr->Resize(arr_size);
-
-                            for (const auto i : xrange(arr_size)) {
-                                const auto hvalue = resolve_hash(data);
-                                arr->SetValue(i, (void*)&hvalue);
-
-                                data += sizeof(hstring::hash_t);
-                            }
-                        }
-                        else {
-                            arr->Resize(arr_size);
-
-                            std::memcpy(arr->At(0), data, arr_size * prop->GetBaseSize());
-                            data += arr_size * prop->GetBaseSize();
-                        }
-                    }
-
-                    if (prop->IsDictKeyHash()) {
-                        const auto hkey = resolve_hash(key);
-                        dict->Set((void*)&hkey, &arr);
-                    }
-                    else {
-                        dict->Set((void*)key, &arr);
-                    }
-
-                    arr->Release();
-                }
-            }
-            else if (prop->IsDictOfString()) {
-                const auto* data_end = data + data_size;
-
-                while (data < data_end) {
-                    const auto* key = data;
-                    data += prop->GetDictKeySize();
-
-                    uint str_size;
-                    std::memcpy(&str_size, data, sizeof(str_size));
-                    data += sizeof(uint);
-
-                    string str(reinterpret_cast<const char*>(data), str_size);
-
-                    if (prop->IsDictKeyHash()) {
-                        const auto hkey = resolve_hash(key);
-                        dict->Set((void*)&hkey, &str);
-                    }
-                    else {
-                        dict->Set((void*)key, &str);
-                    }
-
-                    data += str_size;
-                }
-            }
-            else {
-                const auto whole_element_size = prop->GetDictKeySize() + prop->GetBaseSize();
-                const auto dict_size = data_size / whole_element_size;
-
-                for (uint i = 0; i < dict_size; i++) {
-                    const auto* key = data + i * whole_element_size;
-                    const auto* value = data + i * whole_element_size + prop->GetDictKeySize();
-
-                    if (prop->IsDictKeyHash()) {
-                        const auto hkey = resolve_hash(key);
-                        if (prop->IsBaseTypeHash()) {
-                            const auto hvalue = resolve_hash(value);
-                            dict->Set((void*)&hkey, (void*)&hvalue);
-                        }
-                        else {
-                            dict->Set((void*)&hkey, (void*)&value);
-                        }
-                    }
-                    else {
-                        if (prop->IsBaseTypeHash()) {
-                            const auto hvalue = resolve_hash(value);
-                            dict->Set((void*)key, (void*)&hvalue);
-                        }
-                        else {
-                            dict->Set((void*)key, (void*)&value);
-                        }
-                    }
-                }
-            }
-        }
-
-        *static_cast<CScriptDict**>(gen->GetAddressOfReturnLocation()) = dict;
+        prop_data = getter(entity, prop);
     }
     else {
-        throw UnreachablePlaceException(LINE_STR);
+        uint data_size;
+        const auto* data = entity->GetProperties().GetRawData(prop, data_size);
+        prop_data.Pass(data, data_size);
     }
+
+    PropsToAS(prop, prop_data, gen->GetAddressOfReturnLocation(), gen->GetEngine());
 #else
     UNUSED_VARIABLE(gen);
 #endif
 }
 
-// Todo: use some stack allocation for Property_SetValue and heap if limit reached
 template<typename T>
 static void Property_SetValue(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
+    auto& setters = prop->GetSetters();
+    auto& props = entity->GetPropertiesForEdit();
+    void* as_obj = gen->GetAddressOfArg(0);
     ENTITY_VERIFY(entity);
 
-    auto& props = entity->GetPropertiesForEdit();
-    void* data = gen->GetAddressOfArg(0);
+    if (prop->IsVirtual() && setters.empty()) {
+        throw ScriptException("Setter not set");
+    }
 
-    if (prop->IsPlainData()) {
-        if (prop->IsBaseTypeHash()) {
-            const auto hash = static_cast<const hstring*>(data)->as_hash();
-            props.SetRawData(prop, reinterpret_cast<const uchar*>(&hash), prop->GetBaseSize());
-        }
-        else {
-            props.SetRawData(prop, static_cast<const uchar*>(data), prop->GetBaseSize());
+    auto prop_data = ASToProps(prop, as_obj);
+
+    if (!setters.empty()) {
+        for (auto& setter : setters) {
+            setter(entity, prop, prop_data);
         }
     }
-    else if (prop->IsString()) {
-        const auto& str = *static_cast<const string*>(data);
-        props.SetRawData(prop, reinterpret_cast<const uchar*>(str.data()), static_cast<uint>(str.length()));
-    }
-    else if (prop->IsArray()) {
-        const auto* arr = *static_cast<CScriptArray**>(data);
 
-        if (prop->IsArrayOfString()) {
-            const auto arr_size = (arr != nullptr ? arr->GetSize() : 0u);
-
-            if (arr_size != 0u) {
-                // Calculate size
-                uint data_size = sizeof(uint);
-                for (uint i = 0; i < arr_size; i++) {
-                    const auto& str = *static_cast<const string*>(arr->At(i));
-                    data_size += sizeof(uint) + static_cast<uint>(str.length());
-                }
-
-                // Make buffer
-                auto* init_buf = new uchar[data_size];
-                auto* buf = init_buf;
-
-                std::memcpy(buf, &arr_size, sizeof(arr_size));
-                buf += sizeof(uint);
-
-                for (const auto i : xrange(arr_size)) {
-                    const auto& str = *static_cast<const string*>(arr->At(i));
-
-                    uint str_size = static_cast<uint>(str.length());
-                    std::memcpy(buf, &str_size, sizeof(str_size));
-                    buf += sizeof(str_size);
-
-                    if (str_size != 0u) {
-                        std::memcpy(buf, str.c_str(), str_size);
-                        buf += str_size;
-                    }
-                }
-
-                props.SetRawData(prop, init_buf, data_size);
-                delete[] init_buf;
-            }
-            else {
-                props.SetRawData(prop, nullptr, 0u);
-            }
-        }
-        else {
-            const auto data_size = (arr != nullptr ? arr->GetSize() * prop->GetBaseSize() : 0u);
-
-            if (data_size != 0u) {
-                if (prop->IsBaseTypeHash()) {
-                    auto* init_buf = new uchar[data_size];
-                    auto* buf = init_buf;
-
-                    for (const auto i : xrange(arr->GetSize())) {
-                        const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), sizeof(hstring::hash_t));
-                        buf += prop->GetBaseSize();
-                    }
-
-                    props.SetRawData(prop, init_buf, data_size);
-                    delete[] init_buf;
-                }
-                else {
-                    props.SetRawData(prop, static_cast<const uchar*>(arr->At(0)), data_size);
-                }
-            }
-            else {
-                props.SetRawData(prop, nullptr, 0u);
-            }
-        }
-    }
-    else if (prop->IsDict()) {
-        const auto* dict = *static_cast<CScriptDict**>(data);
-
-        if (prop->IsDictOfArray()) {
-            if (dict != nullptr && dict->GetSize() != 0u) {
-                // Calculate size
-                uint data_size = 0u;
-                vector<pair<void*, void*>> dict_map;
-                dict->GetMap(dict_map);
-
-                for (auto&& [key, value] : dict_map) {
-                    const auto* arr = *static_cast<const CScriptArray**>(value);
-                    uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
-                    data_size += prop->GetDictKeySize() + sizeof(arr_size);
-
-                    if (prop->IsDictOfArrayOfString()) {
-                        for (uint i = 0; i < arr_size; i++) {
-                            const auto& str = *static_cast<const string*>(arr->At(i));
-                            data_size += sizeof(uint) + static_cast<uint>(str.length());
-                        }
-                    }
-                    else {
-                        data_size += arr_size * prop->GetBaseSize();
-                    }
-                }
-
-                // Make buffer
-                auto* init_buf = new uchar[data_size];
-                auto* buf = init_buf;
-
-                for (auto&& [key, value] : dict_map) {
-                    const auto* arr = *static_cast<const CScriptArray**>(value);
-                    if (prop->IsDictKeyHash()) {
-                        const auto hash = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), prop->GetDictKeySize());
-                    }
-                    else {
-                        std::memcpy(buf, key, prop->GetDictKeySize());
-                    }
-                    buf += prop->GetDictKeySize();
-
-                    const uint arr_size = (arr != nullptr ? arr->GetSize() : 0u);
-                    std::memcpy(buf, &arr_size, sizeof(uint));
-                    buf += sizeof(arr_size);
-
-                    if (arr_size != 0u) {
-                        if (prop->IsDictOfArrayOfString()) {
-                            for (uint i = 0; i < arr_size; i++) {
-                                const auto& str = *static_cast<const string*>(arr->At(i));
-                                const auto str_size = static_cast<uint>(str.length());
-
-                                std::memcpy(buf, &str_size, sizeof(uint));
-                                buf += sizeof(str_size);
-
-                                if (str_size != 0u) {
-                                    std::memcpy(buf, str.c_str(), str_size);
-                                    buf += arr_size;
-                                }
-                            }
-                        }
-                        else if (prop->IsBaseTypeHash()) {
-                            for (uint i = 0; i < arr_size; i++) {
-                                const auto hash = static_cast<const hstring*>(arr->At(i))->as_hash();
-                                std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), sizeof(hstring::hash_t));
-                                buf += sizeof(hstring::hash_t);
-                            }
-                        }
-                        else {
-                            std::memcpy(buf, arr->At(0), arr_size * prop->GetBaseSize());
-                            buf += arr_size * prop->GetBaseSize();
-                        }
-                    }
-                }
-
-                props.SetRawData(prop, init_buf, data_size);
-                delete[] init_buf;
-            }
-            else {
-                props.SetRawData(prop, nullptr, 0u);
-            }
-        }
-        else if (prop->IsDictOfString()) {
-            if (dict != nullptr && dict->GetSize() != 0u) {
-                // Calculate size
-                uint data_size = 0u;
-
-                vector<pair<void*, void*>> dict_map;
-                dict->GetMap(dict_map);
-
-                for (auto&& [key, value] : dict_map) {
-                    const auto& str = *static_cast<const string*>(value);
-                    const auto str_size = static_cast<uint>(str.length());
-
-                    data_size += prop->GetDictKeySize() + sizeof(str_size) + str_size;
-                }
-
-                // Make buffer
-                uchar* init_buf = new uchar[data_size];
-                uchar* buf = init_buf;
-
-                for (auto&& [key, value] : dict_map) {
-                    const auto& str = *static_cast<const string*>(value);
-                    if (prop->IsDictKeyHash()) {
-                        const auto hash = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), prop->GetDictKeySize());
-                    }
-                    else {
-                        std::memcpy(buf, key, prop->GetDictKeySize());
-                    }
-                    buf += prop->GetDictKeySize();
-
-                    const auto str_size = static_cast<uint>(str.length());
-                    std::memcpy(buf, &str_size, sizeof(uint));
-                    buf += sizeof(str_size);
-
-                    if (str_size != 0u) {
-                        std::memcpy(buf, str.c_str(), str_size);
-                        buf += str_size;
-                    }
-                }
-
-                props.SetRawData(prop, init_buf, data_size);
-                delete[] init_buf;
-            }
-            else {
-                props.SetRawData(prop, nullptr, 0u);
-            }
-        }
-        else {
-            const auto key_element_size = prop->GetDictKeySize();
-            const auto value_element_size = prop->GetBaseSize();
-            const auto whole_element_size = key_element_size + value_element_size;
-            const auto data_size = (dict != nullptr ? dict->GetSize() * whole_element_size : 0u);
-
-            if (data_size != 0u) {
-                auto* init_buf = new uchar[data_size];
-                auto* buf = init_buf;
-
-                vector<pair<void*, void*>> dict_map;
-                dict->GetMap(dict_map);
-
-                for (auto&& [key, value] : dict_map) {
-                    if (prop->IsDictKeyHash()) {
-                        const auto hash = static_cast<const hstring*>(key)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), key_element_size);
-                    }
-                    else {
-                        std::memcpy(buf, key, key_element_size);
-                    }
-                    buf += key_element_size;
-
-                    if (prop->IsBaseTypeHash()) {
-                        const auto hash = static_cast<const hstring*>(value)->as_hash();
-                        std::memcpy(buf, reinterpret_cast<const uchar*>(&hash), value_element_size);
-                    }
-                    else {
-                        std::memcpy(buf, value, value_element_size);
-                    }
-                    buf += value_element_size;
-                }
-
-                props.SetRawData(prop, init_buf, data_size);
-                delete[] init_buf;
-            }
-            else {
-                props.SetRawData(prop, nullptr, 0u);
-            }
-        }
-    }
-    else {
-        throw UnreachablePlaceException(LINE_STR);
+    if (!prop->IsVirtual()) {
+        props.SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
     }
 #else
     UNUSED_VARIABLE(gen);
@@ -2044,18 +2153,50 @@ static void CustomEntity_DeleteByRef(asIScriptGeneric* gen)
 
 static void Enum_Parse(asIScriptGeneric* gen)
 {
-    // Todo: enum helper functions
 #if !COMPILER_MODE
-    // Cast to EnumInfo and ...
-#endif
-}
+    auto* enum_info = static_cast<ScriptSystem::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
+    const auto& enum_value_name = *static_cast<string*>(gen->GetAddressOfArg(0));
 
-static void Enum_TryParse(asIScriptGeneric* gen)
-{
+    bool failed = false;
+    int enum_value = enum_info->GameEngine->ResolveEnumValue(enum_info->EnumName, enum_value_name, &failed);
+
+    if (failed) {
+        if (gen->GetArgCount() == 2) {
+            enum_value = *static_cast<int*>(gen->GetAddressOfArg(1));
+        }
+        else {
+            throw ScriptException("Can't parse enum", enum_info->EnumName, enum_value_name);
+        }
+    }
+
+    new (gen->GetAddressOfReturnLocation()) int(enum_value);
+#else
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void Enum_ToString(asIScriptGeneric* gen)
 {
+#if !COMPILER_MODE
+    auto* enum_info = static_cast<ScriptSystem::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
+    int enum_index = *static_cast<int*>(gen->GetAddressOfArg(0));
+    bool full_spec = *static_cast<bool*>(gen->GetAddressOfArg(1));
+
+    bool failed = false;
+    string enum_value_name = enum_info->GameEngine->ResolveEnumValueName(enum_info->EnumName, enum_index, &failed);
+
+    if (failed) {
+        throw ScriptException("Invalid enum index", enum_info->EnumName, enum_index);
+    }
+
+    if (full_spec) {
+        enum_value_name = _str("{}::{}", enum_info->EnumName, enum_value_name);
+    }
+
+    new (gen->GetAddressOfReturnLocation()) string(enum_value_name);
+#else
+    throw ScriptCompilerException("Stub");
+#endif
 }
 
 static void CallbackMessage(const asSMessageInfo* msg, void* param)
@@ -2166,7 +2307,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         AS_VERIFY(engine->SetDefaultNamespace("Enum"));
         AS_VERIFY(engine->RegisterGlobalFunction(_str("{} Parse_{}(string valueName)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
         AS_VERIFY(engine->RegisterGlobalFunction(_str("{} Parse(string valueName, {} defaultValue)", enum_name, enum_name).c_str(), SCRIPT_GENERIC(Enum_Parse), SCRIPT_GENERIC_CONV, enum_info));
-        AS_VERIFY(engine->RegisterGlobalFunction(_str("bool TryParse({}& value)", enum_name).c_str(), SCRIPT_GENERIC(Enum_TryParse), SCRIPT_GENERIC_CONV, enum_info));
         AS_VERIFY(engine->RegisterGlobalFunction(_str("string ToString({} value, bool fullSpecification = false)", enum_name).c_str(), SCRIPT_GENERIC(Enum_ToString), SCRIPT_GENERIC_CONV, enum_info));
         AS_VERIFY(engine->SetDefaultNamespace(""));
     }
@@ -2237,9 +2377,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "void SetAsFloat(" prop_class_name "Property prop, float value)", SCRIPT_FUNC_THIS((Property_SetValueAsFloat<real_class>)), SCRIPT_FUNC_THIS_CONV))
 
 #define REGISTER_ENTITY_PROPS(class_name, real_class) \
-    AS_VERIFY(engine->RegisterGlobalFunction("void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Global_SetPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterGlobalFunction("void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Global_AddPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV, game_engine)); \
-    AS_VERIFY(engine->RegisterGlobalFunction("void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((Global_AddPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV, game_engine))
+    AS_VERIFY(engine->RegisterGlobalFunction("void SetPropertyGetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertyGetter<real_class>)), SCRIPT_GENERIC_CONV, game_engine)); \
+    AS_VERIFY(engine->RegisterGlobalFunction("void AddPropertySetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertySetter<real_class, std::false_type>)), SCRIPT_GENERIC_CONV, game_engine)); \
+    AS_VERIFY(engine->RegisterGlobalFunction("void AddPropertyDeferredSetter(" class_name "Property prop, ?&in func)", SCRIPT_GENERIC((ASPropertySetter<real_class, std::true_type>)), SCRIPT_GENERIC_CONV, game_engine))
 
 #define REGISTER_GLOBAL_ENTITY(class_name, real_class) \
     REGISTER_BASE_ENTITY(class_name "Singleton", real_class); \
@@ -2531,7 +2671,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #else
                 CHECK_CLASS("Player", PlayerView);
                 CHECK_CLASS("Item", ItemView);
-                CHECK_CLASS("StaticItem", ItemView);
                 CHECK_CLASS("Critter", CritterView);
                 CHECK_CLASS("Map", MapView);
                 CHECK_CLASS("Location", LocationView);
@@ -2554,7 +2693,9 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             gen_func.Declaration = func->GetDeclaration(true, true, true);
 
 #if !COMPILER_VALIDATION_MODE
-            gen_func.Call = std::bind(&ScriptSystem::AngelScriptImpl::CallGenericFunc, AngelScriptData.get(), &gen_func, func, std::placeholders::_1, std::placeholders::_2);
+            gen_func.Call = [script_sys = AngelScriptData.get(), gen = &gen_func, func](initializer_list<void*> args, void* ret) { //
+                return ASGenericCall(script_sys, gen, func, args, ret);
+            };
 #endif
 
             for (asUINT p = 0; p < func->GetParamCount(); p++) {

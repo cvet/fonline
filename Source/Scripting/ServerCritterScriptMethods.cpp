@@ -751,6 +751,7 @@
 {
     // Todo: handle AbstractItem in Action
     // self->SendAndBroadcast_Action(action, actionExt, item);
+    throw NotImplementedException(LINE_STR);
 }
 
 ///# ...
@@ -764,6 +765,7 @@
 {
     // Todo: handle AbstractItem in Animate
     // self->SendAndBroadcast_Animate(anim1, anim2, item, clearSequence, delayPlay);
+    throw NotImplementedException(LINE_STR);
 }
 
 ///# ...

@@ -46,15 +46,62 @@ class Property;
 class PropertyRegistrator;
 class Properties;
 
-using PropertyGetCallback = std::function<void*(Entity*, const Property*, void*)>;
-using PropertySetCallback = std::function<void(Entity*, const Property*, const void*)>;
-
 enum class PropertiesRelationType
 {
     BothRelative,
     ServerRelative,
     ClientRelative,
 };
+
+class PropertyRawData
+{
+public:
+    static constexpr size_t LOCAL_BUF_SIZE = 256;
+
+    PropertyRawData() = default;
+    PropertyRawData(const PropertyRawData&) = delete;
+    PropertyRawData(PropertyRawData&&) noexcept = default;
+    auto operator=(const PropertyRawData&) = delete;
+    auto operator=(PropertyRawData&& other) noexcept -> PropertyRawData& = default;
+
+    [[nodiscard]] auto GetPtr() -> void*;
+    [[nodiscard]] auto GetSize() const -> uint;
+    [[nodiscard]] auto Alloc(size_t size) -> uchar*;
+
+    template<typename T>
+    [[nodiscard]] auto GetPtrAs() -> T*
+    {
+        return static_cast<T*>(GetPtr());
+    }
+
+    template<typename T>
+    [[nodiscard]] auto GetAs() -> T
+    {
+        RUNTIME_ASSERT(sizeof(T) == _dataSize);
+        return *static_cast<T*>(GetPtr());
+    }
+
+    template<typename T>
+    void SetAs(T value)
+    {
+        std::memcpy(Alloc(sizeof(T)), &value, sizeof(T));
+    }
+
+    void Set(const void* value, size_t size) { std::memcpy(Alloc(size), value, size); }
+
+    void Pass(const void* value, size_t size);
+    void StoreIfPassed();
+
+private:
+    size_t _dataSize {};
+    bool _useDynamic {};
+    uchar _localBuf[LOCAL_BUF_SIZE] {};
+    vector<uchar> _dynamicBuf {};
+    void* _passedPtr {};
+};
+
+using PropertyGetCallback = std::function<PropertyRawData(Entity*, const Property*)>;
+using PropertySetCallback = std::function<void(Entity*, const Property*, PropertyRawData&)>;
 
 class Property final
 {
@@ -94,6 +141,7 @@ public:
     auto operator=(Property&&) noexcept = delete;
     ~Property() = default;
 
+    [[nodiscard]] auto GetRegistrator() const -> const PropertyRegistrator* { return _registrator; }
     [[nodiscard]] auto GetName() const -> const string& { return _propName; }
     [[nodiscard]] auto GetNameWithoutComponent() const -> const string& { return _propNameWithoutComponent; }
     [[nodiscard]] auto GetFullTypeName() const -> const string& { return _fullTypeName; }
@@ -126,6 +174,9 @@ public:
     [[nodiscard]] auto IsReadOnly() const -> bool { return _isReadOnly; }
     [[nodiscard]] auto IsTemporary() const -> bool { return _isTemporary; }
     [[nodiscard]] auto IsHistorical() const -> bool { return _isHistorical; }
+
+    [[nodiscard]] auto GetGetter() const -> auto& { return _getter; }
+    [[nodiscard]] auto GetSetters() const -> auto& { return _setters; }
 
     void SetGetter(PropertyGetCallback getter) const;
     void AddSetter(PropertySetCallback setter) const;
@@ -259,10 +310,9 @@ public:
         RUNTIME_ASSERT(prop->IsPlainData());
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(prop->_getter);
             RUNTIME_ASSERT(_entity);
-            T result = {};
-            prop->_getter(_entity, prop, &result);
+            auto prop_data = prop->_getter(_entity, prop);
+            T result = prop_data.GetAs<T>();
             return result;
         }
 
@@ -280,10 +330,9 @@ public:
         RUNTIME_ASSERT(prop->IsBaseTypeHash());
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(prop->_getter);
             RUNTIME_ASSERT(_entity);
-            hstring::hash_t hash = {};
-            prop->_getter(_entity, prop, &hash);
+            auto prop_data = prop->_getter(_entity, prop);
+            const auto hash = prop_data.GetAs<hstring::hash_t>();
             auto result = ResolveHash(hash);
             return result;
         }
@@ -300,11 +349,9 @@ public:
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(prop->_getter);
             RUNTIME_ASSERT(_entity);
-            uint data_size;
-            auto* data = prop->_getter(_entity, prop, &data_size);
-            auto result = data_size != 0u ? string(static_cast<char*>(data), data_size) : string();
+            auto prop_data = prop->_getter(_entity, prop);
+            auto result = string(prop_data.GetPtrAs<char>(), prop_data.GetSize());
             return result;
         }
 
@@ -320,19 +367,18 @@ public:
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
 
-        uchar* data;
-        uint data_size;
+        PropertyRawData prop_data;
 
         if (prop->IsVirtual()) {
-            RUNTIME_ASSERT(prop->_getter);
             RUNTIME_ASSERT(_entity);
-            data_size = 0u;
-            data = static_cast<uchar*>(prop->_getter(_entity, prop, &data_size));
+            prop_data = prop->_getter(_entity, prop);
         }
         else {
-            data = _complexData[prop->_complexDataIndex];
-            data_size = _complexDataSizes[prop->_complexDataIndex];
+            prop_data.Pass(_complexData[prop->_complexDataIndex], _complexDataSizes[prop->_complexDataIndex]);
         }
+
+        const auto* data = prop_data.GetPtrAs<uchar>();
+        const auto data_size = prop_data.GetSize();
 
         T result;
 
@@ -384,7 +430,7 @@ public:
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
 
         // Todo: GetValue for dict
-        return {};
+        throw NotImplementedException(LINE_STR);
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
@@ -395,19 +441,30 @@ public:
         RUNTIME_ASSERT(prop->IsPlainData());
 
         if (prop->IsVirtual()) {
+            RUNTIME_ASSERT(_entity);
             RUNTIME_ASSERT(!prop->_setters.empty());
+            PropertyRawData prop_data;
+            prop_data.SetAs<T>(new_value);
             for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, &new_value);
+                setter(_entity, prop, prop_data);
             }
         }
         else {
             RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
             if (new_value != *reinterpret_cast<T*>(&_podData[prop->_podDataOffset])) {
-                for (const auto& setter : prop->_setters) {
-                    setter(_entity, prop, &new_value);
-                }
+                if (!prop->_setters.empty()) {
+                    RUNTIME_ASSERT(_entity);
+                    PropertyRawData prop_data;
+                    prop_data.SetAs<T>(new_value);
+                    for (const auto& setter : prop->_setters) {
+                        setter(_entity, prop, prop_data);
+                    }
 
-                *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
+                    *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = prop_data.GetAs<T>();
+                }
+                else {
+                    *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
+                }
             }
         }
     }
@@ -421,21 +478,31 @@ public:
         RUNTIME_ASSERT(prop->IsBaseTypeHash());
 
         if (prop->IsVirtual()) {
+            RUNTIME_ASSERT(_entity);
             RUNTIME_ASSERT(!prop->_setters.empty());
-            const auto new_value_hash = new_value.as_hash();
+            PropertyRawData prop_data;
+            prop_data.SetAs<hstring::hash_t>(new_value.as_hash());
             for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, &new_value_hash);
+                setter(_entity, prop, prop_data);
             }
         }
         else {
             RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
             const auto new_value_hash = new_value.as_hash();
             if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset])) {
-                for (const auto& setter : prop->_setters) {
-                    setter(_entity, prop, &new_value_hash);
-                }
+                if (!prop->_setters.empty()) {
+                    RUNTIME_ASSERT(_entity);
+                    PropertyRawData prop_data;
+                    prop_data.SetAs<hstring::hash_t>(new_value_hash);
+                    for (const auto& setter : prop->_setters) {
+                        setter(_entity, prop, prop_data);
+                    }
 
-                *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = new_value_hash;
+                    *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = prop_data.GetAs<hstring::hash_t>();
+                }
+                else {
+                    *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = new_value_hash;
+                }
             }
         }
     }
@@ -447,18 +514,29 @@ public:
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
 
         if (prop->IsVirtual()) {
+            RUNTIME_ASSERT(_entity);
             RUNTIME_ASSERT(!prop->_setters.empty());
+            PropertyRawData prop_data;
+            prop_data.Pass(new_value.c_str(), new_value.length());
             for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, nullptr);
+                setter(_entity, prop, prop_data);
             }
         }
         else {
-            RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-            for (const auto& setter : prop->_setters) {
-                setter(_entity, prop, new_value.c_str());
-            }
+            if (!prop->_setters.empty()) {
+                RUNTIME_ASSERT(_entity);
+                RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+                PropertyRawData prop_data;
+                prop_data.Pass(new_value.c_str(), new_value.length());
+                for (const auto& setter : prop->_setters) {
+                    setter(_entity, prop, prop_data);
+                }
 
-            SetRawData(prop, reinterpret_cast<const uchar*>(new_value.c_str()), static_cast<uint>(new_value.length()));
+                SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
+            }
+            else {
+                SetRawData(prop, reinterpret_cast<const uchar*>(new_value.c_str()), static_cast<uint>(new_value.length()));
+            }
         }
     }
 
@@ -471,6 +549,7 @@ public:
 
         // Todo: SetValue for array
         UNUSED_VARIABLE(new_value);
+        throw NotImplementedException(LINE_STR);
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
@@ -482,6 +561,7 @@ public:
 
         // Todo: SetValue for dict
         UNUSED_VARIABLE(new_value);
+        throw NotImplementedException(LINE_STR);
     }
 
 private:
@@ -519,6 +599,7 @@ public:
     [[nodiscard]] auto GetWholeDataSize() const -> uint;
     [[nodiscard]] auto GetPropertyGroups() const -> const map<string, vector<const Property*>>&;
     [[nodiscard]] auto GetComponents() const -> const unordered_set<hstring>&;
+    [[nodiscard]] auto GetNameResolver() const -> const NameResolver& { return _nameResolver; }
 
     void RegisterComponent(string_view name);
 

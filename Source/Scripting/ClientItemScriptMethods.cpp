@@ -91,6 +91,7 @@
         }
 
         // return Item_GetMapPosition(cont, hx, hy); // Todo: solve recursion in GetMapPos
+        throw NotImplementedException(LINE_STR);
     } break;
     default:
         throw ScriptException("Unknown accessory");

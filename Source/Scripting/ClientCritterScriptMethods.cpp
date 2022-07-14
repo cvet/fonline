@@ -187,6 +187,7 @@
 {
     // Todo: handle AbstractItem in Animate
     // self->Animate(anim1, anim2, actionItem);
+    throw NotImplementedException(LINE_STR);
 }
 
 ///# ...

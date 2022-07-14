@@ -1174,6 +1174,7 @@ enum class NetProperty : uchar
 ///@ ExportEnum
 enum class EffectType : uint
 {
+    None = 0,
     GenericSprite = 0x00000001,
     CritterSprite = 0x00000002,
     TileSprite = 0x00000004,

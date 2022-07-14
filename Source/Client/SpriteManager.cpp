@@ -678,6 +678,7 @@ void SpriteManager::DumpAtlases()
         string fname = _str("{}{}_{}_{}x{}.png", path, cnt, atlas->Type, atlas->Width, atlas->Height);
         // Todo: restore texture saving
         // SaveTexture(atlas->MainTex, fname, false);
+        throw NotImplementedException(LINE_STR);
         cnt++;
     }
 }

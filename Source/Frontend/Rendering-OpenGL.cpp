@@ -348,6 +348,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* windo
         // glBindFramebuffer = glBindFramebufferEXT;
         // glFramebufferTexture2D = glFramebufferTexture2DEXT;
         // Todo: map all framebuffer ext functions
+        throw NotImplementedException(LINE_STR);
     }
 
     // Render states

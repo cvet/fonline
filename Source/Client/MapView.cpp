@@ -4155,5 +4155,6 @@ void MapView::MarkPassedHexes()
 auto MapView::GenerateEntityId() -> uint
 {
     // Todo: generate unique entity id
+    throw NotImplementedException(LINE_STR);
     return 0u;
 }

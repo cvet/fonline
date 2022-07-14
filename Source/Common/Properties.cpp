@@ -36,6 +36,52 @@
 #include "PropertiesSerializator.h"
 #include "StringUtils.h"
 
+auto PropertyRawData::GetPtr() -> void*
+{
+    if (_passedPtr != nullptr) {
+        return _passedPtr;
+    }
+
+    return _useDynamic ? _dynamicBuf.data() : _localBuf;
+}
+
+auto PropertyRawData::GetSize() const -> uint
+{
+    return static_cast<uint>(_dataSize);
+}
+
+auto PropertyRawData::Alloc(size_t size) -> uchar*
+{
+    _dataSize = size;
+    _passedPtr = nullptr;
+
+    if (size > LOCAL_BUF_SIZE) {
+        _useDynamic = true;
+        _dynamicBuf.resize(size);
+    }
+    else {
+        _useDynamic = false;
+    }
+
+    return static_cast<uchar*>(GetPtr());
+}
+
+void PropertyRawData::Pass(const void* value, size_t size)
+{
+    _passedPtr = static_cast<uchar*>(const_cast<void*>(value));
+    _dataSize = size;
+    _useDynamic = false;
+}
+
+void PropertyRawData::StoreIfPassed()
+{
+    if (_passedPtr != nullptr) {
+        PropertyRawData tmp_data;
+        tmp_data.Set(_passedPtr, _dataSize);
+        *this = std::move(tmp_data);
+    }
+}
+
 Property::Property(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
 }
@@ -521,6 +567,7 @@ void Properties::SetValueFromData(const Property* prop, const uchar* data, uint 
     UNUSED_VARIABLE(prop);
     UNUSED_VARIABLE(data);
     UNUSED_VARIABLE(data_size);
+    throw NotImplementedException(LINE_STR);
     /*if (dataType == Property::String)
     {
         string str;

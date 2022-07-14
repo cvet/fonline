@@ -454,6 +454,7 @@
 {
     vector<string> names;
 
+    throw NotImplementedException(LINE_STR);
     // Todo: Settings.MapsDir
     // auto map_files = mapper->ServerFileSys.FilterFiles("fomap", dir, false);
     // while (map_files.MoveNext()) {
