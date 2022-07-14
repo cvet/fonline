@@ -2561,7 +2561,10 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void*
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
         const auto is_protected = IsEnumSet(prop->GetAccess(), Property::AccessType::ProtectedMask);
 
-        if (item->GetOwnership() == ItemOwnership::CritterInventory) {
+        switch (item->GetOwnership()) {
+        case ItemOwnership::Nowhere: {
+        } break;
+        case ItemOwnership::CritterInventory: {
             if (is_public || is_protected) {
                 auto* cr = CrMngr.GetCritter(item->GetCritterId());
                 if (cr != nullptr) {
@@ -2573,19 +2576,19 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void*
                     }
                 }
             }
-        }
-        else if (item->GetOwnership() == ItemOwnership::MapHex) {
+        } break;
+        case ItemOwnership::MapHex: {
             if (is_public) {
                 auto* map = MapMngr.GetMap(item->GetMapId());
                 if (map != nullptr) {
                     map->SendProperty(NetProperty::MapItem, prop, item);
                 }
             }
-        }
-        else if (item->GetOwnership() == ItemOwnership::ItemContainer) {
+        } break;
+        case ItemOwnership::ItemContainer: {
             // Todo: add container properties changing notifications
             // Item* cont = ItemMngr.GetItem( item->GetContainerId() );
-            throw NotImplementedException(LINE_STR);
+        } break;
         }
     }
 }

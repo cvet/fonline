@@ -681,10 +681,10 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_EvaluateFullSecond(FOServer* server, ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second)
 {
-    if (year && year < server->Settings.StartYear) {
+    if (year != 0u && year < server->Settings.StartYear) {
         throw ScriptException("Invalid year", year);
     }
-    if (year && year > server->Settings.StartYear + 100) {
+    if (year != 0u && year > server->Settings.StartYear + 100) {
         throw ScriptException("Invalid year", year);
     }
     if (month != 0u && month < 1) {
@@ -707,7 +707,7 @@
 
     if (day_ != 0u) {
         const auto month_day = server->GameTime.GameTimeMonthDay(year, month_);
-        if (day_ < month_day || day_ > month_day) {
+        if (day_ > month_day) {
             throw ScriptException("Invalid day", day_, month_day);
         }
     }
@@ -717,7 +717,9 @@
     }
 
     if (hour > 23) {
-        throw ScriptException("Invalid hour", hour);
+        if (minute > 0 || second > 0) {
+            throw ScriptException("Invalid hour", hour);
+        }
     }
     if (minute > 59) {
         throw ScriptException("Invalid minute", minute);

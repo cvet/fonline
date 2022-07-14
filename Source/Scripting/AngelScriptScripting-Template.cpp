@@ -380,9 +380,11 @@ struct ScriptSystem::AngelScriptImpl
                 const auto ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
                 const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
 
+                auto stack_trace = GetContextTraceback(ctx);
+
                 ReturnContext(ctx);
 
-                throw ScriptException("Script execution exception", ex_string, ex_orig_file, ex_func_name, ex_orig_line);
+                throw ScriptException("Script execution exception", ex_string, ex_orig_file, ex_func_name, ex_orig_line, std::move(stack_trace));
             }
 
             if (exec_result == asEXECUTION_ABORTED) {
@@ -398,6 +400,62 @@ struct ScriptSystem::AngelScriptImpl
         }
 
         return true;
+    }
+
+    auto GetContextTraceback(asIScriptContext* top_ctx) -> string
+    {
+        string result;
+        result.reserve(2048);
+
+        auto* ctx = top_ctx;
+        while (ctx != nullptr) {
+            auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
+
+            result += _str("AngelScript stack trace (most recent first):\n");
+
+            asIScriptFunction* sys_func = ctx->GetSystemFunction();
+            if (sys_func != nullptr) {
+                result += _str("  {}\n", sys_func->GetDeclaration(true, true, true));
+            }
+
+            int line;
+            asIScriptFunction* func;
+
+            if (ctx->GetState() == asEXECUTION_EXCEPTION) {
+                line = ctx->GetExceptionLineNumber();
+                func = ctx->GetExceptionFunction();
+            }
+            else {
+                line = ctx->GetLineNumber(0);
+                func = ctx->GetFunction(0);
+            }
+
+            if (func != nullptr) {
+                auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(func->GetModule()->GetUserData());
+                result += _str("  {} : Line {}\n", func->GetDeclaration(true, true), Preprocessor::ResolveOriginalLine(line, lnt));
+            }
+            else {
+                result += _str("  ??? : Line ???\n");
+            }
+
+            const auto stack_size = ctx->GetCallstackSize();
+
+            for (int i = 1; i < stack_size; i++) {
+                func = ctx->GetFunction(i);
+                line = ctx->GetLineNumber(i);
+                if (func != nullptr) {
+                    auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(func->GetModule()->GetUserData());
+                    result += _str("  {} : Line {}\n", func->GetDeclaration(true, true), Preprocessor::ResolveOriginalLine(line, lnt));
+                }
+                else {
+                    result += _str("  ??? : Line ???\n");
+                }
+            }
+
+            ctx = ctx_data->Parent;
+        }
+
+        return result;
     }
 
     FOEngine* GameEngine {};

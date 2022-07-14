@@ -276,7 +276,6 @@ extern void CreateDumpMessage(string_view appendix, string_view message);
             } \
             _exceptionMessage.append("\n"); \
             _exceptionMessage.append(GetStackTrace()); \
-            BreakIntoDebugger(_exceptionMessage); \
         } \
         [[nodiscard]] auto what() const noexcept -> const char* override { return _exceptionMessage.c_str(); } \
 \
