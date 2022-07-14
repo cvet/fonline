@@ -44,5 +44,7 @@ class FOSingle final : virtual public FOEngineBase, public FOServer, public FOCl
 public:
     explicit FOSingle(GlobalSettings& settings, AppWindow* window);
 
+    [[nodiscard]] auto GetEngine() -> FOSingle* { return this; }
+
     void SingleMainLoop();
 };

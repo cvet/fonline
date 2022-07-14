@@ -1592,12 +1592,12 @@ template<typename T>
 static void ASPropertyGetter(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    auto* self = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto* registrator = self->GetPropertyRegistrator(T::ENTITY_CLASS_NAME);
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_CLASS_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
-    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();
+    auto* script_sys = engine->GetEngine()->ScriptSys->AngelScriptData.get();
 
     if (auto* type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); type_info == nullptr || type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object");
@@ -1656,31 +1656,29 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
             ctx->SetArgDWord(1, prop->GetRegIndex());
         }
 
-        if (script_sys->RunContext(ctx, false)) {
-            auto prop_data = ASToProps(prop, ctx->GetAddressOfReturnValue());
-            prop_data.StoreIfPassed();
-            script_sys->ReturnContext(ctx);
-            return prop_data;
-        }
+        const auto run_ok = script_sys->RunContext(ctx, false);
+        RUNTIME_ASSERT(run_ok);
 
-        throw UnreachablePlaceException(LINE_STR);
+        auto prop_data = ASToProps(prop, ctx->GetAddressOfReturnValue());
+        prop_data.StoreIfPassed();
+        script_sys->ReturnContext(ctx);
+        return prop_data;
     });
 #else
     throw ScriptCompilerException("Stub");
 #endif
 }
 
-template<typename T, typename U>
+template<typename T, typename Deferred>
 static void ASPropertySetter(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    auto* self = static_cast<FOEngine*>(gen->GetAuxiliary());
-    const auto* registrator = self->GetPropertyRegistrator(T::ENTITY_CLASS_NAME);
+    auto* engine = static_cast<FOEngine*>(gen->GetAuxiliary());
+    const auto* registrator = engine->GetPropertyRegistrator(T::ENTITY_CLASS_NAME);
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
-    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();
-    constexpr bool deferred = U::value;
+    auto* script_sys = engine->GetEngine()->ScriptSys->AngelScriptData.get();
 
     if (auto* type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); type_info == nullptr || type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object");
@@ -1735,11 +1733,13 @@ static void ASPropertySetter(asIScriptGeneric* gen)
         }
     }
 
-    if (has_value_ref && deferred) {
-        throw ScriptException("Invalid setter function");
+    if constexpr (Deferred::value) {
+        if (has_value_ref) {
+            throw ScriptException("Invalid setter function");
+        }
     }
 
-    prop->AddSetter([prop, func, script_sys, deferred, as_engine, has_proto_enum, has_value_ref](Entity* entity, const Property*, PropertyRawData& prop_data) -> void {
+    prop->AddSetter([prop, func, script_sys, has_proto_enum, has_value_ref](Entity* entity, const Property*, PropertyRawData& prop_data) -> void {
         ENTITY_VERIFY_NULL(entity);
         ENTITY_VERIFY(entity);
 
@@ -1760,23 +1760,31 @@ static void ASPropertySetter(asIScriptGeneric* gen)
             ctx->SetArgDWord(1, prop->GetRegIndex());
         }
 
-        PropertyRawData value_ref_space;
-
-        if (has_value_ref) {
-            auto* construct_addr = value_ref_space.Alloc(CalcConstructAddrSpace(prop));
-            PropsToAS(prop, prop_data, construct_addr, as_engine);
-            ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr);
-        }
-
-        if (!deferred && script_sys->RunContext(ctx, !has_value_ref)) {
+        if constexpr (!Deferred::value) {
             if (has_value_ref) {
-                auto* construct_addr = value_ref_space.GetPtrAs<void>();
+                PropertyRawData value_ref_space;
+                auto* construct_addr = value_ref_space.Alloc(CalcConstructAddrSpace(prop));
+                PropsToAS(prop, prop_data, construct_addr, script_sys->Engine);
+                ctx->SetArgAddress(has_proto_enum ? 2 : 1, construct_addr);
+
+                const auto run_ok = script_sys->RunContext(ctx, false);
+                RUNTIME_ASSERT(run_ok);
+
                 prop_data = ASToProps(prop, construct_addr);
                 prop_data.StoreIfPassed();
                 FreeConstructAddrSpace(prop, construct_addr);
-            }
 
-            script_sys->ReturnContext(ctx);
+                script_sys->ReturnContext(ctx);
+            }
+            else {
+                if (script_sys->RunContext(ctx, true)) {
+                    script_sys->ReturnContext(ctx);
+                }
+            }
+        }
+        else {
+            // Will be run from scheduler
+            UNUSED_VARIABLE(has_value_ref);
         }
     });
 #else
