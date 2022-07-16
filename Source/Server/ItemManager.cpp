@@ -48,7 +48,9 @@ void ItemManager::LinkItems()
 {
     WriteLog("Link items...");
 
-    for (auto* item : GetItems()) {
+    for (auto&& [id, item] : GetItems()) {
+        RUNTIME_ASSERT(!item->IsDestroyed());
+
         if (item->IsStatic()) {
             throw EntitiesLoadException("Can't link static item", item->GetName(), item->GetId());
         }
@@ -207,7 +209,7 @@ void ItemManager::EraseItemFromContainer(Item* cont, Item* item)
     }
 }
 
-auto ItemManager::GetItems() -> vector<Item*>
+auto ItemManager::GetItems() -> const unordered_map<uint, Item*>&
 {
     NON_CONST_METHOD_HINT();
 

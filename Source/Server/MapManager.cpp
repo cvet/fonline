@@ -58,7 +58,7 @@ void MapManager::LinkMaps()
     WriteLog("Link maps...");
 
     // Link maps to locations
-    for (auto* map : GetMaps()) {
+    for (auto&& [id, map] : GetMaps()) {
         const auto loc_id = map->GetLocId();
         const auto loc_map_index = map->GetLocMapIndex();
 
@@ -77,7 +77,7 @@ void MapManager::LinkMaps()
     }
 
     // Verify linkage result
-    for (auto* loc : GetLocations()) {
+    for (auto&& [id, loc] : GetLocations()) {
         auto& loc_maps = loc->GetMapsRaw();
         for (size_t i = 0; i < loc_maps.size(); i++) {
             if (loc_maps[i] == nullptr) {
@@ -468,15 +468,15 @@ void MapManager::DeleteMapContent(Map* map)
 
 auto MapManager::GetLocationAndMapsStatistics() const -> string
 {
-    const auto locations = _engine->EntityMngr.GetLocations();
-    const auto maps = _engine->EntityMngr.GetMaps();
+    const auto& locations = _engine->EntityMngr.GetLocations();
+    const auto& maps = _engine->EntityMngr.GetMaps();
 
     string result = _str("Locations count: {}\n", static_cast<uint>(locations.size()));
     result += _str("Maps count: {}\n", static_cast<uint>(maps.size()));
     result += "Location             Id           X     Y     Radius Color    Hidden  GeckVisible GeckCount AutoGarbage ToGarbage\n";
     result += "          Map                 Id          Time Rain Script\n";
 
-    for (const auto* loc : locations) {
+    for (auto&& [id, loc] : locations) {
         result += _str("{:<20} {:<10}   {:<5} {:<5} {:<6} {:08X} {:<7} {:<11} {:<9} {:<11} {:<5}\n", loc->GetName(), loc->GetId(), loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), loc->GetColor(), loc->GetHidden() ? "true" : "false", loc->GetGeckVisible() ? "true" : "false", loc->GeckCount, loc->GetAutoGarbage() ? "true" : "false", loc->GetToGarbage() ? "true" : "false");
 
         uint map_index = 0;
@@ -606,7 +606,7 @@ auto MapManager::GetMapByPid(hstring map_pid, uint skip_count) -> Map*
     return _engine->EntityMngr.GetMapByPid(map_pid, skip_count);
 }
 
-auto MapManager::GetMaps() -> vector<Map*>
+auto MapManager::GetMaps() -> const unordered_map<uint, Map*>&
 {
     NON_CONST_METHOD_HINT();
 
@@ -669,7 +669,7 @@ auto MapManager::GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Loc
     const auto wy = zy * static_cast<int>(_engine->Settings.GlobalMapZoneLength);
 
     vector<Location*> locs;
-    for (auto* loc : _engine->EntityMngr.GetLocations()) {
+    for (auto&& [id, loc] : _engine->EntityMngr.GetLocations()) {
         if (!loc->IsDestroyed() && loc->IsLocVisible() && IsIntersectZone(wx, wy, 0, loc->GetWorldX(), loc->GetWorldY(), loc->GetRadius(), zone_radius)) {
             locs.push_back(loc);
         }
@@ -685,7 +685,7 @@ void MapManager::KickPlayersToGlobalMap(Map* map)
     }
 }
 
-auto MapManager::GetLocations() -> vector<Location*>
+auto MapManager::GetLocations() -> const unordered_map<uint, Location*>&
 {
     NON_CONST_METHOD_HINT();
 
@@ -704,8 +704,8 @@ void MapManager::LocationGarbager()
 
         vector<Critter*>* gmap_players = nullptr;
         vector<Critter*> players;
-        for (auto* loc : _engine->EntityMngr.GetLocations()) {
-            if (loc->GetAutoGarbage() && loc->IsCanDelete()) {
+        for (auto&& [id, loc] : copy(_engine->EntityMngr.GetLocations())) {
+            if (!loc->IsDestroyed() && loc->GetAutoGarbage() && loc->IsCanDelete()) {
                 if (gmap_players == nullptr) {
                     players = _engine->CrMngr.GetPlayerCritters(true);
                     gmap_players = &players;

@@ -938,8 +938,9 @@
 [[maybe_unused]] vector<Location*> Server_Game_GetLocations(FOServer* server, ushort wx, ushort wy, uint radius)
 {
     vector<Location*> locations;
+    locations.reserve(server->MapMngr.GetLocationsCount());
 
-    for (auto* loc : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius()) {
             locations.push_back(loc);
         }
@@ -958,8 +959,9 @@
 [[maybe_unused]] vector<Location*> Server_Game_GetVisibleLocations(FOServer* server, ushort wx, ushort wy, uint radius, Critter* cr)
 {
     vector<Location*> locations;
+    locations.reserve(server->MapMngr.GetLocationsCount());
 
-    for (auto* loc : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
         if (GenericUtils::DistSqrt(wx, wy, loc->GetWorldX(), loc->GetWorldY()) <= radius + loc->GetRadius() && (loc->IsLocVisible() || (cr && cr->IsOwnedByPlayer() && server->MapMngr.CheckKnownLoc(cr, loc->GetId())))) {
             locations.push_back(loc);
         }
@@ -1129,7 +1131,7 @@
 [[maybe_unused]] vector<Item*> Server_Game_GetAllItems(FOServer* server, hstring pid)
 {
     vector<Item*> items;
-    for (auto* item : server->ItemMngr.GetItems()) {
+    for (auto&& [id, item] : server->ItemMngr.GetItems()) {
         if (!item->IsDestroyed() && (!pid || pid == item->GetProtoId())) {
             items.push_back(item);
         }
@@ -1143,7 +1145,16 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] vector<Player*> Server_Game_GetOnlinePlayers(FOServer* server)
 {
-    return server->EntityMngr.GetPlayers();
+    const auto& players = server->EntityMngr.GetPlayers();
+
+    vector<Player*> result;
+    result.reserve(players.size());
+
+    for (auto&& [id, player] : players) {
+        result.push_back(player);
+    }
+
+    return result;
 }
 
 ///# ...
@@ -1195,7 +1206,7 @@
 {
     vector<Map*> maps;
 
-    for (auto* map : server->MapMngr.GetMaps()) {
+    for (auto&& [id, map] : server->MapMngr.GetMaps()) {
         if (!pid || pid == map->GetProtoId()) {
             maps.push_back(map);
         }
@@ -1212,7 +1223,7 @@
 {
     vector<Location*> locations;
 
-    for (auto* loc : server->MapMngr.GetLocations()) {
+    for (auto&& [id, loc] : server->MapMngr.GetLocations()) {
         if (!pid || pid == loc->GetProtoId()) {
             locations.push_back(loc);
         }

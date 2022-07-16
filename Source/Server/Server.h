@@ -76,7 +76,7 @@ public:
     [[nodiscard]] auto GetEngine() -> FOServer* { return this; }
 
     [[nodiscard]] auto IsStarted() const -> bool { return _started; }
-    [[nodiscard]] auto GetIngamePlayersStatistics() const -> string;
+    [[nodiscard]] auto GetIngamePlayersStatistics() -> string;
     [[nodiscard]] auto MakePlayerId(string_view player_name) const -> uint;
 
     void Shutdown();

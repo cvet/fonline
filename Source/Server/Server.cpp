@@ -280,16 +280,18 @@ FOServer::FOServer(GlobalSettings& settings) :
 
         EntityMngr.InitAfterLoad();
 
-        for (auto* item : EntityMngr.GetItems()) {
-            if (!item->IsDestroyed() && item->GetIsRadio()) {
+        for (auto&& [id, item] : EntityMngr.GetItems()) {
+            if (item->GetIsRadio()) {
                 ItemMngr.RegisterRadio(item);
             }
         }
 
         WriteLog("Process critters visibility..");
-        for (auto* cr : EntityMngr.GetCritters()) {
-            MapMngr.ProcessVisibleCritters(cr);
-            MapMngr.ProcessVisibleItems(cr);
+        for (auto&& [id, cr] : copy(EntityMngr.GetCritters())) {
+            if (!cr->IsDestroyed()) {
+                MapMngr.ProcessVisibleCritters(cr);
+                MapMngr.ProcessVisibleItems(cr);
+            }
         }
         WriteLog("Process critters visibility complete");
     }
@@ -351,7 +353,7 @@ void FOServer::Shutdown()
     _logClients.clear();
 
     // Connected players
-    for (auto* player : EntityMngr.GetPlayers()) {
+    for (auto&& [id, player] : copy(EntityMngr.GetPlayers())) {
         player->Connection->HardDisconnect();
     }
 
@@ -437,11 +439,11 @@ void FOServer::MainLoop()
     {
         const auto players = copy(EntityMngr.GetPlayers());
 
-        for (const auto* player : players) {
+        for (auto&& [id, player] : players) {
             player->AddRef();
         }
 
-        for (auto* player : players) {
+        for (auto&& [id, player] : players) {
             try {
                 RUNTIME_ASSERT(!player->IsDestroyed());
 
@@ -453,13 +455,13 @@ void FOServer::MainLoop()
             }
         }
 
-        for (const auto* player : players) {
+        for (auto&& [id, player] : players) {
             player->Release();
         }
     }
 
     // Process critters
-    for (auto* cr : copy(EntityMngr.GetCritters())) {
+    for (auto&& [id, cr] : copy(EntityMngr.GetCritters())) {
         if (cr->IsDestroyed()) {
             continue;
         }
@@ -473,7 +475,7 @@ void FOServer::MainLoop()
     }
 
     // Process maps
-    for (auto* map : copy(EntityMngr.GetMaps())) {
+    for (auto&& [id, map] : copy(EntityMngr.GetMaps())) {
         if (map->IsDestroyed()) {
             continue;
         }
@@ -602,7 +604,7 @@ void FOServer::DrawGui(string_view server_name)
     ImGui::End();
 }
 
-auto FOServer::GetIngamePlayersStatistics() const -> string
+auto FOServer::GetIngamePlayersStatistics() -> string
 {
     uint conn_count;
 
@@ -611,13 +613,13 @@ auto FOServer::GetIngamePlayersStatistics() const -> string
         conn_count = static_cast<uint>(_freeConnections.size());
     }
 
-    auto players = EntityMngr.GetPlayers();
+    const auto& players = EntityMngr.GetPlayers();
 
     string result = _str("Players in game: {}\nConnections: {}\n", players.size(), conn_count);
     result += "Name                 Id         Ip              X     Y     Location and map\n";
-    for (auto* player : players) {
-        auto* cr = player->GetOwnedCritter();
-        auto* map = MapMngr.GetMap(cr->GetMapId());
+    for (auto&& [id, player] : players) {
+        const auto* cr = player->GetOwnedCritter();
+        const auto* map = MapMngr.GetMap(cr->GetMapId());
         const auto* loc = (map != nullptr ? map->GetLocation() : nullptr);
 
         const string str_loc = _str("{} ({}) {} ({})", map != nullptr ? loc->GetName() : "", map != nullptr ? loc->GetId() : 0, map != nullptr ? map->GetName() : "", map != nullptr ? map->GetId() : 0);
@@ -1554,7 +1556,7 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
 
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
-    for (auto* player : EntityMngr.GetPlayers()) {
+    for (auto&& [id, player] : EntityMngr.GetPlayers()) {
         player->Send_GameInfo(MapMngr.GetMap(player->GetOwnedCritter()->GetMapId()));
     }
 }
@@ -2527,7 +2529,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
-        for (auto* player : EntityMngr.GetPlayers()) {
+        for (auto&& [id, player] : EntityMngr.GetPlayers()) {
             player->Send_Property(NetProperty::Game, prop, this);
         }
     }

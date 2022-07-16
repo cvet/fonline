@@ -295,12 +295,12 @@ auto CritterManager::GetAllCritters() -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT();
 
-    auto all_critters = _engine->EntityMngr.GetCritters();
+    const auto& all_critters = _engine->EntityMngr.GetCritters();
 
     vector<Critter*> critters;
     critters.reserve(all_critters.size());
 
-    for (auto* cr : all_critters) {
+    for (auto&& [id, cr] : all_critters) {
         critters.push_back(cr);
     }
 
@@ -311,14 +311,14 @@ auto CritterManager::GetAllNpc() -> vector<Critter*>
 {
     NON_CONST_METHOD_HINT();
 
-    auto all_critters = _engine->EntityMngr.GetCritters();
+    const auto& all_critters = _engine->EntityMngr.GetCritters();
 
     vector<Critter*> npcs;
     npcs.reserve(all_critters.size());
 
-    for (auto* cr : all_critters) {
+    for (auto&& [id, cr] : all_critters) {
         if (cr->IsNpc()) {
-            npcs.push_back(dynamic_cast<Critter*>(cr));
+            npcs.push_back(cr);
         }
     }
 
@@ -329,14 +329,14 @@ auto CritterManager::GetPlayerCritters(bool on_global_map_only) -> vector<Critte
 {
     NON_CONST_METHOD_HINT();
 
-    auto all_critters = _engine->EntityMngr.GetCritters();
+    const auto& all_critters = _engine->EntityMngr.GetCritters();
 
     vector<Critter*> player_critters;
     player_critters.reserve(all_critters.size());
 
-    for (auto* cr : all_critters) {
+    for (auto&& [id, cr] : all_critters) {
         if (cr->IsOwnedByPlayer() && (!on_global_map_only || cr->GetMapId() == 0u)) {
-            player_critters.push_back(dynamic_cast<Critter*>(cr));
+            player_critters.push_back(cr);
         }
     }
 
@@ -347,13 +347,13 @@ auto CritterManager::GetGlobalMapCritters(ushort wx, ushort wy, uint radius, Cri
 {
     NON_CONST_METHOD_HINT();
 
-    const auto all_critters = _engine->EntityMngr.GetCritters();
+    const auto& all_critters = _engine->EntityMngr.GetCritters();
 
     vector<Critter*> critters;
     critters.reserve(all_critters.size());
 
-    for (auto* cr : all_critters) {
-        if (cr->GetMapId() == 0u && GenericUtils::DistSqrt(static_cast<int>(cr->GetWorldX()), static_cast<int>(cr->GetWorldY()), wx, wy) <= radius && cr->CheckFind(find_type)) {
+    for (auto&& [id, cr] : all_critters) {
+        if (cr->GetMapId() == 0u && GenericUtils::DistSqrt(cr->GetWorldX(), cr->GetWorldY(), wx, wy) <= radius && cr->CheckFind(find_type)) {
             critters.push_back(cr);
         }
     }
@@ -377,20 +377,15 @@ auto CritterManager::GetPlayerById(uint id) -> Player*
 {
     NON_CONST_METHOD_HINT();
 
-    return dynamic_cast<Player*>(_engine->EntityMngr.GetEntity(id));
+    return _engine->EntityMngr.GetPlayer(id);
 }
 
 auto CritterManager::GetPlayerByName(string_view name) -> Player*
 {
     NON_CONST_METHOD_HINT();
 
-    for (auto* entity : _engine->EntityMngr.GetEntities()) {
-        if (auto* player = dynamic_cast<Player*>(entity); player != nullptr && _str(name).compareIgnoreCaseUtf8(player->GetName())) {
-            return player;
-        }
-    }
-
-    return nullptr;
+    const auto player_id = _engine->MakePlayerId(name);
+    return _engine->EntityMngr.GetPlayer(player_id);
 }
 
 auto CritterManager::GetItemByPidInvPriority(Critter* cr, hstring item_pid) -> Item*
@@ -445,7 +440,7 @@ void CritterManager::ProcessTalk(Critter* cr, bool force)
     }
 
     // Check npc
-    Critter* talker = nullptr;
+    const Critter* talker = nullptr;
     if (cr->_talk.Type == TalkType::Critter) {
         talker = GetCritter(cr->_talk.CritterId);
         if (talker == nullptr) {

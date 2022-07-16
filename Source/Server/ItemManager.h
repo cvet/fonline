@@ -59,7 +59,7 @@ public:
 
     [[nodiscard]] auto GetItem(uint item_id) -> Item*;
     [[nodiscard]] auto GetItem(uint item_id) const -> const Item*;
-    [[nodiscard]] auto GetItems() -> vector<Item*>;
+    [[nodiscard]] auto GetItems() -> const unordered_map<uint, Item*>&;
     [[nodiscard]] auto GetItemsCount() const -> uint;
     [[nodiscard]] auto GetItemStatistics(hstring pid) const -> int64;
     [[nodiscard]] auto GetItemsStatistics() const -> string;

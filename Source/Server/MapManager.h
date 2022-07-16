@@ -145,14 +145,14 @@ public:
     [[nodiscard]] auto GetLocation(uint loc_id) const -> const Location*;
     [[nodiscard]] auto GetLocationByMap(uint map_id) -> Location*;
     [[nodiscard]] auto GetLocationByPid(hstring loc_pid, uint skip_count) -> Location*;
-    [[nodiscard]] auto GetLocations() -> vector<Location*>;
+    [[nodiscard]] auto GetLocations() -> const unordered_map<uint, Location*>&;
     [[nodiscard]] auto GetLocationsCount() const -> uint;
     [[nodiscard]] auto IsIntersectZone(int wx1, int wy1, int w1_radius, int wx2, int wy2, int w2_radius, int zones) const -> bool;
     [[nodiscard]] auto GetZoneLocations(int zx, int zy, int zone_radius) -> vector<Location*>;
     [[nodiscard]] auto GetMap(uint map_id) -> Map*;
     [[nodiscard]] auto GetMap(uint map_id) const -> const Map*;
     [[nodiscard]] auto GetMapByPid(hstring map_pid, uint skip_count) -> Map*;
-    [[nodiscard]] auto GetMaps() -> vector<Map*>;
+    [[nodiscard]] auto GetMaps() -> const unordered_map<uint, Map*>&;
     [[nodiscard]] auto GetMapsCount() const -> uint;
     [[nodiscard]] auto CheckKnownLoc(Critter* cr, uint loc_id) const -> bool;
     [[nodiscard]] auto CanAddCrToMap(Critter* cr, Map* map, ushort hx, ushort hy, uint leader_id) const -> bool;

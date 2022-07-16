@@ -42,8 +42,85 @@ EntityManager::EntityManager(FOServer* engine) : _engine {engine}
 {
 }
 
-void EntityManager::RegisterEntity(ServerEntity* entity)
+void EntityManager::RegisterEntity(Player* entity)
 {
+    RegisterEntityEx(entity);
+    const auto [it, inserted] = _allPlayers.emplace(entity->GetId(), entity);
+    RUNTIME_ASSERT(inserted);
+}
+
+void EntityManager::UnregisterEntity(Player* entity)
+{
+    const auto it = _allPlayers.find(entity->GetId());
+    RUNTIME_ASSERT(it != _allPlayers.end());
+    _allPlayers.erase(it);
+    UnregisterEntityEx(entity);
+}
+
+void EntityManager::RegisterEntity(Location* entity)
+{
+    RegisterEntityEx(entity);
+    const auto [it, inserted] = _allLocations.emplace(entity->GetId(), entity);
+    RUNTIME_ASSERT(inserted);
+}
+
+void EntityManager::UnregisterEntity(Location* entity)
+{
+    const auto it = _allLocations.find(entity->GetId());
+    RUNTIME_ASSERT(it != _allLocations.end());
+    _allLocations.erase(it);
+    UnregisterEntityEx(entity);
+}
+
+void EntityManager::RegisterEntity(Map* entity)
+{
+    RegisterEntityEx(entity);
+    const auto [it, inserted] = _allMaps.emplace(entity->GetId(), entity);
+    RUNTIME_ASSERT(inserted);
+}
+
+void EntityManager::UnregisterEntity(Map* entity)
+{
+    const auto it = _allMaps.find(entity->GetId());
+    RUNTIME_ASSERT(it != _allMaps.end());
+    _allMaps.erase(it);
+    UnregisterEntityEx(entity);
+}
+
+void EntityManager::RegisterEntity(Critter* entity)
+{
+    RegisterEntityEx(entity);
+    const auto [it, inserted] = _allCritters.emplace(entity->GetId(), entity);
+    RUNTIME_ASSERT(inserted);
+}
+
+void EntityManager::UnregisterEntity(Critter* entity)
+{
+    const auto it = _allCritters.find(entity->GetId());
+    RUNTIME_ASSERT(it != _allCritters.end());
+    _allCritters.erase(it);
+    UnregisterEntityEx(entity);
+}
+
+void EntityManager::RegisterEntity(Item* entity)
+{
+    RegisterEntityEx(entity);
+    const auto [it, inserted] = _allItems.emplace(entity->GetId(), entity);
+    RUNTIME_ASSERT(inserted);
+}
+
+void EntityManager::UnregisterEntity(Item* entity)
+{
+    const auto it = _allItems.find(entity->GetId());
+    RUNTIME_ASSERT(it != _allItems.end());
+    _allItems.erase(it);
+    UnregisterEntityEx(entity);
+}
+
+void EntityManager::RegisterEntityEx(ServerEntity* entity)
+{
+    NON_CONST_METHOD_HINT();
+
     if (entity->GetId() == 0u) {
         auto id = _engine->GetLastEntityId() + 1;
         id = std::max(id, 2u);
@@ -62,186 +139,37 @@ void EntityManager::RegisterEntity(ServerEntity* entity)
             _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
         }
     }
-
-    const auto [it, inserted] = _allEntities.emplace(entity->GetId(), entity);
-    RUNTIME_ASSERT(inserted);
 }
 
-void EntityManager::UnregisterEntity(ServerEntity* entity)
+void EntityManager::UnregisterEntityEx(ServerEntity* entity)
 {
-    const auto it = _allEntities.find(entity->GetId());
-    RUNTIME_ASSERT(it != _allEntities.end());
-    _allEntities.erase(it);
+    NON_CONST_METHOD_HINT();
+
+    RUNTIME_ASSERT(entity->GetId() != 0u);
 
     _engine->DbStorage.Delete(_str("{}s", entity->GetClassName()), entity->GetId());
 
     entity->SetId(0);
 }
 
-auto EntityManager::GetEntity(uint id) -> ServerEntity*
+auto EntityManager::GetPlayer(uint id) -> Player*
 {
-    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
+    if (const auto it = _allPlayers.find(id); it != _allPlayers.end()) {
         return it->second;
     }
 
     return nullptr;
 }
 
-auto EntityManager::GetEntities() -> vector<ServerEntity*>
+auto EntityManager::GetPlayers() -> const unordered_map<uint, Player*>&
 {
-    vector<ServerEntity*> entities;
-    entities.reserve(_allEntities.size());
-
-    for (auto&& [id, entity] : _allEntities) {
-        entities.push_back(entity);
-    }
-
-    return entities;
-}
-
-auto EntityManager::GetPlayer(uint id) -> Player*
-{
-    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
-        return dynamic_cast<Player*>(it->second);
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetPlayers() -> vector<Player*>
-{
-    vector<Player*> players;
-    players.reserve(_allEntities.size());
-
-    for (auto&& [id, entity] : _allEntities) {
-        if (auto* player = dynamic_cast<Player*>(entity); player != nullptr) {
-            players.push_back(player);
-        }
-    }
-
-    return players;
-}
-
-auto EntityManager::GetPlayers() const -> vector<const Player*>
-{
-    vector<const Player*> players;
-    players.reserve(_allEntities.size());
-
-    for (auto&& [id, entity] : _allEntities) {
-        if (const auto* player = dynamic_cast<const Player*>(entity); player != nullptr) {
-            players.push_back(player);
-        }
-    }
-
-    return players;
-}
-
-auto EntityManager::GetItem(uint id) -> Item*
-{
-    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
-        return dynamic_cast<Item*>(it->second);
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetItems() -> vector<Item*>
-{
-    vector<Item*> items;
-    items.reserve(_allEntities.size());
-
-    for (auto&& [id, entity] : _allEntities) {
-        if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-            items.push_back(item);
-        }
-    }
-
-    return items;
-}
-
-auto EntityManager::FindCritterItems(uint cr_id) -> vector<Item*>
-{
-    vector<Item*> items;
-
-    for (auto&& [id, entity] : _allEntities) {
-        if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-            if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == cr_id) {
-                items.push_back(item);
-            }
-        }
-    }
-
-    return items;
-}
-
-auto EntityManager::GetCritter(uint id) -> Critter*
-{
-    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
-        return dynamic_cast<Critter*>(it->second);
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetCritters() -> vector<Critter*>
-{
-    NON_CONST_METHOD_HINT();
-
-    vector<Critter*> critters;
-    critters.reserve(_allEntities.size());
-
-    for (auto&& [id, entity] : _allEntities) {
-        if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
-            critters.push_back(cr);
-        }
-    }
-
-    return critters;
-}
-
-auto EntityManager::GetMap(uint id) -> Map*
-{
-    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
-        return dynamic_cast<Map*>(it->second);
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
-{
-    for (auto&& [id, entity] : _allEntities) {
-        if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
-            if (map->GetProtoId() == pid) {
-                if (skip_count == 0u) {
-                    return map;
-                }
-                skip_count--;
-            }
-        }
-    }
-
-    return nullptr;
-}
-
-auto EntityManager::GetMaps() -> vector<Map*>
-{
-    vector<Map*> maps;
-    maps.reserve(_allEntities.size());
-
-    for (auto&& [id, entity] : _allEntities) {
-        if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
-            maps.push_back(map);
-        }
-    }
-
-    return maps;
+    return _allPlayers;
 }
 
 auto EntityManager::GetLocation(uint id) -> Location*
 {
-    if (const auto it = _allEntities.find(id); it != _allEntities.end()) {
-        return dynamic_cast<Location*>(it->second);
+    if (const auto it = _allLocations.find(id); it != _allLocations.end()) {
+        return it->second;
     }
 
     return nullptr;
@@ -249,32 +177,90 @@ auto EntityManager::GetLocation(uint id) -> Location*
 
 auto EntityManager::GetLocationByPid(hstring pid, uint skip_count) -> Location*
 {
-    for (auto&& [id, entity] : _allEntities) {
-        if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
-            if (loc->GetProtoId() == pid) {
-                if (skip_count == 0u) {
-                    return loc;
-                }
-                skip_count--;
+    for (auto&& [id, loc] : _allLocations) {
+        if (loc->GetProtoId() == pid) {
+            if (skip_count == 0u) {
+                return loc;
             }
+            skip_count--;
         }
     }
 
     return nullptr;
 }
 
-auto EntityManager::GetLocations() -> vector<Location*>
+auto EntityManager::GetLocations() -> const unordered_map<uint, Location*>&
 {
-    vector<Location*> locations;
-    locations.reserve(_allEntities.size());
+    return _allLocations;
+}
 
-    for (auto&& [id, entity] : _allEntities) {
-        if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
-            locations.push_back(loc);
+auto EntityManager::GetMap(uint id) -> Map*
+{
+    if (const auto it = _allMaps.find(id); it != _allMaps.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetMapByPid(hstring pid, uint skip_count) -> Map*
+{
+    for (auto&& [id, map] : _allMaps) {
+        if (map->GetProtoId() == pid) {
+            if (skip_count == 0u) {
+                return map;
+            }
+            skip_count--;
         }
     }
 
-    return locations;
+    return nullptr;
+}
+
+auto EntityManager::GetMaps() -> const unordered_map<uint, Map*>&
+{
+    return _allMaps;
+}
+
+auto EntityManager::GetCritter(uint id) -> Critter*
+{
+    if (const auto it = _allCritters.find(id); it != _allCritters.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetCritters() -> const unordered_map<uint, Critter*>&
+{
+    return _allCritters;
+}
+
+auto EntityManager::GetItem(uint id) -> Item*
+{
+    if (const auto it = _allItems.find(id); it != _allItems.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
+auto EntityManager::GetItems() -> const unordered_map<uint, Item*>&
+{
+    return _allItems;
+}
+
+auto EntityManager::GetCritterItems(uint cr_id) -> vector<Item*>
+{
+    vector<Item*> items;
+
+    for (auto&& [id, item] : _allItems) {
+        if (item->GetOwnership() == ItemOwnership::CritterInventory && item->GetCritterId() == cr_id) {
+            items.push_back(item);
+        }
+    }
+
+    return items;
 }
 
 void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabric& map_fabric, const NpcFabric& npc_fabric, const ItemFabric& item_fabric)
@@ -377,41 +363,44 @@ void EntityManager::LoadEntities(const LocationFabric& loc_fabric, const MapFabr
 
 void EntityManager::InitAfterLoad()
 {
+    NON_CONST_METHOD_HINT();
+
     WriteLog("Init entities after load...");
 
-    for (auto&& [id, entity] : _allEntities) {
-        entity->AddRef();
-    }
+    auto locs = copy(_allLocations);
+    auto maps = copy(_allMaps);
+    auto critters = copy(_allCritters);
+    auto items = copy(_allItems);
 
-    for (auto&& [id, entity] : copy(_allEntities)) {
-        if (entity->IsDestroyed()) {
-            entity->Release();
-            continue;
-        }
-
-        if (auto* loc = dynamic_cast<Location*>(entity); loc != nullptr) {
+    for (auto&& [id, loc] : locs) {
+        if (!loc->IsDestroyed()) {
             _engine->OnLocationInit.Fire(loc, false);
         }
-        else if (auto* map = dynamic_cast<Map*>(entity); map != nullptr) {
+    }
+
+    for (auto&& [id, map] : maps) {
+        if (!map->IsDestroyed()) {
             _engine->OnMapInit.Fire(map, false);
             if (!map->IsDestroyed()) {
                 ScriptHelpers::CallInitScript(_engine->ScriptSys, map, map->GetInitScript(), false);
             }
         }
-        else if (auto* cr = dynamic_cast<Critter*>(entity); cr != nullptr) {
+    }
+
+    for (auto&& [id, cr] : critters) {
+        if (!cr->IsDestroyed()) {
             _engine->OnCritterInit.Fire(cr, false);
             if (!cr->IsDestroyed()) {
                 ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), false);
             }
         }
-        else if (auto* item = dynamic_cast<Item*>(entity); item != nullptr) {
-            _engine->OnItemInit.Fire(item, false);
-            if (!item->IsDestroyed()) {
-                ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), false);
-            }
-        }
+    }
 
-        entity->Release();
+    for (auto&& [id, item] : items) {
+        _engine->OnItemInit.Fire(item, false);
+        if (!item->IsDestroyed()) {
+            ScriptHelpers::CallInitScript(_engine->ScriptSys, item, item->GetInitScript(), false);
+        }
     }
 
     WriteLog("Init entities after load complete");
@@ -419,28 +408,40 @@ void EntityManager::InitAfterLoad()
 
 void EntityManager::FinalizeEntities()
 {
-    auto recursion_fuse = 0;
+    const auto destroy_entities = [](auto& entities) {
+        auto recursion_fuse = 0;
 
-    while (!_allEntities.empty()) {
-        for (auto&& [id, entity] : copy(_allEntities)) {
-            entity->MarkAsDestroyed();
-            entity->Release();
-            _allEntities.erase(id);
-        }
+        while (!entities.empty()) {
+            for (auto&& [id, entity] : copy(entities)) {
+                entity->MarkAsDestroyed();
+                entity->Release();
+                entities.erase(id);
+            }
 
-        if (++recursion_fuse == ENTITIES_FINALIZATION_FUSE_VALUE) {
-            WriteLog("Entities finalizations fuse fired!");
-            break;
+            if (++recursion_fuse == ENTITIES_FINALIZATION_FUSE_VALUE) {
+                WriteLog("Entities finalizations fuse fired!");
+                break;
+            }
         }
+    };
+
+    destroy_entities(_allPlayers);
+    destroy_entities(_allLocations);
+    destroy_entities(_allMaps);
+    destroy_entities(_allCritters);
+    destroy_entities(_allItems);
+    for (auto& custom_entities : _allCustomEntities) {
+        destroy_entities(custom_entities.second);
     }
 }
 
 auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> ServerEntity*
 {
-    auto* entity = GetEntity(id);
+    auto& all_entities = _allCustomEntities[string(entity_class_name)];
+    const auto it = all_entities.find(id);
 
     // Load if not exists
-    if (entity == nullptr) {
+    if (it == all_entities.end()) {
         const auto doc = _engine->DbStorage.Get(_str("{}s", entity_class_name), id);
         if (doc.empty()) {
             return nullptr;
@@ -452,24 +453,27 @@ auto EntityManager::GetCustomEntity(string_view entity_class_name, uint id) -> S
             return nullptr;
         }
 
-        entity = new ServerEntity(_engine, id, registrator);
+        auto* entity = new ServerEntity(_engine, id, registrator);
         entity->SetProperties(props);
-        RegisterEntity(entity);
+
+        RegisterEntityEx(entity);
+        all_entities.emplace(id, entity);
         return entity;
     }
 
-    if (entity->GetClassName() != entity_class_name) {
-        return nullptr;
-    }
-
-    return entity;
+    return it->second;
 }
 
 auto EntityManager::CreateCustomEntity(string_view entity_class_name) -> ServerEntity*
 {
     const auto* registrator = _engine->GetPropertyRegistrator(entity_class_name);
     auto* entity = new ServerEntity(_engine, 0u, registrator);
-    RegisterEntity(entity);
+
+    RegisterEntityEx(entity);
+    auto& all_entities = _allCustomEntities[string(entity_class_name)];
+    const auto [it, inserted] = all_entities.emplace(entity->GetId(), entity);
+    RUNTIME_ASSERT(inserted);
+
     return entity;
 }
 
@@ -477,7 +481,12 @@ void EntityManager::DeleteCustomEntity(string_view entity_class_name, uint id)
 {
     auto* entity = GetCustomEntity(entity_class_name, id);
     if (entity != nullptr) {
-        UnregisterEntity(entity);
+        auto& all_entities = _allCustomEntities[string(entity_class_name)];
+        const auto it = all_entities.find(entity->GetId());
+        RUNTIME_ASSERT(it != all_entities.end());
+        all_entities.erase(it);
+        UnregisterEntityEx(entity);
+
         entity->MarkAsDestroyed();
         entity->Release();
     }
