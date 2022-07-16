@@ -599,14 +599,14 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 #define NETMSG_GAME_INFO_SIZE (sizeof(uint) + sizeof(ushort) * 8 + sizeof(int) * 4 + sizeof(uchar) * 12)
 // ////////////////////////////////////////////////////////////////////////
 // Generic game info
-// ushort GameOpt.YearStart;
-// ushort GameOpt.Year;
-// ushort GameOpt.Month;
-// ushort GameOpt.Day;
-// ushort GameOpt.Hour;
-// ushort GameOpt.Minute;
-// ushort GameOpt.Second;
-// ushort GameOpt.TimeMultiplier;
+// ushort year_start
+// ushort year
+// ushort month
+// ushort day
+// ushort hour
+// ushort minute
+// ushort second
+// ushort time_multiplier
 // int day_time[4]
 // uchar day_color[12]
 // ////////////////////////////////////////////////////////////////////////

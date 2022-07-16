@@ -464,7 +464,7 @@ auto DataBaseImpl::Get(string_view collection_name, uint id) -> AnyData::Documen
     const auto collection_name_str = string(collection_name);
 
     if (_deletedRecords[collection_name_str].count(id) != 0u) {
-        return AnyData::Document();
+        return {};
     }
 
     if (_newRecords[collection_name_str].count(id) != 0u) {
@@ -610,7 +610,7 @@ protected:
             }
         }
         else {
-            return AnyData::Document();
+            return {};
         }
 
         bson_t bson;

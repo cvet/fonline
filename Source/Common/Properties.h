@@ -102,6 +102,7 @@ private:
 
 using PropertyGetCallback = std::function<PropertyRawData(Entity*, const Property*)>;
 using PropertySetCallback = std::function<void(Entity*, const Property*, PropertyRawData&)>;
+using PropertyPostSetCallback = std::function<void(Entity*, const Property*)>;
 
 class Property final
 {
@@ -177,9 +178,11 @@ public:
 
     [[nodiscard]] auto GetGetter() const -> auto& { return _getter; }
     [[nodiscard]] auto GetSetters() const -> auto& { return _setters; }
+    [[nodiscard]] auto GetPostSetters() const -> auto& { return _postSetters; }
 
     void SetGetter(PropertyGetCallback getter) const;
     void AddSetter(PropertySetCallback setter) const;
+    void AddPostSetter(PropertyPostSetCallback setter) const;
 
 private:
     enum class DataType
@@ -196,6 +199,7 @@ private:
 
     mutable PropertyGetCallback _getter {};
     mutable vector<PropertySetCallback> _setters {};
+    mutable vector<PropertyPostSetCallback> _postSetters {};
 
     string _propName {};
     vector<string> _propNameAliases {};
@@ -465,6 +469,12 @@ public:
                 else {
                     *reinterpret_cast<T*>(&_podData[prop->_podDataOffset]) = new_value;
                 }
+
+                if (_entity != nullptr) {
+                    for (const auto& setter : prop->_postSetters) {
+                        setter(_entity, prop);
+                    }
+                }
             }
         }
     }
@@ -503,6 +513,12 @@ public:
                 else {
                     *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]) = new_value_hash;
                 }
+
+                if (_entity != nullptr) {
+                    for (const auto& setter : prop->_postSetters) {
+                        setter(_entity, prop);
+                    }
+                }
             }
         }
     }
@@ -536,6 +552,12 @@ public:
             }
             else {
                 SetRawData(prop, reinterpret_cast<const uchar*>(new_value.c_str()), static_cast<uint>(new_value.length()));
+            }
+
+            if (_entity != nullptr) {
+                for (const auto& setter : prop->_postSetters) {
+                    setter(_entity, prop);
+                }
             }
         }
     }

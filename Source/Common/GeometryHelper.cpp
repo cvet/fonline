@@ -460,13 +460,16 @@ auto GeometryHelper::AngleToDir(short dir_angle) const -> uchar
         return static_cast<uchar>(NormalizeAngle(dir_angle) / 60);
     }
     else {
-        throw NotImplementedException(LINE_STR);
+        return static_cast<uchar>(NormalizeAngle(dir_angle) / 45);
     }
 }
 
 auto GeometryHelper::NormalizeAngle(short dir_angle) const -> short
 {
-    throw NotImplementedException(LINE_STR);
+    while (dir_angle < 0) {
+        dir_angle += 360;
+    }
+    return static_cast<short>(dir_angle % 360);
 }
 
 auto GeometryHelper::CheckDist(ushort x1, ushort y1, ushort x2, ushort y2, uint dist) const -> bool

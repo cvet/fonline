@@ -47,107 +47,73 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, int> func, int value)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, &value, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, &value, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, uint> func, uint value)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr, &value, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, &value, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, &values, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, &values, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, false, func, nullptr, nullptr, nullptr, &values);
+    return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, &values);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, int> func, int value)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, &value, nullptr, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, &value, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, uint> func, uint value)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr, &value, nullptr);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, &value, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, &values, nullptr, nullptr);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, &values, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Server_Game_SavedDeferredCall(FOServer* server, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
 {
-    return server->DeferredCallMngr.AddDeferredCall(delay, true, func, nullptr, nullptr, nullptr, &values);
+    return server->ServerDeferredCalls.AddSavedDeferredCall(delay, func, nullptr, nullptr, nullptr, &values);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Game_IsDeferredCallPending(FOServer* server, uint id)
 {
-    return server->DeferredCallMngr.IsDeferredCallPending(id);
+    return server->ServerDeferredCalls.IsDeferredCallPending(id);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] bool Server_Game_CancelDeferredCall(FOServer* server, uint id)
 {
-    return server->DeferredCallMngr.CancelDeferredCall(id);
-}
-
-///@ ExportMethod
-[[maybe_unused]] bool Server_Game_GetDeferredCallData(FOServer* server, uint id, uint& delay, vector<int>& values)
-{
-    /*ScriptInvoker* self = Script::GetInvoker();
-    DeferredCall call;
-    if (self->GetDeferredCallData(id, call)) {
-        delay = (call.FireFullSecond > GameOpt.FullSecond ? (call.FireFullSecond - GameOpt.FullSecond) * Globals->GetTimeMultiplier() / 1000 : 0);
-        if (values) {
-            if (call.IsValue) {
-                values->Resize(1);
-                *(int*)values->At(0) = call.Value;
-            }
-            else if (call.IsValues) {
-                values->Resize(0);
-                Script::AppendVectorToArray(call.Values, values);
-            }
-        }
-        return true;
-    }*/
-    return false;
-}
-
-///@ ExportMethod
-[[maybe_unused]] uint Server_Game_GetDeferredCallsList(FOServer* server, const vector<int>& ids)
-{
-    /*ScriptInvoker* self = Script::GetInvoker();
-    IntVec ids_;
-    self->GetDeferredCallsList(ids_);
-    if (ids)
-        Script::AppendVectorToArray(ids_, ids);
-    return ids_.size();*/
-    return 0;
+    return server->ServerDeferredCalls.CancelDeferredCall(id);
 }
 
 ///# ...

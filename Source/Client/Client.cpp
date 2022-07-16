@@ -52,7 +52,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const vector<uch
 
 FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
     FOEngineBase(settings, props_relation, register_data_callback), //
-    GameTime(Settings),
     ProtoMngr(this),
     EffectMngr(Settings, FileSys),
     SprMngr(Settings, window, FileSys, EffectMngr),
@@ -60,6 +59,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
     SndMngr(Settings, FileSys),
     Keyb(Settings, SprMngr),
     Cache("Data/Cache.fobin"),
+    ClientDeferredCalls(this),
     _conn(Settings),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
@@ -188,7 +188,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
 
     // Properties that sending to clients
     {
-        const auto set_send_callbacks = [](const auto* registrator, const PropertySetCallback& callback) {
+        const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
             const auto count = static_cast<int>(registrator->GetCount());
             for (auto i = 0; i < count; i++) {
                 const auto* prop = registrator->GetByIndex(i);
@@ -204,16 +204,16 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
                     continue;
                 }
 
-                prop->AddSetter(callback);
+                prop->AddPostSetter(callback);
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendGlobalValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendPlayerValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendItemValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendCritterValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendMapValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendLocationValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
     }
 
     // Properties with custom behaviours
@@ -493,6 +493,8 @@ void FOClient::MainLoop()
 
         SetDayTime(false);
     }
+
+    ClientDeferredCalls.Process();
 
     if (IsMainScreen(SCREEN_GLOBAL_MAP)) {
         ProcessGlobalMap();
@@ -3116,9 +3118,8 @@ void FOClient::AnimProcess()
     }
 }
 
-void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(new_value);
     RUNTIME_ASSERT(entity == this);
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -3129,18 +3130,15 @@ void FOClient::OnSendGlobalValue(Entity* entity, const Property* prop, const voi
     }
 }
 
-void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(new_value);
     RUNTIME_ASSERT(entity == _curPlayer);
 
     Net_SendProperty(NetProperty::Player, prop, _curPlayer);
 }
 
-void FOClient::OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSendCritterValue(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(new_value);
-
     auto* cr = dynamic_cast<CritterView*>(entity);
     if (cr->IsChosen()) {
         Net_SendProperty(NetProperty::Chosen, prop, cr);
@@ -3153,10 +3151,8 @@ void FOClient::OnSendCritterValue(Entity* entity, const Property* prop, const vo
     }
 }
 
-void FOClient::OnSendItemValue(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSendItemValue(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(new_value);
-
     if (auto* item = dynamic_cast<ItemView*>(entity); item != nullptr && item->GetId() != 0u) {
         if (item->GetOwnership() == ItemOwnership::CritterInventory) {
             const auto* cr = CurMap->GetCritter(item->GetCritterId());
@@ -3184,9 +3180,8 @@ void FOClient::OnSendItemValue(Entity* entity, const Property* prop, const void*
     }
 }
 
-void FOClient::OnSendMapValue(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSendMapValue(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(new_value);
     RUNTIME_ASSERT(entity == CurMap);
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {
@@ -3197,9 +3192,8 @@ void FOClient::OnSendMapValue(Entity* entity, const Property* prop, const void* 
     }
 }
 
-void FOClient::OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value)
+void FOClient::OnSendLocationValue(Entity* entity, const Property* prop)
 {
-    UNUSED_VARIABLE(new_value);
     RUNTIME_ASSERT(entity == _curLocation);
 
     if (prop->GetAccess() == Property::AccessType::PublicFullModifiable) {

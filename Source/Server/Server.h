@@ -41,7 +41,6 @@
 #include "Critter.h"
 #include "CritterManager.h"
 #include "DataBase.h"
-#include "DeferredCalls.h"
 #include "Dialogs.h"
 #include "EngineBase.h"
 #include "EntityManager.h"
@@ -54,8 +53,8 @@
 #include "Player.h"
 #include "ProtoManager.h"
 #include "ScriptSystem.h"
+#include "ServerDeferredCalls.h"
 #include "Settings.h"
-#include "Timer.h"
 
 DECLARE_EXCEPTION(ServerInitException);
 
@@ -163,9 +162,8 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
 
-    GameTimer GameTime;
     ProtoManager ProtoMngr;
-    DeferredCallManager DeferredCallMngr;
+    ServerDeferredCallManager ServerDeferredCalls;
 
     EntityManager EntityMngr;
     MapManager MapMngr;
@@ -231,14 +229,14 @@ private:
     void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
 
-    void OnSaveEntityValue(Entity* entity, const Property* prop, const void* new_value);
+    void OnSaveEntityValue(Entity* entity, const Property* prop);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value);
+    void OnSendGlobalValue(Entity* entity, const Property* prop);
+    void OnSendPlayerValue(Entity* entity, const Property* prop);
+    void OnSendItemValue(Entity* entity, const Property* prop);
+    void OnSendCritterValue(Entity* entity, const Property* prop);
+    void OnSendMapValue(Entity* entity, const Property* prop);
+    void OnSendLocationValue(Entity* entity, const Property* prop);
 
     void OnSetItemCount(Entity* entity, const Property* prop, const void* new_value);
     void OnSetItemChangeView(Entity* entity, const Property* prop, const void* new_value);

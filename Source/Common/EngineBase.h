@@ -40,6 +40,7 @@
 #include "Properties.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
+#include "Timer.h"
 
 DECLARE_EXCEPTION(DataRegistrationException);
 DECLARE_EXCEPTION(EnumResolveException);
@@ -74,6 +75,7 @@ public:
 
     GlobalSettings& Settings;
     GeometryHelper Geometry;
+    GameTimer GameTime;
     ScriptSystem* ScriptSys {};
     FileSystem FileSys {};
 

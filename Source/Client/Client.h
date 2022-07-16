@@ -41,6 +41,7 @@
 #include "CacheStorage.h"
 #include "CritterHexView.h"
 #include "CritterView.h"
+#include "DeferredCalls.h"
 #include "EffectManager.h"
 #include "EngineBase.h"
 #include "Entity.h"
@@ -60,7 +61,6 @@
 #include "SoundManager.h"
 #include "SpriteManager.h"
 #include "StringUtils.h"
-#include "Timer.h"
 #include "TwoBitMask.h"
 
 DECLARE_EXCEPTION(ResourcesOutdatedException);
@@ -217,7 +217,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnCritterGetAttackDistantion, CritterView* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
 
-    GameTimer GameTime;
     ProtoManager ProtoMngr;
     EffectManager EffectMngr;
     SpriteManager SprMngr;
@@ -225,6 +224,7 @@ public:
     SoundManager SndMngr;
     Keyboard Keyb;
     CacheStorage Cache;
+    DeferredCallManager ClientDeferredCalls;
 
     MapView* CurMap {};
     hstring CurMapPid {};
@@ -363,12 +363,12 @@ protected:
     void OnText(string_view str, uint crid, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);
 
-    void OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendItemValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendMapValue(Entity* entity, const Property* prop, const void* new_value);
-    void OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value);
+    void OnSendGlobalValue(Entity* entity, const Property* prop);
+    void OnSendPlayerValue(Entity* entity, const Property* prop);
+    void OnSendCritterValue(Entity* entity, const Property* prop);
+    void OnSendItemValue(Entity* entity, const Property* prop);
+    void OnSendMapValue(Entity* entity, const Property* prop);
+    void OnSendLocationValue(Entity* entity, const Property* prop);
 
     void OnSetCritterModelName(Entity* entity, const Property* prop, const void* new_value);
     void OnSetCritterSpeed(Entity* entity, const Property* prop, const void* new_value);

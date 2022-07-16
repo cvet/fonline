@@ -1349,7 +1349,7 @@ constexpr auto xrange(T value)
 
 // Todo: optimize copy() to pass placement storage for value
 template<typename T>
-constexpr auto copy(T&& value) -> T
+constexpr auto copy(const T& value) -> T
 {
     return T(value);
 }

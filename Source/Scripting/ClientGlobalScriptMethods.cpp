@@ -64,43 +64,43 @@
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void> func)
 {
-    return 0u;
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, int> func, int value)
 {
-    return 0u;
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, &value, nullptr, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, uint> func, uint value)
 {
-    return 0u;
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, &value, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, vector<int>> func, const vector<int>& values)
 {
-    return 0u;
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, nullptr, &values, nullptr, nullptr);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] uint Client_Game_DeferredCall(FOClient* client, uint delay, ScriptFuncName<void, vector<uint>> func, const vector<uint>& values)
 {
-    return 0u;
+    return client->ClientDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, &values);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_IsDeferredCallPending(FOClient* client, uint id)
 {
-    return false;
+    return client->ClientDeferredCalls.IsDeferredCallPending(id);
 }
 
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_CancelDeferredCall(FOClient* client, uint id)
 {
-    return false;
+    return client->ClientDeferredCalls.CancelDeferredCall(id);
 }
 
 ///# ...

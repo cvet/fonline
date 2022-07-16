@@ -262,6 +262,9 @@ public:
 #define PTR_OR_DUMMY(ptr) (void*)&dummy
 #endif
 
+template<typename T>
+constexpr bool is_script_enum = std::is_same_v<T, ScriptEnum_uint8> || std::is_same_v<T, ScriptEnum_uint16> || std::is_same_v<T, ScriptEnum_int> || std::is_same_v<T, ScriptEnum_uint>;
+
 #if !COMPILER_MODE
 static void CallbackException(asIScriptContext* ctx, void* param)
 {
@@ -411,7 +414,7 @@ struct ScriptSystem::AngelScriptImpl
         while (ctx != nullptr) {
             auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
 
-            result += _str("AngelScript stack trace (most recent first):\n");
+            result += _str("AngelScript stack trace (most recent call first):\n");
 
             asIScriptFunction* sys_func = ctx->GetSystemFunction();
             if (sys_func != nullptr) {
@@ -554,39 +557,57 @@ template<typename T>
 template<typename T, typename U>
 [[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
 {
-    // Todo: MarshalDict
-    throw NotImplementedException(LINE_STR);
-    UNUSED_VARIABLE(as_engine);
+    static_assert(is_script_enum<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
+    static_assert(is_script_enum<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
 
     if (as_dict == nullptr || as_dict->GetSize() == 0u) {
         return {};
     }
 
-    map<T, U> map;
-    for (const auto i : xrange(as_dict->GetSize())) {
-        UNUSED_VARIABLE(i);
-        // vec[i] = *reinterpret_cast<Type*>(as_array->At(i));
+    std::vector<std::pair<void*, void*>> dict_data;
+    as_dict->GetMap(dict_data);
+
+    map<T, U> result;
+
+    for (auto&& [pkey, pvalue] : dict_data) {
+        const auto& key = *static_cast<T*>(pkey);
+        const auto& value = *static_cast<U*>(pvalue);
+        result.emplace(key, value);
     }
 
-    return map;
+    return result;
 }
 
 template<typename T, typename U>
 [[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
-    // Todo: MarshalBackScalarDict
-    throw NotImplementedException(LINE_STR);
-    auto* as_dict = CreateASDict(as_engine, type);
+    static_assert(is_script_enum<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
+    static_assert(is_script_enum<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+
+    auto* result = CreateASDict(as_engine, type);
 
     if (!map.empty()) {
-        // as_array->Resize(static_cast<asUINT>(vec.size()));
-        // for (const auto i : xrange(vec)) {
-        //    auto* p = reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i)));
-        //    *p = vec[i];
-        //}
+        for (auto&& [key, value] : map) {
+            if constexpr (is_script_enum<T> && is_script_enum<U>) {
+                int k = copy(key);
+                int v = copy(value);
+                result->Set(&k, &v);
+            }
+            else if constexpr (is_script_enum<T>) {
+                int k = copy(key);
+                result->Set(&k, (void*)&value);
+            }
+            else if constexpr (is_script_enum<U>) {
+                int v = copy(value);
+                result->Set((void*)&key, &v);
+            }
+            else {
+                result->Set((void*)&key, (void*)&value);
+            }
+        }
     }
 
-    return as_dict;
+    return result;
 }
 
 [[maybe_unused]] static auto GetASObjectInfo(void* ptr, int type_id) -> string
@@ -1607,6 +1628,17 @@ static auto ASGenericCall(ScriptSystem::AngelScriptImpl* script_sys, GenericScri
         {&typeid(vector<MapView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Map[]", *static_cast<vector<MapView*>*>(ptr))); }},
         {&typeid(vector<LocationView*>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "Location[]", *static_cast<vector<LocationView*>*>(ptr))); }},
 #endif
+        {&typeid(vector<bool>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "bool[]", *static_cast<vector<bool>*>(ptr))); }},
+        {&typeid(vector<char>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int8[]", *static_cast<vector<char>*>(ptr))); }},
+        {&typeid(vector<short>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int16[]", *static_cast<vector<short>*>(ptr))); }},
+        {&typeid(vector<int>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int[]", *static_cast<vector<int>*>(ptr))); }},
+        {&typeid(vector<int64>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "int64[]", *static_cast<vector<int64>*>(ptr))); }},
+        {&typeid(vector<uchar>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint8[]", *static_cast<vector<uchar>*>(ptr))); }},
+        {&typeid(vector<ushort>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint16[]", *static_cast<vector<ushort>*>(ptr))); }},
+        {&typeid(vector<uint>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint[]", *static_cast<vector<uint>*>(ptr))); }},
+        {&typeid(vector<uint64>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "uint64[]", *static_cast<vector<uint64>*>(ptr))); }},
+        {&typeid(vector<float>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "float[]", *static_cast<vector<float>*>(ptr))); }},
+        {&typeid(vector<double>), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgObject(index, MarshalBackArray(ctx->GetEngine(), "double[]", *static_cast<vector<double>*>(ptr))); }},
     };
 
     RUNTIME_ASSERT(gen_func);
@@ -2049,6 +2081,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
     auto& setters = prop->GetSetters();
+    auto& post_setters = prop->GetPostSetters();
     auto& props = entity->GetPropertiesForEdit();
     void* as_obj = gen->GetAddressOfArg(0);
     ENTITY_VERIFY(entity);
@@ -2067,6 +2100,12 @@ static void Property_SetValue(asIScriptGeneric* gen)
 
     if (!prop->IsVirtual()) {
         props.SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
+
+        if (!post_setters.empty()) {
+            for (auto& setter : post_setters) {
+                setter(entity, prop);
+            }
+        }
     }
 #else
     UNUSED_VARIABLE(gen);
@@ -2723,10 +2762,15 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     if (string_view(type_info->GetName()) == entity_name) { \
         return &typeid(real_class*); \
     } \
-    if (string_view(type_info->GetName()) == "array" && type_info->GetSubType() != nullptr && string_view(type_info->GetSubType()->GetName()) == entity_name) { \
+    if (is_array && type_info->GetSubType() != nullptr && string_view(type_info->GetSubType()->GetName()) == entity_name) { \
         return &typeid(vector<real_class*>); \
     }
+#define CHECK_POD_ARRAY(as_type, type) \
+    if (is_array && type_info->GetSubTypeId() == as_type) { \
+        return &typeid(vector<type>); \
+    }
                 auto* type_info = engine->GetTypeInfoById(type_id);
+                const auto is_array = string_view(type_info->GetName()) == "array";
 #if SERVER_SCRIPTING
                 CHECK_CLASS("Player", Player);
                 CHECK_CLASS("Item", Item);
@@ -2741,7 +2785,19 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 CHECK_CLASS("Map", MapView);
                 CHECK_CLASS("Location", LocationView);
 #endif
+                CHECK_POD_ARRAY(asTYPEID_BOOL, bool);
+                CHECK_POD_ARRAY(asTYPEID_INT8, char);
+                CHECK_POD_ARRAY(asTYPEID_INT16, short);
+                CHECK_POD_ARRAY(asTYPEID_INT32, int);
+                CHECK_POD_ARRAY(asTYPEID_INT64, int64);
+                CHECK_POD_ARRAY(asTYPEID_UINT8, uchar);
+                CHECK_POD_ARRAY(asTYPEID_UINT16, ushort);
+                CHECK_POD_ARRAY(asTYPEID_UINT32, uint);
+                CHECK_POD_ARRAY(asTYPEID_UINT64, uint64);
+                CHECK_POD_ARRAY(asTYPEID_FLOAT, float);
+                CHECK_POD_ARRAY(asTYPEID_DOUBLE, double);
 #undef CHECK_CLASS
+#undef CHECK_POD_ARRAY
             }
 
             return nullptr;

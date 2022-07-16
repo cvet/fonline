@@ -56,10 +56,8 @@ FOServer::FOServer(GlobalSettings& settings) :
 #else
     FOEngineBase(settings, PropertiesRelationType::BothRelative, nullptr),
 #endif
-
-    GameTime(Settings),
     ProtoMngr(this),
-    DeferredCallMngr(this),
+    ServerDeferredCalls(this),
     EntityMngr(this),
     MapMngr(this),
     CrMngr(this),
@@ -106,6 +104,13 @@ FOServer::FOServer(GlobalSettings& settings) :
         for (auto i = 0; i < count; i++) {
             const auto* prop = registrator->GetByIndex(i);
 
+            if (prop->IsDisabled()) {
+                continue;
+            }
+            if (prop->IsTemporary()) {
+                continue;
+            }
+
             switch (prop->GetAccess()) {
             case Property::AccessType::PrivateCommon:
                 [[fallthrough]];
@@ -125,16 +130,20 @@ FOServer::FOServer(GlobalSettings& settings) :
                 continue;
             }
 
-            prop->AddSetter([this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSaveEntityValue(entity, prop, data.GetPtrAs<void>()); });
+            prop->AddPostSetter([this](Entity* entity, const Property* prop_) { OnSaveEntityValue(entity, prop_); });
         }
     }
 
     // Properties that sending to clients
     {
-        const auto set_send_callbacks = [](const auto* registrator, const PropertySetCallback& callback) {
+        const auto set_send_callbacks = [](const auto* registrator, const PropertyPostSetCallback& callback) {
             const auto count = static_cast<int>(registrator->GetCount());
             for (auto i = 0; i < count; i++) {
                 const auto* prop = registrator->GetByIndex(i);
+
+                if (prop->IsDisabled()) {
+                    continue;
+                }
 
                 switch (prop->GetAccess()) {
                 case Property::AccessType::Public:
@@ -151,38 +160,38 @@ FOServer::FOServer(GlobalSettings& settings) :
                     continue;
                 }
 
-                prop->AddSetter(callback);
+                prop->AddPostSetter(callback);
             }
         };
 
-        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendGlobalValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendPlayerValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendItemValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendCritterValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendMapValue(entity, prop, data.GetPtrAs<void>()); });
-        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSendLocationValue(entity, prop, data.GetPtrAs<void>()); });
+        set_send_callbacks(GetPropertyRegistrator(GameProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendGlobalValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(PlayerProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendPlayerValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendItemValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendCritterValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(MapProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendMapValue(entity, prop); });
+        set_send_callbacks(GetPropertyRegistrator(LocationProperties::ENTITY_CLASS_NAME), [this](Entity* entity, const Property* prop) { OnSendLocationValue(entity, prop); });
     }
 
     // Properties with custom behaviours
     {
-        const auto set_callback = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
+        const auto set_setter = [](const auto* registrator, int prop_index, PropertySetCallback callback) {
             const auto* prop = registrator->GetByIndex(prop_index);
             prop->AddSetter(std::move(callback));
         };
 
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemBlockLines(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsGeck(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsRadio(entity, prop, data.GetPtrAs<void>()); });
-        set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Count_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemCount(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsHidden_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsAlwaysView_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrap_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::TrapValue_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemChangeView(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsNoBlock_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsShootThru_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGag_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsTrigger_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemRecacheHex(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::BlockLines_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemBlockLines(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsGeck_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsGeck(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::IsRadio_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemIsRadio(entity, prop, data.GetPtrAs<void>()); });
+        set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
     }
 
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
@@ -207,21 +216,15 @@ FOServer::FOServer(GlobalSettings& settings) :
         GameTime.Reset(GetYear(), GetMonth(), GetDay(), GetHour(), GetMinute(), GetSecond(), GetTimeMultiplier());
     }
 
-    // Deferred calls
-    // if (!ScriptSys.LoadDeferredCalls())
-    //    return false;
+    ServerDeferredCalls.LoadDeferredCalls();
 
     // Resource packs for client
-    {
+    if (!Settings.SkipResourcePacks) {
         auto writer = DataWriter(_updateFilesDesc);
 
         const auto add_sync_file = [&writer, this](string_view path) {
             const auto file = FileSys.ReadFile(path);
             if (!file) {
-                if constexpr (FO_DEBUG) {
-                    return;
-                }
-
                 throw ServerInitException("Resource pack for client not found", path);
             }
 
@@ -395,6 +398,16 @@ void FOServer::MainLoop()
 {
     // Todo: move server loop to async processing
 
+    // Cycle time
+    const auto frame_begin = Timer::RealtimeTick();
+
+    // Begin data base changes
+    DbStorage.StartChanges();
+    if (DbHistory) {
+        DbHistory.StartChanges();
+    }
+
+    // Advance time
     if (GameTime.FrameAdvance()) {
         const auto st = GameTime.GetGameTime(GameTime.GetFullSecond());
         SetYear(st.Year);
@@ -403,15 +416,6 @@ void FOServer::MainLoop()
         SetHour(st.Hour);
         SetMinute(st.Minute);
         SetSecond(st.Second);
-    }
-
-    // Cycle time
-    const auto frame_begin = Timer::RealtimeTick();
-
-    // Begin data base changes
-    DbStorage.StartChanges();
-    if (DbHistory) {
-        DbHistory.StartChanges();
     }
 
     // Process free connections
@@ -489,6 +493,8 @@ void FOServer::MainLoop()
         ReportExceptionAndContinue(ex);
     }
 
+    ServerDeferredCalls.Process();
+
     // Script game loop
     OnLoop.Fire();
 
@@ -529,8 +535,8 @@ void FOServer::MainLoop()
     }
 
     // Sleep
-    if (Settings.GameSleep >= 0) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(Settings.GameSleep));
+    if (Settings.ServerSleep >= 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(Settings.ServerSleep));
     }
 }
 
@@ -1745,9 +1751,7 @@ void FOServer::Process_Update(ClientConnection* connection)
     connection->Bout << msg_len;
     connection->Bout << outdated;
     connection->Bout << static_cast<uint>(_updateFilesDesc.size());
-    if (!_updateFilesDesc.empty()) {
-        connection->Bout.Push(&_updateFilesDesc[0], static_cast<uint>(_updateFilesDesc.size()));
-    }
+    connection->Bout.Push(_updateFilesDesc.data(), static_cast<uint>(_updateFilesDesc.size()));
     if (!outdated) {
         NET_WRITE_PROPERTIES(connection->Bout, global_vars_data, global_vars_data_sizes);
     }
@@ -2481,13 +2485,9 @@ void FOServer::Process_Property(Player* player, uint data_size)
     }
 }
 
-void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 {
     NON_CONST_METHOD_HINT();
-
-    if (prop->IsTemporary()) {
-        return;
-    }
 
     const auto value = PropertiesSerializator::SavePropertyToValue(&entity->GetProperties(), prop, *this);
 
@@ -2524,7 +2524,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop, const voi
     }
 }
 
-void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         for (auto* player : EntityMngr.GetPlayers()) {
@@ -2533,14 +2533,14 @@ void FOServer::OnSendGlobalValue(Entity* entity, const Property* prop, const voi
     }
 }
 
-void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     auto* player = dynamic_cast<Player*>(entity);
 
     player->Send_Property(NetProperty::Player, prop, player);
 }
 
-void FOServer::OnSendCritterValue(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSendCritterValue(Entity* entity, const Property* prop)
 {
     auto* cr = dynamic_cast<Critter*>(entity);
 
@@ -2555,7 +2555,7 @@ void FOServer::OnSendCritterValue(Entity* entity, const Property* prop, const vo
     }
 }
 
-void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSendItemValue(Entity* entity, const Property* prop)
 {
     if (auto* item = dynamic_cast<Item*>(entity); item != nullptr && item->GetId() != 0u) {
         const auto is_public = IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask);
@@ -2593,7 +2593,7 @@ void FOServer::OnSendItemValue(Entity* entity, const Property* prop, const void*
     }
 }
 
-void FOServer::OnSendMapValue(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSendMapValue(Entity* entity, const Property* prop)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* map = dynamic_cast<Map*>(entity);
@@ -2601,7 +2601,7 @@ void FOServer::OnSendMapValue(Entity* entity, const Property* prop, const void* 
     }
 }
 
-void FOServer::OnSendLocationValue(Entity* entity, const Property* prop, const void* new_value)
+void FOServer::OnSendLocationValue(Entity* entity, const Property* prop)
 {
     if (IsEnumSet(prop->GetAccess(), Property::AccessType::PublicMask)) {
         auto* loc = dynamic_cast<Location*>(entity);
@@ -2665,6 +2665,7 @@ void FOServer::OnSetItemChangeView(Entity* entity, const Property* prop, const v
 void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const void* new_value)
 {
     UNUSED_VARIABLE(prop);
+    UNUSED_VARIABLE(new_value);
 
     // IsNoBlock, IsShootThru, IsGag, IsTrigger
     const auto* item = dynamic_cast<Item*>(entity);
@@ -2679,6 +2680,8 @@ void FOServer::OnSetItemRecacheHex(Entity* entity, const Property* prop, const v
 
 void FOServer::OnSetItemBlockLines(Entity* entity, const Property* prop, const void* new_value)
 {
+    UNUSED_VARIABLE(new_value);
+
     // BlockLines
     const auto* item = dynamic_cast<Item*>(entity);
     if (item->GetOwnership() == ItemOwnership::MapHex) {

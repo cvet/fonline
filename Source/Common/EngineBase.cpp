@@ -41,6 +41,7 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
     GameProperties(GetInitRef()),
     Settings {settings},
     Geometry(settings),
+    GameTime(settings),
     _propsRelation {props_relation}
 {
     RUNTIME_ASSERT(register_data_callback);

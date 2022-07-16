@@ -37,46 +37,45 @@
 
 #include "Common.h"
 
-class FOServer;
+#include "EngineBase.h"
+
+DECLARE_EXCEPTION(DeferredCallException);
 
 struct DeferredCall
 {
     uint Id {};
     uint FireFullSecond {};
-    hstring FuncName {};
-    bool IsValue {};
-    bool ValueSigned {};
-    int Value {};
-    bool IsValues {};
-    bool ValuesSigned {};
-    vector<int> Values {};
-    bool Saved {};
+    ScriptFunc<void> EmptyFunc {};
+    ScriptFunc<void, int> SignedIntFunc {};
+    ScriptFunc<void, uint> UnsignedIntFunc {};
+    ScriptFunc<void, vector<int>> SignedIntArrayFunc {};
+    ScriptFunc<void, vector<uint>> UnsignedIntArrayFunc {};
+    variant<int, uint, vector<int>, vector<uint>> FuncValue {};
 };
 
-class DeferredCallManager final
+class DeferredCallManager
 {
 public:
     DeferredCallManager() = delete;
-    explicit DeferredCallManager(FOServer* engine);
+    explicit DeferredCallManager(FOEngineBase* engine);
     DeferredCallManager(const DeferredCallManager&) = delete;
     DeferredCallManager(DeferredCallManager&&) noexcept = delete;
     auto operator=(const DeferredCallManager&) = delete;
     auto operator=(DeferredCallManager&&) noexcept = delete;
-    ~DeferredCallManager() = default;
+    virtual ~DeferredCallManager() = default;
 
-    [[nodiscard]] auto IsDeferredCallPending(uint id) -> bool;
-    [[nodiscard]] auto CancelDeferredCall(uint id) -> bool;
-    [[nodiscard]] auto GetDeferredCallData(uint id, DeferredCall& data) -> bool;
-    [[nodiscard]] auto GetDeferredCallsList() -> vector<int>;
-    [[nodiscard]] auto GetStatistics() -> string;
+    [[nodiscard]] auto IsDeferredCallPending(uint id) const -> bool;
 
-    auto AddDeferredCall(uint delay, bool saved, string_view func_name, int* value, const vector<int>* values, uint* value2, const vector<uint>* values2) -> uint;
-    auto LoadDeferredCalls() -> bool;
+    auto AddDeferredCall(uint delay, string_view func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint;
+    auto CancelDeferredCall(uint id) -> bool;
     void Process();
 
-private:
-    void RunDeferredCall(DeferredCall& call);
+protected:
+    auto RunDeferredCall(DeferredCall& call) const -> bool;
+    virtual auto GetNextId() -> uint;
+    virtual void OnDeferredCallRemoved(const DeferredCall& call) { }
 
-    FOServer* _engine;
+    FOEngineBase* _engine;
     list<DeferredCall> _deferredCalls {};
+    uint _idCounter {};
 };

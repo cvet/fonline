@@ -96,6 +96,11 @@ void Property::AddSetter(PropertySetCallback setter) const
     _setters.emplace(_setters.begin(), std::move(setter));
 }
 
+void Property::AddPostSetter(PropertyPostSetCallback setter) const
+{
+    _postSetters.emplace(_postSetters.begin(), std::move(setter));
+}
+
 Properties::Properties(const PropertyRegistrator* registrator) : _registrator {registrator}
 {
     RUNTIME_ASSERT(_registrator);
@@ -552,6 +557,9 @@ void Properties::SetRawData(const Property* prop, const uchar* data, uint data_s
             delete[] _complexData[prop->_complexDataIndex];
             if (data_size != 0u) {
                 _complexData[prop->_complexDataIndex] = new uchar[data_size];
+            }
+            else {
+                _complexData[prop->_complexDataIndex] = nullptr;
             }
         }
 

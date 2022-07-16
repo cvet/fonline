@@ -304,7 +304,8 @@ FIXED_SETTING(uint, AdminPanelPort, 0);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(string, DbHistory, "None");
 FIXED_SETTING(bool, NoStart, false);
-FIXED_SETTING(int, GameSleep, 0);
+FIXED_SETTING(int, ServerSleep, 0);
+FIXED_SETTING(bool, SkipResourcePacks, false);
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING
