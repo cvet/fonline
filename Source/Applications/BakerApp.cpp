@@ -491,7 +491,7 @@ int main(int argc, char** argv)
                             MapLoader::Load(
                                 proto_map->GetName(), map_file.GetStr(), server_proto_mngr, server_engine,
                                 [&](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
-                                    Properties props(proto->GetProperties().GetRegistrator());
+                                    auto props = copy(proto->GetProperties());
                                     if (props.LoadFromText(kv)) {
                                         map_errors += ValidateProperties(props, _str("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
@@ -511,7 +511,7 @@ int main(int argc, char** argv)
                                     return true;
                                 },
                                 [&](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
-                                    Properties props(proto->GetProperties().GetRegistrator());
+                                    auto props = copy(proto->GetProperties());
                                     if (props.LoadFromText(kv)) {
                                         map_errors += ValidateProperties(props, _str("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
@@ -821,7 +821,7 @@ static auto ValidateProperties(const Properties& props, string_view context_str,
         if (prop->IsBaseScriptFuncType()) {
             if (prop->IsPlainData()) {
                 const auto func_name = props.GetValue<hstring>(prop);
-                if (!script_func_verify.count(prop->GetBaseScriptFuncType())) {
+                if (script_func_verify.count(prop->GetBaseScriptFuncType()) == 0u) {
                     WriteLog("Invalid script func {} of type {} for property {} in {}", func_name, prop->GetBaseScriptFuncType(), prop->GetName(), context_str);
                     errors++;
                 }

@@ -674,7 +674,7 @@
     }
 
     auto* item = self->GetItem(itemId, self->IsOwnedByPlayer());
-    if (!item) {
+    if (item == nullptr) {
         throw ScriptException("Item not found");
     }
 
@@ -691,17 +691,17 @@
         throw ScriptException("Can't move item");
     }
 
-    auto* item_swap = (slot ? self->GetItemSlot(slot) : nullptr);
+    auto* item_swap = slot != 0 ? self->GetItemSlot(slot) : nullptr;
     const auto from_slot = item->GetCritterSlot();
 
     item->SetCritterSlot(slot);
-    if (item_swap) {
+    if (item_swap != nullptr) {
         item_swap->SetCritterSlot(from_slot);
     }
 
     self->SendAndBroadcast_MoveItem(item, ACTION_MOVE_ITEM, from_slot);
 
-    if (item_swap) {
+    if (item_swap != nullptr) {
         self->GetEngine()->OnCritterMoveItem.Fire(self, item_swap, slot);
     }
     self->GetEngine()->OnCritterMoveItem.Fire(self, item, from_slot);
@@ -749,9 +749,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Server_Critter_Action(Critter* self, int action, int actionExt, AbstractItem* item)
 {
-    // Todo: handle AbstractItem in Action
-    // self->SendAndBroadcast_Action(action, actionExt, item);
-    throw NotImplementedException(LINE_STR);
+    self->SendAndBroadcast_Action(action, actionExt, dynamic_cast<Item*>(item));
 }
 
 ///# ...
@@ -763,9 +761,7 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] void Server_Critter_Animate(Critter* self, uint anim1, uint anim2, AbstractItem* item, bool clearSequence, bool delayPlay)
 {
-    // Todo: handle AbstractItem in Animate
-    // self->SendAndBroadcast_Animate(anim1, anim2, item, clearSequence, delayPlay);
-    throw NotImplementedException(LINE_STR);
+    self->SendAndBroadcast_Animate(anim1, anim2, dynamic_cast<Item*>(item), clearSequence, delayPlay);
 }
 
 ///# ...

@@ -1657,6 +1657,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('{')
             
             if not isASCompiler:
+                globalLines.append('    ENTITY_VERIFY_NULL(self);')
                 globalLines.append('    ENTITY_VERIFY(self);')
                 for p in params:
                     if p[0] in gameEntities:
@@ -1743,6 +1744,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func)')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    auto event_data = Entity::EventCallbackData();')
                         globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
@@ -1761,6 +1763,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ' + funcEntry + '_Unsubscribe(' + entityArg + ', asIScriptFunction* func)')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
                             globalLines.append('    self->' + evName + '.Unsubscribe(func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
@@ -1774,6 +1777,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('static void ' + funcEntry + '_UnsubscribeAll(' + entityArg + ')')
                     globalLines.append('{')
                     if not isASCompiler:
+                        globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         if isExported:
                             globalLines.append('    self->' + evName + '.UnsubscribeAll();')
@@ -1787,6 +1791,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('static bool ' + funcEntry + '_Fire(' + entityArg + (', ' if evArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in evArgs]) + ')')
                         globalLines.append('{')
                         if not isASCompiler:
+                            globalLines.append('    ENTITY_VERIFY_NULL(self);')
                             globalLines.append('    ENTITY_VERIFY(self);')
                             for p in evArgs:
                                 if p[0] in gameEntities:

@@ -68,6 +68,9 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+    for (const auto& entry : Settings.ServerResourceEntries) {
+        FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
+    }
 
     GameTime.FrameAdvance();
 
@@ -194,13 +197,8 @@ FOServer::FOServer(GlobalSettings& settings) :
         set_setter(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), Item::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
     }
 
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
     DlgMngr.LoadFromResources();
-
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
     ProtoMngr.LoadFromResources();
-
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
     MapMngr.LoadFromResources();
 
     // Globals
@@ -219,7 +217,7 @@ FOServer::FOServer(GlobalSettings& settings) :
     ServerDeferredCalls.LoadDeferredCalls();
 
     // Resource packs for client
-    if (!Settings.SkipResourcePacks) {
+    if (Settings.DataSynchronization) {
         auto writer = DataWriter(_updateFilesDesc);
 
         const auto add_sync_file = [&writer, this](string_view path) {
@@ -237,7 +235,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
         };
 
-        for (const auto& resource_entry : Settings.ResourceEntries) {
+        for (const auto& resource_entry : Settings.ClientResourceEntries) {
             add_sync_file(_str("{}.zip", resource_entry));
         }
 

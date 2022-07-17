@@ -65,7 +65,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
 {
     FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
-    for (const auto& entry : Settings.ResourceEntries) {
+    for (const auto& entry : Settings.ClientResourceEntries) {
         FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
     }
 

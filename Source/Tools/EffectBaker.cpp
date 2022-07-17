@@ -180,6 +180,12 @@ void EffectBaker::AutoBake()
             continue;
         }
 
+#if !FO_ENABLE_3D
+        if (file_header.GetPath().find("3D") != string::npos) {
+            continue;
+        }
+#endif
+
         {
 #if FO_ASYNC_BAKE
             std::lock_guard locker(_bakedFilesLocker);

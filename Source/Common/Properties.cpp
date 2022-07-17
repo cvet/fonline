@@ -1088,6 +1088,9 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
         else if (flags[i] == "Temporary") {
             prop->_isTemporary = true;
         }
+        else if (flags[i] == "Historical") {
+            prop->_isHistorical = true;
+        }
         else if (flags[i] == "Resource") {
             if (!prop->_isHashBase) {
                 throw PropertyRegistrationException("Expected hstring for Resource flag", prop->_propName);
@@ -1102,25 +1105,6 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
             }
 
             prop->_scriptFuncType = flags[i + 2];
-            i += 2;
-        }
-        else if (flags[i] == "Default") {
-            check_next_param();
-            if (!prop->_isInt && !prop->_isFloat && !prop->_isBool) {
-                throw PropertyRegistrationException("Expected numeric type for Default flag", prop->_propName);
-            }
-
-            if (prop->_isBool) {
-                prop->_defValueI = _str(flags[i + 2]).toBool() ? 1 : 0;
-            }
-            else if (prop->_isInt) {
-                prop->_defValueI = _str(flags[i + 2]).toInt64();
-            }
-            else {
-                prop->_defValueF = _str(flags[i + 2]).toDouble();
-            }
-
-            prop->_setDefaultValue = true;
             i += 2;
         }
         else if (flags[i] == "Max") {
@@ -1189,9 +1173,6 @@ void PropertyRegistrator::AppendProperty(Property* prop, const vector<string>& f
     if (prop->_dataType == Property::DataType::Dict) {
         RUNTIME_ASSERT(!prop->_dictKeyTypeName.empty());
     }
-
-    // bool _isHistorical {};
-    // prop->_isHistorical = (defaultNoHistory || is_no_history);
 
     const auto reg_index = static_cast<ushort>(_registeredProperties.size());
 

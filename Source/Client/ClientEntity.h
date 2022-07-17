@@ -56,6 +56,7 @@ public:
     [[nodiscard]] auto GetName() const -> string_view override;
 
     void SetId(uint id);
+    void MarkAsDestroyed() override;
 
 protected:
     ClientEntity(FOClient* engine, uint id, const PropertyRegistrator* registrator);

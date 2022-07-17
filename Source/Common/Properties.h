@@ -245,13 +245,10 @@ private:
     bool _isDisabled {};
     bool _isVirtual {};
     bool _isReadOnly {};
-    bool _setDefaultValue {};
     bool _checkMinValue {};
     bool _checkMaxValue {};
-    int64 _defValueI {};
     int64 _minValueI {};
     int64 _maxValueI {};
-    double _defValueF {};
     double _minValueF {};
     double _maxValueF {};
     bool _isTemporary {};

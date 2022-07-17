@@ -163,7 +163,6 @@ public:
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
     void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems);
     void Send_ViewMap();
-    void Send_SomeItem(Item* item);
     void Send_CustomMessage(uint msg);
     void Send_AddAllItems();
     void Send_AllAutomapsInfo(MapManager& map_mngr);

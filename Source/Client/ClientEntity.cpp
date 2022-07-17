@@ -59,3 +59,8 @@ auto ClientEntity::GetName() const -> string_view
 {
     return GetProperties().GetRegistrator()->GetClassName();
 }
+
+void ClientEntity::MarkAsDestroyed()
+{
+    throw UnreachablePlaceException(LINE_STR);
+}

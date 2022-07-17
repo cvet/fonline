@@ -1027,15 +1027,6 @@ void Critter::Send_ViewMap()
     }
 }
 
-void Critter::Send_SomeItem(Item* item)
-{
-    NON_CONST_METHOD_HINT();
-
-    if (_player != nullptr) {
-        _player->Send_SomeItem(item);
-    }
-}
-
 void Critter::Send_CustomMessage(uint msg)
 {
     NON_CONST_METHOD_HINT();

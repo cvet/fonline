@@ -49,7 +49,8 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(FileSystemSettings, virtual DummySettings);
 FIXED_SETTING(string, ResourcesDir, "Resources");
-FIXED_SETTING(vector<string>, ResourceEntries);
+FIXED_SETTING(vector<string>, ClientResourceEntries, "Core");
+FIXED_SETTING(vector<string>, ServerResourceEntries, "Maps", "Protos", "Dialogs");
 FIXED_SETTING(string, EmbeddedResources, "$Embedded");
 SETTING_GROUP_END();
 
@@ -305,7 +306,7 @@ FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(string, DbHistory, "None");
 FIXED_SETTING(bool, NoStart, false);
 FIXED_SETTING(int, ServerSleep, 0);
-FIXED_SETTING(bool, SkipResourcePacks, false);
+FIXED_SETTING(bool, DataSynchronization, true);
 SETTING_GROUP_END();
 
 #undef FIXED_SETTING

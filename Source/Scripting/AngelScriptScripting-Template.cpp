@@ -173,6 +173,7 @@ struct SCRIPTING_CLASS : public ScriptSystem
     void InitAngelScriptScripting(INIT_ARGS);
 };
 
+#define ENTITY_VERIFY_NULL(e)
 #define ENTITY_VERIFY(e)
 
 static GlobalSettings DummySettings {};
@@ -516,6 +517,9 @@ template<typename T>
     vec.resize(as_array->GetSize());
     for (const auto i : xrange(as_array->GetSize())) {
         vec[i] = *reinterpret_cast<T*>(as_array->At(i));
+        if constexpr (std::is_pointer_v<T>) {
+            ENTITY_VERIFY(vec[i]);
+        }
     }
 
     return vec;
@@ -532,6 +536,7 @@ template<typename T>
             *reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
 
             if constexpr (std::is_pointer_v<T>) {
+                ENTITY_VERIFY(vec[i]);
                 if (vec[i] != nullptr) {
                     vec[i]->AddRef();
                 }
@@ -1185,6 +1190,7 @@ template<typename T>
 static auto Entity_Name(const T* self) -> string
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     return string(self->GetName());
 #else
@@ -1197,6 +1203,7 @@ template<typename T>
 static auto Entity_Id(const T* self) -> uint
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     return self->GetId();
 #else
@@ -1209,6 +1216,7 @@ template<typename T>
 static auto Entity_ProtoId(const T* self) -> hstring
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     return self->GetProtoId();
 #else
@@ -1221,6 +1229,7 @@ template<>
 auto Entity_ProtoId(const Entity* self) -> hstring
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     if (const auto* self_with_proto = dynamic_cast<const EntityWithProto*>(self)) {
         return self_with_proto->GetProtoId();
@@ -1236,6 +1245,7 @@ template<typename T>
 static auto Entity_Proto(const T* self) -> const ProtoEntity*
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(self);
     ENTITY_VERIFY(self);
     return self->GetProto();
 #else
@@ -1897,6 +1907,7 @@ template<typename T>
 static auto Entity_GetSelf(T* entity) -> T*
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
     return entity;
 #else
@@ -1908,6 +1919,7 @@ template<typename T>
 static auto Property_GetValueAsInt(const T* entity, int prop_index) -> int
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
     if (prop_index == -1) {
@@ -1937,6 +1949,7 @@ template<typename T>
 static void Property_SetValueAsInt(T* entity, int prop_index, int value)
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
     if (prop_index == -1) {
@@ -1970,6 +1983,7 @@ template<typename T>
 static auto Property_GetValueAsFloat(const T* entity, int prop_index) -> float
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
     if (prop_index == -1) {
@@ -1999,6 +2013,7 @@ template<typename T>
 static void Property_SetValueAsFloat(T* entity, int prop_index, float value)
 {
 #if !COMPILER_MODE
+    ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
     if (prop_index == -1) {
@@ -2051,6 +2066,7 @@ static void Property_GetValue(asIScriptGeneric* gen)
     auto* entity = static_cast<T*>(gen->GetObject());
     const auto* prop = static_cast<const Property*>(gen->GetAuxiliary());
     auto& getter = prop->GetGetter();
+    ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
     PropertyRawData prop_data;
@@ -2084,6 +2100,7 @@ static void Property_SetValue(asIScriptGeneric* gen)
     auto& post_setters = prop->GetPostSetters();
     auto& props = entity->GetPropertiesForEdit();
     void* as_obj = gen->GetAddressOfArg(0);
+    ENTITY_VERIFY_NULL(entity);
     ENTITY_VERIFY(entity);
 
     if (prop->IsVirtual() && setters.empty()) {
