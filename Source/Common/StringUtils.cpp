@@ -541,26 +541,6 @@ auto _str::toWideChar() const -> std::wstring
 
 // ReSharper restore CppInconsistentNaming
 
-void Str::Copy(char* to, size_t size, string_view from)
-{
-    RUNTIME_ASSERT(to);
-    RUNTIME_ASSERT(size > 0);
-
-    if (from.length() == 0u) {
-        to[0] = 0;
-        return;
-    }
-
-    if (from.length() >= size) {
-        std::memcpy(to, from.data(), size - 1);
-        to[size - 1] = 0;
-    }
-    else {
-        std::memcpy(to, from.data(), from.length());
-        to[from.length()] = 0;
-    }
-}
-
 auto utf8::IsValid(uint ucs) -> bool
 {
     // 0xFFFD - Unicode REPLACEMENT CHARACTER

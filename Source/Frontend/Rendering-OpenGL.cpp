@@ -1091,7 +1091,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
             // Sprite quad
             RUNTIME_ASSERT(dbuf->Vertices2D.size() % 4 == 0);
             indices.resize(dbuf->Vertices2D.size() / 4 * 6);
-            for (size_t i = 0; i < indices.size(); i += 6) {
+            for (size_t i = 0, j = indices.size() / 6; i < j; i += 6) {
                 indices[i * 6 + 0] = static_cast<ushort>(i * 4 + 0);
                 indices[i * 6 + 1] = static_cast<ushort>(i * 4 + 1);
                 indices[i * 6 + 2] = static_cast<ushort>(i * 4 + 3);

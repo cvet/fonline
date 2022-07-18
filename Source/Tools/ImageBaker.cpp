@@ -116,10 +116,10 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     vector<uchar> data;
     auto writer = DataWriter(data);
 
-    const auto check_number = static_cast<ushort>(42);
+    constexpr auto check_number = static_cast<uchar>(42);
     const auto dirs = static_cast<uchar>(collection.HaveDirs ? _settings.MapDirCount : 1);
 
-    writer.Write<ushort>(check_number);
+    writer.Write<uchar>(check_number);
     writer.Write<ushort>(collection.SequenceSize);
     writer.Write<ushort>(collection.AnimTicks);
     writer.Write<uchar>(dirs);
@@ -146,7 +146,7 @@ void ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
         }
     }
 
-    writer.Write<ushort>(check_number);
+    writer.Write<uchar>(check_number);
 
     if (!collection.NewExtension.empty()) {
         _writeData(_str("{}.{}", _str(fname).eraseFileExtension(), collection.NewExtension), data);

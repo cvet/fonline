@@ -35,19 +35,6 @@
 
 #include "Common.h"
 
-class Str final
-{
-public:
-    Str() = delete;
-
-    template<int Size>
-    static void Copy(char (&to)[Size], string_view from)
-    {
-        return Copy(to, Size, from);
-    }
-    static void Copy(char* to, size_t size, string_view from);
-};
-
 // ReSharper disable once CppInconsistentNaming
 class _str final
 {

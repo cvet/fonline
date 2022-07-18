@@ -122,6 +122,7 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
     _contourDrawBuf->Vertices2D.resize(4);
 
     _sprData.resize(SPRITES_BUFFER_SIZE);
+    _borderBuf.resize(App->Render.MAX_ATLAS_SIZE);
 
     MatrixHelper::MatrixOrtho(_projectionMatrixCm[0], 0.0f, static_cast<float>(_settings.ScreenWidth), static_cast<float>(_settings.ScreenHeight), 0.0f, -1.0f, 1.0f);
     _projectionMatrixCm.Transpose(); // Convert to column major order
@@ -518,8 +519,10 @@ void SpriteManager::FlushAccumulatedAtlasData()
     // Sort by size
     std::sort(_accumulatorSprInfo.begin(), _accumulatorSprInfo.end(), [](SpriteInfo* si1, SpriteInfo* si2) { return si1->Width * si1->Height > si2->Width * si2->Height; });
 
-    for (auto& it : _accumulatorSprInfo) {
-        FillAtlas(it);
+    for (auto* spr_info : _accumulatorSprInfo) {
+        FillAtlas(spr_info, spr_info->AccData);
+        delete[] spr_info->AccData;
+        spr_info->AccData = nullptr;
     }
     _accumulatorSprInfo.clear();
 }
@@ -683,15 +686,9 @@ void SpriteManager::DumpAtlases()
     }
 }
 
-auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data) -> uint
+auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, const uint* data) -> uint
 {
-    // Sprite info
-    if (si == nullptr) {
-        si = new SpriteInfo();
-    }
-
     // Get width, height
-    si->Data = data;
     si->DataAtlasType = std::get<0>(_atlasStack.back());
     si->DataAtlasOneImage = std::get<1>(_atlasStack.back());
     si->Width = static_cast<ushort>(w);
@@ -699,10 +696,12 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data
 
     // Find place on atlas
     if (_accumulatorActive) {
+        si->AccData = new uint[w * h];
+        std::memcpy(si->AccData, data, w * h * sizeof(uint));
         _accumulatorSprInfo.push_back(si);
     }
     else {
-        FillAtlas(si);
+        FillAtlas(si, data);
     }
 
     // Store sprite
@@ -722,13 +721,10 @@ auto SpriteManager::RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data
     return static_cast<uint>(index);
 }
 
-void SpriteManager::FillAtlas(SpriteInfo* si)
+void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
 {
-    auto* data = reinterpret_cast<uint*>(si->Data);
     const uint w = si->Width;
     const uint h = si->Height;
-
-    si->Data = nullptr;
 
     PushAtlasType(si->DataAtlasType, si->DataAtlasOneImage);
     auto x = 0;
@@ -737,39 +733,35 @@ void SpriteManager::FillAtlas(SpriteInfo* si)
     PopAtlasType();
 
     // Refresh texture
-    if (data != nullptr) {
-        // Whole image
-        auto* tex = atlas->MainTex;
-        tex->UpdateTextureRegion(IRect(x, y, x + w - 1, y + h - 1), data);
+    auto* tex = atlas->MainTex;
+    tex->UpdateTextureRegion(IRect(x, y, x + w - 1, y + h - 1), data);
 
-        // 1px border for correct linear interpolation
-        // Top
-        tex->UpdateTextureRegion(IRect(x, y - 1, x + w - 1, y - 1), data);
+    // 1px border for correct linear interpolation
+    // Top
+    tex->UpdateTextureRegion(IRect(x, y - 1, x + w - 1, y - 1), data);
 
-        // Bottom
-        tex->UpdateTextureRegion(IRect(x, y + h, x + w - 1, y + h), data + (h - 1) * w);
+    // Bottom
+    tex->UpdateTextureRegion(IRect(x, y + h, x + w - 1, y + h), data + (h - 1) * w);
 
-        // Left
-        uint data_border[App->Render.MAX_ATLAS_SIZE];
-        for (uint i = 0; i < h; i++) {
-            data_border[i + 1] = *(data + i * w * 4);
-        }
-        data_border[0] = data_border[1];
-        data_border[h + 1] = data_border[h];
-        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x - 1, y + h), data_border);
+    // Left
+    for (uint i = 0; i < h; i++) {
+        _borderBuf[i + 1] = *(data + i * w);
+    }
+    _borderBuf[0] = _borderBuf[1];
+    _borderBuf[h + 1] = _borderBuf[h];
+    tex->UpdateTextureRegion(IRect(x - 1, y - 1, x - 1, y + h), _borderBuf.data());
 
-        // Right
-        for (uint i = 0; i < h; i++) {
-            data_border[i + 1] = *(data + i * w * 4 + (w - 1) * 4);
-        }
-        data_border[0] = data_border[1];
-        data_border[h + 1] = data_border[h];
-        tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w, y + h), data_border);
+    // Right
+    for (uint i = 0; i < h; i++) {
+        _borderBuf[i + 1] = *(data + i * w + (w - 1));
+    }
+    _borderBuf[0] = _borderBuf[1];
+    _borderBuf[h + 1] = _borderBuf[h];
+    tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w, y + h), _borderBuf.data());
 
-        // Invalidate last pixel color picking
-        if (!atlas->RT->LastPixelPicks.empty()) {
-            atlas->RT->LastPixelPicks.clear();
-        }
+    // Invalidate last pixel color picking
+    if (!atlas->RT->LastPixelPicks.empty()) {
+        atlas->RT->LastPixelPicks.clear();
     }
 
     // Set parameters
@@ -778,12 +770,9 @@ void SpriteManager::FillAtlas(SpriteInfo* si)
     si->SprRect.Top = static_cast<float>(y) / static_cast<float>(atlas->Height);
     si->SprRect.Right = static_cast<float>(x + w) / static_cast<float>(atlas->Width);
     si->SprRect.Bottom = static_cast<float>(y + h) / static_cast<float>(atlas->Height);
-
-    // Delete data
-    delete[] data;
 }
 
-auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy, bool /*frm_anim_pix*/) -> AnyFrames*
+auto SpriteManager::LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*
 {
     auto* dummy = use_dummy ? DummyAnimation : nullptr;
 
@@ -819,10 +808,11 @@ auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
         return nullptr;
     }
 
-    RUNTIME_ASSERT(file.GetUChar() == 42);
-    const auto frames_count = file.GetBEUShort();
-    const auto ticks = file.GetBEUInt();
-    const auto dirs = file.GetBEUShort();
+    const auto check_number = file.GetUChar();
+    RUNTIME_ASSERT(check_number == 42);
+    const auto frames_count = file.GetLEUShort();
+    const auto ticks = file.GetLEUShort();
+    const auto dirs = file.GetUChar();
 
     auto* anim = CreateAnyFrames(frames_count, ticks);
     if (dirs > 1) {
@@ -831,29 +821,30 @@ auto SpriteManager::Load2dAnimation(string_view fname) -> AnyFrames*
 
     for (ushort dir = 0; dir < dirs; dir++) {
         auto* dir_anim = anim->GetDir(dir);
-        const auto ox = file.GetBEShort();
-        const auto oy = file.GetBEShort();
+        const auto ox = file.GetLEShort();
+        const auto oy = file.GetLEShort();
         for (ushort i = 0; i < frames_count; i++) {
             if (file.GetUChar() == 0u) {
                 auto* si = new SpriteInfo();
                 si->OffsX = ox;
                 si->OffsY = oy;
-                const auto w = file.GetBEUShort();
-                const auto h = file.GetBEUShort();
-                dir_anim->NextX[i] = file.GetBEShort();
-                dir_anim->NextY[i] = file.GetBEShort();
+                const auto w = file.GetLEUShort();
+                const auto h = file.GetLEUShort();
+                dir_anim->NextX[i] = file.GetLEShort();
+                dir_anim->NextY[i] = file.GetLEShort();
                 const auto* data = file.GetCurBuf();
-                dir_anim->Ind[i] = RequestFillAtlas(si, w, h, const_cast<uchar*>(data));
+                dir_anim->Ind[i] = RequestFillAtlas(si, w, h, reinterpret_cast<const uint*>(data));
                 file.GoForward(w * h * 4);
             }
             else {
-                const auto index = file.GetBEUShort();
+                const auto index = file.GetLEUShort();
                 dir_anim->Ind[i] = dir_anim->Ind[index];
             }
         }
     }
 
-    RUNTIME_ASSERT(file.GetUChar() == 42);
+    const auto check_number2 = file.GetUChar();
+    RUNTIME_ASSERT(check_number2 == 42);
     return anim;
 }
 
@@ -875,7 +866,7 @@ auto SpriteManager::ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFr
     }
 
     // Load fresh
-    return LoadAnimation(fname, true, false);
+    return LoadAnimation(fname, true);
 }
 
 #if FO_ENABLE_3D
@@ -885,7 +876,7 @@ void SpriteManager::Init3dSubsystem(GameTimer& game_time, NameResolver& name_res
 
     _modelMngr = std::make_unique<ModelManager>(_settings, _fileSys, _effectMngr, game_time, name_resolver, anim_name_resolver, [this](MeshTexture* mesh_tex) {
         PushAtlasType(AtlasType::MeshTextures);
-        auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false, false);
+        auto* anim = LoadAnimation(_str("{}/{}", _str(mesh_tex->ModelPath).extractDir(), mesh_tex->Name), false);
         PopAtlasType();
 
         if (anim != nullptr) {
@@ -1450,7 +1441,7 @@ void SpriteManager::InitializeEgg(string_view egg_name)
 {
     _eggValid = false;
     _eggHx = _eggHy = _eggX = _eggY = 0;
-    if (auto* egg_frames = LoadAnimation(egg_name, true, false); egg_frames != nullptr) {
+    if (auto* egg_frames = LoadAnimation(egg_name, true); egg_frames != nullptr) {
         _sprEgg = GetSpriteInfo(egg_frames->Ind[0]);
 
         DestroyAnyFrames(egg_frames);
@@ -2350,7 +2341,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
 
     // Load image
     image_name.insert(0, "Fonts/");
-    auto* image_normal = LoadAnimation(image_name, false, false);
+    auto* image_normal = LoadAnimation(image_name, false);
     if (image_normal == nullptr) {
         WriteLog("Image file '{}' not found", image_name);
         return false;
@@ -2359,7 +2350,7 @@ auto SpriteManager::LoadFontFO(int index, string_view font_name, bool not_border
 
     // Create bordered instance
     if (!not_bordered) {
-        auto* image_bordered = LoadAnimation(image_name, false, false);
+        auto* image_bordered = LoadAnimation(image_name, false);
         if (image_bordered == nullptr) {
             WriteLog("Can't load twice file '{}'", image_name);
             return false;
@@ -2467,7 +2458,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     font.MakeGray = true;
 
     // Load image
-    auto* image_normal = LoadAnimation(image_name, false, false);
+    auto* image_normal = LoadAnimation(image_name, false);
     if (image_normal == nullptr) {
         WriteLog("Image file '{}' not found", image_name);
         return false;
@@ -2475,7 +2466,7 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     font.ImageNormal = image_normal;
 
     // Create bordered instance
-    auto* image_bordered = LoadAnimation(image_name, false, false);
+    auto* image_bordered = LoadAnimation(image_name, false);
     if (image_bordered == nullptr) {
         WriteLog("Can't load twice file '{}'", image_name);
         return false;
@@ -2489,6 +2480,32 @@ auto SpriteManager::LoadFontBmf(int index, string_view font_name) -> bool
     _allFonts[index] = std::make_unique<FontData>(font);
 
     return true;
+}
+
+static void StrCopy(char* to, size_t size, string_view from)
+{
+    RUNTIME_ASSERT(to);
+    RUNTIME_ASSERT(size > 0);
+
+    if (from.length() == 0u) {
+        to[0] = 0;
+        return;
+    }
+
+    if (from.length() >= size) {
+        std::memcpy(to, from.data(), size - 1);
+        to[size - 1] = 0;
+    }
+    else {
+        std::memcpy(to, from.data(), from.length());
+        to[from.length()] = 0;
+    }
+}
+
+template<int Size>
+static void StrCopy(char (&to)[Size], string_view from)
+{
+    return StrCopy(to, Size, from);
 }
 
 static void StrGoTo(char*& str, char ch, bool skip_char)
@@ -2524,7 +2541,7 @@ static void StrInsert(char* to, const char* from, uint from_len)
     }
 
     if (from_len == 0u) {
-        from_len = static_cast<uint>(strlen(from));
+        from_len = static_cast<uint>(string_view(from).length());
     }
     if (from_len == 0u) {
         return;
@@ -2549,6 +2566,8 @@ static void StrInsert(char* to, const char* from, uint from_len)
 void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 {
     NON_CONST_METHOD_HINT();
+
+    fi.PStr = fi.Str;
 
     auto* str = fi.PStr;
     auto flags = fi.Flags;
@@ -2628,7 +2647,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
         str_++;
     }
 
-    Str::Copy(fi.PStr, FONT_BUF_LEN, buf);
+    StrCopy(fi.PStr, FONT_BUF_LEN, buf);
 
     // Skip lines
     auto skip_line = IsBitSet(flags, FT_SKIPLINES(0)) ? flags >> 16 : 0;
@@ -2796,7 +2815,7 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
     }
 
     if (skip_line_end != 0u) {
-        auto len = static_cast<int>(strlen(str));
+        auto len = static_cast<int>(string_view(str).length());
         for (auto i = len - 2; i >= 0; i--) {
             if (str[i] == '\n') {
                 str[i] = 0;
@@ -2979,8 +2998,8 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
         color = _defFontColor;
     }
 
-    FontFormatInfo fi {font, flags, r};
-    Str::Copy(fi.Str, str);
+    auto& fi = _fontFormatInfoBuf = {font, flags, r};
+    StrCopy(fi.Str, str);
     fi.DefColor = color;
     FormatText(fi, FORMAT_TYPE_DRAW);
     if (fi.IsError) {
@@ -3136,8 +3155,8 @@ auto SpriteManager::GetLinesCount(int width, int height, string_view str, int nu
     }
 
     const auto r = IRect(0, 0, width != 0 ? width : _settings.ScreenWidth, height != 0 ? height : _settings.ScreenHeight);
-    FontFormatInfo fi {font, 0, r};
-    Str::Copy(fi.Str, str);
+    auto& fi = _fontFormatInfoBuf = {font, 0, r};
+    StrCopy(fi.Str, str);
     FormatText(fi, FORMAT_TYPE_LCOUNT);
     if (fi.IsError) {
         return 0;
@@ -3191,8 +3210,8 @@ auto SpriteManager::GetTextInfo(int width, int height, string_view str, int num_
         return true;
     }
 
-    FontFormatInfo fi {font, flags, IRect(0, 0, width, height)};
-    Str::Copy(fi.Str, str);
+    auto& fi = _fontFormatInfoBuf = {font, flags, IRect(0, 0, width, height)};
+    StrCopy(fi.Str, str);
     FormatText(fi, FORMAT_TYPE_LCOUNT);
     if (fi.IsError) {
         return false;
@@ -3217,8 +3236,8 @@ auto SpriteManager::SplitLines(const IRect& r, string_view cstr, int num_font) -
         return {};
     }
 
-    FontFormatInfo fi {font, 0, r};
-    Str::Copy(fi.Str, cstr);
+    auto& fi = _fontFormatInfoBuf = {font, 0, r};
+    StrCopy(fi.Str, cstr);
     fi.StrLines = &result;
     FormatText(fi, FORMAT_TYPE_SPLIT);
     if (fi.IsError) {

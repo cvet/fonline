@@ -778,14 +778,14 @@ struct Location : Entity
 
 static auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int
 {
-    unordered_map<string, std::function<bool(string_view)>> script_func_verify = {
-        {"ItemInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
-        {"ItemScenery", [script_sys](string_view func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
-        {"ItemTrigger", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(func_name); }},
-        {"CritterInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
-        {"MapInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
-        {"LocationInit", [script_sys](string_view func_name) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
-        {"LocationEntrance", [script_sys](string_view func_name) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uchar>(func_name); }},
+    unordered_map<string, std::function<bool(hstring)>> script_func_verify = {
+        {"ItemInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Item*, bool>(func_name); }},
+        {"ItemScenery", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Critter*, StaticItem*, Item*, int>(func_name); }},
+        {"ItemTrigger", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, StaticItem*, bool, uchar>(func_name); }},
+        {"CritterInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Critter*, bool>(func_name); }},
+        {"MapInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Map*, bool>(func_name); }},
+        {"LocationInit", [script_sys](hstring func_name) { return !!script_sys->FindFunc<void, Location*, bool>(func_name); }},
+        {"LocationEntrance", [script_sys](hstring func_name) { return !!script_sys->FindFunc<bool, Location*, vector<Critter*>, uchar>(func_name); }},
     };
 
     int errors = 0;

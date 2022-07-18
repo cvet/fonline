@@ -97,7 +97,7 @@ struct Dialog
     uint TextId {};
     vector<DialogAnswer> Answers {};
     bool NoShuffle {};
-    string DlgScriptFunc {}; // Todo: verify DlgScriptFunc
+    hstring DlgScriptFunc {}; // Todo: verify DlgScriptFunc
 };
 
 struct DialogPack

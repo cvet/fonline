@@ -72,10 +72,14 @@ using LocationProperty = ScriptEnum_uint16;
 
 template<typename T>
 using InitFunc = hstring;
+template<typename T>
+using CallbackFunc = hstring;
+template<typename T>
+using PredicateFunc = hstring;
+template<typename...>
+using ScriptFuncName = hstring;
 template<int N>
 using ObjInfo = string_view;
-template<typename...>
-using ScriptFuncName = string_view;
 
 class FOEngineBase;
 
@@ -91,7 +95,7 @@ using AbstractLocation = Entity;
 
 struct GenericScriptFunc
 {
-    string Name {};
+    hstring Name {};
     string Declaration {};
     vector<const type_info*> ArgsType {};
     bool CallSupported {};
@@ -147,9 +151,9 @@ public:
     void InitModules();
 
     template<typename TRet, typename... Args>
-    [[nodiscard]] auto FindFunc(string_view func_name) -> ScriptFunc<TRet, Args...>
+    [[nodiscard]] auto FindFunc(hstring func_name) -> ScriptFunc<TRet, Args...>
     {
-        const auto range = _funcMap.equal_range(string(func_name));
+        const auto range = _funcMap.equal_range(func_name);
         for (auto it = range.first; it != range.second; ++it) {
             if (ValidateArgs(it->second, {&typeid(Args)...}, &typeid(TRet))) {
                 return ScriptFunc<TRet, Args...>(&it->second);
@@ -159,7 +163,7 @@ public:
     }
 
     template<typename TRet, typename... Args, std::enable_if_t<!std::is_void_v<TRet>, int> = 0>
-    [[nodiscard]] auto CallFunc(string_view func_name, Args... args, TRet& ret) -> bool
+    [[nodiscard]] auto CallFunc(hstring func_name, Args... args, TRet& ret) -> bool
     {
         auto func = FindFunc<TRet, Args...>(func_name);
         if (func && func(args...)) {
@@ -170,7 +174,7 @@ public:
     }
 
     template<typename TRet = void, typename... Args, std::enable_if_t<std::is_void_v<TRet>, int> = 0>
-    [[nodiscard]] auto CallFunc(string_view func_name, Args... args) -> bool
+    [[nodiscard]] auto CallFunc(hstring func_name, Args... args) -> bool
     {
         auto func = FindFunc<void, Args...>(func_name);
         return func && func(args...);
@@ -186,7 +190,7 @@ public:
 protected:
     [[nodiscard]] auto ValidateArgs(const GenericScriptFunc& gen_func, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool;
 
-    std::unordered_multimap<string, GenericScriptFunc> _funcMap {};
+    std::unordered_multimap<hstring, GenericScriptFunc> _funcMap {};
     vector<GenericScriptFunc*> _initFunc {};
     bool _nonConstHelper {};
 };

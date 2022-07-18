@@ -432,7 +432,7 @@
 ///# param normalizedTime ...
 ///# param animCallback ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, uint anim1, uint anim2, float normalizedTime, const std::function<void(CritterView*)>& animCallback)
+[[maybe_unused]] void Client_Critter_AddAnimCallback(CritterView* self, uint anim1, uint anim2, float normalizedTime, CallbackFunc<CritterView*> animCallback)
 {
     auto* hex_cr = dynamic_cast<CritterHexView*>(self);
     if (hex_cr == nullptr) {
@@ -449,7 +449,9 @@
 
     hex_cr->GetModel()->AnimationCallbacks.push_back({anim1, anim2, normalizedTime, [hex_cr, animCallback] {
                                                           if (!hex_cr->IsDestroyed()) {
-                                                              animCallback(hex_cr);
+                                                              // Todo: call animCallback
+                                                              UNUSED_VARIABLE(animCallback);
+                                                              // animCallback(hex_cr);
                                                           }
                                                       }});
 

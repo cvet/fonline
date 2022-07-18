@@ -86,7 +86,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
     // Language Packs
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
     _curLang.LoadTexts(FileSys, Settings.Language);
 
     SprMngr.SetSpritesColor(COLOR_IFACE);
@@ -105,18 +104,15 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
 #endif
 
     EffectMngr.LoadDefaultEffects();
-
-    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
     ProtoMngr.LoadFromResources();
 
     // Recreate static atlas
     SprMngr.AccumulateAtlasData();
     SprMngr.PushAtlasType(AtlasType::Static);
 
-#if !FO_SINGLEPLAYER
     // Modules initialization
+    ScriptSys->InitModules();
     OnStart.Fire();
-#endif
 
     // Flush atlas data
     SprMngr.PopAtlasType();
@@ -243,8 +239,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::OffsetY_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOffsetCoords(entity, prop, data.GetPtrAs<void>()); });
         set_callback(GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME), ItemView::Opened_RegIndex, [this](Entity* entity, const Property* prop, PropertyRawData& data) { OnSetItemOpened(entity, prop, data.GetPtrAs<void>()); });
     }
-
-    ScriptSys->InitModules();
 
     ScreenFadeOut();
 
@@ -3454,7 +3448,7 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
             // Script
             else if (tag.length() > 7 && tag[0] == 's' && tag[1] == 'c' && tag[2] == 'r' && tag[3] == 'i' && tag[4] == 'p' && tag[5] == 't' && tag[6] == ' ') {
                 string func_name = _str(tag.substr(7)).substringUntil('$');
-                if (!ScriptSys->CallFunc<string, string>(func_name, string(lexems), tag)) {
+                if (!ScriptSys->CallFunc<string, string>(ToHashedString(func_name), string(lexems), tag)) {
                     tag = "<script function not found>";
                 }
             }

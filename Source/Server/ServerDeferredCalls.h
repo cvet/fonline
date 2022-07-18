@@ -53,7 +53,7 @@ public:
     ~ServerDeferredCallManager() override = default;
 
     void LoadDeferredCalls();
-    auto AddSavedDeferredCall(uint delay, string_view func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint;
+    auto AddSavedDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint;
 
 private:
     auto GetNextId() -> uint override;

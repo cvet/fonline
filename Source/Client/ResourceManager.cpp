@@ -101,8 +101,8 @@ void ResourceManager::ReinitializeDynamicAtlas()
     _sprMngr.InitializeEgg("TransparentEgg.png");
     _sprMngr.DestroyAnyFrames(CritterDefaultAnim);
     _sprMngr.DestroyAnyFrames(ItemHexDefaultAnim);
-    CritterDefaultAnim = _sprMngr.LoadAnimation("CritterStub.png", true, false);
-    ItemHexDefaultAnim = _sprMngr.LoadAnimation("ItemStub.png", true, false);
+    CritterDefaultAnim = _sprMngr.LoadAnimation("CritterStub.png", true);
+    ItemHexDefaultAnim = _sprMngr.LoadAnimation("ItemStub.png", true);
     _sprMngr.PopAtlasType();
 }
 
@@ -115,7 +115,7 @@ auto ResourceManager::GetAnim(hstring name, AtlasType atlas_type) -> AnyFrames*
     }
 
     _sprMngr.PushAtlasType(atlas_type);
-    auto* anim = _sprMngr.LoadAnimation(name, false, true);
+    auto* anim = _sprMngr.LoadAnimation(name, false);
     _sprMngr.PopAtlasType();
 
     if (anim == nullptr) {
@@ -166,7 +166,7 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
                 if (_animNameResolver.ResolveCritterAnimation(model_name, anim1, anim2, pass, flags, ox, oy, str)) {
                     if (!str.empty()) {
                         _sprMngr.PushAtlasType(AtlasType::Dynamic);
-                        anim = _sprMngr.LoadAnimation(str, false, true);
+                        anim = _sprMngr.LoadAnimation(str, false);
                         _sprMngr.PopAtlasType();
 
                         // Fix by dirs
@@ -449,12 +449,12 @@ auto ResourceManager::LoadFalloutAnimSpr(hstring model_name, uint anim1, uint an
 
     // Try load fofrm
     string spr_name = _str("{}{}{}.fofrm", model_name, frm_ind[anim1], frm_ind[anim2]);
-    auto* frames = _sprMngr.LoadAnimation(spr_name, false, false);
+    auto* frames = _sprMngr.LoadAnimation(spr_name, false);
 
     // Try load fallout frames
     if (frames == nullptr) {
         spr_name = _str("{}{}{}.frm", model_name, frm_ind[anim1], frm_ind[anim2]);
-        frames = _sprMngr.LoadAnimation(spr_name, false, true);
+        frames = _sprMngr.LoadAnimation(spr_name, false);
     }
     _sprMngr.PopAtlasType();
 

@@ -453,15 +453,15 @@ void MapView::ReloadSprites()
 {
     _curDataPrefix = _engine->Settings.MapDataPrefix;
 
-    _picHex[0] = _engine->SprMngr.LoadAnimation(_curDataPrefix + "hex1.png", true, false);
-    _picHex[1] = _engine->SprMngr.LoadAnimation(_curDataPrefix + "hex2.png", true, false);
-    _picHex[2] = _engine->SprMngr.LoadAnimation(_curDataPrefix + "hex3.png", true, false);
-    _cursorPrePic = _engine->SprMngr.LoadAnimation(_curDataPrefix + "move_pre.png", false, false);
-    _cursorPostPic = _engine->SprMngr.LoadAnimation(_curDataPrefix + "move_post.png", false, false);
-    _cursorXPic = _engine->SprMngr.LoadAnimation(_curDataPrefix + "move_x.png", false, false);
-    _picTrack1 = _engine->SprMngr.LoadAnimation(_curDataPrefix + "track1.png", true, false);
-    _picTrack2 = _engine->SprMngr.LoadAnimation(_curDataPrefix + "track2.png", true, false);
-    _picHexMask = _engine->SprMngr.LoadAnimation(_curDataPrefix + "hex_mask.png", false, false);
+    _picHex[0] = _engine->SprMngr.LoadAnimation(_curDataPrefix + "hex1.png", true);
+    _picHex[1] = _engine->SprMngr.LoadAnimation(_curDataPrefix + "hex2.png", true);
+    _picHex[2] = _engine->SprMngr.LoadAnimation(_curDataPrefix + "hex3.png", true);
+    _cursorPrePic = _engine->SprMngr.LoadAnimation(_curDataPrefix + "move_pre.png", false);
+    _cursorPostPic = _engine->SprMngr.LoadAnimation(_curDataPrefix + "move_post.png", false);
+    _cursorXPic = _engine->SprMngr.LoadAnimation(_curDataPrefix + "move_x.png", false);
+    _picTrack1 = _engine->SprMngr.LoadAnimation(_curDataPrefix + "track1.png", true);
+    _picTrack2 = _engine->SprMngr.LoadAnimation(_curDataPrefix + "track2.png", true);
+    _picHexMask = _engine->SprMngr.LoadAnimation(_curDataPrefix + "hex_mask.png", false);
 }
 
 void MapView::AddItemToField(ItemHexView* item)

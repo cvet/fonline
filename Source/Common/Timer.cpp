@@ -71,7 +71,7 @@ GLOBAL_DATA(TimerData, Data);
 
 GameTimer::GameTimer(TimerSettings& settings) : _settings {settings}
 {
-    Reset(static_cast<ushort>(_settings.StartYear), 1, 1, 0, 0, 0, 0);
+    Reset(static_cast<ushort>(_settings.StartYear), 1, 1, 0, 0, 0, 1);
 }
 
 void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort minute, ushort second, int multiplier)

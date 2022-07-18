@@ -493,18 +493,7 @@ static T* ScriptableObject_Factory()
     return as_array;
 }
 
-template<typename T>
-[[maybe_unused]] static void VerifyEntityArray(asIScriptEngine* as_engine, CScriptArray* as_array)
-{
-    UNUSED_VARIABLE(as_engine);
-
-    for (const auto i : xrange(as_array->GetSize())) {
-        UNUSED_VARIABLE(i); // ENTITY_VERIFY may expand to none
-        ENTITY_VERIFY(*reinterpret_cast<T*>(as_array->At(i)));
-    }
-}
-
-template<typename T>
+template<typename T, typename T2 = T>
 [[maybe_unused]] static auto MarshalArray(asIScriptEngine* as_engine, CScriptArray* as_array) -> vector<T>
 {
     UNUSED_VARIABLE(as_engine);
@@ -516,7 +505,8 @@ template<typename T>
     vector<T> vec;
     vec.resize(as_array->GetSize());
     for (const auto i : xrange(as_array->GetSize())) {
-        vec[i] = *reinterpret_cast<T*>(as_array->At(i));
+        vec[i] = *reinterpret_cast<T2*>(as_array->At(i));
+
         if constexpr (std::is_pointer_v<T>) {
             ENTITY_VERIFY(vec[i]);
         }
@@ -525,15 +515,16 @@ template<typename T>
     return vec;
 }
 
-template<typename T>
-[[maybe_unused]] static auto MarshalBackArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
+template<typename T, typename T2 = T>
+[[maybe_unused]] static void AssignArray(asIScriptEngine* as_engine, const vector<T>& vec, CScriptArray* as_array)
 {
-    auto* as_array = CreateASArray(as_engine, type);
+    as_array->Resize(0);
 
     if (!vec.empty()) {
         as_array->Resize(static_cast<asUINT>(vec.size()));
+
         for (const auto i : xrange(vec)) {
-            *reinterpret_cast<T*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
+            *reinterpret_cast<T2*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
 
             if constexpr (std::is_pointer_v<T>) {
                 ENTITY_VERIFY(vec[i]);
@@ -542,6 +533,16 @@ template<typename T>
                 }
             }
         }
+    }
+}
+
+template<typename T, typename T2 = T>
+[[maybe_unused]] static auto MarshalBackArray(asIScriptEngine* as_engine, const char* type, const vector<T>& vec) -> CScriptArray*
+{
+    auto* as_array = CreateASArray(as_engine, type);
+
+    if (!vec.empty()) {
+        AssignArray<T, T2>(as_engine, vec, as_array);
     }
 
     return as_array;
@@ -583,36 +584,36 @@ template<typename T, typename U>
     return result;
 }
 
-template<typename T, typename U>
+template<typename T, typename U, typename T2 = T, typename U2 = U>
+[[maybe_unused]] static void AssignDict(asIScriptEngine* as_engine, const map<T, U>& map, CScriptDict* as_dict)
+{
+    static_assert(is_script_enum<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
+    static_assert(is_script_enum<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+
+    as_dict->Clear();
+
+    if (!map.empty()) {
+        for (auto&& [key, value] : map) {
+            T2 k = copy(key);
+            U2 v = copy(value);
+            as_dict->Set(&k, &v);
+        }
+    }
+}
+
+template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
     static_assert(is_script_enum<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
     static_assert(is_script_enum<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
 
-    auto* result = CreateASDict(as_engine, type);
+    auto* as_dict = CreateASDict(as_engine, type);
 
     if (!map.empty()) {
-        for (auto&& [key, value] : map) {
-            if constexpr (is_script_enum<T> && is_script_enum<U>) {
-                int k = copy(key);
-                int v = copy(value);
-                result->Set(&k, &v);
-            }
-            else if constexpr (is_script_enum<T>) {
-                int k = copy(key);
-                result->Set(&k, (void*)&value);
-            }
-            else if constexpr (is_script_enum<U>) {
-                int v = copy(value);
-                result->Set((void*)&key, &v);
-            }
-            else {
-                result->Set((void*)&key, (void*)&value);
-            }
-        }
+        AssignDict(as_engine, map, as_dict);
     }
 
-    return result;
+    return as_dict;
 }
 
 [[maybe_unused]] static auto GetASObjectInfo(void* ptr, int type_id) -> string
@@ -656,17 +657,22 @@ template<typename T, typename U>
 }
 #endif
 
-[[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func) -> string
+[[maybe_unused]] static auto GetASFuncName(const asIScriptFunction* func, NameResolver& name_resolver) -> hstring
 {
     if (func == nullptr) {
-        return "";
+        return hstring();
     }
+
+    string func_name;
 
     if (func->GetNamespace() == nullptr) {
-        return _str("{}", func->GetName());
+        func_name = _str("{}", func->GetName()).str();
+    }
+    else {
+        func_name = _str("{}::{}", func->GetNamespace(), func->GetName()).str();
     }
 
-    return _str("{}::{}", func->GetNamespace(), func->GetName());
+    return name_resolver.ToHashedString(func_name);
 }
 
 #if !COMPILER_MODE
@@ -2824,7 +2830,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             auto* func = mod->GetFunctionByIndex(i);
 
             // Bind
-            const auto func_name = GetASFuncName(func);
+            const auto func_name = GetASFuncName(func, *game_engine);
             const auto it = _funcMap.emplace(func_name, GenericScriptFunc());
             auto& gen_func = it->second;
 

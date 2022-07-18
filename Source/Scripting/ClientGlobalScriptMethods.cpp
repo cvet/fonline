@@ -120,14 +120,14 @@
 ///@ ExportMethod ExcludeInSingleplayer
 [[maybe_unused]] uint Client_Game_GetDistance(FOClient* client, CritterView* cr1, CritterView* cr2)
 {
-    if (client->CurMap == nullptr) {
-        throw ScriptException("Map is not loaded");
-    }
     if (cr1 == nullptr) {
         throw ScriptException("Critter1 arg is null");
     }
     if (cr2 == nullptr) {
         throw ScriptException("Critter2 arg is null");
+    }
+    if (cr1->GetMapId() != cr2->GetMapId()) {
+        throw ScriptException("Critters different maps");
     }
 
     return client->Geometry.DistGame(cr1->GetHexX(), cr1->GetHexY(), cr2->GetHexX(), cr2->GetHexY());
@@ -1106,7 +1106,7 @@
     client->SprMngr.PushAtlasType(AtlasType::Static);
 
     bool result;
-    if (fontFname.length() > 0 && fontFname[0] == '*') {
+    if (!fontFname.empty() && fontFname[0] == '*') {
         result = client->SprMngr.LoadFontFO(fontIndex, fontFname.substr(1), false, false);
     }
     else {
@@ -2169,7 +2169,9 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_GetHexScreenPos(FOClient* client, ushort hx, ushort hy, int& x, int& y)
 {
-    x = y = 0;
+    x = 0;
+    y = 0;
+
     if (client->CurMap != nullptr && hx < client->CurMap->GetWidth() && hy < client->CurMap->GetHeight()) {
         client->CurMap->GetHexCurrentPosition(hx, hy, x, y);
         x += client->Settings.ScrOx + (client->Settings.MapHexWidth / 2);
@@ -2178,6 +2180,7 @@
         y = static_cast<int>(static_cast<float>(y) / client->Settings.SpritesZoom);
         return true;
     }
+
     return false;
 }
 
@@ -2190,6 +2193,10 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_GetHexAtScreenPos(FOClient* client, int x, int y, ushort& hx, ushort& hy)
 {
+    if (client->CurMap == nullptr) {
+        return false;
+    }
+
     const auto old_x = client->Settings.MouseX;
     const auto old_y = client->Settings.MouseY;
     client->Settings.MouseX = x;
@@ -2218,6 +2225,10 @@
 ///@ ExportMethod
 [[maybe_unused]] bool Client_Game_GetHexAtScreenPos(FOClient* client, int x, int y, ushort& hx, ushort& hy, int& ox, int& oy)
 {
+    if (client->CurMap == nullptr) {
+        return false;
+    }
+
     const auto old_x = client->Settings.MouseX;
     const auto old_y = client->Settings.MouseY;
     client->Settings.MouseX = x;
@@ -2242,6 +2253,10 @@
 ///@ ExportMethod
 [[maybe_unused]] ItemView* Client_Game_GetItemAtScreenPos(FOClient* client, int x, int y)
 {
+    if (client->CurMap == nullptr) {
+        return nullptr;
+    }
+
     bool item_egg;
     return client->CurMap->GetItemAtScreenPos(x, y, item_egg);
 }
@@ -2253,6 +2268,10 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Game_GetCritterAtScreenPos(FOClient* client, int x, int y)
 {
+    if (client->CurMap == nullptr) {
+        return nullptr;
+    }
+
     return client->CurMap->GetCritterAtScreenPos(x, y, false, false);
 }
 
@@ -2264,6 +2283,10 @@
 ///@ ExportMethod
 [[maybe_unused]] CritterView* Client_Game_GetCritterAtScreenPos(FOClient* client, int x, int y, bool wideRange)
 {
+    if (client->CurMap == nullptr) {
+        return nullptr;
+    }
+
     auto* cr = client->CurMap->GetCritterAtScreenPos(x, y, false, false);
     if (cr == nullptr && wideRange) {
         cr = client->CurMap->GetCritterAtScreenPos(x, y, false, true);
@@ -2278,6 +2301,10 @@
 ///@ ExportMethod
 [[maybe_unused]] ClientEntity* Client_Game_GetEntityAtScreenPos(FOClient* client, int x, int y)
 {
+    if (client->CurMap == nullptr) {
+        return nullptr;
+    }
+
     return client->CurMap->GetEntityAtScreenPos(x, y);
 }
 
@@ -2354,12 +2381,12 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_SaveText(FOClient* client, string_view filePath, string_view text)
 {
-    auto f = DiskFileSystem::OpenFile(_str(filePath).formatPath(), true);
-    if (!f) {
+    auto file = DiskFileSystem::OpenFile(_str(filePath).formatPath(), true);
+    if (!file) {
         throw ScriptException("Can't open file for writing", filePath);
     }
 
-    if (!f.Write(text)) {
+    if (!file.Write(text)) {
         throw ScriptException("Can't write file", filePath, text.length());
     }
 }

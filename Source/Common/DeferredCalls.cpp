@@ -38,7 +38,7 @@ DeferredCallManager::DeferredCallManager(FOEngineBase* engine) : _engine {engine
     RUNTIME_ASSERT(_engine);
 }
 
-auto DeferredCallManager::AddDeferredCall(uint delay, string_view func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint
+auto DeferredCallManager::AddDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint
 {
     DeferredCall call = {};
 

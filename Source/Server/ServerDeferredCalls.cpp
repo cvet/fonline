@@ -39,7 +39,7 @@ ServerDeferredCallManager::ServerDeferredCallManager(FOServer* engine) : Deferre
 {
 }
 
-auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, string_view func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint
+auto ServerDeferredCallManager::AddSavedDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint
 {
     const auto id = AddDeferredCall(delay, func_name, value, values, value2, values2);
 

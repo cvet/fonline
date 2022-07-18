@@ -66,7 +66,7 @@ public:
 
     [[nodiscard]] auto IsDeferredCallPending(uint id) const -> bool;
 
-    auto AddDeferredCall(uint delay, string_view func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint;
+    auto AddDeferredCall(uint delay, hstring func_name, const int* value, const vector<int>* values, const uint* value2, const vector<uint>* values2) -> uint;
     auto CancelDeferredCall(uint id) -> bool;
     void Process();
 

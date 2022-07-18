@@ -259,28 +259,28 @@ void FOMapper::InitIface()
     ConsoleTextX = ini.GetInt("", "ConsoleTextX", 0);
     ConsoleTextY = ini.GetInt("", "ConsoleTextY", 0);
 
-    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation(ini.GetStr("", "ItemStub", "art/items/reserved.frm"), true, false);
-    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation(ini.GetStr("", "CritterStub", "art/critters/reservaa.frm"), true, false);
+    ResMngr.ItemHexDefaultAnim = SprMngr.LoadAnimation(ini.GetStr("", "ItemStub", "art/items/reserved.frm"), true);
+    ResMngr.CritterDefaultAnim = SprMngr.LoadAnimation(ini.GetStr("", "CritterStub", "art/critters/reservaa.frm"), true);
 
     // Cursor
-    CurPDef = SprMngr.LoadAnimation(ini.GetStr("", "CurDefault", "actarrow.frm"), true, false);
-    CurPHand = SprMngr.LoadAnimation(ini.GetStr("", "CurHand", "hand.frm"), true, false);
+    CurPDef = SprMngr.LoadAnimation(ini.GetStr("", "CurDefault", "actarrow.frm"), true);
+    CurPHand = SprMngr.LoadAnimation(ini.GetStr("", "CurHand", "hand.frm"), true);
 
     // Iface
-    IntMainPic = SprMngr.LoadAnimation(ini.GetStr("", "IntMainPic", "error"), true, false);
-    IntPTab = SprMngr.LoadAnimation(ini.GetStr("", "IntTabPic", "error"), true, false);
-    IntPSelect = SprMngr.LoadAnimation(ini.GetStr("", "IntSelectPic", "error"), true, false);
-    IntPShow = SprMngr.LoadAnimation(ini.GetStr("", "IntShowPic", "error"), true, false);
+    IntMainPic = SprMngr.LoadAnimation(ini.GetStr("", "IntMainPic", "error"), true);
+    IntPTab = SprMngr.LoadAnimation(ini.GetStr("", "IntTabPic", "error"), true);
+    IntPSelect = SprMngr.LoadAnimation(ini.GetStr("", "IntSelectPic", "error"), true);
+    IntPShow = SprMngr.LoadAnimation(ini.GetStr("", "IntShowPic", "error"), true);
 
     // Object
-    ObjWMainPic = SprMngr.LoadAnimation(ini.GetStr("", "ObjMainPic", "error"), true, false);
-    ObjPbToAllDn = SprMngr.LoadAnimation(ini.GetStr("", "ObjToAllPicDn", "error"), true, false);
+    ObjWMainPic = SprMngr.LoadAnimation(ini.GetStr("", "ObjMainPic", "error"), true);
+    ObjPbToAllDn = SprMngr.LoadAnimation(ini.GetStr("", "ObjToAllPicDn", "error"), true);
 
     // Sub tabs
-    SubTabsPic = SprMngr.LoadAnimation(ini.GetStr("", "SubTabsPic", "error"), true, false);
+    SubTabsPic = SprMngr.LoadAnimation(ini.GetStr("", "SubTabsPic", "error"), true);
 
     // Console
-    ConsolePic = SprMngr.LoadAnimation(ini.GetStr("", "ConsolePic", "error"), true, false);
+    ConsolePic = SprMngr.LoadAnimation(ini.GetStr("", "ConsolePic", "error"), true);
 
     WriteLog("Init interface complete");
 }
@@ -3522,7 +3522,7 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        auto func = ScriptSys->FindFunc<string, string>(func_name);
+        auto func = ScriptSys->FindFunc<string, string>(ToHashedString(func_name));
         if (!func) {
             AddMess("Function not found");
             return;

@@ -309,12 +309,16 @@ def parseTags():
     def unifiedTypeToMetaType(t):
         if t.startswith('init-'):
             return 'init.' + unifiedTypeToMetaType(t[5:])
+        if t.startswith('predicate-'):
+            return 'predicate.' + unifiedTypeToMetaType(t[10:])
+        if t.startswith('callback-'):
+            return 'callback.' + unifiedTypeToMetaType(t[9:])
         if t.startswith('ObjInfo-'):
             return t.replace('-', '.')
         if t.startswith('ScriptFuncName-'):
-            fd = [unifiedTypeToMetaType(a) for a in t[len('ScriptFuncName-'):].split('|')]
+            fd = [unifiedTypeToMetaType(a) for a in t[len('ScriptFuncName-'):].split('|') if a]
             genericFuncdefs.add('|'.join(fd))
-            return 'ScriptFuncName.' + '|'.join(fd)
+            return 'ScriptFuncName.' + '|'.join(fd) + '|'
         if t.endswith('&'):
             return unifiedTypeToMetaType(t[:-1]) + '.ref'
         if '=>' in t:
@@ -322,10 +326,6 @@ def parseTags():
             return 'dict.' + unifiedTypeToMetaType(tt[0]) + '.' + unifiedTypeToMetaType(tt[1])
         if t.endswith('[]'):
             return 'arr.' + unifiedTypeToMetaType(t[:-2])
-        if t.startswith('predicate-'):
-            return 'predicate.' + unifiedTypeToMetaType(t[10:])
-        if t.startswith('callback-'):
-            return 'callback.' + unifiedTypeToMetaType(t[9:])
         assert t in validTypes, 'Invalid type ' + t
         return t
 
@@ -333,11 +333,17 @@ def parseTags():
         if t.startswith('InitFunc<'):
             r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
             return 'init-' + r
+        elif t.startswith('CallbackFunc<'):
+            r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
+            return 'callback-' + r
+        elif t.startswith('PredicateFunc<'):
+            r = engineTypeToUnifiedType(t[t.find('<') + 1:t.rfind('>')])
+            return 'predicate-' + r
         elif t.startswith('ObjInfo<'):
             return 'ObjInfo-' + t[t.find('<') + 1:t.rfind('>')]
         elif t.startswith('ScriptFuncName<'):
             fargs = splitEngineArgs(t[t.find('<') + 1:t.rfind('>')])
-            return 'ScriptFuncName-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs])
+            return 'ScriptFuncName-' + '|'.join([engineTypeToUnifiedType(a.strip()) for a in fargs]) + '|'
         elif t.find('map<') != -1:
             tt = t[t.find('<') + 1:t.rfind('>')].split(',', 1)
             r = engineTypeToUnifiedType(tt[0].strip()) + '=>' + engineTypeToUnifiedType(tt[1].strip())
@@ -349,13 +355,6 @@ def parseTags():
             if not t.startswith('const') and t.endswith('&'):
                 r += '&'
             return r
-        elif t.find('std::function<') != -1:
-            tt = t[t.find('<') + 1:t.rfind('>')].split('(', 1)
-            assert tt[0] in ['void', 'bool']
-            if tt[0] == 'void':
-                return 'callback-' + engineTypeToUnifiedType(tt[1].rstrip(')'))
-            else:
-                return 'predicate-' + engineTypeToUnifiedType(tt[1].rstrip(')'))
         elif t in validTypes:
             return t
         elif t[-1] == '*':
@@ -1156,19 +1155,19 @@ def metaTypeToEngineType(t, target, passIn):
         r = 'map<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>'
     elif tt[0] == 'arr':
         r = 'vector<' + metaTypeToEngineType(tt[1], target, False) + '>'
-    elif tt[0] == 'callback':
-        assert passIn
-        r = 'std::function<void(' + metaTypeToEngineType(tt[1], target, False) + ')>'
-    elif tt[0] == 'predicate':
-        assert passIn
-        r = 'std::function<bool(' + metaTypeToEngineType(tt[1], target, False) + ')>'
     elif tt[0] == 'init':
         assert passIn
         r = 'InitFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
+    elif tt[0] == 'callback':
+        assert passIn
+        r = 'CallbackFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
+    elif tt[0] == 'predicate':
+        assert passIn
+        r = 'PredicateFunc<' + metaTypeToEngineType(tt[1], target, False) + '>'
     elif tt[0] == 'ObjInfo':
         return 'ObjInfo<' + tt[1] + '>'
     elif tt[0] == 'ScriptFuncName':
-        return 'ScriptFuncName<' + ', '.join([metaTypeToEngineType(a, target, False) for a in '.'.join(tt[1:]).split('|')]) + '>'
+        return 'ScriptFuncName<' + ', '.join([metaTypeToEngineType(a, target, False) for a in '.'.join(tt[1:]).split('|') if a]) + '>'
     elif tt[0] == 'Entity':
         return getEntityFromTarget(target)
     elif tt[0] in gameEntities:
@@ -1195,7 +1194,7 @@ def metaTypeToEngineType(t, target, passIn):
     elif passIn:
         if r == 'string':
             r = 'string_view'
-        elif tt[0] in ['arr', 'dict', 'predicate', 'callback']:
+        elif tt[0] in ['arr', 'dict']:
             r = 'const ' + r + '&'
     return r
 
@@ -1484,7 +1483,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'CScriptArray*'
             elif tt[0] == 'dict':
                 return 'CScriptDict*'
-            elif tt[0] in ['callback', 'predicate', 'init']:
+            elif tt[0] in ['init', 'callback', 'predicate']:
                 return 'asIScriptFunction*'
             elif tt[0] == 'Entity':
                 return getEntityFromTarget(target)
@@ -1495,11 +1494,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     return gameEntitiesInfo[tt[0]]['Server'] + '*'
             elif tt[0] in userObjects or tt[0] in entityRelatives:
                 return tt[0] + '*'
-            elif tt[0] in scriptEnums:
-                for e in codeGenTags['Enum']:
-                    if e[0] == tt[0]:
-                        return 'ScriptEnum_' + e[1]
-                assert False, 'Enum not found ' + tt[0]
+            elif tt[0] in scriptEnums or tt[0] in engineEnums:
+                r = 'int'
             elif tt[0] == 'ObjInfo':
                 return '[[maybe_unused]] void* obj' + tt[1] + 'Ptr, int'
             elif tt[0] == 'ScriptFuncName':
@@ -1510,9 +1506,11 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     return typeMap[t] if t in typeMap else t
                 r = mapType(tt[0])
             if tt[-1] == 'ref':
+                if r[-1] == '*':
+                    r = r[:-1]
                 r += '&'
             return r
-            
+        
         def metaTypeToASType(t, noHandle = False, isRet = False):
             def getHandle():
                 if noHandle:
@@ -1521,33 +1519,36 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     return '@+'
                 return '@' if t.split('.')[0] in ['arr', 'dict'] else '@+'
             tt = t.split('.')
+            noHandle = noHandle or tt[-1] == 'ref'
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                return 'dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>' + getHandle()
+                r = 'dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>' + getHandle()
             elif tt[0] == 'arr':
-                return metaTypeToASType(tt[1], True) + '[]' + getHandle()
-            elif tt[0] == 'callback':
-                return metaTypeToASType(tt[1], True) + 'Callback' + getHandle()
-            elif tt[0] == 'predicate':
-                return metaTypeToASType(tt[1], True) + 'Predicate' + getHandle()
+                r = metaTypeToASType(tt[1], True) + '[]' + getHandle()
             elif tt[0] == 'init':
-                return metaTypeToASType(tt[1], True) + 'InitFunc' + getHandle()
+                r = metaTypeToASType(tt[1], True) + 'InitFunc' + getHandle()
+            elif tt[0] == 'callback':
+                r = metaTypeToASType(tt[1], True) + 'Callback' + getHandle()
+            elif tt[0] == 'predicate':
+                r = metaTypeToASType(tt[1], True) + 'Predicate' + getHandle()
             elif tt[0] == 'Entity':
-                return 'Entity' + getHandle()
+                r = 'Entity' + getHandle()
             elif tt[0] in gameEntities:
-                return tt[0] + getHandle()
+                r = tt[0] + getHandle()
             elif tt[0] in engineEnums or tt[0] in scriptEnums:
-                return tt[0]
+                r = tt[0]
             elif tt[0] in userObjects or tt[0] in entityRelatives:
-                return tt[0] + getHandle()
+                r = tt[0] + getHandle()
             elif tt[0] == 'ObjInfo':
                 return '?&in'
             elif tt[0] == 'ScriptFuncName':
+                assert not isRet
                 assert len(tt) > 1, 'Invalid generic function'
-                return 'Generic_' + '.'.join(tt[1:]).replace('|', '_').replace('.', '_') + '_Func' + getHandle()
+                return 'Generic_' + '.'.join(tt[1:]).replace('|', '_').replace('.', '_') + 'Func@+'
             else:
-                return tt[0] if tt[-1] != 'ref' else tt[0] + '&'
-    
+                r = tt[0]
+            return r + '&' if tt[-1] == 'ref' else r
+        
         def marshalIn(t, v):
             tt = t.split('.')
             if tt[0] == 'dict':
@@ -1555,14 +1556,18 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return 'MarshalDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] == 'arr':
                 return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
-            elif tt[0] == 'callback' or tt[0] == 'predicate':
-                return 'nullptr' # metaTypeToEngineType(tt[1], target, False)
-            elif tt[0] == 'init' or tt[0] == 'predicate':
-                return 'hstring()' # metaTypeToEngineType(tt[1], target, False)
+            elif tt[0] in ['init', 'predicate', 'callback', 'ScriptFuncName']:
+                return 'GetASFuncName(' + v + ', *self->GetEngine())'
             elif tt[0] == 'ObjInfo':
                 return 'GetASObjectInfo(' + v + 'Ptr, ' + v + ')'
-            elif tt[0] == 'ScriptFuncName':
-                return 'GetASFuncName(' + v + ')'
+            elif tt[0] in engineEnums:
+                return 'static_cast<' + tt[0] + '>(' + v + ')'
+            elif tt[0] in scriptEnums:
+                for e in codeGenTags['Enum']:
+                    if e[0] == tt[0]:
+                        return 'static_cast<ScriptEnum_' + e[1] + '>(' + v + ')'
+                else:
+                    assert False, 'Enum not found ' + tt[0]
             return v
             
         def marshalBack(t, v):
@@ -1570,16 +1575,32 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
                 return 'MarshalBackDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + \
+                        ', ' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + \
                         '>(GET_AS_ENGINE_FROM_SELF(), "dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>", ' + v + ')'
             elif tt[0] == 'arr':
-                return 'MarshalBackArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
-            elif tt[0] == 'callback' or tt[0] == 'predicate':
-                return 'nullptr; // Todo: !!!' # metaTypeToEngineType(tt[1], target, False)
+                return 'MarshalBackArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + \
+                        '>(GET_AS_ENGINE_FROM_SELF(), "' + metaTypeToASType(tt[1], True) + '[]", ' + v + ')'
+            elif tt[0] in engineEnums or tt[0] in scriptEnums:
+                return 'static_cast<int>(' + v + ')'
             return v
+        
+        def marshalBackRef(t, v, v2):
+            tt = t.split('.')
+            if tt[-1] != 'ref':
+                return None
+            if tt[0] == 'dict':
+                d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
+                return 'AssignDict<' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(tt[1]) + ', ' + \
+                        metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ', ' + v2 + ')'
+            elif tt[0] == 'arr':
+                return 'AssignArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v2 + ', ' + v + ')'
+            elif tt[0] in engineEnums or tt[0] in scriptEnums:
+                return v + ' = static_cast<int>(' + v2 + ')'
+            return None
         
         def nameMangling(params):
             if len(params):
-                return ''.join([''.join([p2[0] + p2[-1] for p2 in p[0].split('.')]) for p in params])
+                return ''.join([''.join([p2[0] + p2[-1] for p2 in p[0].split('.')]) for p in params]).replace('|', '')
             return '0'
         
         allowedTargets = ['Common', target] + (['Client' if target == 'Mapper' else ''])
@@ -1669,7 +1690,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 globalLines.append('    ' + ('auto out_result = ' if ret != 'void' else '') + targ + '_' + entity + '_' + name +
                         '(self' + (', ' if params else '') + ', '.join(['in_' + p[1] for p in params]) + ');')
                 for p in params:
-                    pass # Marshall back
+                    mbr = marshalBackRef(p[0], p[1], 'in_' + p[1])
+                    if mbr:
+                        globalLines.append('    ' + mbr + ';')
                 if ret != 'void':
                     globalLines.append('    return ' + marshalBack(ret, 'out_result') + ';')
             else:
@@ -1704,13 +1727,20 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     if not isASCompiler:
                         globalLines.append('static bool ' + funcEntry + '_Callback(' + entityArg + ', asIScriptFunction* func, const initializer_list<void*>& args)')
                         globalLines.append('{')
+                        globalLines.append('    ENTITY_VERIFY_NULL(self);')
+                        globalLines.append('    ENTITY_VERIFY(self);')
                         argIndex = 0
                         for p in evArgs:
                             argType = metaTypeToEngineType(p[0], target, False)
                             if argType[-1] == '&':
                                 argType = argType[:-1]
-                            globalLines.append('    auto&& arg_' + p[1] + ' = ' +
-                                    marshalBack(p[0], '*reinterpret_cast<' + argType + '*>(const_cast<void*>(*(args.begin() + ' + str(argIndex) + ')))') + ';') 
+                            globalLines.append('    auto&& arg_' + p[1] + ' = *reinterpret_cast<' + argType + '*>(const_cast<void*>(*(args.begin() + ' + str(argIndex) + ')));')
+                            argIndex += 1
+                        for p in evArgs:
+                            argType = metaTypeToEngineType(p[0], target, False)
+                            if argType[-1] == '&':
+                                argType = argType[:-1]
+                            globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
                             argIndex += 1
                         globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
                         globalLines.append('    auto* ctx = script_sys->PrepareContext(func);')
@@ -1720,23 +1750,25 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         for p in evArgs:
                             tt = p[0].split('.')
                             if tt[-1] == 'ref':
-                                globalLines.append('    ctx->SetArgAddress(' + str(setIndex) + ', &arg_' + p[1] + ');')
+                                globalLines.append('    ctx->SetArgAddress(' + str(setIndex) + ', &as_' + p[1] + ');')
                             elif tt[0] == 'dict' or tt[0] == 'arr' or p[0] == 'Entity' or p[0] in gameEntities or p[0] in userObjects:
-                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', arg_' + p[1] + ');')
+                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', as_' + p[1] + ');')
                             elif p[0] in entityRelatives:
-                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', (void*)arg_' + p[1] + ');')
+                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', (void*)as_' + p[1] + ');')
                             elif p[0] in ['string']:
-                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &arg_' + p[1] + ');')
+                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
                             elif p[0] in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64', 'bool', 'float', 'double', 'hstring'] or p[0] in engineEnums or p[0] in scriptEnums:
-                                globalLines.append('    std::memcpy(ctx->GetAddressOfArg(' + str(setIndex) + '), &arg_' + p[1] + ', sizeof(arg_' + p[1] + '));')
+                                globalLines.append('    std::memcpy(ctx->GetAddressOfArg(' + str(setIndex) + '), &as_' + p[1] + ', sizeof(as_' + p[1] + '));')
                             else:
                                 globalLines.append('    static_assert(false, "Invalid configuration");')
                             setIndex += 1
                         globalLines.append('    auto event_result = true;')
                         globalLines.append('    if (script_sys->RunContext(ctx, func->GetReturnTypeId() == asTYPEID_VOID)) {')
                         globalLines.append('        event_result = (func->GetReturnTypeId() == asTYPEID_VOID || (func->GetReturnTypeId() == asTYPEID_BOOL && ctx->GetReturnByte() != 0));')
-                        globalLines.append('        // Todo: marshal back before context returned')
-                        globalLines.append('        UNUSED_VARIABLE(self);')
+                        for p in evArgs:
+                            mbr = marshalBackRef(p[0], 'as_' + p[1], 'arg_' + p[1])
+                            if mbr:
+                                globalLines.append('        ' + mbr + ';')
                         globalLines.append('        script_sys->ReturnContext(ctx);')
                         globalLines.append('    }')
                         globalLines.append('    return event_result;')
@@ -2405,10 +2437,6 @@ def genApi(target):
             tt = t.split('.')
             if tt[0] == 'dict':
                 r = 'std::map<' + mapType(tt[1]) + ', ' + mapType(tt[2]) + '>'
-            elif tt[0] == 'callback':
-                r = 'std::function<void(' + mapType(tt[1]) + ')>'
-            elif tt[0] == 'predicate':
-                r = 'std::function<bool(' + mapType(tt[1]) + ')>'
             elif tt[0] in userObjects:
                 return tt[0] + '*'
             else:

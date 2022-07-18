@@ -1424,7 +1424,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        if (ScriptSys->CallFunc<void, Critter*, int, int, int>(func_name, static_cast<Critter*>(cl_), param0, param1, param2)) {
+        if (ScriptSys->CallFunc<void, Critter*, int, int, int>(ToHashedString(func_name), static_cast<Critter*>(cl_), param0, param1, param2)) {
             logcb("Run script success.");
         }
         else {
@@ -3793,7 +3793,7 @@ void FOServer::BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushor
 
     // Get lexems
     cl->Talk.Lexems.clear();
-    if (!cl->Talk.CurDialog.DlgScriptFunc.empty()) {
+    if (cl->Talk.CurDialog.DlgScriptFunc) {
         cl->Talk.Locked = true;
         if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cl->Talk.CurDialog.DlgScriptFunc, cl, npc, cl->Talk.Lexems)) {
             // Nop
@@ -3923,7 +3923,7 @@ void FOServer::Process_Dialog(Player* player)
             [[fallthrough]];
         case DIALOG_BARTER:
         label_Barter:
-            if (!cur_dialog->DlgScriptFunc.empty()) {
+            if (cur_dialog->DlgScriptFunc) {
                 cr->Send_TextMsg(npc, STR_BARTER_NO_BARTER_NOW, SAY_DIALOG, TEXTMSG_GAME);
                 return;
             }
@@ -3983,7 +3983,7 @@ void FOServer::Process_Dialog(Player* player)
 
     // Get lexems
     cr->Talk.Lexems.clear();
-    if (!cr->Talk.CurDialog.DlgScriptFunc.empty()) {
+    if (cr->Talk.CurDialog.DlgScriptFunc) {
         cr->Talk.Locked = true;
         if (!ScriptSys->CallFunc<string, Critter*, Critter*>(cr->Talk.CurDialog.DlgScriptFunc, cr, npc, cr->Talk.Lexems)) {
             // Nop

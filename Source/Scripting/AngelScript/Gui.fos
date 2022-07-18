@@ -3528,6 +3528,7 @@ void CreateHardcodedScreen(int screenIndex)
 
 Screen CreateScreen(int screenIndex)
 {
+    Assert(ScreenCreators.exists(screenIndex), screenIndex);
     CreateScreenFunc screenFunc = ScreenCreators[screenIndex];
     Screen screen = screenFunc();
     Assert(screen != null, screenIndex);

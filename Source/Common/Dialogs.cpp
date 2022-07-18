@@ -282,7 +282,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         Dialog current_dialog;
         current_dialog.Id = dlg_id;
         current_dialog.TextId = DLG_STR_ID(pack->PackId.as_uint(), text_id / 10);
-        current_dialog.DlgScriptFunc = script;
+        current_dialog.DlgScriptFunc = _engine->ToHashedString(script);
         current_dialog.NoShuffle = ((flags & 1) == 1);
 
         // Read answers

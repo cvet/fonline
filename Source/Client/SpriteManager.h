@@ -190,7 +190,7 @@ struct SpriteInfo
     short OffsX {};
     short OffsY {};
     RenderEffect* DrawEffect {};
-    uchar* Data {};
+    uint* AccData {};
     AtlasType DataAtlasType {};
     bool DataAtlasOneImage {};
 #if FO_ENABLE_3D
@@ -264,7 +264,7 @@ public:
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
     [[nodiscard]] auto CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> bool;
     [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
-    [[nodiscard]] auto LoadAnimation(string_view fname, bool use_dummy, bool frm_anim_pix) -> AnyFrames*;
+    [[nodiscard]] auto LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*;
     [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*;
     [[nodiscard]] auto CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*;
 #if FO_ENABLE_3D
@@ -325,14 +325,14 @@ public:
 private:
     [[nodiscard]] auto CreateAtlas(uint w, uint h) -> TextureAtlas*;
     [[nodiscard]] auto FindAtlasPlace(SpriteInfo* si, int& x, int& y) -> TextureAtlas*;
-    [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, uint w, uint h, uchar* data) -> uint;
+    [[nodiscard]] auto RequestFillAtlas(SpriteInfo* si, uint w, uint h, const uint* data) -> uint;
     [[nodiscard]] auto Load2dAnimation(string_view fname) -> AnyFrames*;
 #if FO_ENABLE_3D
     [[nodiscard]] auto Load3dAnimation(string_view fname) -> AnyFrames*;
 #endif
 
     void AllocateRenderTargetTexture(RenderTarget* rt, bool linear_filtered, bool with_depth);
-    void FillAtlas(SpriteInfo* si);
+    void FillAtlas(SpriteInfo* si, const uint* data);
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();
@@ -384,6 +384,7 @@ private:
     int _eggSprHeight {};
     float _eggAtlasWidth {};
     float _eggAtlasHeight {};
+    vector<uint> _borderBuf {};
     bool _nonConstHelper {};
 #if FO_ENABLE_3D
     unique_ptr<ModelManager> _modelMngr {};
@@ -472,4 +473,5 @@ private:
     vector<unique_ptr<FontData>> _allFonts {};
     int _defFontIndex {-1};
     uint _defFontColor {};
+    FontFormatInfo _fontFormatInfoBuf {};
 };
