@@ -1227,14 +1227,14 @@ def genDataRegistration(target, isASCompiler):
     restoreLines = []
     propertyMapLines = []
     
-    def entityAllowed(entity):
-        if target == 'Server':
+    def entityAllowed(entity, entityTarget):
+        if entityTarget == 'Server':
             return gameEntitiesInfo[entity]['Server'] is not None
-        if target in ['Client', 'Mapper']:
+        if entityTarget in ['Client', 'Mapper']:
             return gameEntitiesInfo[entity]['Client'] is not None
-        if target in ['Baker', 'Single']:
+        if entityTarget in ['Baker', 'Single']:
             return True
-        assert False, target
+        assert False, entityTarget
     
     # Enums
     registerLines.append('// Enums')
@@ -1262,7 +1262,7 @@ def genDataRegistration(target, isASCompiler):
     registerLines.append('PropertyRegistrator* registrator;')
     registerLines.append('')
     for entity in gameEntities:
-        if not entityAllowed(entity):
+        if not entityAllowed(entity, target):
             continue
         registerLines.append('registrators["' + entity + '"] = engine->GetOrCreatePropertyRegistrator("' + entity + '");')
     registerLines.append('')
@@ -1278,7 +1278,7 @@ def genDataRegistration(target, isASCompiler):
             return [ename, '=', tt[0]]
         return []
     for entity in gameEntities:
-        if not entityAllowed(entity):
+        if not entityAllowed(entity, target):
             continue
         registerLines.append('registrator = registrators["' + entity + '"];')
         if target != 'Client' or isASCompiler:
@@ -1320,8 +1320,10 @@ def genDataRegistration(target, isASCompiler):
         restoreLines.append('restore_info["PropertyComponents"] =')
         restoreLines.append('{')
         for propCompTag in codeGenTags['PropertyComponent']:
-            ent, name, flags, _ = propCompTag
-            restoreLines.append('    "' + ent + ' ' + name + '",')
+            entity, name, flags, _ = propCompTag
+            if not entityAllowed(entity, 'Client'):
+                continue
+            restoreLines.append('    "' + entity + ' ' + name + '",')
         restoreLines.append('};')
         restoreLines.append('')
         
@@ -1339,6 +1341,8 @@ def genDataRegistration(target, isASCompiler):
         restoreLines.append('{')
         for e in codeGenTags['Property']:
             entity, access, type, name, flags, _ = e
+            if not entityAllowed(entity, 'Client'):
+                continue
             if access not in ['PrivateServer', 'VirtualPrivateServer']:
                 allFlags = flags + getEnumFlags(type)
                 restoreLines.append('    "' + entity + ' ' + access + ' ' + replaceFakedEnum(type) + ' ' + name + (' ' if allFlags else '') + ' '.join(allFlags) + '",')

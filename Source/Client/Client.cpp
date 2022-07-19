@@ -702,21 +702,18 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
         OnMouseMove.Fire(delta_x, delta_y);
     }
     else if (event.Type == InputEvent::EventType::MouseDownEvent) {
-        const auto mouse_button = event.MouseDown.Button;
-
-        OnMouseDown.Fire(mouse_button);
+        OnMouseDown.Fire(event.MouseUp.Button);
     }
     else if (event.Type == InputEvent::EventType::MouseUpEvent) {
-        const auto mouse_button = event.MouseUp.Button;
-
-        OnMouseUp.Fire(mouse_button);
+        OnMouseUp.Fire(event.MouseUp.Button);
     }
     else if (event.Type == InputEvent::EventType::MouseWheelEvent) {
-        const auto wheel_delta = event.MouseWheel.Delta;
-
-        // Todo: handle mouse wheel
-        UNUSED_VARIABLE(wheel_delta);
-        throw NotImplementedException(LINE_STR);
+        if (event.MouseWheel.Delta < 0) {
+            OnMouseUp.Fire(MouseButton::WheelUp);
+        }
+        else {
+            OnMouseDown.Fire(MouseButton::WheelDown);
+        }
     }
 }
 

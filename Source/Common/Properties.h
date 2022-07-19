@@ -453,8 +453,7 @@ public:
         else {
             RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
             if (new_value != *reinterpret_cast<T*>(&_podData[prop->_podDataOffset])) {
-                if (!prop->_setters.empty()) {
-                    RUNTIME_ASSERT(_entity);
+                if (!prop->_setters.empty() && _entity != nullptr) {
                     PropertyRawData prop_data;
                     prop_data.SetAs<T>(new_value);
                     for (const auto& setter : prop->_setters) {
@@ -497,8 +496,7 @@ public:
             RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
             const auto new_value_hash = new_value.as_hash();
             if (new_value_hash != *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset])) {
-                if (!prop->_setters.empty()) {
-                    RUNTIME_ASSERT(_entity);
+                if (!prop->_setters.empty() && _entity != nullptr) {
                     PropertyRawData prop_data;
                     prop_data.SetAs<hstring::hash_t>(new_value_hash);
                     for (const auto& setter : prop->_setters) {
@@ -536,8 +534,7 @@ public:
             }
         }
         else {
-            if (!prop->_setters.empty()) {
-                RUNTIME_ASSERT(_entity);
+            if (!prop->_setters.empty() && _entity != nullptr) {
                 RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
                 PropertyRawData prop_data;
                 prop_data.Pass(new_value.c_str(), new_value.length());

@@ -280,6 +280,7 @@ struct ScriptSystem::AngelScriptImpl
     {
         string Info {};
         asIScriptContext* Parent {};
+        uint SuspendTime {};
     };
 
     struct EnumInfo
@@ -336,6 +337,7 @@ struct ScriptSystem::AngelScriptImpl
         auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
         ctx_data->Parent = nullptr;
         ctx_data->Info.clear();
+        ctx_data->SuspendTime = 0u;
     }
 
     auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
@@ -622,27 +624,27 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     case asTYPEID_VOID:
         return "void";
     case asTYPEID_BOOL:
-        return _str("{}", *static_cast<bool*>(ptr));
+        return _str("bool: {}", *static_cast<bool*>(ptr));
     case asTYPEID_INT8:
-        return _str("{}", *static_cast<char*>(ptr));
+        return _str("int8: {}", *static_cast<char*>(ptr));
     case asTYPEID_INT16:
-        return _str("{}", *static_cast<short*>(ptr));
+        return _str("int16: {}", *static_cast<short*>(ptr));
     case asTYPEID_INT32:
-        return _str("{}", *static_cast<int*>(ptr));
+        return _str("int: {}", *static_cast<int*>(ptr));
     case asTYPEID_INT64:
-        return _str("{}", *static_cast<int64*>(ptr));
+        return _str("int64: {}", *static_cast<int64*>(ptr));
     case asTYPEID_UINT8:
-        return _str("{}", *static_cast<uchar*>(ptr));
+        return _str("uint8: {}", *static_cast<uchar*>(ptr));
     case asTYPEID_UINT16:
-        return _str("{}", *static_cast<ushort*>(ptr));
+        return _str("uint16: {}", *static_cast<ushort*>(ptr));
     case asTYPEID_UINT32:
-        return _str("{}", *static_cast<uint*>(ptr));
+        return _str("uint: {}", *static_cast<uint*>(ptr));
     case asTYPEID_UINT64:
-        return _str("{}", *static_cast<uint64*>(ptr));
+        return _str("uint64: {}", *static_cast<uint64*>(ptr));
     case asTYPEID_FLOAT:
-        return _str("{}", *static_cast<float*>(ptr));
+        return _str("float: {}", *static_cast<float*>(ptr));
     case asTYPEID_DOUBLE:
-        return _str("{}", *static_cast<double*>(ptr));
+        return _str("double: {}", *static_cast<double*>(ptr));
     default:
         break;
     }
@@ -653,7 +655,15 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     auto* engine = ctx->GetEngine();
     auto* type_info = engine->GetTypeInfoById(type_id);
     RUNTIME_ASSERT(type_info);
-    return _str("{}", type_info->GetName());
+    const string type_name = type_info->GetName();
+
+    if (type_name == "string") {
+        return _str("string: {}", *static_cast<string*>(ptr));
+    }
+    if (type_name == "hstring") {
+        return _str("hstring: {}", *static_cast<hstring*>(ptr));
+    }
+    return _str("{}", type_name);
 }
 #endif
 
@@ -1595,10 +1605,11 @@ static void Global_ThrowException_10(string message, void* obj1Ptr, int obj1, vo
 static void Global_Yield(uint time)
 {
 #if !COMPILER_MODE
-    // Todo: Global_Yield
-    throw NotImplementedException(LINE_STR);
-    UNUSED_VARIABLE(time);
-// Script::SuspendCurrentContext(time);
+    auto* ctx = asGetActiveContext();
+    RUNTIME_ASSERT(ctx);
+    auto* ctx_data = static_cast<ScriptSystem::AngelScriptImpl::ContextData*>(ctx->GetUserData());
+    ctx_data->SuspendTime = time;
+    ctx->Suspend();
 #else
     throw ScriptCompilerException("Stub");
 #endif
