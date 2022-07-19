@@ -2802,6 +2802,7 @@ class ItemView : Grid
     bool _UseSorting;
     Item[] _Items;
     uint _ItemsGridSize;
+    bool _Dirty;
 
     void _Construct() override
     {
@@ -2815,6 +2816,16 @@ class ItemView : Grid
         _Items = array<Item>(_Items);
 
         Grid::_FixClone();
+    }
+
+    void _ActiveChanged() override
+    {
+        if (_Dirty && Active) {
+            _Dirty = false;
+            Resort();
+        }
+
+        Grid::_ActiveChanged();
     }
 
     // Callbacks
@@ -2841,23 +2852,29 @@ class ItemView : Grid
 
     void Resort()
     {
-        ResizeGrid(0);
+        if (Active)
+            ResizeGrid(0);
+        else
+            _Dirty = true;
     }
 
     void ResizeGrid(uint size) override
     {
-        _Items.clear();
+        Item[] newItems = {};
 
         Item[] items = OnGetItems();
         if (items == null)
             items = array<Item>();
 
+        for (uint i = 0; i < items.length(); i++)
+            Assert(!items[i].IsDestroyed);
+
         if (!_UseSorting) {
-            _Items.resize(_ItemsGridSize);
+            newItems.resize(_ItemsGridSize);
             for (uint i = 0; i < items.length(); i++) {
                 int itemIndex = OnCheckItem(items[i]);
-                if (itemIndex >= 0 && itemIndex < int(_Items.length()))
-                    _Items[itemIndex] = items[i];
+                if (itemIndex >= 0 && itemIndex < int(newItems.length()))
+                    newItems[itemIndex] = items[i];
             }
         }
         else {
@@ -2866,23 +2883,30 @@ class ItemView : Grid
                 int sortValue = OnCheckItem(items[i]);
                 if (sortValue >= 0) {
                     bool added = false;
-                    for (uint j = 0; j < _Items.length(); j++) {
+                    for (uint j = 0; j < newItems.length(); j++) {
                         if (sortValues[j] > sortValue) {
-                            _Items.insertAt(j, items[i]);
+                            newItems.insertAt(j, items[i]);
                             sortValues.insertAt(j, sortValue);
                             added = true;
                             break;
                         }
                     }
                     if (!added) {
-                        _Items.insertLast(items[i]);
+                        newItems.insertLast(items[i]);
                         sortValues.insertLast(sortValue);
                     }
                 }
             }
         }
 
-        Grid::ResizeGrid(_Items.length());
+        bool isChanged = newItems.length() != _Items.length();
+        for (uint i = 0; i < newItems.length() && !isChanged; i++)
+            isChanged = newItems[i] !is _Items[i];
+
+        if (isChanged) {
+            _Items = newItems;
+            Grid::ResizeGrid(_Items.length());
+        }
     }
 
     void SetUserData(int data)
