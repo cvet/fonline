@@ -3709,8 +3709,8 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     RUNTIME_ASSERT(it != LoadedMaps.end());
 
     // Todo: map saving
-    throw NotImplementedException(LINE_STR);
     UNUSED_VARIABLE(custom_name);
+    throw NotImplementedException(LINE_STR);
 
     OnEditMapSave.Fire(CurMap);
 }

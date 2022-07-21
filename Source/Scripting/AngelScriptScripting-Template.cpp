@@ -382,9 +382,14 @@ struct ScriptSystem::AngelScriptImpl
                 const auto ex_line = ctx->GetExceptionLineNumber();
                 ctx->Abort();
 
-                auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ex_func->GetModule()->GetUserData());
-                const auto ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
-                const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
+                string ex_orig_file;
+                string ex_orig_line;
+
+                if (ex_func != nullptr) {
+                    auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ex_func->GetModule()->GetUserData());
+                    const auto ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
+                    const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
+                }
 
                 auto stack_trace = GetContextTraceback(ctx);
 

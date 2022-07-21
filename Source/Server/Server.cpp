@@ -2794,7 +2794,6 @@ void FOServer::ProcessMove(Critter* cr)
             uint cut;
             uint trace_dist;
             Critter* trace_cr;
-            [[maybe_unused]] bool check_cr = false;
 
             if (cr->TargetMoving.TargId != 0u) {
                 Critter* targ = cr->GetCrSelf(cr->TargetMoving.TargId);
@@ -2809,7 +2808,6 @@ void FOServer::ProcessMove(Critter* cr)
                 cut = cr->TargetMoving.Cut;
                 trace_dist = cr->TargetMoving.TraceDist;
                 trace_cr = targ;
-                check_cr = true;
 
                 cr->TargetMoving.HexX = hx;
                 cr->TargetMoving.HexY = hy;

@@ -70,7 +70,7 @@ auto DeferredCallManager::AddDeferredCall(uint delay, hstring func_name, const i
         call.Id = GetNextId();
 
         const auto time_mul = _engine->GetTimeMultiplier();
-        call.FireFullSecond = delay != 0u ? _engine->GameTime.GetFullSecond() + delay * time_mul / 1000 : 0;
+        call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
 
         _deferredCalls.push_back(call);
     }
@@ -96,8 +96,8 @@ auto DeferredCallManager::CancelDeferredCall(uint id) -> bool
 {
     for (auto it = _deferredCalls.begin(); it != _deferredCalls.end(); ++it) {
         if (it->Id == id) {
-            _deferredCalls.erase(it);
             OnDeferredCallRemoved(*it);
+            _deferredCalls.erase(it);
             return true;
         }
     }
