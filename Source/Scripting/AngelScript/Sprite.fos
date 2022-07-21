@@ -44,7 +44,7 @@ class Sprite
     void Unload()
     {
         if (Id != 0)
-            FreeSprite(Id);
+            Game.FreeSprite(Id);
         Id = 0;
         RefreshData();
     }
