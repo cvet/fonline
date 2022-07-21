@@ -510,7 +510,7 @@
 ///@ ExportMethod
 [[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemComponent component)
 {
-    const auto map_static_items = self->GetStaticMap()->StaticItems;
+    const auto& map_static_items = self->GetStaticMap()->StaticItems;
 
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());
@@ -532,7 +532,7 @@
 [[maybe_unused]] vector<StaticItem*> Server_Map_GetStaticItems(Map* self, ItemProperty property, int propertyValue)
 {
     const auto* prop = ScriptHelpers::GetIntConvertibleEntityProperty<Item>(self->GetEngine(), property);
-    const auto map_static_items = self->GetStaticMap()->StaticItems;
+    const auto& map_static_items = self->GetStaticMap()->StaticItems;
 
     vector<StaticItem*> result;
     result.reserve(map_static_items.size());

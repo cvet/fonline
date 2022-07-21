@@ -89,9 +89,6 @@ class ProtoMap;
 class ProtoLocation;
 
 using AbstractItem = Entity;
-using AbstractCritter = Entity;
-using AbstractMap = Entity;
-using AbstractLocation = Entity;
 
 struct GenericScriptFunc
 {

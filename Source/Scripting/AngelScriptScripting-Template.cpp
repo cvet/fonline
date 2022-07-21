@@ -2553,19 +2553,22 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     entity_get_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_GetValue<real_class>))); \
     entity_set_value_func_ptr.emplace(class_name, SCRIPT_GENERIC((Property_SetValue<real_class>)))
 
-#define REGISTER_ENTITY_ABSTACT(class_name, real_class) \
+#define REGISTER_ENTITY_ABSTRACT(class_name, real_class) \
     REGISTER_BASE_ENTITY("Abstract" class_name, Entity); \
     REGISTER_ENTITY_CAST(class_name, real_class, "Abstract" class_name); \
     REGISTER_GETSET_ENTITY("Abstract" class_name, class_name, Entity); \
     AS_VERIFY(engine->RegisterObjectMethod("Abstract" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<Entity>)), SCRIPT_FUNC_THIS_CONV)); \
     entity_get_component_func_ptr.emplace("Abstract" class_name, SCRIPT_GENERIC((Property_GetComponent<Entity>))); \
-    entity_get_value_func_ptr.emplace("Abstract" class_name, SCRIPT_GENERIC((Property_GetValue<Entity>)))
+    entity_get_value_func_ptr.emplace("Abstract" class_name, SCRIPT_GENERIC((Property_GetValue<Entity>))); \
+    entity_has_abstract.emplace(class_name)
 
 #define REGISTER_ENTITY_PROTO(class_name, real_class, proto_real_class) \
     REGISTER_BASE_ENTITY("Proto" class_name, proto_real_class); \
     REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Entity"); \
-    REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Abstract" class_name); \
     REGISTER_GETSET_ENTITY("Proto" class_name, class_name, proto_real_class); \
+    if (entity_has_abstract.count(class_name) != 0u) { \
+        REGISTER_ENTITY_CAST("Proto" class_name, proto_real_class, "Abstract" class_name); \
+    } \
     AS_VERIFY(engine->RegisterObjectMethod("Proto" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<proto_real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     AS_VERIFY(engine->RegisterObjectMethod(class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
@@ -2576,9 +2579,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #define REGISTER_ENTITY_STATICS(class_name, real_class) \
     REGISTER_BASE_ENTITY("Static" class_name, real_class); \
     REGISTER_ENTITY_CAST("Static" class_name, real_class, "Entity"); \
-    REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
     REGISTER_GETSET_ENTITY("Static" class_name, class_name, real_class); \
-    if (entity_has_protos.count(class_name)) { \
+    if (entity_has_abstract.count(class_name) != 0u) { \
+        REGISTER_ENTITY_CAST("Static" class_name, real_class, "Abstract" class_name); \
+    } \
+    if (entity_has_protos.count(class_name) != 0u) { \
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "hstring get_ProtoId() const", SCRIPT_FUNC_THIS((Entity_ProtoId<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
         AS_VERIFY(engine->RegisterObjectMethod("Static" class_name, "Proto" class_name "@+ get_Proto() const", SCRIPT_FUNC_THIS((Entity_Proto<real_class>)), SCRIPT_FUNC_THIS_CONV)); \
     } \
@@ -2591,6 +2596,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     REGISTER_BASE_ENTITY("Entity", Entity);
 
     unordered_set<string> entity_is_global;
+    unordered_set<string> entity_has_abstract;
     unordered_set<string> entity_has_protos;
     unordered_set<string> entity_has_statics;
     unordered_map<string, asSFuncPtr> entity_get_component_func_ptr;
@@ -2632,6 +2638,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     // Register properties
     for (auto&& [reg_name, registrator] : game_engine->GetAllPropertyRegistrators()) {
         const auto is_global = entity_is_global.count(reg_name) != 0u;
+        const auto is_has_abstract = entity_has_abstract.count(reg_name) != 0u;
         const auto is_has_protos = entity_has_protos.count(reg_name) != 0u;
         const auto is_has_statics = entity_has_statics.count(reg_name) != 0u;
         const auto class_name = is_global ? reg_name + "Singleton" : reg_name;
@@ -2639,12 +2646,12 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
         const auto proto_class_name = "Proto" + class_name;
         const auto static_class_name = "Static" + class_name;
         const auto get_value_func_ptr = entity_get_value_func_ptr.at(class_name);
-        const auto get_abstract_value_func_ptr = !is_global && (is_has_protos || is_has_statics) ? entity_get_value_func_ptr.at(abstract_class_name) : asSFuncPtr();
+        const auto get_abstract_value_func_ptr = is_has_abstract ? entity_get_value_func_ptr.at(abstract_class_name) : asSFuncPtr();
         const auto get_proto_value_func_ptr = is_has_protos ? entity_get_value_func_ptr.at(proto_class_name) : asSFuncPtr();
         const auto get_static_value_func_ptr = is_has_statics ? entity_get_value_func_ptr.at(static_class_name) : asSFuncPtr();
         const auto set_value_func_ptr = entity_set_value_func_ptr.at(class_name);
         const auto get_component_func_ptr = entity_get_component_func_ptr.at(class_name);
-        const auto get_abstract_component_func_ptr = !is_global && (is_has_protos || is_has_statics) ? entity_get_component_func_ptr.at(abstract_class_name) : asSFuncPtr();
+        const auto get_abstract_component_func_ptr = is_has_abstract ? entity_get_component_func_ptr.at(abstract_class_name) : asSFuncPtr();
         const auto get_proto_component_func_ptr = is_has_protos ? entity_get_component_func_ptr.at(proto_class_name) : asSFuncPtr();
         const auto get_static_component_func_ptr = is_has_statics ? entity_get_component_func_ptr.at(static_class_name) : asSFuncPtr();
 
@@ -2654,7 +2661,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
                 AS_VERIFY(engine->RegisterObjectMethod(class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
             }
-            if (!is_global && (is_has_protos || is_has_statics)) {
+            if (is_has_abstract) {
                 const auto component_type = _str("Abstract{}{}Component", reg_name, component).str();
                 AS_VERIFY(engine->RegisterObjectType(component_type.c_str(), 0, asOBJ_REF | asOBJ_NOCOUNT));
                 AS_VERIFY(engine->RegisterObjectMethod(abstract_class_name.c_str(), _str("{}@ get_{}() const", component_type, component).c_str(), get_abstract_component_func_ptr, SCRIPT_GENERIC_CONV, (void*)&component));
@@ -2680,7 +2687,7 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
                 const auto decl_get = _str("const {}{} get_{}() const", prop->GetFullTypeName(), is_handle ? "@" : "", prop->GetNameWithoutComponent()).str();
                 AS_VERIFY(engine->RegisterObjectMethod(component ? _str("{}{}Component", reg_name, component).c_str() : class_name.c_str(), decl_get.c_str(), get_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
 
-                if (!is_global && (is_has_protos || is_has_statics)) {
+                if (is_has_abstract) {
                     AS_VERIFY(engine->RegisterObjectMethod(component ? _str("Abstract{}{}Component", reg_name, component).c_str() : abstract_class_name.c_str(), decl_get.c_str(), get_abstract_value_func_ptr, SCRIPT_GENERIC_CONV, (void*)prop));
                 }
                 if (is_has_protos) {

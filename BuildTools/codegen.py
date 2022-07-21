@@ -544,7 +544,7 @@ def parseTags():
                 gameEntities.append(name)
                 gameEntitiesInfo[name] = {'Server': serverClassName, 'Client': clientClassName, 'IsGlobal': 'Global' in exportFlags,
                         'HasProto': 'HasProto' in exportFlags, 'HasStatics': 'HasStatics' in exportFlags,
-                        'Exported': True}
+                        'HasAbstract': 'HasAbstract' in exportFlags, 'Exported': True}
                 
                 assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
                 validTypes.add(name + 'Component')
@@ -556,7 +556,7 @@ def parseTags():
                 assert name + 'Property' not in scriptEnums, 'Property enum already added'
                 scriptEnums.add(name + 'Property')
                 
-                if not gameEntitiesInfo[name]['IsGlobal']:
+                if gameEntitiesInfo[name]['HasAbstract']:
                     assert 'Abstract' + name not in validTypes
                     validTypes.add('Abstract' + name)
                     assert 'Abstract' + name not in entityRelatives
@@ -595,7 +595,7 @@ def parseTags():
                 gameEntitiesInfo[name] = {'Server': 'ServerEntity' if target in ['Common', 'Server'] else None,
                         'Client': 'ClientEntity' if target in ['Common', 'Client'] else None,
                         'IsGlobal': 'Global' in flags, 'HasProto': 'HasProto' in flags, 'HasStatics': 'HasStatics' in flags,
-                        'Exported': False}
+                        'HasAbstract': 'HasAbstract' in flags, 'Exported': False}
                 
                 assert name + 'Component' not in validTypes, name + 'Property component already in valid types'
                 validTypes.add(name + 'Component')
@@ -608,11 +608,12 @@ def parseTags():
                 scriptEnums.add(name + 'Property')
                 
                 assert target in ['Server', 'Client']
-                assert not gameEntitiesInfo[name]['IsGlobal']
-                assert not gameEntitiesInfo[name]['HasProto']
-                assert not gameEntitiesInfo[name]['HasStatics']
+                assert not gameEntitiesInfo[name]['IsGlobal'], 'Not implemented'
+                assert not gameEntitiesInfo[name]['HasProto'], 'Not implemented'
+                assert not gameEntitiesInfo[name]['HasStatics'], 'Not implemented'
+                assert not gameEntitiesInfo[name]['HasAbstract'], 'Not implemented'
                 
-                if not gameEntitiesInfo[name]['IsGlobal'] and (gameEntitiesInfo[name]['HasProto'] or gameEntitiesInfo[name]['HasStatics']):
+                if gameEntitiesInfo[name]['HasAbstract']:
                     assert 'Abstract' + name not in validTypes
                     validTypes.add('Abstract' + name)
                     assert 'Abstract' + name not in entityRelatives
@@ -1515,7 +1516,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 r += '&'
             return r
         
-        def metaTypeToASType(t, noHandle = False, isRet = False):
+        def metaTypeToASType(t, noHandle = False, isRet = False, forceNoConst = False):
             def getHandle():
                 if noHandle:
                     return ''
@@ -1527,8 +1528,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
                 r = 'dict<' + metaTypeToASType(tt[1], True) + ', ' + metaTypeToASType(d2, True) + '>' + getHandle()
+                r = 'const ' + r if not isRet and not noHandle and not forceNoConst else r
             elif tt[0] == 'arr':
                 r = metaTypeToASType(tt[1], True) + '[]' + getHandle()
+                r = 'const ' + r if not isRet and not noHandle and not forceNoConst else r
             elif tt[0] == 'init':
                 r = metaTypeToASType(tt[1], True) + 'InitFunc' + getHandle()
             elif tt[0] == 'callback':
@@ -1944,8 +1947,9 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 registerLines.append('REGISTER_GLOBAL_ENTITY("' + entity + '", ' + engineEntityType + ');')
             else:
                 registerLines.append('REGISTER_ENTITY("' + entity + '", ' + engineEntityType + ');')
-            if gameEntitiesInfo[entity]['HasProto'] or gameEntitiesInfo[entity]['HasStatics']:
-                registerLines.append('REGISTER_ENTITY_ABSTACT("' + entity + '", ' + engineEntityType + ');')
+            if gameEntitiesInfo[entity]['HasAbstract']:
+                assert not gameEntitiesInfo[entity]['IsGlobal']
+                registerLines.append('REGISTER_ENTITY_ABSTRACT("' + entity + '", ' + engineEntityType + ');')
             if gameEntitiesInfo[entity]['HasProto']:
                 assert not gameEntitiesInfo[entity]['IsGlobal']
                 registerLines.append('REGISTER_ENTITY_PROTO("' + entity + '", ' + engineEntityType + ', Proto' + entity + ');')
@@ -1958,8 +1962,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         registerLines.append('// Generic funcdefs')
         for fd in sorted(genericFuncdefs):
             fdParams = fd.split('|')
-            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0]) + ' Generic_' + '.'.join(fdParams).replace('.', '_') +
-                    '_Func(' + ', '.join([metaTypeToASType(p) for p in fdParams[1:]]) + ')"));')
+            registerLines.append('AS_VERIFY(engine->RegisterFuncdef("' + metaTypeToASType(fdParams[0], forceNoConst=True) + ' Generic_' + '.'.join(fdParams).replace('.', '_') +
+                    '_Func(' + ', '.join([metaTypeToASType(p, forceNoConst=True) for p in fdParams[1:]]) + ')"));')
         registerLines.append('')
         
         # Register entity methods and global functions
@@ -1988,8 +1992,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 if targ in allowedTargets and ent == entity:
                     isExported = evTag in codeGenTags['ExportEvent']
                     funcEntry = 'ASEvent_' + entity + '_' + evName
-                    asArgs = ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in evArgs])
-                    asArgsEnt = metaTypeToASType(entity) + (', ' if evArgs else '') if not gameEntitiesInfo[entity]['IsGlobal'] else ''
+                    asArgs = ', '.join([metaTypeToASType(p[0], forceNoConst=True) + ' ' + p[1] for p in evArgs])
+                    asArgsEnt = metaTypeToASType(entity, forceNoConst=True) + (', ' if evArgs else '') if not gameEntitiesInfo[entity]['IsGlobal'] else ''
                     className = entity + 'Singleton' if gameEntitiesInfo[entity]['IsGlobal'] else entity
                     realClass = gameEntitiesInfo[entity]['Client' if target != 'Server' else 'Server']
                     if isExported:

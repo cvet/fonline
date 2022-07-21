@@ -14,6 +14,14 @@ class Tween
         pps = pixelsPerSecond;
     }
 
+    void UpdatePos(int newX, int newY)
+    {
+        x2 = newX;
+        y2 = newY;
+        x3 = newX;
+        y3 = newY;
+    }
+
     void Move(bool toEnd)
     {
         if (end == toEnd)
