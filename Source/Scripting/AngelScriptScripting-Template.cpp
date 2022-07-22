@@ -378,21 +378,16 @@ struct ScriptSystem::AngelScriptImpl
             if (exec_result == asEXECUTION_EXCEPTION) {
                 const string ex_string = ctx->GetExceptionString();
                 auto* ex_func = ctx->GetExceptionFunction();
-                const string ex_func_name = ex_func != nullptr ? ex_func->GetName() : "(unknown function)";
+                const string ex_func_name = ex_func->GetName();
                 const auto ex_line = ctx->GetExceptionLineNumber();
-                ctx->Abort();
 
-                string ex_orig_file;
-                string ex_orig_line;
-
-                if (ex_func != nullptr) {
-                    auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ex_func->GetModule()->GetUserData());
-                    const auto ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
-                    const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
-                }
+                auto* lnt = static_cast<Preprocessor::LineNumberTranslator*>(ex_func->GetModule()->GetUserData());
+                const auto ex_orig_file = Preprocessor::ResolveOriginalFile(ex_line, lnt);
+                const auto ex_orig_line = Preprocessor::ResolveOriginalLine(ex_line, lnt);
 
                 auto stack_trace = GetContextTraceback(ctx);
 
+                ctx->Abort();
                 ReturnContext(ctx);
 
                 throw ScriptException("Script execution exception", ex_string, ex_orig_file, ex_func_name, ex_orig_line, std::move(stack_trace));
@@ -512,7 +507,7 @@ template<typename T, typename T2 = T>
     vector<T> vec;
     vec.resize(as_array->GetSize());
     for (const auto i : xrange(as_array->GetSize())) {
-        vec[i] = *reinterpret_cast<T2*>(as_array->At(i));
+        vec[i] = static_cast<T>(*static_cast<T2*>(as_array->At(i)));
 
         if constexpr (std::is_pointer_v<T>) {
             ENTITY_VERIFY(vec[i]);
@@ -531,7 +526,7 @@ template<typename T, typename T2 = T>
         as_array->Resize(static_cast<asUINT>(vec.size()));
 
         for (const auto i : xrange(vec)) {
-            *reinterpret_cast<T2*>(as_array->At(static_cast<asUINT>(i))) = vec[i];
+            *static_cast<T2*>(as_array->At(static_cast<asUINT>(i))) = static_cast<T2>(vec[i]);
 
             if constexpr (std::is_pointer_v<T>) {
                 ENTITY_VERIFY(vec[i]);
@@ -567,7 +562,7 @@ template<typename T, typename T2 = T>
     return as_dict;
 }
 
-template<typename T, typename U>
+template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
 {
     static_assert(is_script_enum<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
@@ -580,15 +575,15 @@ template<typename T, typename U>
     std::vector<std::pair<void*, void*>> dict_data;
     as_dict->GetMap(dict_data);
 
-    map<T, U> result;
+    map<T, U> map;
 
     for (auto&& [pkey, pvalue] : dict_data) {
-        const auto& key = *static_cast<T*>(pkey);
-        const auto& value = *static_cast<U*>(pvalue);
-        result.emplace(key, value);
+        const auto& key = *static_cast<T2*>(pkey);
+        const auto& value = *static_cast<U2*>(pvalue);
+        map.emplace(static_cast<T>(key), static_cast<U>(value));
     }
 
-    return result;
+    return map;
 }
 
 template<typename T, typename U, typename T2 = T, typename U2 = U>
@@ -601,8 +596,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 
     if (!map.empty()) {
         for (auto&& [key, value] : map) {
-            T2 k = copy(key);
-            U2 v = copy(value);
+            auto k = static_cast<T2>(key);
+            auto v = static_cast<U2>(value);
             as_dict->Set(&k, &v);
         }
     }

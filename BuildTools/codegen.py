@@ -1560,9 +1560,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             tt = t.split('.')
             if tt[0] == 'dict':
                 d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
-                return 'MarshalDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
+                return 'MarshalDict<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToEngineType(d2, target, False) + \
+                        ', ' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] == 'arr':
-                return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
+                return 'MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
             elif tt[0] in ['init', 'predicate', 'callback', 'ScriptFuncName']:
                 return 'GetASFuncName(' + v + ', *self->GetEngine())'
             elif tt[0] == 'ObjInfo':
