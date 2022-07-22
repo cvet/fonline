@@ -48,8 +48,8 @@ public:
     explicit operator bool() const { return !_sectionKeyValues.empty(); }
     ~ConfigFile() = default;
 
-    [[nodiscard]] auto IsHasSection(string_view section_name) const -> bool;
-    [[nodiscard]] auto IsHasKey(string_view section_name, string_view key_name) const -> bool;
+    [[nodiscard]] auto HasSection(string_view section_name) const -> bool;
+    [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const -> bool;
     [[nodiscard]] auto GetStr(string_view section_name, string_view key_name) const -> string;
     [[nodiscard]] auto GetStr(string_view section_name, string_view key_name, string_view def_val) const -> string;
     [[nodiscard]] auto GetInt(string_view section_name, string_view key_name) const -> int;

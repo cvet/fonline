@@ -342,13 +342,13 @@ auto ConfigFile::CreateSection(string_view section_name) -> map<string, string>&
     return it->second;
 }
 
-auto ConfigFile::IsHasSection(string_view section_name) const -> bool
+auto ConfigFile::HasSection(string_view section_name) const -> bool
 {
     const auto it_section = _sectionKeyValues.find(string(section_name));
     return it_section != _sectionKeyValues.end();
 }
 
-auto ConfigFile::IsHasKey(string_view section_name, string_view key_name) const -> bool
+auto ConfigFile::HasKey(string_view section_name, string_view key_name) const -> bool
 {
     const auto it_section = _sectionKeyValues.find(string(section_name));
     if (it_section == _sectionKeyValues.end()) {

@@ -47,7 +47,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
 
     // Header
     ConfigFile map_data(buf, name_resolver);
-    if (!map_data.IsHasSection("ProtoMap")) {
+    if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
     }
 
