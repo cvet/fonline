@@ -46,7 +46,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     }
 
     // Header
-    ConfigFile map_data(buf, name_resolver);
+    ConfigFile map_data(_str("{}.fomap", name), buf, &name_resolver);
     if (!map_data.HasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
     }
@@ -123,6 +123,10 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     }
 
     if (!errors.empty()) {
-        throw MapLoaderException("Map load error"); // Todo: pass errors vector to MapLoaderException
+        string errors_cat;
+        for (const auto& error : errors) {
+            errors_cat += error + "\n";
+        }
+        throw MapLoaderException("Map load error", errors_cat);
     }
 }

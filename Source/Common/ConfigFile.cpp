@@ -34,33 +34,19 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-ConfigFile::ConfigFile(string_view str, NameResolver& name_resolver) : _nameResolver {&name_resolver}
+ConfigFile::ConfigFile(string_view fname_hint, string_view str, NameResolver* name_resolver, bool collect_content) : _fileNameHint {fname_hint}, _nameResolver {name_resolver}, _collectContent {collect_content}
 {
-    ParseStr(str);
-}
-
-ConfigFile::ConfigFile(string_view str, std::nullptr_t) : _nameResolver {nullptr}
-{
-    ParseStr(str);
-}
-
-void ConfigFile::CollectContent()
-{
-    _collectContent = true;
+    AppendData(str);
 }
 
 void ConfigFile::AppendData(string_view str)
 {
-    ParseStr(str);
-}
-
-void ConfigFile::ParseStr(string_view str)
-{
-    map<string, string>* cur_section = nullptr;
+    map<string, string>* cur_section;
+    string cur_section_name;
 
     auto it_section = _sectionKeyValues.find("");
     if (it_section == _sectionKeyValues.end()) {
-        auto it = _sectionKeyValues.insert(std::make_pair("", map<string, string>()));
+        auto it = _sectionKeyValues.emplace(string(), map<string, string>());
         _sectionKeyValuesOrder.push_back(it);
         cur_section = &it->second;
     }
@@ -70,7 +56,7 @@ void ConfigFile::ParseStr(string_view str)
 
     string section_content;
     if (_collectContent) {
-        section_content.reserve(0xFFFF);
+        section_content.reserve(str.length());
     }
 
     const auto str_ = string(str);
@@ -119,9 +105,10 @@ void ConfigFile::ParseStr(string_view str)
             }
 
             // Add new section
-            auto it = _sectionKeyValues.insert(std::make_pair(section_name, map<string, string>()));
+            auto it = _sectionKeyValues.emplace(section_name, map<string, string>());
             _sectionKeyValuesOrder.push_back(it);
             cur_section = &it->second;
+            cur_section_name = section_name;
         }
         // Section content
         else {
@@ -170,9 +157,13 @@ void ConfigFile::ParseStr(string_view str)
                 // Key value format
                 const auto separator = line.find('=');
                 if (separator != string::npos && separator > 0) {
+                    extern void ConfigEntryParseHook(const string& fname, const string& section, string& key, string& value);
+
                     if (line[separator - 1] == '+') {
                         string key = _str(line.substr(0, separator - 1)).trim();
                         string value = _str(line.substr(separator + 1)).trim();
+
+                        ConfigEntryParseHook(_fileNameHint, cur_section_name, key, value);
 
                         if (!key.empty()) {
                             if (cur_section->count(key) != 0) {
@@ -187,6 +178,8 @@ void ConfigFile::ParseStr(string_view str)
                     else {
                         string key = _str(line.substr(0, separator)).trim();
                         string value = _str(line.substr(separator + 1)).trim();
+
+                        ConfigEntryParseHook(_fileNameHint, cur_section_name, key, value);
 
                         if (!key.empty()) {
                             (*cur_section)[key] = value;
@@ -301,7 +294,7 @@ void ConfigFile::SetStr(string_view section_name, string_view key_name, string_v
     if (it_section == _sectionKeyValues.end()) {
         map<string, string> key_values;
         key_values[string(key_name)] = val;
-        const auto it = _sectionKeyValues.insert(std::make_pair(section_name, key_values));
+        const auto it = _sectionKeyValues.emplace(section_name, key_values);
         _sectionKeyValuesOrder.push_back(it);
     }
     else {
@@ -337,7 +330,7 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, str
 
 auto ConfigFile::CreateSection(string_view section_name) -> map<string, string>&
 {
-    const auto it = _sectionKeyValues.insert(std::make_pair(section_name, map<string, string>()));
+    const auto it = _sectionKeyValues.emplace(section_name, map<string, string>());
     _sectionKeyValuesOrder.push_back(it);
     return it->second;
 }
@@ -360,7 +353,7 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const ->
 auto ConfigFile::GetSectionNames() const -> set<string>
 {
     set<string> sections;
-    for (const auto& [key, value] : _sectionKeyValues) {
+    for (auto&& [key, value] : _sectionKeyValues) {
         sections.insert(key);
     }
     return sections;

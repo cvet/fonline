@@ -60,7 +60,7 @@ def getHash(s):
 genFileList = ['EmbeddedResources-Include.h',
         'Version-Include.h',
         'DebugSettings-Include.h',
-        'EntityProperties-Common.cpp',
+        'GenericCode-Common.cpp',
         'DataRegistration-Server.cpp',
         'DataRegistration-Client.cpp',
         'DataRegistration-Mapper.cpp',
@@ -105,6 +105,7 @@ codeGenTags = {
         'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
         'RemoteCall': [], # (target, subsystem, name, [(type, name)], [flags], [comment])
         'Setting': [], #(type, name, init value, [flags], [comment])
+        'EngineHook': [], #(name, [flags], [comment])
         'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
 
 def verbosePrint(*str):
@@ -244,7 +245,8 @@ def parseMetaFile(absPath):
                                 tagContext = [l.strip() for l in lines[lineIndex + 1 : i] if l.strip()]
                                 break
                     assert 'Invalid tag context', absPath
-                
+                elif tagName == 'EngineHook':
+                    tagContext = lines[lineIndex + 1].strip()
                 elif tagName == 'CodeGen':
                     tagContext = tagPos
                 
@@ -909,6 +911,18 @@ def parseTags():
             except Exception as ex:
                 showError('Invalid tag Setting', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
                 
+        for tagMeta in tagsMetas['EngineHook']:
+            absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
+            
+            try:
+                name = tokenize(tagContext)[1]
+                assert name in ['ConfigEntryParseHook'], 'Invalid engine hook ' + name
+                
+                codeGenTags['EngineHook'].append((name, [], comment))
+            
+            except Exception as ex:
+                showError('Invalid tag EngineHook', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
+                
         for tagMeta in tagsMetas['CodeGen']:
             absPath, lineIndex, tagInfo, tagContext, comment = tagMeta
             
@@ -922,8 +936,8 @@ def parseTags():
                     templateType = 'Native'
                 elif fname == 'DataRegistration-Template.cpp':
                     templateType = 'DataRegistration'
-                elif fname == 'EntityProperties-Template.cpp':
-                    templateType = 'EntityProperties'
+                elif fname == 'GenericCode-Template.cpp':
+                    templateType = 'GenericCode'
                 else:
                     assert False, fname
                 
@@ -1199,10 +1213,26 @@ def metaTypeToEngineType(t, target, passIn):
             r = 'const ' + r + '&'
     return r
 
-def genEntityProperties():
+def genGenericCode():
     globalLines = []
-
+    
+    # Engine hooks    
+    def isHookEnabled(hookName):
+        for hookTag in codeGenTags['EngineHook']:
+            name, flags, _ = hookTag
+            if name == hookName:
+                return True
+        return False
+    
+    globalLines.append('// Engine hooks')
+    if not isHookEnabled('ConfigEntryParseHook'):
+        globalLines.append('void ConfigEntryParseHook(const string&, const string&, string&, string&) { /* Stub */ }')
+    globalLines.append('')
+    
+    # Engine properties
     globalLines.append('// Engine property indices')
+    globalLines.append('#include "EntityProperties.h"')
+    globalLines.append('EntityProperties::EntityProperties(Properties& props) : _propsRef(props) { }')
     for entity in gameEntities:
         index = 0
         for propTag in codeGenTags['ExportProperty']:
@@ -1211,15 +1241,16 @@ def genEntityProperties():
                 globalLines.append('ushort ' + entity + 'Properties::' + name + '_RegIndex = ' + str(index) + ';')
                 index += 1
     globalLines.append('')
-
-    createFile('EntityProperties-Common.cpp', args.genoutput)
-    writeCodeGenTemplate('EntityProperties')
+    
+    createFile('GenericCode-Common.cpp', args.genoutput)
+    writeCodeGenTemplate('GenericCode')
+    
     insertCodeGenLines(globalLines, 'Body')
 
 try:
-    genEntityProperties()
+    genGenericCode()
 except Exception as ex:
-    showError('Code generation for data registration failed', ex)
+    showError('Code generation for generic code failed', ex)
 checkErrors()
 
 def genDataRegistration(target, isASCompiler):

@@ -282,7 +282,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 #include "DebugSettings-Include.h"
         ;
 
-    if (const auto config = ConfigFile(default_config, nullptr)) {
+    if (const auto config = ConfigFile("DefaultConfig", default_config)) {
         for (auto&& [key, value] : config.GetSection("")) {
             SetValue(key, value);
         }
@@ -341,7 +341,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
                                          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
                                          "12345678901234567890123456789012345678901234567890123456789012345678901234567###InternalConfigEnd###"};
 
-    if (const auto config = ConfigFile(internal_config, nullptr)) {
+    if (const auto config = ConfigFile("InternalConfig", internal_config)) {
         for (auto&& [key, value] : config.GetSection("")) {
             SetValue(key, value);
         }

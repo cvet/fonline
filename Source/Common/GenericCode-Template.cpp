@@ -41,12 +41,8 @@
 // ReSharper disable CppMemberFunctionMayBeConst
 // ReSharper disable CppClangTidyClangDiagnosticOldStyleCast
 
-///@ CodeGen Template EntityProperties
+///@ CodeGen Template GenericCode
 
-#include "EntityProperties.h"
-
-EntityProperties::EntityProperties(Properties& props) : _propsRef {props}
-{
-}
+#include "Common.h"
 
 ///@ CodeGen Body

@@ -39,8 +39,7 @@ class ConfigFile final
 {
 public:
     ConfigFile() = delete;
-    ConfigFile(string_view str, NameResolver& name_resolver);
-    ConfigFile(string_view str, std::nullptr_t);
+    explicit ConfigFile(string_view fname_hint, string_view str, NameResolver* name_resolver = nullptr, bool collect_content = false);
     ConfigFile(const ConfigFile&) = delete;
     ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
@@ -61,7 +60,6 @@ public:
     [[nodiscard]] auto GetSectionContent(string_view section_name) -> string;
     [[nodiscard]] auto SerializeData() -> string;
 
-    void CollectContent();
     void AppendData(string_view str);
     void SetStr(string_view section_name, string_view key_name, string_view val);
     void SetInt(string_view section_name, string_view key_name, int val);
@@ -74,8 +72,7 @@ private:
 
     [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const -> const string*;
 
-    void ParseStr(string_view str);
-
+    string _fileNameHint;
     NameResolver* _nameResolver;
     bool _collectContent {};
     ValuesMap _sectionKeyValues {};

@@ -50,7 +50,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         }),
     FOClient(settings, window, PropertiesRelationType::BothRelative, nullptr),
 
-    IfaceIni("", *this)
+    IfaceIni("", "", this)
 {
     // Default effects
     EffectMngr.LoadDefaultEffects();

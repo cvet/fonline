@@ -228,9 +228,7 @@ void EffectBaker::AutoBake()
 
 void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
 {
-    auto fofx = ConfigFile("", nullptr);
-    fofx.CollectContent();
-    fofx.AppendData(content);
+    auto fofx = ConfigFile(fname, content, nullptr, true);
     if (!fofx || !fofx.HasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);
     }

@@ -1243,7 +1243,7 @@ list( APPEND FO_COMMON_SOURCE
 	"${CMAKE_BINARY_DIR}/GeneratedSource/Version-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DebugSettings-Include.h"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/EmbeddedResources-Include.h"
-	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp" )
+	"${CMAKE_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp" )
 
 list( APPEND FO_SERVER_BASE_SOURCE
 	"Source/Server/AdminPanel.cpp"
@@ -1417,7 +1417,7 @@ list( APPEND FO_SOURCE_META_FILES
 	"Source/Common/EntityProperties.h"
 	"Source/Common/Settings-Include.h"
 	"Source/Common/DataRegistration-Template.cpp"
-	"Source/Common/EntityProperties-Template.cpp"
+	"Source/Common/GenericCode-Template.cpp"
 	"Source/Client/Client.h"
 	"Source/Client/Sprites.h"
 	"Source/Server/Critter.h"
@@ -1601,7 +1601,7 @@ list( APPEND FO_CODEGEN_OUTPUT
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-ClientCompiler.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-SingleCompiler.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/DataRegistration-MapperCompiler.cpp"
-	"${CMAKE_BINARY_DIR}/GeneratedSource/EntityProperties-Common.cpp"
+	"${CMAKE_BINARY_DIR}/GeneratedSource/GenericCode-Common.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Server.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Client.cpp"
 	"${CMAKE_BINARY_DIR}/GeneratedSource/AngelScriptScripting-Mapper.cpp"

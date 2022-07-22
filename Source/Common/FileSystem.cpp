@@ -469,12 +469,3 @@ auto FileSystem::ReadFileHeader(string_view path) -> FileHeader
 
     return {};
 }
-
-auto FileSystem::ReadConfigFile(string_view path, NameResolver& name_resolver) -> ConfigFile
-{
-    if (const auto file = ReadFile(path)) {
-        return {file.GetStr(), name_resolver};
-    }
-
-    return {"", name_resolver};
-}

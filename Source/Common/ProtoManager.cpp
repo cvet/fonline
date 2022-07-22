@@ -130,7 +130,7 @@ static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, co
     map<hstring, map<string, map<string, string>>> files_texts;
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
-        ConfigFile fopro(file.GetStr(), name_resolver);
+        ConfigFile fopro(file.GetPath(), file.GetStr(), &name_resolver);
 
         auto protos_data = fopro.GetSections(app_name);
         if (std::is_same_v<T, ProtoMap> && protos_data.empty()) {

@@ -312,7 +312,7 @@ protected:
     string _effectName {};
     string _effectDefines {};
     hstring _name {};
-    uint _passCount {};
+    size_t _passCount {};
     BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};
     BlendFuncType _destBlendFunc[EFFECT_MAX_PASSES] {};
     BlendEquationType _blendEquation[EFFECT_MAX_PASSES] {};
