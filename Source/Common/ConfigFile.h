@@ -45,39 +45,39 @@ public:
     ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
     auto operator=(ConfigFile&&) noexcept = delete;
-    explicit operator bool() const { return !_appKeyValues.empty(); }
+    explicit operator bool() const { return !_sectionKeyValues.empty(); }
     ~ConfigFile() = default;
 
-    [[nodiscard]] auto IsApp(string_view app_name) const -> bool;
-    [[nodiscard]] auto IsKey(string_view app_name, string_view key_name) const -> bool;
-    [[nodiscard]] auto GetStr(string_view app_name, string_view key_name) const -> string;
-    [[nodiscard]] auto GetStr(string_view app_name, string_view key_name, string_view def_val) const -> string;
-    [[nodiscard]] auto GetInt(string_view app_name, string_view key_name) const -> int;
-    [[nodiscard]] auto GetInt(string_view app_name, string_view key_name, int def_val) const -> int;
-    [[nodiscard]] auto GetApp(string_view app_name) const -> const map<string, string>&;
-    [[nodiscard]] auto GetApps(string_view app_name) -> vector<map<string, string>*>;
-    [[nodiscard]] auto GetAppNames() const -> set<string>;
-    [[nodiscard]] auto GetAppKeyValues(string_view app_name) -> const map<string, string>*;
-    [[nodiscard]] auto GetAppContent(string_view app_name) -> string;
+    [[nodiscard]] auto IsHasSection(string_view section_name) const -> bool;
+    [[nodiscard]] auto IsHasKey(string_view section_name, string_view key_name) const -> bool;
+    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name) const -> string;
+    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name, string_view def_val) const -> string;
+    [[nodiscard]] auto GetInt(string_view section_name, string_view key_name) const -> int;
+    [[nodiscard]] auto GetInt(string_view section_name, string_view key_name, int def_val) const -> int;
+    [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string, string>&;
+    [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string, string>*>;
+    [[nodiscard]] auto GetSectionNames() const -> set<string>;
+    [[nodiscard]] auto GetSectionKeyValues(string_view section_name) -> const map<string, string>*;
+    [[nodiscard]] auto GetSectionContent(string_view section_name) -> string;
     [[nodiscard]] auto SerializeData() -> string;
 
     void CollectContent();
     void AppendData(string_view str);
-    void SetStr(string_view app_name, string_view key_name, string_view val);
-    void SetInt(string_view app_name, string_view key_name, int val);
-    auto SetApp(string_view app_name) -> map<string, string>&;
-    void GotoNextApp(string_view app_name);
+    void SetStr(string_view section_name, string_view key_name, string_view val);
+    void SetInt(string_view section_name, string_view key_name, int val);
+    auto CreateSection(string_view section_name) -> map<string, string>&;
+    void GotoNextSection(string_view section_name);
 
 private:
     using ValuesMap = multimap<string, map<string, string>>;
     using ValuesMapItVec = vector<ValuesMap::const_iterator>;
 
-    [[nodiscard]] auto GetRawValue(string_view app_name, string_view key_name) const -> const string*;
+    [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const -> const string*;
 
     void ParseStr(string_view str);
 
     NameResolver* _nameResolver;
     bool _collectContent {};
-    ValuesMap _appKeyValues {};
-    ValuesMapItVec _appKeyValuesOrder {};
+    ValuesMap _sectionKeyValues {};
+    ValuesMapItVec _sectionKeyValuesOrder {};
 };

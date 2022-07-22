@@ -283,7 +283,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         ;
 
     if (const auto config = ConfigFile(default_config, nullptr)) {
-        for (auto&& [key, value] : config.GetApp("")) {
+        for (auto&& [key, value] : config.GetSection("")) {
             SetValue(key, value);
         }
     }
@@ -342,7 +342,7 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
                                          "12345678901234567890123456789012345678901234567890123456789012345678901234567###InternalConfigEnd###"};
 
     if (const auto config = ConfigFile(internal_config, nullptr)) {
-        for (auto&& [key, value] : config.GetApp("")) {
+        for (auto&& [key, value] : config.GetSection("")) {
             SetValue(key, value);
         }
     }

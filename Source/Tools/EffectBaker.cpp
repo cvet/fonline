@@ -231,14 +231,14 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
     auto fofx = ConfigFile("", nullptr);
     fofx.CollectContent();
     fofx.AppendData(content);
-    if (!fofx || !fofx.IsApp("Effect")) {
+    if (!fofx || !fofx.IsHasSection("Effect")) {
         throw EffectBakerException(".fofx file truncated", fname);
     }
 
     constexpr bool old_code_profile = false;
 
     const auto passes = fofx.GetInt("Effect", "Passes", 1);
-    const auto shader_common_content = fofx.GetAppContent("ShaderCommon");
+    const auto shader_common_content = fofx.GetSectionContent("ShaderCommon");
     const auto shader_version = fofx.GetInt("Effect", "Version", 310);
     const auto shader_version_str = _str("#version {} es\n", shader_version).str();
 #if FO_ENABLE_3D
@@ -249,17 +249,17 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content)
     const auto* shader_defines_ex = old_code_profile ? "#define layout(x)\n#define in attribute\n#define out varying\n#define texture texture2D\n#define FragColor gl_FragColor" : "";
 
     for (auto pass = 1; pass <= passes; pass++) {
-        string vertex_pass_content = fofx.GetAppContent(_str("VertexShader Pass{}", pass));
+        string vertex_pass_content = fofx.GetSectionContent(_str("VertexShader Pass{}", pass));
         if (vertex_pass_content.empty()) {
-            vertex_pass_content = fofx.GetAppContent("VertexShader");
+            vertex_pass_content = fofx.GetSectionContent("VertexShader");
         }
         if (vertex_pass_content.empty()) {
             throw EffectBakerException("No content for vertex shader", fname, pass);
         }
 
-        string fragment_pass_content = fofx.GetAppContent(_str("FragmentShader Pass{}", pass));
+        string fragment_pass_content = fofx.GetSectionContent(_str("FragmentShader Pass{}", pass));
         if (fragment_pass_content.empty()) {
-            fragment_pass_content = fofx.GetAppContent("FragmentShader");
+            fragment_pass_content = fofx.GetSectionContent("FragmentShader");
         }
         if (fragment_pass_content.empty()) {
             throw EffectBakerException("No content for fragment shader", fname, pass);

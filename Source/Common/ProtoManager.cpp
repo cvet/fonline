@@ -132,9 +132,9 @@ static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, co
         auto file = files.GetCurFile();
         ConfigFile fopro(file.GetStr(), name_resolver);
 
-        auto protos_data = fopro.GetApps(app_name);
+        auto protos_data = fopro.GetSections(app_name);
         if (std::is_same_v<T, ProtoMap> && protos_data.empty()) {
-            protos_data = fopro.GetApps("Header");
+            protos_data = fopro.GetSections("Header");
         }
 
         for (auto& pkv : protos_data) {
@@ -147,13 +147,13 @@ static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, co
 
             files_protos.insert(std::make_pair(pid, kv));
 
-            for (const auto& app : fopro.GetAppNames()) {
+            for (const auto& app : fopro.GetSectionNames()) {
                 if (app.size() == "Text_xxxx"_len && _str(app).startsWith("Text_")) {
                     if (!files_texts.count(pid)) {
                         map<string, map<string, string>> texts;
                         files_texts.insert(std::make_pair(pid, texts));
                     }
-                    files_texts[pid].insert(std::make_pair(app, fopro.GetApp(app)));
+                    files_texts[pid].insert(std::make_pair(app, fopro.GetSection(app)));
                 }
             }
         }

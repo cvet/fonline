@@ -56,21 +56,21 @@ void ConfigFile::AppendData(string_view str)
 
 void ConfigFile::ParseStr(string_view str)
 {
-    map<string, string>* cur_app = nullptr;
+    map<string, string>* cur_section = nullptr;
 
-    auto it_app = _appKeyValues.find("");
-    if (it_app == _appKeyValues.end()) {
-        auto it = _appKeyValues.insert(std::make_pair("", map<string, string>()));
-        _appKeyValuesOrder.push_back(it);
-        cur_app = &it->second;
+    auto it_section = _sectionKeyValues.find("");
+    if (it_section == _sectionKeyValues.end()) {
+        auto it = _sectionKeyValues.insert(std::make_pair("", map<string, string>()));
+        _sectionKeyValuesOrder.push_back(it);
+        cur_section = &it->second;
     }
     else {
-        cur_app = &it_app->second;
+        cur_section = &it_section->second;
     }
 
-    string app_content;
+    string section_content;
     if (_collectContent) {
-        app_content.reserve(0xFFFF);
+        section_content.reserve(0xFFFF);
     }
 
     const auto str_ = string(str);
@@ -102,32 +102,32 @@ void ConfigFile::ParseStr(string_view str)
         // New section
         if (line[0] == '[') {
             // Parse name
-            auto end = line.find(']');
+            const auto end = line.find(']');
             if (end == string::npos) {
                 continue;
             }
 
-            string buf = _str(line.substr(1, end - 1)).trim();
-            if (buf.empty()) {
+            string section_name = _str(line.substr(1, end - 1)).trim();
+            if (section_name.empty()) {
                 continue;
             }
 
             // Store current section content
             if (_collectContent) {
-                (*cur_app)[""] = app_content;
-                app_content.clear();
+                (*cur_section)[""] = section_content;
+                section_content.clear();
             }
 
             // Add new section
-            auto it = _appKeyValues.insert(std::make_pair(buf, map<string, string>()));
-            _appKeyValuesOrder.push_back(it);
-            cur_app = &it->second;
+            auto it = _sectionKeyValues.insert(std::make_pair(section_name, map<string, string>()));
+            _sectionKeyValuesOrder.push_back(it);
+            cur_section = &it->second;
         }
         // Section content
         else {
             // Store raw content
             if (_collectContent) {
-                app_content.append(line).append("\n");
+                section_content.append(line).append("\n");
             }
 
             // Text format {}{}{}
@@ -152,7 +152,7 @@ void ConfigFile::ParseStr(string_view str)
                         num += !str2.empty() ? (_str(str2).isNumber() ? _str(str2).toInt() : _nameResolver->ToHashedString(str2).as_int()) : 0;
                     }
                     else if (i == 2 && num != 0u) {
-                        (*cur_app)[_str("{}", num)] = str2;
+                        (*cur_section)[_str("{}", num)] = str2;
                     }
                 }
             }
@@ -175,12 +175,12 @@ void ConfigFile::ParseStr(string_view str)
                         string value = _str(line.substr(separator + 1)).trim();
 
                         if (!key.empty()) {
-                            if (cur_app->count(key) != 0) {
-                                (*cur_app)[key] += " ";
-                                (*cur_app)[key] += value;
+                            if (cur_section->count(key) != 0) {
+                                (*cur_section)[key] += " ";
+                                (*cur_section)[key] += value;
                             }
                             else {
-                                (*cur_app)[key] = value;
+                                (*cur_section)[key] = value;
                             }
                         }
                     }
@@ -189,7 +189,7 @@ void ConfigFile::ParseStr(string_view str)
                         string value = _str(line.substr(separator + 1)).trim();
 
                         if (!key.empty()) {
-                            (*cur_app)[key] = value;
+                            (*cur_section)[key] = value;
                         }
                     }
                 }
@@ -200,7 +200,7 @@ void ConfigFile::ParseStr(string_view str)
 
     // Store current section content
     if (_collectContent) {
-        (*cur_app)[""] = app_content;
+        (*cur_section)[""] = section_content;
     }
 }
 
@@ -208,13 +208,13 @@ auto ConfigFile::SerializeData() -> string
 {
     size_t str_size = 32;
 
-    for (auto& app_it : _appKeyValuesOrder) {
-        const auto& [app_name, app_kv] = *app_it;
-        if (!app_name.empty()) {
-            str_size += app_name.size() + 3;
+    for (auto& section_it : _sectionKeyValuesOrder) {
+        auto&& [section_name, section_kv] = *section_it;
+        if (!section_name.empty()) {
+            str_size += section_name.size() + 3;
         }
 
-        for (const auto& [key, value] : app_kv) {
+        for (auto&& [key, value] : section_kv) {
             if (!key.empty()) {
                 str_size += key.size() + value.size() + 4;
             }
@@ -226,13 +226,13 @@ auto ConfigFile::SerializeData() -> string
     string str;
     str.reserve(str_size);
 
-    for (auto& app_it : _appKeyValuesOrder) {
-        const auto& [app_name, app_kv] = *app_it;
-        if (!app_name.empty()) {
-            str += _str("[{}]\n", app_name);
+    for (auto& section_it : _sectionKeyValuesOrder) {
+        auto&& [section_name, section_kv] = *section_it;
+        if (!section_name.empty()) {
+            str += _str("[{}]\n", section_name);
         }
 
-        for (const auto& [key, value] : app_kv) {
+        for (auto&& [key, value] : section_kv) {
             if (!key.empty()) {
                 str += _str("{} = {}\n", key, value);
             }
@@ -244,36 +244,36 @@ auto ConfigFile::SerializeData() -> string
     return str;
 }
 
-auto ConfigFile::GetRawValue(string_view app_name, string_view key_name) const -> const string*
+auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const -> const string*
 {
-    const auto it_app = _appKeyValues.find(string(app_name));
-    if (it_app == _appKeyValues.end()) {
+    const auto it_section = _sectionKeyValues.find(string(section_name));
+    if (it_section == _sectionKeyValues.end()) {
         return nullptr;
     }
 
-    const auto it_key = it_app->second.find(string(key_name));
-    if (it_key == it_app->second.end()) {
+    const auto it_key = it_section->second.find(string(key_name));
+    if (it_key == it_section->second.end()) {
         return nullptr;
     }
 
     return &it_key->second;
 }
 
-auto ConfigFile::GetStr(string_view app_name, string_view key_name) const -> string
+auto ConfigFile::GetStr(string_view section_name, string_view key_name) const -> string
 {
-    const auto* str = GetRawValue(app_name, key_name);
+    const auto* str = GetRawValue(section_name, key_name);
     return str != nullptr ? *str : "";
 }
 
-auto ConfigFile::GetStr(string_view app_name, string_view key_name, string_view def_val) const -> string
+auto ConfigFile::GetStr(string_view section_name, string_view key_name, string_view def_val) const -> string
 {
-    const auto* str = GetRawValue(app_name, key_name);
+    const auto* str = GetRawValue(section_name, key_name);
     return str != nullptr ? *str : string(def_val);
 }
 
-auto ConfigFile::GetInt(string_view app_name, string_view key_name) const -> int
+auto ConfigFile::GetInt(string_view section_name, string_view key_name) const -> int
 {
-    const auto* str = GetRawValue(app_name, key_name);
+    const auto* str = GetRawValue(section_name, key_name);
     if (str != nullptr && str->length() == "true"_len && _str(*str).compareIgnoreCase("true")) {
         return 1;
     }
@@ -283,9 +283,9 @@ auto ConfigFile::GetInt(string_view app_name, string_view key_name) const -> int
     return str != nullptr ? _str(*str).toInt() : 0;
 }
 
-auto ConfigFile::GetInt(string_view app_name, string_view key_name, int def_val) const -> int
+auto ConfigFile::GetInt(string_view section_name, string_view key_name, int def_val) const -> int
 {
-    const auto* str = GetRawValue(app_name, key_name);
+    const auto* str = GetRawValue(section_name, key_name);
     if (str != nullptr && str->length() == "true"_len && _str(*str).compareIgnoreCase("true")) {
         return 1;
     }
@@ -295,36 +295,36 @@ auto ConfigFile::GetInt(string_view app_name, string_view key_name, int def_val)
     return str != nullptr ? _str(*str).toInt() : def_val;
 }
 
-void ConfigFile::SetStr(string_view app_name, string_view key_name, string_view val)
+void ConfigFile::SetStr(string_view section_name, string_view key_name, string_view val)
 {
-    const auto it_app = _appKeyValues.find(string(app_name));
-    if (it_app == _appKeyValues.end()) {
+    const auto it_section = _sectionKeyValues.find(string(section_name));
+    if (it_section == _sectionKeyValues.end()) {
         map<string, string> key_values;
         key_values[string(key_name)] = val;
-        const auto it = _appKeyValues.insert(std::make_pair(app_name, key_values));
-        _appKeyValuesOrder.push_back(it);
+        const auto it = _sectionKeyValues.insert(std::make_pair(section_name, key_values));
+        _sectionKeyValuesOrder.push_back(it);
     }
     else {
-        it_app->second[string(key_name)] = val;
+        it_section->second[string(key_name)] = val;
     }
 }
 
-void ConfigFile::SetInt(string_view app_name, string_view key_name, int val)
+void ConfigFile::SetInt(string_view section_name, string_view key_name, int val)
 {
-    SetStr(app_name, key_name, _str("{}", val));
+    SetStr(section_name, key_name, _str("{}", val));
 }
 
-auto ConfigFile::GetApp(string_view app_name) const -> const map<string, string>&
+auto ConfigFile::GetSection(string_view section_name) const -> const map<string, string>&
 {
-    const auto it = _appKeyValues.find(string(app_name));
-    RUNTIME_ASSERT(it != _appKeyValues.end());
+    const auto it = _sectionKeyValues.find(string(section_name));
+    RUNTIME_ASSERT(it != _sectionKeyValues.end());
     return it->second;
 }
 
-auto ConfigFile::GetApps(string_view app_name) -> vector<map<string, string>*>
+auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, string>*>
 {
-    const auto count = _appKeyValues.count(string(app_name));
-    auto it = _appKeyValues.find(string(app_name));
+    const auto count = _sectionKeyValues.count(string(section_name));
+    auto it = _sectionKeyValues.find(string(section_name));
 
     vector<map<string, string>*> key_values;
     key_values.reserve(key_values.size() + count);
@@ -335,65 +335,65 @@ auto ConfigFile::GetApps(string_view app_name) -> vector<map<string, string>*>
     return key_values;
 }
 
-auto ConfigFile::SetApp(string_view app_name) -> map<string, string>&
+auto ConfigFile::CreateSection(string_view section_name) -> map<string, string>&
 {
-    const auto it = _appKeyValues.insert(std::make_pair(app_name, map<string, string>()));
-    _appKeyValuesOrder.push_back(it);
+    const auto it = _sectionKeyValues.insert(std::make_pair(section_name, map<string, string>()));
+    _sectionKeyValuesOrder.push_back(it);
     return it->second;
 }
 
-auto ConfigFile::IsApp(string_view app_name) const -> bool
+auto ConfigFile::IsHasSection(string_view section_name) const -> bool
 {
-    const auto it_app = _appKeyValues.find(string(app_name));
-    return it_app != _appKeyValues.end();
+    const auto it_section = _sectionKeyValues.find(string(section_name));
+    return it_section != _sectionKeyValues.end();
 }
 
-auto ConfigFile::IsKey(string_view app_name, string_view key_name) const -> bool
+auto ConfigFile::IsHasKey(string_view section_name, string_view key_name) const -> bool
 {
-    const auto it_app = _appKeyValues.find(string(app_name));
-    if (it_app == _appKeyValues.end()) {
+    const auto it_section = _sectionKeyValues.find(string(section_name));
+    if (it_section == _sectionKeyValues.end()) {
         return false;
     }
-    return it_app->second.find(string(key_name)) != it_app->second.end();
+    return it_section->second.find(string(key_name)) != it_section->second.end();
 }
 
-auto ConfigFile::GetAppNames() const -> set<string>
+auto ConfigFile::GetSectionNames() const -> set<string>
 {
-    set<string> apps;
-    for (const auto& [key, value] : _appKeyValues) {
-        apps.insert(key);
+    set<string> sections;
+    for (const auto& [key, value] : _sectionKeyValues) {
+        sections.insert(key);
     }
-    return apps;
+    return sections;
 }
 
-void ConfigFile::GotoNextApp(string_view app_name)
+void ConfigFile::GotoNextSection(string_view section_name)
 {
-    const auto it_app = _appKeyValues.find(string(app_name));
-    if (it_app == _appKeyValues.end()) {
+    const auto it_section = _sectionKeyValues.find(string(section_name));
+    if (it_section == _sectionKeyValues.end()) {
         return;
     }
 
-    const auto it = std::find(_appKeyValuesOrder.begin(), _appKeyValuesOrder.end(), it_app);
-    RUNTIME_ASSERT(it != _appKeyValuesOrder.end());
-    _appKeyValuesOrder.erase(it);
-    _appKeyValues.erase(it_app);
+    const auto it = std::find(_sectionKeyValuesOrder.begin(), _sectionKeyValuesOrder.end(), it_section);
+    RUNTIME_ASSERT(it != _sectionKeyValuesOrder.end());
+    _sectionKeyValuesOrder.erase(it);
+    _sectionKeyValues.erase(it_section);
 }
 
-auto ConfigFile::GetAppKeyValues(string_view app_name) -> const map<string, string>*
+auto ConfigFile::GetSectionKeyValues(string_view section_name) -> const map<string, string>*
 {
-    const auto it_app = _appKeyValues.find(string(app_name));
-    return it_app != _appKeyValues.end() ? &it_app->second : nullptr;
+    const auto it_section = _sectionKeyValues.find(string(section_name));
+    return it_section != _sectionKeyValues.end() ? &it_section->second : nullptr;
 }
 
-auto ConfigFile::GetAppContent(string_view app_name) -> string
+auto ConfigFile::GetSectionContent(string_view section_name) -> string
 {
     RUNTIME_ASSERT(_collectContent);
 
-    const auto it_app = _appKeyValues.find(string(app_name));
-    if (it_app == _appKeyValues.end()) {
+    const auto it_section = _sectionKeyValues.find(string(section_name));
+    if (it_section == _sectionKeyValues.end()) {
         return "";
     }
 
-    const auto it_key = it_app->second.find("");
-    return it_key != it_app->second.end() ? it_key->second : "";
+    const auto it_key = it_section->second.find("");
+    return it_key != it_section->second.end() ? it_key->second : "";
 }

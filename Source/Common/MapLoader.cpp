@@ -47,13 +47,13 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
 
     // Header
     ConfigFile map_data(buf, name_resolver);
-    if (!map_data.IsApp("ProtoMap")) {
+    if (!map_data.IsHasSection("ProtoMap")) {
         throw MapLoaderException("Invalid map format", name);
     }
 
     // Critters
     vector<string> errors;
-    for (const auto& pkv : map_data.GetApps("Critter")) {
+    for (const auto& pkv : map_data.GetSections("Critter")) {
         auto& kv = *pkv;
         if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
             errors.emplace_back("Proto critter invalid data");
@@ -72,7 +72,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     }
 
     // Items
-    for (const auto& pkv : map_data.GetApps("Item")) {
+    for (const auto& pkv : map_data.GetSections("Item")) {
         auto& kv = *pkv;
         if (kv.count("$Id") == 0u || kv.count("$Proto") == 0u) {
             errors.emplace_back("Proto item invalid data");
@@ -91,7 +91,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
     }
 
     // Tiles
-    for (const auto& pkv : map_data.GetApps("Tile")) {
+    for (const auto& pkv : map_data.GetSections("Tile")) {
         auto& kv = *pkv;
         if (kv.count("PicMap") == 0u || kv.count("HexX") == 0u || kv.count("HexY") == 0u) {
             errors.emplace_back("Tile invalid data");

@@ -173,7 +173,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     fodlg.AppendData(data);
 
     auto* pack = new DialogPack();
-    auto dlg_buf = fodlg.GetAppContent("dialog");
+    auto dlg_buf = fodlg.GetSectionContent("dialog");
     istringstream input(dlg_buf);
     string lang_buf;
     pack->PackId = _engine->ToHashedString(pack_name);
@@ -181,7 +181,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
     vector<string> lang_apps;
 
     // Comment
-    pack->Comment = fodlg.GetAppContent("comment");
+    pack->Comment = fodlg.GetSectionContent("comment");
 
     // Texts
     auto lang_key = fodlg.GetStr("data", "lang", "");
@@ -205,7 +205,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
             throw DialogParseException("Language length not equal 4", pack_name);
         }
 
-        lang_buf = fodlg.GetAppContent(lang_app);
+        lang_buf = fodlg.GetSectionContent(lang_app);
         if (lang_buf.empty()) {
             throw DialogParseException("One of the lang section not found", pack_name);
         }

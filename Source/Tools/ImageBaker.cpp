@@ -255,7 +255,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, File& file) -> Fr
         sub_collections.reserve(10);
 
         string dir_str = _str("dir_{}", dir);
-        if (!fofrm.IsApp(dir_str)) {
+        if (!fofrm.IsHasSection(dir_str)) {
             dir_str = "";
         }
 

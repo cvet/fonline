@@ -55,7 +55,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, string_view defi
     auto fofx = ConfigFile("", nullptr);
     fofx.CollectContent();
     fofx.AppendData(loader(_str("{}.fofx", name)));
-    RUNTIME_ASSERT(fofx.IsApp("Effect"));
+    RUNTIME_ASSERT(fofx.IsHasSection("Effect"));
 
     const auto passes = fofx.GetInt("Effect", "Passes", 1);
     RUNTIME_ASSERT(passes >= 1);
