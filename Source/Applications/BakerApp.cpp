@@ -425,32 +425,18 @@ int main(int argc, char** argv)
                     }
 
                     if (proto_errors != 0) {
-                        throw ProtoValidationException("Proto resources verification failed");
+                        throw ProtoValidationException("Proto verification failed");
                     }
-
-                    const auto write_protos = [](const ProtoManager& protos, string_view fname) {
-                        const auto data = protos.GetProtosBinaryData();
-                        RUNTIME_ASSERT(!data.empty());
-                        auto protos_file = DiskFileSystem::OpenFile(fname, true);
-                        RUNTIME_ASSERT(protos_file);
-                        const auto protos_write_ok = protos_file.Write(data.data(), data.size());
-                        RUNTIME_ASSERT(protos_write_ok);
-                    };
-
-                    WriteLog("Write protos");
-                    write_protos(proto_mngr, "Protos/Protos.foprob");
 
                     WriteLog("Process server protos");
                     auto server_engine = BakerEngine(App->Settings, PropertiesRelationType::ServerRelative);
                     auto server_proto_mngr = ProtoManager(&server_engine);
                     server_proto_mngr.ParseProtos(engine.FileSys);
-                    write_protos(server_proto_mngr, "Protos/ServerProtos.foprob");
 
                     WriteLog("Process client protos");
                     auto client_engine = BakerEngine(App->Settings, PropertiesRelationType::ClientRelative);
                     auto client_proto_mngr = ProtoManager(&client_engine);
                     client_proto_mngr.ParseProtos(engine.FileSys);
-                    write_protos(client_proto_mngr, "Protos/ClientProtos.foprob");
 
                     // Maps
                     WriteLog("Process maps");
@@ -531,7 +517,7 @@ int main(int argc, char** argv)
                                     return true;
                                 },
                                 [&](MapTile&& tile) -> bool {
-                                    const auto tile_name = engine.ResolveHash(tile.NameHash);
+                                    const auto tile_name = server_engine.ResolveHash(tile.NameHash);
                                     if (resource_hashes.count(tile_name) != 0u) {
                                         map_tile_count++;
                                         map_tile_data_writer.WritePtr<MapTile>(&tile);
@@ -559,15 +545,34 @@ int main(int argc, char** argv)
                             final_writer.Write<uint>(map_tile_count);
                             final_writer.WritePtr(map_tile_data.data(), map_tile_data.size());
 
-                            auto map_file = DiskFileSystem::OpenFile(_str("Maps/{}.fomapb", proto_map->GetName()), true);
-                            RUNTIME_ASSERT(map_file);
-                            auto map_file_write_ok = map_file.Write(map_data);
-                            RUNTIME_ASSERT(map_file_write_ok);
+                            auto map_bin_file = DiskFileSystem::OpenFile(_str("Maps/{}.fomapb", proto_map->GetName()), true);
+                            RUNTIME_ASSERT(map_bin_file);
+                            auto map_bin_file_write_ok = map_bin_file.Write(map_data);
+                            RUNTIME_ASSERT(map_bin_file_write_ok);
                         }
                         else {
-                            errors++;
+                            proto_errors++;
                         }
                     }
+
+                    if (proto_errors != 0) {
+                        throw ProtoValidationException("Proto maps verification failed");
+                    }
+
+                    // Write protos
+                    const auto write_protos = [](const ProtoManager& protos, string_view fname) {
+                        const auto data = protos.GetProtosBinaryData();
+                        RUNTIME_ASSERT(!data.empty());
+                        auto protos_file = DiskFileSystem::OpenFile(fname, true);
+                        RUNTIME_ASSERT(protos_file);
+                        const auto protos_write_ok = protos_file.Write(data.data(), data.size());
+                        RUNTIME_ASSERT(protos_write_ok);
+                    };
+
+                    WriteLog("Write protos");
+                    write_protos(proto_mngr, "Protos/Protos.foprob");
+                    write_protos(server_proto_mngr, "Protos/ServerProtos.foprob");
+                    write_protos(client_proto_mngr, "Protos/ClientProtos.foprob");
                 }
 
                 WriteLog("Bake protos complete!");
