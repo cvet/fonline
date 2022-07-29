@@ -35,46 +35,45 @@
 
 #include "Common.h"
 
+enum class ConfigFileOption
+{
+    None = 0,
+    CollectContent = 0x1,
+    ReadFirstSection = 0x2,
+};
+
 class ConfigFile final
 {
 public:
-    ConfigFile() = delete;
-    explicit ConfigFile(string_view fname_hint, string_view str, NameResolver* name_resolver = nullptr, bool collect_content = false);
+    explicit ConfigFile(string_view fname_hint, const string& str, NameResolver* name_resolver = nullptr, ConfigFileOption options = ConfigFileOption::None);
     ConfigFile(const ConfigFile&) = delete;
     ConfigFile(ConfigFile&&) noexcept = default;
     auto operator=(const ConfigFile&) = delete;
     auto operator=(ConfigFile&&) noexcept = delete;
-    explicit operator bool() const { return !_sectionKeyValues.empty(); }
     ~ConfigFile() = default;
 
     [[nodiscard]] auto HasSection(string_view section_name) const -> bool;
     [[nodiscard]] auto HasKey(string_view section_name, string_view key_name) const -> bool;
-    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name) const -> string;
-    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name, string_view def_val) const -> string;
+    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name) const -> const string&;
+    [[nodiscard]] auto GetStr(string_view section_name, string_view key_name, const string& def_val) const -> const string&;
     [[nodiscard]] auto GetInt(string_view section_name, string_view key_name) const -> int;
     [[nodiscard]] auto GetInt(string_view section_name, string_view key_name, int def_val) const -> int;
     [[nodiscard]] auto GetSection(string_view section_name) const -> const map<string, string>&;
     [[nodiscard]] auto GetSections(string_view section_name) -> vector<map<string, string>*>;
     [[nodiscard]] auto GetSectionNames() const -> set<string>;
     [[nodiscard]] auto GetSectionKeyValues(string_view section_name) -> const map<string, string>*;
-    [[nodiscard]] auto GetSectionContent(string_view section_name) -> string;
-    [[nodiscard]] auto SerializeData() -> string;
+    [[nodiscard]] auto GetSectionContent(string_view section_name) -> const string&;
 
-    void AppendData(string_view str);
     void SetStr(string_view section_name, string_view key_name, string_view val);
     void SetInt(string_view section_name, string_view key_name, int val);
     auto CreateSection(string_view section_name) -> map<string, string>&;
-    void GotoNextSection(string_view section_name);
 
 private:
-    using ValuesMap = multimap<string, map<string, string>>;
-    using ValuesMapItVec = vector<ValuesMap::const_iterator>;
-
     [[nodiscard]] auto GetRawValue(string_view section_name, string_view key_name) const -> const string*;
 
     string _fileNameHint;
     NameResolver* _nameResolver;
-    bool _collectContent {};
-    ValuesMap _sectionKeyValues {};
-    ValuesMapItVec _sectionKeyValuesOrder {};
+    ConfigFileOption _options;
+    multimap<string, map<string, string>> _sectionKeyValues {};
+    const string _emptyStr {};
 };

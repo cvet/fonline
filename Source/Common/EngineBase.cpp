@@ -36,7 +36,7 @@
 #include "Log.h"
 #include "StringUtils.h"
 
-FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
+FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation) :
     Entity(new PropertyRegistrator(ENTITY_CLASS_NAME, props_relation, *this)), //
     GameProperties(GetInitRef()),
     Settings {settings},
@@ -44,17 +44,7 @@ FOEngineBase::FOEngineBase(GlobalSettings& settings, PropertiesRelationType prop
     GameTime(settings),
     _propsRelation {props_relation}
 {
-    RUNTIME_ASSERT(register_data_callback);
-
     _registrators.emplace(ENTITY_CLASS_NAME, _propsRef.GetRegistrator());
-
-    ScriptSys = register_data_callback();
-    if (ScriptSys != nullptr) {
-        ScriptSys->InitSubsystems();
-    }
-
-    GetPropertiesForEdit().AllocData();
-    FinalizeDataRegistration();
 }
 
 auto FOEngineBase::GetOrCreatePropertyRegistrator(string_view class_name) -> PropertyRegistrator*
@@ -111,6 +101,8 @@ void FOEngineBase::FinalizeDataRegistration()
     RUNTIME_ASSERT(!_registrationFinalized);
 
     _registrationFinalized = true;
+
+    GetPropertiesForEdit().AllocData();
 }
 
 auto FOEngineBase::ResolveEnumValue(string_view enum_value_name, bool* failed) const -> int

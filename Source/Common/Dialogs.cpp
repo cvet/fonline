@@ -168,7 +168,7 @@ auto DialogManager::GetDialogs() -> vector<DialogPack*>
 
 auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> DialogPack*
 {
-    auto fodlg = ConfigFile(_str("{}.fodlg", pack_name), data, _engine, true);
+    auto fodlg = ConfigFile(_str("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
 
     auto* pack = new DialogPack();
     auto dlg_buf = fodlg.GetSectionContent("dialog");

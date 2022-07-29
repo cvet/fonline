@@ -52,7 +52,7 @@ void Entity::Release() const
     }
 }
 
-auto Entity::GetClassName() const -> string_view
+auto Entity::GetClassName() const -> const string&
 {
     return _props.GetRegistrator()->GetClassName();
 }
@@ -255,9 +255,9 @@ ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrato
     RUNTIME_ASSERT(_protoId);
 }
 
-auto ProtoEntity::GetName() const -> string_view
+auto ProtoEntity::GetName() const -> const string&
 {
-    return _protoId;
+    return _protoId.as_str();
 }
 
 auto ProtoEntity::GetProtoId() const -> hstring

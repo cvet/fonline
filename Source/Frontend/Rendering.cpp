@@ -54,7 +54,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, string_view defi
 {
     const auto fname = _str("{}.fofx", name);
     const auto content = loader(fname);
-    const auto fofx = ConfigFile(fname, content, nullptr, true);
+    const auto fofx = ConfigFile(fname, content, nullptr, ConfigFileOption::CollectContent);
     RUNTIME_ASSERT(fofx.HasSection("Effect"));
 
     const auto passes = fofx.GetInt("Effect", "Passes", 1);

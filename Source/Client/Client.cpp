@@ -41,30 +41,30 @@
 
 #if !FO_SINGLEPLAYER
 FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const vector<uchar>& restore_info_bin) :
-    FOClient(settings, window, PropertiesRelationType::ClientRelative, [&, this]() -> ScriptSystem* {
-        extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
-        Client_RegisterData(this, restore_info_bin);
-        return new ClientScriptSystem(this);
-    })
-{
-}
+    FOEngineBase(settings, PropertiesRelationType::ClientRelative),
+#else
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelationType props_relation) :
+    FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
-
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback) :
-    FOEngineBase(settings, props_relation, register_data_callback), //
     ProtoMngr(this),
     EffectMngr(Settings, FileSys),
     SprMngr(Settings, window, FileSys, EffectMngr),
     ResMngr(FileSys, SprMngr, *this),
     SndMngr(Settings, FileSys),
     Keyb(Settings, SprMngr),
-    Cache("Data/Cache.fobin"),
+    Cache(_str(Settings.ResourcesDir).combinePath("Cache.fobin")),
     ClientDeferredCalls(this),
     _conn(Settings),
     _worldmapFog(GM_MAXZONEX, GM_MAXZONEY, nullptr)
 {
     FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
+
     for (const auto& entry : Settings.ClientResourceEntries) {
         FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
     }
@@ -77,6 +77,14 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelati
     // AddDataSource(SDL_AndroidGetExternalStoragePath());
 #elif FO_WEB
     FileSys.AddDataSource("PersistentData");
+#endif
+
+#if !FO_SINGLEPLAYER
+    extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
+    Client_RegisterData(this, restore_info_bin);
+
+    ScriptSys = new ClientScriptSystem(this);
+    ScriptSys->InitSubsystems();
 #endif
 
     ResMngr.IndexFiles();

@@ -55,7 +55,7 @@ public:
 
     [[nodiscard]] auto GetId() const -> uint;
     [[nodiscard]] auto GetEngine() -> FOServer*;
-    [[nodiscard]] auto GetName() const -> string_view override;
+    [[nodiscard]] auto GetName() const -> const string& override;
 
 protected:
     ServerEntity(FOServer* engine, uint id, const PropertyRegistrator* registrator);

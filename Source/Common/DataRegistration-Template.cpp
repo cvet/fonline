@@ -62,6 +62,8 @@ auto Server_RegisterData(FOEngineBase* engine) -> vector<uchar>
 {
     ///@ CodeGen ServerRegister
 
+    engine->FinalizeDataRegistration();
+
     map<string, vector<string>> restore_info;
 
     ///@ CodeGen WriteRestoreInfo
@@ -213,6 +215,8 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info
 
         RestoreProperty(prop_registrator, tokens[1], tokens[2], tokens[3], flags);
     }
+
+    engine->FinalizeDataRegistration();
 }
 
 #elif SINGLE_REGISTRATION
@@ -220,6 +224,8 @@ void Client_RegisterData(FOEngineBase* engine, const vector<uchar>& restore_info
 void Single_RegisterData(FOEngineBase* engine)
 {
     ///@ CodeGen SingleRegister
+
+    engine->FinalizeDataRegistration();
 }
 
 #elif MAPPER_REGISTRATION
@@ -227,6 +233,8 @@ void Single_RegisterData(FOEngineBase* engine)
 void Mapper_RegisterData(FOEngineBase* engine)
 {
     ///@ CodeGen MapperRegister
+
+    engine->FinalizeDataRegistration();
 }
 
 #elif BAKER_REGISTRATION
@@ -234,6 +242,8 @@ void Mapper_RegisterData(FOEngineBase* engine)
 void Baker_RegisterData(FOEngineBase* engine)
 {
     ///@ CodeGen BakerRegister
+
+    engine->FinalizeDataRegistration();
 }
 
 #endif
@@ -252,6 +262,8 @@ void AngelScript_MapperCompiler_RegisterData(FOEngineBase* engine)
 #endif
 {
     ///@ CodeGen CompilerRegister
+
+    engine->FinalizeDataRegistration();
 }
 
 #endif

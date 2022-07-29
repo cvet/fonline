@@ -551,7 +551,7 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 }
 #endif
 
-auto Application::GetName() const -> string_view
+auto Application::GetName() const -> const string&
 {
     return _name;
 }

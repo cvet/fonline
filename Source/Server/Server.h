@@ -87,7 +87,6 @@ public:
     auto CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*;
     void VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_hy, ushort to_hx, ushort to_hy, uchar dir);
     void BeginDialog(Critter* cl, Critter* npc, hstring dlg_pack_id, ushort hx, ushort hy, bool ignore_distance);
-    void GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names);
 
     ///@ ExportEvent
     ENTITY_EVENT(OnInit);
@@ -161,6 +160,10 @@ public:
     ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+
+#if !FO_SINGLEPLAYER
+    vector<uchar> RestoreInfoBin {};
+#endif
 
     ProtoManager ProtoMngr;
     ServerDeferredCallManager ServerDeferredCalls;

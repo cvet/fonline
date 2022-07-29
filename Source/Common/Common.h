@@ -249,7 +249,8 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 
 // Engine exception handling
 extern auto GetStackTrace() -> string;
-extern bool BreakIntoDebugger(string_view error_message);
+extern auto IsRunInDebugger() -> bool;
+extern auto BreakIntoDebugger(string_view error_message) -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
 
 // Todo: pass name to exceptions context args
@@ -954,7 +955,7 @@ struct hstring
     [[nodiscard]] auto as_hash() const -> hash_t { return _entry->Hash; }
     [[nodiscard]] auto as_int() const -> int { return static_cast<int>(_entry->Hash); }
     [[nodiscard]] auto as_uint() const -> uint { return _entry->Hash; }
-    [[nodiscard]] auto as_str() const -> string_view { return _entry->Str; }
+    [[nodiscard]] auto as_str() const -> const string& { return _entry->Str; }
 
 private:
     static entry _zeroEntry;

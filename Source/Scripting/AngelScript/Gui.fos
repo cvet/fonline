@@ -2,10 +2,10 @@
 
 ///@ Enum CursorType Default = 0
 
-///@ Setting CursorType Cursor
-///@ Setting uint CursorData
-///@ Setting CursorType DraggableCursor
-///@ Setting bool MsgboxInvert
+///@ Setting Client CursorType Cursor
+///@ Setting Client uint CursorData
+///@ Setting Client CursorType DraggableCursor
+///@ Setting Client bool MsgboxInvert
 
 interface IDropMenu
 {

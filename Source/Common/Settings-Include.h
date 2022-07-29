@@ -39,6 +39,7 @@
 
 ///@ ExportSettings Common
 SETTING_GROUP(CommonSettings, virtual DummySettings);
+FIXED_SETTING(string, ExternalConfig, "");
 FIXED_SETTING(string, CommandLine, "");
 FIXED_SETTING(vector<string>, CommandLineArgs);
 VARIABLE_SETTING(bool, Quit, false); // Todo: rework global Quit setting
@@ -49,8 +50,8 @@ SETTING_GROUP_END();
 ///@ ExportSettings Common
 SETTING_GROUP(FileSystemSettings, virtual DummySettings);
 FIXED_SETTING(string, ResourcesDir, "Resources");
-FIXED_SETTING(vector<string>, ClientResourceEntries, "Core", "Protos", "Texts");
-FIXED_SETTING(vector<string>, ServerResourceEntries, "Maps", "Protos", "Dialogs");
+FIXED_SETTING(vector<string>, ClientResourceEntries);
+FIXED_SETTING(vector<string>, ServerResourceEntries);
 FIXED_SETTING(string, EmbeddedResources, "$Embedded");
 FIXED_SETTING(bool, DataSynchronization, true);
 SETTING_GROUP_END();
@@ -85,7 +86,6 @@ FIXED_SETTING(uint, WhisperDist, 2);
 FIXED_SETTING(uint, ShoutDist, 200);
 FIXED_SETTING(bool, NoAnswerShuffle, false);
 FIXED_SETTING(uint, SneakDivider, 6);
-FIXED_SETTING(int, DeadHitPoints, -6);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -187,19 +187,9 @@ SETTING_GROUP(TimerSettings, virtual DummySettings);
 FIXED_SETTING(int, StartYear, 2000);
 SETTING_GROUP_END();
 
-SETTING_GROUP(ScriptSettings, virtual TimerSettings);
-FIXED_SETTING(string, ASServer);
-FIXED_SETTING(string, ASClient);
-FIXED_SETTING(string, ASSingle);
-FIXED_SETTING(string, ASMapper);
-SETTING_GROUP_END();
-
 SETTING_GROUP(BakerSettings, virtual DummySettings);
 VARIABLE_SETTING(bool, ForceBakering, false);
-VARIABLE_SETTING(string, BakeASServer);
-VARIABLE_SETTING(string, BakeASClient);
-VARIABLE_SETTING(string, BakeASSingle);
-VARIABLE_SETTING(string, BakeASMapper);
+VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
 VARIABLE_SETTING(vector<string>, BakeContentEntries);
 VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv");
@@ -281,7 +271,7 @@ VARIABLE_SETTING(int, MouseX, 0);
 VARIABLE_SETTING(int, MouseY, 0);
 SETTING_GROUP_END();
 
-///@ ExportSettings Mapper
+///@ ExportSettings Client
 SETTING_GROUP(MapperSettings, virtual DummySettings);
 FIXED_SETTING(string, MapsDir, "");
 FIXED_SETTING(string, StartMap, "");
@@ -291,7 +281,7 @@ VARIABLE_SETTING(bool, SplitTilesCollection, true);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Client
-SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
+SETTING_GROUP(ClientSettings, virtual CommonSettings, virtual FileSystemSettings, virtual CommonGameplaySettings, virtual ClientNetworkSettings, virtual AudioSettings, virtual ViewSettings, virtual RenderSettings, virtual GeometrySettings, virtual TimerSettings, virtual HexSettings, virtual PlatformSettings, virtual InputSettings, virtual CritterViewSettings, virtual MapperSettings);
 FIXED_SETTING(string, AutoLogin, "");
 FIXED_SETTING(uint, TextDelay, 3000);
 VARIABLE_SETTING(string, Language, "engl");
@@ -301,7 +291,11 @@ VARIABLE_SETTING(bool, HelpInfo, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
-SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual FileSystemSettings, virtual ServerNetworkSettings, virtual ScriptSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+SETTING_GROUP(ServerSettings, virtual CommonSettings, virtual FileSystemSettings, virtual ServerNetworkSettings, virtual AudioSettings, virtual RenderSettings, virtual GeometrySettings, virtual PlatformSettings, virtual TimerSettings, virtual ServerGameplaySettings, virtual CritterSettings);
+FIXED_SETTING(vector<string>, AccessAdmin);
+FIXED_SETTING(vector<string>, AccessClient);
+FIXED_SETTING(vector<string>, AccessModer);
+FIXED_SETTING(vector<string>, AccessTester);
 FIXED_SETTING(uint, AdminPanelPort, 0);
 FIXED_SETTING(string, DbStorage, "Memory");
 FIXED_SETTING(string, DbHistory, "None");

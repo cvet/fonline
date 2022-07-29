@@ -251,28 +251,16 @@ static void AdminWork(FOServer* server, Session* session)
 
         // Authorization
         if (!session->Authorized) {
-            vector<string> client;
-            vector<string> tester;
-            vector<string> moder;
-            vector<string> admin;
-            vector<string> admin_names;
-            server->GetAccesses(client, tester, moder, admin, admin_names);
-
             auto pos = -1;
-            for (size_t i = 0, j = admin.size(); i < j; i++) {
-                if (admin[i] == cmd) {
+            for (size_t i = 0, j = server->Settings.AccessAdmin.size(); i < j; i++) {
+                if (server->Settings.AccessAdmin[i] == cmd) {
                     pos = static_cast<int>(i);
                     break;
                 }
             }
 
             if (pos != -1) {
-                if (pos < static_cast<int>(admin_names.size())) {
-                    admin_name = admin_names[pos];
-                }
-                else {
-                    admin_name = _str("{}", pos);
-                }
+                admin_name = _str("{}", pos);
 
                 session->Authorized = true;
                 WriteLog("Admin panel ({}): Authorized for admin '{}', IP '{}'", admin_name, admin_name, inet_ntoa(session->From.sin_addr));

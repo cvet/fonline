@@ -67,7 +67,7 @@ public:
     ~ClientConnection();
 
     [[nodiscard]] auto GetIp() const -> uint;
-    [[nodiscard]] auto GetHost() const -> string_view;
+    [[nodiscard]] auto GetHost() const -> const string&;
     [[nodiscard]] auto GetPort() const -> ushort;
     [[nodiscard]] auto IsHardDisconnected() const -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const -> bool;

@@ -85,7 +85,7 @@ static auto StrToHex(const char* str) -> uchar
 
 auto FOMsg::operator+=(const FOMsg& other) -> FOMsg&
 {
-    for (const auto& [key, value] : other._strData) {
+    for (auto&& [key, value] : other._strData) {
         EraseStr(key);
         AddStr(key, value);
     }
@@ -344,7 +344,7 @@ auto FOMsg::LoadFromString(string_view str, NameResolver& name_resolver) -> bool
 
 void FOMsg::LoadFromMap(const map<string, string>& kv)
 {
-    for (const auto& [key, value] : kv) {
+    for (auto&& [key, value] : kv) {
         const auto num = _str(key).toUInt();
         if (num != 0u) {
             AddStr(num, value);

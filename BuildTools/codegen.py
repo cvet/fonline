@@ -26,7 +26,6 @@ parser.add_argument('-mdpath', dest='mdpath', default=None, help='path for markd
 parser.add_argument('-native', dest='native', action='store_true', help='generate native api')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='generate angelscript api')
 parser.add_argument('-csharp', dest='csharp', action='store_true', help='generate csharp api')
-parser.add_argument('-assource', dest='assource', action='append', default=[], help='angelscript file path')
 parser.add_argument('-monoassembly', dest='monoassembly', action='append', default=[], help='assembly name')
 parser.add_argument('-monoserverref', dest='monoserverref', action='append', default=[], help='mono assembly server reference')
 parser.add_argument('-monoclientref', dest='monoclientref', action='append', default=[], help='mono assembly client reference')
@@ -40,6 +39,7 @@ parser.add_argument('-content', dest='content', action='append', default=[], hel
 parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
 parser.add_argument('-config', dest='config', action='append', default=[], help='debugging config')
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
+parser.add_argument('-ascontentoutput', dest='ascontentoutput', required=True, help='generated angel script content script output dir')
 parser.add_argument('-verbose', dest='verbose', action='store_true', help='verbose mode')
 args = parser.parse_args()
 
@@ -104,7 +104,7 @@ codeGenTags = {
         'Property': [], # (entity, access, type, name, [flags], [comment])
         'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
         'RemoteCall': [], # (target, subsystem, name, [(type, name)], [flags], [comment])
-        'Setting': [], #(type, name, init value, [flags], [comment])
+        'Setting': [], #(target, type, name, init value, [flags], [comment])
         'EngineHook': [], #(name, [flags], [comment])
         'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
 
@@ -153,6 +153,7 @@ def checkErrors():
         
         sys.exit(1)
 
+# Parse tags
 tagsMetas = {}
 for k in codeGenTags.keys():
     tagsMetas[k] = []
@@ -260,6 +261,7 @@ metaFiles = []
 for path in args.meta:
     absPath = os.path.abspath(path)
     if absPath not in metaFiles and 'GeneratedSource' not in absPath:
+        assert os.path.isfile(absPath)
         metaFiles.append(absPath)
 metaFiles.sort()
 
@@ -898,15 +900,17 @@ def parseTags():
             
             try:
                 tok = tokenize(tagInfo)
-                stype = unifiedTypeToMetaType(tok[0])
-                name = tok[1]
-                value = tok[3] if len(tok) > 3 and tok[2] == '=' else None
-                flags = tok[2 if len(tok) < 3 or tok[2] != '=' else 4:]
+                target = tok[0]
+                assert target in ['Server', 'Client', 'Common'], 'Invalid target ' + target
+                stype = unifiedTypeToMetaType(tok[1])
+                name = tok[2]
+                value = tok[4] if len(tok) > 4 and tok[3] == '=' else None
+                flags = tok[3 if len(tok) < 4 or tok[3] != '=' else 5:]
                 
-                assert not [1 for tag in codeGenTags['Setting'] if tag[1] == name], 'Setting ' + name + ' already added'
+                assert not [1 for tag in codeGenTags['Setting'] if tag[2] == name], 'Setting ' + name + ' already added'
                 assert not [1 for tag in codeGenTags['ExportSettings'] if [1 for sett in tag[2] if sett[2] == name]], 'Setting ' + name + ' already added'
                 
-                codeGenTags['Setting'].append((stype, name, value, flags, comment))
+                codeGenTags['Setting'].append((target, stype, name, value, flags, comment))
                 
             except Exception as ex:
                 showError('Invalid tag Setting', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -999,7 +1003,7 @@ checkErrors()
 tagsMetas = {} # Cleanup memory
 
 # Parse content
-content = { 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fotxt': [] }
+content = { 'fos': [], 'foitem': [], 'focr': [], 'fomap': [], 'foloc': [], 'fodlg': [], 'fotxt': [] }
 
 for contentDir in args.content:
     try:
@@ -1013,20 +1017,21 @@ for contentDir in args.content:
         
         for file in collectFiles(contentDir):
             def getPidNames(file):
-                baseName = os.path.splitext(os.path.basename(file))[0]
+                baseName, ext = os.path.splitext(os.path.basename(file))
                 result = [baseName]
-                verbosePrint('getPidNames', file)
-                with open(file, 'r', encoding='utf-8-sig') as f:
-                    try:
-                        fileLines = f.readlines()
-                    except Exception as ex:
-                        print('[CodeGen]', 'Bad file', file)
-                        raise
-                for fileLine in fileLines:
-                    if fileLine.startswith('$Name'):
-                        innerName = fileLine[fileLine.find('=') + 1:].strip(' \r\n')
-                        if innerName != baseName:
-                            result.append(innerName)
+                if ext in ['.foitem', '.focr']:
+                    verbosePrint('getPidNames', file)
+                    with open(file, 'r', encoding='utf-8-sig') as f:
+                        try:
+                            fileLines = f.readlines()
+                        except Exception as ex:
+                            print('[CodeGen]', 'Bad file', file)
+                            raise
+                    for fileLine in fileLines:
+                        if fileLine.startswith('$Name'):
+                            innerName = fileLine[fileLine.find('=') + 1:].strip(' \r\n')
+                            if innerName != baseName:
+                                result.append(innerName)
                 return result
             
             ext = os.path.splitext(os.path.basename(file))[1]
@@ -1040,6 +1045,7 @@ checkErrors()
 # Parse resources
 resources = {}
 
+"""
 for resourceEntry in args.resource:
     try:
         def collectFiles(dir, arcDir):
@@ -1070,6 +1076,7 @@ for key in resources.keys():
     resources[key].sort(key=lambda x: x[0])
 
 checkErrors()
+"""
 
 # Generate API
 files = {}
@@ -1216,7 +1223,7 @@ def metaTypeToEngineType(t, target, passIn):
 def genGenericCode():
     globalLines = []
     
-    # Engine hooks    
+    # Engine hooks
     def isHookEnabled(hookName):
         for hookTag in codeGenTags['EngineHook']:
             name, flags, _ = hookTag
@@ -1241,6 +1248,28 @@ def genGenericCode():
                 globalLines.append('ushort ' + entity + 'Properties::' + name + '_RegIndex = ' + str(index) + ';')
                 index += 1
     globalLines.append('')
+    
+    # Settings list
+    def writeSettings(target):
+        globalLines.append('[[maybe_unused]] auto Get' + target + 'Settings() -> unordered_set<string>')
+        globalLines.append('{')
+        globalLines.append('    unordered_set<string> settings = {')
+        for settTag in codeGenTags['ExportSettings']:
+            grName, targ, settings, flags, _ = settTag
+            if targ in [target, 'Common']:
+                for sett in settings:
+                    fixOrVar, keyType, keyName, initValues, _ = sett
+                    globalLines.append('        "' + keyName + '",')
+        for settTag in codeGenTags['Setting']:
+            targ, type, name, initValue, flags, _ = settTag
+            if targ in [target, 'Common']:
+                globalLines.append('        "' + name + '",')
+        globalLines.append('    };')
+        globalLines.append('    return settings;')
+        globalLines.append('}')
+        globalLines.append('')
+    writeSettings('Server')
+    writeSettings('Client')
     
     createFile('GenericCode-Common.cpp', args.genoutput)
     writeCodeGenTemplate('GenericCode')
@@ -1410,7 +1439,7 @@ def genDataRegistration(target, isASCompiler):
     #                fixOrVar, keyType, keyName, initValues, _ = sett
     #                restoreLines.append('    "' + grName + ' ' + fixOrVar + ' ' + keyType + ' ' + keyName + (' ' if flags else '') + ' '.join(flags) + (' |' + ' '.join(initValues) if initValues else '') + '",')
     #    for settTag in codeGenTags['Setting']:
-    #        type, name, initValue, flags, _ = settTag
+    #        targ, type, name, initValue, flags, _ = settTag
     #        restoreLines.append('    "Script fix ' + type + ' ' + name + (' ' if flags else '') + ' '.join(flags) + (' |' + initValue if initValue is not None else '') + '",')
     #    restoreLines.append('};')
     #    restoreLines.append('')
@@ -1886,30 +1915,33 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         settEntity = metaTypeToEngineType('Game', target, False) + ' self'
         for settTag in codeGenTags['ExportSettings']:
             grName, targ, settings, flags, _ = settTag
-            if targ in allowedTargets:
-                for sett in settings:
-                    fixOrVar, keyType, keyName, initValues, _ = sett
-                    globalLines.append('static ' + metaTypeToASEngineType(keyType, True) + ' ASSetting_Get_' + keyName + '(' + settEntity + ')')
+            if targ not in allowedTargets:
+                continue
+            for sett in settings:
+                fixOrVar, keyType, keyName, initValues, _ = sett
+                globalLines.append('static ' + metaTypeToASEngineType(keyType, True) + ' ASSetting_Get_' + keyName + '(' + settEntity + ')')
+                globalLines.append('{')
+                if not isASCompiler:
+                    globalLines.append('    return ' + marshalBack(keyType, 'self->Settings.' + keyName) + ';')
+                else:
+                    globalLines.append('    UNUSED_VARIABLE(self);')
+                    globalLines.append('    throw ScriptCompilerException("Stub");')
+                globalLines.append('}')
+                if fixOrVar == 'var':
+                    globalLines.append('static void ASSetting_Set_' + keyName + '(' + settEntity + ', ' + metaTypeToASEngineType(keyType, False) + ' value)')
                     globalLines.append('{')
                     if not isASCompiler:
-                        globalLines.append('    return ' + marshalBack(keyType, 'self->Settings.' + keyName) + ';')
+                        globalLines.append('    self->Settings.' + keyName + ' = ' + marshalIn(keyType, 'value') + ';')
                     else:
                         globalLines.append('    UNUSED_VARIABLE(self);')
+                        globalLines.append('    UNUSED_VARIABLE(value);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
-                    if fixOrVar == 'var':
-                        globalLines.append('static void ASSetting_Set_' + keyName + '(' + settEntity + ', ' + metaTypeToASEngineType(keyType, False) + ' value)')
-                        globalLines.append('{')
-                        if not isASCompiler:
-                            globalLines.append('    self->Settings.' + keyName + ' = ' + marshalIn(keyType, 'value') + ';')
-                        else:
-                            globalLines.append('    UNUSED_VARIABLE(self);')
-                            globalLines.append('    UNUSED_VARIABLE(value);')
-                            globalLines.append('    throw ScriptCompilerException("Stub");')
-                        globalLines.append('}')
-                    globalLines.append('')
+                globalLines.append('')
         for settTag in codeGenTags['Setting']:
-            type, name, initValue, flags, _ = settTag
+            targ, type, name, initValue, flags, _ = settTag
+            if targ not in allowedTargets:
+                continue
             globalLines.append('static ' + metaTypeToASEngineType(type, True) + ' ASSetting_Get_' + name + '(' + settEntity + ')')
             globalLines.append('{')
             if not isASCompiler:
@@ -2039,14 +2071,17 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         settEntity = gameEntitiesInfo['Game']['Client' if target != 'Server' else 'Server'] + '* self'
         for settTag in codeGenTags['ExportSettings']:
             grName, targ, settings, flags, _ = settTag
-            if targ in allowedTargets:
-                for sett in settings:
-                    fixOrVar, keyType, keyName, initValues, _ = sett
-                    registerLines.append('REGISTER_GET_SETTING(' + keyName + ', "' + metaTypeToASType(keyType, isRet=True) + ' get_' + keyName + '() const");')
-                    if fixOrVar == 'var':
-                        registerLines.append('REGISTER_SET_SETTING(' + keyName + ', "void set_' + keyName + '(' + metaTypeToASType(keyType) + ')");')
+            if targ not in allowedTargets:
+                continue
+            for sett in settings:
+                fixOrVar, keyType, keyName, initValues, _ = sett
+                registerLines.append('REGISTER_GET_SETTING(' + keyName + ', "' + metaTypeToASType(keyType, isRet=True) + ' get_' + keyName + '() const");')
+                if fixOrVar == 'var':
+                    registerLines.append('REGISTER_SET_SETTING(' + keyName + ', "void set_' + keyName + '(' + metaTypeToASType(keyType) + ')");')
         for settTag in codeGenTags['Setting']:
-            type, name, initValue, flags, _ = settTag
+            targ, type, name, initValue, flags, _ = settTag
+            if targ not in allowedTargets:
+                continue
             if not isASCompiler:
                 registerLines.append('AngelScriptData->SettingsStorage["' + name + '"] = std::make_any<' + metaTypeToEngineType(type, target, False) + '>(' + (initValue if initValue is not None else '') + ');')
             registerLines.append('REGISTER_GET_SETTING(' + name + ', "' + metaTypeToASType(type, isRet=True) + ' get_' + name + '() const");')
@@ -2107,70 +2142,25 @@ except Exception as ex:
 
 checkErrors()
 
-# AngelScript root file
-def genAngelScriptRoot(target):
-    # Generate content file
-    createFile('Content.fos', args.genoutput)
-    def writeEnums(name, lst):
-        writeFile('namespace ' + name)
-        writeFile('{')
-        for i in lst:
-            writeFile('    hstring ' + i + ' = hstring("' + i + '");')
-        writeFile('}')
-        writeFile('')
-    writeFile('// FOS Common')
-    writeFile('')
-    writeEnums('Dialog', content['fodlg'])
-    writeEnums('Item', content['foitem'])
-    writeEnums('Critter', content['focr'])
-    writeEnums('Map', content['fomap'])
-    writeEnums('Location', content['foloc'])
-
-    # Sort files
-    asFiles = []
-
-    for file in args.assource:
-        file = os.path.abspath(file)
-        
-        with open(file, 'r', encoding='utf-8-sig') as f:
-            line = f.readline()
-
-        if len(line) >= 3 and ord(line[0]) == 0xEF and ord(line[1]) == 0xBB and ord(line[2]) == 0xBF:
-            line = line[3:]
-
-        assert line.startswith('// FOS'), 'Invalid .fos file header: ' + file + ' = ' + line
-        fosParams = line[6:].split()
-        sort = int(fosParams[fosParams.index('Sort') + 1]) if 'Sort' in fosParams else 0
-
-        if target in fosParams or 'Common' in fosParams or (target == 'Single' and 'Server' in fosParams):
-            asFiles.append((sort, file))
-
-    asFiles.sort()
-
-    # Write files
-    def writeRootModule(files):
-        def addInclude(file, comment):
-            writeFile('namespace ' + os.path.splitext(os.path.basename(file))[0] + ' {')
-            writeFile('#include "' + file.replace('\\', '/') + ('" // ' + comment if comment else '"'))
-            writeFile('}')
-
-        createFile(target + 'RootModule.fos', args.genoutput)
-        addInclude(args.genoutput.replace('\\', '/').rstrip('/') + '/Content.fos', 'Generated')
-        for file in files:
-            addInclude(file[1], 'Sort ' + str(file[0]) if file[0] else None)
-
-    writeRootModule(asFiles)
-
-if args.angelscript:
+# AngelScript content file
+if args.angelscript and args.ascontentoutput:
     try:
-        if args.multiplayer:
-            genAngelScriptRoot('Server')
-            genAngelScriptRoot('Client')
-        if args.singleplayer:
-            genAngelScriptRoot('Single')
-        if args.mapper:
-            genAngelScriptRoot('Mapper')
-            
+        createFile('Content.fos', args.ascontentoutput)
+        def writeEnums(name, lst):
+            writeFile('namespace ' + name)
+            writeFile('{')
+            for i in lst:
+                writeFile('    hstring ' + i + ' = hstring("' + i + '");')
+            writeFile('}')
+            writeFile('')
+        writeFile('// FOS Common')
+        writeFile('')
+        writeEnums('Dialog', content['fodlg'])
+        writeEnums('Item', content['foitem'])
+        writeEnums('Critter', content['focr'])
+        writeEnums('Map', content['fomap'])
+        writeEnums('Location', content['foloc'])
+    
     except Exception as ex:
         showError('Can\'t generate scripts', ex)
 
@@ -3160,14 +3150,14 @@ checkErrors()
 
 # Default settings
 createFile('DebugSettings-Include.h', args.genoutput)
-writeFile('R"CONFIG(###DefaultConfig###')
+writeFile('R"CONFIG(###DebugConfig###')
 for cfg in args.config:
     k, v = cfg.split(',', 1)
     if len(v) > 0 and v[0] == '+':
         writeFile(k + ' += ' + v[1:])
     else:
         writeFile(k + ' = ' + v)
-writeFile('###DefaultConfigEnd###)CONFIG"')
+writeFile('###DebugConfigEnd###)CONFIG"')
 
 # Version info
 createFile('Version-Include.h', args.genoutput)

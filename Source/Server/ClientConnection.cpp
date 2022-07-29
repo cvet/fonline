@@ -53,7 +53,7 @@ auto ClientConnection::GetIp() const -> uint
     return _netConnection->GetIp();
 }
 
-auto ClientConnection::GetHost() const -> string_view
+auto ClientConnection::GetHost() const -> const string&
 {
     return _netConnection->GetHost();
 }

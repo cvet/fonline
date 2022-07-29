@@ -51,7 +51,7 @@ Player::~Player()
     delete Connection;
 }
 
-auto Player::GetName() const -> string_view
+auto Player::GetName() const -> const string&
 {
     return _name;
 }
@@ -61,7 +61,7 @@ auto Player::GetIp() const -> uint
     return Connection->GetIp();
 }
 
-auto Player::GetHost() const -> string_view
+auto Player::GetHost() const -> const string&
 {
     return Connection->GetHost();
 }

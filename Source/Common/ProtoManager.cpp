@@ -38,7 +38,7 @@
 #include "StringUtils.h"
 
 template<class T>
-static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, const T*>& protos)
+static void WriteProtosToBinary(vector<uchar>& data, const unordered_map<hstring, const T*>& protos)
 {
     auto writer = DataWriter(data);
     writer.Write<uint>(static_cast<uint>(protos.size()));
@@ -66,7 +66,7 @@ static void WriteProtosToBinary(vector<uchar>& data, const map<hstring, const T*
 }
 
 template<class T>
-static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, map<hstring, const T*>& protos)
+static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegistrator* property_registrator, DataReader& reader, unordered_map<hstring, const T*>& protos)
 {
     vector<uchar> props_data;
 
@@ -99,7 +99,7 @@ static void ReadProtosFromBinary(NameResolver& name_resolver, const PropertyRegi
 
 static void InsertMapValues(const map<string, string>& from_kv, map<string, string>& to_kv, bool overwrite)
 {
-    for (const auto& [key, value] : from_kv) {
+    for (auto&& [key, value] : from_kv) {
         RUNTIME_ASSERT(!key.empty());
 
         if (key[0] != '$') {
@@ -107,7 +107,7 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
                 to_kv[key] = value;
             }
             else {
-                to_kv.insert(std::make_pair(key, value));
+                to_kv.emplace(key, value);
             }
         }
         else if (key == "$Components" && !value.empty()) {
@@ -122,7 +122,7 @@ static void InsertMapValues(const map<string, string>& from_kv, map<string, stri
 }
 
 template<class T>
-static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view app_name, map<hstring, const T*>& protos)
+static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, const PropertyRegistrator* property_registrator, string_view ext, string_view section_name, unordered_map<hstring, const T*>& protos)
 {
     // Collect data
     auto files = file_sys.FilterFiles(ext);
@@ -130,11 +130,19 @@ static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, co
     map<hstring, map<string, map<string, string>>> files_texts;
     while (files.MoveNext()) {
         auto file = files.GetCurFile();
-        ConfigFile fopro(file.GetPath(), file.GetStr(), &name_resolver);
 
-        auto protos_data = fopro.GetSections(app_name);
-        if (std::is_same_v<T, ProtoMap> && protos_data.empty()) {
-            protos_data = fopro.GetSections("Header");
+        auto fopro_options = ConfigFileOption::None;
+        if constexpr (std::is_same_v<T, ProtoMap>) {
+            fopro_options = ConfigFileOption::ReadFirstSection;
+        }
+
+        auto fopro = ConfigFile(file.GetPath(), file.GetStr(), &name_resolver, fopro_options);
+
+        auto protos_data = fopro.GetSections(section_name);
+        if constexpr (std::is_same_v<T, ProtoMap>) {
+            if (protos_data.empty()) {
+                protos_data = fopro.GetSections("Header");
+            }
         }
 
         for (auto& pkv : protos_data) {
@@ -145,15 +153,15 @@ static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, co
                 throw ProtoManagerException("Proto already loaded", name);
             }
 
-            files_protos.insert(std::make_pair(pid, kv));
+            files_protos.emplace(pid, kv);
 
-            for (const auto& app : fopro.GetSectionNames()) {
-                if (app.size() == "Text_xxxx"_len && _str(app).startsWith("Text_")) {
+            for (const auto& section : fopro.GetSectionNames()) {
+                if (section.size() == "Text_xxxx"_len && _str(section).startsWith("Text_")) {
                     if (!files_texts.count(pid)) {
                         map<string, map<string, string>> texts;
-                        files_texts.insert(std::make_pair(pid, texts));
+                        files_texts.emplace(pid, texts);
                     }
-                    files_texts[pid].insert(std::make_pair(app, fopro.GetSection(app)));
+                    files_texts[pid].emplace(section, fopro.GetSection(section));
                 }
             }
         }
@@ -164,12 +172,12 @@ static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, co
     }
 
     // Injection
-    auto injection = [&files_protos, &name_resolver](const char* key_name, bool overwrite) {
+    auto injection = [&files_protos, &name_resolver](const string& key_name, bool overwrite) {
         for (auto&& [pid, kv] : files_protos) {
             if (kv.count(key_name)) {
                 for (const auto& inject_name : _str(kv[key_name]).split(' ')) {
                     if (inject_name == "All") {
-                        for (auto& [pid2, kv2] : files_protos) {
+                        for (auto&& [pid2, kv2] : files_protos) {
                             if (pid2 != pid) {
                                 InsertMapValues(kv, kv2, overwrite);
                             }
@@ -239,7 +247,7 @@ static void ParseProtosExt(FileSystem& file_sys, NameResolver& name_resolver, co
         }
 
         // Add to collection
-        protos.insert(std::make_pair(pid, proto));
+        protos.emplace(pid, proto);
     }
 
     // Texts
@@ -367,22 +375,22 @@ auto ProtoManager::GetProtoLocation(hstring proto_id) -> const ProtoLocation*
     return it != _locProtos.end() ? it->second : nullptr;
 }
 
-auto ProtoManager::GetProtoItems() const -> const map<hstring, const ProtoItem*>&
+auto ProtoManager::GetProtoItems() const -> const unordered_map<hstring, const ProtoItem*>&
 {
     return _itemProtos;
 }
 
-auto ProtoManager::GetProtoCritters() const -> const map<hstring, const ProtoCritter*>&
+auto ProtoManager::GetProtoCritters() const -> const unordered_map<hstring, const ProtoCritter*>&
 {
     return _crProtos;
 }
 
-auto ProtoManager::GetProtoMaps() const -> const map<hstring, const ProtoMap*>&
+auto ProtoManager::GetProtoMaps() const -> const unordered_map<hstring, const ProtoMap*>&
 {
     return _mapProtos;
 }
 
-auto ProtoManager::GetProtoLocations() const -> const map<hstring, const ProtoLocation*>&
+auto ProtoManager::GetProtoLocations() const -> const unordered_map<hstring, const ProtoLocation*>&
 {
     return _locProtos;
 }

@@ -57,11 +57,11 @@ public:
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetName() const -> string_view override;
+    [[nodiscard]] auto GetName() const -> const string& override;
 
     [[nodiscard]] auto IsSendDisabled() const -> bool { return DisableSend > 0; }
     [[nodiscard]] auto GetIp() const -> uint;
-    [[nodiscard]] auto GetHost() const -> string_view;
+    [[nodiscard]] auto GetHost() const -> const string&;
     [[nodiscard]] auto GetPort() const -> ushort;
 
     [[nodiscard]] auto GetOwnedCritter() const -> const Critter* { return _ownedCr; }

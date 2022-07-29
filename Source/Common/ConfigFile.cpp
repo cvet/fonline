@@ -34,20 +34,14 @@
 #include "ConfigFile.h"
 #include "StringUtils.h"
 
-ConfigFile::ConfigFile(string_view fname_hint, string_view str, NameResolver* name_resolver, bool collect_content) : _fileNameHint {fname_hint}, _nameResolver {name_resolver}, _collectContent {collect_content}
-{
-    AppendData(str);
-}
-
-void ConfigFile::AppendData(string_view str)
+ConfigFile::ConfigFile(string_view fname_hint, const string& str, NameResolver* name_resolver, ConfigFileOption options) : _fileNameHint {fname_hint}, _nameResolver {name_resolver}, _options {options}
 {
     map<string, string>* cur_section;
     string cur_section_name;
 
-    auto it_section = _sectionKeyValues.find("");
+    auto it_section = _sectionKeyValues.find(_emptyStr);
     if (it_section == _sectionKeyValues.end()) {
-        auto it = _sectionKeyValues.emplace(string(), map<string, string>());
-        _sectionKeyValuesOrder.push_back(it);
+        auto it = _sectionKeyValues.emplace(_emptyStr, map<string, string>());
         cur_section = &it->second;
     }
     else {
@@ -55,12 +49,11 @@ void ConfigFile::AppendData(string_view str)
     }
 
     string section_content;
-    if (_collectContent) {
+    if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
         section_content.reserve(str.length());
     }
 
-    const auto str_ = string(str);
-    istringstream istr(str_);
+    istringstream istr(str);
     string line;
     string accum_line;
 
@@ -87,6 +80,10 @@ void ConfigFile::AppendData(string_view str)
 
         // New section
         if (line[0] == '[') {
+            if (IsEnumSet(_options, ConfigFileOption::ReadFirstSection) && _sectionKeyValues.size() == 2) {
+                break;
+            }
+
             // Parse name
             const auto end = line.find(']');
             if (end == string::npos) {
@@ -99,21 +96,20 @@ void ConfigFile::AppendData(string_view str)
             }
 
             // Store current section content
-            if (_collectContent) {
-                (*cur_section)[""] = section_content;
+            if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
+                (*cur_section)[_emptyStr] = section_content;
                 section_content.clear();
             }
 
             // Add new section
             auto it = _sectionKeyValues.emplace(section_name, map<string, string>());
-            _sectionKeyValuesOrder.push_back(it);
             cur_section = &it->second;
             cur_section_name = section_name;
         }
         // Section content
         else {
             // Store raw content
-            if (_collectContent) {
+            if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
                 section_content.append(line).append("\n");
             }
 
@@ -166,9 +162,11 @@ void ConfigFile::AppendData(string_view str)
                         ConfigEntryParseHook(_fileNameHint, cur_section_name, key, value);
 
                         if (!key.empty()) {
-                            if (cur_section->count(key) != 0) {
-                                (*cur_section)[key] += " ";
-                                (*cur_section)[key] += value;
+                            if (cur_section->count(key) != 0u) {
+                                if (!value.empty()) {
+                                    (*cur_section)[key] += " ";
+                                    (*cur_section)[key] += value;
+                                }
                             }
                             else {
                                 (*cur_section)[key] = value;
@@ -189,52 +187,15 @@ void ConfigFile::AppendData(string_view str)
             }
         }
     }
-    RUNTIME_ASSERT(istr.eof());
+
+    if (!IsEnumSet(_options, ConfigFileOption::ReadFirstSection)) {
+        RUNTIME_ASSERT(istr.eof());
+    }
 
     // Store current section content
-    if (_collectContent) {
-        (*cur_section)[""] = section_content;
+    if (IsEnumSet(_options, ConfigFileOption::CollectContent)) {
+        (*cur_section)[_emptyStr] = section_content;
     }
-}
-
-auto ConfigFile::SerializeData() -> string
-{
-    size_t str_size = 32;
-
-    for (auto& section_it : _sectionKeyValuesOrder) {
-        auto&& [section_name, section_kv] = *section_it;
-        if (!section_name.empty()) {
-            str_size += section_name.size() + 3;
-        }
-
-        for (auto&& [key, value] : section_kv) {
-            if (!key.empty()) {
-                str_size += key.size() + value.size() + 4;
-            }
-        }
-
-        str_size++;
-    }
-
-    string str;
-    str.reserve(str_size);
-
-    for (auto& section_it : _sectionKeyValuesOrder) {
-        auto&& [section_name, section_kv] = *section_it;
-        if (!section_name.empty()) {
-            str += _str("[{}]\n", section_name);
-        }
-
-        for (auto&& [key, value] : section_kv) {
-            if (!key.empty()) {
-                str += _str("{} = {}\n", key, value);
-            }
-        }
-
-        str += "\n";
-    }
-
-    return str;
 }
 
 auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const -> const string*
@@ -252,16 +213,16 @@ auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) con
     return &it_key->second;
 }
 
-auto ConfigFile::GetStr(string_view section_name, string_view key_name) const -> string
+auto ConfigFile::GetStr(string_view section_name, string_view key_name) const -> const string&
 {
     const auto* str = GetRawValue(section_name, key_name);
-    return str != nullptr ? *str : "";
+    return str != nullptr ? *str : _emptyStr;
 }
 
-auto ConfigFile::GetStr(string_view section_name, string_view key_name, string_view def_val) const -> string
+auto ConfigFile::GetStr(string_view section_name, string_view key_name, const string& def_val) const -> const string&
 {
     const auto* str = GetRawValue(section_name, key_name);
-    return str != nullptr ? *str : string(def_val);
+    return str != nullptr ? *str : def_val;
 }
 
 auto ConfigFile::GetInt(string_view section_name, string_view key_name) const -> int
@@ -295,7 +256,6 @@ void ConfigFile::SetStr(string_view section_name, string_view key_name, string_v
         map<string, string> key_values;
         key_values[string(key_name)] = val;
         const auto it = _sectionKeyValues.emplace(section_name, key_values);
-        _sectionKeyValuesOrder.push_back(it);
     }
     else {
         it_section->second[string(key_name)] = val;
@@ -331,7 +291,6 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<map<string, str
 auto ConfigFile::CreateSection(string_view section_name) -> map<string, string>&
 {
     const auto it = _sectionKeyValues.emplace(section_name, map<string, string>());
-    _sectionKeyValuesOrder.push_back(it);
     return it->second;
 }
 
@@ -359,34 +318,21 @@ auto ConfigFile::GetSectionNames() const -> set<string>
     return sections;
 }
 
-void ConfigFile::GotoNextSection(string_view section_name)
-{
-    const auto it_section = _sectionKeyValues.find(string(section_name));
-    if (it_section == _sectionKeyValues.end()) {
-        return;
-    }
-
-    const auto it = std::find(_sectionKeyValuesOrder.begin(), _sectionKeyValuesOrder.end(), it_section);
-    RUNTIME_ASSERT(it != _sectionKeyValuesOrder.end());
-    _sectionKeyValuesOrder.erase(it);
-    _sectionKeyValues.erase(it_section);
-}
-
 auto ConfigFile::GetSectionKeyValues(string_view section_name) -> const map<string, string>*
 {
     const auto it_section = _sectionKeyValues.find(string(section_name));
     return it_section != _sectionKeyValues.end() ? &it_section->second : nullptr;
 }
 
-auto ConfigFile::GetSectionContent(string_view section_name) -> string
+auto ConfigFile::GetSectionContent(string_view section_name) -> const string&
 {
-    RUNTIME_ASSERT(_collectContent);
+    RUNTIME_ASSERT(IsEnumSet(_options, ConfigFileOption::CollectContent));
 
     const auto it_section = _sectionKeyValues.find(string(section_name));
     if (it_section == _sectionKeyValues.end()) {
-        return "";
+        return _emptyStr;
     }
 
-    const auto it_key = it_section->second.find("");
-    return it_key != it_section->second.end() ? it_key->second : "";
+    const auto it_key = it_section->second.find(_emptyStr);
+    return it_key != it_section->second.end() ? it_key->second : _emptyStr;
 }

@@ -35,15 +35,15 @@
 #include "SingleScripting.h"
 
 FOSingle::FOSingle(GlobalSettings& settings, AppWindow* window) :
-    FOEngineBase(settings, PropertiesRelationType::BothRelative,
-        [&, this] {
-            extern void Single_RegisterData(FOEngineBase*);
-            Single_RegisterData(this);
-            return new SingleScriptSystem(this);
-        }),
+    FOEngineBase(settings, PropertiesRelationType::BothRelative), //
     FOServer(settings),
-    FOClient(settings, window, PropertiesRelationType::BothRelative, nullptr)
+    FOClient(settings, window)
 {
+    extern void Single_RegisterData(FOEngineBase*);
+    Single_RegisterData(this);
+
+    ScriptSys = new SingleScriptSystem(this);
+    ScriptSys->InitSubsystems();
 }
 
 void FOSingle::SingleMainLoop()

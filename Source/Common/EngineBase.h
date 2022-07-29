@@ -56,9 +56,9 @@ public:
     auto operator=(const FOEngineBase&) = delete;
     auto operator=(FOEngineBase&&) noexcept = delete;
 
-    [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
+    [[nodiscard]] auto GetName() const -> const string& override { return _engineName; }
     [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
-    [[nodiscard]] auto GetPropertiesRelation() const { return _propsRelation; }
+    [[nodiscard]] auto GetPropertiesRelation() const -> PropertiesRelationType { return _propsRelation; }
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_value_name, bool* failed = nullptr) const -> int override;
     [[nodiscard]] auto ResolveEnumValue(string_view enum_name, string_view value_name, bool* failed = nullptr) const -> int override;
@@ -79,14 +79,8 @@ public:
     ScriptSystem* ScriptSys {};
     FileSystem FileSys {};
 
-#if !FO_SINGLEPLAYER
-    vector<uchar> RestoreInfoBin {};
-#endif
-
 protected:
-    using RegisterDataCallback = std::function<ScriptSystem*()>;
-
-    FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation, const RegisterDataCallback& register_data_callback);
+    FOEngineBase(GlobalSettings& settings, PropertiesRelationType props_relation);
     ~FOEngineBase() override = default;
 
 private:
@@ -98,4 +92,5 @@ private:
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, const type_info*> _enumTypes {};
     mutable unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
+    string _engineName {"Engine"};
 };

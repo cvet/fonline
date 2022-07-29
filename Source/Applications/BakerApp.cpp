@@ -54,13 +54,10 @@ DECLARE_EXCEPTION(ProtoValidationException);
 class BakerEngine : public FOEngineBase
 {
 public:
-    BakerEngine(GlobalSettings& settings, PropertiesRelationType props_relation) :
-        FOEngineBase(settings, props_relation, [this] {
-            extern void Baker_RegisterData(FOEngineBase*);
-            Baker_RegisterData(this);
-            return nullptr;
-        })
+    BakerEngine(GlobalSettings& settings, PropertiesRelationType props_relation) : FOEngineBase(settings, props_relation)
     {
+        extern void Baker_RegisterData(FOEngineBase*);
+        Baker_RegisterData(this);
     }
 };
 
@@ -69,37 +66,40 @@ public:
 #if !FO_SINGLEPLAYER
 struct ASCompiler_ServerScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(FileSystem& file_sys);
 };
 struct ASCompiler_ServerScriptSystem_Validation : public ScriptSystem
 {
-    void InitAngelScriptScripting(FOEngineBase** out_engine);
+    void InitAngelScriptScripting(FileSystem& file_sys, FOEngineBase** out_engine);
 };
 struct ASCompiler_ClientScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(FileSystem& file_sys);
 };
 #else
 struct ASCompiler_SingleScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(FileSystem& file_sys);
 };
 struct ASCompiler_SingleScriptSystem_Validation : public ScriptSystem
 {
-    void InitAngelScriptScripting(FOEngineBase** out_engine);
+    void InitAngelScriptScripting(FileSystem& file_sys, FOEngineBase** out_engine);
 };
 #endif
 struct ASCompiler_MapperScriptSystem : public ScriptSystem
 {
-    void InitAngelScriptScripting(string_view script_path);
+    void InitAngelScriptScripting(FileSystem& file_sys);
 };
-
-static auto CheckScriptsUpToDate(string_view script_path) -> bool;
-static auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
 
 // External variable for compiler messages
 unordered_set<string> CompilerPassedMessages;
 #endif
+
+static auto ValidateProperties(const Properties& props, string_view context_str, ScriptSystem* script_sys, const unordered_set<hstring>& resource_hashes) -> int;
+static auto MakeOutputPath(string_view path) -> string
+{
+    return _str(App->Settings.BakeOutput).combinePath(path).str();
+}
 
 #if !FO_TESTING_APP
 int main(int argc, char** argv)
@@ -111,59 +111,19 @@ int main(int argc, char** argv)
         InitApp(argc, argv, "Baker");
         LogWithoutTimestamp();
 
-        const auto build_hash_deleted = DiskFileSystem::DeleteFile("Resources.build-hash");
-        RUNTIME_ASSERT(build_hash_deleted);
-
         WriteLog("Start bakering");
 
         const auto start_time = Timer::RealtimeTick();
+        const auto settings = static_cast<BakerSettings&>(App->Settings);
 
-        if (App->Settings.ForceBakering) {
+        const auto build_hash_deleted = DiskFileSystem::DeleteFile(MakeOutputPath("Resources.build-hash"));
+        RUNTIME_ASSERT(build_hash_deleted);
+
+        if (settings.ForceBakering) {
             WriteLog("Force rebuild all resources");
         }
 
         auto errors = 0;
-
-        // AngelScript scripts
-#if FO_ANGELSCRIPT_SCRIPTING
-        auto as_server_recompiled = false;
-
-        try {
-            WriteLog("Compile AngelScript scripts");
-
-#if !FO_SINGLEPLAYER
-            WriteLog("Compile server scripts");
-            RUNTIME_ASSERT(!App->Settings.ASServer.empty());
-            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.BakeASServer)) {
-                ASCompiler_ServerScriptSystem().InitAngelScriptScripting(App->Settings.BakeASServer);
-                as_server_recompiled = true;
-            }
-
-            WriteLog("Compile client scripts");
-            RUNTIME_ASSERT(!App->Settings.ASClient.empty());
-            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.BakeASClient)) {
-                ASCompiler_ClientScriptSystem().InitAngelScriptScripting(App->Settings.BakeASClient);
-            }
-#else
-            WriteLog("Compile game scripts");
-            RUNTIME_ASSERT(!App->Settings.ASSingle.empty());
-            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.BakeASSingle)) {
-                ASCompiler_SingleScriptSystem().InitAngelScriptScripting(App->Settings.BakeASSingle);
-            }
-#endif
-            WriteLog("Compile mapper scripts");
-            RUNTIME_ASSERT(!App->Settings.ASMapper.empty());
-            if (App->Settings.ForceBakering || !CheckScriptsUpToDate(App->Settings.BakeASMapper)) {
-                ASCompiler_MapperScriptSystem().InitAngelScriptScripting(App->Settings.BakeASMapper);
-            }
-
-            WriteLog("Compile AngelScript scripts complete!");
-        }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
-            errors++;
-        }
-#endif
 
         // Resource packs
         auto resource_names = unordered_set<string>();
@@ -171,10 +131,10 @@ int main(int argc, char** argv)
         try {
             WriteLog("Bake resource packs");
 
-            RUNTIME_ASSERT(!App->Settings.BakeResourceEntries.empty());
+            RUNTIME_ASSERT(!settings.BakeResourceEntries.empty());
 
             map<string, vector<string>> res_packs;
-            for (const auto& re : App->Settings.BakeResourceEntries) {
+            for (const auto& re : settings.BakeResourceEntries) {
                 auto re_splitted = _str(re).split(',');
                 RUNTIME_ASSERT(re_splitted.size() == 2);
                 res_packs[re_splitted[0]].push_back(re_splitted[1]);
@@ -194,12 +154,12 @@ int main(int argc, char** argv)
                     }
 
                     // Cleanup previous
-                    if (App->Settings.ForceBakering) {
-                        auto del_res_ok = DiskFileSystem::DeleteDir(pack_name);
+                    if (settings.ForceBakering) {
+                        auto del_res_ok = DiskFileSystem::DeleteDir(MakeOutputPath(pack_name));
                         RUNTIME_ASSERT(del_res_ok);
                     }
 
-                    DiskFileSystem::MakeDirTree(pack_name);
+                    DiskFileSystem::MakeDirTree(MakeOutputPath(pack_name));
 
                     const auto is_raw_only = pack_name == "Raw";
                     auto resources = res_files.FilterFiles("");
@@ -217,12 +177,12 @@ int main(int argc, char** argv)
                     };
 
                     if (!is_raw_only) {
-                        const auto bake_checker = [&pack_name, &resource_names, &pack_resource_names, &exclude_all_ext](const FileHeader& file_header) -> bool {
+                        const auto bake_checker = [&](const FileHeader& file_header) -> bool {
                             resource_names.emplace(file_header.GetPath());
                             pack_resource_names.emplace(exclude_all_ext(file_header.GetPath()));
 
-                            if (!App->Settings.ForceBakering) {
-                                return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(_str("{}/{}", pack_name, file_header.GetPath()));
+                            if (!settings.ForceBakering) {
+                                return file_header.GetWriteTime() > DiskFileSystem::GetWriteTime(MakeOutputPath(_str("{}/{}", pack_name, file_header.GetPath())));
                             }
                             else {
                                 return true;
@@ -230,7 +190,7 @@ int main(int argc, char** argv)
                         };
 
                         const auto write_data = [&pack_name, &baked_files](string_view path, const_span<uchar> baked_data) {
-                            auto res_file = DiskFileSystem::OpenFile(_str("{}/{}", pack_name, path), true);
+                            auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("{}/{}", pack_name, path)), true);
                             RUNTIME_ASSERT(res_file);
                             const auto res_file_write_ok = res_file.Write(baked_data);
                             RUNTIME_ASSERT(res_file_write_ok);
@@ -258,7 +218,7 @@ int main(int argc, char** argv)
                         // Skip not necessary files
                         if (!is_raw_only) {
                             const auto ext = _str(file_header.GetPath()).getFileExtension().str();
-                            const auto& base_exts = App->Settings.BakeExtraFileExtensions;
+                            const auto& base_exts = settings.BakeExtraFileExtensions;
                             if (std::find(base_exts.begin(), base_exts.end(), ext) == base_exts.end()) {
                                 continue;
                             }
@@ -269,30 +229,30 @@ int main(int argc, char** argv)
 
                         const auto path_in_pack = _str(pack_name).combinePath(file_header.GetPath()).str();
 
-                        if (!App->Settings.ForceBakering && DiskFileSystem::GetWriteTime(path_in_pack) >= file_header.GetWriteTime()) {
+                        if (!settings.ForceBakering && DiskFileSystem::GetWriteTime(MakeOutputPath(path_in_pack)) >= file_header.GetWriteTime()) {
                             continue;
                         }
 
                         auto file = resources.GetCurFile();
 
-                        auto res_file = DiskFileSystem::OpenFile(path_in_pack, true);
+                        auto res_file = DiskFileSystem::OpenFile(MakeOutputPath(path_in_pack), true);
                         RUNTIME_ASSERT(res_file);
                         auto res_file_write_ok = res_file.Write(file.GetData());
                         RUNTIME_ASSERT(res_file_write_ok);
                     }
 
                     // Delete outdated
-                    DiskFileSystem::IterateDir(pack_name, "", true, [&pack_name, &pack_resource_names, &exclude_all_ext](string_view path, size_t size, uint64 write_time) {
+                    DiskFileSystem::IterateDir(MakeOutputPath(pack_name), "", true, [&pack_name, &pack_resource_names, &exclude_all_ext](string_view path, size_t size, uint64 write_time) {
                         UNUSED_VARIABLE(size);
                         UNUSED_VARIABLE(write_time);
                         if (pack_resource_names.count(exclude_all_ext(path)) == 0u) {
                             const auto path_in_pack = _str(pack_name).combinePath(path).str();
-                            DiskFileSystem::DeleteFile(path_in_pack);
+                            DiskFileSystem::DeleteFile(MakeOutputPath(path_in_pack));
                             WriteLog("Delete outdated file {}", path_in_pack);
                         }
                     });
 
-                    WriteLog("Bake {} complete! Baked {} files (rest are skipped)", pack_name, baked_files);
+                    WriteLog("Bake {} complete. Baked {} files (rest are skipped)", pack_name, baked_files);
                 }
                 catch (const std::exception& ex) {
                     ReportExceptionAndContinue(ex);
@@ -300,7 +260,7 @@ int main(int argc, char** argv)
                 }
             }
 
-            WriteLog("Bake resource packs complete!");
+            WriteLog("Bake resource packs complete");
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -311,13 +271,207 @@ int main(int argc, char** argv)
         try {
             WriteLog("Bake content");
 
-            RUNTIME_ASSERT(!App->Settings.BakeContentEntries.empty());
+            RUNTIME_ASSERT(!settings.BakeContentEntries.empty());
 
             auto engine = BakerEngine(App->Settings, PropertiesRelationType::BothRelative);
 
-            for (const auto& dir : App->Settings.BakeContentEntries) {
+            for (const auto& dir : settings.BakeContentEntries) {
                 WriteLog("Add content entry {}", dir);
                 engine.FileSys.AddDataSource(dir, DataSourceType::DirRoot);
+            }
+
+            // AngelScript scripts
+#if FO_ANGELSCRIPT_SCRIPTING
+            auto as_server_recompiled = false;
+
+            try {
+                WriteLog("Compile AngelScript scripts");
+
+                auto all_scripts_up_to_date = true;
+
+                if (settings.ForceBakering) {
+                    all_scripts_up_to_date = false;
+                }
+                else {
+                    auto script_files = engine.FileSys.FilterFiles("fos");
+                    while (script_files.MoveNext() && all_scripts_up_to_date) {
+                        auto file = script_files.GetCurFileHeader();
+#if !FO_SINGLEPLAYER
+                        if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/ServerRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                            all_scripts_up_to_date = false;
+                        }
+                        if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/ClientRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                            all_scripts_up_to_date = false;
+                        }
+#else
+                        if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/SingleRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                            all_scripts_up_to_date = false;
+                        }
+#endif
+                        if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("AngelScript/MapperRootModule.fosb", file.GetName()))) <= file.GetWriteTime()) {
+                            all_scripts_up_to_date = false;
+                        }
+                    }
+                }
+
+                if (all_scripts_up_to_date) {
+                    WriteLog("Scripts up to date, skip");
+                }
+
+#if !FO_SINGLEPLAYER
+                if (!all_scripts_up_to_date) {
+                    WriteLog("Compile server scripts");
+                    ASCompiler_ServerScriptSystem().InitAngelScriptScripting(engine.FileSys);
+                    as_server_recompiled = true;
+                }
+
+                if (!all_scripts_up_to_date) {
+                    WriteLog("Compile client scripts");
+                    ASCompiler_ClientScriptSystem().InitAngelScriptScripting(engine.FileSys);
+                }
+#else
+                if (!all_scripts_up_to_date) {
+                    WriteLog("Compile game scripts");
+                    ASCompiler_SingleScriptSystem().InitAngelScriptScripting(engine.FileSys);
+                }
+#endif
+                if (!all_scripts_up_to_date) {
+                    WriteLog("Compile mapper scripts");
+                    ASCompiler_MapperScriptSystem().InitAngelScriptScripting(engine.FileSys);
+                }
+
+                WriteLog("Compile AngelScript scripts complete");
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                errors++;
+            }
+#endif
+
+            // Configs
+            try {
+                WriteLog("Bake configs");
+
+                if (settings.ForceBakering) {
+                    auto del_configs_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Configs"));
+                    RUNTIME_ASSERT(del_configs_ok);
+                }
+
+                auto configs = engine.FileSys.FilterFiles("focfg");
+
+                bool all_configs_up_to_date = true;
+                while (configs.MoveNext() && all_configs_up_to_date) {
+                    auto file = configs.GetCurFileHeader();
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("Configs/{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
+                        all_configs_up_to_date = false;
+                    }
+#if !FO_SINGLEPLAYER
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("Configs/Server_{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
+                        all_configs_up_to_date = false;
+                    }
+                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("Configs/Client_{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
+                        all_configs_up_to_date = false;
+                    }
+#endif
+                }
+
+                if (!all_configs_up_to_date) {
+                    configs.ResetCounter();
+                    while (configs.MoveNext()) {
+                        auto file = configs.GetCurFile();
+
+                        WriteLog("Process config {}", file.GetName());
+
+                        auto settings_errors = 0;
+
+                        // Collect content from end to beginning
+                        string final_content;
+
+                        {
+                            auto focfg = ConfigFile(file.GetPath(), file.GetStr());
+                            final_content = file.GetStr();
+
+                            auto parent_name = focfg.GetStr("", "$Parent");
+
+                            while (!parent_name.empty()) {
+                                const auto parent_file = configs.FindFileByName(parent_name);
+                                if (!parent_file) {
+                                    WriteLog("Parent config {} not found", parent_name);
+                                    settings_errors++;
+                                    break;
+                                }
+
+                                final_content.insert(0, parent_file.GetStr());
+                                final_content.insert(0, "\n");
+
+                                auto parent_focfg = ConfigFile(parent_file.GetPath(), parent_file.GetStr());
+                                parent_name = parent_focfg.GetStr("", "$Parent");
+                            }
+                        }
+
+                        auto focfg = ConfigFile(file.GetPath(), final_content);
+
+                        string config_content;
+#if !FO_SINGLEPLAYER
+                        extern auto GetServerSettings()->unordered_set<string>;
+                        extern auto GetClientSettings()->unordered_set<string>;
+                        auto server_settings = GetServerSettings();
+                        auto client_settings = GetClientSettings();
+                        string server_config_content;
+                        string client_config_content;
+#endif
+
+                        for (auto&& [key, value] : focfg.GetSection("")) {
+                            if (key.front() == '$') {
+                                continue;
+                            }
+
+                            // Todo: resolve value
+
+                            config_content += _str("{}={}\n", key, value);
+
+#if !FO_SINGLEPLAYER
+                            const auto is_server_setting = server_settings.count(key) != 0u;
+                            const auto is_client_setting = client_settings.count(key) != 0u;
+                            if (is_server_setting) {
+                                server_config_content += _str("{}={}\n", key, value);
+                                server_settings.erase(key);
+                            }
+                            if (is_client_setting) {
+                                client_config_content += _str("{}={}\n", key, value);
+                                client_settings.erase(key);
+                            }
+                            if (!is_server_setting && !is_client_setting) {
+                                WriteLog("Unknown setting {} = {}", key, value);
+                                settings_errors++;
+                            }
+#endif
+                        }
+
+                        if (settings_errors != 0) {
+                            throw GenericException("Config errors");
+                        }
+
+                        const auto write_config = [](string_view cfg_name1, string_view cfg_name2, string_view cfg_content) {
+                            auto cfg_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Configs/{}{}.focfg", cfg_name1, cfg_name2)), true);
+                            RUNTIME_ASSERT(cfg_file);
+                            const auto cfg_file_write_ok = cfg_file.Write(cfg_content);
+                            RUNTIME_ASSERT(cfg_file_write_ok);
+                        };
+
+                        write_config("", file.GetName(), config_content);
+#if !FO_SINGLEPLAYER
+                        write_config("Server_", file.GetName(), server_config_content);
+                        write_config("Client_", file.GetName(), client_config_content);
+#endif
+                    }
+                }
+
+                WriteLog("Bake configs complete");
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                errors++;
             }
 
             // Protos
@@ -328,8 +482,8 @@ int main(int argc, char** argv)
 
                 auto parse_protos = false;
 
-                if (App->Settings.ForceBakering) {
-                    auto del_protos_ok = DiskFileSystem::DeleteDir("Protos");
+                if (settings.ForceBakering) {
+                    auto del_protos_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Protos"));
                     RUNTIME_ASSERT(del_protos_ok);
 
                     parse_protos = true;
@@ -342,7 +496,7 @@ int main(int argc, char** argv)
 #endif
 
                 if (!parse_protos) {
-                    const auto last_write_time = DiskFileSystem::GetWriteTime("Protos/Protos.foprob");
+                    const auto last_write_time = DiskFileSystem::GetWriteTime(MakeOutputPath("Protos/Protos.foprob"));
                     if (last_write_time > 0) {
                         const auto check_up_to_date = [last_write_time, &file_sys = engine.FileSys](string_view ext) -> bool {
                             auto files = file_sys.FilterFiles(ext);
@@ -356,7 +510,7 @@ int main(int argc, char** argv)
                         };
 
                         if (check_up_to_date("foitem") && check_up_to_date("focr") && check_up_to_date("fomap") && check_up_to_date("foloc")) {
-                            WriteLog("Protos up to date. Skip!");
+                            WriteLog("Protos up to date, skip");
                         }
                         else {
                             parse_protos = true;
@@ -382,11 +536,11 @@ int main(int argc, char** argv)
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
                     ASCompiler_ServerScriptSystem_Validation script_sys;
-                    script_sys.InitAngelScriptScripting(&validation_engine);
+                    script_sys.InitAngelScriptScripting(engine.FileSys, &validation_engine);
                     validation_engine->ScriptSys = &script_sys;
 #else
                     ASCompiler_SingleScriptSystem_Validation script_sys;
-                    script_sys.InitAngelScriptScripting(&validation_engine);
+                    script_sys.InitAngelScriptScripting(engine.FileSys, &validation_engine);
                     validation_engine->ScriptSys = &script_sys;
 #endif
 #else
@@ -399,15 +553,6 @@ int main(int argc, char** argv)
 
                     for (const auto* proto : proto_mngr.GetAllProtos()) {
                         proto_errors += ValidateProperties(proto->GetProperties(), _str("proto {}", proto->GetName()), validation_engine->ScriptSys, resource_hashes);
-                    }
-
-                    // Check player proto
-                    {
-                        const auto& cr_protos = proto_mngr.GetProtoCritters();
-                        if (cr_protos.count(engine.ToHashedString("Player")) == 0u) {
-                            WriteLog("Player proto 'Player.focr' not loaded");
-                            proto_errors++;
-                        }
                     }
 
                     // Check maps for locations
@@ -441,8 +586,8 @@ int main(int argc, char** argv)
                     // Maps
                     WriteLog("Process maps");
 
-                    if (App->Settings.ForceBakering) {
-                        auto del_maps_ok = DiskFileSystem::DeleteDir("Maps");
+                    if (settings.ForceBakering) {
+                        auto del_maps_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Maps"));
                         RUNTIME_ASSERT(del_maps_ok);
                     }
 
@@ -455,8 +600,8 @@ int main(int argc, char** argv)
                         RUNTIME_ASSERT(map_file);
 
                         // Skip if up to date
-                        if (!App->Settings.ForceBakering) {
-                            if (DiskFileSystem::GetWriteTime("Maps/{}.fomapb") > map_file.GetWriteTime()) {
+                        if (!settings.ForceBakering) {
+                            if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("Maps/{}.fomapb", proto_map->GetName()))) > map_file.GetWriteTime()) {
                                 continue;
                             }
                         }
@@ -545,7 +690,7 @@ int main(int argc, char** argv)
                             final_writer.Write<uint>(map_tile_count);
                             final_writer.WritePtr(map_tile_data.data(), map_tile_data.size());
 
-                            auto map_bin_file = DiskFileSystem::OpenFile(_str("Maps/{}.fomapb", proto_map->GetName()), true);
+                            auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Maps/{}.fomapb", proto_map->GetName())), true);
                             RUNTIME_ASSERT(map_bin_file);
                             auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                             RUNTIME_ASSERT(map_bin_file_write_ok);
@@ -563,7 +708,7 @@ int main(int argc, char** argv)
                     const auto write_protos = [](const ProtoManager& protos, string_view fname) {
                         const auto data = protos.GetProtosBinaryData();
                         RUNTIME_ASSERT(!data.empty());
-                        auto protos_file = DiskFileSystem::OpenFile(fname, true);
+                        auto protos_file = DiskFileSystem::OpenFile(MakeOutputPath(fname), true);
                         RUNTIME_ASSERT(protos_file);
                         const auto protos_write_ok = protos_file.Write(data.data(), data.size());
                         RUNTIME_ASSERT(protos_write_ok);
@@ -575,7 +720,7 @@ int main(int argc, char** argv)
                     write_protos(client_proto_mngr, "Protos/ClientProtos.foprob");
                 }
 
-                WriteLog("Bake protos complete!");
+                WriteLog("Bake protos complete");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
@@ -588,8 +733,8 @@ int main(int argc, char** argv)
             try {
                 WriteLog("Bake dialogs");
 
-                if (App->Settings.ForceBakering) {
-                    auto del_dialogs_ok = DiskFileSystem::DeleteDir("Dialogs");
+                if (settings.ForceBakering) {
+                    auto del_dialogs_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Dialogs"));
                     RUNTIME_ASSERT(del_dialogs_ok);
                 }
 
@@ -601,13 +746,13 @@ int main(int argc, char** argv)
 
                 while (dialogs.MoveNext()) {
                     auto file = dialogs.GetCurFile();
-                    auto dlg_file = DiskFileSystem::OpenFile(_str("Dialogs/{}.fodlg", file.GetName()), true);
+                    auto dlg_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Dialogs/{}.fodlg", file.GetName())), true);
                     RUNTIME_ASSERT(dlg_file);
                     auto dlg_file_write_ok = dlg_file.Write(file.GetBuf(), file.GetSize());
                     RUNTIME_ASSERT(dlg_file_write_ok);
                 }
 
-                WriteLog("Bake dialogs complete!");
+                WriteLog("Bake dialogs complete");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
@@ -618,12 +763,21 @@ int main(int argc, char** argv)
             try {
                 WriteLog("Bake texts");
 
-                auto del_texts_ok = DiskFileSystem::DeleteDir("Texts");
+                auto del_texts_ok = DiskFileSystem::DeleteDir(MakeOutputPath("Texts"));
                 RUNTIME_ASSERT(del_texts_ok);
+
+                set<string> languages;
+                auto txt_files = engine.FileSys.FilterFiles("fotxt");
+                while (txt_files.MoveNext()) {
+                    const auto lang = txt_files.GetCurFileHeader().GetName().substr(0, 4);
+                    if (languages.emplace(lang).second) {
+                        WriteLog("Language: {}", lang);
+                    }
+                }
 
                 vector<LanguagePack> lang_packs;
 
-                for (const auto& lang_name : App->Settings.Languages) {
+                for (const auto& lang_name : languages) {
                     LanguagePack lang_pack;
                     lang_pack.ParseTexts(engine.FileSys, engine, lang_name);
                     lang_packs.push_back(lang_pack);
@@ -671,17 +825,17 @@ int main(int argc, char** argv)
 
                 // Save parsed packs
                 for (const auto& lang_pack : lang_packs) {
-                    lang_pack.SaveTextsToDisk("Texts");
+                    lang_pack.SaveTextsToDisk(MakeOutputPath("Texts"));
                 }
 
-                WriteLog("Bake texts complete!");
+                WriteLog("Bake texts complete");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
                 errors++;
             }
 
-            WriteLog("Bake content complete!");
+            WriteLog("Bake content complete");
         }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
@@ -699,7 +853,7 @@ int main(int argc, char** argv)
         WriteLog("Bakering complete!");
 
         {
-            auto build_hash_file = DiskFileSystem::OpenFile("Resources.build-hash", true, true);
+            auto build_hash_file = DiskFileSystem::OpenFile(MakeOutputPath("Resources.build-hash"), true, true);
             RUNTIME_ASSERT(build_hash_file);
             const auto build_hash_writed = build_hash_file.Write(FO_BUILD_HASH);
             RUNTIME_ASSERT(build_hash_writed);
@@ -710,59 +864,6 @@ int main(int argc, char** argv)
     catch (std::exception& ex) {
         ReportExceptionAndExit(ex);
     }
-}
-
-static auto CheckScriptsUpToDate(string_view script_path) -> bool
-{
-    uint64 last_compiled_time;
-    {
-        const auto compiled_script_path = _str("AngelScript/{}b", _str(script_path).extractFileName()).str();
-        const auto compiled_script_file = DiskFileSystem::OpenFile(compiled_script_path, false);
-        if (!compiled_script_file) {
-            return false;
-        }
-
-        last_compiled_time = compiled_script_file.GetWriteTime();
-    }
-
-    string root_content;
-    {
-        auto root_script_file = DiskFileSystem::OpenFile(script_path, false);
-        if (!root_script_file) {
-            return false;
-        }
-
-        if (root_script_file.GetWriteTime() > last_compiled_time) {
-            return false;
-        }
-
-        root_content.resize(root_script_file.GetSize());
-        if (!root_script_file.Read(root_content.data(), root_content.length())) {
-            return false;
-        }
-    }
-
-    size_t pos = 0;
-    while ((pos = root_content.find("#include \"", pos)) != string::npos) {
-        const size_t start_pos = pos + "#include \""_len;
-        const size_t end_pos = root_content.find("\"", start_pos);
-        RUNTIME_ASSERT(end_pos != string::npos);
-
-        const auto include_path = root_content.substr(start_pos, end_pos - start_pos);
-        const auto include_file = DiskFileSystem::OpenFile(include_path, false);
-        if (!include_file) {
-            return false;
-        }
-
-        if (include_file.GetWriteTime() > last_compiled_time) {
-            return false;
-        }
-
-        pos = end_pos + 1;
-    }
-
-    WriteLog("Scripts up to date. Skip!");
-    return true;
 }
 
 struct Item : Entity

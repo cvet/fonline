@@ -162,7 +162,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
     }
 }
 
-auto Application::GetName() const -> string_view
+auto Application::GetName() const -> const string&
 {
     return _name;
 }

@@ -42,16 +42,15 @@
 #include "WinApi-Include.h"
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
-    FOEngineBase(settings, PropertiesRelationType::BothRelative,
-        [&, this]() -> ScriptSystem* {
-            extern void Mapper_RegisterData(FOEngineBase*);
-            Mapper_RegisterData(this);
-            return new MapperScriptSystem(this);
-        }),
-    FOClient(settings, window, PropertiesRelationType::BothRelative, nullptr),
+    FOEngineBase(settings, PropertiesRelationType::BothRelative),
+    FOClient(settings, window, {}),
 
     IfaceIni("", "", this)
 {
+    extern void Mapper_RegisterData(FOEngineBase*);
+    Mapper_RegisterData(this);
+    ScriptSys = new MapperScriptSystem(this);
+
     // Default effects
     EffectMngr.LoadDefaultEffects();
 
@@ -169,13 +168,8 @@ void FOMapper::InitIface()
 {
     WriteLog("Init interface");
 
-    auto& ini = IfaceIni;
-
+    auto& ini = IfaceIni; // Todo: parse mapper_default.ini
     // ini = FileSys.ReadConfigFile("mapper_default.ini", *this);
-
-    if (!ini) {
-        throw GenericException("File 'mapper_default.ini' not found");
-    }
 
     // Interface
     IntX = ini.GetInt("", "IntX", -1);

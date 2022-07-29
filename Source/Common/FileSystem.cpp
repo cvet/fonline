@@ -44,7 +44,7 @@ FileHeader::operator bool() const
     return _isLoaded;
 }
 
-auto FileHeader::GetName() const -> string_view
+auto FileHeader::GetName() const -> const string&
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(!_fileName.empty());
@@ -52,7 +52,7 @@ auto FileHeader::GetName() const -> string_view
     return _fileName;
 }
 
-auto FileHeader::GetPath() const -> string_view
+auto FileHeader::GetPath() const -> const string&
 {
     RUNTIME_ASSERT(_isLoaded);
     RUNTIME_ASSERT(!_filePath.empty());

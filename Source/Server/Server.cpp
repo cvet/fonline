@@ -47,14 +47,9 @@
 
 FOServer::FOServer(GlobalSettings& settings) :
 #if !FO_SINGLEPLAYER
-    FOEngineBase(settings, PropertiesRelationType::ServerRelative,
-        [&, this]() -> ScriptSystem* {
-            extern auto Server_RegisterData(FOEngineBase*)->vector<uchar>;
-            RestoreInfoBin = Server_RegisterData(this);
-            return new ServerScriptSystem(this);
-        }),
+    FOEngineBase(settings, PropertiesRelationType::ServerRelative),
 #else
-    FOEngineBase(settings, PropertiesRelationType::BothRelative, nullptr),
+    FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
     ProtoMngr(this),
     ServerDeferredCalls(this),
@@ -68,9 +63,21 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
+
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Dialogs"));
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
+
     for (const auto& entry : Settings.ServerResourceEntries) {
         FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
     }
+
+    extern auto Server_RegisterData(FOEngineBase*)->vector<uchar>;
+    RestoreInfoBin = Server_RegisterData(this);
+
+    ScriptSys = new ServerScriptSystem(this);
+    ScriptSys->InitSubsystems();
 
     GameTime.FrameAdvance();
 
@@ -234,6 +241,11 @@ FOServer::FOServer(GlobalSettings& settings) :
             writer.Write<uint>(static_cast<uint>(data.size()));
             writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
         };
+
+        add_sync_file("Core.zip");
+        add_sync_file("Protos.zip");
+        add_sync_file("Texts.zip");
+        add_sync_file("AngelScript.zip");
 
         for (const auto& resource_entry : Settings.ClientResourceEntries) {
             add_sync_file(_str("{}.zip", resource_entry));
@@ -624,18 +636,6 @@ auto FOServer::GetIngamePlayersStatistics() -> string
         result += _str("{:<20} {:<10} {:<15} {:<5} {:<5} {}\n", player->GetName(), player->GetId(), player->GetHost(), map != nullptr ? cr->GetHexX() : cr->GetWorldX(), map != nullptr ? cr->GetHexY() : cr->GetWorldY(), map != nullptr ? str_loc : "Global map");
     }
     return result;
-}
-
-// Accesses
-void FOServer::GetAccesses(vector<string>& client, vector<string>& tester, vector<string>& moder, vector<string>& admin, vector<string>& admin_names)
-{
-    // Todo: restore settings
-    throw NotImplementedException(LINE_STR);
-    // client = _str(MainConfig->GetStr("", "Access_client")).split(' ');
-    // tester = _str(MainConfig->GetStr("", "Access_tester")).split(' ');
-    // moder = _str(MainConfig->GetStr("", "Access_moder")).split(' ');
-    // admin = _str(MainConfig->GetStr("", "Access_admin")).split(' ');
-    // admin_names = _str(MainConfig->GetStr("", "AccessNames_admin")).split(' ');
 }
 
 void FOServer::OnNewConnection(NetConnection* net_connection)
@@ -1290,24 +1290,17 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ALLOW_COMMAND();
         CHECK_ADMIN_PANEL();
 
-        vector<string> client;
-        vector<string> tester;
-        vector<string> moder;
-        vector<string> admin;
-        vector<string> admin_names;
-        GetAccesses(client, tester, moder, admin, admin_names);
-
         auto wanted_access = -1;
-        if (name_access == "client" && std::find(client.begin(), client.end(), pasw_access) != client.end()) {
+        if (name_access == "client" && std::find(Settings.AccessClient.begin(), Settings.AccessClient.end(), pasw_access) != Settings.AccessClient.end()) {
             wanted_access = ACCESS_CLIENT;
         }
-        else if (name_access == "tester" && std::find(tester.begin(), tester.end(), pasw_access) != tester.end()) {
+        else if (name_access == "tester" && std::find(Settings.AccessTester.begin(), Settings.AccessTester.end(), pasw_access) != Settings.AccessTester.end()) {
             wanted_access = ACCESS_TESTER;
         }
-        else if (name_access == "moder" && std::find(moder.begin(), moder.end(), pasw_access) != moder.end()) {
+        else if (name_access == "moder" && std::find(Settings.AccessModer.begin(), Settings.AccessModer.end(), pasw_access) != Settings.AccessModer.end()) {
             wanted_access = ACCESS_MODER;
         }
-        else if (name_access == "admin" && std::find(admin.begin(), admin.end(), pasw_access) != admin.end()) {
+        else if (name_access == "admin" && std::find(Settings.AccessAdmin.begin(), Settings.AccessAdmin.end(), pasw_access) != Settings.AccessAdmin.end()) {
             wanted_access = ACCESS_ADMIN;
         }
 
@@ -1322,7 +1315,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        player->Access = wanted_access;
+        player->Access = static_cast<uchar>(wanted_access);
         logcb("Access changed.");
     } break;
     case CMD_ADDITEM: {

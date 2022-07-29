@@ -55,7 +55,7 @@ auto ClientEntity::GetEngine() -> FOClient*
     return _engine;
 }
 
-auto ClientEntity::GetName() const -> string_view
+auto ClientEntity::GetName() const -> const string&
 {
     return GetProperties().GetRegistrator()->GetClassName();
 }

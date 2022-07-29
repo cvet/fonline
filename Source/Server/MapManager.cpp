@@ -349,22 +349,13 @@ void MapManager::GenerateMapContent(Map* map)
 
     // Generate npc
     for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
-        auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
+        const auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
         if (npc == nullptr) {
             WriteLog("Create npc '{}' on map '{}' fail, continue generate", base_cr->GetName(), map->GetName());
             continue;
         }
 
         id_map.emplace(base_cr_id, npc->GetId());
-
-        // Check condition
-        if (npc->GetCond() == CritterCondition::Dead) {
-            npc->SetCurrentHp(_engine->Settings.DeadHitPoints - 1);
-
-            const auto multihex = npc->GetMultihex();
-            map->UnsetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, false);
-            map->SetFlagCritter(npc->GetHexX(), npc->GetHexY(), multihex, true);
-        }
     }
 
     // Generate hex items

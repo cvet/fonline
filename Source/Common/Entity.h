@@ -105,9 +105,9 @@ public:
     auto operator=(const Entity&) = delete;
     auto operator=(Entity&&) noexcept = delete;
 
-    [[nodiscard]] virtual auto GetName() const -> string_view = 0;
+    [[nodiscard]] virtual auto GetName() const -> const string& = 0;
     [[nodiscard]] virtual auto IsGlobal() const -> bool { return false; }
-    [[nodiscard]] auto GetClassName() const -> string_view;
+    [[nodiscard]] auto GetClassName() const -> const string&;
     [[nodiscard]] auto GetProperties() const -> const Properties&;
     [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
     [[nodiscard]] auto IsDestroying() const -> bool;
@@ -162,7 +162,7 @@ private:
 class ProtoEntity : public Entity
 {
 public:
-    [[nodiscard]] auto GetName() const -> string_view override;
+    [[nodiscard]] auto GetName() const -> const string& override;
     [[nodiscard]] auto GetProtoId() const -> hstring;
     [[nodiscard]] auto HasComponent(hstring name) const -> bool;
     [[nodiscard]] auto HasComponent(hstring::hash_t hash) const -> bool;

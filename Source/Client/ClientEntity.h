@@ -53,7 +53,7 @@ public:
 
     [[nodiscard]] auto GetId() const -> uint;
     [[nodiscard]] auto GetEngine() -> FOClient*;
-    [[nodiscard]] auto GetName() const -> string_view override;
+    [[nodiscard]] auto GetName() const -> const string& override;
 
     void SetId(uint id);
     void MarkAsDestroyed() override;

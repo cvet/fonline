@@ -94,7 +94,16 @@ auto GetStackTrace() -> string
 #endif
 }
 
-bool BreakIntoDebugger([[maybe_unused]] string_view error_message)
+auto IsRunInDebugger() -> bool
+{
+#if FO_WINDOWS
+    return ::IsDebuggerPresent() != FALSE;
+#else
+    return false;
+#endif
+}
+
+auto BreakIntoDebugger([[maybe_unused]] string_view error_message) -> bool
 {
 #if FO_WINDOWS
     if (::IsDebuggerPresent() != FALSE) {

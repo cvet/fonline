@@ -49,8 +49,8 @@ public:
     auto operator=(ModelAnimation&&) noexcept = delete;
     ~ModelAnimation() = default;
 
-    [[nodiscard]] auto GetFileName() const -> string_view;
-    [[nodiscard]] auto GetName() const -> string_view;
+    [[nodiscard]] auto GetFileName() const -> const string&;
+    [[nodiscard]] auto GetName() const -> const string&;
     [[nodiscard]] auto GetBoneOutputCount() const -> uint;
     [[nodiscard]] auto GetDuration() const -> float;
     [[nodiscard]] auto GetBonesHierarchy() const -> const vector<vector<hstring>>&;

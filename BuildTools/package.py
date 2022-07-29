@@ -32,8 +32,7 @@ parser.add_argument('-pack', dest='pack', required=True, help='package type')
 # iOS: Raw Bundle
 # Web: Raw
 parser.add_argument('-debug', dest='debug', action='store_true', help='debug mode')
-parser.add_argument('-configname', dest='configname', required=True, help='config name')
-parser.add_argument('-config', dest='config', required=True, action='append', default=[], help='config tweaks')
+parser.add_argument('-config', dest='config', required=True, help='config name')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='attach angelscript scripts')
 parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
 parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FONLINE_OUTPUT_PATH)')

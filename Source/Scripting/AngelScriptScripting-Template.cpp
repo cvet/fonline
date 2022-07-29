@@ -163,9 +163,9 @@ struct BaseEntity : Entity
 };
 
 #if COMPILER_VALIDATION_MODE
-#define INIT_ARGS FOEngineBase** out_engine
+#define INIT_ARGS FileSystem &file_sys, FOEngineBase **out_engine
 #else
-#define INIT_ARGS string_view script_path
+#define INIT_ARGS FileSystem& file_sys
 #endif
 
 struct SCRIPTING_CLASS : public ScriptSystem
@@ -182,36 +182,30 @@ class FOEngine : public FOEngineBase
 {
 public:
 #if SERVER_SCRIPTING
-    FOEngine() :
-        FOEngineBase(DummySettings, PropertiesRelationType::ServerRelative, [this] {
-            extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
-            AngelScript_ServerCompiler_RegisterData(this);
-            return nullptr;
-        })
-#elif CLIENT_SCRIPTING
-    FOEngine() :
-        FOEngineBase(DummySettings, PropertiesRelationType::ClientRelative, [this] {
-            extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
-            AngelScript_ClientCompiler_RegisterData(this);
-            return nullptr;
-        })
-#elif SINGLE_SCRIPTING
-    FOEngine() :
-        FOEngineBase(DummySettings, PropertiesRelationType::BothRelative, [this] {
-            extern void AngelScript_SingleCompiler_RegisterData(FOEngineBase*);
-            AngelScript_SingleCompiler_RegisterData(this);
-            return nullptr;
-        })
-#elif MAPPER_SCRIPTING
-    FOEngine() :
-        FOEngineBase(DummySettings, PropertiesRelationType::BothRelative, [this] {
-            extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
-            AngelScript_MapperCompiler_RegisterData(this);
-            return nullptr;
-        })
-#endif
+    FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::ServerRelative)
     {
+        extern void AngelScript_ServerCompiler_RegisterData(FOEngineBase*);
+        AngelScript_ServerCompiler_RegisterData(this);
     }
+#elif CLIENT_SCRIPTING
+    FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::ClientRelative)
+    {
+        extern void AngelScript_ClientCompiler_RegisterData(FOEngineBase*);
+        AngelScript_ClientCompiler_RegisterData(this);
+    }
+#elif SINGLE_SCRIPTING
+    FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
+    {
+        extern void AngelScript_SingleCompiler_RegisterData(FOEngineBase*);
+        AngelScript_SingleCompiler_RegisterData(this);
+    }
+#elif MAPPER_SCRIPTING
+    FOEngine() : FOEngineBase(DummySettings, PropertiesRelationType::BothRelative)
+    {
+        extern void AngelScript_MapperCompiler_RegisterData(FOEngineBase*);
+        AngelScript_MapperCompiler_RegisterData(this);
+    }
+#endif
 };
 #endif
 
@@ -466,9 +460,10 @@ struct ScriptSystem::AngelScriptImpl
 
     FOEngine* GameEngine {};
     asIScriptEngine* Engine {};
-    unordered_set<CScriptArray*> EnumArrays {};
+    set<CScriptArray*> EnumArrays {};
     unordered_map<string, std::any> SettingsStorage {};
-    unordered_map<string, EnumInfo> EnumInfos {};
+    map<string, EnumInfo> EnumInfos {};
+    set<hstring> ContentData {};
     asIScriptContext* CurrentCtx {};
     vector<asIScriptContext*> FreeContexts {};
     vector<asIScriptContext*> BusyContexts {};
@@ -1920,6 +1915,16 @@ static void Global_Get(asIScriptGeneric* gen)
 #endif
 }
 
+static void Global_GetContent(asIScriptGeneric* gen)
+{
+#if !COMPILER_MODE
+    auto& hstr = *static_cast<hstring*>(gen->GetAuxiliary());
+    *(hstring*)gen->GetAddressOfReturnLocation() = hstr;
+#else
+    throw ScriptCompilerException("Stub");
+#endif
+}
+
 template<typename T>
 static auto Entity_GetSelf(T* entity) -> T*
 {
@@ -2366,7 +2371,7 @@ static void CallbackMessage(const asSMessageInfo* msg, void* param)
 }
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* engine, string_view script_path);
+static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys);
 #else
 static void RestoreRootModule(asIScriptEngine* engine, const_span<uchar> script_bin);
 #endif
@@ -2736,13 +2741,11 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #endif
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-    CompileRootModule(engine, script_path);
+    CompileRootModule(engine, file_sys);
     engine->ShutDownAndRelease();
 #else
 #if COMPILER_VALIDATION_MODE
-    game_engine->FileSys.AddDataSource("AngelScript");
-#else
-    game_engine->FileSys.AddDataSource(_str(game_engine->Settings.ResourcesDir).combinePath("AngelScript"));
+    game_engine->FileSys.AddDataSource(_str(App->Settings.BakeOutput).combinePath("AngelScript"), DataSourceType::Default);
 #endif
 #if SERVER_SCRIPTING
     File script_file = game_engine->FileSys.ReadFile("ServerRootModule.fosb");
@@ -2931,7 +2934,7 @@ private:
 };
 
 #if COMPILER_MODE && !COMPILER_VALIDATION_MODE
-static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
+static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys)
 {
     RUNTIME_ASSERT(engine->GetModuleCount() == 0);
 
@@ -2939,11 +2942,11 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     class ScriptLoader : public Preprocessor::FileLoader
     {
     public:
-        explicit ScriptLoader(vector<uchar>& root) : _rootScript {&root} { }
+        ScriptLoader(const string* root, const map<string, string>* files) : _rootScript {root}, _scriptFiles {files} { }
 
         auto LoadFile(const string& dir, const string& file_name, vector<char>& data, string& file_path) -> bool override
         {
-            if (_rootScript) {
+            if (_rootScript != nullptr) {
                 data.resize(_rootScript->size());
                 std::memcpy(data.data(), _rootScript->data(), _rootScript->size());
                 _rootScript = nullptr;
@@ -2957,19 +2960,11 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
             data.resize(0);
 
             if (_includeDeep == 1) {
-                auto script_file = DiskFileSystem::OpenFile(file_name, false);
-                if (!script_file) {
-                    return false;
-                }
-                if (script_file.GetSize() == 0) {
-                    return true;
-                }
+                const auto it = _scriptFiles->find(_str(file_name).eraseFileExtension());
+                RUNTIME_ASSERT(it != _scriptFiles->end());
 
-                data.resize(script_file.GetSize());
-                if (!script_file.Read(data.data(), script_file.GetSize())) {
-                    return false;
-                }
-
+                data.resize(it->second.size());
+                std::memcpy(data.data(), it->second.data(), it->second.size());
                 return true;
             }
 
@@ -2979,21 +2974,73 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
         void FileLoaded() override { _includeDeep--; }
 
     private:
-        vector<uchar>* _rootScript {};
-        int _includeDeep {0};
+        const string* _rootScript;
+        const map<string, string>* _scriptFiles;
+        int _includeDeep {};
     };
 
-    auto script_file = DiskFileSystem::OpenFile(script_path, false);
-    if (!script_file) {
-        throw ScriptCompilerException("Root script file not found", script_path);
-    }
-    if (script_file.GetSize() == 0) {
-        throw ScriptCompilerException("Root script file is empty", script_path);
+    auto script_files = file_sys.FilterFiles("fos");
+
+    map<string, string> final_script_files;
+    vector<pair<string, int>> final_script_files_order;
+
+    while (script_files.MoveNext()) {
+        auto script_file = script_files.GetCurFile();
+        auto script_name = script_file.GetName();
+        auto script_content = script_file.GetStr();
+
+        const auto line_sep = script_content.find('\n');
+        const auto first_line = script_content.substr(0, line_sep);
+        if (first_line.find("// FOS ") == string::npos) {
+            throw ScriptCompilerException("No FOS header in script file", script_name);
+        }
+
+#if SERVER_SCRIPTING
+        if (first_line.find("Common") == string::npos && first_line.find("Server") == string::npos) {
+            continue;
+        }
+#elif CLIENT_SCRIPTING
+        if (first_line.find("Common") == string::npos && first_line.find("Client") == string::npos) {
+            continue;
+        }
+#elif SINGLE_SCRIPTING
+        if (first_line.find("Common") == string::npos && first_line.find("Single") == string::npos) {
+            continue;
+        }
+#elif MAPPER_SCRIPTING
+        if (first_line.find("Common") == string::npos && first_line.find("Mapper") == string::npos) {
+            continue;
+        }
+#endif
+
+        int sort = 0;
+        const auto sort_pos = first_line.find("Sort ");
+        if (sort_pos != string::npos) {
+            sort = _str(first_line.substr(sort_pos + "Sort "_len)).substringUntil(' ').toInt();
+        }
+
+        final_script_files_order.push_back(std::make_pair(script_name, sort));
+        final_script_files.emplace(std::move(script_name), std::move(script_content));
     }
 
-    vector<uchar> script_data(script_file.GetSize());
-    if (!script_file.Read(script_data.data(), script_file.GetSize())) {
-        throw ScriptCompilerException("Can't read root script file", script_path);
+    std::sort(final_script_files_order.begin(), final_script_files_order.end(), [](auto& a, auto& b) {
+        if (a.second == b.second) {
+            return a.first < b.first;
+        }
+        else {
+            return a.second < b.second;
+        }
+    });
+
+    string root_script;
+    root_script.reserve(final_script_files.size() * 128);
+
+    for (auto&& [script_name, script_order] : final_script_files_order) {
+        root_script.append("namespace ");
+        root_script.append(script_name);
+        root_script.append(" {\n#include \"");
+        root_script.append(script_name);
+        root_script.append(".fos\"\n}\n");
     }
 
     Preprocessor::UndefAll();
@@ -3009,7 +3056,7 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     Preprocessor::Define("__MAPPER");
 #endif
 
-    ScriptLoader loader {script_data};
+    auto loader = ScriptLoader(&root_script, &final_script_files);
     Preprocessor::StringOutStream result, errors;
     const auto errors_count = Preprocessor::Preprocess("", result, &errors, &loader);
 
@@ -3057,7 +3104,16 @@ static void CompileRootModule(asIScriptEngine* engine, string_view script_path)
     writer.Write<uint>(static_cast<uint>(lnt_data.size()));
     writer.WritePtr(lnt_data.data(), lnt_data.size());
 
-    const auto script_out_path = _str("AngelScript/{}b", _str(script_path).extractFileName()).str();
+#if SERVER_SCRIPTING
+    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("AngelScript/ServerRootModule.fosb");
+#elif CLIENT_SCRIPTING
+    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("AngelScript/ClientRootModule.fosb");
+#elif SINGLE_SCRIPTING
+    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("AngelScript/SingleRootModule.fosb");
+#elif MAPPER_SCRIPTING
+    const string script_out_path = _str(App->Settings.BakeOutput).combinePath("AngelScript/MapperRootModule.fosb");
+#endif
+
     auto file = DiskFileSystem::OpenFile(script_out_path, true);
     if (!file) {
         throw ScriptCompilerException("Can't write binary to file", script_out_path);
