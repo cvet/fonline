@@ -43,7 +43,7 @@
 FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const vector<uchar>& restore_info_bin) :
     FOEngineBase(settings, PropertiesRelationType::ClientRelative),
 #else
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window, PropertiesRelationType props_relation) :
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
     ProtoMngr(this),

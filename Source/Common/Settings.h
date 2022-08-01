@@ -60,6 +60,8 @@ public:
 
     void Draw(bool editable);
 
+    unordered_map<string, string> Custom {};
+
 private:
-    void SetValue(string_view setting_name, const string& value);
+    void SetValue(const string& setting_name, const string& setting_value);
 };

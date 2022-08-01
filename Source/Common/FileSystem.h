@@ -56,6 +56,7 @@ public:
 
     [[nodiscard]] auto GetName() const -> const string&;
     [[nodiscard]] auto GetPath() const -> const string&;
+    [[nodiscard]] auto GetFullPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;
 

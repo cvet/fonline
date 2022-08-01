@@ -273,11 +273,11 @@ int main(int argc, char** argv)
 
             RUNTIME_ASSERT(!settings.BakeContentEntries.empty());
 
-            auto engine = BakerEngine(App->Settings, PropertiesRelationType::BothRelative);
+            auto baker_engine = BakerEngine(App->Settings, PropertiesRelationType::BothRelative);
 
             for (const auto& dir : settings.BakeContentEntries) {
                 WriteLog("Add content entry {}", dir);
-                engine.FileSys.AddDataSource(dir, DataSourceType::DirRoot);
+                baker_engine.FileSys.AddDataSource(dir, DataSourceType::DirRoot);
             }
 
             // AngelScript scripts
@@ -293,7 +293,7 @@ int main(int argc, char** argv)
                     all_scripts_up_to_date = false;
                 }
                 else {
-                    auto script_files = engine.FileSys.FilterFiles("fos");
+                    auto script_files = baker_engine.FileSys.FilterFiles("fos");
                     while (script_files.MoveNext() && all_scripts_up_to_date) {
                         auto file = script_files.GetCurFileHeader();
 #if !FO_SINGLEPLAYER
@@ -321,23 +321,23 @@ int main(int argc, char** argv)
 #if !FO_SINGLEPLAYER
                 if (!all_scripts_up_to_date) {
                     WriteLog("Compile server scripts");
-                    ASCompiler_ServerScriptSystem().InitAngelScriptScripting(engine.FileSys);
+                    ASCompiler_ServerScriptSystem().InitAngelScriptScripting(baker_engine.FileSys);
                     as_server_recompiled = true;
                 }
 
                 if (!all_scripts_up_to_date) {
                     WriteLog("Compile client scripts");
-                    ASCompiler_ClientScriptSystem().InitAngelScriptScripting(engine.FileSys);
+                    ASCompiler_ClientScriptSystem().InitAngelScriptScripting(baker_engine.FileSys);
                 }
 #else
                 if (!all_scripts_up_to_date) {
                     WriteLog("Compile game scripts");
-                    ASCompiler_SingleScriptSystem().InitAngelScriptScripting(engine.FileSys);
+                    ASCompiler_SingleScriptSystem().InitAngelScriptScripting(baker_engine.FileSys);
                 }
 #endif
                 if (!all_scripts_up_to_date) {
                     WriteLog("Compile mapper scripts");
-                    ASCompiler_MapperScriptSystem().InitAngelScriptScripting(engine.FileSys);
+                    ASCompiler_MapperScriptSystem().InitAngelScriptScripting(baker_engine.FileSys);
                 }
 
                 WriteLog("Compile AngelScript scripts complete");
@@ -357,7 +357,7 @@ int main(int argc, char** argv)
                     RUNTIME_ASSERT(del_configs_ok);
                 }
 
-                auto configs = engine.FileSys.FilterFiles("focfg");
+                auto configs = baker_engine.FileSys.FilterFiles("focfg");
 
                 bool all_configs_up_to_date = true;
                 while (configs.MoveNext() && all_configs_up_to_date) {
@@ -426,23 +426,32 @@ int main(int argc, char** argv)
                                 continue;
                             }
 
-                            // Todo: resolve value
+                            string resolved_value;
 
-                            config_content += _str("{}={}\n", key, value);
+                            bool is_error = false;
+                            auto generic_value = baker_engine.ResolveGenericValue(value, &is_error);
+                            if (!is_error) {
+                                resolved_value = _str("{}", generic_value);
+                            }
+                            else {
+                                resolved_value = value;
+                            }
+
+                            config_content += _str("{}={}\n", key, resolved_value);
 
 #if !FO_SINGLEPLAYER
                             const auto is_server_setting = server_settings.count(key) != 0u;
                             const auto is_client_setting = client_settings.count(key) != 0u;
                             if (is_server_setting) {
-                                server_config_content += _str("{}={}\n", key, value);
+                                server_config_content += _str("{}={}\n", key, resolved_value);
                                 server_settings.erase(key);
                             }
                             if (is_client_setting) {
-                                client_config_content += _str("{}={}\n", key, value);
+                                client_config_content += _str("{}={}\n", key, resolved_value);
                                 client_settings.erase(key);
                             }
                             if (!is_server_setting && !is_client_setting) {
-                                WriteLog("Unknown setting {} = {}", key, value);
+                                WriteLog("Unknown setting {} = {}", key, resolved_value);
                                 settings_errors++;
                             }
 #endif
@@ -475,7 +484,7 @@ int main(int argc, char** argv)
             }
 
             // Protos
-            auto proto_mngr = ProtoManager(&engine);
+            auto proto_mngr = ProtoManager(&baker_engine);
 
             try {
                 WriteLog("Bake protos");
@@ -498,7 +507,7 @@ int main(int argc, char** argv)
                 if (!parse_protos) {
                     const auto last_write_time = DiskFileSystem::GetWriteTime(MakeOutputPath("Protos/Protos.foprob"));
                     if (last_write_time > 0) {
-                        const auto check_up_to_date = [last_write_time, &file_sys = engine.FileSys](string_view ext) -> bool {
+                        const auto check_up_to_date = [last_write_time, &file_sys = baker_engine.FileSys](string_view ext) -> bool {
                             auto files = file_sys.FilterFiles(ext);
                             while (files.MoveNext()) {
                                 auto file = files.GetCurFileHeader();
@@ -523,12 +532,12 @@ int main(int argc, char** argv)
 
                 if (parse_protos) {
                     WriteLog("Parse protos");
-                    proto_mngr.ParseProtos(engine.FileSys);
+                    proto_mngr.ParseProtos(baker_engine.FileSys);
 
                     // Protos validation
                     unordered_set<hstring> resource_hashes;
                     for (const auto& name : resource_names) {
-                        resource_hashes.insert(engine.ToHashedString(name));
+                        resource_hashes.insert(baker_engine.ToHashedString(name));
                     }
 
                     FOEngineBase* validation_engine = nullptr;
@@ -536,11 +545,11 @@ int main(int argc, char** argv)
 #if FO_ANGELSCRIPT_SCRIPTING
 #if !FO_SINGLEPLAYER
                     ASCompiler_ServerScriptSystem_Validation script_sys;
-                    script_sys.InitAngelScriptScripting(engine.FileSys, &validation_engine);
+                    script_sys.InitAngelScriptScripting(baker_engine.FileSys, &validation_engine);
                     validation_engine->ScriptSys = &script_sys;
 #else
                     ASCompiler_SingleScriptSystem_Validation script_sys;
-                    script_sys.InitAngelScriptScripting(engine.FileSys, &validation_engine);
+                    script_sys.InitAngelScriptScripting(baker_engine.FileSys, &validation_engine);
                     validation_engine->ScriptSys = &script_sys;
 #endif
 #else
@@ -576,12 +585,12 @@ int main(int argc, char** argv)
                     WriteLog("Process server protos");
                     auto server_engine = BakerEngine(App->Settings, PropertiesRelationType::ServerRelative);
                     auto server_proto_mngr = ProtoManager(&server_engine);
-                    server_proto_mngr.ParseProtos(engine.FileSys);
+                    server_proto_mngr.ParseProtos(baker_engine.FileSys);
 
                     WriteLog("Process client protos");
                     auto client_engine = BakerEngine(App->Settings, PropertiesRelationType::ClientRelative);
                     auto client_proto_mngr = ProtoManager(&client_engine);
-                    client_proto_mngr.ParseProtos(engine.FileSys);
+                    client_proto_mngr.ParseProtos(baker_engine.FileSys);
 
                     // Maps
                     WriteLog("Process maps");
@@ -591,7 +600,7 @@ int main(int argc, char** argv)
                         RUNTIME_ASSERT(del_maps_ok);
                     }
 
-                    const auto fomap_files = engine.FileSys.FilterFiles("fomap");
+                    const auto fomap_files = baker_engine.FileSys.FilterFiles("fomap");
 
                     for (const auto& proto_entry : proto_mngr.GetProtoMaps()) {
                         const auto* proto_map = proto_entry.second;
@@ -728,7 +737,7 @@ int main(int argc, char** argv)
             }
 
             // Dialogs
-            auto dialog_mngr = DialogManager(&engine);
+            auto dialog_mngr = DialogManager(&baker_engine);
 
             try {
                 WriteLog("Bake dialogs");
@@ -741,7 +750,7 @@ int main(int argc, char** argv)
                 dialog_mngr.LoadFromResources();
                 dialog_mngr.ValidateDialogs();
 
-                auto dialogs = engine.FileSys.FilterFiles("fodlg");
+                auto dialogs = baker_engine.FileSys.FilterFiles("fodlg");
                 WriteLog("Dialogs count {}", dialogs.GetFilesCount());
 
                 while (dialogs.MoveNext()) {
@@ -767,7 +776,7 @@ int main(int argc, char** argv)
                 RUNTIME_ASSERT(del_texts_ok);
 
                 set<string> languages;
-                auto txt_files = engine.FileSys.FilterFiles("fotxt");
+                auto txt_files = baker_engine.FileSys.FilterFiles("fotxt");
                 while (txt_files.MoveNext()) {
                     const auto lang = txt_files.GetCurFileHeader().GetName().substr(0, 4);
                     if (languages.emplace(lang).second) {
@@ -779,7 +788,7 @@ int main(int argc, char** argv)
 
                 for (const auto& lang_name : languages) {
                     LanguagePack lang_pack;
-                    lang_pack.ParseTexts(engine.FileSys, engine, lang_name);
+                    lang_pack.ParseTexts(baker_engine.FileSys, baker_engine, lang_name);
                     lang_packs.push_back(lang_pack);
                 }
 

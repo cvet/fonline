@@ -60,6 +60,11 @@ auto FileHeader::GetPath() const -> const string&
     return _filePath;
 }
 
+auto FileHeader::GetFullPath() const -> string
+{
+    return _str(_dataSource->GetPackName()).combinePath(_filePath).str();
+}
+
 auto FileHeader::GetSize() const -> size_t
 {
     RUNTIME_ASSERT(_isLoaded);

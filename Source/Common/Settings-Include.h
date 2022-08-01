@@ -187,6 +187,7 @@ SETTING_GROUP(TimerSettings, virtual DummySettings);
 FIXED_SETTING(int, StartYear, 2000);
 SETTING_GROUP_END();
 
+///@ ExportSettings Common
 SETTING_GROUP(BakerSettings, virtual DummySettings);
 VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(string, BakeOutput);

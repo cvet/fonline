@@ -352,18 +352,20 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
     // External config
     if (!ExternalConfig.empty()) {
-        auto settings_file = DiskFileSystem::OpenFile(ExternalConfig, false);
-        if (!settings_file) {
-            throw GenericException("External config not found", ExternalConfig);
+        if (auto settings_file = DiskFileSystem::OpenFile(ExternalConfig, false)) {
+            string settings_content;
+            settings_content.resize(settings_file.GetSize());
+            settings_file.Read(settings_content.data(), settings_content.size());
+
+            const auto config = ConfigFile("ExternalConfig.focfg", settings_content);
+            for (auto&& [key, value] : config.GetSection("")) {
+                SetValue(key, value);
+            }
         }
-
-        string settings_content;
-        settings_content.resize(settings_file.GetSize());
-        settings_file.Read(settings_content.data(), settings_content.size());
-
-        const auto config = ConfigFile("ExternalConfig.focfg", settings_content);
-        for (auto&& [key, value] : config.GetSection("")) {
-            SetValue(key, value);
+        else {
+            if (!BreakIntoDebugger("External config not found")) {
+                throw GenericException("External config not found", ExternalConfig);
+            }
         }
     }
 
@@ -435,43 +437,48 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
     const_cast<int&>(MapDirCount) = MapHexagonal ? 6 : 8;
 }
 
-void GlobalSettings::SetValue(string_view setting_name, const string& value)
+void GlobalSettings::SetValue(const string& setting_name, const string& setting_value)
 {
+    switch (const_hash(setting_name.c_str())) {
 #define SET_SETTING(sett) \
-    if (!value.empty() && value[0] == '+') { \
-        SetEntry(sett, value.substr(1), true); \
+    if (!setting_value.empty() && setting_value[0] == '+') { \
+        SetEntry(sett, setting_value.substr(1), true); \
     } \
     else { \
-        SetEntry(sett, value, false); \
-    }
+        SetEntry(sett, setting_value, false); \
+    } \
+    return
 #define FIXED_SETTING(type, name, ...) \
-    if (setting_name == #name) { \
-        SET_SETTING(const_cast<type&>(name)); \
-        return; \
-    }
+    case const_hash(#name): \
+        SET_SETTING(const_cast<type&>(name))
 #define VARIABLE_SETTING(type, name, ...) \
-    if (setting_name == #name) { \
-        SET_SETTING(name); \
-        return; \
-    }
+    case const_hash(#name): \
+        SET_SETTING(name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"
 #undef SET_SETTING
+    default:
+        Custom[setting_name] = setting_value;
+    }
 }
 
 void GlobalSettings::Draw(bool editable)
 {
 #define FIXED_SETTING(type, name, ...) \
-    if (editable) \
+    if (editable) { \
         DrawEditableEntry(#name, const_cast<type&>(name)); \
-    else \
-        DrawEntry(#name, name)
+    } \
+    else { \
+        DrawEntry(#name, name); \
+    }
 #define VARIABLE_SETTING(type, name, ...) \
-    if (editable) \
+    if (editable) { \
         DrawEditableEntry(#name, name); \
-    else \
-        DrawEntry(#name, name)
+    } \
+    else { \
+        DrawEntry(#name, name); \
+    }
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
 #include "Settings-Include.h"

@@ -461,7 +461,6 @@ struct ScriptSystem::AngelScriptImpl
     FOEngine* GameEngine {};
     asIScriptEngine* Engine {};
     set<CScriptArray*> EnumArrays {};
-    unordered_map<string, std::any> SettingsStorage {};
     map<string, EnumInfo> EnumInfos {};
     set<hstring> ContentData {};
     asIScriptContext* CurrentCtx {};
@@ -1915,16 +1914,6 @@ static void Global_Get(asIScriptGeneric* gen)
 #endif
 }
 
-static void Global_GetContent(asIScriptGeneric* gen)
-{
-#if !COMPILER_MODE
-    auto& hstr = *static_cast<hstring*>(gen->GetAuxiliary());
-    *(hstring*)gen->GetAddressOfReturnLocation() = hstr;
-#else
-    throw ScriptCompilerException("Stub");
-#endif
-}
-
 template<typename T>
 static auto Entity_GetSelf(T* entity) -> T*
 {
@@ -2960,7 +2949,7 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys)
             data.resize(0);
 
             if (_includeDeep == 1) {
-                const auto it = _scriptFiles->find(_str(file_name).eraseFileExtension());
+                const auto it = _scriptFiles->find(file_name);
                 RUNTIME_ASSERT(it != _scriptFiles->end());
 
                 data.resize(it->second.size());
@@ -2982,11 +2971,12 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys)
     auto script_files = file_sys.FilterFiles("fos");
 
     map<string, string> final_script_files;
-    vector<pair<string, int>> final_script_files_order;
+    vector<tuple<int, string, string>> final_script_files_order;
 
     while (script_files.MoveNext()) {
         auto script_file = script_files.GetCurFile();
         auto script_name = script_file.GetName();
+        auto script_path = script_file.GetFullPath();
         auto script_content = script_file.GetStr();
 
         const auto line_sep = script_content.find('\n');
@@ -3019,28 +3009,28 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys)
             sort = _str(first_line.substr(sort_pos + "Sort "_len)).substringUntil(' ').toInt();
         }
 
-        final_script_files_order.push_back(std::make_pair(script_name, sort));
-        final_script_files.emplace(std::move(script_name), std::move(script_content));
+        final_script_files_order.push_back(std::make_tuple(sort, script_name, script_path));
+        final_script_files.emplace(script_path, std::move(script_content));
     }
 
     std::sort(final_script_files_order.begin(), final_script_files_order.end(), [](auto& a, auto& b) {
-        if (a.second == b.second) {
-            return a.first < b.first;
+        if (std::get<0>(a) == std::get<0>(b)) {
+            return std::get<1>(a) < std::get<1>(b);
         }
         else {
-            return a.second < b.second;
+            return std::get<0>(a) < std::get<0>(b);
         }
     });
 
     string root_script;
     root_script.reserve(final_script_files.size() * 128);
 
-    for (auto&& [script_name, script_order] : final_script_files_order) {
+    for (auto&& [script_order, script_name, script_path] : final_script_files_order) {
         root_script.append("namespace ");
         root_script.append(script_name);
         root_script.append(" {\n#include \"");
-        root_script.append(script_name);
-        root_script.append(".fos\"\n}\n");
+        root_script.append(script_path);
+        root_script.append("\"\n}\n");
     }
 
     Preprocessor::UndefAll();

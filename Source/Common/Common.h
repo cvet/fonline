@@ -530,8 +530,18 @@ private:
 };
 
 // C-strings literal helpers
-// Todo: add _hash c-string literal helper
-auto constexpr operator"" _len(const char* str, size_t size) -> size_t
+// ReSharper disable once CppInconsistentNaming
+constexpr uint const_hash(char const* input)
+{
+    return *input != 0 ? static_cast<uint>(*input) + 33 * const_hash(input + 1) : 5381;
+}
+
+auto constexpr operator""_hash(const char* str, size_t size) -> uint
+{
+    return const_hash(str);
+}
+
+auto constexpr operator""_len(const char* str, size_t size) -> size_t
 {
     (void)str;
     return size;

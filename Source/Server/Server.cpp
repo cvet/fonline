@@ -73,11 +73,13 @@ FOServer::FOServer(GlobalSettings& settings) :
         FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath(entry));
     }
 
+#if !FO_SINGLEPLAYER
     extern auto Server_RegisterData(FOEngineBase*)->vector<uchar>;
     RestoreInfoBin = Server_RegisterData(this);
 
     ScriptSys = new ServerScriptSystem(this);
     ScriptSys->InitSubsystems();
+#endif
 
     GameTime.FrameAdvance();
 

@@ -903,6 +903,7 @@ def parseTags():
                 target = tok[0]
                 assert target in ['Server', 'Client', 'Common'], 'Invalid target ' + target
                 stype = unifiedTypeToMetaType(tok[1])
+                assert stype in ['int', 'uint', 'int8', 'uint8', 'int16', 'uint16', 'int64', 'uint64', 'float', 'double', 'bool', 'string'] + list(scriptEnums) + list(engineEnums), 'Invalid setting type ' + stype
                 name = tok[2]
                 value = tok[4] if len(tok) > 4 and tok[3] == '=' else None
                 flags = tok[3 if len(tok) < 4 or tok[3] != '=' else 5:]
@@ -1946,7 +1947,13 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('{')
             if not isASCompiler:
                 globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
-                globalLines.append('    return ' + marshalBack(type, 'std::any_cast<' + metaTypeToEngineType(type, target, False) + '&>(script_sys->SettingsStorage["' + name + '"])') + ';')
+                globalLines.append('    auto&& value = script_sys->GameEngine->Settings.Custom["' + name + '"];')
+                if type == 'string':
+                    globalLines.append('    return value;')
+                elif type in ['float', 'double']:
+                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(_str(value).toDouble());')
+                else:
+                    globalLines.append('    return static_cast<' + metaTypeToASEngineType(type) + '>(_str(value).toInt64());')
             else:
                 globalLines.append('    UNUSED_VARIABLE(self);')
                 globalLines.append('    throw ScriptCompilerException("Stub");')
@@ -1955,7 +1962,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             globalLines.append('{')
             if not isASCompiler:
                 globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
-                globalLines.append('    script_sys->SettingsStorage["' + name + '"] = ' + marshalIn(type, 'value') + ';')
+                globalLines.append('    script_sys->GameEngine->Settings.Custom["' + name + '"] = _str("{' + '}", ' + marshalIn(type, 'value') + ');')
             else:
                 globalLines.append('    UNUSED_VARIABLE(self);')
                 globalLines.append('    UNUSED_VARIABLE(value);')
@@ -2082,8 +2089,6 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
             targ, type, name, initValue, flags, _ = settTag
             if targ not in allowedTargets:
                 continue
-            if not isASCompiler:
-                registerLines.append('AngelScriptData->SettingsStorage["' + name + '"] = std::make_any<' + metaTypeToEngineType(type, target, False) + '>(' + (initValue if initValue is not None else '') + ');')
             registerLines.append('REGISTER_GET_SETTING(' + name + ', "' + metaTypeToASType(type, isRet=True) + ' get_' + name + '() const");')
             registerLines.append('REGISTER_SET_SETTING(' + name + ', "void set_' + name + '(' + metaTypeToASType(type) + ')");')
         registerLines.append('')
