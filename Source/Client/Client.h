@@ -120,7 +120,7 @@ public:
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
     void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
     void ScreenQuake(int noise, uint time);
-    void ProcessInputEvent(const InputEvent& event);
+    void ProcessInputEvent(const InputEvent& ev);
     void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;

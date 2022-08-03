@@ -1204,7 +1204,7 @@ void ModelInstance::GenerateCombinedMeshes()
 
     // Finalize meshes
     for (size_t i = 0, j = _combinedMeshesSize; i < j; i++) {
-        _combinedMeshes[i]->DrawMesh->DataChanged = true;
+        _combinedMeshes[i]->DrawMesh->StaticDataChanged = true;
     }
 }
 
@@ -1854,6 +1854,7 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
         effect->AnimBuf->AbsoluteTime = _animPosTime;
     }
 
+    combined_mesh->DrawMesh->Upload(effect->Usage);
     effect->DrawBuffer(combined_mesh->DrawMesh);
 }
 

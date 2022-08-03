@@ -291,7 +291,7 @@ public:
     void AccumulateAtlasData();
     void FlushAccumulatedAtlasData();
     void DestroyAtlases(AtlasType atlas_type);
-    void DumpAtlases();
+    void DumpAtlases() const;
     void CreateAnyFramesDirAnims(AnyFrames* anim, uint dirs);
     void DestroyAnyFrames(AnyFrames* anim);
     void SetSpritesColor(uint c) { _baseColor = c; }
@@ -367,7 +367,7 @@ private:
     RenderDrawBuffer* _flushDrawBuf {};
     RenderDrawBuffer* _contourDrawBuf {};
     uint _baseColor {};
-    size_t _drawQuadCount {};
+    size_t _maxDrawQuad {};
     size_t _curDrawQuad {};
     vector<int> _scissorStack {};
     IRect _scissorRect {};

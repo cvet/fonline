@@ -63,7 +63,8 @@ struct ServerConnection::Impl
     auto GetLastSocketError() -> string;
     auto FillSockAddr(sockaddr_in& saddr, string_view host, ushort port) -> bool;
 
-    z_stream* ZStream {};
+    z_stream ZStream {};
+    bool ZStreamActive {};
     sockaddr_in SockAddr {};
     sockaddr_in ProxyAddr {};
     SOCKET NetSock {INVALID_SOCKET};
@@ -83,8 +84,8 @@ ServerConnection::~ServerConnection()
     if (_impl->NetSock != INVALID_SOCKET) {
         ::closesocket(_impl->NetSock);
     }
-    if (_impl->ZStream != nullptr) {
-        ::inflateEnd(_impl->ZStream);
+    if (_impl->ZStreamActive) {
+        ::inflateEnd(&_impl->ZStream);
     }
     delete _impl;
 }
@@ -127,8 +128,6 @@ void ServerConnection::Process()
     }
 
     if (_isConnected) {
-        RUNTIME_ASSERT(_impl->NetSock != INVALID_SOCKET);
-
         if (ReceiveData(true) >= 0) {
             while (_isConnected && _netIn.NeedProcess()) {
                 uint msg = 0;
@@ -156,7 +155,7 @@ void ServerConnection::Process()
 
             if (_isConnected && _netOut.IsEmpty() && _pingTick == 0u && _settings.PingPeriod != 0u && Timer::RealtimeTick() >= _pingCallTick) {
                 _netOut << NETMSG_PING;
-                _netOut << PING_PING;
+                _netOut << PING_MEASURE;
                 _pingTick = Timer::RealtimeTick();
             }
 
@@ -170,6 +169,10 @@ void ServerConnection::Process()
 
 auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
 {
+    if (_interthreadCommunication) {
+        return for_write ? true : !_interthreadReceived.empty();
+    }
+
     timeval tv = {0, 0};
 
     FD_ZERO(&_impl->NetSockSet);
@@ -222,6 +225,50 @@ auto ServerConnection::CheckSocketStatus(bool for_write) -> bool
 
 auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 {
+    _netIn.SetEncryptKey(0);
+    _netOut.SetEncryptKey(0);
+
+    // Init Zlib
+    if (!_impl->ZStreamActive) {
+        _impl->ZStream.zalloc = [](voidpf, uInt items, uInt size) { return calloc(items, size); };
+        _impl->ZStream.zfree = [](voidpf, voidpf address) { free(address); };
+        _impl->ZStream.opaque = nullptr;
+        const auto inf_init = ::inflateInit(&_impl->ZStream);
+        RUNTIME_ASSERT(inf_init == Z_OK);
+        _impl->ZStreamActive = true;
+    }
+
+    // First try interthread communication
+    if (InterthreadListeners.count(port) != 0u) {
+        _interthreadReceived.clear();
+
+        _interthreadSend = InterthreadListeners[port]([this](const_span<uchar> buf) {
+            if (!buf.empty()) {
+                _interthreadReceived.insert(_interthreadReceived.end(), buf.begin(), buf.end());
+            }
+            else {
+                _interthreadSend = nullptr;
+                Disconnect();
+            }
+        });
+
+        _interthreadCommunication = true;
+
+        WriteLog("Connected to server via interthread communication");
+
+        _isConnecting = false;
+        _isConnected = true;
+
+        if (_connectCallback) {
+            _connectCallback(true);
+        }
+
+        return true;
+    }
+    else {
+        _interthreadCommunication = false;
+    }
+
 #if FO_WEB
     port++;
     if (!_settings.SecuredWebSockets) {
@@ -235,15 +282,6 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 #else
     WriteLog("Connecting to server '{}:{}'", host, port);
 #endif
-
-    if (_impl->ZStream == nullptr) {
-        _impl->ZStream = new z_stream();
-        _impl->ZStream->zalloc = [](voidpf, uInt items, uInt size) { return calloc(items, size); };
-        _impl->ZStream->zfree = [](voidpf, voidpf address) { free(address); };
-        _impl->ZStream->opaque = nullptr;
-        const auto inf_init = ::inflateInit(_impl->ZStream);
-        RUNTIME_ASSERT(inf_init == Z_OK);
-    }
 
 #if FO_WINDOWS
     WSADATA wsa;
@@ -259,9 +297,6 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
     if (_settings.ProxyType != 0u && !_impl->FillSockAddr(_impl->ProxyAddr, _settings.ProxyHost, static_cast<ushort>(_settings.ProxyPort))) {
         return false;
     }
-
-    _netIn.SetEncryptKey(0);
-    _netOut.SetEncryptKey(0);
 
 #if FO_LINUX
     constexpr auto sock_type = SOCK_STREAM | SOCK_CLOEXEC;
@@ -502,14 +537,23 @@ auto ServerConnection::ConnectToHost(string_view host, ushort port) -> bool
 
 void ServerConnection::Disconnect()
 {
+    if (_interthreadCommunication) {
+        _interthreadCommunication = false;
+
+        if (_interthreadSend) {
+            _interthreadSend({});
+            _interthreadSend = nullptr;
+        }
+    }
+
     if (_impl->NetSock != INVALID_SOCKET) {
         ::closesocket(_impl->NetSock);
         _impl->NetSock = INVALID_SOCKET;
     }
 
-    if (_impl->ZStream != nullptr) {
-        ::inflateEnd(_impl->ZStream);
-        _impl->ZStream = nullptr;
+    if (_impl->ZStreamActive) {
+        ::inflateEnd(&_impl->ZStream);
+        _impl->ZStreamActive = false;
     }
 
     if (_isConnecting) {
@@ -553,24 +597,31 @@ auto ServerConnection::DispatchData() -> bool
     const auto tosend = _netOut.GetEndPos();
     auto sendpos = 0u;
     while (sendpos < tosend) {
-#if FO_WINDOWS
-        DWORD len = 0;
-        WSABUF buf;
-        buf.buf = reinterpret_cast<char*>(_netOut.GetData()) + sendpos;
-        buf.len = tosend - sendpos;
-        if (::WSASend(_impl->NetSock, &buf, 1, &len, 0, nullptr, nullptr) == SOCKET_ERROR || len == 0)
-#else
-        int len = (int)::send(_impl->NetSock, _netOut.GetData() + sendpos, tosend - sendpos, 0);
-        if (len <= 0)
-#endif
-        {
-            WriteLog("Socket error while send to server, error '{}'", _impl->GetLastSocketError());
-            Disconnect();
-            return false;
+        if (_interthreadCommunication) {
+            _interthreadSend({_netOut.GetData(), tosend});
+            sendpos += tosend;
+            _bytesSend += tosend;
         }
+        else {
+#if FO_WINDOWS
+            DWORD len = 0;
+            WSABUF buf;
+            buf.buf = reinterpret_cast<char*>(_netOut.GetData()) + sendpos;
+            buf.len = tosend - sendpos;
+            if (::WSASend(_impl->NetSock, &buf, 1, &len, 0, nullptr, nullptr) == SOCKET_ERROR || len == 0)
+#else
+            int len = (int)::send(_impl->NetSock, _netOut.GetData() + sendpos, tosend - sendpos, 0);
+            if (len <= 0)
+#endif
+            {
+                WriteLog("Socket error while send to server, error '{}'", _impl->GetLastSocketError());
+                Disconnect();
+                return false;
+            }
 
-        sendpos += len;
-        _bytesSend += len;
+            sendpos += len;
+            _bytesSend += len;
+        }
     }
 
     _netOut.ResetBuf();
@@ -583,57 +634,69 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
         return 0;
     }
 
-#if FO_WINDOWS
-    DWORD len = 0;
-    DWORD flags = 0;
-    WSABUF buf;
-    buf.buf = reinterpret_cast<char*>(_incomeBuf.data());
-    buf.len = static_cast<uint>(_incomeBuf.size());
-    if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
-#else
-    int len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data(), _incomeBuf.size(), 0));
-    if (len == SOCKET_ERROR)
-#endif
-    {
-        WriteLog("Socket error while receive from server, error '{}'", _impl->GetLastSocketError());
-        return -1;
-    }
-    if (len == 0) {
-        WriteLog("Socket is closed");
-        return -2;
-    }
+    uint whole_len;
 
-    auto whole_len = static_cast<uint>(len);
-    while (whole_len == static_cast<uint>(_incomeBuf.size())) {
-        _incomeBuf.resize(_incomeBuf.size() * 2);
+    if (_interthreadCommunication) {
+        RUNTIME_ASSERT(!_interthreadReceived.empty());
+        whole_len = static_cast<uint>(_interthreadReceived.size());
+        _incomeBuf = _interthreadReceived;
+        _interthreadReceived.clear();
+    }
+    else {
+        RUNTIME_ASSERT(_impl->NetSock != INVALID_SOCKET);
 
 #if FO_WINDOWS
-        flags = 0;
-        buf.buf = reinterpret_cast<char*>(_incomeBuf.data()) + whole_len;
-        buf.len = static_cast<uint>(_incomeBuf.size()) - whole_len;
+        DWORD len = 0;
+        DWORD flags = 0;
+        WSABUF buf;
+        buf.buf = reinterpret_cast<char*>(_incomeBuf.data());
+        buf.len = static_cast<uint>(_incomeBuf.size());
         if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
-        len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data() + whole_len, _incomeBuf.size() - whole_len, 0));
+        int len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data(), _incomeBuf.size(), 0));
         if (len == SOCKET_ERROR)
 #endif
         {
-#if FO_WINDOWS
-            if (::WSAGetLastError() == WSAEWOULDBLOCK) {
-#else
-            if (errno == EINPROGRESS) {
-#endif
-                break;
-            }
-
-            WriteLog("Socket error (2) while receive from server, error '{}'", _impl->GetLastSocketError());
+            WriteLog("Socket error while receive from server, error '{}'", _impl->GetLastSocketError());
             return -1;
         }
         if (len == 0) {
-            WriteLog("Socket is closed (2)");
+            WriteLog("Socket is closed");
             return -2;
         }
 
-        whole_len += len;
+        whole_len = static_cast<uint>(len);
+        while (whole_len == static_cast<uint>(_incomeBuf.size())) {
+            _incomeBuf.resize(_incomeBuf.size() * 2);
+
+#if FO_WINDOWS
+            flags = 0;
+            buf.buf = reinterpret_cast<char*>(_incomeBuf.data()) + whole_len;
+            buf.len = static_cast<uint>(_incomeBuf.size()) - whole_len;
+            if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
+#else
+            len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data() + whole_len, _incomeBuf.size() - whole_len, 0));
+            if (len == SOCKET_ERROR)
+#endif
+            {
+#if FO_WINDOWS
+                if (::WSAGetLastError() == WSAEWOULDBLOCK) {
+#else
+                if (errno == EINPROGRESS) {
+#endif
+                    break;
+                }
+
+                WriteLog("Socket error (2) while receive from server, error '{}'", _impl->GetLastSocketError());
+                return -1;
+            }
+            if (len == 0) {
+                WriteLog("Socket is closed (2)");
+                return -2;
+            }
+
+            whole_len += len;
+        }
     }
 
     _netIn.ShrinkReadBuf();
@@ -641,27 +704,27 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
     const auto old_pos = _netIn.GetEndPos();
 
     if (unpack && !_settings.DisableZlibCompression) {
-        _impl->ZStream->next_in = _incomeBuf.data();
-        _impl->ZStream->avail_in = whole_len;
-        _impl->ZStream->next_out = _netIn.GetData() + _netIn.GetEndPos();
-        _impl->ZStream->avail_out = _netIn.GetAvailLen();
+        _impl->ZStream.next_in = _incomeBuf.data();
+        _impl->ZStream.avail_in = whole_len;
+        _impl->ZStream.next_out = _netIn.GetData() + _netIn.GetEndPos();
+        _impl->ZStream.avail_out = _netIn.GetAvailLen();
 
-        const auto first_inflate = ::inflate(_impl->ZStream, Z_SYNC_FLUSH);
+        const auto first_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
         RUNTIME_ASSERT(first_inflate == Z_OK);
 
-        auto uncompr = static_cast<uint>(reinterpret_cast<size_t>(_impl->ZStream->next_out) - reinterpret_cast<size_t>(_netIn.GetData()));
+        auto uncompr = static_cast<uint>(reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(_netIn.GetData()));
         _netIn.SetEndPos(uncompr);
 
-        while (_impl->ZStream->avail_in != 0u) {
+        while (_impl->ZStream.avail_in != 0u) {
             _netIn.GrowBuf(NetBuffer::DEFAULT_BUF_SIZE);
 
-            _impl->ZStream->next_out = _netIn.GetData() + _netIn.GetEndPos();
-            _impl->ZStream->avail_out = _netIn.GetAvailLen();
+            _impl->ZStream.next_out = _netIn.GetData() + _netIn.GetEndPos();
+            _impl->ZStream.avail_out = _netIn.GetAvailLen();
 
-            const auto next_inflate = ::inflate(_impl->ZStream, Z_SYNC_FLUSH);
+            const auto next_inflate = ::inflate(&_impl->ZStream, Z_SYNC_FLUSH);
             RUNTIME_ASSERT(next_inflate == Z_OK);
 
-            uncompr = static_cast<uint>(reinterpret_cast<size_t>(_impl->ZStream->next_out) - reinterpret_cast<size_t>(_netIn.GetData()));
+            uncompr = static_cast<uint>(reinterpret_cast<size_t>(_impl->ZStream.next_out) - reinterpret_cast<size_t>(_netIn.GetData()));
             _netIn.SetEndPos(uncompr);
         }
     }
@@ -712,11 +775,11 @@ void ServerConnection::Net_OnPing()
 
     CHECK_SERVER_IN_BUF_ERROR(*this);
 
-    if (ping == PING_CLIENT) {
+    if (ping == PING_ACTIVITY) {
         _netOut << NETMSG_PING;
-        _netOut << PING_CLIENT;
+        _netOut << PING_ACTIVITY;
     }
-    else if (ping == PING_PING) {
+    else if (ping == PING_MEASURE) {
         const auto cur_tick = Timer::RealtimeTick();
         _settings.Ping = static_cast<uint>(cur_tick - _pingTick);
         _pingTick = 0;

@@ -85,12 +85,19 @@ FOServer::FOServer(GlobalSettings& settings) :
 
     // Network
     WriteLog("Starting server on ports {} and {}", Settings.ServerPort, Settings.ServerPort + 1);
-    if ((_tcpServer = NetServerBase::StartTcpServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); })) == nullptr) {
-        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort);
+
+    if (auto* server = NetServerBase::StartInterthreadServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
+        _connectionServers.emplace_back(server);
     }
-    if ((_webSocketsServer = NetServerBase::StartWebSocketsServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); })) == nullptr) {
-        throw ServerInitException("Can't listen TCP server ports", Settings.ServerPort + 1);
+
+#if !FO_SINGLEPLAYER
+    if (auto* server = NetServerBase::StartTcpServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
+        _connectionServers.emplace_back(server);
     }
+    if (auto* server = NetServerBase::StartWebSocketsServer(Settings, [this](NetConnection* net_connection) { OnNewConnection(net_connection); }); server != nullptr) {
+        _connectionServers.emplace_back(server);
+    }
+#endif
 
     // Data base
     DbStorage = ConnectToDataBase(Settings.DbStorage);
@@ -334,8 +341,11 @@ FOServer::FOServer(GlobalSettings& settings) :
 
 FOServer::~FOServer()
 {
-    delete _tcpServer;
-    delete _webSocketsServer;
+    for (const auto* server : _connectionServers) {
+        delete server;
+    }
+    _connectionServers.clear();
+
     delete ScriptSys;
 }
 
@@ -382,16 +392,11 @@ void FOServer::Shutdown()
     }
 
     // Shutdown servers
-    if (_tcpServer != nullptr) {
-        _tcpServer->Shutdown();
-        delete _tcpServer;
-        _tcpServer = nullptr;
+    for (auto* server : _connectionServers) {
+        server->Shutdown();
+        delete server;
     }
-    if (_webSocketsServer != nullptr) {
-        _webSocketsServer->Shutdown();
-        delete _webSocketsServer;
-        _webSocketsServer = nullptr;
-    }
+    _connectionServers.clear();
 
     // Stats
     WriteLog("Server stopped");
@@ -902,7 +907,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         connection->LastActivityTime = GameTime.FrameTick();
     }
 
-    if (GameTime.FrameTick() - connection->LastActivityTime >= PING_CLIENT_LIFE_TIME) {
+    if (Settings.InactivityDisconnectTime != 0u && GameTime.FrameTick() - connection->LastActivityTime >= Settings.InactivityDisconnectTime) {
         WriteLog("Connection activity timeout from ip '{}'", connection->GetHost());
         connection->HardDisconnect();
         return;
@@ -916,7 +921,7 @@ void FOServer::ProcessConnection(ClientConnection* connection)
 
         CONNECTION_OUTPUT_BEGIN(connection);
         connection->Bout << NETMSG_PING;
-        connection->Bout << PING_CLIENT;
+        connection->Bout << PING_ACTIVITY;
         CONNECTION_OUTPUT_END(connection);
 
         connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
@@ -1696,13 +1701,13 @@ void FOServer::Process_Ping(ClientConnection* connection)
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
-    if (ping == PING_CLIENT) {
+    if (ping == PING_ACTIVITY) {
         connection->PingOk = true;
         connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
         return;
     }
 
-    if (ping == PING_PING) {
+    if (ping == PING_MEASURE) {
         // Valid pings
     }
     else {

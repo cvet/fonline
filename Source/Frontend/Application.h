@@ -286,10 +286,10 @@ public:
     [[nodiscard]] auto GetMousePosition() const -> tuple<int, int>;
     [[nodiscard]] auto GetClipboardText() -> const string&;
 
-    [[nodiscard]] auto PollEvent(InputEvent& event) -> bool;
+    [[nodiscard]] auto PollEvent(InputEvent& ev) -> bool;
 
     void SetMousePosition(int x, int y, const AppWindow* relative_to = nullptr);
-    void PushEvent(const InputEvent& event);
+    void PushEvent(const InputEvent& ev);
     void SetClipboardText(string_view text);
 
 private:

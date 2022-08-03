@@ -313,27 +313,47 @@ auto _str::splitToInt(char divider) const -> vector<int>
     return result;
 }
 
-auto _str::isNumber() -> bool
+auto _str::isNumber() const -> bool
+{
+    return isInt() || isFloat();
+}
+
+auto _str::isInt() const -> bool
 {
     if (_s.empty()) {
         return false;
     }
 
-    trim();
+    char* str_end = nullptr;
+    const auto v = std::strtoul(_s.c_str(), &str_end, 10);
+    UNUSED_VARIABLE(v);
 
+    return str_end != _s.c_str();
+}
+
+auto _str::isFloat() const -> bool
+{
     if (_s.empty()) {
         return false;
     }
 
-    if (_s.empty() || ((_s[0] < '0' || _s[0] > '9') && _s[0] != '-' && _s[0] != '+')) {
-        return false;
-    }
-
-    char* p = nullptr;
-    auto v = strtol(_s.c_str(), &p, 10);
+    char* str_end = nullptr;
+    const auto v = std::strtod(_s.c_str(), &str_end);
     UNUSED_VARIABLE(v);
 
-    return *p == 0;
+    return str_end != _s.c_str();
+}
+
+auto _str::isExplicitBool() const -> bool
+{
+    if (compareIgnoreCase("true")) {
+        return true;
+    }
+    if (compareIgnoreCase("false")) {
+        return true;
+    }
+
+    return false;
 }
 
 auto _str::toInt() -> int

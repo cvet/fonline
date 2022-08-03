@@ -233,6 +233,9 @@ auto FOEngineBase::ResolveGenericValue(string_view str, bool* failed) -> int
     if (str.empty()) {
         return 0;
     }
+    if (str[0] == '"') {
+        return 0;
+    }
 
     if (str[0] == '@') {
         return ToHashedString(str.substr(1)).as_int();

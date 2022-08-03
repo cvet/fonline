@@ -428,10 +428,21 @@ int main(int argc, char** argv)
 
                             string resolved_value;
 
-                            bool is_error = false;
-                            auto generic_value = baker_engine.ResolveGenericValue(value, &is_error);
-                            if (!is_error) {
-                                resolved_value = _str("{}", generic_value);
+                            if (value.empty()) {
+                                resolved_value = "";
+                            }
+                            else if (_str(value).isNumber()) {
+                                resolved_value = value;
+                            }
+                            else if (_str(value).isExplicitBool()) {
+                                resolved_value = _str(value).toBool() ? "1" : "0";
+                            }
+                            else if (value.find("::") != string::npos) {
+                                bool failed = false;
+                                resolved_value = _str("{}", baker_engine.ResolveEnumValue(value, &failed));
+                                if (failed) {
+                                    settings_errors++;
+                                }
                             }
                             else {
                                 resolved_value = value;

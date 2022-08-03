@@ -153,6 +153,9 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     if (_name != other->_name) {
         return false;
     }
+    if (Usage != other->Usage) {
+        return false;
+    }
     if (MainTex != other->MainTex) {
         return false;
     }
@@ -462,6 +465,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
 #endif
 
         MainWindow._windowHandle = CreateInternalWindow(Settings.ScreenWidth, Settings.ScreenHeight);
+        _allWindows.emplace_back(&MainWindow);
 
         ActiveRenderer->Init(Settings, MainWindow._windowHandle);
 
@@ -530,8 +534,8 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
         // Default effect
         FileSystem base_fs;
         base_fs.AddDataSource(Settings.EmbeddedResources);
-        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "Effects/ImGui_Default", "", [&base_fs](string_view path) -> string {
-            const auto file = base_fs.ReadFile(path);
+        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "ImGui_Default", "", [&base_fs](string_view path) -> string {
+            const auto file = base_fs.ReadFile(_str("Effects/{}", path));
             RUNTIME_ASSERT(file);
             return file.GetStr();
         });
@@ -558,9 +562,12 @@ auto Application::GetName() const -> const string&
 
 auto Application::CreateChildWindow(int width, int height) -> AppWindow*
 {
+    throw NotImplementedException(LINE_STR);
+
     auto* sdl_window = CreateInternalWindow(width, height);
     auto* window = new AppWindow();
     window->_windowHandle = sdl_window;
+    _allWindows.emplace_back(window);
     return window;
 }
 
@@ -622,7 +629,7 @@ auto Application::CreateInternalWindow(int width, int height) -> WindowInternalH
         win_pos = SDL_WINDOWPOS_CENTERED;
     }
 
-    auto* sdl_window = SDL_CreateWindow(Settings.WindowName.c_str(), win_pos, win_pos, Settings.ScreenWidth, Settings.ScreenHeight, window_create_flags);
+    auto* sdl_window = SDL_CreateWindow(Settings.WindowName.c_str(), win_pos, win_pos, width, height, window_create_flags);
     if (sdl_window == nullptr) {
         throw AppInitException("Window creation failed", SDL_GetError());
     }
@@ -820,7 +827,7 @@ void Application::BeginFrame()
                 RUNTIME_ASSERT(resized_window);
 
                 for (auto* window : copy(_allWindows)) {
-                    if (static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
+                    if (window != &MainWindow && static_cast<SDL_Window*>(window->_windowHandle) == resized_window) {
                         window->_onWindowSizeChangedDispatcher();
                     }
                 }
@@ -861,6 +868,12 @@ void Application::BeginFrame()
     io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
     if (w > 0 && h > 0) {
         io.DisplayFramebufferScale = ImVec2(static_cast<float>(display_w) / static_cast<float>(w), static_cast<float>(display_h) / static_cast<float>(h));
+    }
+
+    if (display_w != Settings.ScreenWidth || display_h != Settings.ScreenHeight) {
+        Settings.ScreenWidth = display_w;
+        Settings.ScreenHeight = display_h;
+        MainWindow._onWindowSizeChangedDispatcher();
     }
 
     // Setup time step
@@ -904,6 +917,9 @@ void Application::BeginFrame()
 void Application::EndFrame()
 {
     RUNTIME_ASSERT(RenderTargetTex == nullptr);
+
+    // Skip unprocessed events
+    EventsQueue->clear();
 
     // Render ImGui
     ImGui::Render();
@@ -950,7 +966,7 @@ void Application::EndFrame()
                 _imguiDrawBuf->Indices[i] = cmd_list->IdxBuffer[i];
             }
 
-            _imguiDrawBuf->DataChanged = true;
+            _imguiDrawBuf->Upload(_imguiEffect->Usage);
 
             for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
                 const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
@@ -992,7 +1008,6 @@ void AppWindow::SetSize(int w, int h)
 
     if (ActiveRendererType != RenderType::Null) {
         SDL_SetWindowSize(static_cast<SDL_Window*>(_windowHandle), w, h);
-        _onWindowSizeChangedDispatcher();
     }
 }
 
@@ -1174,19 +1189,19 @@ void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
     }
 }
 
-auto AppInput::PollEvent(InputEvent& event) -> bool
+auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
     if (!EventsQueue->empty()) {
-        event = EventsQueue->front();
+        ev = EventsQueue->front();
         EventsQueue->erase(EventsQueue->begin());
         return true;
     }
     return false;
 }
 
-void AppInput::PushEvent(const InputEvent& event)
+void AppInput::PushEvent(const InputEvent& ev)
 {
-    NextFrameEventsQueue->push_back(event);
+    NextFrameEventsQueue->push_back(ev);
 }
 
 void AppInput::SetClipboardText(string_view text)

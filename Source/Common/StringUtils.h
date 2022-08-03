@@ -99,7 +99,10 @@ public:
     [[nodiscard]] auto split(char divider) const -> vector<string>;
     [[nodiscard]] auto splitToInt(char divider) const -> vector<int>;
 
-    [[nodiscard]] auto isNumber() -> bool; // Todo: make isNumber const
+    [[nodiscard]] auto isNumber() const -> bool;
+    [[nodiscard]] auto isInt() const -> bool;
+    [[nodiscard]] auto isFloat() const -> bool;
+    [[nodiscard]] auto isExplicitBool() const -> bool;
     [[nodiscard]] auto toInt() -> int;
     [[nodiscard]] auto toUInt() -> uint;
     [[nodiscard]] auto toInt64() -> int64;

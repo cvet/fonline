@@ -1849,8 +1849,8 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    auto event_data = Entity::EventCallbackData();')
                         globalLines.append('    event_data.SubscribtionPtr = (func->GetFuncType() == asFUNC_DELEGATE ? func->GetDelegateFunction() : func);')
-                        globalLines.append('    event_data.Callback = [self, func](const initializer_list<void*>& args) {')
-                        globalLines.append('        return ' + funcEntry + '_Callback(self, func, args);')
+                        globalLines.append('    event_data.Callback = [self, func = RefCountHolder(func)](const initializer_list<void*>& args) {')
+                        globalLines.append('        return ' + funcEntry + '_Callback(self, func.get(), args);')
                         globalLines.append('    };')
                         if isExported:
                             globalLines.append('    self->' + evName + '.Subscribe(std::move(event_data));')

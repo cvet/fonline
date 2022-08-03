@@ -185,7 +185,7 @@ public:
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ChangeGameTime();
-    void ProcessInputEvent(const InputEvent& event);
+    void ProcessInputEvent(const InputEvent& ev);
 
     void CurDraw();
     void CurRMouseUp();

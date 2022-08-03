@@ -210,6 +210,8 @@ public:
     explicit OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static) { }
     ~OpenGL_DrawBuffer() override;
 
+    void Upload(EffectUsage usage, size_t custom_vertices_size) override;
+
     GLuint VertexArrObj {};
     GLuint VertexBufObj {};
     GLuint IndexBufObj {};
@@ -222,7 +224,8 @@ class OpenGL_Effect final : public RenderEffect
 public:
     OpenGL_Effect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) : RenderEffect(usage, name, defines, loader) { }
     ~OpenGL_Effect() override;
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, RenderTexture* custom_tex = nullptr) override;
+
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
@@ -448,19 +451,6 @@ auto OpenGL_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     auto&& opengl_dbuf = std::make_unique<OpenGL_DrawBuffer>(is_static);
 
     return opengl_dbuf.release();
-}
-
-OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
-{
-    if (VertexBufObj != 0u) {
-        glDeleteBuffers(1, &VertexBufObj);
-    }
-    if (IndexBufObj != 0u) {
-        glDeleteBuffers(1, &IndexBufObj);
-    }
-    if (VertexArrObj != 0u) {
-        glDeleteVertexArrays(1, &VertexArrObj);
-    }
 }
 
 auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*
@@ -879,6 +869,181 @@ void OpenGL_Renderer::DisableScissor()
     GL(glDisable(GL_SCISSOR_TEST));
 }
 
+OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
+{
+    if (VertexBufObj != 0u) {
+        glDeleteBuffers(1, &VertexBufObj);
+    }
+    if (IndexBufObj != 0u) {
+        glDeleteBuffers(1, &IndexBufObj);
+    }
+    if (VertexArrObj != 0u) {
+        glDeleteVertexArrays(1, &VertexArrObj);
+    }
+}
+
+static void EnableVertAtribs(EffectUsage usage)
+{
+#if FO_ENABLE_3D
+    if (usage == EffectUsage::Model) {
+        GL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Position))));
+        GL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Normal))));
+        GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, TexCoord))));
+        GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, TexCoordBase))));
+        GL(glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Tangent))));
+        GL(glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Bitangent))));
+        GL(glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendWeights))));
+        GL(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendIndices))));
+        for (uint i = 0; i <= 7; i++) {
+            GL(glEnableVertexAttribArray(i));
+        }
+
+        return;
+    }
+#endif
+
+    GL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, X))));
+    GL(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Diffuse))));
+    GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TU))));
+    GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TUEgg))));
+    for (uint i = 0; i <= 3; i++) {
+        GL(glEnableVertexAttribArray(i));
+    }
+}
+
+static void DisableVertAtribs(EffectUsage usage)
+{
+#if FO_ENABLE_3D
+    if (usage == EffectUsage::Model) {
+        for (uint i = 0; i <= 7; i++) {
+            GL(glDisableVertexAttribArray(i));
+        }
+
+        return;
+    }
+#endif
+
+    for (uint i = 0; i <= 3; i++) {
+        GL(glDisableVertexAttribArray(i));
+    }
+}
+
+void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
+{
+    if (VertexBufObj != 0u && IsStatic && !StaticDataChanged) {
+        return;
+    }
+
+    StaticDataChanged = false;
+
+    // Regenerate static buffers
+    if (IsStatic) {
+        if (VertexBufObj != 0u) {
+            GL(glDeleteBuffers(1, &VertexBufObj));
+            VertexBufObj = 0u;
+        }
+        if (IndexBufObj != 0u) {
+            GL(glDeleteBuffers(1, &IndexBufObj));
+            IndexBufObj = 0u;
+        }
+    }
+
+    if (VertexBufObj == 0u) {
+        GL(glGenBuffers(1, &VertexBufObj));
+    }
+    if (IndexBufObj == 0u) {
+        GL(glGenBuffers(1, &IndexBufObj));
+    }
+
+    const auto buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
+
+    // Fill vertex buffer
+    GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
+
+    size_t upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
+
+#if FO_ENABLE_3D
+    if (usage == EffectUsage::Model) {
+        RUNTIME_ASSERT(Vertices2D.empty());
+        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
+    }
+    else {
+        RUNTIME_ASSERT(Vertices3D.empty());
+        GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
+    }
+#else
+    GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
+#endif
+
+    // Auto generate indices
+    bool need_upload_indices = false;
+    if (!IsStatic) {
+        switch (usage) {
+#if FO_ENABLE_3D
+        case EffectUsage::Model:
+#endif
+        case EffectUsage::ImGui: {
+            // Nothing, indices generated manually
+            need_upload_indices = true;
+        } break;
+        case EffectUsage::Font:
+        case EffectUsage::MapSprite:
+        case EffectUsage::Interface:
+        case EffectUsage::Flush:
+        case EffectUsage::Contour: {
+            // Sprite quad
+            RUNTIME_ASSERT(upload_vertices % 4 == 0);
+            auto& indices = Indices;
+            const auto need_size = upload_vertices / 4 * 6;
+            if (indices.size() < need_size) {
+                const auto prev_size = indices.size();
+                indices.resize(need_size);
+                for (size_t i = prev_size / 6, j = indices.size() / 6; i < j; i++) {
+                    indices[i * 6 + 0] = static_cast<ushort>(i * 4 + 0);
+                    indices[i * 6 + 1] = static_cast<ushort>(i * 4 + 1);
+                    indices[i * 6 + 2] = static_cast<ushort>(i * 4 + 3);
+                    indices[i * 6 + 3] = static_cast<ushort>(i * 4 + 1);
+                    indices[i * 6 + 4] = static_cast<ushort>(i * 4 + 2);
+                    indices[i * 6 + 5] = static_cast<ushort>(i * 4 + 3);
+                }
+
+                need_upload_indices = true;
+            }
+        } break;
+        case EffectUsage::Primitive: {
+            // One to one
+            auto& indices = Indices;
+            if (indices.size() < upload_vertices) {
+                const auto prev_size = indices.size();
+                indices.resize(upload_vertices);
+                for (size_t i = prev_size; i < indices.size(); i++) {
+                    indices[i] = static_cast<ushort>(i);
+                }
+
+                need_upload_indices = true;
+            }
+        } break;
+        }
+    }
+    else {
+        need_upload_indices = true;
+    }
+
+    // Fill index buffer
+    if (need_upload_indices) {
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
+        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, Indices.size() * sizeof(ushort), Indices.data(), buf_type));
+    }
+
+    // Create vertex array object
+    if (VertexArrObj == 0u && GL_HAS(vertex_array_object)) {
+        GL(glGenVertexArrays(1, &VertexArrObj));
+        GL(glBindVertexArray(VertexArrObj));
+        EnableVertAtribs(usage);
+        GL(glBindVertexArray(0));
+    }
+}
+
 OpenGL_Effect::~OpenGL_Effect()
 {
     for (size_t i = 0; i < _passCount; i++) {
@@ -986,143 +1151,9 @@ void OpenGL_Effect::DrawPrimitive(RenderPrimitiveType prim, const Vertex2DVec& v
 #endif
 }*/
 
-static void EnableVertAtribs(EffectUsage usage)
+void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
 {
-#if FO_ENABLE_3D
-    if (usage == EffectUsage::Model) {
-        GL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Position))));
-        GL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Normal))));
-        GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, TexCoord))));
-        GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, TexCoordBase))));
-        GL(glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Tangent))));
-        GL(glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, Bitangent))));
-        GL(glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendWeights))));
-        GL(glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3D), reinterpret_cast<const GLvoid*>(offsetof(Vertex3D, BlendIndices))));
-        for (uint i = 0; i <= 7; i++) {
-            GL(glEnableVertexAttribArray(i));
-        }
-
-        return;
-    }
-#endif
-
-    GL(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, X))));
-    GL(glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, Diffuse))));
-    GL(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TU))));
-    GL(glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex2D), reinterpret_cast<const GLvoid*>(offsetof(Vertex2D, TUEgg))));
-    for (uint i = 0; i <= 3; i++) {
-        GL(glEnableVertexAttribArray(i));
-    }
-}
-
-static void DisableVertAtribs(EffectUsage usage)
-{
-#if FO_ENABLE_3D
-    if (usage == EffectUsage::Model) {
-        for (uint i = 0; i <= 7; i++) {
-            GL(glDisableVertexAttribArray(i));
-        }
-
-        return;
-    }
-#endif
-
-    for (uint i = 0; i <= 3; i++) {
-        GL(glDisableVertexAttribArray(i));
-    }
-}
-
-void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, RenderTexture* custom_tex)
-{
-    auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
-
-    if (opengl_dbuf->VertexBufObj == 0u || dbuf->DataChanged) {
-        dbuf->DataChanged = false;
-
-        // Regenerate static buffers
-        if (dbuf->IsStatic) {
-            if (opengl_dbuf->VertexBufObj != 0u) {
-                GL(glDeleteBuffers(1, &opengl_dbuf->VertexBufObj));
-                opengl_dbuf->VertexBufObj = 0u;
-            }
-            if (opengl_dbuf->IndexBufObj != 0u) {
-                GL(glDeleteBuffers(1, &opengl_dbuf->IndexBufObj));
-                opengl_dbuf->IndexBufObj = 0u;
-            }
-        }
-
-        if (opengl_dbuf->VertexBufObj == 0u) {
-            GL(glGenBuffers(1, &opengl_dbuf->VertexBufObj));
-        }
-        if (opengl_dbuf->IndexBufObj == 0u) {
-            GL(glGenBuffers(1, &opengl_dbuf->IndexBufObj));
-        }
-
-        const auto buf_type = dbuf->IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
-
-        // Fill vertex buffer
-        GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
-
-#if FO_ENABLE_3D
-        if (Usage == EffectUsage::Model) {
-            RUNTIME_ASSERT(dbuf->Vertices2D.empty());
-            GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices3D.size() * sizeof(Vertex3D), dbuf->Vertices3D.data(), buf_type));
-        }
-        else {
-            RUNTIME_ASSERT(dbuf->Vertices3D.empty());
-            GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices2D.size() * sizeof(Vertex2D), dbuf->Vertices2D.data(), buf_type));
-        }
-#else
-        GL(glBufferData(GL_ARRAY_BUFFER, dbuf->Vertices2D.size() * sizeof(Vertex2D), dbuf->Vertices2D.data(), buf_type));
-#endif
-
-        // Auto generate indices
-        auto& indices = dbuf->Indices;
-        switch (Usage) {
-#if FO_ENABLE_3D
-        case EffectUsage::Model:
-#endif
-        case EffectUsage::ImGui: {
-            // Nothing, indices generated manually
-        } break;
-        case EffectUsage::Font:
-        case EffectUsage::MapSprite:
-        case EffectUsage::Interface: {
-            // Sprite quad
-            RUNTIME_ASSERT(dbuf->Vertices2D.size() % 4 == 0);
-            indices.resize(dbuf->Vertices2D.size() / 4 * 6);
-            for (size_t i = 0, j = indices.size() / 6; i < j; i += 6) {
-                indices[i * 6 + 0] = static_cast<ushort>(i * 4 + 0);
-                indices[i * 6 + 1] = static_cast<ushort>(i * 4 + 1);
-                indices[i * 6 + 2] = static_cast<ushort>(i * 4 + 3);
-                indices[i * 6 + 3] = static_cast<ushort>(i * 4 + 1);
-                indices[i * 6 + 4] = static_cast<ushort>(i * 4 + 2);
-                indices[i * 6 + 5] = static_cast<ushort>(i * 4 + 3);
-            }
-        } break;
-        case EffectUsage::Flush:
-        case EffectUsage::Contour:
-        case EffectUsage::Primitive: {
-            // One to one
-            indices.resize(dbuf->Vertices2D.size());
-            for (size_t i = 0; i < indices.size(); i++) {
-                indices[i] = static_cast<ushort>(i);
-            }
-        } break;
-        }
-
-        // Fill index buffer
-        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opengl_dbuf->IndexBufObj));
-        GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, dbuf->Indices.size() * sizeof(ushort), dbuf->Indices.data(), buf_type));
-
-        // Create vertex array object
-        if (opengl_dbuf->VertexArrObj == 0u && GL_HAS(vertex_array_object)) {
-            GL(glGenVertexArrays(1, &opengl_dbuf->VertexArrObj));
-            GL(glBindVertexArray(opengl_dbuf->VertexArrObj));
-            EnableVertAtribs(Usage);
-            GL(glBindVertexArray(0));
-        }
-    }
+    const auto* opengl_dbuf = static_cast<OpenGL_DrawBuffer*>(dbuf);
 
     GLenum draw_mode = GL_TRIANGLES;
 
@@ -1159,11 +1190,15 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
 #endif
     }
 
+    if (DisableBlending) {
+        GL(glDisable(GL_BLEND));
+    }
+
 #if FO_ENABLE_3D
     if (Usage == EffectUsage::Model) {
         GL(glEnable(GL_DEPTH_TEST));
 
-        if (!dbuf->DisableModelCulling) {
+        if (!opengl_dbuf->DisableModelCulling) {
             GL(glEnable(GL_CULL_FACE));
         }
     }
@@ -1181,7 +1216,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
     }
 
     const auto* opnegl_tex = static_cast<OpenGL_Texture*>(custom_tex != nullptr ? custom_tex : MainTex);
-    const auto draw_count = static_cast<GLsizei>(indices_to_draw.value_or(dbuf->Indices.size()));
+    const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(ushort));
 
     // Effect* effect = (combined_mesh->DrawEffect ? combined_mesh->DrawEffect : modelMngr.effectMngr.Effects.Skinned3d);
@@ -1254,11 +1289,15 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optio
         DisableVertAtribs(Usage);
     }
 
+    if (DisableBlending) {
+        GL(glEnable(GL_BLEND));
+    }
+
 #if FO_ENABLE_3D
     if (Usage == EffectUsage::Model) {
         GL(glDisable(GL_DEPTH_TEST));
 
-        if (!dbuf->DisableModelCulling) {
+        if (!opengl_dbuf->DisableModelCulling) {
             GL(glDisable(GL_CULL_FACE));
         }
     }

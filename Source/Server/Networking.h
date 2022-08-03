@@ -38,6 +38,8 @@
 #include "NetBuffer.h"
 #include "Settings.h"
 
+DECLARE_EXCEPTION(NetworkException);
+
 class NetConnection
 {
 public:
@@ -84,6 +86,7 @@ public:
 
     virtual void Shutdown() = 0;
 
-    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
-    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, const ConnectionCallback& callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartTcpServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartWebSocketsServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
+    [[nodiscard]] static auto StartInterthreadServer(ServerNetworkSettings& settings, ConnectionCallback callback) -> NetServerBase*;
 };

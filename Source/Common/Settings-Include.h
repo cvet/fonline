@@ -99,6 +99,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Server
 SETTING_GROUP(ServerNetworkSettings, virtual NetworkSettings);
+FIXED_SETTING(uint, InactivityDisconnectTime, 0);
 FIXED_SETTING(string, WssPrivateKey, "");
 FIXED_SETTING(string, WssCertificate, "");
 SETTING_GROUP_END();

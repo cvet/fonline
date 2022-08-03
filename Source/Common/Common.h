@@ -563,15 +563,18 @@ template<typename T>
 class RefCountHolder
 {
 public:
-    [[nodiscard]] explicit RefCountHolder(const T& ref) : _ref {ref} { _ref.AddRef(); }
-    [[nodiscard]] RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref.AddRef(); }
-    [[nodiscard]] RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref.AddRef(); }
+    [[nodiscard]] explicit RefCountHolder(T* ref) : _ref {ref} { _ref->AddRef(); }
+    [[nodiscard]] RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref->AddRef(); }
+    [[nodiscard]] RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref->AddRef(); }
     auto operator=(const RefCountHolder& other) = delete;
     auto operator=(RefCountHolder&& other) = delete;
-    ~RefCountHolder() { _ref.Release(); }
+    ~RefCountHolder() { _ref->Release(); }
+
+    // ReSharper disable once CppInconsistentNaming
+    [[nodiscard]] auto get() const -> T* { return _ref; }
 
 private:
-    const T& _ref;
+    T* _ref;
 };
 
 // Scope callback helpers
@@ -1042,8 +1045,8 @@ enum class CritterFindType : uchar
 };
 
 // Ping
-static constexpr uchar PING_PING = 0;
-static constexpr uchar PING_CLIENT = 2;
+static constexpr uchar PING_MEASURE = 0;
+static constexpr uchar PING_ACTIVITY = 2;
 
 // Say types
 static constexpr uchar SAY_NORM = 1;
@@ -1404,6 +1407,10 @@ public:
     [[nodiscard]] virtual auto ResolveCritterAnimationSubstitute(hstring arg1, uint arg2, uint arg3, hstring& arg4, uint& arg5, uint& arg6) -> bool = 0;
     [[nodiscard]] virtual auto ResolveCritterAnimationFallout(hstring arg1, uint& arg2, uint& arg3, uint& arg4, uint& arg5, uint& arg6) -> bool = 0;
 };
+
+// Interthread communication between server and client
+using InterthreadDataCallback = std::function<void(const_span<uchar>)>;
+extern map<ushort, std::function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
 
 #define GLOBAL_DATA(class_name, instance_name) \
     static class_name* instance_name; \

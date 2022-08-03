@@ -273,9 +273,7 @@ private:
     vector<TextListener> _textListeners {};
     vector<Player*> _logClients {};
     vector<string> _logLines {};
-    // Todo: run network listeners dynamically, without restriction, based on server settings
-    NetServerBase* _tcpServer {};
-    NetServerBase* _webSocketsServer {};
+    vector<NetServerBase*> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
     vector<ClientConnection*> _freeConnections {};
     mutable std::mutex _freeConnectionsLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};

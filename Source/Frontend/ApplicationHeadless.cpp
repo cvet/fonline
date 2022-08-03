@@ -331,16 +331,16 @@ void AppInput::SetMousePosition(int x, int y, const AppWindow* relative_to)
     UNUSED_VARIABLE(y);
 }
 
-auto AppInput::PollEvent(InputEvent& event) -> bool
+auto AppInput::PollEvent(InputEvent& ev) -> bool
 {
-    UNUSED_VARIABLE(event);
+    UNUSED_VARIABLE(ev);
 
     return false;
 }
 
-void AppInput::PushEvent(const InputEvent& event)
+void AppInput::PushEvent(const InputEvent& ev)
 {
-    UNUSED_VARIABLE(event);
+    UNUSED_VARIABLE(ev);
 }
 
 void AppInput::SetClipboardText(string_view text)

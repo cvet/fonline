@@ -309,7 +309,7 @@ void FOMapper::ChangeGameTime()
     }
 }
 
-void FOMapper::ProcessInputEvent(const InputEvent& event)
+void FOMapper::ProcessInputEvent(const InputEvent& ev)
 {
     throw NotImplementedException(LINE_STR);
     // Process events

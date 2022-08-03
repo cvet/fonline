@@ -93,6 +93,7 @@ public:
     {
         EventCallback Callback {};
         const void* SubscribtionPtr {};
+        std::function<void()> UnsubscribeCallback {};
         EventExceptionPolicy ExPolicy {EventExceptionPolicy::IgnoreAndContinueChain}; // Todo: improve entity event ExPolicy
         EventPriority Priority {EventPriority::Normal}; // Todo: improve entity event Priority
         bool OneShot {}; // Todo: improve entity event OneShot

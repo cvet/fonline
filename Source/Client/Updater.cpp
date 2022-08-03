@@ -108,8 +108,8 @@ void Updater::Net_OnDisconnect()
 auto Updater::Process() -> bool
 {
     // Skip all events
-    InputEvent event;
-    while (App->Input.PollEvent(event)) {
+    InputEvent ev;
+    while (App->Input.PollEvent(ev)) {
     }
 
     // Update indication

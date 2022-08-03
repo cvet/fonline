@@ -64,6 +64,8 @@ public:
     explicit Direct3D_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static) { }
     ~Direct3D_DrawBuffer() override;
 
+    void Upload(EffectUsage usage, size_t custom_vertices_size) override;
+
     int VertexBufferSize {};
     int IndexBufferSize {};
 };
@@ -75,7 +77,8 @@ class Direct3D_Effect : public RenderEffect
 public:
     Direct3D_Effect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) : RenderEffect(usage, name, defines, loader) { }
     ~Direct3D_Effect() override;
-    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, RenderTexture* custom_tex = nullptr) override;
+
+    void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
 
     ID3D11Buffer* VertexBuf {};
     ID3D11Buffer* IndexBuf {};
@@ -537,6 +540,11 @@ Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 {
 }
 
+void Direct3D_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
+{
+    throw NotImplementedException(LINE_STR);
+}
+
 Direct3D_Effect::~Direct3D_Effect()
 {
     if (VertexBuf != nullptr) {
@@ -565,7 +573,7 @@ Direct3D_Effect::~Direct3D_Effect()
     }
 }
 
-void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, optional<size_t> indices_to_draw, RenderTexture* custom_tex)
+void Direct3D_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex)
 {
     throw NotImplementedException(LINE_STR);
 }

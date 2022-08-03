@@ -32,6 +32,7 @@
 //
 
 #include "SpriteManager.h"
+#include "DiskFileSystem.h"
 #include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
@@ -108,12 +109,12 @@ auto AnyFrames::GetDir(int dir) -> AnyFrames*
 SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& file_sys, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _fileSys {file_sys}, _effectMngr {effect_mngr}
 {
     _baseColor = COLOR_RGBA(255, 128, 128, 128);
-    _drawQuadCount = 1024;
+    _maxDrawQuad = 1024;
     _allAtlases.reserve(100);
     _dipQueue.reserve(1000);
 
     _spritesDrawBuf = App->Render.CreateDrawBuffer(false);
-    _spritesDrawBuf->Vertices2D.resize(_drawQuadCount * 4);
+    _spritesDrawBuf->Vertices2D.resize(_maxDrawQuad * 4);
     _primitiveDrawBuf = App->Render.CreateDrawBuffer(false);
     _primitiveDrawBuf->Vertices2D.resize(1024);
     _flushDrawBuf = App->Render.CreateDrawBuffer(false);
@@ -381,8 +382,10 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const I
 
     auto* effect = rt->CustomDrawEffect != nullptr ? rt->CustomDrawEffect : _effectMngr.Effects.FlushRenderTarget;
 
+    std::memcpy(effect->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
     effect->MainTex = rt->MainTex.get();
     effect->DisableBlending = !alpha_blend;
+    _flushDrawBuf->Upload(effect->Usage);
     effect->DrawBuffer(_flushDrawBuf);
 }
 
@@ -667,21 +670,39 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
     }
 }
 
-void SpriteManager::DumpAtlases()
+static void WriteSimpleTga(string_view fname, uint width, uint height, const uint* data)
+{
+    auto file = DiskFileSystem::OpenFile(fname, true);
+    RUNTIME_ASSERT(file);
+
+    const uchar header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
+        static_cast<uchar>(width % 256), static_cast<uchar>(width / 256), //
+        static_cast<uchar>(height % 256), static_cast<uchar>(height / 256), 4 * 8, 0x20};
+    file.Write(header);
+
+    file.Write(data, width * height * 4);
+}
+
+void SpriteManager::DumpAtlases() const
 {
     uint atlases_memory_size = 0;
-    for (auto& atlas : _allAtlases) {
+    for (auto&& atlas : _allAtlases) {
         atlases_memory_size += atlas->Width * atlas->Height * 4;
     }
 
-    const string path = _str("./{}_{}.{:03}mb/", static_cast<uint>(time(nullptr)), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
+    const string dir = _str("{}_{}.{:03}mb", static_cast<uint>(time(nullptr)), atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000);
+
+    if (const auto* rt = _rtMain; rt != nullptr) {
+        const string fname = _str("{}/Main_{}x{}.tga", dir, rt->MainTex->Width, rt->MainTex->Height);
+        const auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
+        WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, tex_data.data());
+    }
 
     auto cnt = 0;
-    for (auto& atlas : _allAtlases) {
-        string fname = _str("{}{}_{}_{}x{}.png", path, cnt, atlas->Type, atlas->Width, atlas->Height);
-        // Todo: restore texture saving
-        // SaveTexture(atlas->MainTex, fname, false);
-        throw NotImplementedException(LINE_STR);
+    for (auto&& atlas : _allAtlases) {
+        const string fname = _str("{}/{}_{}_{}x{}.tga", dir, cnt, atlas->Type, atlas->Width, atlas->Height);
+        const auto tex_data = atlas->MainTex->GetTextureRegion(0, 0, atlas->Width, atlas->Height);
+        WriteSimpleTga(fname, atlas->Width, atlas->Height, tex_data.data());
         cnt++;
     }
 }
@@ -1140,8 +1161,12 @@ void SpriteManager::Flush()
         return;
     }
 
+    _spritesDrawBuf->Upload(_dipQueue.front().SourceEffect->Usage, _curDrawQuad * 4);
+
     size_t pos = 0;
     for (const auto& dip : _dipQueue) {
+        RUNTIME_ASSERT(dip.SourceEffect->Usage == _dipQueue.front().SourceEffect->Usage);
+        std::memcpy(dip.SourceEffect->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
         dip.SourceEffect->DrawBuffer(_spritesDrawBuf, pos, dip.SpritesCount * 6, dip.MainTex);
         pos += dip.SpritesCount * 6;
     }
@@ -1164,7 +1189,7 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
 
     if (_dipQueue.empty() || _dipQueue.back().SourceEffect->CanBatch(effect)) {
-        _dipQueue.push_back(DipData {si->Atlas->MainTex, effect, 1});
+        _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
     }
     else {
         _dipQueue.back().SpritesCount++;
@@ -1202,7 +1227,7 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     vbuf[pos].TV = si->SprRect.Bottom;
     vbuf[pos].Diffuse = color;
 
-    if (++_curDrawQuad == _drawQuadCount) {
+    if (++_curDrawQuad == _maxDrawQuad) {
         Flush();
     }
 }
@@ -1255,7 +1280,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
 
     if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-        _dipQueue.push_back(DipData {si->Atlas->MainTex, effect, 1});
+        _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
     }
     else {
         _dipQueue.back().SpritesCount++;
@@ -1293,7 +1318,7 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     vbuf[pos].TV = si->SprRect.Bottom;
     vbuf[pos].Diffuse = color;
 
-    if (++_curDrawQuad == _drawQuadCount) {
+    if (++_curDrawQuad == _maxDrawQuad) {
         Flush();
     }
 }
@@ -1346,7 +1371,7 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
             const auto last_x = xx + width >= end_x;
 
             if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-                _dipQueue.push_back(DipData {si->Atlas->MainTex, effect, 1});
+                _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
             }
             else {
                 _dipQueue.back().SpritesCount++;
@@ -1384,7 +1409,7 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
             vbuf[pos].TV = local_bottom;
             vbuf[pos].Diffuse = color;
 
-            if (++_curDrawQuad == _drawQuadCount) {
+            if (++_curDrawQuad == _maxDrawQuad) {
                 Flush();
             }
         }
@@ -1655,7 +1680,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Choose atlas
         if (_dipQueue.empty() || _dipQueue.back().MainTex != si->Atlas->MainTex || _dipQueue.back().SourceEffect != effect) {
-            _dipQueue.push_back(DipData {si->Atlas->MainTex, effect, 1});
+            _dipQueue.push_back({si->Atlas->MainTex, effect, 1});
         }
         else {
             _dipQueue.back().SpritesCount++;
@@ -1704,7 +1729,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         }
 
         // Draw
-        if (++_curDrawQuad == _drawQuadCount) {
+        if (++_curDrawQuad == _maxDrawQuad) {
             Flush();
         }
 
@@ -1886,9 +1911,10 @@ void SpriteManager::DrawPoints(vector<PrimitivePoint>& points, RenderPrimitiveTy
         _primitiveDrawBuf->Vertices2D[i].Diffuse = COLOR_SWAP_RB(point.PointColor);
     }
 
-    _primitiveDrawBuf->DataChanged = true;
     _primitiveDrawBuf->PrimType = prim;
 
+    std::memcpy(effect->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
+    _primitiveDrawBuf->Upload(effect->Usage);
     effect->DrawBuffer(_primitiveDrawBuf);
 }
 
@@ -1989,6 +2015,8 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
         vbuf[pos].TU = sr.Right;
         vbuf[pos].TV = sr.Bottom;
 
+        std::memcpy(_effectMngr.Effects.FlushRenderTarget->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
+        _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->Usage);
         _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf);
 
         PopRenderTarget();
@@ -2058,6 +2086,8 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     border_buf[2] = sprite_border[2];
     border_buf[3] = sprite_border[3];
 
+    std::memcpy(_effectMngr.Effects.Contour->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
+    _contourDrawBuf->Upload(_effectMngr.Effects.Contour->Usage);
     _effectMngr.Effects.Contour->DrawBuffer(_contourDrawBuf);
 
     PopRenderTarget();
@@ -3121,7 +3151,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
             vbuf[pos].TV = y2;
             vbuf[pos].Diffuse = color;
 
-            if (++_curDrawQuad == _drawQuadCount) {
+            if (++_curDrawQuad == _maxDrawQuad) {
                 _dipQueue.push_back({texture, font->DrawEffect, 1});
                 _dipQueue.back().SpritesCount = _curDrawQuad;
                 Flush();

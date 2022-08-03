@@ -647,29 +647,23 @@ void FOClient::ProcessInputEvents()
 {
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
-    // Stop processing if window not active
-    if (!SprMngr.IsWindowFocused()) {
-        InputEvent event;
-        while (App->Input.PollEvent(event)) {
-            // Nop
+    if (SprMngr.IsWindowFocused()) {
+        InputEvent ev;
+        while (App->Input.PollEvent(ev)) {
+            ProcessInputEvent(ev);
         }
-
+    }
+    else {
         Keyb.Lost();
         OnInputLost.Fire();
-        return;
-    }
-
-    InputEvent event;
-    while (App->Input.PollEvent(event)) {
-        ProcessInputEvent(event);
     }
 }
 
-void FOClient::ProcessInputEvent(const InputEvent& event)
+void FOClient::ProcessInputEvent(const InputEvent& ev)
 {
-    if (event.Type == InputEvent::EventType::KeyDownEvent) {
-        const auto key_code = event.KeyDown.Code;
-        const auto key_text = event.KeyDown.Text;
+    if (ev.Type == InputEvent::EventType::KeyDownEvent) {
+        const auto key_code = ev.KeyDown.Code;
+        const auto key_text = ev.KeyDown.Text;
 
         if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
             Keyb.CtrlDwn = true;
@@ -683,8 +677,8 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
 
         OnKeyDown.Fire(key_code, key_text);
     }
-    else if (event.Type == InputEvent::EventType::KeyUpEvent) {
-        const auto key_code = event.KeyUp.Code;
+    else if (ev.Type == InputEvent::EventType::KeyUpEvent) {
+        const auto key_code = ev.KeyUp.Code;
 
         if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
             Keyb.CtrlDwn = false;
@@ -698,26 +692,26 @@ void FOClient::ProcessInputEvent(const InputEvent& event)
 
         OnKeyUp.Fire(key_code);
     }
-    else if (event.Type == InputEvent::EventType::MouseMoveEvent) {
-        const auto mouse_x = event.MouseMove.MouseX;
-        const auto mouse_y = event.MouseMove.MouseY;
-        const auto delta_x = event.MouseMove.DeltaX;
-        const auto delta_y = event.MouseMove.DeltaY;
+    else if (ev.Type == InputEvent::EventType::MouseMoveEvent) {
+        const auto mouse_x = ev.MouseMove.MouseX;
+        const auto mouse_y = ev.MouseMove.MouseY;
+        const auto delta_x = ev.MouseMove.DeltaX;
+        const auto delta_y = ev.MouseMove.DeltaY;
 
         Settings.MouseX = mouse_x;
         Settings.MouseY = mouse_y;
 
         OnMouseMove.Fire(delta_x, delta_y);
     }
-    else if (event.Type == InputEvent::EventType::MouseDownEvent) {
-        OnMouseDown.Fire(event.MouseUp.Button);
+    else if (ev.Type == InputEvent::EventType::MouseDownEvent) {
+        OnMouseDown.Fire(ev.MouseUp.Button);
     }
-    else if (event.Type == InputEvent::EventType::MouseUpEvent) {
-        OnMouseUp.Fire(event.MouseUp.Button);
+    else if (ev.Type == InputEvent::EventType::MouseUpEvent) {
+        OnMouseUp.Fire(ev.MouseUp.Button);
     }
-    else if (event.Type == InputEvent::EventType::MouseWheelEvent) {
-        if (event.MouseWheel.Delta < 0) {
-            OnMouseUp.Fire(MouseButton::WheelUp);
+    else if (ev.Type == InputEvent::EventType::MouseWheelEvent) {
+        if (ev.MouseWheel.Delta < 0) {
+            OnMouseDown.Fire(MouseButton::WheelUp);
         }
         else {
             OnMouseDown.Fire(MouseButton::WheelDown);

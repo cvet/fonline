@@ -180,11 +180,13 @@ public:
     auto operator=(const RenderDrawBuffer&) = delete;
     auto operator=(RenderDrawBuffer&&) noexcept = delete;
 
+    virtual void Upload(EffectUsage usage, size_t custom_vertices_size = static_cast<size_t>(-1)) = 0;
+
     const bool IsStatic;
 
     vector<Vertex2D> Vertices2D {};
     vector<ushort> Indices {};
-    bool DataChanged {};
+    bool StaticDataChanged {};
     RenderPrimitiveType PrimType {};
 #if FO_ENABLE_3D
     vector<Vertex3D> Vertices3D {};
@@ -304,7 +306,7 @@ public:
     bool DisableShadow {};
     bool DisableBlending {};
 
-    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, optional<size_t> indices_to_draw = std::nullopt, RenderTexture* custom_tex = nullptr) = 0;
+    virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, size_t indices_to_draw = static_cast<size_t>(-1), RenderTexture* custom_tex = nullptr) = 0;
 
 protected:
     RenderEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader);
@@ -336,9 +338,6 @@ public:
     virtual void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false) = 0;
     virtual void EnableScissor(int x, int y, uint w, uint h) = 0;
     virtual void DisableScissor() = 0;
-
-protected:
-    void ParseEffect(RenderEffect* effect, string_view name, string_view defines, const RenderEffectLoader& loader);
 };
 
 class Null_Renderer final : public Renderer
