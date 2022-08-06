@@ -106,6 +106,7 @@ public:
 
     [[nodiscard]] auto IsConnecting() const -> bool;
     [[nodiscard]] auto IsConnected() const -> bool;
+    [[nodiscard]] auto GetConnection() -> ServerConnection& { return _conn; }
     [[nodiscard]] auto GetChosen() -> CritterView*;
     [[nodiscard]] auto GetMapChosen() -> CritterHexView*;
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
@@ -359,6 +360,7 @@ protected:
     void Net_OnSomeItems();
     void Net_OnAutomapsInfo();
     void Net_OnViewMap();
+    void Net_OnRemoteCall();
 
     void OnText(string_view str, uint crid, int how_say);
     void OnMapText(string_view str, ushort hx, ushort hy, uint color);

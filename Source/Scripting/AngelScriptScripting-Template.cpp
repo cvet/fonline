@@ -212,8 +212,8 @@ public:
 #if !COMPILER_MODE
 #define INIT_ARGS
 
-#define GET_AS_ENGINE_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData->Engine
-#define GET_SCRIPT_SYS_FROM_SELF() self->GetEngine()->ScriptSys->AngelScriptData.get()
+#define GET_AS_ENGINE_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys)->AngelScriptData->Engine
+#define GET_SCRIPT_SYS_FROM_SELF() static_cast<SCRIPTING_CLASS*>(self->GetEngine()->ScriptSys)->AngelScriptData.get()
 
 #define ENTITY_VERIFY_NULL(e) \
     if ((e) == nullptr) { \
@@ -258,7 +258,7 @@ public:
 #endif
 
 template<typename T>
-constexpr bool is_script_enum = std::is_same_v<T, ScriptEnum_uint8> || std::is_same_v<T, ScriptEnum_uint16> || std::is_same_v<T, ScriptEnum_int> || std::is_same_v<T, ScriptEnum_uint>;
+constexpr bool is_script_enum_v = std::is_same_v<T, ScriptEnum_uint8> || std::is_same_v<T, ScriptEnum_uint16> || std::is_same_v<T, ScriptEnum_int> || std::is_same_v<T, ScriptEnum_uint>;
 
 #if !COMPILER_MODE
 static void CallbackException(asIScriptContext* ctx, void* param)
@@ -268,13 +268,13 @@ static void CallbackException(asIScriptContext* ctx, void* param)
     //    HandleException(ctx, _str("Script exception: {}{}", str, !_str(str).endsWith('.') ? "." : ""));
 }
 
-struct ScriptSystem::AngelScriptImpl
+struct SCRIPTING_CLASS::AngelScriptImpl
 {
     struct ContextData
     {
         string Info {};
         asIScriptContext* Parent {};
-        uint SuspendTime {};
+        uint SuspendEndTick {};
     };
 
     struct EnumInfo
@@ -331,7 +331,7 @@ struct ScriptSystem::AngelScriptImpl
         auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
         ctx_data->Parent = nullptr;
         ctx_data->Info.clear();
-        ctx_data->SuspendTime = 0u;
+        ctx_data->SuspendEndTick = 0u;
     }
 
     auto PrepareContext(asIScriptFunction* func) -> asIScriptContext*
@@ -400,6 +400,34 @@ struct ScriptSystem::AngelScriptImpl
         }
 
         return true;
+    }
+
+    void ResumeSuspendedContexts()
+    {
+        if (BusyContexts.empty()) {
+            return;
+        }
+
+        vector<asIScriptContext*> resume_contexts;
+        const auto tick = GameEngine->GameTime.FrameTick();
+
+        for (auto* ctx : BusyContexts) {
+            auto* ctx_data = static_cast<ContextData*>(ctx->GetUserData());
+            if ((ctx->GetState() == asEXECUTION_PREPARED || ctx->GetState() == asEXECUTION_SUSPENDED) && ctx_data->SuspendEndTick != static_cast<uint>(-1) && tick >= ctx_data->SuspendEndTick) {
+                resume_contexts.push_back(ctx);
+            }
+        }
+
+        for (auto* ctx : resume_contexts) {
+            try {
+                if (RunContext(ctx, true)) {
+                    ReturnContext(ctx);
+                }
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
+        }
     }
 
     auto GetContextTraceback(asIScriptContext* top_ctx) -> string
@@ -559,8 +587,8 @@ template<typename T, typename T2 = T>
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static auto MarshalDict(asIScriptEngine* as_engine, CScriptDict* as_dict) -> map<T, U>
 {
-    static_assert(is_script_enum<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
 
     if (as_dict == nullptr || as_dict->GetSize() == 0u) {
         return {};
@@ -583,8 +611,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static void AssignDict(asIScriptEngine* as_engine, const map<T, U>& map, CScriptDict* as_dict)
 {
-    static_assert(is_script_enum<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
 
     as_dict->Clear();
 
@@ -600,8 +628,8 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
 template<typename T, typename U, typename T2 = T, typename U2 = U>
 [[maybe_unused]] static auto MarshalBackDict(asIScriptEngine* as_engine, const char* type, const map<T, U>& map) -> CScriptDict*
 {
-    static_assert(is_script_enum<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
-    static_assert(is_script_enum<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
+    static_assert(is_script_enum_v<T> || std::is_arithmetic_v<T> || std::is_same_v<T, string> || std::is_same_v<T, hstring>);
+    static_assert(is_script_enum_v<U> || std::is_arithmetic_v<U> || std::is_same_v<U, string> || std::is_same_v<U, hstring>);
 
     auto* as_dict = CreateASDict(as_engine, type);
 
@@ -1148,6 +1176,168 @@ static auto ASToProps(const Property* prop, void* as_obj) -> PropertyRawData
 
     return prop_data;
 }
+
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+static auto CalcNetBufParamLen(const T& value) -> uint
+{
+    if constexpr (std::is_same_v<T, string>) {
+        if (value.size() > 0xFFFF) {
+            throw ScriptException("Too big string to send", value.length());
+        }
+
+        return NetBuffer::STRING_LEN_SIZE + static_cast<uint>(value.length());
+    }
+    else if constexpr (std::is_same_v<T, hstring>) {
+        return sizeof(hstring::hash_t);
+    }
+    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
+        return sizeof(value);
+    }
+}
+
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+static auto CalcNetBufParamLen(const vector<T>& value) -> uint
+{
+    if (value.size() > 0xFFFF) {
+        throw ScriptException("Too big array to send", value.size());
+    }
+
+    if constexpr (std::is_same_v<T, string>) {
+        uint result = 0u;
+        for (const auto& inner_value : value) {
+            result += CalcNetBufParamLen(inner_value);
+        }
+        return NetBuffer::ARRAY_LEN_SIZE + result;
+    }
+    else if constexpr (std::is_same_v<T, hstring>) {
+        return NetBuffer::ARRAY_LEN_SIZE + static_cast<uint>(value.size() * sizeof(hstring::hash_t));
+    }
+    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
+        return NetBuffer::ARRAY_LEN_SIZE + static_cast<uint>(value.size() * sizeof(T));
+    }
+}
+
+template<typename T, typename U,
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>)&& //
+        (std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U>),
+        int> = 0>
+static auto CalcNetBufParamLen(const map<T, U>& value) -> uint
+{
+    if (value.size() > 0xFFFF) {
+        throw ScriptException("Too big dict to send", value.size());
+    }
+
+    uint result = NetBuffer::ARRAY_LEN_SIZE;
+
+    if constexpr (std::is_same_v<T, hstring>) {
+        result += static_cast<uint>(value.size() * sizeof(hstring::hash_t));
+    }
+    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
+        result += static_cast<uint>(value.size() * sizeof(T));
+    }
+
+    if constexpr (std::is_same_v<U, string>) {
+        for (const auto& inner_value : value) {
+            result += CalcNetBufParamLen(inner_value.second);
+        }
+    }
+    else if constexpr (std::is_same_v<U, hstring>) {
+        result += static_cast<uint>(value.size() * sizeof(hstring::hash_t));
+    }
+    else if constexpr (std::is_arithmetic_v<U> || is_script_enum_v<U>) {
+        result += static_cast<uint>(value.size() * sizeof(T));
+    }
+
+    return result;
+}
+
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+static void WriteNetBuf(NetOutBuffer& out_buf, const T& value)
+{
+    if constexpr (std::is_same_v<T, string>) {
+        out_buf << static_cast<ushort>(value.length());
+        out_buf.Push(value.data(), static_cast<uint>(value.length()));
+    }
+    else if constexpr (std::is_same_v<T, hstring>) {
+        out_buf << value;
+    }
+    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
+        out_buf << value;
+    }
+}
+
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+static void WriteNetBuf(NetOutBuffer& out_buf, const vector<T>& value)
+{
+    out_buf << static_cast<ushort>(value.size());
+
+    for (const auto& inner_value : value) {
+        WriteNetBuf(out_buf, inner_value);
+    }
+}
+
+template<typename T, typename U,
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>)&& //
+        (std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U>),
+        int> = 0>
+static void WriteNetBuf(NetOutBuffer& out_buf, const map<T, U>& value)
+{
+    out_buf << static_cast<ushort>(value.size());
+
+    for (const auto& inner_value : value) {
+        WriteNetBuf(out_buf, inner_value.first);
+        WriteNetBuf(out_buf, inner_value.second);
+    }
+}
+
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+static void ReadNetBuf(NetInBuffer& in_buf, T& value, NameResolver& name_resolver)
+{
+    if constexpr (std::is_same_v<T, string>) {
+        ushort len = 0;
+        in_buf >> len;
+        value.resize(len);
+        in_buf.Pop(value.data(), len);
+    }
+    else if constexpr (std::is_same_v<T, hstring>) {
+        value = in_buf.ReadHashedString(name_resolver);
+    }
+    else if constexpr (std::is_arithmetic_v<T> || is_script_enum_v<T>) {
+        in_buf >> value;
+    }
+}
+
+template<typename T, std::enable_if_t<std::is_same_v<T, string> || std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>, int> = 0>
+static void ReadNetBuf(NetInBuffer& in_buf, vector<T>& value, NameResolver& name_resolver)
+{
+    ushort inner_values_count = 0;
+    in_buf >> inner_values_count;
+    value.reserve(inner_values_count);
+
+    for (ushort i = 0; i < inner_values_count; i++) {
+        T inner_value;
+        ReadNetBuf(in_buf, inner_value, name_resolver);
+        value.emplace_back(inner_value);
+    }
+}
+
+template<typename T, typename U,
+    std::enable_if_t<(std::is_same_v<T, hstring> || std::is_arithmetic_v<T> || is_script_enum_v<T>)&& //
+        (std::is_same_v<U, string> || std::is_same_v<U, hstring> || std::is_arithmetic_v<U> || is_script_enum_v<U>),
+        int> = 0>
+static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name_resolver)
+{
+    ushort inner_values_count = 0;
+    in_buf >> inner_values_count;
+
+    for (ushort i = 0; i < inner_values_count; i++) {
+        T inner_value_first;
+        ReadNetBuf(in_buf, inner_value_first, name_resolver);
+        U inner_value_second;
+        ReadNetBuf(in_buf, inner_value_second, name_resolver);
+        value.emplace(inner_value_first, inner_value_second);
+    }
+}
 #endif
 
 template<typename T>
@@ -1601,8 +1791,9 @@ static void Global_Yield(uint time)
 #if !COMPILER_MODE
     auto* ctx = asGetActiveContext();
     RUNTIME_ASSERT(ctx);
-    auto* ctx_data = static_cast<ScriptSystem::AngelScriptImpl::ContextData*>(ctx->GetUserData());
-    ctx_data->SuspendTime = time;
+    auto* ctx_data = static_cast<SCRIPTING_CLASS::AngelScriptImpl::ContextData*>(ctx->GetUserData());
+    auto* game_engine = static_cast<FOEngine*>(ctx->GetEngine()->GetUserData());
+    ctx_data->SuspendEndTick = time != static_cast<uint>(-1) ? game_engine->GameTime.FrameTick() + time : static_cast<uint>(-1);
     ctx->Suspend();
 #else
     throw ScriptCompilerException("Stub");
@@ -1610,7 +1801,7 @@ static void Global_Yield(uint time)
 }
 
 #if !COMPILER_MODE
-static auto ASGenericCall(ScriptSystem::AngelScriptImpl* script_sys, GenericScriptFunc* gen_func, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
+static auto ASGenericCall(SCRIPTING_CLASS::AngelScriptImpl* script_sys, GenericScriptFunc* gen_func, asIScriptFunction* func, initializer_list<void*> args, void* ret) -> bool
 {
     static unordered_map<const std::type_info*, std::function<void(asIScriptContext*, asUINT, void*)>> CtxSetValueMap = {
         {&typeid(bool), [](asIScriptContext* ctx, asUINT index, void* ptr) { ctx->SetArgByte(index, *static_cast<bool*>(ptr)); }},
@@ -1708,7 +1899,7 @@ static void ASPropertyGetter(asIScriptGeneric* gen)
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
-    auto* script_sys = engine->GetEngine()->ScriptSys->AngelScriptData.get();
+    auto* script_sys = static_cast<SCRIPTING_CLASS*>(engine->ScriptSys)->AngelScriptData.get();
 
     if (auto* type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); type_info == nullptr || type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object");
@@ -1789,7 +1980,7 @@ static void ASPropertySetter(asIScriptGeneric* gen)
     const auto prop_index = *static_cast<ScriptEnum_uint16*>(gen->GetAddressOfArg(0));
     const auto* prop = registrator->GetByIndex(static_cast<int>(prop_index));
     auto* as_engine = gen->GetEngine();
-    auto* script_sys = engine->GetEngine()->ScriptSys->AngelScriptData.get();
+    auto* script_sys = static_cast<SCRIPTING_CLASS*>(engine->ScriptSys)->AngelScriptData.get();
 
     if (auto* type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(1)); type_info == nullptr || type_info->GetFuncdefSignature() == nullptr) {
         throw ScriptException("Invalid function object");
@@ -2287,7 +2478,7 @@ static void CustomEntity_DeleteByRef(asIScriptGeneric* gen)
 static void Enum_Parse(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    auto* enum_info = static_cast<ScriptSystem::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
+    auto* enum_info = static_cast<SCRIPTING_CLASS::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
     const auto& enum_value_name = *static_cast<string*>(gen->GetAddressOfArg(0));
 
     bool failed = false;
@@ -2311,7 +2502,7 @@ static void Enum_Parse(asIScriptGeneric* gen)
 static void Enum_ToString(asIScriptGeneric* gen)
 {
 #if !COMPILER_MODE
-    auto* enum_info = static_cast<ScriptSystem::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
+    auto* enum_info = static_cast<SCRIPTING_CLASS::AngelScriptImpl::EnumInfo*>(gen->GetAuxiliary());
     int enum_index = *static_cast<int*>(gen->GetAddressOfArg(0));
     bool full_spec = *static_cast<bool*>(gen->GetAddressOfArg(1));
 
@@ -2625,6 +2816,21 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     // Remote calls
 #if SERVER_SCRIPTING || CLIENT_SCRIPTING
     AS_VERIFY(engine->RegisterObjectType("RemoteCaller", 0, asOBJ_REF | asOBJ_NOHANDLE));
+
+#if SERVER_SCRIPTING
+#define PLAYER_ENTITY Player
+#else
+#define PLAYER_ENTITY PlayerView
+#endif
+
+#define BIND_REMOTE_CALL_RECEIVER(name, func_entry, as_func_decl) \
+    RUNTIME_ASSERT(_rpcReceivers.count(name##_hash) == 0u); \
+    if (auto* func = engine->GetModuleByIndex(0)->GetFunctionByDecl(as_func_decl); func != nullptr) { \
+        _rpcReceivers.emplace(name##_hash, [func = RefCountHolder(func)](Entity* entity) { func_entry(static_cast<PLAYER_ENTITY*>(entity), func.get()); }); \
+    } \
+    else { \
+        throw ScriptInitException("Remote call function not found", as_func_decl); \
+    }
 #endif
 
     ///@ CodeGen Register
@@ -2877,12 +3083,20 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
             }
         }
     }
+
+    {
+        ///@ CodeGen PostRegister
+    }
 #endif
 
 #if COMPILER_MODE && COMPILER_VALIDATION_MODE
     RUNTIME_ASSERT(out_engine);
     *out_engine = game_engine;
     game_engine->AddRef();
+#endif
+
+#if !COMPILER_MODE
+    _loopCallbacks.emplace_back([this] { AngelScriptData->ResumeSuspendedContexts(); });
 #endif
 
     game_engine->Release();

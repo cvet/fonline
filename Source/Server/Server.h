@@ -231,6 +231,7 @@ private:
     void Process_Dialog(Player* player);
     void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
+    void Process_RemoteCall(Player* player);
 
     void OnSaveEntityValue(Entity* entity, const Property* prop);
 

@@ -437,6 +437,9 @@ void FOServer::MainLoop()
         SetSecond(st.Second);
     }
 
+    // Script subsystems update
+    ScriptSys->Process();
+
     // Process free connections
     {
         vector<ClientConnection*> free_connections;
@@ -852,7 +855,7 @@ void FOServer::ProcessPlayerConnection(Player* player)
                 Process_GiveMap(player);
                 break;
             case NETMSG_RPC:
-                // ScriptSys.HandleRpc(player);
+                Process_RemoteCall(player);
                 break;
             case NETMSG_SEND_POD_PROPERTY(1, 0):
             case NETMSG_SEND_POD_PROPERTY(1, 1):
@@ -4008,6 +4011,20 @@ void FOServer::Process_Dialog(Player* player)
     cr->Talk.StartTick = GameTime.GameTick();
     cr->Talk.TalkTime = Settings.DlgTalkMaxTime;
     cr->Send_Talk();
+}
+
+void FOServer::Process_RemoteCall(Player* player)
+{
+    NON_CONST_METHOD_HINT();
+
+    uint msg_len;
+    player->Connection->Bin >> msg_len;
+    uint rpc_num;
+    player->Connection->Bin >> rpc_num;
+
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
+
+    ScriptSys->HandleRemoteCall(rpc_num, player);
 }
 
 auto FOServer::CreateItemOnHex(Map* map, ushort hx, ushort hy, hstring pid, uint count, Properties* props, bool check_blocks) -> Item*

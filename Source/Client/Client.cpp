@@ -32,6 +32,7 @@
 //
 
 #include "Client.h"
+#include "ClientConnection.h"
 #include "ClientScripting.h"
 #include "GenericUtils.h"
 #include "Log.h"
@@ -89,6 +90,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
 
     ResMngr.IndexFiles();
 
+    GameTime.FrameAdvance();
     _fpsTick = GameTime.FrameTick();
 
     std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
@@ -181,7 +183,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     _conn.AddMessageHandler(NETMSG_MAP, [this] { Net_OnMap(); });
     _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
-    // _conn.AddMessageHandler(NETMSG_RPC, // ScriptSys.HandleRpc(&_conn.InBuf);
+    _conn.AddMessageHandler(NETMSG_RPC, [this] { Net_OnRemoteCall(); });
     _conn.AddMessageHandler(NETMSG_ADD_ITEM_ON_MAP, [this] { Net_OnAddItemOnMap(); });
     _conn.AddMessageHandler(NETMSG_ERASE_ITEM_FROM_MAP, [this] { Net_OnEraseItemFromMap(); });
     _conn.AddMessageHandler(NETMSG_ANIMATE_ITEM, [this] { Net_OnAnimateItem(); });
@@ -495,6 +497,9 @@ void FOClient::MainLoop()
 
         SetDayTime(false);
     }
+
+    // Script subsystems update
+    ScriptSys->Process();
 
     ClientDeferredCalls.Process();
 
@@ -2896,6 +2901,18 @@ void FOClient::Net_OnViewMap()
     dict->Set("LocationEntrance", &loc_ent, asTYPEID_UINT32);
     ShowScreen(SCREEN__TOWN_VIEW, dict);
     dict->Release();*/
+}
+
+void FOClient::Net_OnRemoteCall()
+{
+    uint msg_len;
+    _conn.InBuf >> msg_len;
+    uint rpc_num;
+    _conn.InBuf >> rpc_num;
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    ScriptSys->HandleRemoteCall(rpc_num, _curPlayer);
 }
 
 void FOClient::SetDayTime(bool refresh)

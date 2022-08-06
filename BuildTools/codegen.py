@@ -103,7 +103,7 @@ codeGenTags = {
         'PropertyComponent': [], # (entity, name, [flags], [comment])
         'Property': [], # (entity, access, type, name, [flags], [comment])
         'Event': [], # (target, entity, name, [(type, name)], [flags], [comment])
-        'RemoteCall': [], # (target, subsystem, name, [(type, name)], [flags], [comment])
+        'RemoteCall': [], # (target, subsystem, ns, name, [(type, name)], [flags], [comment])
         'Setting': [], #(target, type, name, init value, [flags], [comment])
         'EngineHook': [], #(name, [flags], [comment])
         'CodeGen': [] } # (templateType, absPath, entry, line, padding, [flags], [comment])
@@ -846,6 +846,8 @@ def parseTags():
                 else:
                     assert False, absPath
                 
+                ns = os.path.splitext(os.path.basename(absPath))[0]
+                
                 braceOpenPos = tagInfo.find('(')
                 braceClosePos = tagInfo.rfind(')')
                 funcArgsStr = tagInfo[braceOpenPos + 1:braceClosePos].strip()
@@ -862,7 +864,7 @@ def parseTags():
                 
                 flags = tokenize(tagInfo[braceClosePos + 1:])
 
-                codeGenTags['RemoteCall'].append((target, subsystem, funcName, funcArgs, flags, comment))
+                codeGenTags['RemoteCall'].append((target, subsystem, ns, funcName, funcArgs, flags, comment))
             
             except Exception as ex:
                 showError('Invalid tag RemoteCall', absPath + ' (' + str(lineIndex + 1) + ')', tagInfo, ex)
@@ -1677,6 +1679,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         defineLines = []
         globalLines = []
         registerLines = []
+        postRegisterLines = []
         
         defineLines.append('#define SERVER_SCRIPTING ' + ('1' if target == 'Server' else '0'))
         defineLines.append('#define CLIENT_SCRIPTING ' + ('1' if target == 'Client' else '0'))
@@ -1782,6 +1785,23 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     writeMarshalingMethod(entity, targ, name, ret, params)
         
         # Marshal events
+        def ctxSetArgs(args, setIndex=0):
+            for p in args:
+                tt = p[0].split('.')
+                if tt[-1] == 'ref':
+                    globalLines.append('    ctx->SetArgAddress(' + str(setIndex) + ', &as_' + p[1] + ');')
+                elif tt[0] == 'dict' or tt[0] == 'arr' or p[0] == 'Entity' or p[0] in gameEntities or p[0] in userObjects:
+                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', as_' + p[1] + ');')
+                elif p[0] in entityRelatives:
+                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', (void*)as_' + p[1] + ');')
+                elif p[0] in ['string']:
+                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
+                elif p[0] in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64', 'bool', 'float', 'double', 'hstring'] or p[0] in engineEnums or p[0] in scriptEnums:
+                    globalLines.append('    std::memcpy(ctx->GetAddressOfArg(' + str(setIndex) + '), &as_' + p[1] + ', sizeof(as_' + p[1] + '));')
+                else:
+                    globalLines.append('    static_assert(false, "Invalid configuration");')
+                setIndex += 1
+        
         globalLines.append('// Marshalling events')
         for entity in gameEntities:
             for evTag in codeGenTags['ExportEvent'] + codeGenTags['Event']:
@@ -1806,31 +1826,12 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             globalLines.append('    auto&& arg_' + p[1] + ' = *reinterpret_cast<' + argType + '*>(const_cast<void*>(*(args.begin() + ' + str(argIndex) + ')));')
                             argIndex += 1
                         for p in evArgs:
-                            argType = metaTypeToEngineType(p[0], target, False)
-                            if argType[-1] == '&':
-                                argType = argType[:-1]
                             globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
-                            argIndex += 1
                         globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
                         globalLines.append('    auto* ctx = script_sys->PrepareContext(func);')
                         if not isGlobal:
                             globalLines.append('    ctx->SetArgObject(0, self);')
-                        setIndex = 0 if isGlobal else 1
-                        for p in evArgs:
-                            tt = p[0].split('.')
-                            if tt[-1] == 'ref':
-                                globalLines.append('    ctx->SetArgAddress(' + str(setIndex) + ', &as_' + p[1] + ');')
-                            elif tt[0] == 'dict' or tt[0] == 'arr' or p[0] == 'Entity' or p[0] in gameEntities or p[0] in userObjects:
-                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', as_' + p[1] + ');')
-                            elif p[0] in entityRelatives:
-                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', (void*)as_' + p[1] + ');')
-                            elif p[0] in ['string']:
-                                globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
-                            elif p[0] in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64', 'bool', 'float', 'double', 'hstring'] or p[0] in engineEnums or p[0] in scriptEnums:
-                                globalLines.append('    std::memcpy(ctx->GetAddressOfArg(' + str(setIndex) + '), &as_' + p[1] + ', sizeof(as_' + p[1] + '));')
-                            else:
-                                globalLines.append('    static_assert(false, "Invalid configuration");')
-                            setIndex += 1
+                        ctxSetArgs(evArgs, 0 if isGlobal else 1)
                         globalLines.append('    auto event_result = true;')
                         globalLines.append('    if (script_sys->RunContext(ctx, func->GetReturnTypeId() == asTYPEID_VOID)) {')
                         globalLines.append('        event_result = (func->GetReturnTypeId() == asTYPEID_VOID || (func->GetReturnTypeId() == asTYPEID_BOOL && ctx->GetReturnByte() != 0));')
@@ -1974,17 +1975,79 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         if target in ['Server', 'Client']:
             globalLines.append('// Remote calls dispatchers')
             for rcTag in codeGenTags['RemoteCall']:
-                targ, subsystem, rcName, rcArgs, rcFlags, _ = rcTag
+                targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
                 if targ == ('Client' if target == 'Server' else 'Server') and subsystem == 'AngelScript':
-                    selfArg = 'Player* self' if target == 'Server' else 'FOClient* self'
-                    globalLines.append('static void ASRemoteCall_' + rcName + '(' + selfArg + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
+                    selfArg = 'Player* self' if target == 'Server' else 'PlayerView* self'
+                    globalLines.append('static void ASRemoteCall_Send_' + rcName + '(' + selfArg + (', ' if rcArgs else '') + ', '.join([metaTypeToASEngineType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')')
                     globalLines.append('{')
                     if not isASCompiler:
-                        pass
+                        globalLines.append('    ENTITY_VERIFY_NULL(self);')
+                        globalLines.append('    ENTITY_VERIFY(self);')
+                        globalLines.append('    uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(uint);')
+                        globalLines.append('    uint rpc_num = "' + rcName + '"_hash;')
+                        for p in rcArgs:
+                            globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
+                    
+                        for p in rcArgs:
+                            globalLines.append('    msg_len += CalcNetBufParamLen(in_' + p[1] + ');')
+                        if target == 'Server':
+                            globalLines.append('    auto* conn = self->Connection;')
+                            globalLines.append('    CONNECTION_OUTPUT_BEGIN(conn);')
+                            globalLines.append('    conn->Bout << NETMSG_RPC;')
+                            globalLines.append('    conn->Bout << msg_len;')
+                            globalLines.append('    conn->Bout << rpc_num;')
+                            for p in rcArgs:
+                                globalLines.append('    WriteNetBuf(conn->Bout, in_' + p[1] + ');')
+                            globalLines.append('    CONNECTION_OUTPUT_END(conn);')
+                        else:
+                            globalLines.append('    auto& conn = self->GetEngine()->GetConnection();')
+                            globalLines.append('    conn.OutBuf << NETMSG_RPC;')
+                            globalLines.append('    conn.OutBuf << msg_len;')
+                            for p in rcArgs:
+                                globalLines.append('    WriteNetBuf(conn.OutBuf, in_' + p[1] + ');')
                     else:
                         globalLines.append('    UNUSED_VARIABLE(self);')
                         for p in rcArgs:
                             globalLines.append('    UNUSED_VARIABLE(' + p[1] + ');')
+                        globalLines.append('    throw ScriptCompilerException("Stub");')
+                    globalLines.append('}')
+                    globalLines.append('')
+            for rcTag in codeGenTags['RemoteCall']:
+                targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
+                if targ == target and subsystem == 'AngelScript':
+                    selfArg = 'Player* self' if target == 'Server' else 'PlayerView* self'
+                    globalLines.append('static void ASRemoteCall_Receive_' + rcName + '(' + selfArg + ', asIScriptFunction* func)')
+                    globalLines.append('{')
+                    if not isASCompiler:
+                        globalLines.append('    ENTITY_VERIFY_NULL(self);')
+                        globalLines.append('    ENTITY_VERIFY(self);')
+                        globalLines.append('    NameResolver& name_resolver = *self->GetEngine();')
+                        if target == 'Server':
+                            globalLines.append('    auto* conn = self->Connection;')
+                            for p in rcArgs:
+                                globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
+                                globalLines.append('    ReadNetBuf(conn->Bin, arg_' + p[1] + ', name_resolver);')
+                            globalLines.append('    CHECK_CLIENT_IN_BUF_ERROR(conn);')
+                        else:
+                            globalLines.append('    auto& conn = self->GetEngine()->GetConnection();')
+                            for p in rcArgs:
+                                globalLines.append('    ' + metaTypeToEngineType(p[0], target, False) + ' arg_' + p[1] + ';')
+                                globalLines.append('    ReadNetBuf(conn.InBuf, arg_' + p[1] + ', name_resolver);')
+                            globalLines.append('    CHECK_SERVER_IN_BUF_ERROR(conn);')
+                        for p in rcArgs:
+                            globalLines.append('    auto&& as_' + p[1] + ' = ' + marshalBack(p[0], 'arg_' + p[1]) + ';')
+                        globalLines.append('    auto* script_sys = GET_SCRIPT_SYS_FROM_SELF();')
+                        globalLines.append('    auto* ctx = script_sys->PrepareContext(func);')
+                        if target == 'Server':
+                            globalLines.append('    ctx->SetArgObject(0, self);')
+                            ctxSetArgs(rcArgs, 1)
+                        else:
+                            ctxSetArgs(rcArgs, 0)
+                        globalLines.append('    if (script_sys->RunContext(ctx, true)) {')
+                        globalLines.append('        script_sys->ReturnContext(ctx);')
+                        globalLines.append('    }')
+                    else:
+                        globalLines.append('    UNUSED_VARIABLE(self);')
                         globalLines.append('    throw ScriptCompilerException("Stub");')
                     globalLines.append('}')
                     globalLines.append('')
@@ -2095,15 +2158,24 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
         
         # Register remote calls
         if target in ['Server', 'Client']:
-            registerLines.append('// Register remote calls')
+            registerLines.append('// Register remote call senders')
+            postRegisterLines.append('// Bind remote call receivers')
             for rcTag in codeGenTags['RemoteCall']:
-                targ, subsystem, rcName, rcArgs, rcFlags, _ = rcTag
+                targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
                 if targ == ('Client' if target == 'Server' else 'Server') and subsystem == 'AngelScript':
                     registerLines.append('AS_VERIFY(engine->RegisterObjectMethod("RemoteCaller", "void ' + rcName +
-                            '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
+                            '(' + ', '.join([metaTypeToASType(p[0]) + ' ' + p[1] for p in rcArgs]) + ')", SCRIPT_FUNC_THIS(ASRemoteCall_Send_' + rcName + '), SCRIPT_FUNC_THIS_CONV));')
+            for rcTag in codeGenTags['RemoteCall']:
+                targ, subsystem, ns, rcName, rcArgs, rcFlags, _ = rcTag
+                if targ == target and subsystem == 'AngelScript':
+                    asFuncFirstArg = ('Player@+ player' + (', ' if rcArgs else '')) if target == 'Server' else ''
+                    asFuncDecl = 'void ' + ns + '::' + rcName + '(' + asFuncFirstArg + ', '.join([metaTypeToASType(p[0], forceNoConst=True) + ' ' + p[1] for p in rcArgs]) + ')'
+                    postRegisterLines.append('BIND_REMOTE_CALL_RECEIVER("' + rcName + '", ASRemoteCall_Receive_' + rcName + ', "' + asFuncDecl + '");')
             registerLines.append('')
+            postRegisterLines.append('')
         
         # Modify file content (from bottom to top)
+        insertCodeGenLines(postRegisterLines, 'PostRegister')
         insertCodeGenLines(registerLines, 'Register')
         insertCodeGenLines(globalLines, 'Global')
         insertCodeGenLines(defineLines, 'Defines')

@@ -146,6 +146,8 @@ public:
 
     virtual void InitSubsystems() { }
     void InitModules();
+    void HandleRemoteCall(uint rpc_num, Entity* entity);
+    void Process();
 
     template<typename TRet, typename... Args>
     [[nodiscard]] auto FindFunc(hstring func_name) -> ScriptFunc<TRet, Args...>
@@ -177,18 +179,13 @@ public:
         return func && func(args...);
     }
 
-    struct NativeImpl;
-    shared_ptr<NativeImpl> NativeData {};
-    struct AngelScriptImpl;
-    shared_ptr<AngelScriptImpl> AngelScriptData {};
-    struct MonoImpl;
-    shared_ptr<MonoImpl> MonoData {};
-
 protected:
     [[nodiscard]] auto ValidateArgs(const GenericScriptFunc& gen_func, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool;
 
+    vector<std::function<void()>> _loopCallbacks {};
     std::unordered_multimap<hstring, GenericScriptFunc> _funcMap {};
     vector<GenericScriptFunc*> _initFunc {};
+    unordered_map<uint, std::function<void(Entity*)>> _rpcReceivers {};
     bool _nonConstHelper {};
 };
 

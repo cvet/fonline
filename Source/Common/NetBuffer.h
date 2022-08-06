@@ -43,6 +43,7 @@ public:
     static constexpr uint DEFAULT_BUF_SIZE = 4096;
     static constexpr int CRYPT_KEYS_COUNT = 50;
     static constexpr uint STRING_LEN_SIZE = sizeof(ushort);
+    static constexpr uint ARRAY_LEN_SIZE = sizeof(ushort);
 
     NetBuffer();
     NetBuffer(const NetBuffer&) = delete;

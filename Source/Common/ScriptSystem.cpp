@@ -32,6 +32,7 @@
 //
 
 #include "ScriptSystem.h"
+#include "Application.h"
 #include "EngineBase.h"
 
 auto ScriptSystem::ValidateArgs(const GenericScriptFunc& gen_func, initializer_list<const type_info*> args_type, const type_info* ret_type) -> bool
@@ -65,6 +66,30 @@ void ScriptSystem::InitModules()
     for (const auto* func : _initFunc) {
         if (!func->Call({}, nullptr)) {
             throw ScriptSystemException("Module initialization failed");
+        }
+    }
+}
+
+void ScriptSystem::HandleRemoteCall(uint rpc_num, Entity* entity)
+{
+    const auto it = _rpcReceivers.find(rpc_num);
+    if (it == _rpcReceivers.end()) {
+        throw ScriptException("Invalid remote call", rpc_num);
+    }
+
+    it->second(entity);
+}
+
+void ScriptSystem::Process()
+{
+    NON_CONST_METHOD_HINT();
+
+    for (auto&& callback : _loopCallbacks) {
+        try {
+            callback();
+        }
+        catch (const std::exception& ex) {
+            ReportExceptionAndContinue(ex);
         }
     }
 }
