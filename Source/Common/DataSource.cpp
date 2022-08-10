@@ -51,7 +51,7 @@ public:
     virtual ~Impl() = default;
 
     [[nodiscard]] virtual auto IsDiskDir() const -> bool = 0;
-    [[nodiscard]] virtual auto GetPackName() const -> const string& = 0;
+    [[nodiscard]] virtual auto GetPackName() const -> string_view = 0;
     [[nodiscard]] virtual auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool = 0;
     [[nodiscard]] virtual auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> = 0;
     [[nodiscard]] virtual auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> = 0;
@@ -94,7 +94,7 @@ public:
     ~NonCachedDir() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
-    [[nodiscard]] auto GetPackName() const -> const string& override { return _basePath; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _basePath; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
@@ -114,7 +114,7 @@ public:
     ~CachedDir() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return true; }
-    [[nodiscard]] auto GetPackName() const -> const string& override { return _basePath; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _basePath; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
@@ -144,7 +144,7 @@ public:
     ~FalloutDat() override;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> const string& override { return _fileName; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
@@ -174,7 +174,7 @@ public:
     ~ZipFile() override;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> const string& override { return _fileName; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _fileName; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override { return GetFileNamesGeneric(_filesTreeNames, path, include_subdirs, ext); }
@@ -207,7 +207,7 @@ public:
     ~AndroidAssets() override = default;
 
     [[nodiscard]] auto IsDiskDir() const -> bool override { return false; }
-    [[nodiscard]] auto GetPackName() const -> const string& override { return _packName; }
+    [[nodiscard]] auto GetPackName() const -> string_view override { return _packName; }
     [[nodiscard]] auto IsFilePresent(string_view path, size_t& size, uint64& write_time) const -> bool override;
     [[nodiscard]] auto OpenFile(string_view path, size_t& size, uint64& write_time) const -> unique_del_ptr<uchar> override;
     [[nodiscard]] auto GetFileNames(string_view path, bool include_subdirs, string_view ext) const -> vector<string> override;
@@ -306,7 +306,7 @@ auto DataSource::IsDiskDir() const -> bool
     return _pImpl->IsDiskDir();
 }
 
-auto DataSource::GetPackName() const -> const string&
+auto DataSource::GetPackName() const -> string_view
 {
     return _pImpl->GetPackName();
 }

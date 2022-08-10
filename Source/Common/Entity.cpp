@@ -52,7 +52,7 @@ void Entity::Release() const
     }
 }
 
-auto Entity::GetClassName() const -> const string&
+auto Entity::GetClassName() const -> string_view
 {
     return _props.GetRegistrator()->GetClassName();
 }
@@ -205,9 +205,9 @@ auto Entity::LoadFromText(const map<string, string>& key_values) -> bool
     return _props.LoadFromText(key_values);
 }
 
-void Entity::SetValueFromData(const Property* prop, const vector<uchar>& data)
+void Entity::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
 {
-    _props.SetValueFromData(prop, data.data(), static_cast<uint>(data.size()));
+    _props.SetValueFromData(prop, prop_data);
 }
 
 auto Entity::GetValueAsInt(const Property* prop) const -> int
@@ -255,7 +255,7 @@ ProtoEntity::ProtoEntity(hstring proto_id, const PropertyRegistrator* registrato
     RUNTIME_ASSERT(_protoId);
 }
 
-auto ProtoEntity::GetName() const -> const string&
+auto ProtoEntity::GetName() const -> string_view
 {
     return _protoId.as_str();
 }

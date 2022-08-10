@@ -295,7 +295,7 @@ public:
     void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uchar>>& all_data);
     void SetRawData(const Property* prop, const uchar* data, uint data_size);
-    void SetValueFromData(const Property* prop, const uchar* data, uint data_size);
+    void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(const Property* prop, int value);
     void SetPlainDataValueAsFloat(const Property* prop, float value);
     void SetValueAsInt(int property_index, int value);
@@ -338,6 +338,7 @@ public:
             return result;
         }
 
+        RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
         const auto hash = *reinterpret_cast<hstring::hash_t*>(&_podData[prop->_podDataOffset]);
         auto result = ResolveHash(hash);
         return result;
@@ -356,6 +357,7 @@ public:
             return result;
         }
 
+        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
         const auto data_size = _complexDataSizes[prop->_complexDataIndex];
         auto result = data_size != 0u ? string(reinterpret_cast<char*>(_complexData[prop->_complexDataIndex]), data_size) : string();
         return result;
@@ -366,7 +368,6 @@ public:
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
 
         PropertyRawData prop_data;
 
@@ -375,6 +376,7 @@ public:
             prop_data = prop->_getter(_entity, prop);
         }
         else {
+            RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
             prop_data.Pass(_complexData[prop->_complexDataIndex], _complexDataSizes[prop->_complexDataIndex]);
         }
 
@@ -421,17 +423,6 @@ public:
         }
 
         return result;
-    }
-
-    template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
-    [[nodiscard]] auto GetValue(const Property* prop) const -> T
-    {
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-
-        // Todo: GetValue for dict
-        throw NotImplementedException(LINE_STR);
     }
 
     template<typename T, std::enable_if_t<std::is_arithmetic_v<T> || std::is_enum_v<T>, int> = 0>
@@ -519,7 +510,7 @@ public:
     }
 
     template<typename T, std::enable_if_t<std::is_same_v<T, string>, int> = 0>
-    void SetValue(const Property* prop, T new_value)
+    void SetValue(const Property* prop, const T& new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::String);
@@ -534,8 +525,8 @@ public:
             }
         }
         else {
+            RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
             if (!prop->_setters.empty() && _entity != nullptr) {
-                RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
                 PropertyRawData prop_data;
                 prop_data.Pass(new_value.c_str(), new_value.length());
                 for (const auto& setter : prop->_setters) {
@@ -556,29 +547,86 @@ public:
         }
     }
 
-    template<typename T, std::enable_if_t<is_specialization<T, vector>::value, int> = 0>
-    void SetValue(const Property* prop, T new_value)
+    template<typename T>
+    void SetValue(const Property* prop, const vector<T>& new_value)
     {
         RUNTIME_ASSERT(!prop->IsDisabled());
         RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
 
-        // Todo: SetValue for array
-        UNUSED_VARIABLE(new_value);
-        throw NotImplementedException(LINE_STR);
+        PropertyRawData prop_data;
+
+        if constexpr (std::is_same_v<T, string>) {
+            if (!new_value.empty()) {
+                size_t data_size = sizeof(uint);
+                for (const auto& str : new_value) {
+                    data_size += sizeof(uint) + static_cast<uint>(str.length());
+                }
+
+                auto* buf = prop_data.Alloc(data_size);
+
+                const auto arr_size = static_cast<uint>(new_value.size());
+                std::memcpy(buf, &arr_size, sizeof(arr_size));
+                buf += sizeof(uint);
+
+                for (const auto& str : new_value) {
+                    const auto str_size = static_cast<uint>(str.length());
+                    std::memcpy(buf, &str_size, sizeof(str_size));
+                    buf += sizeof(str_size);
+
+                    if (str_size != 0u) {
+                        std::memcpy(buf, str.c_str(), str_size);
+                        buf += str_size;
+                    }
+                }
+            }
+        }
+        else if constexpr (std::is_same_v<T, hstring>) {
+            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(hstring::hash_t));
+            if (!new_value.empty()) {
+                auto* buf = prop_data.Alloc(new_value.size() * sizeof(hstring::hash_t));
+                for (const auto& hstr : new_value) {
+                    const auto hash = hstr.as_hash();
+                    std::memcpy(buf, &hash, sizeof(hstring::hash_t));
+                    buf += sizeof(hstring::hash_t);
+                }
+            }
+        }
+        else {
+            RUNTIME_ASSERT(prop->GetBaseSize() == sizeof(T));
+            if (!new_value.empty()) {
+                prop_data.Pass(new_value.data(), new_value.size() * sizeof(T));
+            }
+        }
+
+        if (prop->IsVirtual()) {
+            RUNTIME_ASSERT(_entity);
+            RUNTIME_ASSERT(!prop->_setters.empty());
+            for (const auto& setter : prop->_setters) {
+                setter(_entity, prop, prop_data);
+            }
+        }
+        else {
+            RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
+            if (!prop->_setters.empty() && _entity != nullptr) {
+                for (const auto& setter : prop->_setters) {
+                    setter(_entity, prop, prop_data);
+                }
+            }
+
+            SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
+
+            if (_entity != nullptr) {
+                for (const auto& setter : prop->_postSetters) {
+                    setter(_entity, prop);
+                }
+            }
+        }
     }
 
     template<typename T, std::enable_if_t<is_specialization<T, map>::value, int> = 0>
-    void SetValue(const Property* prop, T new_value)
-    {
-        RUNTIME_ASSERT(!prop->IsDisabled());
-        RUNTIME_ASSERT(prop->_dataType == Property::DataType::Array);
-        RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
-
-        // Todo: SetValue for dict
-        UNUSED_VARIABLE(new_value);
-        throw NotImplementedException(LINE_STR);
-    }
+    [[nodiscard]] auto GetValue(const Property* prop) const -> T = delete;
+    template<typename T, typename U>
+    void SetValue(const Property* prop, const map<T, U>& new_value) = delete;
 
 private:
     const PropertyRegistrator* _registrator;

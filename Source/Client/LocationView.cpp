@@ -38,3 +38,7 @@ LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto
 {
     RUNTIME_ASSERT(proto);
 }
+
+void LocationView::MarkAsDestroyed()
+{
+}

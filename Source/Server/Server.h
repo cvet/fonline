@@ -109,9 +109,9 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnPlayerLogout, Player* /*player*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*critter*/);
+    ENTITY_EVENT(OnGlobalMapCritterIn, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*critter*/);
+    ENTITY_EVENT(OnGlobalMapCritterOut, Critter* /*cr*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnLocationInit, Location* /*location*/, bool /*firstTime*/);
     ///@ ExportEvent
@@ -125,41 +125,41 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnMapLoopEx, Map* /*map*/, uint /*loopIndex*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapCritterIn, Map* /*map*/, Critter* /*critter*/);
+    ENTITY_EVENT(OnMapCritterIn, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*critter*/);
+    ENTITY_EVENT(OnMapCritterOut, Map* /*map*/, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapCheckLook, Map* /*map*/, Critter* /*critter*/, Critter* /*target*/);
+    ENTITY_EVENT(OnMapCheckLook, Map* /*map*/, Critter* /*cr*/, Critter* /*target*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnMapCheckTrapLook, Map* /*map*/, Critter* /*critter*/, Item* /*item*/);
+    ENTITY_EVENT(OnMapCheckTrapLook, Map* /*map*/, Critter* /*cr*/, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterInit, Critter* /*critter*/, bool /*firstTime*/);
+    ENTITY_EVENT(OnCritterInit, Critter* /*cr*/, bool /*firstTime*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterFinish, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterFinish, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterIdle, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGlobalMapIdle, Critter* /*critter*/);
+    ENTITY_EVENT(OnCritterGlobalMapIdle, Critter* /*cr*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*toSlot*/);
+    ENTITY_EVENT(OnCritterCheckMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*toSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterMoveItem, Critter* /*critter*/, Item* /*item*/, uchar /*fromSlot*/);
+    ENTITY_EVENT(OnCritterMoveItem, Critter* /*cr*/, Item* /*item*/, uchar /*fromSlot*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterTalk, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
+    ENTITY_EVENT(OnCritterTalk, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*talkers*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterBarter, Critter* /*critter*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
+    ENTITY_EVENT(OnCritterBarter, Critter* /*cr*/, Critter* /*playerCr*/, bool /*begin*/, uint /*barterCount*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*critter*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
+    ENTITY_EVENT(OnCritterGetAttackDistantion, Critter* /*cr*/, AbstractItem* /*item*/, uchar /*itemMode*/, uint& /*dist*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemInit, Item* /*item*/, bool /*firstTime*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemFinish, Item* /*item*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnItemWalk, Item* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnItemWalk, Item* /*item*/, Critter* /*cr*/, bool /*isIn*/, uchar /*dir*/);
     ///@ ExportEvent
     ENTITY_EVENT(OnItemCheckMove, Item* /*item*/, uint /*count*/, Entity* /*from*/, Entity* /*to*/);
     ///@ ExportEvent
-    ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*critter*/, bool /*isIn*/, uchar /*dir*/);
+    ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uchar /*dir*/);
 
 #if !FO_SINGLEPLAYER
     vector<uchar> RestoreInfoBin {};
@@ -210,16 +210,16 @@ private:
     };
 
     void OnNewConnection(NetConnection* net_connection);
-    void ProcessFreeConnection(ClientConnection* connection);
-    void ProcessPlayerConnection(Player* player);
+    void ProcessUnloginedPlayer(Player* unlogined_player);
+    void ProcessPlayer(Player* player);
     void ProcessConnection(ClientConnection* connection);
 
+    void Process_Handshake(ClientConnection* connection);
     void Process_Ping(ClientConnection* connection);
-    void Process_Update(ClientConnection* connection);
     void Process_UpdateFile(ClientConnection* connection);
     void Process_UpdateFileData(ClientConnection* connection);
-    void Process_Register(ClientConnection* connection);
-    void Process_LogIn(ClientConnection* connection);
+    void Process_Register(Player* unlogined_player);
+    void Process_Login(Player* unlogined_player);
 
     void Process_PlaceToGame(Player* player);
     void Process_Move(Player* player);
@@ -275,8 +275,8 @@ private:
     vector<Player*> _logClients {};
     vector<string> _logLines {};
     vector<NetServerBase*> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
-    vector<ClientConnection*> _freeConnections {};
-    mutable std::mutex _freeConnectionsLocker {};
+    vector<Player*> _unloginedPlayers {};
+    mutable std::mutex _unloginedPlayersLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };

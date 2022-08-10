@@ -339,7 +339,7 @@ public:
     auto operator=(Application&&) noexcept = delete;
     ~Application() = default;
 
-    [[nodiscard]] auto GetName() const -> const string&;
+    [[nodiscard]] auto GetName() const -> string_view;
 
     [[nodiscard]] auto CreateChildWindow(int width, int height) -> AppWindow*;
 

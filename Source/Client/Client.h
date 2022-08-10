@@ -112,7 +112,6 @@ public:
     [[nodiscard]] auto CustomCall(string_view command, string_view separator) -> string;
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
-    [[nodiscard]] auto GetLangPack() const -> const LanguagePack& { return _curLang; }
 
     void MainLoop();
     void AddMess(uchar mess_type, string_view msg);
@@ -147,6 +146,10 @@ public:
     ENTITY_EVENT(OnFinish);
     ///@ ExportEvent
     ENTITY_EVENT(OnAutoLogin, string /*login*/, string /*password*/);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnRegistrationSuccess);
+    ///@ ExportEvent
+    ENTITY_EVENT(OnLoginSuccess);
     ///@ ExportEvent
     ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
@@ -302,7 +305,7 @@ protected:
     void LmapPrepareMap();
     void GmapNullParams();
 
-    void Net_SendUpdate();
+    void Net_SendHandshake();
     void Net_SendLogIn();
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
@@ -321,6 +324,7 @@ protected:
     void Net_OnDisconnect();
     void Net_OnUpdateFilesResponse();
     void Net_OnWrongNetProto();
+    void Net_OnRegisterSuccess();
     void Net_OnLoginSuccess();
     void Net_OnAddCritter();
     void Net_OnRemoveCritter();
@@ -400,16 +404,12 @@ protected:
     uint _fpsCounter {};
     int _screenModeMain {SCREEN_WAIT};
     ItemView* _someItem {};
-    bool _initNetBegin {};
     int _initNetReason {INIT_NET_REASON_NONE};
     bool _initialItemsSend {};
     vector<vector<uchar>> _globalsPropertiesData {};
     vector<vector<uchar>> _playerPropertiesData {};
     vector<vector<uchar>> _tempPropertiesData {};
     vector<vector<uchar>> _tempPropertiesDataExt {};
-    vector<uchar> _tempPropertyData {};
-    uint _pingTick {};
-    uint _pingCallTick {};
     LanguagePack _curLang {};
     vector<IfaceAnim*> _ifaceAnimations {};
     vector<ScreenEffect> _screenEffects {};

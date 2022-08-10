@@ -45,6 +45,18 @@
 // ReSharper disable CppInconsistentNaming
 
 ///@ ExportMethod
+[[maybe_unused]] uint Server_Game_CreatePlayer(FOServer* server, string_view name, string_view password)
+{
+    const auto player_id = server->MakePlayerId(name);
+    if (!server->DbStorage.Get("Players", player_id).empty()) {
+        throw ScriptException("Player already registered", name);
+    }
+
+    server->DbStorage.Insert("Players", player_id, {{"_Name", string(name)}, {"Password", string(password)}});
+    return player_id;
+}
+
+///@ ExportMethod
 [[maybe_unused]] uint Server_Game_DeferredCall(FOServer* server, uint delay, ScriptFuncName<void> func)
 {
     return server->ServerDeferredCalls.AddDeferredCall(delay, func, nullptr, nullptr, nullptr, nullptr);
@@ -554,7 +566,7 @@
 [[maybe_unused]] void Server_Game_DeleteCritter(FOServer* server, Critter* cr)
 {
     if (cr != nullptr && cr->IsNpc()) {
-        server->CrMngr.DeleteNpc(cr);
+        server->CrMngr.DeleteCritter(cr);
     }
 }
 
@@ -565,7 +577,7 @@
 {
     if (crId != 0u) {
         if (Critter* cr = server->CrMngr.GetCritter(crId); cr != nullptr && cr->IsNpc()) {
-            server->CrMngr.DeleteNpc(cr);
+            server->CrMngr.DeleteCritter(cr);
         }
     }
 }
@@ -577,7 +589,7 @@
 {
     for (auto* cr : critters) {
         if (cr != nullptr && cr->IsNpc()) {
-            server->CrMngr.DeleteNpc(cr);
+            server->CrMngr.DeleteCritter(cr);
         }
     }
 }
@@ -590,7 +602,7 @@
     for (const auto id : critterIds) {
         if (id != 0u) {
             if (Critter* cr = server->CrMngr.GetCritter(id); cr != nullptr && cr->IsNpc()) {
-                server->CrMngr.DeleteNpc(cr);
+                server->CrMngr.DeleteCritter(cr);
             }
         }
     }
@@ -839,7 +851,8 @@
     }
 
     // Load from db
-    player = new Player(server, 0u, name, nullptr);
+    player = new Player(server, 0u, nullptr);
+    player->SetName(name);
 
     if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *server)) {
         player->MarkAsDestroyed();

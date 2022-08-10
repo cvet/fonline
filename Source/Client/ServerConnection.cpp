@@ -153,9 +153,13 @@ void ServerConnection::Process()
                 }
             }
 
+            if (_interthreadCommunication && _isConnected) {
+                RUNTIME_ASSERT(_netIn.GetReadPos() == _netIn.GetEndPos());
+            }
+
             if (_isConnected && _netOut.IsEmpty() && _pingTick == 0u && _settings.PingPeriod != 0u && Timer::RealtimeTick() >= _pingCallTick) {
                 _netOut << NETMSG_PING;
-                _netOut << PING_MEASURE;
+                _netOut << PING_SERVER;
                 _pingTick = Timer::RealtimeTick();
             }
 
@@ -775,11 +779,11 @@ void ServerConnection::Net_OnPing()
 
     CHECK_SERVER_IN_BUF_ERROR(*this);
 
-    if (ping == PING_ACTIVITY) {
+    if (ping == PING_CLIENT) {
         _netOut << NETMSG_PING;
-        _netOut << PING_ACTIVITY;
+        _netOut << PING_CLIENT;
     }
-    else if (ping == PING_MEASURE) {
+    else if (ping == PING_SERVER) {
         const auto cur_tick = Timer::RealtimeTick();
         _settings.Ping = static_cast<uint>(cur_tick - _pingTick);
         _pingTick = 0;

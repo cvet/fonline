@@ -150,7 +150,7 @@ void CritterManager::EraseItemFromCritter(Critter* cr, Item* item, bool send)
     _engine->OnCritterMoveItem.Fire(cr, item, item->GetCritterSlot());
 }
 
-auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
+auto CritterManager::CreateCritter(hstring proto_id, const Properties* props, Map* map, ushort hx, ushort hy, uchar dir, bool accuracy) -> Critter*
 {
     NON_CONST_METHOD_HINT();
 
@@ -205,12 +205,12 @@ auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* m
         hy = hy_;
     }
 
-    auto* npc = new Critter(_engine, 0, nullptr, proto);
+    auto* cr = new Critter(_engine, 0u, nullptr, proto);
     if (props != nullptr) {
-        npc->SetProperties(*props);
+        cr->SetProperties(*props);
     }
 
-    _engine->EntityMngr.RegisterEntity(npc);
+    _engine->EntityMngr.RegisterEntity(cr);
 
     const auto* loc = map->GetLocation();
     RUNTIME_ASSERT(loc);
@@ -218,27 +218,27 @@ auto CritterManager::CreateNpc(hstring proto_id, const Properties* props, Map* m
     if (dir >= _engine->Settings.MapDirCount) {
         dir = static_cast<uchar>(GenericUtils::Random(0u, _engine->Settings.MapDirCount - 1u));
     }
-    npc->SetWorldX(loc != nullptr ? loc->GetWorldX() : 0);
-    npc->SetWorldY(loc != nullptr ? loc->GetWorldY() : 0);
-    npc->SetHomeMapId(map->GetId());
-    npc->SetHomeHexX(hx);
-    npc->SetHomeHexY(hy);
-    npc->SetHomeDir(dir);
-    npc->SetHexX(hx);
-    npc->SetHexY(hy);
+    cr->SetWorldX(loc != nullptr ? loc->GetWorldX() : 0);
+    cr->SetWorldY(loc != nullptr ? loc->GetWorldY() : 0);
+    cr->SetHomeMapId(map->GetId());
+    cr->SetHomeHexX(hx);
+    cr->SetHomeHexY(hy);
+    cr->SetHomeDir(dir);
+    cr->SetHexX(hx);
+    cr->SetHexY(hy);
 
-    const auto can = _engine->MapMngr.CanAddCrToMap(npc, map, hx, hy, 0);
+    const auto can = _engine->MapMngr.CanAddCrToMap(cr, map, hx, hy, 0);
     RUNTIME_ASSERT(can);
-    _engine->MapMngr.AddCrToMap(npc, map, hx, hy, dir, 0);
+    _engine->MapMngr.AddCrToMap(cr, map, hx, hy, dir, 0);
 
-    _engine->OnCritterInit.Fire(npc, true);
-    ScriptHelpers::CallInitScript(_engine->ScriptSys, npc, npc->GetInitScript(), true);
+    _engine->OnCritterInit.Fire(cr, true);
+    ScriptHelpers::CallInitScript(_engine->ScriptSys, cr, cr->GetInitScript(), true);
 
-    _engine->MapMngr.ProcessVisibleItems(npc);
-    return npc;
+    _engine->MapMngr.ProcessVisibleItems(cr);
+    return cr;
 }
 
-void CritterManager::DeleteNpc(Critter* cr)
+void CritterManager::DeleteCritter(Critter* cr)
 {
     NON_CONST_METHOD_HINT();
 

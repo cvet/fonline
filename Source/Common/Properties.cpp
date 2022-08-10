@@ -569,34 +569,32 @@ void Properties::SetRawData(const Property* prop, const uchar* data, uint data_s
     }
 }
 
-void Properties::SetValueFromData(const Property* prop, const uchar* data, uint data_size)
+void Properties::SetValueFromData(const Property* prop, PropertyRawData& prop_data)
 {
-    // Todo: SetValueFromData
-    UNUSED_VARIABLE(prop);
-    UNUSED_VARIABLE(data);
-    UNUSED_VARIABLE(data_size);
-    throw NotImplementedException(LINE_STR);
-    /*if (dataType == Property::String)
-    {
-        string str;
-        if (data_size)
-            str.assign((char*)data, data_size);
-        GenericSet(entity, &str);
+    RUNTIME_ASSERT(!prop->IsDisabled());
+
+    if (prop->IsVirtual()) {
+        RUNTIME_ASSERT(_entity);
+        RUNTIME_ASSERT(!prop->_setters.empty());
+        for (const auto& setter : prop->_setters) {
+            setter(_entity, prop, prop_data);
+        }
     }
-    else if (dataType == Property::PlainData)
-    {
-        RUNTIME_ASSERT(data_size == baseSize);
-        GenericSet(entity, data);
+    else {
+        if (!prop->_setters.empty() && _entity != nullptr) {
+            for (const auto& setter : prop->_setters) {
+                setter(_entity, prop, prop_data);
+            }
+        }
+
+        SetRawData(prop, prop_data.GetPtrAs<uchar>(), prop_data.GetSize());
+
+        if (_entity != nullptr) {
+            for (const auto& setter : prop->_postSetters) {
+                setter(_entity, prop);
+            }
+        }
     }
-    else if (dataType == Property::Array || dataType == Property::Dict)
-    {
-        auto value = CreateRefValue(data, data_size);
-        GenericSet(entity, value.get());
-    }
-    else
-    {
-        RUNTIME_ASSERT(!"Unexpected type");
-    }*/
 }
 
 auto Properties::GetPlainDataValueAsInt(const Property* prop) const -> int

@@ -66,17 +66,12 @@ auto DeferredCallManager::AddDeferredCall(uint delay, hstring func_name, const i
         throw DeferredCallException("Function not found or invalid signature", func_name);
     }
 
-    if (delay != 0u) {
-        call.Id = GetNextId();
+    call.Id = GetNextId();
 
-        const auto time_mul = _engine->GetTimeMultiplier();
-        call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
+    const auto time_mul = _engine->GetTimeMultiplier();
+    call.FireFullSecond = _engine->GameTime.GetFullSecond() + delay * time_mul / 1000;
 
-        _deferredCalls.push_back(call);
-    }
-    else {
-        RunDeferredCall(call);
-    }
+    _deferredCalls.push_back(call);
 
     return call.Id;
 }

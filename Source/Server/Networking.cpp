@@ -113,7 +113,7 @@ public:
     }
 
     [[nodiscard]] auto GetIp() const -> uint override { return _ip; }
-    [[nodiscard]] auto GetHost() const -> const string& override { return _host; }
+    [[nodiscard]] auto GetHost() const -> string_view override { return _host; }
     [[nodiscard]] auto GetPort() const -> ushort override { return _port; }
     [[nodiscard]] auto IsDisconnected() const -> bool override { return _isDisconnected; }
 

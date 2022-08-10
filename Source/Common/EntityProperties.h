@@ -74,6 +74,8 @@ public:
     explicit PlayerProperties(Properties& props) : EntityProperties(props) { }
 
     ///@ ExportProperty
+    ENTITY_PROPERTY(PrivateServer, vector<uint>, OwnedCritterIds);
+    ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, string, Password);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, vector<uint>, ConnectionIp);
@@ -403,27 +405,27 @@ public:
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, uint, LoopTime5);
     ///@ ExportProperty ReadOnly Temporary
-    ENTITY_PROPERTY(PrivateServer, string, FileDir);
+    ENTITY_PROPERTY(PrivateClient, string, FileDir);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, Width);
+    ENTITY_PROPERTY(PrivateCommon, ushort, Width);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, Height);
+    ENTITY_PROPERTY(PrivateCommon, ushort, Height);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, WorkHexX);
+    ENTITY_PROPERTY(PrivateClient, ushort, WorkHexX);
     ///@ ExportProperty ReadOnly
-    ENTITY_PROPERTY(PrivateServer, ushort, WorkHexY);
+    ENTITY_PROPERTY(PrivateClient, ushort, WorkHexY);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LocId);
     ///@ ExportProperty ReadOnly
     ENTITY_PROPERTY(PrivateServer, uint, LocMapIndex);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, uchar, RainCapacity);
+    ENTITY_PROPERTY(PrivateCommon, uchar, RainCapacity);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, int, CurDayTime);
+    ENTITY_PROPERTY(PrivateCommon, int, CurDayTime);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<int>, DayTime);
+    ENTITY_PROPERTY(PrivateCommon, vector<int>, DayTime);
     ///@ ExportProperty
-    ENTITY_PROPERTY(PrivateServer, vector<uchar>, DayColor);
+    ENTITY_PROPERTY(PrivateCommon, vector<uchar>, DayColor);
     ///@ ExportProperty
     ENTITY_PROPERTY(PrivateServer, bool, IsNoLogOut);
 };

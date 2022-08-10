@@ -985,7 +985,7 @@
         throw ScriptException("Proto '{}' not found.", protoId);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateNpc(protoId, nullptr, self, hx, hy, dir, false);
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, nullptr, self, hx, hy, dir, false);
     if (npc == nullptr) {
         throw ScriptException("Create npc failed");
     }
@@ -1017,7 +1017,7 @@
         props_.SetValueAsIntProps(static_cast<int>(key), value);
     }
 
-    Critter* npc = self->GetEngine()->CrMngr.CreateNpc(protoId, &props_, self, hx, hy, dir, false);
+    Critter* npc = self->GetEngine()->CrMngr.CreateCritter(protoId, &props_, self, hx, hy, dir, false);
     if (npc == nullptr) {
         throw ScriptException("Create npc failed");
     }

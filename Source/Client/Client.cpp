@@ -137,7 +137,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     _conn.AddDisconnectHandler([this] { Net_OnDisconnect(); });
     _conn.AddMessageHandler(NETMSG_WRONG_NET_PROTO, [this] { Net_OnWrongNetProto(); });
     _conn.AddMessageHandler(NETMSG_LOGIN_SUCCESS, [this] { Net_OnLoginSuccess(); });
-    _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [] { WriteLog("Registration success"); });
+    _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [this] { Net_OnRegisterSuccess(); });
     _conn.AddMessageHandler(NETMSG_END_PARSE_TO_GAME, [this] { Net_OnEndParseToGame(); });
     _conn.AddMessageHandler(NETMSG_ADD_CRITTER, [this] { Net_OnAddCritter(); });
     _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, [this] { Net_OnRemoveCritter(); });
@@ -731,6 +731,8 @@ void FOClient::Net_OnConnect(bool success)
         const auto reason = _initNetReason;
         _initNetReason = INIT_NET_REASON_NONE;
 
+        Net_SendHandshake();
+
         // After connect things
         if (reason == INIT_NET_REASON_LOGIN) {
             Net_SendLogIn();
@@ -744,10 +746,13 @@ void FOClient::Net_OnConnect(bool success)
         else if (reason != INIT_NET_REASON_CUSTOM) {
             throw UnreachablePlaceException(LINE_STR);
         }
+
+        RUNTIME_ASSERT(!_curPlayer);
+        _curPlayer = new PlayerView(this, 0u);
     }
     else {
         ShowMainScreen(SCREEN_LOGIN, {});
-        AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
+        AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
     }
 }
 
@@ -768,41 +773,34 @@ void FOClient::Net_OnDisconnect()
     ProcessAutoLogin();
 }
 
-void FOClient::Net_SendUpdate()
+void FOClient::Net_SendHandshake()
 {
     NON_CONST_METHOD_HINT();
 
-    // Header
-    _conn.OutBuf << NETMSG_UPDATE;
+    _conn.OutBuf << NETMSG_HANDSHAKE;
+    _conn.OutBuf << static_cast<uint>(FO_COMPATIBILITY_VERSION);
 
-    // Protocol version
-    _conn.OutBuf << static_cast<ushort>(FO_COMPATIBILITY_VERSION);
-
-    // Data encrypting
     const uint encrypt_key = NetBuffer::GenerateEncryptKey();
     _conn.OutBuf << encrypt_key;
     _conn.OutBuf.SetEncryptKey(encrypt_key);
     _conn.InBuf.SetEncryptKey(encrypt_key);
+
+    constexpr uchar padding[28] = {};
+    _conn.OutBuf.Push(padding, sizeof(padding));
 }
 
 void FOClient::Net_SendLogIn()
 {
     WriteLog("Player login");
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
 
     _conn.OutBuf << NETMSG_LOGIN;
     _conn.OutBuf << msg_len;
-    _conn.OutBuf << FO_COMPATIBILITY_VERSION;
-
-    // Begin data encrypting
-    _conn.OutBuf.SetEncryptKey(12345);
-    _conn.InBuf.SetEncryptKey(12345);
-
     _conn.OutBuf << _loginName;
     _conn.OutBuf << _loginPassword;
 
-    AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
+    AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -811,16 +809,10 @@ void FOClient::Net_SendCreatePlayer()
 
     WriteLog("Player registration");
 
-    const uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(ushort) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
+    const uint msg_len = sizeof(uint) + sizeof(msg_len) + NetBuffer::STRING_LEN_SIZE * 2u + static_cast<uint>(_loginName.length() + _loginPassword.length());
 
     _conn.OutBuf << NETMSG_REGISTER;
     _conn.OutBuf << msg_len;
-    _conn.OutBuf << FO_COMPATIBILITY_VERSION;
-
-    // Begin data encrypting
-    _conn.OutBuf.SetEncryptKey(1234567890);
-    _conn.InBuf.SetEncryptKey(1234567890);
-
     _conn.OutBuf << _loginName;
     _conn.OutBuf << _loginPassword;
 }
@@ -1038,22 +1030,81 @@ void FOClient::Net_SendRefereshMe()
 
 void FOClient::Net_OnUpdateFilesResponse()
 {
-    // Todo: run updater if resources changed
-    AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+    uint msg_len;
+    bool outdated;
+    uint data_size;
+    _conn.InBuf >> msg_len;
+    _conn.InBuf >> outdated;
+    _conn.InBuf >> data_size;
 
-    throw ResourcesOutdatedException("...");
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    vector<uchar> data;
+    data.resize(data_size);
+    if (data_size != 0u) {
+        _conn.InBuf.Pop(data.data(), data_size);
+    }
+
+    if (!outdated) {
+        NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
+    }
+
+    CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    // RestoreData(_globalsPropertiesData);
+
+    // Todo: run updater if resources changed
+
+    /*if (outdated) {
+        AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+    }
+
+    auto reader = DataReader(data);
+
+    for (uint file_index = 0;; file_index++) {
+        const auto name_len = reader.Read<short>();
+        if (name_len == -1) {
+            break;
+        }
+
+        RUNTIME_ASSERT(name_len > 0);
+        const auto fname = string(reader.ReadPtr<char>(name_len), name_len);
+        const auto size = reader.Read<uint>();
+        const auto hash = reader.Read<uint>();
+
+        // Check hash
+        if (_fileSys.ReadFileHeader(fname)) {
+            const auto file_hash = _fileSys.ReadFileText(_str("{}.hash", fname));
+            if (file_hash.empty()) {
+                // Hashing::MurmurHash2(file2.GetBuf(), file2.GetSize());
+            }
+
+            if (_str(file_hash).toUInt() == hash) {
+                continue;
+            }
+        }
+    }
+
+    throw ResourcesOutdatedException("...");*/
 }
 
 void FOClient::Net_OnWrongNetProto()
 {
-    AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+    AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+}
+
+void FOClient::Net_OnRegisterSuccess()
+{
+    WriteLog("Registration success");
+
+    OnRegistrationSuccess.Fire();
 }
 
 void FOClient::Net_OnLoginSuccess()
 {
     WriteLog("Authentication success");
 
-    AddMess(SAY_NETMSG, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
+    AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
 
     // Set encrypt keys
     uint msg_len;
@@ -1075,14 +1126,12 @@ void FOClient::Net_OnLoginSuccess()
 
     RestoreData(_globalsPropertiesData);
 
-    if (_curPlayer != nullptr) {
-        _curPlayer->MarkAsDestroyed();
-        _curPlayer->Release();
-        _curPlayer = nullptr;
-    }
-
-    _curPlayer = new PlayerView(this, player_id);
+    RUNTIME_ASSERT(_curPlayer);
+    RUNTIME_ASSERT(_curPlayer->GetId() == 0u);
+    _curPlayer->SetId(player_id);
     _curPlayer->RestoreData(_playerPropertiesData);
+
+    OnLoginSuccess.Fire();
 }
 
 void FOClient::Net_OnAddCritter()
@@ -1331,7 +1380,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
     // Message box text
     if (fstr_mb != 0u) {
         if (how_say == SAY_NETMSG) {
-            AddMess(how_say, _str(get_format(fstr_mb), fstr));
+            AddMess(0, _str(get_format(fstr_mb), fstr));
         }
         else if (how_say == SAY_RADIO) {
             ushort channel = 0u;
@@ -1341,11 +1390,11 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
                     channel = radio->GetRadioChannel();
                 }
             }
-            AddMess(how_say, _str(get_format(fstr_mb), channel, fstr));
+            AddMess(0, _str(get_format(fstr_mb), channel, fstr));
         }
         else {
             const auto cr_name = (cr != nullptr ? cr->GetName() : "?");
-            AddMess(how_say, _str(get_format(fstr_mb), cr_name, fstr));
+            AddMess(0, _str(get_format(fstr_mb), cr_name, fstr));
         }
     }
 
@@ -2297,15 +2346,15 @@ void FOClient::Net_OnProperty(uint data_size)
     ushort property_index;
     _conn.InBuf >> property_index;
 
+    PropertyRawData prop_data;
+
     if (data_size != 0u) {
-        _tempPropertyData.resize(data_size);
-        _conn.InBuf.Pop(_tempPropertyData.data(), data_size);
+        _conn.InBuf.Pop(prop_data.Alloc(data_size), data_size);
     }
     else {
         const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(ushort);
-        _tempPropertyData.resize(len);
         if (len != 0u) {
-            _conn.InBuf.Pop(_tempPropertyData.data(), len);
+            _conn.InBuf.Pop(prop_data.Alloc(len), len);
         }
     }
 
@@ -2358,6 +2407,9 @@ void FOClient::Net_OnProperty(uint data_size)
         return;
     }
 
+    RUNTIME_ASSERT(!prop->IsDisabled());
+    RUNTIME_ASSERT(!prop->IsVirtual());
+
     {
         _sendIgnoreEntity = entity;
         _sendIgnoreProperty = prop;
@@ -2367,7 +2419,7 @@ void FOClient::Net_OnProperty(uint data_size)
             _sendIgnoreProperty = nullptr;
         });
 
-        entity->SetValueFromData(prop, _tempPropertyData);
+        entity->SetValueFromData(prop, prop_data);
     }
 
     if (type == NetProperty::MapItem) {
@@ -3144,6 +3196,10 @@ void FOClient::OnSendPlayerValue(Entity* entity, const Property* prop)
 {
     RUNTIME_ASSERT(entity == _curPlayer);
 
+    if (_curPlayer->GetId() == 0u) {
+        throw ScriptException("Can't modify player public/protected property on unlogined player");
+    }
+
     Net_SendProperty(NetProperty::Player, prop, _curPlayer);
 }
 
@@ -3684,20 +3740,31 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     // Execute
     const auto cmd = args[0];
     if (cmd == "Login" && args.size() >= 3) {
-        if (_initNetReason == INIT_NET_REASON_NONE) {
-            _loginName = args[1];
-            _loginPassword = args[2];
+        _loginName = args[1];
+        _loginPassword = args[2];
+
+        if (_conn.IsConnected()) {
+            Net_SendLogIn();
+        }
+        else {
             _initNetReason = INIT_NET_REASON_LOGIN;
         }
     }
     else if (cmd == "Register" && args.size() >= 3) {
-        if (_initNetReason == INIT_NET_REASON_NONE) {
-            _loginName = args[1];
-            _loginPassword = args[2];
+        _loginName = args[1];
+        _loginPassword = args[2];
+
+        if (_conn.IsConnected()) {
+            Net_SendCreatePlayer();
+        }
+        else {
             _initNetReason = INIT_NET_REASON_REG;
         }
     }
     else if (cmd == "CustomConnect") {
+        _loginName = "";
+        _loginPassword = "";
+
         if (_initNetReason == INIT_NET_REASON_NONE) {
             _initNetReason = INIT_NET_REASON_CUSTOM;
         }

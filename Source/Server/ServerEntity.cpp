@@ -57,7 +57,12 @@ auto ServerEntity::GetEngine() -> FOServer*
     return _engine;
 }
 
-auto ServerEntity::GetName() const -> const string&
+auto ServerEntity::GetName() const -> string_view
 {
     return GetProperties().GetRegistrator()->GetClassName();
+}
+
+auto ServerEntity::GetStorageName() const -> string_view
+{
+    return GetClassName();
 }

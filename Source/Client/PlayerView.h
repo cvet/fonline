@@ -49,4 +49,6 @@ public:
     auto operator=(const PlayerView&) = delete;
     auto operator=(PlayerView&&) noexcept = delete;
     ~PlayerView() override = default;
+
+    void MarkAsDestroyed() override;
 };

@@ -40,6 +40,21 @@ NetBuffer::NetBuffer()
     _bufData = std::make_unique<uchar[]>(_bufLen);
 }
 
+auto NetBuffer::IsError() const -> bool
+{
+    return _isError;
+}
+
+auto NetBuffer::GetEndPos() const -> uint
+{
+    return _bufEndPos;
+}
+
+void NetBuffer::SetError(bool value)
+{
+    _isError = value;
+}
+
 auto NetBuffer::GenerateEncryptKey() -> uint
 {
     return (GenericUtils::Random(1, 255) << 24) | (GenericUtils::Random(1, 255) << 16) | (GenericUtils::Random(1, 255) << 8) | GenericUtils::Random(1, 255);
@@ -241,7 +256,7 @@ auto NetInBuffer::ReadHashedString(NameResolver& name_resolver) -> hstring
     hstring result;
 
     if (!_isError) {
-        bool failed;
+        bool failed = false;
         result = name_resolver.ResolveHash(h, &failed);
         if (failed) {
             _isError = true;
@@ -278,8 +293,8 @@ auto NetInBuffer::NeedProcess() -> bool
         return NETMSG_PING_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_END_PARSE_TO_GAME:
         return NETMSG_END_PARSE_TO_GAME_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_UPDATE:
-        return NETMSG_UPDATE_SIZE + _bufReadPos <= _bufEndPos;
+    case NETMSG_HANDSHAKE:
+        return NETMSG_HANDSHAKE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_GET_UPDATE_FILE:
         return NETMSG_GET_UPDATE_FILE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_GET_UPDATE_FILE_DATA:
@@ -467,8 +482,8 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_END_PARSE_TO_GAME:
         size = NETMSG_END_PARSE_TO_GAME_SIZE;
         break;
-    case NETMSG_UPDATE:
-        size = NETMSG_UPDATE_SIZE;
+    case NETMSG_HANDSHAKE:
+        size = NETMSG_HANDSHAKE_SIZE;
         break;
     case NETMSG_GET_UPDATE_FILE:
         size = NETMSG_GET_UPDATE_FILE_SIZE;

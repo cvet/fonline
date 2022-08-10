@@ -677,6 +677,9 @@ void CritterHexView::RefreshModel()
                 _model->StartMeshGeneration();
             }
         }
+        else {
+            BreakIntoDebugger();
+        }
 
         _engine->SprMngr.PopAtlasType();
     }

@@ -56,7 +56,7 @@
 
 struct MeshData
 {
-    void Save(DataWriter& writer)
+    void Save(DataWriter& writer) const
     {
         auto len = static_cast<uint>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
@@ -68,6 +68,7 @@ struct MeshData
         writer.WritePtr(&len, sizeof(len));
         writer.WritePtr(&DiffuseTexture[0], len);
         len = static_cast<uint>(SkinBones.size());
+        writer.WritePtr(&len, sizeof(len));
         for (const auto& bone_name : SkinBones) {
             len = static_cast<uint>(bone_name.length());
             writer.WritePtr(&len, sizeof(len));
@@ -103,9 +104,9 @@ struct Bone
         return nullptr;
     }
 
-    void Save(DataWriter& writer)
+    void Save(DataWriter& writer) const
     {
-        writer.Write<ushort>(static_cast<ushort>(Name.length()));
+        writer.Write<uint>(static_cast<uint>(Name.length()));
         writer.WritePtr(Name.data(), Name.length());
         writer.WritePtr(&TransformationMatrix, sizeof(TransformationMatrix));
         writer.WritePtr(&GlobalTransformationMatrix, sizeof(GlobalTransformationMatrix));
@@ -113,8 +114,7 @@ struct Bone
         if (AttachedMesh) {
             AttachedMesh->Save(writer);
         }
-        auto len = static_cast<uint>(Children.size());
-        writer.WritePtr(&len, sizeof(len));
+        writer.Write<uint>(static_cast<uint>(Children.size()));
         for (auto&& child : Children) {
             child->Save(writer);
         }
@@ -141,7 +141,7 @@ struct AnimSet
         vector<vec3> TranslationValue {};
     };
 
-    void Save(DataWriter& writer)
+    void Save(DataWriter& writer) const
     {
         auto len = static_cast<uint>(AnimFileName.length());
         writer.WritePtr(&len, sizeof(len));
@@ -224,7 +224,7 @@ void ModelBaker::AutoBake()
         auto file_header = _allFiles.GetCurFileHeader();
 
         string ext = _str(file_header.GetPath()).getFileExtension();
-        if (!(ext == "fbx" || ext == "dae" || ext == "obj")) {
+        if (!(ext == "fo3d" || ext == "fbx" || ext == "dae" || ext == "obj")) {
             continue;
         }
 
@@ -235,8 +235,13 @@ void ModelBaker::AutoBake()
         auto file = _allFiles.GetCurFile();
 
         try {
-            auto data = BakeFile(file_header.GetPath(), file);
-            _writeData(file_header.GetPath(), data);
+            if (ext == "fo3d") {
+                _writeData(file_header.GetPath(), file.GetData());
+            }
+            else {
+                auto data = BakeFile(file_header.GetPath(), file);
+                _writeData(file_header.GetPath(), data);
+            }
         }
         catch (const ModelBakerException& ex) {
             ReportExceptionAndContinue(ex);

@@ -81,7 +81,7 @@ public:
     void InitAfterLoad();
     void FinalizeEntities();
 
-    void RegisterEntity(Player* entity);
+    void RegisterEntity(Player* entity, uint id);
     void UnregisterEntity(Player* entity);
     void RegisterEntity(Location* entity);
     void UnregisterEntity(Location* entity);
@@ -98,7 +98,7 @@ public:
 
 private:
     void RegisterEntityEx(ServerEntity* entity);
-    void UnregisterEntityEx(ServerEntity* entity);
+    void UnregisterEntityEx(ServerEntity* entity, bool delete_from_db);
 
     FOServer* _engine;
     unordered_map<uint, Player*> _allPlayers {};

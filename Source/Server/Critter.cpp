@@ -54,6 +54,11 @@ Critter::~Critter()
     }
 }
 
+auto Critter::GetStorageName() const -> string_view
+{
+    return IsOwnedByPlayer() ? "PlayerCritter" : GetClassName();
+}
+
 auto Critter::GetOfflineTime() const -> uint
 {
     return _playerDetached ? _engine->GameTime.FrameTick() - _playerDetachTick : 0u;

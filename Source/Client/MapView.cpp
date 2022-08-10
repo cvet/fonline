@@ -327,6 +327,9 @@ MapView::MapView(FOClient* engine, uint id, const ProtoMap* proto) : ClientEntit
 
     _findPathGrid = new short[(MAX_FIND_PATH * 2 + 2) * (MAX_FIND_PATH * 2 + 2)];
 
+    ResizeField(GetWidth(), GetHeight());
+    ResizeView();
+
     _eventUnsubscriber += _engine->SprMngr.GetWindow()->OnWindowSizeChanged += [this] { OnWindowSizeChanged(); };
 }
 

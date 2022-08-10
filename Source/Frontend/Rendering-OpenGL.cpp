@@ -229,17 +229,16 @@ public:
 
     GLuint Program[EFFECT_MAX_PASSES] {};
 
-    GLint Location_ZoomFactor {};
-    GLint Location_ColorMap {};
-    GLint Location_ColorMapSize {};
-    GLint Location_ColorMapSamples {};
-    GLint Location_EggMap {};
-    GLint Location_EggMapSize {};
-    GLint Location_SpriteBorder {};
-    GLint Location_ProjectionMatrix {};
-    GLint Location_GroundPosition {};
-    GLint Location_LightColor {};
-    GLint Location_WorldMatrices {};
+    GLint Location_ZoomFactor[EFFECT_MAX_PASSES] {};
+    GLint Location_ColorMap[EFFECT_MAX_PASSES] {};
+    GLint Location_ColorMapSize[EFFECT_MAX_PASSES] {};
+    GLint Location_EggMap[EFFECT_MAX_PASSES] {};
+    GLint Location_EggMapSize[EFFECT_MAX_PASSES] {};
+    GLint Location_SpriteBorder[EFFECT_MAX_PASSES] {};
+    GLint Location_ProjectionMatrix[EFFECT_MAX_PASSES] {};
+    GLint Location_GroundPosition[EFFECT_MAX_PASSES] {};
+    GLint Location_LightColor[EFFECT_MAX_PASSES] {};
+    GLint Location_WorldMatrices[EFFECT_MAX_PASSES] {};
 };
 
 void OpenGL_Renderer::Init(GlobalSettings& settings, WindowInternalHandle* window)
@@ -558,17 +557,44 @@ auto OpenGL_Renderer::CreateEffect(EffectUsage usage, string_view name, string_v
 
         opengl_effect->Program[pass] = program;
 
-        GL(opengl_effect->Location_ProjectionMatrix = glGetUniformLocation(program, "ProjectionMatrix"));
-        GL(opengl_effect->Location_ZoomFactor = glGetUniformLocation(program, "ZoomFactor"));
-        GL(opengl_effect->Location_ColorMap = glGetUniformLocation(program, "ColorMap"));
-        GL(opengl_effect->Location_ColorMapSize = glGetUniformLocation(program, "ColorMapSize"));
-        GL(opengl_effect->Location_ColorMapSamples = glGetUniformLocation(program, "ColorMapSamples"));
-        GL(opengl_effect->Location_EggMap = glGetUniformLocation(program, "EggMap"));
-        GL(opengl_effect->Location_EggMapSize = glGetUniformLocation(program, "EggMapSize"));
-        GL(opengl_effect->Location_SpriteBorder = glGetUniformLocation(program, "SpriteBorder"));
-        GL(opengl_effect->Location_GroundPosition = glGetUniformLocation(program, "GroundPosition"));
-        GL(opengl_effect->Location_LightColor = glGetUniformLocation(program, "LightColor"));
-        GL(opengl_effect->Location_WorldMatrices = glGetUniformLocation(program, "WorldMatrices"));
+        GL(opengl_effect->Location_ProjectionMatrix[pass] = glGetUniformLocation(program, "ProjectionMatrix"));
+        GL(opengl_effect->Location_ZoomFactor[pass] = glGetUniformLocation(program, "ZoomFactor"));
+        GL(opengl_effect->Location_ColorMap[pass] = glGetUniformLocation(program, "ColorMap"));
+        GL(opengl_effect->Location_ColorMapSize[pass] = glGetUniformLocation(program, "ColorMapSize"));
+        GL(opengl_effect->Location_EggMap[pass] = glGetUniformLocation(program, "EggMap"));
+        GL(opengl_effect->Location_EggMapSize[pass] = glGetUniformLocation(program, "EggMapSize"));
+        GL(opengl_effect->Location_SpriteBorder[pass] = glGetUniformLocation(program, "SpriteBorder"));
+        GL(opengl_effect->Location_GroundPosition[pass] = glGetUniformLocation(program, "GroundPosition"));
+        GL(opengl_effect->Location_LightColor[pass] = glGetUniformLocation(program, "LightColor"));
+        GL(opengl_effect->Location_WorldMatrices[pass] = glGetUniformLocation(program, "WorldMatrices"));
+
+#if FO_ENABLE_3D
+        if (!opengl_effect->ModelBuf) {
+            if (usage == EffectUsage::Model) {
+                opengl_effect->ModelBuf = RenderEffect::ModelBuffer();
+            }
+        }
+#endif
+
+        if (!opengl_effect->BorderBuf) {
+            if (usage == EffectUsage::Contour) {
+                opengl_effect->BorderBuf = RenderEffect::BorderBuffer();
+            }
+        }
+
+        if (!opengl_effect->MapSpriteBuf) {
+            if (usage == EffectUsage::MapSprite) {
+                if (opengl_effect->Location_ZoomFactor[pass] != -1 || opengl_effect->Location_EggMapSize[pass] != -1) {
+                    opengl_effect->MapSpriteBuf = RenderEffect::MapSpriteBuffer();
+                }
+            }
+        }
+
+        if (!opengl_effect->MainTexBuf) {
+            if (opengl_effect->Location_ColorMapSize[pass] != -1) {
+                opengl_effect->MainTexBuf = RenderEffect::MainTexBuffer();
+            }
+        }
 
         // Bind data
         /*
@@ -960,18 +986,21 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
     // Fill vertex buffer
     GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
 
-    size_t upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
+    size_t upload_vertices;
 
 #if FO_ENABLE_3D
     if (usage == EffectUsage::Model) {
         RUNTIME_ASSERT(Vertices2D.empty());
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices3D.size() : custom_vertices_size;
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex3D), Vertices3D.data(), buf_type));
     }
     else {
         RUNTIME_ASSERT(Vertices3D.empty());
+        upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
         GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
     }
 #else
+    upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
     GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
 #endif
 
@@ -1219,34 +1248,31 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     const auto draw_count = static_cast<GLsizei>(indices_to_draw == static_cast<size_t>(-1) ? opengl_dbuf->Indices.size() : indices_to_draw);
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(ushort));
 
-    // Effect* effect = (combined_mesh->DrawEffect ? combined_mesh->DrawEffect : modelMngr.effectMngr.Effects.Skinned3d);
-    // MeshTexture** textures = combined_mesh->Textures;
-
     for (size_t pass = 0; pass < _passCount; pass++) {
         // if (shadow_disabled && effect_pass.IsShadow)
         //     continue;
 
         GL(glUseProgram(Program[pass]));
 
-        if (Location_ProjectionMatrix != -1) {
-            GL(glUniformMatrix4fv(Location_ProjectionMatrix, 1, GL_FALSE, ProjBuf.ProjMatrix));
+        if (Location_ProjectionMatrix[pass] != -1) {
+            GL(glUniformMatrix4fv(Location_ProjectionMatrix[pass], 1, GL_FALSE, ProjBuf.ProjMatrix));
         }
 
-        if (Location_ColorMap != -1) {
+        if (Location_ColorMap[pass] != -1) {
             if (opnegl_tex == nullptr) {
                 throw RenderingException("Trying to draw effect that required texture", Name);
             }
 
             GL(glBindTexture(GL_TEXTURE_2D, opnegl_tex->TexId));
-            GL(glUniform1i(Location_ColorMap, 0));
+            GL(glUniform1i(Location_ColorMap[pass], 0));
 
 #ifdef GL_SAMPLER_BINDING
             GL(glBindSampler(0, 0));
 #endif
         }
 
-        if (Location_ColorMapSize != -1) {
-            GL(glUniform4fv(Location_ColorMapSize, 1, opnegl_tex->SizeData));
+        if (Location_ColorMapSize[pass] != -1) {
+            GL(glUniform4fv(Location_ColorMapSize[pass], 1, opnegl_tex->SizeData));
         }
 
         // GL(glActiveTexture(GL_TEXTURE0));

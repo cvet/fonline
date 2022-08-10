@@ -52,11 +52,11 @@ public:
     auto operator=(NetBuffer&&) noexcept -> NetBuffer& = default;
     virtual ~NetBuffer() = default;
 
-    [[nodiscard]] auto IsError() const -> bool { return _isError; }
+    [[nodiscard]] auto IsError() const -> bool;
     [[nodiscard]] auto GetData() -> uchar*;
-    [[nodiscard]] auto GetEndPos() const -> uint { return _bufEndPos; }
+    [[nodiscard]] auto GetEndPos() const -> uint;
 
-    void SetError(bool value) { _isError = value; }
+    void SetError(bool value);
     static auto GenerateEncryptKey() -> uint;
     void SetEncryptKey(uint seed);
     virtual void ResetBuf();

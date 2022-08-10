@@ -303,7 +303,7 @@ private:
     void FillCombinedMeshes(ModelInstance* base, ModelInstance* cur);
     void CombineMesh(MeshInstance* mesh_instance, int anim_layer);
     void ClearCombinedMesh(CombinedMesh* combined_mesh);
-    void BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer);
+    void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer);
     void CutCombinedMeshes(ModelInstance* base, ModelInstance* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
     void ProcessAnimation(float elapsed, int x, int y, float scale);

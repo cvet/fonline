@@ -555,7 +555,7 @@ void Application::SetMainLoopCallback(void (*callback)(void*))
 }
 #endif
 
-auto Application::GetName() const -> const string&
+auto Application::GetName() const -> string_view
 {
     return _name;
 }
@@ -733,7 +733,7 @@ void Application::BeginFrame()
             if (sdl_event.type == SDL_KEYDOWN) {
                 InputEvent::KeyDownEvent ev;
                 ev.Code = (*KeysMap)[sdl_event.key.keysym.scancode];
-                ev.Text = sdl_event.text.text;
+                ev.Text = ""; // Todo: rework sdl_event.text.text
                 EventsQueue->emplace_back(ev);
             }
             else {

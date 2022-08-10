@@ -250,7 +250,7 @@ struct is_specialization<Ref<Args...>, Ref> : std::true_type
 // Engine exception handling
 extern auto GetStackTrace() -> string;
 extern auto IsRunInDebugger() -> bool;
-extern auto BreakIntoDebugger(string_view error_message) -> bool;
+extern auto BreakIntoDebugger(string_view error_message = "") -> bool;
 extern void CreateDumpMessage(string_view appendix, string_view message);
 
 // Todo: pass name to exceptions context args
@@ -1045,8 +1045,8 @@ enum class CritterFindType : uchar
 };
 
 // Ping
-static constexpr uchar PING_MEASURE = 0;
-static constexpr uchar PING_ACTIVITY = 2;
+static constexpr uchar PING_SERVER = 0;
+static constexpr uchar PING_CLIENT = 2;
 
 // Say types
 static constexpr uchar SAY_NORM = 1;

@@ -754,31 +754,33 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
     PopAtlasType();
 
     // Refresh texture
-    auto* tex = atlas->MainTex;
-    tex->UpdateTextureRegion(IRect(x, y, x + w - 1, y + h - 1), data);
+    if (data != nullptr) {
+        auto* tex = atlas->MainTex;
+        tex->UpdateTextureRegion(IRect(x, y, x + w - 1, y + h - 1), data);
 
-    // 1px border for correct linear interpolation
-    // Top
-    tex->UpdateTextureRegion(IRect(x, y - 1, x + w - 1, y - 1), data);
+        // 1px border for correct linear interpolation
+        // Top
+        tex->UpdateTextureRegion(IRect(x, y - 1, x + w - 1, y - 1), data);
 
-    // Bottom
-    tex->UpdateTextureRegion(IRect(x, y + h, x + w - 1, y + h), data + (h - 1) * w);
+        // Bottom
+        tex->UpdateTextureRegion(IRect(x, y + h, x + w - 1, y + h), data + (h - 1) * w);
 
-    // Left
-    for (uint i = 0; i < h; i++) {
-        _borderBuf[i + 1] = *(data + i * w);
+        // Left
+        for (uint i = 0; i < h; i++) {
+            _borderBuf[i + 1] = *(data + i * w);
+        }
+        _borderBuf[0] = _borderBuf[1];
+        _borderBuf[h + 1] = _borderBuf[h];
+        tex->UpdateTextureRegion(IRect(x - 1, y - 1, x - 1, y + h), _borderBuf.data());
+
+        // Right
+        for (uint i = 0; i < h; i++) {
+            _borderBuf[i + 1] = *(data + i * w + (w - 1));
+        }
+        _borderBuf[0] = _borderBuf[1];
+        _borderBuf[h + 1] = _borderBuf[h];
+        tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w, y + h), _borderBuf.data());
     }
-    _borderBuf[0] = _borderBuf[1];
-    _borderBuf[h + 1] = _borderBuf[h];
-    tex->UpdateTextureRegion(IRect(x - 1, y - 1, x - 1, y + h), _borderBuf.data());
-
-    // Right
-    for (uint i = 0; i < h; i++) {
-        _borderBuf[i + 1] = *(data + i * w + (w - 1));
-    }
-    _borderBuf[0] = _borderBuf[1];
-    _borderBuf[h + 1] = _borderBuf[h];
-    tex->UpdateTextureRegion(IRect(x + w, y - 1, x + w, y + h), _borderBuf.data());
 
     // Invalidate last pixel color picking
     if (!atlas->RT->LastPixelPicks.empty()) {
@@ -1093,7 +1095,7 @@ void SpriteManager::RefreshModelSprite(ModelInstance* model)
     // Create new place for rendering
     if (index == 0u) {
         PushAtlasType(static_cast<AtlasType>(model->SprAtlasType));
-        index = RequestFillAtlas(nullptr, draw_width, draw_height, nullptr);
+        index = RequestFillAtlas(new SpriteInfo(), draw_width, draw_height, nullptr);
         PopAtlasType();
 
         auto* si = _sprData[index];

@@ -81,7 +81,7 @@ void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort
 #endif
 
     _gameTimeMultiplier = multiplier;
-    _gameTickBase = _gameTickFast = FrameTick();
+    _gameTickBase = _gameTickFast = _timerTick;
 
     const DateTimeStamp dt = {year, month, 0, day, hour, minute, second, 0};
     _yearStartFullTime = Timer::DateTimeToFullTime(dt);
@@ -91,7 +91,8 @@ void GameTimer::Reset(ushort year, ushort month, ushort day, ushort hour, ushort
 
 auto GameTimer::FrameAdvance() -> bool
 {
-    _timerTick = static_cast<uint>(Timer::RealtimeTick());
+    _timerTick = iround(Timer::RealtimeTick());
+    RUNTIME_ASSERT(_timerTick != 0);
 
 #if FO_SINGLEPLAYER
     if (_isPaused) {
@@ -112,6 +113,7 @@ auto GameTimer::FrameAdvance() -> bool
 
 auto GameTimer::FrameTick() const -> uint
 {
+    RUNTIME_ASSERT(_timerTick != 0);
     return _timerTick;
 }
 

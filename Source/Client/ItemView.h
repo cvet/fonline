@@ -63,6 +63,7 @@ public:
 
     [[nodiscard]] auto CreateRefClone() const -> ItemView*;
 
+    void MarkAsDestroyed() override;
     auto AddInnerItem(uint id, const ProtoItem* proto, uint stack_id, const vector<vector<uchar>>& properties_data) -> ItemView*;
     void DeleteInnerItem(ItemView* item);
 

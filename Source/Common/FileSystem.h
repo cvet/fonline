@@ -54,8 +54,8 @@ public:
     explicit operator bool() const;
     ~FileHeader() = default;
 
-    [[nodiscard]] auto GetName() const -> const string&;
-    [[nodiscard]] auto GetPath() const -> const string&;
+    [[nodiscard]] auto GetName() const -> string_view;
+    [[nodiscard]] auto GetPath() const -> string_view;
     [[nodiscard]] auto GetFullPath() const -> string;
     [[nodiscard]] auto GetSize() const -> size_t;
     [[nodiscard]] auto GetWriteTime() const -> uint64;

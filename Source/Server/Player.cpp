@@ -41,7 +41,7 @@
 #include "Server.h"
 #include "Settings.h"
 
-Player::Player(FOServer* engine, uint id, string_view name, ClientConnection* connection) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), PlayerProperties(GetInitRef()), Connection {connection}, _name {name}, _talkNextTick {_engine->GameTime.GameTick() + PROCESS_TALK_TICK}
+Player::Player(FOServer* engine, uint id, ClientConnection* connection) : ServerEntity(engine, id, engine->GetPropertyRegistrator(ENTITY_CLASS_NAME)), PlayerProperties(GetInitRef()), Connection {connection}, _talkNextTick {_engine->GameTime.GameTick() + PROCESS_TALK_TICK}
 {
 }
 
@@ -51,7 +51,18 @@ Player::~Player()
     delete Connection;
 }
 
-auto Player::GetName() const -> const string&
+void Player::SetName(string_view name)
+{
+    _name = name;
+}
+
+void Player::SetOwnedCritter(Critter* cr)
+{
+    RUNTIME_ASSERT(!_ownedCr);
+    _ownedCr = cr;
+}
+
+auto Player::GetName() const -> string_view
 {
     return _name;
 }
@@ -61,7 +72,7 @@ auto Player::GetIp() const -> uint
     return Connection->GetIp();
 }
 
-auto Player::GetHost() const -> const string&
+auto Player::GetHost() const -> string_view
 {
     return Connection->GetHost();
 }

@@ -42,8 +42,10 @@ EntityManager::EntityManager(FOServer* engine) : _engine {engine}
 {
 }
 
-void EntityManager::RegisterEntity(Player* entity)
+void EntityManager::RegisterEntity(Player* entity, uint id)
 {
+    RUNTIME_ASSERT(id != 0u);
+    entity->SetId(id);
     RegisterEntityEx(entity);
     const auto [it, inserted] = _allPlayers.emplace(entity->GetId(), entity);
     RUNTIME_ASSERT(inserted);
@@ -54,7 +56,7 @@ void EntityManager::UnregisterEntity(Player* entity)
     const auto it = _allPlayers.find(entity->GetId());
     RUNTIME_ASSERT(it != _allPlayers.end());
     _allPlayers.erase(it);
-    UnregisterEntityEx(entity);
+    UnregisterEntityEx(entity, false);
 }
 
 void EntityManager::RegisterEntity(Location* entity)
@@ -69,7 +71,7 @@ void EntityManager::UnregisterEntity(Location* entity)
     const auto it = _allLocations.find(entity->GetId());
     RUNTIME_ASSERT(it != _allLocations.end());
     _allLocations.erase(it);
-    UnregisterEntityEx(entity);
+    UnregisterEntityEx(entity, true);
 }
 
 void EntityManager::RegisterEntity(Map* entity)
@@ -84,7 +86,7 @@ void EntityManager::UnregisterEntity(Map* entity)
     const auto it = _allMaps.find(entity->GetId());
     RUNTIME_ASSERT(it != _allMaps.end());
     _allMaps.erase(it);
-    UnregisterEntityEx(entity);
+    UnregisterEntityEx(entity, true);
 }
 
 void EntityManager::RegisterEntity(Critter* entity)
@@ -99,7 +101,7 @@ void EntityManager::UnregisterEntity(Critter* entity)
     const auto it = _allCritters.find(entity->GetId());
     RUNTIME_ASSERT(it != _allCritters.end());
     _allCritters.erase(it);
-    UnregisterEntityEx(entity);
+    UnregisterEntityEx(entity, !entity->IsOwnedByPlayer());
 }
 
 void EntityManager::RegisterEntity(Item* entity)
@@ -114,7 +116,7 @@ void EntityManager::UnregisterEntity(Item* entity)
     const auto it = _allItems.find(entity->GetId());
     RUNTIME_ASSERT(it != _allItems.end());
     _allItems.erase(it);
-    UnregisterEntityEx(entity);
+    UnregisterEntityEx(entity, true);
 }
 
 void EntityManager::RegisterEntityEx(ServerEntity* entity)
@@ -132,22 +134,24 @@ void EntityManager::RegisterEntityEx(ServerEntity* entity)
             const auto* proto = entity_with_proto->GetProto();
             auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), &proto->GetProperties(), *_engine);
             doc["_Proto"] = string(proto->GetName());
-            _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
+            _engine->DbStorage.Insert(_str("{}s", entity->GetStorageName()), id, doc);
         }
         else {
             const auto doc = PropertiesSerializator::SaveToDocument(&entity->GetProperties(), nullptr, *_engine);
-            _engine->DbStorage.Insert(_str("{}s", entity->GetClassName()), id, doc);
+            _engine->DbStorage.Insert(_str("{}s", entity->GetStorageName()), id, doc);
         }
     }
 }
 
-void EntityManager::UnregisterEntityEx(ServerEntity* entity)
+void EntityManager::UnregisterEntityEx(ServerEntity* entity, bool delete_from_db)
 {
     NON_CONST_METHOD_HINT();
 
     RUNTIME_ASSERT(entity->GetId() != 0u);
 
-    _engine->DbStorage.Delete(_str("{}s", entity->GetClassName()), entity->GetId());
+    if (delete_from_db) {
+        _engine->DbStorage.Delete(_str("{}s", entity->GetStorageName()), entity->GetId());
+    }
 
     entity->SetId(0);
 }
@@ -485,7 +489,7 @@ void EntityManager::DeleteCustomEntity(string_view entity_class_name, uint id)
         const auto it = all_entities.find(entity->GetId());
         RUNTIME_ASSERT(it != all_entities.end());
         all_entities.erase(it);
-        UnregisterEntityEx(entity);
+        UnregisterEntityEx(entity, true);
 
         entity->MarkAsDestroyed();
         entity->Release();

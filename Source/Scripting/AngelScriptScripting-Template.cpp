@@ -634,7 +634,7 @@ template<typename T, typename U, typename T2 = T, typename U2 = U>
     auto* as_dict = CreateASDict(as_engine, type);
 
     if (!map.empty()) {
-        AssignDict(as_engine, map, as_dict);
+        AssignDict<T, U, T2, U2>(as_engine, map, as_dict);
     }
 
     return as_dict;
@@ -1337,6 +1337,13 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
         ReadNetBuf(in_buf, inner_value_second, name_resolver);
         value.emplace(inner_value_first, inner_value_second);
     }
+}
+
+static void WriteRpcHeader(NetOutBuffer& out_buf, uint msg_len, uint rpc_num)
+{
+    out_buf << NETMSG_RPC;
+    out_buf << msg_len;
+    out_buf << rpc_num;
 }
 #endif
 
@@ -3189,9 +3196,9 @@ static void CompileRootModule(asIScriptEngine* engine, FileSystem& file_sys)
 
     while (script_files.MoveNext()) {
         auto script_file = script_files.GetCurFile();
-        auto script_name = script_file.GetName();
-        auto script_path = script_file.GetFullPath();
-        auto script_content = script_file.GetStr();
+        string script_name = string(script_file.GetName());
+        string script_path = string(script_file.GetFullPath());
+        string script_content = script_file.GetStr();
 
         const auto line_sep = script_content.find('\n');
         const auto first_line = script_content.substr(0, line_sep);

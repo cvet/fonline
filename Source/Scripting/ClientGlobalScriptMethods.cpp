@@ -646,7 +646,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg)
 {
-    client->AddMess(SAY_NETMSG, msg);
+    client->AddMess(0, msg);
 }
 
 ///# ...
@@ -668,7 +668,7 @@
         throw ScriptException("Invalid text msg arg");
     }
 
-    client->AddMess(SAY_NETMSG, client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMess(0, client->GetCurLang().Msg[textMsg].GetStr(strNum));
 }
 
 ///# ...

@@ -65,7 +65,6 @@ void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
     reader.ReadPtr(&len, sizeof(len));
     SkinBoneOffsets.resize(len);
     reader.ReadPtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
-    SkinBones.resize(SkinBoneOffsets.size());
 }
 
 void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
@@ -177,7 +176,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     _processedFiles.emplace(name_hashed);
 
     // Load file data
-    auto file = _fileSys.ReadFile(fname);
+    const auto file = _fileSys.ReadFile(fname);
     if (!file) {
         WriteLog("3d file '{}' not found", fname);
         return nullptr;
@@ -191,7 +190,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
     root_bone->FixAfterLoad(root_bone.get());
 
     // Load animations
-    const auto anim_sets_count = file.GetBEUInt();
+    const auto anim_sets_count = reader.Read<uint>();
     for (uint i = 0; i < anim_sets_count; i++) {
         auto anim_set = std::make_unique<ModelAnimation>();
         anim_set->Load(reader, _nameResolver);
@@ -275,7 +274,7 @@ auto ModelManager::CreateModel(string_view name) -> ModelInstance*
     model->_allMeshes.resize(model_info->_hierarchy->_allDrawBones.size());
     model->_allMeshesDisabled.resize(model->_allMeshes.size());
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
-        auto* mesh_instance = model->_allMeshes[i];
+        auto* mesh_instance = model->_allMeshes[i] = new MeshInstance();
         auto* mesh = model_info->_hierarchy->_allDrawBones[i]->AttachedMesh.get();
         std::memset(mesh_instance, 0, sizeof(MeshInstance));
         mesh_instance->Mesh = mesh;
@@ -389,11 +388,11 @@ void ModelInstance::SetupFrame()
     _frameProjColMaj.Transpose();
 }
 
-auto ModelInstance::Convert3dTo2d(vec3 v) const -> IPoint
+auto ModelInstance::Convert3dTo2d(vec3 pos) const -> IPoint
 {
     const int viewport[4] = {0, 0, _frameWidth, _frameHeight};
     vec3 out;
-    MatrixHelper::MatrixProject(v.x, v.y, v.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
+    MatrixHelper::MatrixProject(pos.x, pos.y, pos.z, mat44().Transpose()[0], _frameProjColMaj[0], viewport, &out.x, &out.y, &out.z);
     return {static_cast<int>(std::round(out.x / static_cast<float>(FRAME_SCALE))), static_cast<int>(std::round(out.y / static_cast<float>(FRAME_SCALE)))};
 }
 
@@ -497,7 +496,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
         auto old_cuts = _allCuts;
 
         // Store disabled meshes
-        for (size_t i = 0, j = _allMeshes.size(); i < j; i++) {
+        for (size_t i = 0; i < _allMeshes.size(); i++) {
             _allMeshesDisabled[i] = _allMeshes[i]->Disabled;
         }
 
@@ -668,14 +667,14 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
 
         // Compare changed effect
         if (!mesh_changed) {
-            for (size_t i = 0, j = _allMeshes.size(); i < j && !mesh_changed; i++) {
+            for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 mesh_changed = (_allMeshes[i]->LastEffect != _allMeshes[i]->CurEffect);
             }
         }
 
         // Compare changed textures
         if (!mesh_changed) {
-            for (size_t i = 0, j = _allMeshes.size(); i < j && !mesh_changed; i++) {
+            for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 for (size_t k = 0; k < EFFECT_TEXTURES && !mesh_changed; k++) {
                     mesh_changed = (_allMeshes[i]->LastTexures[k] != _allMeshes[i]->CurTexures[k]);
                 }
@@ -684,7 +683,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
 
         // Compare disabled meshes
         if (!mesh_changed) {
-            for (size_t i = 0, j = _allMeshes.size(); i < j && !mesh_changed; i++) {
+            for (size_t i = 0; i < _allMeshes.size() && !mesh_changed; i++) {
                 mesh_changed = (_allMeshesDisabled[i] != _allMeshes[i]->Disabled);
             }
         }
@@ -1190,7 +1189,7 @@ void ModelInstance::GenerateCombinedMeshes()
     }
 
     // Clean up buffers
-    for (size_t i = 0, j = _combinedMeshesSize; i < j; i++) {
+    for (size_t i = 0; i < _combinedMeshesSize; i++) {
         ClearCombinedMesh(_combinedMeshes[i]);
     }
     _combinedMeshesSize = 0;
@@ -1203,7 +1202,7 @@ void ModelInstance::GenerateCombinedMeshes()
     CutCombinedMeshes(this, this);
 
     // Finalize meshes
-    for (size_t i = 0, j = _combinedMeshesSize; i < j; i++) {
+    for (size_t i = 0; i < _combinedMeshesSize; i++) {
         _combinedMeshes[i]->DrawMesh->StaticDataChanged = true;
     }
 }
@@ -1211,8 +1210,8 @@ void ModelInstance::GenerateCombinedMeshes()
 void ModelInstance::FillCombinedMeshes(ModelInstance* base, ModelInstance* cur)
 {
     // Combine meshes
-    for (size_t i = 0, j = cur->_allMeshes.size(); i < j; i++) {
-        base->CombineMesh(cur->_allMeshes[i], cur->_parentBone != nullptr ? cur->_animLink.Layer : 0);
+    for (auto* mesh : _allMeshes) {
+        base->CombineMesh(mesh, cur->_parentBone != nullptr ? cur->_animLink.Layer : 0);
     }
 
     // Fill child
@@ -1239,8 +1238,10 @@ void ModelInstance::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
     // Create new combined mesh
     if (_combinedMeshesSize >= _combinedMeshes.size()) {
         auto* combined_mesh = new CombinedMesh();
+        combined_mesh->DrawMesh = App->Render.CreateDrawBuffer(true);
         combined_mesh->SkinBones.resize(MODEL_MAX_BONES);
         combined_mesh->SkinBoneOffsets.resize(MODEL_MAX_BONES);
+        _combinedMeshes.emplace_back(combined_mesh);
     }
     BatchCombinedMesh(_combinedMeshes[_combinedMeshesSize], mesh_instance, anim_layer);
     _combinedMeshesSize++;
@@ -1274,7 +1275,7 @@ auto ModelInstance::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstan
     return combined_mesh->CurBoneMatrix + mesh_instance->Mesh->SkinBones.size() <= combined_mesh->SkinBones.size();
 }
 
-void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance, int anim_layer)
+void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer)
 {
     auto* mesh = mesh_instance->Mesh;
     auto& vertices = combined_mesh->DrawMesh->Vertices3D;
@@ -1286,7 +1287,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance*
     if (combined_mesh->EncapsulatedMeshCount == 0) {
         vertices = mesh->Vertices;
         indices = mesh->Indices;
-        combined_mesh->DrawEffect = mesh_instance->CurEffect;
+        combined_mesh->DrawEffect = mesh_instance->CurEffect != nullptr ? mesh_instance->CurEffect : _modelMngr._effectMngr.Effects.Skinned3d;
         std::memset(&combined_mesh->SkinBones[0], 0, combined_mesh->SkinBones.size() * sizeof(void*));
         std::memset(combined_mesh->Textures, 0, sizeof(combined_mesh->Textures));
         combined_mesh->CurBoneMatrix = 0;
@@ -1327,7 +1328,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance*
 
     // Add textures
     for (auto i = 0; i < EFFECT_TEXTURES; i++) {
-        if ((combined_mesh->Textures[i] == nullptr) && (mesh_instance->CurTexures[i] != nullptr)) {
+        if (combined_mesh->Textures[i] == nullptr && mesh_instance->CurTexures[i] != nullptr) {
             combined_mesh->Textures[i] = mesh_instance->CurTexures[i];
         }
     }
@@ -1350,8 +1351,8 @@ void ModelInstance::CutCombinedMeshes(ModelInstance* base, ModelInstance* cur)
     // Cut meshes
     if (!cur->_allCuts.empty()) {
         for (const auto* cut : cur->_allCuts) {
-            for (size_t k = 0; k < base->_combinedMeshesSize; k++) {
-                base->CutCombinedMesh(base->_combinedMeshes[k], cut);
+            for (size_t i = 0; i < base->_combinedMeshesSize; i++) {
+                base->CutCombinedMesh(base->_combinedMeshes[i], cut);
             }
         }
         _disableCulling = true;
@@ -1828,7 +1829,10 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
     std::memcpy(effect->ProjBuf.ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
 
     effect->MainTex = combined_mesh->Textures[0]->MainTex;
-    std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
+
+    if (effect->MainTexBuf) {
+        std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
+    }
 
     auto* wm = effect->ModelBuf->WorldMatrices;
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
@@ -1997,7 +2001,7 @@ auto ModelInformation::Load(string_view name) -> bool
             if (token == "StopParsing") {
                 closed = true;
             }
-            else if (token == "ModelInstance") {
+            else if (token == "Model") {
                 (*istr) >> buf;
                 model = _str(name).extractDir().combinePath(buf);
             }
@@ -2481,7 +2485,7 @@ auto ModelInformation::Load(string_view name) -> bool
 
         // Process pathes
         if (model.empty()) {
-            WriteLog("'ModelInstance' section not found in file '{}'", name);
+            WriteLog("'Model' section not found in file '{}'", name);
             return false;
         }
 
@@ -2749,8 +2753,8 @@ void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint dept
 {
     bones.emplace(depth, bone);
 
-    for (auto& i : bone->Children) {
-        SetupBonesExt(bones, i.get(), depth + 1);
+    for (auto&& child : bone->Children) {
+        SetupBonesExt(bones, child.get(), depth + 1);
     }
 }
 
@@ -2759,7 +2763,7 @@ void ModelHierarchy::SetupBones()
     multimap<uint, ModelBone*> bones;
     SetupBonesExt(bones, _rootBone.get(), 0);
 
-    for (auto& [id, bone] : bones) {
+    for (auto&& [id, bone] : bones) {
         _allBones.push_back(bone);
         if (bone->AttachedMesh) {
             _allDrawBones.push_back(bone);

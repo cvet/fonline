@@ -50,22 +50,25 @@ class Player final : public ServerEntity, public PlayerProperties
 {
 public:
     Player() = delete;
-    Player(FOServer* engine, uint id, string_view name, ClientConnection* connection);
+    Player(FOServer* engine, uint id, ClientConnection* connection);
     Player(const Player&) = delete;
     Player(Player&&) noexcept = delete;
     auto operator=(const Player&) = delete;
     auto operator=(Player&&) noexcept = delete;
     ~Player() override;
 
-    [[nodiscard]] auto GetName() const -> const string& override;
+    [[nodiscard]] auto GetName() const -> string_view override;
 
     [[nodiscard]] auto IsSendDisabled() const -> bool { return DisableSend > 0; }
     [[nodiscard]] auto GetIp() const -> uint;
-    [[nodiscard]] auto GetHost() const -> const string&;
+    [[nodiscard]] auto GetHost() const -> string_view;
     [[nodiscard]] auto GetPort() const -> ushort;
 
     [[nodiscard]] auto GetOwnedCritter() const -> const Critter* { return _ownedCr; }
     [[nodiscard]] auto GetOwnedCritter() -> Critter* { return _ownedCr; }
+
+    void SetName(string_view name);
+    void SetOwnedCritter(Critter* cr);
 
     void Send_Property(NetProperty type, const Property* prop, Entity* entity);
 
@@ -128,7 +131,7 @@ public:
     const Property* SendIgnoreProperty {};
 
 private:
-    string _name {};
+    string _name {"(Unlogined)"};
     Critter* _ownedCr {}; // Todo: allow attach many critters to sigle player
     uint _talkNextTick {};
 };

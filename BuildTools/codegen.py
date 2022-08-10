@@ -1669,6 +1669,12 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return v + ' = static_cast<int>(' + v2 + ')'
             return None
         
+        def marshalBackRelease(t, v):
+            tt = t.split('.')
+            if tt[0] in ['dict', 'arr']:
+                return v + '->Release()'
+            return None
+        
         def nameMangling(params):
             if len(params):
                 return ''.join([''.join([p2[0] + p2[-1] for p2 in p[0].split('.')]) for p in params]).replace('|', '')
@@ -1796,8 +1802,20 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', (void*)as_' + p[1] + ');')
                 elif p[0] in ['string']:
                     globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
-                elif p[0] in ['int8', 'uint8', 'int16', 'uint16', 'int', 'uint', 'int64', 'uint64', 'bool', 'float', 'double', 'hstring'] or p[0] in engineEnums or p[0] in scriptEnums:
-                    globalLines.append('    std::memcpy(ctx->GetAddressOfArg(' + str(setIndex) + '), &as_' + p[1] + ', sizeof(as_' + p[1] + '));')
+                elif p[0] in ['int8', 'uint8', 'bool']:
+                    globalLines.append('    ctx->SetArgByte(' + str(setIndex) + ', as_' + p[1] + ');')
+                elif p[0] in ['int16', 'uint16']:
+                    globalLines.append('    ctx->SetArgWord(' + str(setIndex) + ', as_' + p[1] + ');')
+                elif p[0] in ['int', 'uint'] or p[0] in engineEnums or p[0] in scriptEnums:
+                    globalLines.append('    ctx->SetArgDWord(' + str(setIndex) + ', as_' + p[1] + ');')
+                elif p[0] in ['int64', 'uint64']:
+                    globalLines.append('    ctx->SetArgQWord(' + str(setIndex) + ', as_' + p[1] + ');')
+                elif p[0] in ['float']:
+                    globalLines.append('    ctx->SetArgFloat(' + str(setIndex) + ', as_' + p[1] + ');')
+                elif p[0] in ['double']:
+                    globalLines.append('    ctx->SetArgDouble(' + str(setIndex) + ', as_' + p[1] + ');')
+                elif p[0] in ['hstring']:
+                    globalLines.append('    ctx->SetArgObject(' + str(setIndex) + ', &as_' + p[1] + ');')
                 else:
                     globalLines.append('    static_assert(false, "Invalid configuration");')
                 setIndex += 1
@@ -1841,6 +1859,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                                 globalLines.append('        ' + mbr + ';')
                         globalLines.append('        script_sys->ReturnContext(ctx);')
                         globalLines.append('    }')
+                        for p in evArgs:
+                            mbr = marshalBackRelease(p[0], 'as_' + p[1])
+                            if mbr:
+                                globalLines.append('    ' + mbr + ';')
                         globalLines.append('    return event_result;')
                         globalLines.append('}')
                     globalLines.append('static void ' + funcEntry + '_Subscribe(' + entityArg + ', asIScriptFunction* func)')
@@ -1984,7 +2006,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    ENTITY_VERIFY_NULL(self);')
                         globalLines.append('    ENTITY_VERIFY(self);')
                         globalLines.append('    uint msg_len = sizeof(uint) + sizeof(uint) + sizeof(uint);')
-                        globalLines.append('    uint rpc_num = "' + rcName + '"_hash;')
+                        globalLines.append('    constexpr uint rpc_num = "' + rcName + '"_hash;')
                         for p in rcArgs:
                             globalLines.append('    auto&& in_' + p[1] + ' = ' + marshalIn(p[0], p[1]) + ';')
                     
@@ -1993,16 +2015,13 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         if target == 'Server':
                             globalLines.append('    auto* conn = self->Connection;')
                             globalLines.append('    CONNECTION_OUTPUT_BEGIN(conn);')
-                            globalLines.append('    conn->Bout << NETMSG_RPC;')
-                            globalLines.append('    conn->Bout << msg_len;')
-                            globalLines.append('    conn->Bout << rpc_num;')
+                            globalLines.append('    WriteRpcHeader(conn->Bout, msg_len, rpc_num);')
                             for p in rcArgs:
                                 globalLines.append('    WriteNetBuf(conn->Bout, in_' + p[1] + ');')
                             globalLines.append('    CONNECTION_OUTPUT_END(conn);')
                         else:
                             globalLines.append('    auto& conn = self->GetEngine()->GetConnection();')
-                            globalLines.append('    conn.OutBuf << NETMSG_RPC;')
-                            globalLines.append('    conn.OutBuf << msg_len;')
+                            globalLines.append('    WriteRpcHeader(conn.OutBuf, msg_len, rpc_num);')
                             for p in rcArgs:
                                 globalLines.append('    WriteNetBuf(conn.OutBuf, in_' + p[1] + ');')
                     else:
@@ -2043,6 +2062,10 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                             ctxSetArgs(rcArgs, 1)
                         else:
                             ctxSetArgs(rcArgs, 0)
+                        for p in rcArgs:
+                            mbr = marshalBackRelease(p[0], 'as_' + p[1])
+                            if mbr:
+                                globalLines.append('    ' + mbr + ';')
                         globalLines.append('    if (script_sys->RunContext(ctx, true)) {')
                         globalLines.append('        script_sys->ReturnContext(ctx);')
                         globalLines.append('    }')

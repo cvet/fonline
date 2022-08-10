@@ -56,7 +56,7 @@ public:
     auto operator=(const FOEngineBase&) = delete;
     auto operator=(FOEngineBase&&) noexcept = delete;
 
-    [[nodiscard]] auto GetName() const -> const string& override { return _engineName; }
+    [[nodiscard]] auto GetName() const -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const -> bool override { return true; }
     [[nodiscard]] auto GetPropertiesRelation() const -> PropertiesRelationType { return _propsRelation; }
     [[nodiscard]] auto GetPropertyRegistrator(string_view class_name) const -> const PropertyRegistrator*;
@@ -92,5 +92,4 @@ private:
     unordered_map<string, int> _enumsFull {};
     unordered_map<string, const type_info*> _enumTypes {};
     mutable unordered_map<hstring::hash_t, hstring::entry> _hashStorage {};
-    string _engineName {"Engine"};
 };

@@ -49,6 +49,15 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // LOGIN MESSAGES
 // ************************************************************************
 
+#define NETMSG_HANDSHAKE MAKE_NETMSG_HEADER(9)
+#define NETMSG_HANDSHAKE_SIZE (sizeof(uint) + sizeof(uint) + sizeof(uint) + sizeof(uchar) * 28) // 40 bytes
+// ////////////////////////////////////////////////////////////////////////
+// Request to update
+// uint protocol_version
+// uint encrypt_key
+// uchar padding[28]
+// ////////////////////////////////////////////////////////////////////////
+
 #define NETMSG_DISCONNECT MAKE_NETMSG_HEADER(10)
 #define NETMSG_DISCONNECT_SIZE (sizeof(uint))
 // ////////////////////////////////////////////////////////////////////////
@@ -59,10 +68,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // Enter to game
 // uint msg_len
-// uint proto_ver
 // string name
 // string password
-// uint msg_language
 // ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_LOGIN_SUCCESS MAKE_NETMSG_HEADER(2)
@@ -84,7 +91,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ////////////////////////////////////////////////////////////////////////
 // Registration query
 // uint mag_len
-// uint proto_ver
 // string name
 // string password
 // ////////////////////////////////////////////////////////////////////////
@@ -111,14 +117,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ************************************************************************
 // Update
 // ************************************************************************
-
-#define NETMSG_UPDATE MAKE_NETMSG_HEADER(14)
-#define NETMSG_UPDATE_SIZE (sizeof(uint) + sizeof(ushort) + sizeof(uint))
-// ////////////////////////////////////////////////////////////////////////
-// Request to update
-// ushort protocol_version
-// uint encrypt_key
-// ////////////////////////////////////////////////////////////////////////
 
 #define NETMSG_UPDATE_FILES_LIST MAKE_NETMSG_HEADER(15)
 // ////////////////////////////////////////////////////////////////////////

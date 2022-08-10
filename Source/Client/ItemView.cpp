@@ -40,6 +40,15 @@ ItemView::ItemView(FOClient* engine, uint id, const ProtoItem* proto) : ClientEn
     RUNTIME_ASSERT(GetCount() > 0);
 }
 
+void ItemView::MarkAsDestroyed()
+{
+    for (auto* item : _innerItems) {
+        item->MarkAsDestroyed();
+        item->Release();
+    }
+    _innerItems.clear();
+}
+
 auto ItemView::CreateRefClone() const -> ItemView*
 {
     auto* clone = new ItemView(_engine, 0u, dynamic_cast<const ProtoItem*>(_proto));

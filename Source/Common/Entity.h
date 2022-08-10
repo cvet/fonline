@@ -48,7 +48,7 @@
 #define ENTITY_PROPERTY(access_type, prop_type, prop) \
     inline auto GetProperty##prop() const->const Property* { return _propsRef.GetRegistrator()->GetByIndex(prop##_RegIndex); } \
     inline prop_type Get##prop() const { return _propsRef.GetValue<prop_type>(GetProperty##prop()); } \
-    inline void Set##prop(prop_type value) { _propsRef.SetValue<prop_type>(GetProperty##prop(), value); } \
+    inline void Set##prop(prop_type value) { _propsRef.SetValue(GetProperty##prop(), value); } \
     inline bool IsNonEmpty##prop() const { return _propsRef.GetRawDataSize(GetProperty##prop()) > 0u; } \
     static ushort prop##_RegIndex
 
@@ -106,9 +106,9 @@ public:
     auto operator=(const Entity&) = delete;
     auto operator=(Entity&&) noexcept = delete;
 
-    [[nodiscard]] virtual auto GetName() const -> const string& = 0;
+    [[nodiscard]] virtual auto GetName() const -> string_view = 0;
     [[nodiscard]] virtual auto IsGlobal() const -> bool { return false; }
-    [[nodiscard]] auto GetClassName() const -> const string&;
+    [[nodiscard]] auto GetClassName() const -> string_view;
     [[nodiscard]] auto GetProperties() const -> const Properties&;
     [[nodiscard]] auto GetPropertiesForEdit() -> Properties&;
     [[nodiscard]] auto IsDestroying() const -> bool;
@@ -123,7 +123,7 @@ public:
     void RestoreData(const vector<const uchar*>& all_data, const vector<uint>& all_data_sizes);
     void RestoreData(const vector<vector<uchar>>& properties_data);
     auto LoadFromText(const map<string, string>& key_values) -> bool;
-    void SetValueFromData(const Property* prop, const vector<uchar>& data);
+    void SetValueFromData(const Property* prop, PropertyRawData& prop_data);
     void SetValueAsInt(const Property* prop, int value);
     void SetValueAsInt(int prop_index, int value);
     void SetValueAsFloat(const Property* prop, float value);
@@ -163,7 +163,7 @@ private:
 class ProtoEntity : public Entity
 {
 public:
-    [[nodiscard]] auto GetName() const -> const string& override;
+    [[nodiscard]] auto GetName() const -> string_view override;
     [[nodiscard]] auto GetProtoId() const -> hstring;
     [[nodiscard]] auto HasComponent(hstring name) const -> bool;
     [[nodiscard]] auto HasComponent(hstring::hash_t hash) const -> bool;

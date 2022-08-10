@@ -367,6 +367,13 @@ void FOServer::Shutdown()
         DbHistory.CommitChanges();
     }
 
+    // Shutdown servers
+    for (auto* server : _connectionServers) {
+        server->Shutdown();
+        delete server;
+    }
+    _connectionServers.clear();
+
     // Logging clients
     SetLogCallback("LogToClients", nullptr);
     for (const auto* cl : _logClients) {
@@ -374,29 +381,22 @@ void FOServer::Shutdown()
     }
     _logClients.clear();
 
-    // Connected players
+    // Logined players
     for (auto&& [id, player] : copy(EntityMngr.GetPlayers())) {
         player->Connection->HardDisconnect();
     }
 
-    // Free connections
+    // Unlogined players
     {
-        std::lock_guard locker(_freeConnectionsLocker);
+        std::lock_guard locker(_unloginedPlayersLocker);
 
-        for (auto* free_connection : _freeConnections) {
-            free_connection->HardDisconnect();
-            delete free_connection;
+        for (const auto* player : _unloginedPlayers) {
+            player->Connection->HardDisconnect();
+            player->Release();
         }
 
-        _freeConnections.clear();
+        _unloginedPlayers.clear();
     }
-
-    // Shutdown servers
-    for (auto* server : _connectionServers) {
-        server->Shutdown();
-        delete server;
-    }
-    _connectionServers.clear();
 
     // Stats
     WriteLog("Server stopped");
@@ -415,8 +415,6 @@ void FOServer::Shutdown()
 
 void FOServer::MainLoop()
 {
-    // Todo: move server loop to async processing
-
     // Cycle time
     const auto frame_begin = Timer::RealtimeTick();
 
@@ -440,18 +438,32 @@ void FOServer::MainLoop()
     // Script subsystems update
     ScriptSys->Process();
 
-    // Process free connections
+    // Process unlogined players
     {
-        vector<ClientConnection*> free_connections;
+        vector<Player*> players;
 
         {
-            std::lock_guard locker(_freeConnectionsLocker);
-            free_connections = copy(_freeConnections);
+            std::lock_guard locker(_unloginedPlayersLocker);
+            players = copy(_unloginedPlayers);
         }
 
-        for (auto* free_connection : free_connections) {
-            ProcessConnection(free_connection);
-            ProcessFreeConnection(free_connection);
+        for (const auto* player : players) {
+            player->AddRef();
+        }
+
+        for (auto* player : players) {
+            try {
+                ProcessConnection(player->Connection);
+                ProcessUnloginedPlayer(player);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+                player->Connection->HardDisconnect();
+            }
+        }
+
+        for (const auto* player : players) {
+            player->Release();
         }
     }
 
@@ -468,10 +480,11 @@ void FOServer::MainLoop()
                 RUNTIME_ASSERT(!player->IsDestroyed());
 
                 ProcessConnection(player->Connection);
-                ProcessPlayerConnection(player);
+                ProcessPlayer(player);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);
+                player->Connection->HardDisconnect();
             }
         }
 
@@ -481,30 +494,54 @@ void FOServer::MainLoop()
     }
 
     // Process critters
-    for (auto&& [id, cr] : copy(EntityMngr.GetCritters())) {
-        if (cr->IsDestroyed()) {
-            continue;
+    {
+        const auto critters = copy(EntityMngr.GetCritters());
+
+        for (auto&& [id, cr] : critters) {
+            cr->AddRef();
         }
 
-        try {
-            ProcessCritter(cr);
+        for (auto&& [id, cr] : critters) {
+            if (cr->IsDestroyed()) {
+                continue;
+            }
+
+            try {
+                ProcessCritter(cr);
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
         }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+
+        for (auto&& [id, cr] : critters) {
+            cr->Release();
         }
     }
 
     // Process maps
-    for (auto&& [id, map] : copy(EntityMngr.GetMaps())) {
-        if (map->IsDestroyed()) {
-            continue;
+    {
+        const auto maps = copy(EntityMngr.GetMaps());
+
+        for (auto&& [id, map] : maps) {
+            map->AddRef();
         }
 
-        try {
-            map->Process();
+        for (auto&& [id, map] : maps) {
+            if (map->IsDestroyed()) {
+                continue;
+            }
+
+            try {
+                map->Process();
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndContinue(ex);
+            }
         }
-        catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+
+        for (auto&& [id, map] : maps) {
+            map->Release();
         }
     }
 
@@ -629,8 +666,8 @@ auto FOServer::GetIngamePlayersStatistics() -> string
     uint conn_count;
 
     {
-        std::lock_guard locker(_freeConnectionsLocker);
-        conn_count = static_cast<uint>(_freeConnections.size());
+        std::lock_guard locker(_unloginedPlayersLocker);
+        conn_count = static_cast<uint>(_unloginedPlayers.size());
     }
 
     const auto& players = EntityMngr.GetPlayers();
@@ -655,22 +692,25 @@ void FOServer::OnNewConnection(NetConnection* net_connection)
     }
 
     auto* connection = new ClientConnection(net_connection);
+    auto* player = new Player(this, 0u, connection);
 
-    // Add to free connections
     {
-        std::lock_guard locker(_freeConnectionsLocker);
-        _freeConnections.push_back(connection);
+        std::lock_guard locker(_unloginedPlayersLocker);
+
+        _unloginedPlayers.emplace_back(player);
     }
 }
 
-void FOServer::ProcessFreeConnection(ClientConnection* connection)
+void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
 {
+    auto* connection = unlogined_player->Connection;
+
     if (connection->IsHardDisconnected()) {
-        std::lock_guard locker(_freeConnectionsLocker);
-        const auto it = std::find(_freeConnections.begin(), _freeConnections.end(), connection);
-        RUNTIME_ASSERT(it != _freeConnections.end());
-        _freeConnections.erase(it);
-        delete connection;
+        std::lock_guard locker(_unloginedPlayersLocker);
+        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        RUNTIME_ASSERT(it != _unloginedPlayers.end());
+        _unloginedPlayers.erase(it);
+        unlogined_player->Release();
         return;
     }
 
@@ -684,87 +724,81 @@ void FOServer::ProcessFreeConnection(ClientConnection* connection)
     connection->Bin.ShrinkReadBuf();
 
     if (connection->Bin.NeedProcess()) {
+        connection->LastActivityTime = GameTime.FrameTick();
+
         uint msg = 0;
         connection->Bin >> msg;
 
-        switch (msg) {
-        case 0xFFFFFFFF: {
-            // At least 16 bytes should be sent for backward compatibility,
-            // even if answer data will change its meaning
-            CONNECTION_OUTPUT_BEGIN(connection);
-            connection->DisableCompression();
-            connection->Bout << _stats.CurOnline;
-            connection->Bout << _stats.Uptime;
-            connection->Bout << static_cast<uint>(0);
-            connection->Bout << static_cast<uchar>(0);
-            connection->Bout << static_cast<uchar>(0xF0);
-            connection->Bout << static_cast<ushort>(FO_COMPATIBILITY_VERSION);
-            CONNECTION_OUTPUT_END(connection);
+        if (!connection->WasHandshake) {
+            switch (msg) {
+            case 0xFFFFFFFF: {
+                // At least 16 bytes should be sent for backward compatibility,
+                // even if answer data will change its meaning
+                CONNECTION_OUTPUT_BEGIN(connection);
+                connection->DisableCompression();
+                connection->Bout << _stats.CurOnline;
+                connection->Bout << _stats.Uptime;
+                connection->Bout << static_cast<uint>(0);
+                connection->Bout << static_cast<uchar>(0);
+                connection->Bout << static_cast<uchar>(0xF0);
+                connection->Bout << static_cast<ushort>(0xFFFF);
+                CONNECTION_OUTPUT_END(connection);
 
-            connection->HardDisconnect();
-            break;
-        }
-        case NETMSG_PING:
-            Process_Ping(connection);
-            break;
-        case NETMSG_LOGIN:
-            Process_LogIn(connection);
-            break;
-        case NETMSG_REGISTER:
-            Process_Register(connection);
-            break;
-        case NETMSG_UPDATE:
-            Process_Update(connection);
-            break;
-        case NETMSG_GET_UPDATE_FILE:
-            Process_UpdateFile(connection);
-            break;
-        case NETMSG_GET_UPDATE_FILE_DATA:
-            Process_UpdateFileData(connection);
-            break;
-        default:
-            connection->Bin.SkipMsg(msg);
-            break;
-        }
+                connection->HardDisconnect();
+                break;
+            }
 
-        connection->LastActivityTime = GameTime.FrameTick();
+            case NETMSG_HANDSHAKE:
+                Process_Handshake(connection);
+                break;
+
+            default:
+                connection->Bin.SkipMsg(msg);
+                break;
+            }
+        }
+        else {
+            switch (msg) {
+            case NETMSG_PING:
+                Process_Ping(connection);
+                break;
+            case NETMSG_GET_UPDATE_FILE:
+                Process_UpdateFile(connection);
+                break;
+            case NETMSG_GET_UPDATE_FILE_DATA:
+                Process_UpdateFileData(connection);
+                break;
+
+            case NETMSG_REGISTER:
+                Process_Register(unlogined_player);
+                break;
+            case NETMSG_RPC:
+                Process_RemoteCall(unlogined_player);
+                break;
+
+            case NETMSG_LOGIN:
+                Process_Login(unlogined_player);
+                break;
+
+            default:
+                connection->Bin.SkipMsg(msg);
+                break;
+            }
+        }
     }
 }
 
-void FOServer::ProcessPlayerConnection(Player* player)
+void FOServer::ProcessPlayer(Player* player)
 {
     if (player->Connection->IsHardDisconnected()) {
-        // Manage saves, exit from game
-        /*
-         #if !FO_SINGLEPLAYER
-        PlayerLogout.Fire(cr);
-#endif
-         * const auto id = cl->GetId();
-        auto* cl_ = (id != 0u ? CrMngr.GetPlayer(id) : nullptr);
-        if (cl_ != nullptr && cl_ == cl) {
-            SetBit(cl->Flags, FCRIT_DISCONNECT);
-            if (cl->GetMapId() != 0u) {
-                cl->Broadcast_Action(ACTION_DISCONNECT, 0, nullptr);
-            }
-            else {
-                for (auto it = cl->GlobalMapGroup->begin(), end = cl->GlobalMapGroup->end(); it != end; ++it) {
-                    auto* cr = *it;
-                    if (cr != cl) {
-                        cr->Send_CustomCommand(cl, OTHER_FLAGS, cl->Flags);
-                    }
-                }
-            }
-        }
+        auto* cr = player->GetOwnedCritter();
 
-        {
-            std::lock_guard locker(ConnectedClientsLocker);
+        cr->DetachPlayer();
 
-            auto it = std::find(ConnectedClients.begin(), ConnectedClients.end(), cl);
-            RUNTIME_ASSERT(it != ConnectedClients.end());
-            ConnectedClients.erase(it);
-        }
+        OnPlayerLogout.Fire(player);
+        EntityMngr.UnregisterEntity(player);
 
-        cl->Release();*/
+        player->Release();
         return;
     }
 
@@ -774,121 +808,90 @@ void FOServer::ProcessPlayerConnection(Player* player)
         return;
     }
 
-    if (player->IsTransferring) {
-        while (!player->Connection->IsHardDisconnected() && !player->Connection->IsGracefulDisconnected()) {
-            std::lock_guard locker(player->Connection->BinLocker);
+    uint msg = 0;
 
-            player->Connection->Bin.ShrinkReadBuf();
+    while (!player->Connection->IsHardDisconnected() && !player->Connection->IsGracefulDisconnected()) {
+        std::lock_guard locker(player->Connection->BinLocker);
 
-            if (!player->Connection->Bin.NeedProcess()) {
-                CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
-                break;
-            }
+        player->Connection->Bin.ShrinkReadBuf();
 
-            uint msg = 0;
-            player->Connection->Bin >> msg;
-
-            switch (msg) {
-            case NETMSG_PING:
-                Process_Ping(player->Connection);
-                break;
-            case NETMSG_SEND_GIVE_MAP:
-                Process_GiveMap(player);
-                break;
-            case NETMSG_SEND_LOAD_MAP_OK:
-                Process_PlaceToGame(player);
-                break;
-            default:
-                player->Connection->Bin.SkipMsg(msg);
-                break;
-            }
-
-            player->Connection->LastActivityTime = GameTime.FrameTick();
-
+        if (!player->Connection->Bin.NeedProcess()) {
             CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
+            break;
         }
-    }
-    else {
-        while (!player->Connection->IsHardDisconnected() && !player->Connection->IsGracefulDisconnected()) {
-            std::lock_guard locker(player->Connection->BinLocker);
 
-            player->Connection->Bin.ShrinkReadBuf();
+        player->Connection->Bin >> msg;
 
-            if (!player->Connection->Bin.NeedProcess()) {
-                CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
-                break;
-            }
+        switch (msg) {
+        case NETMSG_SEND_GIVE_MAP:
+            Process_GiveMap(player);
+            break;
+        case NETMSG_SEND_LOAD_MAP_OK:
+            Process_PlaceToGame(player);
+            break;
 
-            uint msg = 0;
-            player->Connection->Bin >> msg;
-
-            switch (msg) {
-            case NETMSG_PING:
-                Process_Ping(player->Connection);
-                break;
-            case NETMSG_SEND_TEXT:
-                Process_Text(player);
-                break;
-            case NETMSG_SEND_COMMAND:
-                Process_Command(
-                    player->Connection->Bin, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
-                break;
-            case NETMSG_DIR:
-                Process_Dir(player);
-                break;
-            case NETMSG_SEND_MOVE:
-                Process_Move(player);
-                break;
-            case NETMSG_SEND_STOP_MOVE:
-                Process_StopMove(player);
-                break;
-            case NETMSG_SEND_TALK_NPC:
-                Process_Dialog(player);
-                break;
-            case NETMSG_SEND_REFRESH_ME:
-                player->Send_LoadMap(nullptr, MapMngr);
-                break;
-            case NETMSG_SEND_GET_INFO:
-                player->Send_GameInfo(MapMngr.GetMap(player->GetOwnedCritter()->GetMapId()));
-                break;
-            case NETMSG_SEND_GIVE_MAP:
-                Process_GiveMap(player);
-                break;
-            case NETMSG_RPC:
-                Process_RemoteCall(player);
-                break;
-            case NETMSG_SEND_POD_PROPERTY(1, 0):
-            case NETMSG_SEND_POD_PROPERTY(1, 1):
-            case NETMSG_SEND_POD_PROPERTY(1, 2):
-                Process_Property(player, 1);
-                break;
-            case NETMSG_SEND_POD_PROPERTY(2, 0):
-            case NETMSG_SEND_POD_PROPERTY(2, 1):
-            case NETMSG_SEND_POD_PROPERTY(2, 2):
-                Process_Property(player, 2);
-                break;
-            case NETMSG_SEND_POD_PROPERTY(4, 0):
-            case NETMSG_SEND_POD_PROPERTY(4, 1):
-            case NETMSG_SEND_POD_PROPERTY(4, 2):
-                Process_Property(player, 4);
-                break;
-            case NETMSG_SEND_POD_PROPERTY(8, 0):
-            case NETMSG_SEND_POD_PROPERTY(8, 1):
-            case NETMSG_SEND_POD_PROPERTY(8, 2):
-                Process_Property(player, 8);
-                break;
-            case NETMSG_SEND_COMPLEX_PROPERTY:
-                Process_Property(player, 0);
-                break;
-            default:
-                player->Connection->Bin.SkipMsg(msg);
-                break;
-            }
-
-            player->Connection->LastActivityTime = GameTime.FrameTick();
-
-            CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
+        case NETMSG_PING:
+            Process_Ping(player->Connection);
+            break;
+        case NETMSG_SEND_TEXT:
+            Process_Text(player);
+            break;
+        case NETMSG_SEND_COMMAND:
+            Process_Command(
+                player->Connection->Bin, [player](auto s) { player->Send_Text(nullptr, _str(s).trim(), SAY_NETMSG); }, player, "");
+            break;
+        case NETMSG_DIR:
+            Process_Dir(player);
+            break;
+        case NETMSG_SEND_MOVE:
+            Process_Move(player);
+            break;
+        case NETMSG_SEND_STOP_MOVE:
+            Process_StopMove(player);
+            break;
+        case NETMSG_SEND_TALK_NPC:
+            Process_Dialog(player);
+            break;
+        case NETMSG_SEND_REFRESH_ME:
+            player->Send_LoadMap(nullptr, MapMngr);
+            break;
+        case NETMSG_SEND_GET_INFO:
+            player->Send_GameInfo(MapMngr.GetMap(player->GetOwnedCritter()->GetMapId()));
+            break;
+        case NETMSG_RPC:
+            Process_RemoteCall(player);
+            break;
+        case NETMSG_SEND_POD_PROPERTY(1, 0):
+        case NETMSG_SEND_POD_PROPERTY(1, 1):
+        case NETMSG_SEND_POD_PROPERTY(1, 2):
+            Process_Property(player, 1);
+            break;
+        case NETMSG_SEND_POD_PROPERTY(2, 0):
+        case NETMSG_SEND_POD_PROPERTY(2, 1):
+        case NETMSG_SEND_POD_PROPERTY(2, 2):
+            Process_Property(player, 2);
+            break;
+        case NETMSG_SEND_POD_PROPERTY(4, 0):
+        case NETMSG_SEND_POD_PROPERTY(4, 1):
+        case NETMSG_SEND_POD_PROPERTY(4, 2):
+            Process_Property(player, 4);
+            break;
+        case NETMSG_SEND_POD_PROPERTY(8, 0):
+        case NETMSG_SEND_POD_PROPERTY(8, 1):
+        case NETMSG_SEND_POD_PROPERTY(8, 2):
+            Process_Property(player, 8);
+            break;
+        case NETMSG_SEND_COMPLEX_PROPERTY:
+            Process_Property(player, 0);
+            break;
+        default:
+            player->Connection->Bin.SkipMsg(msg);
+            break;
         }
+
+        player->Connection->LastActivityTime = GameTime.FrameTick();
+
+        CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
     }
 }
 
@@ -916,15 +919,15 @@ void FOServer::ProcessConnection(ClientConnection* connection)
         return;
     }
 
-    if (connection->PingNextTick == 0u || GameTime.FrameTick() >= connection->PingNextTick) {
-        if (!connection->PingOk) {
+    if (connection->WasHandshake && (connection->PingNextTick == 0u || GameTime.FrameTick() >= connection->PingNextTick)) {
+        if (!connection->PingOk && !IsRunInDebugger()) {
             connection->HardDisconnect();
             return;
         }
 
         CONNECTION_OUTPUT_BEGIN(connection);
         connection->Bout << NETMSG_PING;
-        connection->Bout << PING_ACTIVITY;
+        connection->Bout << PING_CLIENT;
         CONNECTION_OUTPUT_END(connection);
 
         connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
@@ -1157,8 +1160,9 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
 
         string str;
         {
-            std::lock_guard locker(_freeConnectionsLocker);
-            str = _str("Free connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.", _freeConnections.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), GameTime.FrameTick() / 1000 / 60, (GameTime.FrameTick() - _stats.ServerStartTick) / 1000 / 60);
+            std::lock_guard locker(_unloginedPlayersLocker);
+            str = _str("Free connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.", //
+                _unloginedPlayers.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), GameTime.FrameTick() / 1000 / 60, (GameTime.FrameTick() - _stats.ServerStartTick) / 1000 / 60);
         }
 
         result += str;
@@ -1384,7 +1388,7 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
         CHECK_ADMIN_PANEL();
 
         auto* map = MapMngr.GetMap(cl_->GetMapId());
-        auto* npc = CrMngr.CreateNpc(pid, nullptr, map, hex_x, hex_y, dir, true);
+        auto* npc = CrMngr.CreateCritter(pid, nullptr, map, hex_x, hex_y, dir, true);
         if (npc == nullptr) {
             logcb("Npc not created.");
         }
@@ -1630,6 +1634,8 @@ void FOServer::ProcessCritter(Critter* cr)
             OnCritterFinish.Fire(cr);
         }
 
+        cr->Broadcast_Action(ACTION_DISCONNECT, 0, nullptr);
+
         auto* map = MapMngr.GetMap(cr->GetMapId());
         MapMngr.EraseCrFromMap(cr, map);
 
@@ -1648,7 +1654,7 @@ void FOServer::ProcessCritter(Critter* cr)
         // Full delete
         if (full_delete) {
             CrMngr.DeleteInventory(cr);
-            DbStorage.Delete("Players", cr->GetId());
+            DbStorage.Delete("PlayerCritters", cr->GetId());
         }
 
         cr->Release();
@@ -1694,48 +1700,24 @@ void FOServer::VerifyTrigger(Map* map, Critter* cr, ushort from_hx, ushort from_
     }
 }
 
-void FOServer::Process_Ping(ClientConnection* connection)
+void FOServer::Process_Handshake(ClientConnection* connection)
 {
     NON_CONST_METHOD_HINT();
 
-    uchar ping = 0;
-
-    connection->Bin >> ping;
-
-    CHECK_CLIENT_IN_BUF_ERROR(connection);
-
-    if (ping == PING_ACTIVITY) {
-        connection->PingOk = true;
-        connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
-        return;
-    }
-
-    if (ping == PING_MEASURE) {
-        // Valid pings
-    }
-    else {
-        WriteLog("Unknown ping {}, client host '{}'", ping, connection->GetHost());
-        return;
-    }
-
-    CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout << NETMSG_PING;
-    connection->Bout << ping;
-    CONNECTION_OUTPUT_END(connection);
-}
-
-void FOServer::Process_Update(ClientConnection* connection)
-{
     // Net protocol
-    ushort proto_ver = 0;
+    uint proto_ver = 0;
     connection->Bin >> proto_ver;
-    const auto outdated = (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION));
+    const auto outdated = (proto_ver != static_cast<uint>(FO_COMPATIBILITY_VERSION));
 
     // Begin data encrypting
     uint encrypt_key = 0;
     connection->Bin >> encrypt_key;
     connection->Bin.SetEncryptKey(encrypt_key);
     connection->Bout.SetEncryptKey(encrypt_key);
+
+    uchar padding[28] = {};
+    connection->Bin.Pop(padding, sizeof(padding));
+    UNUSED_VARIABLE(padding);
 
     CHECK_CLIENT_IN_BUF_ERROR(connection);
 
@@ -1758,6 +1740,35 @@ void FOServer::Process_Update(ClientConnection* connection)
     if (!outdated) {
         NET_WRITE_PROPERTIES(connection->Bout, global_vars_data, global_vars_data_sizes);
     }
+    CONNECTION_OUTPUT_END(connection);
+
+    connection->WasHandshake = true;
+}
+
+void FOServer::Process_Ping(ClientConnection* connection)
+{
+    NON_CONST_METHOD_HINT();
+
+    uchar ping = 0;
+
+    connection->Bin >> ping;
+
+    CHECK_CLIENT_IN_BUF_ERROR(connection);
+
+    if (ping == PING_CLIENT) {
+        connection->PingOk = true;
+        connection->PingNextTick = GameTime.FrameTick() + PING_CLIENT_LIFE_TIME;
+        return;
+    }
+
+    if (ping != PING_SERVER) {
+        WriteLog("Unknown ping {}, client host '{}'", ping, connection->GetHost());
+        return;
+    }
+
+    CONNECTION_OUTPUT_BEGIN(connection);
+    connection->Bout << NETMSG_PING;
+    connection->Bout << ping;
     CONNECTION_OUTPUT_END(connection);
 }
 
@@ -1782,6 +1793,8 @@ void FOServer::Process_UpdateFile(ClientConnection* connection)
 
 void FOServer::Process_UpdateFileData(ClientConnection* connection)
 {
+    NON_CONST_METHOD_HINT();
+
     if (connection->UpdateFileIndex == -1) {
         WriteLog("Wrong update call, client host '{}'", connection->GetHost());
         connection->GracefulDisconnect();
@@ -1814,73 +1827,51 @@ void FOServer::Process_UpdateFileData(ClientConnection* connection)
     CONNECTION_OUTPUT_END(connection);
 }
 
-void FOServer::Process_Register(ClientConnection* connection)
+void FOServer::Process_Register(Player* unlogined_player)
 {
-    // Read message
     uint msg_len = 0;
-    connection->Bin >> msg_len;
-
-    // Protocol version
-    ushort proto_ver = 0;
-    connection->Bin >> proto_ver;
-
-    CHECK_CLIENT_IN_BUF_ERROR(connection);
-
-    // Begin data encrypting
-    connection->Bin.SetEncryptKey(1234567890);
-    connection->Bout.SetEncryptKey(1234567890);
-
-    // Check protocol
-    if (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION)) {
-        connection->Send_CustomMessage(NETMSG_WRONG_NET_PROTO);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Name
+    unlogined_player->Connection->Bin >> msg_len;
     string name;
-    connection->Bin >> name;
-
-    // Password
+    unlogined_player->Connection->Bin >> name;
     string password;
-    connection->Bin >> password;
+    unlogined_player->Connection->Bin >> password;
 
-    CHECK_CLIENT_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(unlogined_player->Connection);
 
     // Check data
     if (!_str(name).isValidUtf8() || name.find('*') != string::npos) {
-        connection->Send_TextMsg(STR_NET_LOGINPASS_WRONG);
-        connection->GracefulDisconnect();
+        unlogined_player->Send_TextMsg(0u, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check name length
     const auto name_len_utf8 = _str(name).lengthUtf8();
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
-        connection->Send_TextMsg(STR_NET_LOGINPASS_WRONG);
-        connection->GracefulDisconnect();
+        unlogined_player->Send_TextMsg(0u, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check for exist
     const auto player_id = MakePlayerId(name);
     if (DbStorage.Valid("Players", player_id)) {
-        connection->Send_TextMsg(STR_NET_PLAYER_ALREADY);
-        connection->GracefulDisconnect();
+        unlogined_player->Send_TextMsg(0u, STR_NET_PLAYER_ALREADY, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check brute force registration
     if (Settings.RegistrationTimeout != 0u) {
-        auto ip = connection->GetIp();
+        auto ip = unlogined_player->Connection->GetIp();
         const auto reg_tick = Settings.RegistrationTimeout * 1000;
         if (auto it = _regIp.find(ip); it != _regIp.end()) {
             auto& last_reg = it->second;
             const auto tick = GameTime.FrameTick();
             if (tick - last_reg < reg_tick) {
-                connection->Send_TextMsg(STR_NET_REGISTRATION_IP_WAIT);
-                connection->Send_TextMsgLex(STR_NET_TIME_LEFT, _str("$time{}", (reg_tick - (tick - last_reg)) / 60000 + 1));
-                connection->GracefulDisconnect();
+                unlogined_player->Send_TextMsg(0u, STR_NET_REGISTRATION_IP_WAIT, SAY_NETMSG, TEXTMSG_GAME);
+                unlogined_player->Send_TextMsgLex(0u, STR_NET_TIME_LEFT, SAY_NETMSG, TEXTMSG_GAME, _str("$time{}", (reg_tick - (tick - last_reg)) / 60000 + 1));
+                unlogined_player->Connection->GracefulDisconnect();
                 return;
             }
             last_reg = tick;
@@ -1894,98 +1885,80 @@ void FOServer::Process_Register(ClientConnection* connection)
     uint disallow_msg_num = 0;
     uint disallow_str_num = 0;
     string lexems;
-    const auto allow = OnPlayerRegistration.Fire(connection->GetIp(), name, disallow_msg_num, disallow_str_num, lexems);
+    const auto allow = OnPlayerRegistration.Fire(unlogined_player->Connection->GetIp(), name, disallow_msg_num, disallow_str_num, lexems);
     if (!allow) {
         if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
-            connection->Send_TextMsgLex(disallow_str_num, lexems);
+            unlogined_player->Send_TextMsgLex(0u, disallow_str_num, SAY_NETMSG, TEXTMSG_GAME, lexems);
         }
         else {
-            connection->Send_TextMsg(STR_NET_LOGIN_SCRIPT_FAIL);
+            unlogined_player->Send_TextMsg(0u, STR_NET_LOGIN_SCRIPT_FAIL, SAY_NETMSG, TEXTMSG_GAME);
         }
-        connection->GracefulDisconnect();
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 #endif
 
     // Register
     auto reg_ip = AnyData::Array();
-    reg_ip.emplace_back(static_cast<int>(connection->GetIp()));
+    reg_ip.emplace_back(static_cast<int>(unlogined_player->Connection->GetIp()));
     auto reg_port = AnyData::Array();
-    reg_port.emplace_back(static_cast<int>(connection->GetPort()));
+    reg_port.emplace_back(static_cast<int>(unlogined_player->Connection->GetPort()));
 
-    DbStorage.Insert("Players", player_id, {{"Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
+    DbStorage.Insert("Players", player_id, {{"_Name", name}, {"Password", password}, {"ConnectionIp", reg_ip}, {"ConnectionPort", reg_port}});
 
     // Notify
-    connection->Send_TextMsg(STR_NET_REG_SUCCESS);
+    unlogined_player->Send_TextMsg(0u, STR_NET_REG_SUCCESS, SAY_NETMSG, TEXTMSG_GAME);
 
-    CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout << NETMSG_REGISTER_SUCCESS;
-    CONNECTION_OUTPUT_END(connection);
-
-    connection->GracefulDisconnect();
+    CONNECTION_OUTPUT_BEGIN(unlogined_player->Connection);
+    unlogined_player->Connection->Bout << NETMSG_REGISTER_SUCCESS;
+    CONNECTION_OUTPUT_END(unlogined_player->Connection);
 }
 
-void FOServer::Process_LogIn(ClientConnection* connection)
+void FOServer::Process_Login(Player* unlogined_player)
 {
-    // Net protocol
-    ushort proto_ver = 0;
-    connection->Bin >> proto_ver;
-
-    CHECK_CLIENT_IN_BUF_ERROR(connection);
-
-    // Begin data encrypting
-    connection->Bin.SetEncryptKey(12345);
-    connection->Bout.SetEncryptKey(12345);
-
-    // Check protocol
-    if (proto_ver != static_cast<ushort>(FO_COMPATIBILITY_VERSION)) {
-        connection->Send_CustomMessage(NETMSG_WRONG_NET_PROTO);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Login, password
+    uint msg_len = 0;
+    unlogined_player->Connection->Bin >> msg_len;
     string name;
+    unlogined_player->Connection->Bin >> name;
     string password;
-    connection->Bin >> name;
-    connection->Bin >> password;
+    unlogined_player->Connection->Bin >> password;
 
-    CHECK_CLIENT_IN_BUF_ERROR(connection);
+    CHECK_CLIENT_IN_BUF_ERROR(unlogined_player->Connection);
 
     // If only cache checking than disconnect
     if (name.empty()) {
-        connection->GracefulDisconnect();
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check for null in login/password
     if (name.find('\0') != string::npos || password.find('\0') != string::npos) {
-        connection->Send_TextMsg(STR_NET_WRONG_LOGIN);
-        connection->GracefulDisconnect();
+        unlogined_player->Send_TextMsg(0u, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check valid symbols in name
     if (!_str(name).isValidUtf8() || name.find('*') != string::npos) {
-        connection->Send_TextMsg(STR_NET_WRONG_DATA);
-        connection->GracefulDisconnect();
+        unlogined_player->Send_TextMsg(0u, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check for name length
     const auto name_len_utf8 = _str(name).lengthUtf8();
     if (name_len_utf8 < Settings.MinNameLength || name_len_utf8 > Settings.MaxNameLength) {
-        connection->Send_TextMsg(STR_NET_WRONG_LOGIN);
-        connection->GracefulDisconnect();
+        unlogined_player->Send_TextMsg(0u, STR_NET_WRONG_LOGIN, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
     // Check password
     const auto player_id = MakePlayerId(name);
-    auto doc = DbStorage.Get("Players", player_id);
-    if (doc.count("Password") == 0u || doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(doc["Password"]).length() != password.length() || std::get<string>(doc["Password"]) != password) {
-        connection->Send_TextMsg(STR_NET_LOGINPASS_WRONG);
-        connection->GracefulDisconnect();
+    auto player_doc = DbStorage.Get("Players", player_id);
+    if (player_doc.count("Password") == 0u || player_doc["Password"].index() != AnyData::STRING_VALUE || std::get<string>(player_doc["Password"]).length() != password.length() || std::get<string>(player_doc["Password"]) != password) {
+        unlogined_player->Send_TextMsg(0u, STR_NET_LOGINPASS_WRONG, SAY_NETMSG, TEXTMSG_GAME);
+        unlogined_player->Connection->GracefulDisconnect();
         return;
     }
 
@@ -1995,58 +1968,69 @@ void FOServer::Process_LogIn(ClientConnection* connection)
         uint disallow_msg_num = 0;
         uint disallow_str_num = 0;
         string lexems;
-        if (const auto allow = !OnPlayerLogin.Fire(connection->GetIp(), name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
+        if (const auto allow = OnPlayerLogin.Fire(unlogined_player->Connection->GetIp(), name, player_id, disallow_msg_num, disallow_str_num, lexems); !allow) {
             if (disallow_msg_num < TEXTMSG_COUNT && (disallow_str_num != 0u)) {
-                connection->Send_TextMsgLex(disallow_str_num, lexems);
+                unlogined_player->Send_TextMsgLex(0u, disallow_str_num, SAY_NETMSG, TEXTMSG_GAME, lexems);
             }
             else {
-                connection->Send_TextMsg(STR_NET_LOGIN_SCRIPT_FAIL);
+                unlogined_player->Send_TextMsg(0u, STR_NET_LOGIN_SCRIPT_FAIL, SAY_NETMSG, TEXTMSG_GAME);
             }
-            connection->GracefulDisconnect();
+            unlogined_player->Connection->GracefulDisconnect();
             return;
         }
     }
 #endif
 
-    // Move from free connections to player
-    {
-        std::lock_guard locker(_freeConnectionsLocker);
+    // Switch from unlogined to logined
+    Player* player = EntityMngr.GetPlayer(player_id);
+    bool player_reconnected;
 
-        const auto it = std::find(_freeConnections.begin(), _freeConnections.end(), connection);
-        RUNTIME_ASSERT(it != _freeConnections.end());
-        _freeConnections.erase(it);
+    if (player == nullptr) {
+        player_reconnected = false;
+
+        if (!PropertiesSerializator::LoadFromDocument(&unlogined_player->GetPropertiesForEdit(), player_doc, *this)) {
+            unlogined_player->Send_TextMsg(0u, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+            unlogined_player->Connection->GracefulDisconnect();
+            return;
+        }
+
+        {
+            std::lock_guard locker(_unloginedPlayersLocker);
+            const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+            RUNTIME_ASSERT(it != _unloginedPlayers.end());
+            _unloginedPlayers.erase(it);
+        }
+
+        player = unlogined_player;
+        EntityMngr.RegisterEntity(player, player_id);
+        player->SetName(name);
     }
+    else {
+        player_reconnected = true;
 
-    // Kick previous
-    if (const auto* player = EntityMngr.GetPlayer(player_id); player != nullptr) {
-        connection->HardDisconnect();
+        // Kick previous
+        auto* prev_connection = player->Connection;
+
+        player->Connection = unlogined_player->Connection;
+        unlogined_player->Connection = nullptr;
+
+        {
+            std::lock_guard locker(_unloginedPlayersLocker);
+            const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+            RUNTIME_ASSERT(it != _unloginedPlayers.end());
+            _unloginedPlayers.erase(it);
+        }
+
+        unlogined_player->Release();
+
+        prev_connection->HardDisconnect();
+        delete prev_connection;
     }
-
-    // Create new
-    auto* player = new Player(this, player_id, name, connection);
-
-    if (!PropertiesSerializator::LoadFromDocument(&player->GetPropertiesForEdit(), doc, *this)) {
-        player->Release();
-        connection->Send_TextMsg(STR_NET_WRONG_DATA);
-        connection->GracefulDisconnect();
-        return;
-    }
-
-    // Attach critter
-    // Todo: attach critter to player
-    throw NotImplementedException(LINE_STR);
-    /*EntityMngr.RegisterEntity(cl);
-    const auto can = MapMngr.CanAddCrToMap(cl, nullptr, 0, 0, 0);
-    RUNTIME_ASSERT(can);
-    MapMngr.AddCrToMap(cl, nullptr, 0, 0, 0, 0);
-
-    if (CritterInit.Fire(cl, true)) {
-    }*/
 
     // Connection info
     {
-        const auto ip = connection->GetIp();
-        const auto port = connection->GetPort();
+        const auto ip = player->Connection->GetIp();
+        const auto port = player->Connection->GetPort();
 
         auto conn_ip = player->GetConnectionIp();
         auto conn_port = player->GetConnectionPort();
@@ -2081,7 +2065,7 @@ void FOServer::Process_LogIn(ClientConnection* connection)
     }
 
     // Login ok
-    uint msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) * 2;
+    msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) * 2 + sizeof(uint);
     const uint bin_seed = GenericUtils::Random(100000, 2000000000);
     const uint bout_seed = GenericUtils::Random(100000, 2000000000);
 
@@ -2092,22 +2076,111 @@ void FOServer::Process_LogIn(ClientConnection* connection)
 
     vector<uchar*>* player_data = nullptr;
     vector<uint>* player_data_sizes = nullptr;
-    const auto whole_player_data_size = StoreData(false, &player_data, &player_data_sizes);
+    const auto whole_player_data_size = player->StoreData(true, &player_data, &player_data_sizes);
     msg_len += sizeof(ushort) + whole_player_data_size;
 
-    CONNECTION_OUTPUT_BEGIN(connection);
-    connection->Bout << NETMSG_LOGIN_SUCCESS;
-    connection->Bout << msg_len;
-    connection->Bout << bin_seed;
-    connection->Bout << bout_seed;
-    NET_WRITE_PROPERTIES(connection->Bout, global_vars_data, global_vars_data_sizes);
-    NET_WRITE_PROPERTIES(connection->Bout, player_data, player_data_sizes);
-    CONNECTION_OUTPUT_END(connection);
+    CONNECTION_OUTPUT_BEGIN(player->Connection);
+    player->Connection->Bout << NETMSG_LOGIN_SUCCESS;
+    player->Connection->Bout << msg_len;
+    player->Connection->Bout << bin_seed;
+    player->Connection->Bout << bout_seed;
+    player->Connection->Bout << player_id;
+    NET_WRITE_PROPERTIES(player->Connection->Bout, global_vars_data, global_vars_data_sizes);
+    NET_WRITE_PROPERTIES(player->Connection->Bout, player_data, player_data_sizes);
+    CONNECTION_OUTPUT_END(player->Connection);
 
-    connection->Bin.SetEncryptKey(bin_seed);
-    connection->Bout.SetEncryptKey(bout_seed);
+    player->Connection->Bin.SetEncryptKey(bin_seed);
+    player->Connection->Bout.SetEncryptKey(bout_seed);
 
-    player->Send_LoadMap(nullptr, MapMngr);
+    // Attach critter
+    if (!player_reconnected) {
+        Critter* cr = nullptr;
+
+        const auto owned_critter_ids = player->GetOwnedCritterIds();
+        const auto cr_id = !owned_critter_ids.empty() ? owned_critter_ids.front() : 0u;
+
+        // Try find in game
+        if (cr_id != 0u) {
+            cr = CrMngr.GetCritter(cr_id);
+            if (cr != nullptr) {
+                RUNTIME_ASSERT(cr->IsOwnedByPlayer());
+                cr->AttachPlayer(player);
+                player->SetOwnedCritter(cr);
+                cr->Broadcast_Action(ACTION_CONNECT, 0, nullptr);
+            }
+        }
+
+        // Try load critter from data base
+        if (cr == nullptr && cr_id != 0u) {
+            auto cr_doc = DbStorage.Get("PlayerCritters", cr_id);
+            if (!cr_doc.empty() || cr_doc.count("_Proto") == 0u) {
+                player->Send_TextMsg(0u, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+                player->Connection->GracefulDisconnect();
+                return;
+            }
+
+            const auto* proto = ProtoMngr.GetProtoCritter(ToHashedString(std::get<string>(cr_doc["_Proto"])));
+            if (proto == nullptr) {
+                player->Send_TextMsg(0u, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+                player->Connection->GracefulDisconnect();
+                return;
+            }
+
+            cr = new Critter(this, cr_id, player, proto);
+            if (!PropertiesSerializator::LoadFromDocument(&cr->GetPropertiesForEdit(), cr_doc, *this)) {
+                cr->Release();
+                player->Send_TextMsg(0u, STR_NET_WRONG_DATA, SAY_NETMSG, TEXTMSG_GAME);
+                player->Connection->GracefulDisconnect();
+                return;
+            }
+
+            EntityMngr.RegisterEntity(cr);
+
+            player->SetOwnedCritter(cr);
+
+            const auto can = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, 0u);
+            RUNTIME_ASSERT(can);
+            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, 0u);
+
+            if (!cr->IsDestroyed()) {
+                OnCritterInit.Fire(cr, false);
+            }
+            if (!cr->IsDestroyed()) {
+                ScriptHelpers::CallInitScript(ScriptSys, cr, cr->GetInitScript(), false);
+            }
+        }
+
+        // Create new critter
+        if (cr == nullptr) {
+            const auto* proto = ProtoMngr.GetProtoCritter(ToHashedString("Player"));
+            RUNTIME_ASSERT(proto);
+
+            cr = new Critter(this, 0u, player, proto);
+
+            EntityMngr.RegisterEntity(cr);
+
+            player->SetOwnedCritter(cr);
+            player->SetOwnedCritterIds({cr->GetId()});
+
+            const auto can = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, 0u);
+            RUNTIME_ASSERT(can);
+            MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, 0u);
+
+            if (!cr->IsDestroyed()) {
+                OnCritterInit.Fire(cr, true);
+            }
+            if (!cr->IsDestroyed()) {
+                ScriptHelpers::CallInitScript(ScriptSys, cr, cr->GetInitScript(), true);
+            }
+        }
+
+        if (!cr->IsDestroyed() && cr->GetMapId() == 0u) {
+            cr->Send_LoadMap(nullptr, MapMngr);
+        }
+    }
+    else {
+        player->Send_LoadMap(nullptr, MapMngr);
+    }
 }
 
 void FOServer::Process_PlaceToGame(Player* player)
@@ -2300,19 +2373,12 @@ void FOServer::Process_Dir(Player* player)
 
     Critter* cr = player->GetOwnedCritter();
 
-    uchar dir = 0;
-    player->Connection->Bin >> dir;
+    short dir_angle = 0;
+    player->Connection->Bin >> dir_angle;
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
-    if (cr->GetMapId() == 0u || dir >= Settings.MapDirCount || cr->GetDir() == dir || cr->IsTalking()) {
-        if (cr->GetDir() != dir) {
-            cr->Send_Dir(cr);
-        }
-        return;
-    }
-
-    cr->ChangeDir(dir);
+    cr->ChangeDirAngle(dir_angle);
     cr->Broadcast_Dir();
 }
 
@@ -2360,20 +2426,23 @@ void FOServer::Process_Property(Player* player, uint data_size)
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
 
-    vector<uchar> data;
+    PropertyRawData prop_data;
+
     if (data_size != 0) {
-        data.resize(data_size);
-        player->Connection->Bin.Pop(&data[0], data_size);
+        player->Connection->Bin.Pop(prop_data.Alloc(data_size), data_size);
     }
     else {
         const uint len = msg_len - sizeof(uint) - sizeof(msg_len) - sizeof(char) - additional_args * sizeof(uint) - sizeof(ushort);
         // Todo: control max size explicitly, add option to property registration
         if (len > 0xFFFF) {
             // For now 64Kb for all
+            BreakIntoDebugger("len > 0xFFFF");
             return;
         }
-        data.resize(len);
-        player->Connection->Bin.Pop(&data[0], len);
+
+        if (len != 0u) {
+            player->Connection->Bin.Pop(prop_data.Alloc(len), len);
+        }
     }
 
     CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
@@ -2455,23 +2524,39 @@ void FOServer::Process_Property(Player* player, uint data_size)
         return;
     }
 
-    const auto access = prop->GetAccess();
-    if (is_public && !IsEnumSet(access, Property::AccessType::PublicMask)) {
+    if (prop->IsDisabled()) {
+        BreakIntoDebugger();
         return;
     }
-    if (!is_public && (!IsEnumSet(access, Property::AccessType::ProtectedMask) || !IsEnumSet(access, Property::AccessType::PublicMask))) {
+    if (prop->IsVirtual()) {
+        BreakIntoDebugger();
+        return;
+    }
+
+    const auto access = prop->GetAccess();
+    if (is_public && !IsEnumSet(access, Property::AccessType::PublicMask)) {
+        BreakIntoDebugger();
+        return;
+    }
+    if (!is_public && !IsEnumSet(access, Property::AccessType::ProtectedMask) && !IsEnumSet(access, Property::AccessType::PublicMask)) {
+        BreakIntoDebugger();
         return;
     }
     if (!IsEnumSet(access, Property::AccessType::ModifiableMask)) {
+        BreakIntoDebugger();
         return;
     }
     if (is_public && access != Property::AccessType::PublicFullModifiable) {
+        BreakIntoDebugger();
         return;
     }
+
     if (prop->IsPlainData() && data_size != prop->GetBaseSize()) {
+        BreakIntoDebugger();
         return;
     }
     if (!prop->IsPlainData() && data_size != 0) {
+        BreakIntoDebugger();
         return;
     }
 
@@ -2484,7 +2569,8 @@ void FOServer::Process_Property(Player* player, uint data_size)
             player->SendIgnoreProperty = nullptr;
         });
 
-        entity->SetValueFromData(prop, data);
+        // Todo: verify property data from client
+        entity->SetValueFromData(prop, prop_data);
     }
 }
 
@@ -2503,7 +2589,7 @@ void FOServer::OnSaveEntityValue(Entity* entity, const Property* prop)
 
         entry_id = server_entity->GetId();
 
-        DbStorage.Update(_str("{}s", entity->GetClassName()), entry_id, prop->GetName(), value);
+        DbStorage.Update(_str("{}s", server_entity->GetStorageName()), entry_id, prop->GetName(), value);
     }
     else {
         entry_id = 1u;

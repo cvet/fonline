@@ -789,7 +789,8 @@ int main(int argc, char** argv)
                 set<string> languages;
                 auto txt_files = baker_engine.FileSys.FilterFiles("fotxt");
                 while (txt_files.MoveNext()) {
-                    const auto lang = txt_files.GetCurFileHeader().GetName().substr(0, 4);
+                    const auto file = txt_files.GetCurFileHeader();
+                    const auto lang = file.GetName().substr(0, 4);
                     if (languages.emplace(lang).second) {
                         WriteLog("Language: {}", lang);
                     }

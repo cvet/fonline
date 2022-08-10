@@ -349,7 +349,7 @@ void MapManager::GenerateMapContent(Map* map)
 
     // Generate npc
     for (auto&& [base_cr_id, base_cr] : map->GetStaticMap()->CritterBillets) {
-        const auto* npc = _engine->CrMngr.CreateNpc(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
+        const auto* npc = _engine->CrMngr.CreateCritter(base_cr->GetProtoId(), &base_cr->GetProperties(), map, base_cr->GetHexX(), base_cr->GetHexY(), base_cr->GetDir(), true);
         if (npc == nullptr) {
             WriteLog("Create npc '{}' on map '{}' fail, continue generate", base_cr->GetName(), map->GetName());
             continue;
@@ -442,7 +442,7 @@ void MapManager::DeleteMapContent(Map* map)
         // Delete npc
         auto del_npcs = map->_mapNonPlayerCritters;
         for (auto* del_npc : del_npcs) {
-            _engine->CrMngr.DeleteNpc(del_npc);
+            _engine->CrMngr.DeleteCritter(del_npc);
         }
 
         // Delete items

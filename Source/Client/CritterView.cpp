@@ -47,7 +47,7 @@ void CritterView::Init()
     }
 
     if (_nameOnHead.empty()) {
-        const auto& lang_pack = _engine->GetLangPack();
+        const auto& lang_pack = _engine->GetCurLang();
 
         if (GetDialogId() && lang_pack.Msg[TEXTMSG_DLG].Count(STR_NPC_NAME(GetDialogId().as_uint())) != 0u) {
             _nameOnHead = lang_pack.Msg[TEXTMSG_DLG].GetStr(STR_NPC_NAME(GetDialogId().as_uint()));
@@ -64,6 +64,15 @@ void CritterView::Init()
 
 void CritterView::Finish()
 {
+}
+
+void CritterView::MarkAsDestroyed()
+{
+    for (auto* item : _items) {
+        item->MarkAsDestroyed();
+        item->Release();
+    }
+    _items.clear();
 }
 
 void CritterView::SetPlayer(bool is_player, bool is_chosen)

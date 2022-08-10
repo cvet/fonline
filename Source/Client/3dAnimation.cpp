@@ -108,12 +108,12 @@ void ModelAnimation::AddBoneOutput(vector<hstring> hierarchy, const vector<float
     _bonesHierarchy.emplace_back(std::move(hierarchy));
 }
 
-auto ModelAnimation::GetFileName() const -> const string&
+auto ModelAnimation::GetFileName() const -> string_view
 {
     return _animFileName;
 }
 
-auto ModelAnimation::GetName() const -> const string&
+auto ModelAnimation::GetName() const -> string_view
 {
     return _animName;
 }

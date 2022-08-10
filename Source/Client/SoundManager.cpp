@@ -317,7 +317,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     auto channels = 0;
     auto freq = 0;
     auto samples = 0;
-    auto acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
+    auto&& acm = std::make_unique<CACMUnpacker>(const_cast<uchar*>(file.GetBuf()), static_cast<int>(file.GetSize()), channels, freq, samples);
     const auto buf_size = samples * 2;
 
     sound->OriginalFormat = App->Audio.AUDIO_FORMAT_S16;
@@ -534,6 +534,10 @@ auto SoundManager::PlayMusic(string_view fname, uint repeat_time) -> bool
 
 void SoundManager::StopSounds()
 {
+    if (!_isActive) {
+        return;
+    }
+
     App->Audio.LockDevice();
     _soundsActive.erase(std::remove_if(_soundsActive.begin(), _soundsActive.end(), [](auto s) { return !s->IsMusic; }), _soundsActive.end());
     App->Audio.UnlockDevice();
@@ -541,6 +545,10 @@ void SoundManager::StopSounds()
 
 void SoundManager::StopMusic()
 {
+    if (!_isActive) {
+        return;
+    }
+
     App->Audio.LockDevice();
     _soundsActive.erase(std::remove_if(_soundsActive.begin(), _soundsActive.end(), [](auto s) { return s->IsMusic; }), _soundsActive.end());
     App->Audio.UnlockDevice();
