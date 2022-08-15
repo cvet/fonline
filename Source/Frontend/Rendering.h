@@ -219,7 +219,6 @@ public:
 
     struct MapSpriteBuffer
     {
-        float EggTexSize[4] {}; // vec4
         float ZoomFactor {};
         float Padding[3] {};
     };
@@ -265,7 +264,7 @@ public:
     static_assert(sizeof(ProjBuffer) % 16 == 0 && sizeof(ProjBuffer) == 64);
     static_assert(sizeof(MainTexBuffer) % 16 == 0 && sizeof(MainTexBuffer) == 16);
     static_assert(sizeof(TimeBuffer) % 16 == 0 && sizeof(TimeBuffer) == 16);
-    static_assert(sizeof(MapSpriteBuffer) % 16 == 0 && sizeof(MapSpriteBuffer) == 32);
+    static_assert(sizeof(MapSpriteBuffer) % 16 == 0 && sizeof(MapSpriteBuffer) == 16);
     static_assert(sizeof(BorderBuffer) % 16 == 0 && sizeof(BorderBuffer) == 16);
     static_assert(sizeof(CustomTexBuffer) % 16 == 0 && sizeof(CustomTexBuffer) == 256);
     static_assert(sizeof(AnimBuffer) % 16 == 0 && sizeof(AnimBuffer) == 16);
@@ -282,13 +281,12 @@ public:
     auto operator=(const RenderEffect&) = delete;
     auto operator=(RenderEffect&&) noexcept = delete;
 
-    [[nodiscard]] auto IsSame(string_view name, string_view defines) const -> bool;
     [[nodiscard]] auto CanBatch(const RenderEffect* other) const -> bool;
 
     const string Name;
     const EffectUsage Usage;
 
-    ProjBuffer ProjBuf {};
+    optional<ProjBuffer> ProjBuf {};
     optional<MainTexBuffer> MainTexBuf {};
     optional<TimeBuffer> TimeBuf {};
     optional<MapSpriteBuffer> MapSpriteBuf {};
@@ -305,14 +303,14 @@ public:
     RenderTexture* CustomTex[EFFECT_TEXTURES] {};
     bool DisableShadow {};
     bool DisableBlending {};
+    size_t MatrixCount {};
 
     virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, size_t indices_to_draw = static_cast<size_t>(-1), RenderTexture* custom_tex = nullptr) = 0;
 
 protected:
-    RenderEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader);
+    RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader);
 
     string _effectName {};
-    string _effectDefines {};
     hstring _name {};
     size_t _passCount {};
     BlendFuncType _srcBlendFunc[EFFECT_MAX_PASSES] {};
@@ -330,7 +328,7 @@ public:
 
     [[nodiscard]] virtual auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* = 0;
     [[nodiscard]] virtual auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* = 0;
-    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* = 0;
+    [[nodiscard]] virtual auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* = 0;
 
     virtual void Init(GlobalSettings& settings, WindowInternalHandle* window) = 0;
     virtual void Present() = 0;
@@ -345,7 +343,7 @@ class Null_Renderer final : public Renderer
 public:
     [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override { return nullptr; }
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override { return nullptr; }
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override { return nullptr; }
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override { }
     void Present() override { }
@@ -364,7 +362,7 @@ public:
 
     [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;
@@ -383,7 +381,7 @@ class Direct3D_Renderer final : public Renderer
 public:
     [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture* override;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer* override;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect* override;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect* override;
 
     void Init(GlobalSettings& settings, WindowInternalHandle* window) override;
     void Present() override;

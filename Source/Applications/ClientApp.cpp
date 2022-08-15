@@ -131,6 +131,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Starting {} {}", App->GetName(), FO_GAME_VERSION);
 
+        if (App->Settings.HideNativeCursor) {
+            App->HideCursor();
+        }
+
 #if FO_IOS
         MainEntry(nullptr);
         App->SetMainLoopCallback(MainEntry);

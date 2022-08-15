@@ -44,7 +44,6 @@ class ItemHexView final : public ItemView
 {
 public:
     ItemHexView() = delete;
-    ItemHexView(MapView* map, uint id, const ProtoItem* proto);
     ItemHexView(MapView* map, uint id, const ProtoItem* proto, const Properties& props);
     ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data);
     ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<vector<uchar>>* props_data, ushort hx, ushort hy, int* hex_scr_x, int* hex_scr_y);
@@ -104,6 +103,8 @@ public:
     vector<pair<ushort, ushort>> EffSteps {};
 
 private:
+    ItemHexView(MapView* map, uint id, const ProtoItem* proto);
+
     void AfterConstruction();
     void SetFade(bool fade_up);
 

@@ -135,6 +135,7 @@ VARIABLE_SETTING(int, ScrOy, 0);
 VARIABLE_SETTING(bool, ShowCorners, false);
 VARIABLE_SETTING(bool, ShowDrawOrder, false);
 VARIABLE_SETTING(bool, ShowSpriteBorders, false);
+FIXED_SETTING(bool, HideNativeCursor, false);
 SETTING_GROUP_END();
 
 ///@ ExportSettings Common
@@ -169,12 +170,13 @@ VARIABLE_SETTING(bool, ForceOpenGL, false);
 VARIABLE_SETTING(bool, ForceDirect3D, false);
 VARIABLE_SETTING(bool, ForceMetal, false);
 VARIABLE_SETTING(bool, ForceGNM, false);
+VARIABLE_SETTING(bool, ForceGlslEsProfile, false);
 VARIABLE_SETTING(bool, RenderDebug, false);
 VARIABLE_SETTING(bool, VSync, false);
 VARIABLE_SETTING(bool, AlwaysOnTop, false);
 VARIABLE_SETTING(vector<float>, EffectValues, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 VARIABLE_SETTING(bool, FullScreen, false);
-VARIABLE_SETTING(int, Brightness, 20);
+VARIABLE_SETTING(int, Brightness, 0);
 VARIABLE_SETTING(uint, FPS, 0);
 VARIABLE_SETTING(int, FixedFPS, 100);
 FIXED_SETTING(int, FogExtraLength, 0);

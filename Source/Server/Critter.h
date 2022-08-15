@@ -132,20 +132,20 @@ public:
     void Send_Dir(Critter* from_cr);
     void Send_AddCritter(Critter* cr);
     void Send_RemoveCritter(Critter* cr);
-    void Send_LoadMap(Map* map, MapManager& map_mngr);
+    void Send_LoadMap(Map* map);
     void Send_Position(Critter* cr);
     void Send_AddItemOnMap(Item* item);
     void Send_EraseItemFromMap(Item* item);
     void Send_AnimateItem(Item* item, uchar from_frm, uchar to_frm);
     void Send_AddItem(Item* item);
     void Send_EraseItem(Item* item);
-    void Send_GlobalInfo(uchar flags, MapManager& map_mngr);
+    void Send_GlobalInfo(uchar flags);
     void Send_GlobalLocation(Location* loc, bool add);
     void Send_GlobalMapFog(ushort zx, ushort zy, uchar fog);
     void Send_Teleport(Critter* cr, ushort to_hx, ushort to_hy);
     void Send_AllProperties();
     void Send_Talk();
-    void Send_GameInfo(Map* map);
+    void Send_TimeSync();
     void Send_Text(Critter* from_cr, string_view text, uchar how_say);
     void Send_TextEx(uint from_id, string_view text, uchar how_say, bool unsafe_text);
     void Send_TextMsg(Critter* from_cr, uint str_num, uchar how_say, ushort num_msg);
@@ -164,9 +164,9 @@ public:
     void Send_MapTextMsg(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str);
     void Send_MapTextMsgLex(ushort hx, ushort hy, uint color, ushort num_msg, uint num_str, string_view lexems);
     void Send_ViewMap();
-    void Send_CustomMessage(uint msg);
+    void Send_PlaceToGameComplete();
     void Send_AddAllItems();
-    void Send_AllAutomapsInfo(MapManager& map_mngr);
+    void Send_AllAutomapsInfo();
     void Send_SomeItems(const vector<Item*>* items, int param);
 
     ///@ ExportEvent

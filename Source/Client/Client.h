@@ -72,7 +72,6 @@ constexpr auto SCREEN_GAME = 2;
 constexpr auto SCREEN_GLOBAL_MAP = 3;
 constexpr auto SCREEN_WAIT = 4;
 constexpr auto SCREEN_DIALOG = 6; // Secondary screens
-constexpr auto SCREEN_TOWN_VIEW = 9;
 
 // Connection reason
 constexpr auto INIT_NET_REASON_NONE = 0;
@@ -113,8 +112,9 @@ public:
     [[nodiscard]] auto GetCurLang() const -> const LanguagePack& { return _curLang; }
     [[nodiscard]] auto GetWorldmapFog() const -> const TwoBitMask& { return _worldmapFog; }
 
+    void Shutdown();
     void MainLoop();
-    void AddMess(uchar mess_type, string_view msg);
+    void AddMessage(uchar mess_type, string_view msg);
     void FormatTags(string& text, CritterView* cr, CritterView* npc, string_view lexems);
     void ScreenFadeIn() { ScreenFade(1000, COLOR_RGBA(0, 0, 0, 0), COLOR_RGBA(255, 0, 0, 0), false); }
     void ScreenFadeOut() { ScreenFade(1000, COLOR_RGBA(255, 0, 0, 0), COLOR_RGBA(0, 0, 0, 0), false); }
@@ -296,8 +296,6 @@ protected:
     void ProcessInputEvents();
     void TryExit();
     void FlashGameWindow();
-    void DrawIface();
-    void GameDraw();
     void WaitDraw();
 
     void SetDayTime(bool refresh);
@@ -310,15 +308,11 @@ protected:
     void Net_SendCreatePlayer();
     void Net_SendProperty(NetProperty type, const Property* prop, Entity* entity);
     void Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer);
-    void Net_SendGetGameInfo();
-    void Net_SendGiveMap(bool automap, hstring map_pid, uint loc_id, uint tiles_hash, uint scen_hash);
-    void Net_SendLoadMapOk();
     void Net_SendText(string_view send_str, uchar how_say);
     void Net_SendDir();
     void Net_SendMove();
     void Net_SendStopMove();
     void Net_SendPing(uchar ping);
-    void Net_SendRefereshMe();
 
     void Net_OnConnect(bool success);
     void Net_OnDisconnect();
@@ -339,7 +333,7 @@ protected:
     void Net_OnEffect();
     void Net_OnFlyEffect();
     void Net_OnPlaySound();
-    void Net_OnEndParseToGame();
+    void Net_OnPlaceToGameComplete();
     void Net_OnProperty(uint data_size);
     void Net_OnCritterDir();
     void Net_OnCritterMove();
@@ -357,9 +351,8 @@ protected:
     void Net_OnChosenEraseItem();
     void Net_OnAllItemsSend();
     void Net_OnChosenTalk();
-    void Net_OnGameInfo();
+    void Net_OnTimeSync();
     void Net_OnLoadMap();
-    void Net_OnMap();
     void Net_OnGlobalInfo();
     void Net_OnSomeItems();
     void Net_OnAutomapsInfo();

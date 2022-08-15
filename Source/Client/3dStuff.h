@@ -212,7 +212,7 @@ private:
     GeometryHelper _geometry;
     ParticleManager _particleMngr;
     set<hstring> _processedFiles {};
-    vector<unique_ptr<ModelBone, std::function<void(ModelBone*)>>> _loadedModels {};
+    vector<unique_ptr<ModelBone>> _loadedModels {};
     vector<unique_ptr<ModelAnimation>> _loadedAnimSets {};
     vector<unique_ptr<MeshTexture>> _loadedMeshTextures {};
     vector<unique_ptr<ModelInformation>> _allModelInfos {};
@@ -283,8 +283,8 @@ private:
     struct CombinedMesh
     {
         RenderEffect* DrawEffect {};
-        RenderDrawBuffer* DrawMesh {};
-        int EncapsulatedMeshCount {};
+        RenderDrawBuffer* MeshBuf {};
+        size_t EncapsulatedMeshCount {};
         vector<MeshData*> Meshes {};
         vector<uint> MeshVertices {};
         vector<uint> MeshIndices {};
@@ -295,13 +295,13 @@ private:
         MeshTexture* Textures[EFFECT_TEXTURES] {};
     };
 
-    [[nodiscard]] auto CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance) const -> bool;
+    [[nodiscard]] auto CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool;
     [[nodiscard]] auto GetSpeed() const -> float;
     [[nodiscard]] auto GetTick() const -> uint;
 
     void GenerateCombinedMeshes();
-    void FillCombinedMeshes(ModelInstance* base, ModelInstance* cur);
-    void CombineMesh(MeshInstance* mesh_instance, int anim_layer);
+    void FillCombinedMeshes(ModelInstance* base, const ModelInstance* cur);
+    void CombineMesh(const MeshInstance* mesh_instance, int anim_layer);
     void ClearCombinedMesh(CombinedMesh* combined_mesh);
     void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer);
     void CutCombinedMeshes(ModelInstance* base, ModelInstance* cur);
@@ -452,7 +452,7 @@ private:
 
     ModelManager& _modelMngr;
     string _fileName {};
-    unique_ptr<ModelBone> _rootBone {};
+    ModelBone* _rootBone {};
     vector<ModelBone*> _allBones {};
     vector<ModelBone*> _allDrawBones {};
     bool _nonConstHelper {};

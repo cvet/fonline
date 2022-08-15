@@ -6,7 +6,7 @@ const float AttackBlackout = 0.4;
 const float AttackAroundShining = 0.4;
 
 [VertexShader]
-layout(location = 0) uniform mat4 ProjectionMatrix;
+uniform mat4 ProjectionMatrix;
 
 layout(location = 0) in vec2 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -22,7 +22,7 @@ void main(void)
 }
 
 [FragmentShader]
-layout(location = 1) uniform sampler2D ColorMap;
+layout(binding = 0) uniform sampler2D ColorMap;
 
 layout(location = 0) in vec2 TexCoord;
 

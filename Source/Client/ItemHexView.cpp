@@ -40,7 +40,7 @@
 #include "Sprites.h"
 #include "Timer.h"
 
-ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto) : ItemView(map->GetEngine(), id, proto)
+ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto) : ItemView(map->GetEngine(), id, proto), _map {map}
 {
     DrawEffect = _engine->EffectMngr.Effects.Generic;
 }

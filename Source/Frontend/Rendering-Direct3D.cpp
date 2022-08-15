@@ -75,7 +75,7 @@ class Direct3D_Effect : public RenderEffect
     friend class Direct3D_Renderer;
 
 public:
-    Direct3D_Effect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) : RenderEffect(usage, name, defines, loader) { }
+    Direct3D_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : RenderEffect(usage, name, loader) { }
     ~Direct3D_Effect() override;
 
     void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_t indices_to_draw, RenderTexture* custom_tex) override;
@@ -288,9 +288,9 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     return d3d_dbuf.release();
 }
 
-auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*
+auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
-    auto&& d3d_effect = std::make_unique<Direct3D_Effect>(usage, name, defines, loader);
+    auto&& d3d_effect = std::make_unique<Direct3D_Effect>(usage, name, loader);
 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader

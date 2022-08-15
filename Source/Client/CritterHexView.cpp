@@ -98,7 +98,7 @@ void CritterHexView::SetFade(bool fade_up)
     const auto tick = _engine->GameTime.GameTick();
     FadingTick = tick + FADING_PERIOD - (FadingTick > tick ? FadingTick - tick : 0);
     _fadeUp = fade_up;
-    _fadingEnable = true;
+    _fadingEnabled = true;
 }
 
 auto CritterHexView::GetFadeAlpha() -> uchar
@@ -106,7 +106,7 @@ auto CritterHexView::GetFadeAlpha() -> uchar
     const auto tick = _engine->GameTime.GameTick();
     const auto fading_proc = 100u - GenericUtils::Percent(FADING_PERIOD, FadingTick > tick ? FadingTick - tick : 0u);
     if (fading_proc == 100u) {
-        _fadingEnable = false;
+        _fadingEnabled = false;
     }
 
     const auto alpha = (_fadeUp ? fading_proc * 255u / 100u : (100u - fading_proc) * 255u / 100u);
@@ -732,8 +732,12 @@ void CritterHexView::ChangeMoveDirAngle(int dir_angle)
 
 void CritterHexView::Process()
 {
+    if (IsMoving()) {
+        ProcessMoving();
+    }
+
     // Fading
-    if (_fadingEnable) {
+    if (_fadingEnabled) {
         Alpha = GetFadeAlpha();
     }
 
@@ -1171,7 +1175,7 @@ void CritterHexView::DrawTextOnHead()
 
             color = GetNameColor();
             if (color == 0u) {
-                color = COLOR_CRITTER_NAME;
+                color = _textOnHeadColor;
             }
         }
         else {
@@ -1189,7 +1193,7 @@ void CritterHexView::DrawTextOnHead()
             }
         }
 
-        if (_fadingEnable) {
+        if (_fadingEnabled) {
             const uint alpha = GetFadeAlpha();
             _engine->SprMngr.DrawStr(r, str, FT_CENTERX | FT_BOTTOM | FT_BORDERED, (alpha << 24) | (color & 0xFFFFFF), 0);
         }

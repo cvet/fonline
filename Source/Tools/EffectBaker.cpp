@@ -333,7 +333,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         spirv_cross::CompilerGLSL compiler {spirv};
         auto options = compiler.get_common_options();
         options.es = false;
-        options.version = 150;
+        options.version = 330;
         compiler.set_common_options(options);
         auto source = compiler.compile();
 #if FO_ASYNC_BAKE

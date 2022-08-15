@@ -108,8 +108,8 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uchar ping (see Ping in FOdefines.h)
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_END_PARSE_TO_GAME MAKE_NETMSG_HEADER(7)
-#define NETMSG_END_PARSE_TO_GAME_SIZE (sizeof(uint))
+#define NETMSG_PLACE_TO_GAME_COMPLETE MAKE_NETMSG_HEADER(7)
+#define NETMSG_PLACE_TO_GAME_COMPLETE_SIZE (sizeof(uint))
 // ////////////////////////////////////////////////////////////////////////
 // Message about successfully map loading
 // ////////////////////////////////////////////////////////////////////////
@@ -593,11 +593,10 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 //
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_GAME_INFO MAKE_NETMSG_HEADER(117)
-#define NETMSG_GAME_INFO_SIZE (sizeof(uint) + sizeof(ushort) * 8 + sizeof(int) * 4 + sizeof(uchar) * 12)
+#define NETMSG_TIME_SYNC MAKE_NETMSG_HEADER(117)
+#define NETMSG_TIME_SYNC_SIZE (sizeof(uint) + sizeof(ushort) * 7)
 // ////////////////////////////////////////////////////////////////////////
-// Generic game info
-// ushort year_start
+//
 // ushort year
 // ushort month
 // ushort day
@@ -605,8 +604,6 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // ushort minute
 // ushort second
 // ushort time_multiplier
-// int day_time[4]
-// uchar day_color[12]
 // ////////////////////////////////////////////////////////////////////////
 
 // ************************************************************************
@@ -619,58 +616,14 @@ constexpr uint PING_CLIENT_LIFE_TIME = 15000;
 // uint mag_len
 // uint loc_id
 // uint map_id
-// hash loc_pid
-// hash map_pid
+// hstring loc_pid
+// hstring map_pid
 // uchar map_index_in_loc
-// uint ver_tiles
-// uint ver_walls
-// uint ver_scen
 // Properties map
 // Properties location
 // ////////////////////////////////////////////////////////////////////////
 
-#define NETMSG_MAP MAKE_NETMSG_HEADER(122)
-// ////////////////////////////////////////////////////////////////////////
-// Map data
-// uint msg_len
-// hash pid_map
-// uchar send_info (see Sendmap info in FOdefines.h)
-// uint ver_tiles
-//	for TILESX*TILESY
-//		ushort roof
-//		ushort floor
-// uint count_walls
-//	for count_walls
-//		WallToSend
-// uint count_scen
-//	for count_scen
-//		ScenToSend (see ScenToSend in FOdefines.h)
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_GIVE_MAP MAKE_NETMSG_HEADER(123)
-#define NETMSG_SEND_GIVE_MAP_SIZE (sizeof(uint) + sizeof(bool) + sizeof(hstring::hash_t) + sizeof(uint) + sizeof(hstring::hash_t) * 2)
-// ////////////////////////////////////////////////////////////////////////
-// Request on map data, on map loading or for automap
-// bool automap
-// hash map_pid
-// uint loc_id
-// hash tiles_hash
-// hash scen_hash
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_LOAD_MAP_OK MAKE_NETMSG_HEADER(124)
-#define NETMSG_SEND_LOAD_MAP_OK_SIZE (sizeof(uint))
-// ////////////////////////////////////////////////////////////////////////
-// Message about successfully map loading
-// ////////////////////////////////////////////////////////////////////////
-
 #define NETMSG_RPC MAKE_NETMSG_HEADER(128)
-// ////////////////////////////////////////////////////////////////////////
-//
-// ////////////////////////////////////////////////////////////////////////
-
-#define NETMSG_SEND_REFRESH_ME MAKE_NETMSG_HEADER(130)
-#define NETMSG_SEND_REFRESH_ME_SIZE (sizeof(uint))
 // ////////////////////////////////////////////////////////////////////////
 //
 // ////////////////////////////////////////////////////////////////////////

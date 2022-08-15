@@ -40,17 +40,17 @@ EffectManager::EffectManager(RenderSettings& settings, FileSystem& file_sys) : _
 {
 }
 
-auto EffectManager::LoadEffect(EffectUsage usage, string_view name, string_view defines, string_view base_path) -> RenderEffect*
+auto EffectManager::LoadEffect(EffectUsage usage, string_view name, string_view base_path) -> RenderEffect*
 {
     // Try find already loaded effect
-    for (const auto& effect : _loadedEffects) {
-        if (effect->IsSame(name, defines)) {
+    for (auto&& effect : _loadedEffects) {
+        if (effect->Name == name) {
             return effect.get();
         }
     }
 
     // Load new
-    auto* effect = App->Render.CreateEffect(usage, name, defines, [this, &base_path](string_view path) -> string {
+    auto* effect = App->Render.CreateEffect(usage, name, [this, &base_path](string_view path) -> string {
         auto file = _fileSys.ReadFile(_str("{}/{}", _str(base_path).extractDir(), path));
         if (!file) {
             file = _fileSys.ReadFile(path);
@@ -69,7 +69,7 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view name, string_view 
 
 void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
-    for (auto& effect : _loadedEffects) {
+    for (auto&& effect : _loadedEffects) {
         PerFrameEffectUpdate(effect.get(), game_time);
     }
 }
@@ -98,7 +98,7 @@ void EffectManager::PerFrameEffectUpdate(RenderEffect* effect, const GameTimer& 
 }
 
 #define LOAD_DEFAULT_EFFECT(effect_handle, effect_usage, effect_name) \
-    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_usage, effect_name, "", "Effects/"))) \
+    if (!((effect_handle) = effect_handle##Default = LoadEffect(effect_usage, effect_name, "Effects/"))) \
     effect_errors++
 
 void EffectManager::LoadMinimalEffects()

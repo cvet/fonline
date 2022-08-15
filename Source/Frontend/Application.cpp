@@ -143,11 +143,6 @@ void ReportExceptionAndContinue(const std::exception& ex)
 #endif
 }
 
-auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
-{
-    return _str(name).compareIgnoreCase(_effectName) && defines == _effectDefines;
-}
-
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
     if (_name != other->_name) {
@@ -469,8 +464,6 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
 
         ActiveRenderer->Init(Settings, MainWindow._windowHandle);
 
-        // SDL_ShowCursor(0);
-
         if (Settings.AlwaysOnTop) {
             MainWindow.AlwaysOnTop(true);
         }
@@ -534,7 +527,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
         // Default effect
         FileSystem base_fs;
         base_fs.AddDataSource(Settings.EmbeddedResources);
-        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "ImGui_Default", "", [&base_fs](string_view path) -> string {
+        _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "ImGui_Default", [&base_fs](string_view path) -> string {
             const auto file = base_fs.ReadFile(_str("Effects/{}", path));
             RUNTIME_ASSERT(file);
             return file.GetStr();
@@ -546,6 +539,13 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
     // Start timings
     _timeFrequency = SDL_GetPerformanceFrequency();
     _time = SDL_GetPerformanceCounter();
+}
+
+void Application::HideCursor()
+{
+    NON_CONST_METHOD_HINT();
+
+    SDL_ShowCursor(SDL_DISABLE);
 }
 
 #if FO_IOS
@@ -940,7 +940,8 @@ void Application::EndFrame()
             {0.0f, 0.0f, -1.0f, 0.0f},
             {(r + l) / (l - r), (t + b) / (b - t), 0.0f, 1.0f},
         };
-        std::memcpy(_imguiEffect->ProjBuf.ProjMatrix, ortho_projection, sizeof(ortho_projection));
+        _imguiEffect->ProjBuf = RenderEffect::ProjBuffer();
+        std::memcpy(_imguiEffect->ProjBuf->ProjMatrix, ortho_projection, sizeof(ortho_projection));
 
         // Scissor/clipping
         const auto clip_off = draw_data->DisplayPos;
@@ -1162,9 +1163,9 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     return ActiveRenderer->CreateDrawBuffer(is_static);
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*
 {
-    return ActiveRenderer->CreateEffect(usage, name, defines, loader);
+    return ActiveRenderer->CreateEffect(usage, name, loader);
 }
 
 auto AppInput::GetMousePosition() const -> tuple<int, int>

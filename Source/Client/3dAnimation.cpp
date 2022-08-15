@@ -68,22 +68,25 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
 
     for (uint i = 0, j = len; i < j; i++) {
         auto& o = _boneOutputs[i];
-        reader.ReadPtr(&o.BoneName, sizeof(o.BoneName));
+        reader.ReadPtr(&len, sizeof(len));
+        tmp.resize(len);
+        reader.ReadPtr(tmp.data(), len);
+        o.BoneName = name_resolver.ToHashedString(tmp);
         reader.ReadPtr(&len, sizeof(len));
         o.ScaleTime.resize(len);
         o.ScaleValue.resize(len);
-        reader.ReadPtr(&o.ScaleTime[0], len * sizeof(o.ScaleTime[0]));
-        reader.ReadPtr(&o.ScaleValue[0], len * sizeof(o.ScaleValue[0]));
+        reader.ReadPtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
+        reader.ReadPtr(o.ScaleValue.data(), len * sizeof(o.ScaleValue[0]));
         reader.ReadPtr(&len, sizeof(len));
         o.RotationTime.resize(len);
         o.RotationValue.resize(len);
-        reader.ReadPtr(&o.RotationTime[0], len * sizeof(o.RotationTime[0]));
-        reader.ReadPtr(&o.RotationValue[0], len * sizeof(o.RotationValue[0]));
+        reader.ReadPtr(o.RotationTime.data(), len * sizeof(o.RotationTime[0]));
+        reader.ReadPtr(o.RotationValue.data(), len * sizeof(o.RotationValue[0]));
         reader.ReadPtr(&len, sizeof(len));
         o.TranslationTime.resize(len);
         o.TranslationValue.resize(len);
-        reader.ReadPtr(&o.TranslationTime[0], len * sizeof(o.TranslationTime[0]));
-        reader.ReadPtr(&o.TranslationValue[0], len * sizeof(o.TranslationValue[0]));
+        reader.ReadPtr(o.TranslationTime.data(), len * sizeof(o.TranslationTime[0]));
+        reader.ReadPtr(o.TranslationValue.data(), len * sizeof(o.TranslationValue[0]));
     }
 }
 

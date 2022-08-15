@@ -1,7 +1,7 @@
 [Effect]
 
 [VertexShader]
-layout(location = 0) uniform mat4 ProjectionMatrix;
+uniform mat4 ProjectionMatrix;
 
 layout(location = 0) in vec2 InPosition;
 layout(location = 1) in vec4 InColor;

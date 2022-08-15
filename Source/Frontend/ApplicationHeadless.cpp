@@ -124,16 +124,10 @@ void ReportExceptionAndContinue(const std::exception& ex)
 #endif
 }
 
-auto RenderEffect::IsSame(string_view name, string_view defines) const -> bool
-{
-    return _str(name).compareIgnoreCase(_effectName) && defines == _effectDefines;
-}
-
 auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 {
-    // Todo: implement effect CanBatch
     UNUSED_VARIABLE(other);
-    throw NotImplementedException(LINE_STR);
+
     return false;
 }
 
@@ -309,10 +303,9 @@ auto AppRender::CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*
     return nullptr;
 }
 
-auto AppRender::CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& file_loader) -> RenderEffect*
+auto AppRender::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& file_loader) -> RenderEffect*
 {
     UNUSED_VARIABLE(name);
-    UNUSED_VARIABLE(defines);
     UNUSED_VARIABLE(file_loader);
 
     return nullptr;

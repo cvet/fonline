@@ -629,12 +629,16 @@ int main(int argc, char** argv)
                         vector<uchar> props_data;
                         uint map_cr_count = 0u;
                         uint map_item_count = 0u;
+                        uint map_scen_count = 0u;
                         uint map_tile_count = 0u;
                         vector<uchar> map_cr_data;
                         vector<uchar> map_item_data;
+                        vector<uchar> map_scen_data;
                         vector<uchar> map_tile_data;
+                        set<hstring> tile_hstrings;
                         auto map_cr_data_writer = DataWriter(map_cr_data);
                         auto map_item_data_writer = DataWriter(map_item_data);
+                        auto map_scen_data_writer = DataWriter(map_scen_data);
                         auto map_tile_data_writer = DataWriter(map_tile_data);
                         auto map_errors = 0;
 
@@ -643,13 +647,13 @@ int main(int argc, char** argv)
                                 proto_map->GetName(), map_file.GetStr(), server_proto_mngr, server_engine,
                                 [&](uint id, const ProtoCritter* proto, const map<string, string>& kv) -> bool {
                                     auto props = copy(proto->GetProperties());
+
                                     if (props.LoadFromText(kv)) {
                                         map_errors += ValidateProperties(props, _str("map {} critter {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
                                         map_cr_count++;
                                         map_cr_data_writer.Write<uint>(id);
                                         map_cr_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-
                                         props.StoreAllData(props_data);
                                         map_cr_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                         map_cr_data_writer.WritePtr(props_data.data(), props_data.size());
@@ -663,16 +667,34 @@ int main(int argc, char** argv)
                                 },
                                 [&](uint id, const ProtoItem* proto, const map<string, string>& kv) -> bool {
                                     auto props = copy(proto->GetProperties());
+
                                     if (props.LoadFromText(kv)) {
                                         map_errors += ValidateProperties(props, _str("map {} item {} with id {}", proto_map->GetName(), proto->GetName(), id), validation_engine->ScriptSys, resource_hashes);
 
                                         map_item_count++;
                                         map_item_data_writer.Write<uint>(id);
                                         map_item_data_writer.Write<hstring::hash_t>(proto->GetProtoId().as_hash());
-
                                         props.StoreAllData(props_data);
                                         map_item_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
                                         map_item_data_writer.WritePtr(props_data.data(), props_data.size());
+
+                                        if (proto->IsStatic() && !proto->GetIsHidden()) {
+                                            const auto* client_proto = client_proto_mngr.GetProtoItem(proto->GetProtoId());
+                                            auto client_props = copy(client_proto->GetProperties());
+
+                                            if (client_props.LoadFromText(kv)) {
+                                                map_scen_count++;
+                                                map_scen_data_writer.Write<uint>(id);
+                                                map_scen_data_writer.Write<hstring::hash_t>(client_proto->GetProtoId().as_hash());
+                                                client_props.StoreAllData(props_data);
+                                                map_scen_data_writer.Write<uint>(static_cast<uint>(props_data.size()));
+                                                map_scen_data_writer.WritePtr(props_data.data(), props_data.size());
+                                            }
+                                            else {
+                                                WriteLog("Invalid item (client side) {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
+                                                map_errors++;
+                                            }
+                                        }
                                     }
                                     else {
                                         WriteLog("Invalid item {} on map {} with id {}", proto->GetName(), proto_map->GetName(), id);
@@ -686,6 +708,7 @@ int main(int argc, char** argv)
                                     if (resource_hashes.count(tile_name) != 0u) {
                                         map_tile_count++;
                                         map_tile_data_writer.WritePtr<MapTile>(&tile);
+                                        tile_hstrings.emplace(tile_name);
                                     }
                                     else {
                                         WriteLog("Invalid tile {} on map {} at hex {} {}", tile_name, proto_map->GetName(), tile.HexX, tile.HexY);
@@ -701,6 +724,42 @@ int main(int argc, char** argv)
                         }
 
                         if (map_errors == 0) {
+#if !FO_SINGLEPLAYER
+                            // Server side
+                            {
+                                vector<uchar> map_data;
+                                auto final_writer = DataWriter(map_data);
+                                final_writer.Write<uint>(map_cr_count);
+                                final_writer.WritePtr(map_cr_data.data(), map_cr_data.size());
+                                final_writer.Write<uint>(map_item_count);
+                                final_writer.WritePtr(map_item_data.data(), map_item_data.size());
+
+                                auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Maps/{}.fomapb", proto_map->GetName())), true);
+                                RUNTIME_ASSERT(map_bin_file);
+                                auto map_bin_file_write_ok = map_bin_file.Write(map_data);
+                                RUNTIME_ASSERT(map_bin_file_write_ok);
+                            }
+                            // Client side
+                            {
+                                vector<uchar> map_data;
+                                auto final_writer = DataWriter(map_data);
+                                final_writer.Write<uint>(map_scen_count);
+                                final_writer.WritePtr(map_scen_data.data(), map_scen_data.size());
+                                final_writer.Write<uint>(static_cast<uint>(tile_hstrings.size()));
+                                for (const auto& hstr : tile_hstrings) {
+                                    const auto& str = hstr.as_str();
+                                    final_writer.Write<uint>(static_cast<uint>(str.length()));
+                                    final_writer.WritePtr(str.c_str(), str.length());
+                                }
+                                final_writer.Write<uint>(map_tile_count);
+                                final_writer.WritePtr(map_tile_data.data(), map_tile_data.size());
+
+                                auto map_bin_file = DiskFileSystem::OpenFile(MakeOutputPath(_str("Maps/{}.fomapb2", proto_map->GetName())), true);
+                                RUNTIME_ASSERT(map_bin_file);
+                                auto map_bin_file_write_ok = map_bin_file.Write(map_data);
+                                RUNTIME_ASSERT(map_bin_file_write_ok);
+                            }
+#else
                             vector<uchar> map_data;
                             auto final_writer = DataWriter(map_data);
                             final_writer.Write<uint>(map_cr_count);
@@ -714,6 +773,7 @@ int main(int argc, char** argv)
                             RUNTIME_ASSERT(map_bin_file);
                             auto map_bin_file_write_ok = map_bin_file.Write(map_data);
                             RUNTIME_ASSERT(map_bin_file_write_ok);
+#endif
                         }
                         else {
                             proto_errors++;

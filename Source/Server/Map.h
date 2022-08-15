@@ -56,10 +56,6 @@ struct StaticMap
     vector<StaticItem*> StaticItems {};
     vector<StaticItem*> TriggerItems {};
     vector<uchar> HexFlags {};
-    vector<uchar> SceneryData {};
-    vector<MapTile> Tiles {};
-    uint HashTiles {};
-    uint HashScen {};
 };
 
 class Map final : public ServerEntity, public EntityWithProto, public MapProperties

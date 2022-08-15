@@ -41,4 +41,6 @@ LocationView::LocationView(FOClient* engine, uint id, const ProtoLocation* proto
 
 void LocationView::MarkAsDestroyed()
 {
+    Entity::MarkAsDestroying();
+    Entity::MarkAsDestroyed();
 }

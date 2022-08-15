@@ -387,15 +387,21 @@ void FOServer::Shutdown()
     }
 
     // Unlogined players
+    for (const auto* player : _unloginedPlayers) {
+        player->Connection->HardDisconnect();
+        player->Release();
+    }
+    _unloginedPlayers.clear();
+
+    // New connections
     {
-        std::lock_guard locker(_unloginedPlayersLocker);
+        std::lock_guard locker(_newConnectionsLocker);
 
-        for (const auto* player : _unloginedPlayers) {
-            player->Connection->HardDisconnect();
-            player->Release();
+        for (auto* conn : _newConnections) {
+            conn->HardDisconnect();
+            delete conn;
         }
-
-        _unloginedPlayers.clear();
+        _newConnections.clear();
     }
 
     // Stats
@@ -440,12 +446,18 @@ void FOServer::MainLoop()
 
     // Process unlogined players
     {
-        vector<Player*> players;
-
         {
-            std::lock_guard locker(_unloginedPlayersLocker);
-            players = copy(_unloginedPlayers);
+            std::lock_guard locker(_newConnectionsLocker);
+
+            if (!_newConnections.empty()) {
+                for (auto* conn : _newConnections) {
+                    _unloginedPlayers.emplace_back(new Player(this, 0u, conn));
+                }
+                _newConnections.clear();
+            }
         }
+
+        const auto players = copy(_unloginedPlayers);
 
         for (const auto* player : players) {
             player->AddRef();
@@ -663,14 +675,8 @@ void FOServer::DrawGui(string_view server_name)
 
 auto FOServer::GetIngamePlayersStatistics() -> string
 {
-    uint conn_count;
-
-    {
-        std::lock_guard locker(_unloginedPlayersLocker);
-        conn_count = static_cast<uint>(_unloginedPlayers.size());
-    }
-
     const auto& players = EntityMngr.GetPlayers();
+    const auto conn_count = _unloginedPlayers.size() + players.size();
 
     string result = _str("Players in game: {}\nConnections: {}\n", players.size(), conn_count);
     result += "Name                 Id         Ip              X     Y     Location and map\n";
@@ -688,17 +694,13 @@ auto FOServer::GetIngamePlayersStatistics() -> string
 void FOServer::OnNewConnection(NetConnection* net_connection)
 {
     if (!_started) {
+        net_connection->Disconnect();
         return;
     }
 
-    auto* connection = new ClientConnection(net_connection);
-    auto* player = new Player(this, 0u, connection);
+    std::lock_guard locker(_newConnectionsLocker);
 
-    {
-        std::lock_guard locker(_unloginedPlayersLocker);
-
-        _unloginedPlayers.emplace_back(player);
-    }
+    _newConnections.emplace_back(new ClientConnection(net_connection));
 }
 
 void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
@@ -706,7 +708,6 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
     auto* connection = unlogined_player->Connection;
 
     if (connection->IsHardDisconnected()) {
-        std::lock_guard locker(_unloginedPlayersLocker);
         const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
         RUNTIME_ASSERT(it != _unloginedPlayers.end());
         _unloginedPlayers.erase(it);
@@ -823,13 +824,6 @@ void FOServer::ProcessPlayer(Player* player)
         player->Connection->Bin >> msg;
 
         switch (msg) {
-        case NETMSG_SEND_GIVE_MAP:
-            Process_GiveMap(player);
-            break;
-        case NETMSG_SEND_LOAD_MAP_OK:
-            Process_PlaceToGame(player);
-            break;
-
         case NETMSG_PING:
             Process_Ping(player->Connection);
             break;
@@ -851,12 +845,6 @@ void FOServer::ProcessPlayer(Player* player)
             break;
         case NETMSG_SEND_TALK_NPC:
             Process_Dialog(player);
-            break;
-        case NETMSG_SEND_REFRESH_ME:
-            player->Send_LoadMap(nullptr, MapMngr);
-            break;
-        case NETMSG_SEND_GET_INFO:
-            player->Send_GameInfo(MapMngr.GetMap(player->GetOwnedCritter()->GetMapId()));
             break;
         case NETMSG_RPC:
             Process_RemoteCall(player);
@@ -1158,12 +1146,8 @@ void FOServer::Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Playe
             break;
         }
 
-        string str;
-        {
-            std::lock_guard locker(_unloginedPlayersLocker);
-            str = _str("Free connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.", //
-                _unloginedPlayers.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), GameTime.FrameTick() / 1000 / 60, (GameTime.FrameTick() - _stats.ServerStartTick) / 1000 / 60);
-        }
+        string str = _str("Free connections: {}, Players: {}, Npc: {}. FOServer machine uptime: {} min., FOServer uptime: {} min.", //
+            _unloginedPlayers.size(), CrMngr.PlayersInGame(), CrMngr.NpcInGame(), GameTime.FrameTick() / 1000 / 60, (GameTime.FrameTick() - _stats.ServerStartTick) / 1000 / 60);
 
         result += str;
 
@@ -1562,7 +1546,7 @@ void FOServer::SetGameTime(int multiplier, int year, int month, int day, int hou
     GameTime.Reset(year, month, day, hour, minute, second, multiplier);
 
     for (auto&& [id, player] : EntityMngr.GetPlayers()) {
-        player->Send_GameInfo(MapMngr.GetMap(player->GetOwnedCritter()->GetMapId()));
+        player->Send_TimeSync();
     }
 }
 
@@ -1994,12 +1978,9 @@ void FOServer::Process_Login(Player* unlogined_player)
             return;
         }
 
-        {
-            std::lock_guard locker(_unloginedPlayersLocker);
-            const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
-            RUNTIME_ASSERT(it != _unloginedPlayers.end());
-            _unloginedPlayers.erase(it);
-        }
+        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        RUNTIME_ASSERT(it != _unloginedPlayers.end());
+        _unloginedPlayers.erase(it);
 
         player = unlogined_player;
         EntityMngr.RegisterEntity(player, player_id);
@@ -2014,12 +1995,9 @@ void FOServer::Process_Login(Player* unlogined_player)
         player->Connection = unlogined_player->Connection;
         unlogined_player->Connection = nullptr;
 
-        {
-            std::lock_guard locker(_unloginedPlayersLocker);
-            const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
-            RUNTIME_ASSERT(it != _unloginedPlayers.end());
-            _unloginedPlayers.erase(it);
-        }
+        const auto it = std::find(_unloginedPlayers.begin(), _unloginedPlayers.end(), unlogined_player);
+        RUNTIME_ASSERT(it != _unloginedPlayers.end());
+        _unloginedPlayers.erase(it);
 
         unlogined_player->Release();
 
@@ -2093,6 +2071,8 @@ void FOServer::Process_Login(Player* unlogined_player)
     player->Connection->Bout.SetEncryptKey(bout_seed);
 
     // Attach critter
+    bool critter_reconnected = false;
+
     if (!player_reconnected) {
         Critter* cr = nullptr;
 
@@ -2106,7 +2086,7 @@ void FOServer::Process_Login(Player* unlogined_player)
                 RUNTIME_ASSERT(cr->IsOwnedByPlayer());
                 cr->AttachPlayer(player);
                 player->SetOwnedCritter(cr);
-                cr->Broadcast_Action(ACTION_CONNECT, 0, nullptr);
+                critter_reconnected = true;
             }
         }
 
@@ -2135,12 +2115,14 @@ void FOServer::Process_Login(Player* unlogined_player)
             }
 
             EntityMngr.RegisterEntity(cr);
-
             player->SetOwnedCritter(cr);
 
             const auto can = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, 0u);
             RUNTIME_ASSERT(can);
             MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, 0u);
+
+            cr->Send_TimeSync();
+            cr->Send_LoadMap(nullptr);
 
             if (!cr->IsDestroyed()) {
                 OnCritterInit.Fire(cr, false);
@@ -2158,13 +2140,15 @@ void FOServer::Process_Login(Player* unlogined_player)
             cr = new Critter(this, 0u, player, proto);
 
             EntityMngr.RegisterEntity(cr);
-
-            player->SetOwnedCritter(cr);
             player->SetOwnedCritterIds({cr->GetId()});
+            player->SetOwnedCritter(cr);
 
             const auto can = MapMngr.CanAddCrToMap(cr, nullptr, 0, 0, 0u);
             RUNTIME_ASSERT(can);
             MapMngr.AddCrToMap(cr, nullptr, 0, 0, 0, 0u);
+
+            cr->Send_TimeSync();
+            cr->Send_LoadMap(nullptr);
 
             if (!cr->IsDestroyed()) {
                 OnCritterInit.Fire(cr, true);
@@ -2173,71 +2157,54 @@ void FOServer::Process_Login(Player* unlogined_player)
                 ScriptHelpers::CallInitScript(ScriptSys, cr, cr->GetInitScript(), true);
             }
         }
-
-        if (!cr->IsDestroyed() && cr->GetMapId() == 0u) {
-            cr->Send_LoadMap(nullptr, MapMngr);
-        }
     }
     else {
-        player->Send_LoadMap(nullptr, MapMngr);
-    }
-}
-
-void FOServer::Process_PlaceToGame(Player* player)
-{
-    Critter* cr = player->GetOwnedCritter();
-
-    player->IsTransferring = false;
-
-    if (cr->ViewMapId != 0u) {
-        auto* map = MapMngr.GetMap(cr->ViewMapId);
-        cr->ViewMapId = 0;
-        if (map != nullptr) {
-            MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHx, cr->ViewMapHy, cr->ViewMapDir);
-            cr->Send_ViewMap();
-            return;
-        }
+        critter_reconnected = true;
     }
 
-    // Parse
-    auto* map = MapMngr.GetMap(cr->GetMapId());
-    cr->Send_GameInfo(map);
+    if (critter_reconnected) {
+        Critter* cr = player->GetOwnedCritter();
 
-    // Parse to global
-    if (cr->GetMapId() == 0u) {
-        RUNTIME_ASSERT(cr->GlobalMapGroup);
+        cr->Send_TimeSync();
 
-        cr->Send_GlobalInfo(GM_INFO_ALL, MapMngr);
-        cr->Send_AllAutomapsInfo(MapMngr);
-
-        if (cr->Talk.Type != TalkType::None) {
-            CrMngr.ProcessTalk(cr, true);
-            cr->Send_Talk();
-        }
-    }
-    else {
-        if (map == nullptr) {
-            WriteLog("Map not found, client '{}'", cr->GetName());
-            player->Connection->HardDisconnect();
-            return;
+        if (cr->ViewMapId != 0u) {
+            auto* map = MapMngr.GetMap(cr->ViewMapId);
+            cr->ViewMapId = 0;
+            if (map != nullptr) {
+                MapMngr.ViewMap(cr, map, cr->ViewMapLook, cr->ViewMapHx, cr->ViewMapHy, cr->ViewMapDir);
+                cr->Send_ViewMap();
+                return;
+            }
         }
 
-        // Parse to local
-        cr->Send_AddCritter(cr);
+        auto* map = MapMngr.GetMap(cr->GetMapId());
+        cr->Send_LoadMap(map);
+        cr->Broadcast_Action(ACTION_CONNECT, 0, nullptr);
 
-        // Send all data
-        cr->Send_AddAllItems();
-        cr->Send_AllAutomapsInfo(MapMngr);
+        if (cr->GetMapId() == 0u) {
+            RUNTIME_ASSERT(cr->GlobalMapGroup);
 
-        // Send current critters
-        for (auto* visible_cr : cr->VisCrSelf) {
-            cr->Send_AddCritter(visible_cr);
+            cr->Send_GlobalInfo(GM_INFO_ALL);
+            cr->Send_AllAutomapsInfo();
         }
+        else {
+            RUNTIME_ASSERT(map);
 
-        // Send current items on map
-        for (const auto item_id : cr->VisItem) {
-            if (auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
-                cr->Send_AddItemOnMap(item);
+            // Send chosen
+            cr->Send_AddCritter(cr);
+            cr->Send_AddAllItems();
+            cr->Send_AllAutomapsInfo();
+
+            // Send current critters
+            for (auto* visible_cr : cr->VisCrSelf) {
+                cr->Send_AddCritter(visible_cr);
+            }
+
+            // Send current items on map
+            for (const auto item_id : cr->VisItem) {
+                if (auto* item = ItemMngr.GetItem(item_id); item != nullptr) {
+                    cr->Send_AddItemOnMap(item);
+                }
             }
         }
 
@@ -2246,125 +2213,86 @@ void FOServer::Process_PlaceToGame(Player* player)
             CrMngr.ProcessTalk(cr, true);
             cr->Send_Talk();
         }
-    }
 
-    // Notify about end of parsing
-    cr->Send_CustomMessage(NETMSG_END_PARSE_TO_GAME);
-}
-
-void FOServer::Process_GiveMap(Player* player)
-{
-    Critter* cr = player->GetOwnedCritter();
-
-    bool automap = 0;
-    uint loc_id = 0;
-    uint hash_tiles = 0;
-    uint hash_scen = 0;
-
-    player->Connection->Bin >> automap;
-    const auto map_pid = player->Connection->Bin.ReadHashedString(*this);
-    player->Connection->Bin >> loc_id;
-    player->Connection->Bin >> hash_tiles;
-    player->Connection->Bin >> hash_scen;
-
-    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
-
-    const auto* proto_map = ProtoMngr.GetProtoMap(map_pid);
-    if (proto_map == nullptr) {
-        WriteLog("Map prototype not found, client '{}'", cr->GetName());
-        player->Connection->HardDisconnect();
-        return;
-    }
-
-    if (automap) {
-        if (!MapMngr.CheckKnownLoc(cr, loc_id)) {
-            WriteLog("Request for loading unknown automap, client '{}'", cr->GetName());
-            return;
-        }
-
-        const auto* loc = MapMngr.GetLocation(loc_id);
-        if (loc == nullptr) {
-            WriteLog("Request for loading incorrect automap, client '{}'", cr->GetName());
-            return;
-        }
-
-        auto found = false;
-        const auto automaps = (loc->IsNonEmptyAutomaps() ? loc->GetAutomaps() : vector<hstring>());
-        if (!automaps.empty()) {
-            for (size_t i = 0; i < automaps.size() && !found; i++) {
-                if (automaps[i] == map_pid) {
-                    found = true;
-                }
-            }
-        }
-        if (!found) {
-            WriteLog("Request for loading incorrect automap, client '{}'", cr->GetName());
-            return;
-        }
-    }
-    else {
-        const auto* map = MapMngr.GetMap(cr->GetMapId());
-        if ((map == nullptr || map_pid != map->GetProtoId()) && map_pid != cr->ViewMapPid) {
-            WriteLog("Request for loading incorrect map, client '{}'", cr->GetName());
-            return;
-        }
-    }
-
-    {
-        const auto* static_map = MapMngr.GetStaticMap(proto_map);
-        const auto send_tiles = static_map->HashTiles != hash_tiles;
-        const auto send_scenery = static_map->HashScen != hash_scen;
-
-        constexpr auto msg = NETMSG_MAP;
-        const auto maxhx = proto_map->GetWidth();
-        const auto maxhy = proto_map->GetHeight();
-        uint msg_len = sizeof(msg) + sizeof(msg_len) + sizeof(hstring::hash_t) + sizeof(maxhx) + sizeof(maxhy) + sizeof(bool) * 2;
-
-        if (send_tiles) {
-            msg_len += sizeof(uint) + static_cast<uint>(static_map->Tiles.size()) * sizeof(MapTile);
-        }
-        if (send_scenery) {
-            msg_len += sizeof(uint) + static_cast<uint>(static_map->SceneryData.size());
-        }
-
-        CONNECTION_OUTPUT_BEGIN(player->Connection);
-        player->Connection->Bout << msg;
-        player->Connection->Bout << msg_len;
-        player->Connection->Bout << map_pid;
-        player->Connection->Bout << maxhx;
-        player->Connection->Bout << maxhy;
-        player->Connection->Bout << send_tiles;
-        player->Connection->Bout << send_scenery;
-        if (send_tiles) {
-            player->Connection->Bout << static_cast<uint>(static_map->Tiles.size() * sizeof(MapTile));
-            if (!static_map->Tiles.empty()) {
-                player->Connection->Bout.Push(&static_map->Tiles[0], static_cast<uint>(static_map->Tiles.size()) * sizeof(MapTile));
-            }
-        }
-        if (send_scenery) {
-            player->Connection->Bout << static_cast<uint>(static_map->SceneryData.size());
-            if (!static_map->SceneryData.empty()) {
-                player->Connection->Bout.Push(&static_map->SceneryData[0], static_cast<uint>(static_map->SceneryData.size()));
-            }
-        }
-        CONNECTION_OUTPUT_END(player->Connection);
-    }
-
-    if (!automap) {
-        Map* map = nullptr;
-        if (cr->ViewMapId != 0u) {
-            map = MapMngr.GetMap(cr->ViewMapId);
-        }
-        cr->Send_LoadMap(map, MapMngr);
+        // Notify about end of placing
+        cr->Send_PlaceToGameComplete();
     }
 }
 
 void FOServer::Process_Move(Player* player)
 {
+    uint msg_len;
+    uint map_id;
+    bool is_run;
+    ushort start_hx;
+    ushort start_hy;
+    ushort steps_count;
+    vector<uchar> steps;
+    ushort control_steps_count;
+    vector<ushort> control_steps;
+    short end_hex_ox;
+    short end_hex_oy;
+
+    player->Connection->Bin >> msg_len;
+    player->Connection->Bin >> map_id;
+    player->Connection->Bin >> is_run;
+    player->Connection->Bin >> start_hx;
+    player->Connection->Bin >> start_hy;
+    player->Connection->Bin >> steps_count;
+    steps.resize(steps_count);
+    for (auto i = 0; i < steps_count; i++) {
+        player->Connection->Bin >> steps[i];
+    }
+    player->Connection->Bin >> control_steps_count;
+    control_steps.resize(control_steps_count);
+    for (auto i = 0; i < control_steps_count; i++) {
+        player->Connection->Bin >> control_steps[i];
+    }
+    player->Connection->Bin >> end_hex_ox;
+    player->Connection->Bin >> end_hex_oy;
+
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
+
+    Critter* cr = player->GetOwnedCritter();
+
+    if (map_id != cr->GetMapId()) {
+        return;
+    }
+    if (cr->GetIsNoMove() || (is_run && cr->GetIsNoRun())) {
+        return;
+    }
+
+    MoveCritter(cr, is_run, start_hx, start_hy, steps, control_steps, end_hex_ox, end_hex_oy, false);
 }
 
 void FOServer::Process_StopMove(Player* player)
 {
+    NON_CONST_METHOD_HINT();
+
+    uint map_id;
+    ushort start_hx;
+    ushort start_hy;
+    short hex_ox;
+    short hex_oy;
+    short dir_angle;
+
+    player->Connection->Bin >> map_id;
+    player->Connection->Bin >> start_hx;
+    player->Connection->Bin >> start_hy;
+    player->Connection->Bin >> hex_ox;
+    player->Connection->Bin >> hex_oy;
+    player->Connection->Bin >> dir_angle;
+
+    CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
+
+    Critter* cr = player->GetOwnedCritter();
+
+    if (map_id != cr->GetMapId()) {
+        return;
+    }
+
+    cr->ClearMove();
+    cr->Broadcast_Move();
 }
 
 void FOServer::Process_Dir(Player* player)

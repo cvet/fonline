@@ -40,4 +40,6 @@ PlayerView::PlayerView(FOClient* engine, uint id) : ClientEntity(engine, id, eng
 
 void PlayerView::MarkAsDestroyed()
 {
+    Entity::MarkAsDestroying();
+    Entity::MarkAsDestroyed();
 }

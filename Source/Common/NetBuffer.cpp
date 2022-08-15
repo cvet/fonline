@@ -291,8 +291,8 @@ auto NetInBuffer::NeedProcess() -> bool
         return NETMSG_REGISTER_SUCCESS_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_PING:
         return NETMSG_PING_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_END_PARSE_TO_GAME:
-        return NETMSG_END_PARSE_TO_GAME_SIZE + _bufReadPos <= _bufEndPos;
+    case NETMSG_PLACE_TO_GAME_COMPLETE:
+        return NETMSG_PLACE_TO_GAME_COMPLETE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_HANDSHAKE:
         return NETMSG_HANDSHAKE_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_GET_UPDATE_FILE:
@@ -341,16 +341,8 @@ auto NetInBuffer::NeedProcess() -> bool
         return NETMSG_FLY_EFFECT_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_TALK_NPC:
         return NETMSG_SEND_TALK_NPC_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_SEND_GET_INFO:
-        return NETMSG_SEND_GET_TIME_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_GAME_INFO:
-        return NETMSG_GAME_INFO_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_SEND_GIVE_MAP:
-        return NETMSG_SEND_GIVE_MAP_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_SEND_LOAD_MAP_OK:
-        return NETMSG_SEND_LOAD_MAP_OK_SIZE + _bufReadPos <= _bufEndPos;
-    case NETMSG_SEND_REFRESH_ME:
-        return NETMSG_SEND_REFRESH_ME_SIZE + _bufReadPos <= _bufEndPos;
+    case NETMSG_TIME_SYNC:
+        return NETMSG_TIME_SYNC_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_VIEW_MAP:
         return NETMSG_VIEW_MAP_SIZE + _bufReadPos <= _bufEndPos;
     case NETMSG_SEND_POD_PROPERTY(1, 0):
@@ -434,7 +426,6 @@ auto NetInBuffer::NeedProcess() -> bool
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_PLAY_SOUND:
     case NETMSG_TALK_NPC:
-    case NETMSG_MAP:
     case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_AUTOMAPS_INFO:
@@ -479,8 +470,8 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_PING:
         size = NETMSG_PING_SIZE;
         break;
-    case NETMSG_END_PARSE_TO_GAME:
-        size = NETMSG_END_PARSE_TO_GAME_SIZE;
+    case NETMSG_PLACE_TO_GAME_COMPLETE:
+        size = NETMSG_PLACE_TO_GAME_COMPLETE_SIZE;
         break;
     case NETMSG_HANDSHAKE:
         size = NETMSG_HANDSHAKE_SIZE;
@@ -554,20 +545,8 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_SEND_TALK_NPC:
         size = NETMSG_SEND_TALK_NPC_SIZE;
         break;
-    case NETMSG_SEND_GET_INFO:
-        size = NETMSG_SEND_GET_TIME_SIZE;
-        break;
-    case NETMSG_GAME_INFO:
-        size = NETMSG_GAME_INFO_SIZE;
-        break;
-    case NETMSG_SEND_GIVE_MAP:
-        size = NETMSG_SEND_GIVE_MAP_SIZE;
-        break;
-    case NETMSG_SEND_LOAD_MAP_OK:
-        size = NETMSG_SEND_LOAD_MAP_OK_SIZE;
-        break;
-    case NETMSG_SEND_REFRESH_ME:
-        size = NETMSG_SEND_REFRESH_ME_SIZE;
+    case NETMSG_TIME_SYNC:
+        size = NETMSG_TIME_SYNC_SIZE;
         break;
     case NETMSG_VIEW_MAP:
         size = NETMSG_VIEW_MAP_SIZE;
@@ -661,7 +640,6 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_CRITTER_MOVE_ITEM:
     case NETMSG_PLAY_SOUND:
     case NETMSG_TALK_NPC:
-    case NETMSG_MAP:
     case NETMSG_RPC:
     case NETMSG_GLOBAL_INFO:
     case NETMSG_AUTOMAPS_INFO:

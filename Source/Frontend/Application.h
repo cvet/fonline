@@ -265,7 +265,7 @@ public:
     [[nodiscard]] auto GetRenderTarget() -> RenderTexture*;
     [[nodiscard]] auto CreateTexture(uint width, uint height, bool linear_filtered, bool with_depth) -> RenderTexture*;
     [[nodiscard]] auto CreateDrawBuffer(bool is_static) -> RenderDrawBuffer*;
-    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) -> RenderEffect*;
+    [[nodiscard]] auto CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> RenderEffect*;
 
     void SetRenderTarget(RenderTexture* tex);
     void ClearRenderTarget(optional<uint> color, bool depth = false, bool stencil = false);
@@ -343,6 +343,7 @@ public:
 
     [[nodiscard]] auto CreateChildWindow(int width, int height) -> AppWindow*;
 
+    void HideCursor();
 #if FO_IOS
     void SetMainLoopCallback(void (*callback)(void*));
 #endif

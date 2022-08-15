@@ -167,14 +167,14 @@ private:
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
     uint _finishingTime {};
-    bool _fadingEnable {};
+    bool _fadingEnabled {};
     bool _fadeUp {};
     IRect _textRect {};
     uint _tickFidget {};
     string _strTextOnHead {};
     uint _tickStartText {};
     uint _tickTextDelay {};
-    uint _textOnHeadColor {COLOR_CRITTER_NAME};
+    uint _textOnHeadColor {COLOR_TEXT};
     int _oxAnim {};
     int _oyAnim {};
     int _oxExtI {};

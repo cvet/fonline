@@ -437,7 +437,7 @@ void Sprites::SortByMapPos()
         return;
     }
 
-    SpriteVec sprites;
+    vector<Sprite*> sprites;
     sprites.reserve(_spriteCount);
     auto* spr = _rootSprite;
     while (spr != nullptr) {
@@ -459,7 +459,7 @@ void Sprites::SortByMapPos()
         return spr1->DrawOrderPos < spr2->DrawOrderPos;
     });
 
-    for (auto& sprite : sprites) {
+    for (auto* sprite : sprites) {
         sprite->ChainParent = nullptr;
         sprite->ChainChild = nullptr;
         sprite->ChainRoot = nullptr;

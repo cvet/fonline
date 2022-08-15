@@ -125,7 +125,7 @@ void MapManager::LoadFromResources()
                     const auto cr_pid = _engine->ResolveHash(cr_pid_hash);
                     const auto* cr_proto = _engine->ProtoMngr.GetProtoCritter(cr_pid);
 
-                    auto cr_props = Properties(_engine->GetPropertyRegistrator(CritterProperties::ENTITY_CLASS_NAME));
+                    auto cr_props = Properties(cr_proto->GetProperties().GetRegistrator());
                     const auto props_data_size = reader.Read<uint>();
                     props_data.resize(props_data_size);
                     reader.ReadPtr<uchar>(props_data.data(), props_data_size);
@@ -159,7 +159,7 @@ void MapManager::LoadFromResources()
                     const auto item_pid = _engine->ResolveHash(item_pid_hash);
                     const auto* item_proto = _engine->ProtoMngr.GetProtoItem(item_pid);
 
-                    auto item_props = Properties(_engine->GetPropertyRegistrator(ItemProperties::ENTITY_CLASS_NAME));
+                    auto item_props = Properties(item_proto->GetProperties().GetRegistrator());
                     const auto props_data_size = reader.Read<uint>();
                     props_data.resize(props_data_size);
                     reader.ReadPtr<uchar>(props_data.data(), props_data_size);
@@ -219,23 +219,6 @@ void MapManager::LoadFromResources()
             }
         }
 
-        // Read tiles
-        {
-            const auto tiles_count = reader.Read<uint>();
-            static_map.Tiles.resize(tiles_count);
-
-            for (const auto i : xrange(tiles_count)) {
-                reader.ReadPtr<MapTile>(&static_map.Tiles[i]);
-
-                // Checks
-                const auto hx = static_map.Tiles[i].HexX;
-                const auto hy = static_map.Tiles[i].HexY;
-                if (hx >= maxhx || hy >= maxhy) {
-                    throw MapManagerException("Invalid tile position on map", pmap->GetName(), hx, hy);
-                }
-            }
-        }
-
         reader.VerifyEnd();
 
         // Fill hex flags
@@ -284,49 +267,12 @@ void MapManager::LoadFromResources()
             }
         }
 
-        // Data for client
-        uint scenery_count = 0;
-        vector<uchar> scenery_data;
-        auto writer = DataWriter(scenery_data);
-
-        for (auto&& [item_id, item] : static_map.ItemBillets) {
-            if (!item->IsStatic()) {
-                continue;
-            }
-            if (item->GetIsHidden()) {
-                continue;
-            }
-
-            scenery_count++;
-            writer.Write<uint>(item->GetId());
-            writer.Write<hstring::hash_t>(item->GetProtoId().as_hash());
-            vector<uchar*>* all_data = nullptr;
-            vector<uint>* all_data_sizes = nullptr;
-            item->StoreData(false, &all_data, &all_data_sizes);
-            writer.Write<uint>(static_cast<uint>(all_data->size()));
-            for (size_t i = 0; i < all_data->size(); i++) {
-                writer.Write<uint>(all_data_sizes->at(i));
-                writer.WritePtr(all_data->at(i), all_data_sizes->at(i));
-            }
-        }
-
-        auto final_writer = DataWriter(static_map.SceneryData);
-        final_writer.Write<uint>(scenery_count);
-        final_writer.WritePtr(scenery_data.data(), scenery_data.size());
-
-        // Generate hashes
-        static_map.HashTiles = Hashing::MurmurHash2(static_map.Tiles.data(), static_map.Tiles.size() * sizeof(MapTile));
-        static_map.HashScen = Hashing::MurmurHash2(static_map.SceneryData.data(), static_map.SceneryData.size());
-
-        // Shrink the vector capacities to fit their contents and reduce memory use
-        static_map.SceneryData.shrink_to_fit();
         static_map.CritterBillets.shrink_to_fit();
         static_map.ItemBillets.shrink_to_fit();
         static_map.HexItemBillets.shrink_to_fit();
         static_map.ChildItemBillets.shrink_to_fit();
         static_map.StaticItems.shrink_to_fit();
         static_map.TriggerItems.shrink_to_fit();
-        static_map.Tiles.shrink_to_fit();
 
         _staticMaps.emplace(pmap, std::move(static_map));
     }
@@ -1445,6 +1391,7 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
         }
 
         cr->LockMapTransfers++;
+        auto enable_transfers = ScopeCallback([cr]() noexcept { cr->LockMapTransfers--; });
 
         if (old_map_id == 0u || old_map != nullptr) {
             EraseCrFromMap(cr, old_map);
@@ -1455,22 +1402,16 @@ auto MapManager::Transit(Critter* cr, Map* map, ushort hx, ushort hy, uchar dir,
 
         AddCrToMap(cr, map, hx, hy, dir, leader_id);
 
-        cr->Send_LoadMap(nullptr, *this);
-
-        // Visible critters / items
-        if (auto* owner = cr->GetOwner(); owner != nullptr) {
-            owner->DisableSend++;
-        }
+        cr->Send_LoadMap(nullptr);
+        cr->Send_AddCritter(cr);
+        cr->Send_AddAllItems();
 
         ProcessVisibleCritters(cr);
         ProcessVisibleItems(cr);
 
-        if (auto* owner = cr->GetOwner(); owner != nullptr) {
-            owner->DisableSend--;
-        }
-
-        cr->LockMapTransfers--;
+        cr->Send_PlaceToGameComplete();
     }
+
     return true;
 }
 
@@ -2013,18 +1954,10 @@ void MapManager::ProcessVisibleItems(Critter* view_cr)
 
 void MapManager::ViewMap(Critter* view_cr, Map* map, uint look, ushort hx, ushort hy, int dir)
 {
-    NON_CONST_METHOD_HINT();
-
-    if (view_cr->IsDestroyed()) {
-        return;
-    }
-
-    view_cr->Send_GameInfo(map);
-
     // Critters
     const auto dirs_count = _engine->Settings.MapDirCount;
     for (auto* cr : map->GetCritters()) {
-        if (cr == view_cr || cr->IsDestroyed()) {
+        if (cr == view_cr) {
             continue;
         }
 

@@ -212,12 +212,12 @@
 {
     vector<ItemView*> items;
     if (client->CurMap != nullptr) {
-        auto items_ = client->CurMap->GetItems();
-        for (auto it = items_.begin(); it != items_.end();) {
-            it = ((*it)->IsFinishing() ? items_.erase(it) : ++it);
-        }
-        for (ItemView* item : items_) {
-            items.push_back(item);
+        const auto items_ = client->CurMap->GetItems();
+        items.reserve(items_.size());
+        for (auto* item : items_) {
+            if (!item->IsFinishing()) {
+                items.emplace_back(item);
+            }
         }
     }
     return items;
@@ -646,7 +646,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, string_view msg)
 {
-    client->AddMess(0, msg);
+    client->AddMessage(0, msg);
 }
 
 ///# ...
@@ -655,7 +655,7 @@
 ///@ ExportMethod
 [[maybe_unused]] void Client_Game_Message(FOClient* client, int type, string_view msg)
 {
-    client->AddMess(static_cast<uchar>(type), msg);
+    client->AddMessage(static_cast<uchar>(type), msg);
 }
 
 ///# ...
@@ -668,7 +668,7 @@
         throw ScriptException("Invalid text msg arg");
     }
 
-    client->AddMess(0, client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMessage(0, client->GetCurLang().Msg[textMsg].GetStr(strNum));
 }
 
 ///# ...
@@ -682,7 +682,7 @@
         throw ScriptException("Invalid text msg arg");
     }
 
-    client->AddMess(static_cast<uchar>(type), client->GetCurLang().Msg[textMsg].GetStr(strNum));
+    client->AddMessage(static_cast<uchar>(type), client->GetCurLang().Msg[textMsg].GetStr(strNum));
 }
 
 ///# ...
@@ -1136,14 +1136,13 @@
 ///# param effectType ...
 ///# param effectSubtype ...
 ///# param effectName ...
-///# param effectDefines ...
 ///# return ...
 ///@ ExportMethod
-[[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int effectSubtype, string_view effectName, string_view effectDefines)
+[[maybe_unused]] void Client_Game_SetEffect(FOClient* client, EffectType effectType, int effectSubtype, string_view effectName)
 {
     const auto reload_effect = [&](RenderEffect* def_effect) {
         if (!effectName.empty()) {
-            auto* effect = client->EffectMngr.LoadEffect(def_effect->Usage, effectName, effectDefines, "");
+            auto* effect = client->EffectMngr.LoadEffect(def_effect->Usage, effectName, "");
             if (!effect) {
                 throw ScriptException("Effect not found or have some errors, see log file");
             }
@@ -1753,7 +1752,7 @@
         pp.PointOffsY = nullptr;
     }
 
-    client->SprMngr.DrawPoints(points, prim, nullptr, nullptr, nullptr);
+    client->SprMngr.DrawPoints(points, prim);
 }
 
 ///# ...

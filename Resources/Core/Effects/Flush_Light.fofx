@@ -4,7 +4,7 @@ BlendFunc_Pass1 = DstColor One
 BlendFunc_Pass2 = DstColor One
 
 [VertexShader]
-layout(location = 0) uniform mat4 ProjectionMatrix;
+uniform mat4 ProjectionMatrix;
 
 layout(location = 0) in vec2 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -20,7 +20,7 @@ void main(void)
 }
 
 [FragmentShader Pass1]
-layout(location = 1) uniform sampler2D ColorMap;
+layout(binding = 0) uniform sampler2D ColorMap;
 
 layout(location = 0) in vec2 TexCoord;
 
@@ -37,7 +37,7 @@ void main(void)
 }
 
 [FragmentShader Pass2]
-layout(location = 1) uniform sampler2D ColorMap;
+layout(binding = 0) uniform sampler2D ColorMap;
 
 layout(location = 0) in vec2 TexCoord;
 

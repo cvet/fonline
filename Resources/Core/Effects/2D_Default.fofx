@@ -1,7 +1,7 @@
 [Effect]
 
 [VertexShader]
-layout(location = 0) uniform mat4 ProjectionMatrix;
+uniform mat4 ProjectionMatrix;
 
 layout(location = 0) in vec2 InPosition;
 layout(location = 1) in vec4 InColor;
@@ -21,8 +21,8 @@ void main(void)
 }
 
 [FragmentShader]
-layout(location = 1) uniform sampler2D ColorMap;
-layout(location = 2) uniform sampler2D EggMap;
+layout(binding = 0) uniform sampler2D ColorMap;
+layout(binding = 1) uniform sampler2D EggMap;
 
 layout(location = 0) in vec4 Color;
 layout(location = 1) in vec2 TexCoord;

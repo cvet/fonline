@@ -33,12 +33,24 @@
 
 #include "SpriteManager.h"
 #include "DiskFileSystem.h"
-#include "GenericUtils.h"
 #include "Log.h"
 #include "StringUtils.h"
 
 constexpr int SPRITES_BUFFER_SIZE = 10000;
 constexpr int ATLAS_SPRITES_PADDING = 1;
+
+static inline auto ApplyColorBrightness(uint color, int brightness) -> uint
+{
+    if (brightness != 0) {
+        const auto r = std::clamp(((color >> 16) & 0xFF) + brightness, 0u, 255u);
+        const auto g = std::clamp(((color >> 8) & 0xFF) + brightness, 0u, 255u);
+        const auto b = std::clamp(((color >> 0) & 0xFF) + brightness, 0u, 255u);
+        return COLOR_RGBA((color >> 24) & 0xFF, r, g, b);
+    }
+    else {
+        return color;
+    }
+}
 
 TextureAtlas::SpaceNode::SpaceNode(int x, int y, uint w, uint h) : PosX {x}, PosY {y}, Width {w}, Height {h}
 {
@@ -108,7 +120,7 @@ auto AnyFrames::GetDir(int dir) -> AnyFrames*
 
 SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSystem& file_sys, EffectManager& effect_mngr) : _settings {settings}, _window {window}, _fileSys {file_sys}, _effectMngr {effect_mngr}
 {
-    _baseColor = COLOR_RGBA(255, 128, 128, 128);
+    _spritesTreeColor = COLOR_RGBA(255, 128, 128, 128);
     _maxDrawQuad = 1024;
     _allAtlases.reserve(100);
     _dipQueue.reserve(1000);
@@ -124,9 +136,6 @@ SpriteManager::SpriteManager(RenderSettings& settings, AppWindow* window, FileSy
 
     _sprData.resize(SPRITES_BUFFER_SIZE);
     _borderBuf.resize(App->Render.MAX_ATLAS_SIZE);
-
-    MatrixHelper::MatrixOrtho(_projectionMatrixCm[0], 0.0f, static_cast<float>(_settings.ScreenWidth), static_cast<float>(_settings.ScreenHeight), 0.0f, -1.0f, 1.0f);
-    _projectionMatrixCm.Transpose(); // Convert to column major order
 
     _rtMain = CreateRenderTarget(false, RenderTarget::SizeType::Screen, 0, 0, true);
     _rtContours = CreateRenderTarget(false, RenderTarget::SizeType::Map, 0, 0, false);
@@ -234,7 +243,7 @@ void SpriteManager::EndScene()
 
     if (_rtMain != nullptr) {
         PopRenderTarget();
-        DrawRenderTarget(_rtMain, false, nullptr, nullptr);
+        DrawRenderTarget(_rtMain, false);
     }
 }
 
@@ -382,7 +391,6 @@ void SpriteManager::DrawRenderTarget(RenderTarget* rt, bool alpha_blend, const I
 
     auto* effect = rt->CustomDrawEffect != nullptr ? rt->CustomDrawEffect : _effectMngr.Effects.FlushRenderTarget;
 
-    std::memcpy(effect->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
     effect->MainTex = rt->MainTex.get();
     effect->DisableBlending = !alpha_blend;
     _flushDrawBuf->Upload(effect->Usage);
@@ -1165,13 +1173,24 @@ void SpriteManager::Flush()
 
     _spritesDrawBuf->Upload(_dipQueue.front().SourceEffect->Usage, _curDrawQuad * 4);
 
+    EnableScissor();
+
     size_t pos = 0;
     for (const auto& dip : _dipQueue) {
         RUNTIME_ASSERT(dip.SourceEffect->Usage == _dipQueue.front().SourceEffect->Usage);
-        std::memcpy(dip.SourceEffect->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
+
+        if (_sprEgg != nullptr) {
+            dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
+        }
+        if (dip.SourceEffect->MapSpriteBuf) {
+            dip.SourceEffect->MapSpriteBuf->ZoomFactor = _settings.SpritesZoom;
+        }
+
         dip.SourceEffect->DrawBuffer(_spritesDrawBuf, pos, dip.SpritesCount * 6, dip.MainTex);
         pos += dip.SpritesCount * 6;
     }
+
+    DisableScissor();
 
     _dipQueue.clear();
     _curDrawQuad = 0;
@@ -1198,8 +1217,9 @@ void SpriteManager::DrawSprite(uint id, int x, int y, uint color)
     }
 
     if (color == 0u) {
-        color = COLOR_IFACE;
+        color = COLOR_SPRITE;
     }
+    color = ApplyColorBrightness(color, _settings.Brightness);
     color = COLOR_SWAP_RB(color);
 
     auto& vbuf = _spritesDrawBuf->Vertices2D;
@@ -1289,8 +1309,9 @@ void SpriteManager::DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool 
     }
 
     if (color == 0u) {
-        color = COLOR_IFACE;
+        color = COLOR_SPRITE;
     }
+    color = ApplyColorBrightness(color, _settings.Brightness);
     color = COLOR_SWAP_RB(color);
 
     auto& vbuf = _spritesDrawBuf->Vertices2D;
@@ -1358,8 +1379,9 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
     }
 
     if (color == 0u) {
-        color = COLOR_IFACE;
+        color = COLOR_SPRITE;
     }
+    color = ApplyColorBrightness(color, _settings.Brightness);
     color = COLOR_SWAP_RB(color);
 
     auto* effect = si->DrawEffect != nullptr ? si->DrawEffect : _effectMngr.Effects.Iface;
@@ -1422,7 +1444,7 @@ void SpriteManager::DrawSpritePattern(uint id, int x, int y, int w, int h, int s
 
 void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, const IRect& r, uint color)
 {
-    points.push_back({r.Right, r.Bottom, color});
+    points.push_back({r.Left, r.Bottom, color});
     points.push_back({r.Left, r.Top, color});
     points.push_back({r.Right, r.Bottom, color});
     points.push_back({r.Left, r.Top, color});
@@ -1547,6 +1569,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         return;
     }
 
+    // Todo: restore ShowSpriteBorders
     vector<PrimitivePoint> borders;
 
     if (!_eggValid) {
@@ -1595,7 +1618,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             color_r = color_l = spr->Color | 0xFF000000;
         }
         else {
-            color_r = color_l = _baseColor;
+            color_r = color_l = _spritesTreeColor;
         }
 
         // Light
@@ -1628,6 +1651,8 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         }
 
         // Fix color
+        color_r = ApplyColorBrightness(color_r, _settings.Brightness);
+        color_l = ApplyColorBrightness(color_l, _settings.Brightness);
         color_r = COLOR_SWAP_RB(color_r);
         color_l = COLOR_SWAP_RB(color_l);
 
@@ -1761,7 +1786,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
                 break;
             }
 
-            DrawPoints(corner, RenderPrimitiveType::TriangleList, nullptr, nullptr, nullptr);
+            DrawPoints(corner, RenderPrimitiveType::TriangleList);
         }
 
         // Draw order
@@ -1785,7 +1810,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
     Flush();
 
     if (_settings.ShowSpriteBorders) {
-        DrawPoints(borders, RenderPrimitiveType::TriangleList, nullptr, nullptr, nullptr);
+        DrawPoints(borders, RenderPrimitiveType::TriangleList);
     }
 }
 
@@ -1846,7 +1871,7 @@ auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
     return (egg_color >> 24) < 127;
 }
 
-void SpriteManager::DrawPoints(vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom, FPoint* offset, RenderEffect* custom_effect)
+void SpriteManager::DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom, const FPoint* offset, RenderEffect* custom_effect)
 {
     if (points.empty()) {
         return;
@@ -1857,7 +1882,7 @@ void SpriteManager::DrawPoints(vector<PrimitivePoint>& points, RenderPrimitiveTy
     auto* effect = custom_effect != nullptr ? custom_effect : _effectMngr.Effects.Primitive;
 
     // Check primitives
-    const auto count = static_cast<uint>(points.size());
+    const auto count = points.size();
     auto prim_count = static_cast<int>(count);
     switch (prim) {
     case RenderPrimitiveType::PointList:
@@ -1887,7 +1912,7 @@ void SpriteManager::DrawPoints(vector<PrimitivePoint>& points, RenderPrimitiveTy
     }
 
     // Collect data
-    for (uint i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++) {
         const auto& point = points[i];
         auto x = static_cast<float>(point.PointX);
         auto y = static_cast<float>(point.PointY);
@@ -1910,21 +1935,25 @@ void SpriteManager::DrawPoints(vector<PrimitivePoint>& points, RenderPrimitiveTy
         std::memset(&_primitiveDrawBuf->Vertices2D[i], 0, sizeof(Vertex2D));
         _primitiveDrawBuf->Vertices2D[i].X = x;
         _primitiveDrawBuf->Vertices2D[i].Y = y;
-        _primitiveDrawBuf->Vertices2D[i].Diffuse = COLOR_SWAP_RB(point.PointColor);
+        uint color = point.PointColor;
+        color = ApplyColorBrightness(color, _settings.Brightness);
+        color = COLOR_SWAP_RB(color);
+        _primitiveDrawBuf->Vertices2D[i].Diffuse = color;
     }
 
     _primitiveDrawBuf->PrimType = prim;
 
-    std::memcpy(effect->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
     _primitiveDrawBuf->Upload(effect->Usage);
-    effect->DrawBuffer(_primitiveDrawBuf);
+    EnableScissor();
+    effect->DrawBuffer(_primitiveDrawBuf, 0, count);
+    DisableScissor();
 }
 
 void SpriteManager::DrawContours()
 {
     if (_contoursAdded && _rtContours != nullptr && _rtContoursMid != nullptr) {
         // Draw collected contours
-        DrawRenderTarget(_rtContours, true, nullptr, nullptr);
+        DrawRenderTarget(_rtContours, true);
 
         // Clean render targets
         PushRenderTarget(_rtContours);
@@ -2017,7 +2046,6 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
         vbuf[pos].TU = sr.Right;
         vbuf[pos].TV = sr.Bottom;
 
-        std::memcpy(_effectMngr.Effects.FlushRenderTarget->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
         _flushDrawBuf->Upload(_effectMngr.Effects.FlushRenderTarget->Usage);
         _effectMngr.Effects.FlushRenderTarget->DrawBuffer(_flushDrawBuf);
 
@@ -2049,6 +2077,7 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     else {
         contour_color = 0xFFAFAFAF;
     }
+    contour_color = ApplyColorBrightness(contour_color, _settings.Brightness);
     contour_color = COLOR_SWAP_RB(contour_color);
 
     const auto bordersf = FRect(borders);
@@ -2088,7 +2117,6 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     border_buf[2] = sprite_border[2];
     border_buf[3] = sprite_border[3];
 
-    std::memcpy(_effectMngr.Effects.Contour->ProjBuf.ProjMatrix, _projectionMatrixCm[0], 16 * sizeof(float));
     _contourDrawBuf->Upload(_effectMngr.Effects.Contour->Usage);
     _effectMngr.Effects.Contour->DrawBuffer(_contourDrawBuf);
 
@@ -3029,6 +3057,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
     if (color == 0u && _defFontColor != 0u) {
         color = _defFontColor;
     }
+    color = ApplyColorBrightness(color, _settings.Brightness);
 
     auto& fi = _fontFormatInfoBuf = {font, flags, r};
     StrCopy(fi.Str, str);
@@ -3060,6 +3089,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
                 else {
                     color = (color & 0xFF000000) | (fi.ColorDots[i] & 0x00FFFFFF); // Still old alpha
                 }
+                color = ApplyColorBrightness(color, _settings.Brightness);
                 color = COLOR_SWAP_RB(color);
                 break;
             }
@@ -3078,6 +3108,7 @@ void SpriteManager::DrawStr(const IRect& r, string_view str, uint flags, uint co
                 else {
                     color = (color & 0xFF000000) | (new_color & 0x00FFFFFF); // Still old alpha
                 }
+                color = ApplyColorBrightness(color, _settings.Brightness);
                 color = COLOR_SWAP_RB(color);
             }
         }

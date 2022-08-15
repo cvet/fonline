@@ -294,7 +294,7 @@
     self->ViewMapDir = dir_;
     self->ViewMapLocId = 0;
     self->ViewMapLocEnt = 0;
-    self->Send_LoadMap(map, self->GetEngine()->MapMngr);
+    self->Send_LoadMap(map);
 }
 
 ///# ...

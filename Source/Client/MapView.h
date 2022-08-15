@@ -35,7 +35,6 @@
 
 #include "Common.h"
 
-#include "CacheStorage.h"
 #include "ClientEntity.h"
 #include "CritterHexView.h"
 #include "EffectManager.h"
@@ -51,6 +50,8 @@
 #include "SpriteManager.h"
 #include "Sprites.h"
 #include "Timer.h"
+
+DECLARE_EXCEPTION(MapViewLoadException);
 
 static constexpr auto MAX_FIND_PATH = 600;
 
@@ -114,7 +115,7 @@ public:
 
     Field() = default;
     Field(const Field&) = delete;
-    Field(Field&&) noexcept = delete;
+    Field(Field&&) noexcept = default;
     auto operator=(const Field&) = delete;
     auto operator=(Field&&) noexcept = delete;
     ~Field();
@@ -186,7 +187,7 @@ public:
 
     void MarkAsDestroyed() override;
     void EnableMapperMode();
-
+    void LoadStaticData();
     void Process();
     void DrawMap();
 
@@ -203,8 +204,6 @@ public:
     void ClearHexTrack();
     void SwitchShowTrack();
 
-    void ReloadSprites();
-
     void ChangeZoom(int zoom); // < 0 in, > 0 out, 0 normalize
 
     void GetScreenHexes(int& sx, int& sy) const;
@@ -212,7 +211,6 @@ public:
 
     void FindSetCenter(int cx, int cy);
     void ProcessHexBorders(ItemHexView* item);
-    void ResizeField(ushort w, ushort h);
     void RebuildMap(int rx, int ry);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
@@ -292,9 +290,6 @@ public:
 
     AutoScrollInfo AutoScroll {};
     uchar SelectAlpha {100};
-    ProtoMap* CurProtoMap {};
-    vector<vector<MapTile>> TilesField {};
-    vector<vector<MapTile>> RoofsField {};
 
 private:
     struct MapText
@@ -303,7 +298,7 @@ private:
         ushort HexY {};
         uint StartTick {};
         uint Tick {};
-        string Text;
+        string Text {};
         uint Color {};
         bool Fade {};
         IRect Pos {};
@@ -315,8 +310,6 @@ private:
     [[nodiscard]] auto GetViewHeight() const -> int;
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
     [[nodiscard]] auto ScrollCheck(int xmod, int ymod) -> bool;
-
-    void ProcessItems();
 
     void AddCritter(CritterHexView* cr);
     void AddCritterToField(CritterHexView* cr);
@@ -353,22 +346,20 @@ private:
     vector<ItemHexView*> _items {};
     map<uint, ItemHexView*> _itemsMap {};
     vector<MapText> _mapTexts {};
-    SpriteVec _spritesPool {};
+    vector<Sprite*> _spritesPool {};
     Sprites _mainTree;
     Sprites _tilesTree;
     Sprites _roofTree;
     ushort _maxHexX {};
     ushort _maxHexY {};
-    Field* _hexField {};
-    char* _hexTrack {};
+    vector<Field> _hexField {};
     AnyFrames* _picTrack1 {};
     AnyFrames* _picTrack2 {};
     AnyFrames* _picHexMask {};
     bool _isShowTrack {};
     bool _isShowHex {};
     AnyFrames* _picHex[3] {};
-    string _curDataPrefix {};
-    short* _findPathGrid {};
+    vector<short> _findPathGrid {};
     int _curMapTime {-1};
     int _dayTime[4] {};
     uchar _dayColor[12] {};
@@ -378,7 +369,7 @@ private:
     RenderTarget* _rtFog {};
     uint _rtScreenOx {};
     uint _rtScreenOy {};
-    ViewField* _viewField {};
+    vector<ViewField> _viewField {};
     int _screenHexX {};
     int _screenHexY {};
     int _hTop {};
@@ -397,10 +388,9 @@ private:
     uint _critterContourCrId {};
     int _critterContour {};
     int _crittersContour {};
-
     bool _requestRebuildLight {};
     bool _requestRenderLight {};
-    uchar* _hexLight {};
+    vector<uchar> _hexLight {};
     uint _lightPointsCount {};
     vector<vector<PrimitivePoint>> _lightPoints {};
     vector<PrimitivePoint> _lightSoftPoints {};
@@ -423,4 +413,7 @@ private:
     int _cursorY {};
     set<hstring> _fastPids {};
     set<hstring> _ignorePids {};
+    vector<char> _hexTrack {};
+    vector<vector<MapTile>> _tilesField {};
+    vector<vector<MapTile>> _roofsField {};
 };

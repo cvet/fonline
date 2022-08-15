@@ -43,7 +43,6 @@ class RenderEffect;
 class SpriteManager;
 class Sprites;
 class Sprite;
-using SpriteVec = vector<Sprite*>;
 
 ///@ ExportObject Client
 struct MapSprite
@@ -138,7 +137,7 @@ class Sprites final
 
 public:
     Sprites() = delete;
-    Sprites(SpriteManager& spr_mngr, SpriteVec& pool) : _sprMngr {spr_mngr}, _spritesPool {pool} { }
+    Sprites(SpriteManager& spr_mngr, vector<Sprite*>& pool) : _sprMngr {spr_mngr}, _spritesPool {pool} { }
     Sprites(const Sprites&) = delete;
     Sprites(Sprites&&) noexcept = delete;
     auto operator=(const Sprites&) = delete;
@@ -161,10 +160,10 @@ private:
     void GrowPool();
 
     SpriteManager& _sprMngr;
-    SpriteVec& _spritesPool;
+    vector<Sprite*>& _spritesPool;
     Sprite* _rootSprite {};
     Sprite* _lastSprite {};
     uint _spriteCount {};
-    SpriteVec _unvalidatedSprites {};
+    vector<Sprite*> _unvalidatedSprites {};
     bool _nonConstHelper {};
 };

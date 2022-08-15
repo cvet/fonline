@@ -744,12 +744,12 @@ void Critter::Send_RemoveCritter(Critter* cr)
     }
 }
 
-void Critter::Send_LoadMap(Map* map, MapManager& map_mngr)
+void Critter::Send_LoadMap(Map* map)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_LoadMap(map, map_mngr);
+        _player->Send_LoadMap(map);
     }
 }
 
@@ -807,12 +807,12 @@ void Critter::Send_EraseItem(Item* item)
     }
 }
 
-void Critter::Send_GlobalInfo(uchar flags, MapManager& map_mngr)
+void Critter::Send_GlobalInfo(uchar flags)
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_GlobalInfo(flags, map_mngr);
+        _player->Send_GlobalInfo(flags);
     }
 }
 
@@ -861,12 +861,12 @@ void Critter::Send_Talk()
     }
 }
 
-void Critter::Send_GameInfo(Map* map)
+void Critter::Send_TimeSync()
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_GameInfo(map);
+        _player->Send_TimeSync();
     }
 }
 
@@ -1032,12 +1032,12 @@ void Critter::Send_ViewMap()
     }
 }
 
-void Critter::Send_CustomMessage(uint msg)
+void Critter::Send_PlaceToGameComplete()
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_CustomMessage(msg);
+        _player->Send_PlaceToGameComplete();
     }
 }
 
@@ -1050,12 +1050,12 @@ void Critter::Send_AddAllItems()
     }
 }
 
-void Critter::Send_AllAutomapsInfo(MapManager& map_mngr)
+void Critter::Send_AllAutomapsInfo()
 {
     NON_CONST_METHOD_HINT();
 
     if (_player != nullptr) {
-        _player->Send_AllAutomapsInfo(map_mngr);
+        _player->Send_AllAutomapsInfo();
     }
 }
 

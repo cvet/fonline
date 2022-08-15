@@ -50,7 +50,7 @@ RenderDrawBuffer::RenderDrawBuffer(bool is_static) : IsStatic {is_static}
 {
 }
 
-RenderEffect::RenderEffect(EffectUsage usage, string_view name, string_view defines, const RenderEffectLoader& loader) : Name {name}, Usage {usage}
+RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) : Name {name}, Usage {usage}
 {
     const auto fname = _str("{}.fofx", name);
     const auto content = loader(fname);

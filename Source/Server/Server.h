@@ -210,6 +210,7 @@ private:
     };
 
     void OnNewConnection(NetConnection* net_connection);
+
     void ProcessUnloginedPlayer(Player* unlogined_player);
     void ProcessPlayer(Player* player);
     void ProcessConnection(ClientConnection* connection);
@@ -220,8 +221,6 @@ private:
     void Process_UpdateFileData(ClientConnection* connection);
     void Process_Register(Player* unlogined_player);
     void Process_Login(Player* unlogined_player);
-
-    void Process_PlaceToGame(Player* player);
     void Process_Move(Player* player);
     void Process_StopMove(Player* player);
     void Process_Dir(Player* player);
@@ -229,7 +228,6 @@ private:
     void Process_Command(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_CommandReal(NetInBuffer& buf, const LogFunc& logcb, Player* player, string_view admin_panel);
     void Process_Dialog(Player* player);
-    void Process_GiveMap(Player* player);
     void Process_Property(Player* player, uint data_size);
     void Process_RemoteCall(Player* player);
 
@@ -275,8 +273,9 @@ private:
     vector<Player*> _logClients {};
     vector<string> _logLines {};
     vector<NetServerBase*> _connectionServers {}; // Todo: run network listeners dynamically, without restriction, based on server settings
+    vector<ClientConnection*> _newConnections {};
+    mutable std::mutex _newConnectionsLocker {};
     vector<Player*> _unloginedPlayers {};
-    mutable std::mutex _unloginedPlayersLocker {};
     EventDispatcher<> _willFinishDispatcher {OnWillFinish};
     EventDispatcher<> _didFinishDispatcher {OnDidFinish};
 };

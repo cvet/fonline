@@ -47,6 +47,9 @@ void ItemView::MarkAsDestroyed()
         item->Release();
     }
     _innerItems.clear();
+
+    Entity::MarkAsDestroying();
+    Entity::MarkAsDestroyed();
 }
 
 auto ItemView::CreateRefClone() const -> ItemView*

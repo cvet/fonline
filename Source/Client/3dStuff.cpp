@@ -163,7 +163,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 {
     // Find already loaded
     auto name_hashed = _nameResolver.ToHashedString(fname);
-    for (const auto& root_bone : _loadedModels) {
+    for (auto&& root_bone : _loadedModels) {
         if (root_bone->Name == name_hashed) {
             return root_bone.get();
         }
@@ -201,7 +201,7 @@ auto ModelManager::LoadModel(string_view fname) -> ModelBone*
 
     // Add to collection
     root_bone->Name = name_hashed;
-    _loadedModels.emplace_back(root_bone.release(), [this, &root_bone](ModelBone*) { _processedFiles.erase(root_bone->Name); });
+    _loadedModels.emplace_back(std::move(root_bone));
     return _loadedModels.back().get();
 }
 
@@ -210,7 +210,7 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     // Find in already loaded
     const auto take_first = (anim_name == "Base");
     const auto name_hashed = _nameResolver.ToHashedString(anim_fname);
-    for (const auto& anim_set : _loadedAnimSets) {
+    for (auto&& anim_set : _loadedAnimSets) {
         if (_str(anim_set->GetFileName()).compareIgnoreCase(anim_fname) && (take_first || _str(anim_set->GetName()).compareIgnoreCase(anim_name))) {
             return anim_set.get();
         }
@@ -220,12 +220,13 @@ auto ModelManager::LoadAnimation(string_view anim_fname, string_view anim_name) 
     if (_processedFiles.count(name_hashed) != 0u) {
         return nullptr;
     }
-    _processedFiles.emplace(name_hashed);
 
     // File not processed, load and recheck animations
     if (LoadModel(anim_fname) != nullptr) {
         return LoadAnimation(anim_fname, anim_name);
     }
+
+    _processedFiles.emplace(name_hashed);
 
     return nullptr;
 }
@@ -330,7 +331,7 @@ auto ModelManager::GetHierarchy(string_view name) -> ModelHierarchy*
 
     auto model_hierarchy = std::make_unique<ModelHierarchy>(*this);
     model_hierarchy->_fileName = name;
-    model_hierarchy->_rootBone = unique_ptr<ModelBone>(root_bone);
+    model_hierarchy->_rootBone = root_bone;
     model_hierarchy->SetupBones();
 
     _hierarchyFiles.emplace_back(std::move(model_hierarchy));
@@ -362,6 +363,7 @@ ModelInstance::~ModelInstance()
         delete mesh;
     }
     for (const auto* mesh : _combinedMeshes) {
+        delete mesh->MeshBuf;
         delete mesh;
     }
 }
@@ -631,7 +633,7 @@ auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags
 
                                     mesh_changed = true;
                                     model->_parent = this;
-                                    model->_parentBone = _modelInfo->_hierarchy->_rootBone.get();
+                                    model->_parentBone = _modelInfo->_hierarchy->_rootBone;
                                     model->_animLink = link;
                                     model->SetAnimData(link, false);
                                     _children.push_back(model);
@@ -1203,24 +1205,24 @@ void ModelInstance::GenerateCombinedMeshes()
 
     // Finalize meshes
     for (size_t i = 0; i < _combinedMeshesSize; i++) {
-        _combinedMeshes[i]->DrawMesh->StaticDataChanged = true;
+        _combinedMeshes[i]->MeshBuf->StaticDataChanged = true;
     }
 }
 
-void ModelInstance::FillCombinedMeshes(ModelInstance* base, ModelInstance* cur)
+void ModelInstance::FillCombinedMeshes(ModelInstance* base, const ModelInstance* cur)
 {
     // Combine meshes
-    for (auto* mesh : _allMeshes) {
+    for (const auto* mesh : cur->_allMeshes) {
         base->CombineMesh(mesh, cur->_parentBone != nullptr ? cur->_animLink.Layer : 0);
     }
 
     // Fill child
-    for (auto* child_anim : cur->_children) {
+    for (const auto* child_anim : cur->_children) {
         FillCombinedMeshes(base, child_anim);
     }
 }
 
-void ModelInstance::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
+void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int anim_layer)
 {
     // Skip disabled meshes
     if (mesh_instance->Disabled) {
@@ -1228,7 +1230,7 @@ void ModelInstance::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
     }
 
     // Try encapsulate mesh instance to current combined mesh
-    for (size_t i = 0, j = _combinedMeshesSize; i < j; i++) {
+    for (size_t i = 0; i < _combinedMeshesSize; i++) {
         if (CanBatchCombinedMesh(_combinedMeshes[i], mesh_instance)) {
             BatchCombinedMesh(_combinedMeshes[i], mesh_instance, anim_layer);
             return;
@@ -1238,7 +1240,7 @@ void ModelInstance::CombineMesh(MeshInstance* mesh_instance, int anim_layer)
     // Create new combined mesh
     if (_combinedMeshesSize >= _combinedMeshes.size()) {
         auto* combined_mesh = new CombinedMesh();
-        combined_mesh->DrawMesh = App->Render.CreateDrawBuffer(true);
+        combined_mesh->MeshBuf = App->Render.CreateDrawBuffer(true);
         combined_mesh->SkinBones.resize(MODEL_MAX_BONES);
         combined_mesh->SkinBoneOffsets.resize(MODEL_MAX_BONES);
         _combinedMeshes.emplace_back(combined_mesh);
@@ -1255,11 +1257,11 @@ void ModelInstance::ClearCombinedMesh(CombinedMesh* combined_mesh)
     combined_mesh->MeshIndices.clear();
     combined_mesh->MeshVertices.clear();
     combined_mesh->MeshAnimLayers.clear();
-    combined_mesh->DrawMesh->Vertices3D.clear();
-    combined_mesh->DrawMesh->Indices.clear();
+    combined_mesh->MeshBuf->Vertices3D.clear();
+    combined_mesh->MeshBuf->Indices.clear();
 }
 
-auto ModelInstance::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstance* mesh_instance) const -> bool
+auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool
 {
     if (combined_mesh->EncapsulatedMeshCount == 0) {
         return true;
@@ -1278,8 +1280,8 @@ auto ModelInstance::CanBatchCombinedMesh(CombinedMesh* combined_mesh, MeshInstan
 void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer)
 {
     auto* mesh = mesh_instance->Mesh;
-    auto& vertices = combined_mesh->DrawMesh->Vertices3D;
-    auto& indices = combined_mesh->DrawMesh->Indices;
+    auto& vertices = combined_mesh->MeshBuf->Vertices3D;
+    auto& indices = combined_mesh->MeshBuf->Indices;
     const auto vertices_old_size = vertices.size();
     const auto indices_old_size = indices.size();
 
@@ -1287,7 +1289,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     if (combined_mesh->EncapsulatedMeshCount == 0) {
         vertices = mesh->Vertices;
         indices = mesh->Indices;
-        combined_mesh->DrawEffect = mesh_instance->CurEffect != nullptr ? mesh_instance->CurEffect : _modelMngr._effectMngr.Effects.Skinned3d;
+        combined_mesh->DrawEffect = mesh_instance->CurEffect;
         std::memset(&combined_mesh->SkinBones[0], 0, combined_mesh->SkinBones.size() * sizeof(void*));
         std::memset(combined_mesh->Textures, 0, sizeof(combined_mesh->Textures));
         combined_mesh->CurBoneMatrix = 0;
@@ -1320,7 +1322,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     combined_mesh->MeshAnimLayers.push_back(anim_layer);
 
     // Add bones matrices
-    for (size_t i = 0, j = mesh->SkinBones.size(); i < j; i++) {
+    for (size_t i = 0; i < mesh->SkinBones.size(); i++) {
         combined_mesh->SkinBones[combined_mesh->CurBoneMatrix + i] = mesh->SkinBones[i];
         combined_mesh->SkinBoneOffsets[combined_mesh->CurBoneMatrix + i] = mesh->SkinBoneOffsets[i];
     }
@@ -1424,8 +1426,8 @@ void ModelInstance::CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutD
 {
     NON_CONST_METHOD_HINT();
 
-    auto& vertices = combined_mesh->DrawMesh->Vertices3D;
-    auto& indices = combined_mesh->DrawMesh->Indices;
+    auto& vertices = combined_mesh->MeshBuf->Vertices3D;
+    auto& indices = combined_mesh->MeshBuf->Indices;
     for (const auto& shape : cut->Shapes) {
         vector<Vertex3D> result_vertices;
         vector<ushort> result_indices;
@@ -1740,7 +1742,7 @@ void ModelInstance::ProcessAnimation(float elapsed, int x, int y, float scale)
     }
 
     // Update matrices
-    UpdateBoneMatrices(_modelInfo->_hierarchy->_rootBone.get(), &_parentMatrix);
+    UpdateBoneMatrices(_modelInfo->_hierarchy->_rootBone, &_parentMatrix);
 
     // Update linked matrices
     if ((_parentBone != nullptr) && !_linkBones.empty()) {
@@ -1824,9 +1826,10 @@ void ModelInstance::DrawCombinedMeshes()
 
 void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled)
 {
-    auto* effect = combined_mesh->DrawEffect;
+    auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.Skinned3d;
 
-    std::memcpy(effect->ProjBuf.ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
+    effect->ProjBuf = RenderEffect::ProjBuffer();
+    std::memcpy(effect->ProjBuf->ProjMatrix, _frameProjColMaj[0], 16 * sizeof(float));
 
     effect->MainTex = combined_mesh->Textures[0]->MainTex;
 
@@ -1834,6 +1837,7 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
         std::memcpy(effect->MainTexBuf->MainTexSize, effect->MainTex->SizeData, 4 * sizeof(float));
     }
 
+    // Todo: merge all bones in one hierarchy and disable offset copying
     auto* wm = effect->ModelBuf->WorldMatrices;
     for (size_t i = 0; i < combined_mesh->CurBoneMatrix; i++) {
         auto m = combined_mesh->SkinBones[i]->CombinedTransformationMatrix * combined_mesh->SkinBoneOffsets[i];
@@ -1841,9 +1845,12 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
         std::memcpy(wm, m[0], 16 * sizeof(float));
         wm += 16;
     }
+    effect->MatrixCount = combined_mesh->CurBoneMatrix;
 
     std::memcpy(effect->ModelBuf->GroundPosition, &_groundPos, 3 * sizeof(float));
     effect->ModelBuf->GroundPosition[3] = 0.0f;
+
+    std::memcpy(effect->ModelBuf->LightColor, &_modelMngr._lightColor, 4 * sizeof(float));
 
     if (effect->CustomTexBuf) {
         for (auto i = 0; i < EFFECT_TEXTURES; i++) {
@@ -1858,8 +1865,8 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
         effect->AnimBuf->AbsoluteTime = _animPosTime;
     }
 
-    combined_mesh->DrawMesh->Upload(effect->Usage);
-    effect->DrawBuffer(combined_mesh->DrawMesh);
+    combined_mesh->MeshBuf->Upload(effect->Usage);
+    effect->DrawBuffer(combined_mesh->MeshBuf);
 }
 
 void ModelInstance::DrawAllParticles()
@@ -2548,7 +2555,7 @@ auto ModelInformation::Load(string_view name) -> bool
                     const auto* set = _animController->GetAnimationSet(i);
                     const auto& bones_hierarchy = set->GetBonesHierarchy();
                     for (const auto& bone_hierarchy : bones_hierarchy) {
-                        auto* bone = _hierarchy->_rootBone.get();
+                        auto* bone = _hierarchy->_rootBone;
                         for (size_t b = 1; b < bone_hierarchy.size(); b++) {
                             auto* child = bone->Find(bone_hierarchy[b]);
                             if (child == nullptr) {
@@ -2761,7 +2768,7 @@ void SetupBonesExt(multimap<uint, ModelBone*>& bones, ModelBone* bone, uint dept
 void ModelHierarchy::SetupBones()
 {
     multimap<uint, ModelBone*> bones;
-    SetupBonesExt(bones, _rootBone.get(), 0);
+    SetupBonesExt(bones, _rootBone, 0);
 
     for (auto&& [id, bone] : bones) {
         _allBones.push_back(bone);
@@ -2784,7 +2791,7 @@ void ModelHierarchy::SetupAnimationOutput(ModelAnimationController* anim_control
 {
     NON_CONST_METHOD_HINT();
 
-    SetupAnimationOutputExt(anim_controller, _rootBone.get());
+    SetupAnimationOutputExt(anim_controller, _rootBone);
 }
 
 auto ModelHierarchy::GetTexture(string_view tex_name) -> MeshTexture*
@@ -2802,7 +2809,7 @@ auto ModelHierarchy::GetEffect(string_view name) -> RenderEffect*
 {
     NON_CONST_METHOD_HINT();
 
-    auto* effect = _modelMngr._effectMngr.LoadEffect(EffectUsage::Model, name, "", _fileName);
+    auto* effect = _modelMngr._effectMngr.LoadEffect(EffectUsage::Model, name, _fileName);
     if (effect == nullptr) {
         WriteLog("Can't load effect '{}'", name);
     }

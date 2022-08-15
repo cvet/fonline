@@ -73,6 +73,9 @@ void CritterView::MarkAsDestroyed()
         item->Release();
     }
     _items.clear();
+
+    Entity::MarkAsDestroying();
+    Entity::MarkAsDestroyed();
 }
 
 void CritterView::SetPlayer(bool is_player, bool is_chosen)

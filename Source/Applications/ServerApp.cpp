@@ -111,7 +111,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
                 try {
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
                     Data->Server->Shutdown();
-                    delete Data->Server;
+                    Data->Server->Release();
                     RUNTIME_ASSERT(Data->ServerState == ServerStateType::StopRequest);
                 }
                 catch (const std::exception& ex) {
@@ -267,6 +267,12 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
             // Process quit
             if (App->Settings.Quit) {
+                for (auto* client : Data->Clients) {
+                    client->Shutdown();
+                    client->Release();
+                }
+                Data->Clients.clear();
+
                 if (Data->ServerState == ServerStateType::Started) {
                     stop_server();
                 }

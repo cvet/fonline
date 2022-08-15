@@ -631,6 +631,7 @@ private:
 #define COLOR_RGBA(a, r, g, b) ((uint)((((a)&0xFF) << 24) | (((r)&0xFF) << 16) | (((g)&0xFF) << 8) | ((b)&0xFF)))
 #define COLOR_RGB(r, g, b) COLOR_RGBA(0xFF, r, g, b)
 #define COLOR_SWAP_RB(c) (((c)&0xFF00FF00) | (((c)&0x00FF0000) >> 16) | (((c)&0x000000FF) << 16))
+#define COLOR_CHANGE_ALPHA(v, a) ((((v) | 0xFF000000) ^ 0xFF000000) | ((uint)(a)&0xFF) << 24)
 
 // Bits
 #define BIN_N(x) ((x) | (x) >> 3 | (x) >> 6 | (x) >> 9)
@@ -1007,7 +1008,6 @@ struct fmt::formatter<hstring>
 // Todo: convert all defines to constants and enums
 // ReSharper disable CppInconsistentNaming
 static constexpr auto CONFIG_NAME = "FOnline.cfg";
-static constexpr auto CLIENT_MAP_FORMAT_VER = 10;
 static constexpr auto MAX_HOLO_INFO = 250;
 static constexpr auto PROCESS_TALK_TICK = 1000;
 static constexpr uint FADING_PERIOD = 1000;

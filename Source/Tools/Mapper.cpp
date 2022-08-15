@@ -126,7 +126,6 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     TabsName[INT_MODE_LIST] = "Maps";
 
     // Hex manager
-    CurMap->ReloadSprites();
     CurMap->SwitchShowTrack();
     ChangeGameTime();
 
@@ -303,7 +302,7 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) -> bool
 void FOMapper::ChangeGameTime()
 {
     const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
-    SprMngr.SetSpritesColor(COLOR_GAME_RGB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF));
+    SprMngr.SetSpritesTreeColor(color);
     if (CurMap != nullptr) {
         CurMap->RefreshMap();
     }
@@ -554,7 +553,7 @@ void FOMapper::ProcessInputEvent(const InputEvent& ev)
                     CurMap->GetProtoMap(*(ProtoMap*)CurMap->Proto);
                     // Todo: need attention!
                     // ((ProtoMap*)CurMap->Proto)->EditorSave(FileSys, "");
-                    AddMess("Map saved");
+                    AddMessage("Map saved");
                     RunMapSaveScript(CurMap);
                 }
                 break;
@@ -1280,7 +1279,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             auto* proto_item = (*CurItemProtos)[i];
-            auto col = (i == static_cast<int>(GetTabIndex()) ? COLOR_IFACE_RED : COLOR_IFACE);
+            auto col = (i == static_cast<int>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE);
             SprMngr.DrawSpriteSize(GetProtoItemCurSprId(proto_item), x, y, w, h / 2, false, true, col);
 
             if (proto_item->GetPicInv()) {
@@ -1317,7 +1316,7 @@ void FOMapper::IntDraw()
                 anim = ResMngr.ItemHexDefaultAnim;
             }
 
-            auto col = (i == static_cast<int>(GetTabIndex()) ? COLOR_IFACE_RED : COLOR_IFACE);
+            auto col = (i == static_cast<int>(GetTabIndex()) ? COLOR_SPRITE_RED : COLOR_SPRITE);
             SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y, w, h / 2, false, true, col);
 
             auto& name = (*CurTileNames)[i];
@@ -1350,9 +1349,9 @@ void FOMapper::IntDraw()
                 continue;
             }
 
-            auto col = COLOR_IFACE;
+            auto col = COLOR_SPRITE;
             if (i == GetTabIndex()) {
-                col = COLOR_IFACE_RED;
+                col = COLOR_SPRITE_RED;
             }
 
             SprMngr.DrawSpriteSize(spr_id, x, y, w, h / 2, false, true, col);
@@ -1383,9 +1382,9 @@ void FOMapper::IntDraw()
                 continue;
             }
 
-            auto col = COLOR_IFACE;
+            auto col = COLOR_SPRITE;
             if (inner_item == InContItem) {
-                col = COLOR_IFACE_RED;
+                col = COLOR_SPRITE_RED;
             }
 
             SprMngr.DrawSpriteSize(anim->GetCurSprId(GameTime.GameTick()), x, y, w, h, false, true, col);
@@ -1402,7 +1401,7 @@ void FOMapper::IntDraw()
 
         for (; i < j; i++, x += w) {
             auto* map = LoadedMaps[i];
-            SprMngr.DrawStr(IRect(x, y, x + w, y + h), _str(" '{}'", map->GetName()), 0, map == CurMap ? COLOR_IFACE_RED : COLOR_TEXT, FONT_DEFAULT);
+            SprMngr.DrawStr(IRect(x, y, x + w, y + h), _str(" '{}'", map->GetName()), 0, map == CurMap ? COLOR_SPRITE_RED : COLOR_TEXT, FONT_DEFAULT);
         }
     }
 
@@ -3200,7 +3199,7 @@ void FOMapper::CurDraw()
         if (anim != nullptr) {
             const auto* si = SprMngr.GetSpriteInfo(anim->GetCurSprId(GameTime.GameTick()));
             if (si != nullptr) {
-                SprMngr.DrawSprite(anim->GetCurSprId(GameTime.GameTick()), Settings.MouseX, Settings.MouseY, COLOR_IFACE);
+                SprMngr.DrawSprite(anim->GetCurSprId(GameTime.GameTick()), Settings.MouseX, Settings.MouseY, COLOR_SPRITE);
             }
         }
     } break;

@@ -37,7 +37,6 @@
 #include "GenericUtils.h"
 #include "Item.h"
 #include "Location.h"
-#include "MapManager.h"
 #include "Server.h"
 #include "Settings.h"
 
@@ -333,14 +332,6 @@ void Map::SendProperty(NetProperty type, const Property* prop, ServerEntity* ent
             if (cr->CountIdVisItem(item->GetId())) {
                 cr->Send_Property(type, prop, entity);
                 cr->OnItemOnMapChanged.Fire(item);
-            }
-        }
-    }
-    else if (type == NetProperty::Map || type == NetProperty::Location) {
-        for (auto* cr : GetCritters()) {
-            cr->Send_Property(type, prop, entity);
-            if (type == NetProperty::Map && (prop == GetPropertyDayTime() || prop == GetPropertyDayColor())) {
-                cr->Send_GameInfo(nullptr);
             }
         }
     }

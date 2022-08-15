@@ -62,6 +62,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Texts"));
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("AngelScript"));
@@ -97,8 +98,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
 
     // Language Packs
     _curLang.LoadTexts(FileSys, Settings.Language);
-
-    SprMngr.SetSpritesColor(COLOR_IFACE);
 
     // Init 3d subsystem
 #if FO_ENABLE_3D
@@ -138,7 +137,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     _conn.AddMessageHandler(NETMSG_WRONG_NET_PROTO, [this] { Net_OnWrongNetProto(); });
     _conn.AddMessageHandler(NETMSG_LOGIN_SUCCESS, [this] { Net_OnLoginSuccess(); });
     _conn.AddMessageHandler(NETMSG_REGISTER_SUCCESS, [this] { Net_OnRegisterSuccess(); });
-    _conn.AddMessageHandler(NETMSG_END_PARSE_TO_GAME, [this] { Net_OnEndParseToGame(); });
+    _conn.AddMessageHandler(NETMSG_PLACE_TO_GAME_COMPLETE, [this] { Net_OnPlaceToGameComplete(); });
     _conn.AddMessageHandler(NETMSG_ADD_CRITTER, [this] { Net_OnAddCritter(); });
     _conn.AddMessageHandler(NETMSG_REMOVE_CRITTER, [this] { Net_OnRemoveCritter(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEM, [this] { Net_OnSomeItem(); });
@@ -176,11 +175,10 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     _conn.AddMessageHandler(NETMSG_REMOVE_ITEM, [this] { Net_OnChosenEraseItem(); });
     _conn.AddMessageHandler(NETMSG_ALL_ITEMS_SEND, [this] { Net_OnAllItemsSend(); });
     _conn.AddMessageHandler(NETMSG_TALK_NPC, [this] { Net_OnChosenTalk(); });
-    _conn.AddMessageHandler(NETMSG_GAME_INFO, [this] { Net_OnGameInfo(); });
+    _conn.AddMessageHandler(NETMSG_TIME_SYNC, [this] { Net_OnTimeSync(); });
     _conn.AddMessageHandler(NETMSG_AUTOMAPS_INFO, [this] { Net_OnAutomapsInfo(); });
     _conn.AddMessageHandler(NETMSG_VIEW_MAP, [this] { Net_OnViewMap(); });
     _conn.AddMessageHandler(NETMSG_LOADMAP, [this] { Net_OnLoadMap(); });
-    _conn.AddMessageHandler(NETMSG_MAP, [this] { Net_OnMap(); });
     _conn.AddMessageHandler(NETMSG_GLOBAL_INFO, [this] { Net_OnGlobalInfo(); });
     _conn.AddMessageHandler(NETMSG_SOME_ITEMS, [this] { Net_OnSomeItems(); });
     _conn.AddMessageHandler(NETMSG_RPC, [this] { Net_OnRemoteCall(); });
@@ -259,6 +257,11 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
 FOClient::~FOClient()
 {
     delete ScriptSys;
+}
+
+void FOClient::Shutdown()
+{
+    _conn.Disconnect();
 }
 
 auto FOClient::ResolveCritterAnimation(hstring arg1, uint arg2, uint arg3, uint& arg4, uint& arg5, int& arg6, int& arg7, string& arg8) -> bool
@@ -525,18 +528,21 @@ void FOClient::MainLoop()
 
     // Render
     if (GetMainScreen() == SCREEN_GAME && CurMap != nullptr) {
-        GameDraw();
+        // Move cursor
+        if (Settings.ShowMoveCursor) {
+            CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
+        }
+
+        // Look borders
+        if (_rebuildLookBordersRequest) {
+            LookBordersPrepare();
+            _rebuildLookBordersRequest = false;
+        }
+
+        // Map
+        CurMap->DrawMap();
     }
 
-    DrawIface();
-
-    ProcessScreenEffectFading();
-
-    SprMngr.EndScene();
-}
-
-void FOClient::DrawIface()
-{
     // Make dirty offscreen surfaces
     if (!PreDirtyOffscreenSurfaces.empty()) {
         DirtyOffscreenSurfaces.insert(DirtyOffscreenSurfaces.end(), PreDirtyOffscreenSurfaces.begin(), PreDirtyOffscreenSurfaces.end());
@@ -546,6 +552,10 @@ void FOClient::DrawIface()
     CanDrawInScripts = true;
     OnRenderIface.Fire();
     CanDrawInScripts = false;
+
+    ProcessScreenEffectFading();
+
+    SprMngr.EndScene();
 }
 
 void FOClient::ScreenFade(uint time, uint from_color, uint to_color, bool push_back)
@@ -609,7 +619,7 @@ void FOClient::ProcessScreenEffectFading()
                 full_screen_quad[i].PointColor = color;
             }
 
-            SprMngr.DrawPoints(full_screen_quad, RenderPrimitiveType::TriangleList, nullptr, nullptr, nullptr);
+            SprMngr.DrawPoints(full_screen_quad, RenderPrimitiveType::TriangleList);
         }
 
         ++it;
@@ -752,7 +762,7 @@ void FOClient::Net_OnConnect(bool success)
     }
     else {
         ShowMainScreen(SCREEN_LOGIN, {});
-        AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
+        AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_FAIL));
     }
 }
 
@@ -800,7 +810,7 @@ void FOClient::Net_SendLogIn()
     _conn.OutBuf << _loginName;
     _conn.OutBuf << _loginPassword;
 
-    AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
+    AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_CONN_SUCCESS));
 }
 
 void FOClient::Net_SendCreatePlayer()
@@ -987,45 +997,12 @@ void FOClient::Net_SendTalk(uchar is_npc, uint id_to_talk, uchar answer)
     _conn.OutBuf << answer;
 }
 
-void FOClient::Net_SendGetGameInfo()
-{
-    NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf << NETMSG_SEND_GET_INFO;
-}
-
-void FOClient::Net_SendGiveMap(bool automap, hstring map_pid, uint loc_id, uint tiles_hash, uint scen_hash)
-{
-    NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf << NETMSG_SEND_GIVE_MAP;
-    _conn.OutBuf << automap;
-    _conn.OutBuf << map_pid;
-    _conn.OutBuf << loc_id;
-    _conn.OutBuf << tiles_hash;
-    _conn.OutBuf << scen_hash;
-}
-
-void FOClient::Net_SendLoadMapOk()
-{
-    NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf << NETMSG_SEND_LOAD_MAP_OK;
-}
-
 void FOClient::Net_SendPing(uchar ping)
 {
     NON_CONST_METHOD_HINT();
 
     _conn.OutBuf << NETMSG_PING;
     _conn.OutBuf << ping;
-}
-
-void FOClient::Net_SendRefereshMe()
-{
-    NON_CONST_METHOD_HINT();
-
-    _conn.OutBuf << NETMSG_SEND_REFRESH_ME;
 }
 
 void FOClient::Net_OnUpdateFilesResponse()
@@ -1056,7 +1033,7 @@ void FOClient::Net_OnUpdateFilesResponse()
     // Todo: run updater if resources changed
 
     /*if (outdated) {
-        AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+        AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
     }
 
     auto reader = DataReader(data);
@@ -1090,7 +1067,7 @@ void FOClient::Net_OnUpdateFilesResponse()
 
 void FOClient::Net_OnWrongNetProto()
 {
-    AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
+    AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_CLIENT_OUTDATED));
 }
 
 void FOClient::Net_OnRegisterSuccess()
@@ -1104,7 +1081,7 @@ void FOClient::Net_OnLoginSuccess()
 {
     WriteLog("Authentication success");
 
-    AddMess(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
+    AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
 
     // Set encrypt keys
     uint msg_len;
@@ -1380,7 +1357,7 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
     // Message box text
     if (fstr_mb != 0u) {
         if (how_say == SAY_NETMSG) {
-            AddMess(0, _str(get_format(fstr_mb), fstr));
+            AddMessage(0, _str(get_format(fstr_mb), fstr));
         }
         else if (how_say == SAY_RADIO) {
             ushort channel = 0u;
@@ -1390,11 +1367,11 @@ void FOClient::OnText(string_view str, uint crid, int how_say)
                     channel = radio->GetRadioChannel();
                 }
             }
-            AddMess(0, _str(get_format(fstr_mb), channel, fstr));
+            AddMessage(0, _str(get_format(fstr_mb), channel, fstr));
         }
         else {
             const auto cr_name = (cr != nullptr ? cr->GetName() : "?");
-            AddMess(0, _str(get_format(fstr_mb), cr_name, fstr));
+            AddMessage(0, _str(get_format(fstr_mb), cr_name, fstr));
         }
     }
 
@@ -2278,7 +2255,7 @@ void FOClient::Net_OnPlaySound()
     SndMngr.PlaySound(ResMngr.GetSoundNames(), sound_name);
 }
 
-void FOClient::Net_OnEndParseToGame()
+void FOClient::Net_OnPlaceToGameComplete()
 {
     auto* chosen = GetChosen();
     if (chosen == nullptr) {
@@ -2489,7 +2466,7 @@ void FOClient::Net_OnChosenTalk()
     FormatTags(str, GetChosen(), npc, lexems);
     auto text_to_script = str;
     vector<string> answers_to_script;
-    for (auto answers_text : answers_texts) {
+    for (const auto answers_text : answers_texts) {
         str = _curLang.Msg[TEXTMSG_DLG].GetStr(answers_text);
         FormatTags(str, GetChosen(), npc, lexems);
         answers_to_script.push_back(str);
@@ -2510,7 +2487,7 @@ void FOClient::Net_OnChosenTalk()
     dict->Release();*/
 }
 
-void FOClient::Net_OnGameInfo()
+void FOClient::Net_OnTimeSync()
 {
     ushort year;
     ushort month;
@@ -2526,13 +2503,6 @@ void FOClient::Net_OnGameInfo()
     _conn.InBuf >> minute;
     _conn.InBuf >> second;
     _conn.InBuf >> multiplier;
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    auto* day_time = CurMap->GetMapDayTime();
-    auto* day_color = CurMap->GetMapDayColor();
-    _conn.InBuf.Pop(day_time, sizeof(int) * 4);
-    _conn.InBuf.Pop(day_color, sizeof(uchar) * 12);
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2557,8 +2527,6 @@ void FOClient::Net_OnLoadMap()
     uint loc_id;
     uint map_id;
     uchar map_index_in_loc;
-    uint hash_tiles;
-    uint hash_scen;
 
     _conn.InBuf >> msg_len;
     _conn.InBuf >> loc_id;
@@ -2566,8 +2534,6 @@ void FOClient::Net_OnLoadMap()
     const auto loc_pid = _conn.InBuf.ReadHashedString(*this);
     const auto map_pid = _conn.InBuf.ReadHashedString(*this);
     _conn.InBuf >> map_index_in_loc;
-    _conn.InBuf >> hash_tiles;
-    _conn.InBuf >> hash_scen;
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
@@ -2577,6 +2543,8 @@ void FOClient::Net_OnLoadMap()
     }
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
+
+    OnMapUnload.Fire();
 
     if (CurMap != nullptr) {
         CurMap->MarkAsDestroyed();
@@ -2600,31 +2568,16 @@ void FOClient::Net_OnLoadMap()
     _curMapIndexInLoc = map_index_in_loc;
 
     if (map_pid) {
-        /*uint hash_tiles_cl;
-        uint hash_scen_cl;
-        CurMap->GetMapHash(Cache, map_pid, hash_tiles_cl, hash_scen_cl);
-
-        if (hash_tiles != hash_tiles_cl || hash_scen != hash_scen_cl) {
-            WriteLog("Obsolete map data (hashes {}:{}, {}:{})", hash_tiles, hash_tiles_cl, hash_scen, hash_scen_cl);
-            Net_SendGiveMap(false, map_pid, 0, hash_tiles_cl, hash_scen_cl);
-            return;
-        }
-
-        CurMap = new MapView(this, )
-        if (!CurMap->LoadMap(Cache, map_pid)) {
-            WriteLog("Map not loaded. Disconnect");
-            NetDisconnect();
-            return;
-        }*/
-
         SetDayTime(true);
         _lookBorders.clear();
         _shootBorders.clear();
 
         _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
         _curLocation->RestoreData(_tempPropertiesDataExt);
+
         CurMap = new MapView(this, map_id, ProtoMngr.GetProtoMap(map_pid));
         CurMap->RestoreData(_tempPropertiesData);
+        CurMap->LoadStaticData();
 
         WriteLog("Local map loaded");
     }
@@ -2634,115 +2587,7 @@ void FOClient::Net_OnLoadMap()
         WriteLog("Global map loaded");
     }
 
-    Net_SendLoadMapOk();
-}
-
-void FOClient::Net_OnMap()
-{
-    uint msg_len;
-    ushort maxhx;
-    ushort maxhy;
-    bool send_tiles;
-    bool send_scenery;
-    _conn.InBuf >> msg_len;
-    const auto map_pid = _conn.InBuf.ReadHashedString(*this);
-    _conn.InBuf >> maxhx;
-    _conn.InBuf >> maxhy;
-    _conn.InBuf >> send_tiles;
-    _conn.InBuf >> send_scenery;
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    WriteLog("Map {} received...", map_pid);
-
-    const string map_name = _str("{}.map", map_pid);
-    auto tiles = false;
-    char* tiles_data = nullptr;
-    uint tiles_len = 0;
-    auto scen = false;
-    char* scen_data = nullptr;
-    uint scen_len = 0;
-
-    if (send_tiles) {
-        _conn.InBuf >> tiles_len;
-        if (tiles_len != 0u) {
-            tiles_data = new char[tiles_len];
-            _conn.InBuf.Pop(tiles_data, tiles_len);
-        }
-        tiles = true;
-    }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    if (send_scenery) {
-        _conn.InBuf >> scen_len;
-        if (scen_len != 0u) {
-            scen_data = new char[scen_len];
-            _conn.InBuf.Pop(scen_data, scen_len);
-        }
-        scen = true;
-    }
-
-    CHECK_SERVER_IN_BUF_ERROR(_conn);
-
-    if (auto compressed_cache = Cache.GetData(map_name); !compressed_cache.empty()) {
-        if (const auto cache = Compressor::Uncompress(compressed_cache, 50); !cache.empty()) {
-            auto caqche_reader = DataReader(cache);
-
-            if (caqche_reader.Read<int>() == CLIENT_MAP_FORMAT_VER) {
-                caqche_reader.Read<uint>();
-                caqche_reader.Read<ushort>();
-                caqche_reader.Read<ushort>();
-                const auto old_tiles_len = caqche_reader.Read<uint>();
-                const auto old_scen_len = caqche_reader.Read<uint>();
-
-                if (!tiles) {
-                    tiles_len = old_tiles_len;
-                    tiles_data = new char[tiles_len];
-                    caqche_reader.ReadPtr(tiles_data, tiles_len);
-                    tiles = true;
-                }
-                else {
-                    caqche_reader.ReadPtr<uchar>(tiles_len);
-                }
-
-                if (!scen) {
-                    scen_len = old_scen_len;
-                    scen_data = new char[scen_len];
-                    caqche_reader.ReadPtr(scen_data, scen_len);
-                    scen = true;
-                }
-            }
-        }
-    }
-
-    if (tiles && scen) {
-        vector<uchar> buf;
-        auto buf_writer = DataWriter(buf);
-
-        buf_writer.Write<int>(CLIENT_MAP_FORMAT_VER);
-        buf_writer.Write<uint>(map_pid.as_uint());
-        buf_writer.Write<ushort>(maxhx);
-        buf_writer.Write<ushort>(maxhy);
-        buf_writer.Write<uint>(tiles_len);
-        buf_writer.Write<uint>(scen_len);
-        buf_writer.WritePtr(tiles_data, tiles_len);
-        buf_writer.WritePtr(scen_data, scen_len);
-
-        Cache.SetData(map_name, buf);
-    }
-    else {
-        WriteLog("Not for all data of map, disconnect");
-        _conn.Disconnect();
-        delete[] tiles_data;
-        delete[] scen_data;
-        return;
-    }
-
-    delete[] tiles_data;
-    delete[] scen_data;
-
-    WriteLog("Map saved");
+    OnMapLoad.Fire();
 }
 
 void FOClient::Net_OnGlobalInfo()
@@ -2977,12 +2822,11 @@ void FOClient::SetDayTime(bool refresh)
         return;
     }
 
-    auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
-    color = COLOR_GAME_RGB(static_cast<int>((color >> 16) & 0xFF), static_cast<int>((color >> 8) & 0xFF), static_cast<int>(color & 0xFF));
+    const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
 
     if (!_prevDayTimeColor.has_value() || _prevDayTimeColor != color) {
         _prevDayTimeColor = color;
-        SprMngr.SetSpritesColor(color);
+        SprMngr.SetSpritesTreeColor(color);
         CurMap->RefreshMap();
     }
 }
@@ -2997,14 +2841,7 @@ void FOClient::TryExit()
 {
     const auto active = GetActiveScreen(nullptr);
     if (active != SCREEN_NONE) {
-        switch (active) {
-        case SCREEN_TOWN_VIEW:
-            Net_SendRefereshMe();
-            break;
-        default:
-            HideScreen(SCREEN_NONE);
-            break;
-        }
+        HideScreen(SCREEN_NONE);
     }
     else {
         switch (GetMainScreen()) {
@@ -3387,24 +3224,7 @@ void FOClient::OnSetItemOpened(Entity* entity, const Property* prop, const void*
     }
 }
 
-void FOClient::GameDraw()
-{
-    // Move cursor
-    if (Settings.ShowMoveCursor) {
-        CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
-    }
-
-    // Look borders
-    if (_rebuildLookBordersRequest) {
-        LookBordersPrepare();
-        _rebuildLookBordersRequest = false;
-    }
-
-    // Map
-    CurMap->DrawMap();
-}
-
-void FOClient::AddMess(uchar mess_type, string_view msg)
+void FOClient::AddMessage(uchar mess_type, string_view msg)
 {
     OnMessageBox.Fire(mess_type, string(msg));
 }
@@ -3971,10 +3791,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
             LmapPrepareMap();
         }
 
-        SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList, nullptr, nullptr, nullptr);
-    }
-    else if (cmd == "RefreshMe") {
-        Net_SendRefereshMe();
+        SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
     else if (cmd == "SetCrittersContour" && args.size() == 2) {
         auto countour_type = _str(args[1]).toInt();
