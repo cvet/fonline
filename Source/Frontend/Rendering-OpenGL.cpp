@@ -1208,9 +1208,11 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     const auto* start_pos = reinterpret_cast<const GLvoid*>(start_index * sizeof(ushort));
 
     for (size_t pass = 0; pass < _passCount; pass++) {
+#if FO_ENABLE_3D
         if (DisableShadow && _isShadow[pass]) {
             continue;
         }
+#endif
 
         GL(glUseProgram(Program[pass]));
 
@@ -1260,6 +1262,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             GL(glUniform4fv(Location_SpriteBorder[pass], 1, BorderBuf->SpriteBorder));
         }
 
+#if FO_ENABLE_3D
         if (Location_GroundPosition[pass] != -1) {
             GL(glUniform4fv(Location_GroundPosition[pass], 1, ModelBuf->GroundPosition));
         }
@@ -1270,6 +1273,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
             RUNTIME_ASSERT(MatrixCount != 0);
             GL(glUniformMatrix4fv(Location_WorldMatrices[pass], static_cast<GLsizei>(MatrixCount), GL_FALSE, &ModelBuf->WorldMatrices[0]));
         }
+#endif
 
         if (_srcBlendFunc[pass] != BlendFuncType::SrcAlpha || _destBlendFunc[pass] != BlendFuncType::InvSrcAlpha) {
             GL(glBlendFunc(ConvertBlendFunc(_srcBlendFunc[pass]), ConvertBlendFunc(_destBlendFunc[pass])));

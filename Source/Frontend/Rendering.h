@@ -295,15 +295,15 @@ public:
     optional<AnimBuffer> AnimBuf {};
     optional<RandomValueBuffer> RandomValueBuf {};
     optional<ScriptValueBuffer> ScriptValueBuf {};
-#if FO_ENABLE_3D
-    optional<ModelBuffer> ModelBuf {};
-#endif
     RenderTexture* MainTex {};
     RenderTexture* EggTex {};
     RenderTexture* CustomTex[EFFECT_TEXTURES] {};
-    bool DisableShadow {};
     bool DisableBlending {};
+#if FO_ENABLE_3D
+    optional<ModelBuffer> ModelBuf {};
+    bool DisableShadow {};
     size_t MatrixCount {};
+#endif
 
     virtual void DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index = 0, size_t indices_to_draw = static_cast<size_t>(-1), RenderTexture* custom_tex = nullptr) = 0;
 

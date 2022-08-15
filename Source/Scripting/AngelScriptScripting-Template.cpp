@@ -1339,7 +1339,7 @@ static void ReadNetBuf(NetInBuffer& in_buf, map<T, U>& value, NameResolver& name
     }
 }
 
-static void WriteRpcHeader(NetOutBuffer& out_buf, uint msg_len, uint rpc_num)
+[[maybe_unused]] static void WriteRpcHeader(NetOutBuffer& out_buf, uint msg_len, uint rpc_num)
 {
     out_buf << NETMSG_RPC;
     out_buf << msg_len;
