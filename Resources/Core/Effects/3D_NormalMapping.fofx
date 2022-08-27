@@ -2,9 +2,14 @@
 Passes = 2
 ShadowPass = 1
 
-[VertexShader Pass2]
+[ShaderCommon]
 const vec3 LightDir = vec3(0.0, 0.0, 1.0);
+const float LightPower = 0.6;
+const float CameraAngleCos = 0.9010770213221; // cos(25.7)
+const float CameraAngleSin = 0.4336590845875; // sin(25.7)
+const float ShadowAngleTan = 0.2548968037538; // tan(14.3)
 
+[VertexShader Pass2]
 uniform mat4 ProjectionMatrix;
 uniform vec4 Texture1AtlasOffset;
 uniform mat4 WorldMatrices[MAX_BONES];
@@ -64,8 +69,6 @@ void main(void)
 }
 
 [FragmentShader Pass2]
-const vec3 AmbientColor = vec3(0.0, 0.0, 0.0);
-
 layout(binding = 0) uniform sampler2D ColorMap;
 layout(binding = 1) uniform sampler2D Texture1;
 
@@ -82,17 +85,13 @@ void main(void)
     float lamberFactor = max(0.0, dot(LightVec, normal)) ;
     
     vec4 color;
-    color.rgb = AmbientColor + lamberFactor;
+    color.rgb = vec3(0.0, 0.0, 0.0) + max(LightPower, lamberFactor);
     color.a = 1.0;
     
     FragColor = texture(ColorMap, TexCoord) * color;
 }
 
 [VertexShader Pass1]
-const float CameraAngleCos = 0.9010770213221; // cos(25.7)
-const float CameraAngleSin = 0.4336590845875; // sin(25.7)
-const float ShadowAngleTan = 0.2548968037538; // tan(14.3)
-
 uniform mat4 ProjectionMatrix;
 uniform vec4 GroundPosition;
 uniform mat4 WorldMatrices[MAX_BONES];

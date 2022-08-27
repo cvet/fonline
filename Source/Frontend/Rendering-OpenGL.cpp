@@ -210,7 +210,7 @@ public:
 class OpenGL_DrawBuffer final : public RenderDrawBuffer
 {
 public:
-    explicit OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static) { }
+    explicit OpenGL_DrawBuffer(bool is_static);
     ~OpenGL_DrawBuffer() override;
 
     void Upload(EffectUsage usage, size_t custom_vertices_size) override;
@@ -911,19 +911,6 @@ void OpenGL_Renderer::DisableScissor()
     GL(glDisable(GL_SCISSOR_TEST));
 }
 
-OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
-{
-    if (VertexBufObj != 0u) {
-        glDeleteBuffers(1, &VertexBufObj);
-    }
-    if (IndexBufObj != 0u) {
-        glDeleteBuffers(1, &IndexBufObj);
-    }
-    if (VertexArrObj != 0u) {
-        glDeleteVertexArrays(1, &VertexArrObj);
-    }
-}
-
 static void EnableVertAtribs(EffectUsage usage)
 {
 #if FO_ENABLE_3D
@@ -970,72 +957,32 @@ static void DisableVertAtribs(EffectUsage usage)
     }
 }
 
-static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
+OpenGL_DrawBuffer::OpenGL_DrawBuffer(bool is_static) : RenderDrawBuffer(is_static)
 {
-    switch (name) {
-#define CHECK_ENTRY(name, glname) \
-    case BlendFuncType::name: \
-        return glname
-        CHECK_ENTRY(Zero, GL_ZERO);
-        CHECK_ENTRY(One, GL_ONE);
-        CHECK_ENTRY(SrcColor, GL_SRC_COLOR);
-        CHECK_ENTRY(InvSrcColor, GL_ONE_MINUS_SRC_COLOR);
-        CHECK_ENTRY(DstColor, GL_DST_COLOR);
-        CHECK_ENTRY(InvDstColor, GL_ONE_MINUS_DST_COLOR);
-        CHECK_ENTRY(SrcAlpha, GL_SRC_ALPHA);
-        CHECK_ENTRY(InvSrcAlpha, GL_ONE_MINUS_SRC_ALPHA);
-        CHECK_ENTRY(DstAlpha, GL_DST_ALPHA);
-        CHECK_ENTRY(InvDstAlpha, GL_ONE_MINUS_DST_ALPHA);
-        CHECK_ENTRY(ConstantColor, GL_CONSTANT_COLOR);
-        CHECK_ENTRY(InvConstantColor, GL_ONE_MINUS_CONSTANT_COLOR);
-        CHECK_ENTRY(SrcAlphaSaturate, GL_SRC_ALPHA_SATURATE);
-#undef CHECK_ENTRY
-    }
-    throw UnreachablePlaceException(LINE_STR);
+    GL(glGenBuffers(1, &VertexBufObj));
+    GL(glGenBuffers(1, &IndexBufObj));
 }
 
-static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
+OpenGL_DrawBuffer::~OpenGL_DrawBuffer()
 {
-    switch (name) {
-#define CHECK_ENTRY(name, glname) \
-    case BlendEquationType::name: \
-        return glname
-        CHECK_ENTRY(FuncAdd, GL_FUNC_ADD);
-        CHECK_ENTRY(FuncSubtract, GL_FUNC_SUBTRACT);
-        CHECK_ENTRY(FuncReverseSubtract, GL_FUNC_REVERSE_SUBTRACT);
-        CHECK_ENTRY(Max, GL_MAX);
-        CHECK_ENTRY(Min, GL_MIN);
-#undef CHECK_ENTRY
+    if (VertexBufObj != 0u) {
+        glDeleteBuffers(1, &VertexBufObj);
     }
-    throw UnreachablePlaceException(LINE_STR);
+    if (IndexBufObj != 0u) {
+        glDeleteBuffers(1, &IndexBufObj);
+    }
+    if (VertexArrObj != 0u) {
+        glDeleteVertexArrays(1, &VertexArrObj);
+    }
 }
 
 void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
 {
-    if (VertexBufObj != 0u && IsStatic && !StaticDataChanged) {
+    if (IsStatic && !StaticDataChanged) {
         return;
     }
 
     StaticDataChanged = false;
-
-    // Regenerate static buffers
-    if (IsStatic) {
-        if (VertexBufObj != 0u) {
-            GL(glDeleteBuffers(1, &VertexBufObj));
-            VertexBufObj = 0u;
-        }
-        if (IndexBufObj != 0u) {
-            GL(glDeleteBuffers(1, &IndexBufObj));
-            IndexBufObj = 0u;
-        }
-    }
-
-    if (VertexBufObj == 0u) {
-        GL(glGenBuffers(1, &VertexBufObj));
-    }
-    if (IndexBufObj == 0u) {
-        GL(glGenBuffers(1, &IndexBufObj));
-    }
 
     const auto buf_type = IsStatic ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW;
 
@@ -1059,6 +1006,8 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
     upload_vertices = custom_vertices_size == static_cast<size_t>(-1) ? Vertices2D.size() : custom_vertices_size;
     GL(glBufferData(GL_ARRAY_BUFFER, upload_vertices * sizeof(Vertex2D), Vertices2D.data(), buf_type));
 #endif
+
+    GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
     // Auto generate indices
     bool need_upload_indices = false;
@@ -1118,15 +1067,60 @@ void OpenGL_DrawBuffer::Upload(EffectUsage usage, size_t custom_vertices_size)
     if (need_upload_indices) {
         GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
         GL(glBufferData(GL_ELEMENT_ARRAY_BUFFER, Indices.size() * sizeof(ushort), Indices.data(), buf_type));
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
 
-    // Create vertex array object
+    // Vertex array
     if (VertexArrObj == 0u && GL_HAS(vertex_array_object)) {
         GL(glGenVertexArrays(1, &VertexArrObj));
         GL(glBindVertexArray(VertexArrObj));
+        GL(glBindBuffer(GL_ARRAY_BUFFER, VertexBufObj));
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufObj));
         EnableVertAtribs(usage);
         GL(glBindVertexArray(0));
+        GL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
     }
+}
+
+static auto ConvertBlendFunc(BlendFuncType name) -> GLenum
+{
+    switch (name) {
+#define CHECK_ENTRY(name, glname) \
+    case BlendFuncType::name: \
+        return glname
+        CHECK_ENTRY(Zero, GL_ZERO);
+        CHECK_ENTRY(One, GL_ONE);
+        CHECK_ENTRY(SrcColor, GL_SRC_COLOR);
+        CHECK_ENTRY(InvSrcColor, GL_ONE_MINUS_SRC_COLOR);
+        CHECK_ENTRY(DstColor, GL_DST_COLOR);
+        CHECK_ENTRY(InvDstColor, GL_ONE_MINUS_DST_COLOR);
+        CHECK_ENTRY(SrcAlpha, GL_SRC_ALPHA);
+        CHECK_ENTRY(InvSrcAlpha, GL_ONE_MINUS_SRC_ALPHA);
+        CHECK_ENTRY(DstAlpha, GL_DST_ALPHA);
+        CHECK_ENTRY(InvDstAlpha, GL_ONE_MINUS_DST_ALPHA);
+        CHECK_ENTRY(ConstantColor, GL_CONSTANT_COLOR);
+        CHECK_ENTRY(InvConstantColor, GL_ONE_MINUS_CONSTANT_COLOR);
+        CHECK_ENTRY(SrcAlphaSaturate, GL_SRC_ALPHA_SATURATE);
+#undef CHECK_ENTRY
+    }
+    throw UnreachablePlaceException(LINE_STR);
+}
+
+static auto ConvertBlendEquation(BlendEquationType name) -> GLenum
+{
+    switch (name) {
+#define CHECK_ENTRY(name, glname) \
+    case BlendEquationType::name: \
+        return glname
+        CHECK_ENTRY(FuncAdd, GL_FUNC_ADD);
+        CHECK_ENTRY(FuncSubtract, GL_FUNC_SUBTRACT);
+        CHECK_ENTRY(FuncReverseSubtract, GL_FUNC_REVERSE_SUBTRACT);
+        CHECK_ENTRY(Max, GL_MAX);
+        CHECK_ENTRY(Min, GL_MIN);
+#undef CHECK_ENTRY
+    }
+    throw UnreachablePlaceException(LINE_STR);
 }
 
 OpenGL_Effect::~OpenGL_Effect()
@@ -1186,7 +1180,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     if (Usage == EffectUsage::Model) {
         GL(glEnable(GL_DEPTH_TEST));
 
-        if (!opengl_dbuf->DisableModelCulling) {
+        if (!DisableCulling) {
             GL(glEnable(GL_CULL_FACE));
         }
     }
@@ -1194,8 +1188,6 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
 
     if (opengl_dbuf->VertexArrObj != 0u) {
         GL(glBindVertexArray(opengl_dbuf->VertexArrObj));
-        GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
-        GL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, opengl_dbuf->IndexBufObj));
     }
     else {
         GL(glBindBuffer(GL_ARRAY_BUFFER, opengl_dbuf->VertexBufObj));
@@ -1311,7 +1303,7 @@ void OpenGL_Effect::DrawBuffer(RenderDrawBuffer* dbuf, size_t start_index, size_
     if (Usage == EffectUsage::Model) {
         GL(glDisable(GL_DEPTH_TEST));
 
-        if (!opengl_dbuf->DisableModelCulling) {
+        if (!DisableCulling) {
             GL(glDisable(GL_CULL_FACE));
         }
     }

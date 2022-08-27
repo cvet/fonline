@@ -121,7 +121,6 @@ public:
     void ScreenFade(uint time, uint from_color, uint to_color, bool push_back);
     void ScreenQuake(int noise, uint time);
     void ProcessInputEvent(const InputEvent& ev);
-    void RebuildLookBorders() { _rebuildLookBordersRequest = true; }
 
     auto AnimLoad(hstring name, AtlasType res_type) -> uint;
     void AnimFree(uint anim_id);
@@ -299,7 +298,6 @@ protected:
     void WaitDraw();
 
     void SetDayTime(bool refresh);
-    void LookBordersPrepare();
     void LmapPrepareMap();
     void GmapNullParams();
 
@@ -415,11 +413,6 @@ protected:
     uint _gameMouseStay {};
     uint _daySumRGB {};
     CritterView* _chosen {};
-    bool _rebuildLookBordersRequest {};
-    bool _drawLookBorders {true};
-    bool _drawShootBorders {};
-    vector<PrimitivePoint> _lookBorders {};
-    vector<PrimitivePoint> _shootBorders {};
     AnyFrames* _waitPic {};
     uchar _pupTransferType {};
     uint _pupContId {};

@@ -190,7 +190,6 @@ public:
     RenderPrimitiveType PrimType {};
 #if FO_ENABLE_3D
     vector<Vertex3D> Vertices3D {};
-    bool DisableModelCulling {};
 #endif
 
 protected:
@@ -302,6 +301,7 @@ public:
 #if FO_ENABLE_3D
     optional<ModelBuffer> ModelBuf {};
     bool DisableShadow {};
+    bool DisableCulling {};
     size_t MatrixCount {};
 #endif
 

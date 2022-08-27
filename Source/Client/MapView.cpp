@@ -581,7 +581,7 @@ void MapView::Process()
     }
 
     if (Scroll()) {
-        // LookBordersPrepare();
+        RebuildFog();
     }
 }
 
@@ -2386,7 +2386,7 @@ void MapView::DrawMap()
     _engine->SprMngr.DrawContours();
 
     // Fog
-    if (!_mapperMode) {
+    if (!_mapperMode && _rtFog != nullptr) {
         _engine->SprMngr.DrawRenderTarget(_rtFog, true, &prerendered_rect);
     }
 
@@ -2486,38 +2486,141 @@ void MapView::DrawMapTexts()
     }
 }
 
-void MapView::SetFog(vector<PrimitivePoint>& look_points, vector<PrimitivePoint>& shoot_points, short* offs_x, short* offs_y)
-{
-    _fogOffsX = offs_x;
-    _fogOffsY = offs_y;
-    _fogLastOffsX = static_cast<short>(_fogOffsX != nullptr ? *_fogOffsX : 0);
-    _fogLastOffsY = static_cast<short>(_fogOffsY != nullptr ? *_fogOffsY : 0);
-    _fogForceRerender = true;
-    _fogLookPoints = look_points;
-    _fogShootPoints = shoot_points;
-}
-
 void MapView::PrepareFogToDraw()
 {
-    if (!_mapperMode) {
+    if (_mapperMode || _rtFog == nullptr) {
         return;
     }
 
-    if (!_fogForceRerender && (_fogOffsX != nullptr && *_fogOffsX == _fogLastOffsX && *_fogOffsY == _fogLastOffsY)) {
-        return;
-    }
-    if (_fogOffsX != nullptr) {
-        _fogLastOffsX = *_fogOffsX;
-        _fogLastOffsY = *_fogOffsY;
-    }
-    _fogForceRerender = false;
+    if (_rebuildFog) {
+        _rebuildFog = false;
 
-    FPoint offset(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
-    _engine->SprMngr.PushRenderTarget(_rtFog);
-    _engine->SprMngr.ClearCurrentRenderTarget(0);
-    _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleFan, &_engine->Settings.SpritesZoom, &offset, _engine->EffectMngr.Effects.Fog);
-    _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleFan, &_engine->Settings.SpritesZoom, &offset, _engine->EffectMngr.Effects.Fog);
-    _engine->SprMngr.PopRenderTarget();
+        _fogLookPoints.clear();
+        _fogShootPoints.clear();
+
+        CritterHexView* chosen;
+
+        const auto it = std::find_if(_critters.begin(), _critters.end(), [](auto* cr) { return cr->IsChosen(); });
+        if (it != _critters.end()) {
+            chosen = *it;
+        }
+        else {
+            chosen = nullptr;
+        }
+
+        if (chosen != nullptr && (_drawLookBorders || _drawShootBorders)) {
+            const auto dist = chosen->GetLookDistance() + _engine->Settings.FogExtraLength;
+            const auto base_hx = chosen->GetHexX();
+            const auto base_hy = chosen->GetHexY();
+            int hx = base_hx;
+            int hy = base_hy;
+            const int chosen_dir = chosen->GetDir();
+            const auto dist_shoot = chosen->GetAttackDist();
+            const auto maxhx = GetWidth();
+            const auto maxhy = GetHeight();
+            auto seek_start = true;
+            for (auto i = 0; i < (_engine->Settings.MapHexagonal ? 6 : 4); i++) {
+                const auto dir = (_engine->Settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
+
+                for (uint j = 0, jj = (_engine->Settings.MapHexagonal ? dist : dist * 2); j < jj; j++) {
+                    if (seek_start) {
+                        // Move to start position
+                        for (uint l = 0; l < dist; l++) {
+                            _engine->Geometry.MoveHexByDirUnsafe(hx, hy, _engine->Settings.MapHexagonal ? 0 : 7);
+                        }
+                        seek_start = false;
+                        j = -1;
+                    }
+                    else {
+                        // Move to next hex
+                        _engine->Geometry.MoveHexByDirUnsafe(hx, hy, static_cast<uchar>(dir));
+                    }
+
+                    auto hx_ = static_cast<ushort>(std::clamp(hx, 0, maxhx - 1));
+                    auto hy_ = static_cast<ushort>(std::clamp(hy, 0, maxhy - 1));
+                    if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_DIR)) {
+                        const int dir_ = _engine->Geometry.GetFarDir(base_hx, base_hy, hx_, hy_);
+                        auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
+                        if (ii > static_cast<int>(_engine->Settings.MapDirCount / 2)) {
+                            ii = _engine->Settings.MapDirCount - ii;
+                        }
+                        const auto dist_ = dist - dist * _engine->Settings.LookDir[ii] / 100;
+                        pair<ushort, ushort> block = {};
+                        TraceBullet(base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, false);
+                        hx_ = block.first;
+                        hy_ = block.second;
+                    }
+
+                    if (IsBitSet(_engine->Settings.LookChecks, LOOK_CHECK_TRACE_CLIENT)) {
+                        pair<ushort, ushort> block = {};
+                        TraceBullet(base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
+                        hx_ = block.first;
+                        hy_ = block.second;
+                    }
+
+                    auto dist_look = _engine->Geometry.DistGame(base_hx, base_hy, hx_, hy_);
+                    if (_drawLookBorders) {
+                        auto x = 0;
+                        auto y = 0;
+                        GetHexCurrentPosition(hx_, hy_, x, y);
+                        auto* ox = (dist_look == dist ? &chosen->SprOx : nullptr);
+                        auto* oy = (dist_look == dist ? &chosen->SprOy : nullptr);
+                        _fogLookPoints.push_back({x + (_engine->Settings.MapHexWidth / 2), y + (_engine->Settings.MapHexHeight / 2), COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
+                    }
+
+                    if (_drawShootBorders) {
+                        pair<ushort, ushort> block = {};
+                        const auto max_shoot_dist = std::max(std::min(dist_look, dist_shoot), 0u) + 1u;
+                        TraceBullet(base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
+                        const auto hx_2 = block.first;
+                        const auto hy_2 = block.second;
+
+                        auto x_ = 0;
+                        auto y_ = 0;
+                        GetHexCurrentPosition(hx_2, hy_2, x_, y_);
+                        const auto result_shoot_dist = _engine->Geometry.DistGame(base_hx, base_hy, hx_2, hy_2);
+                        auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->SprOx : nullptr);
+                        auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->SprOy : nullptr);
+                        _fogShootPoints.push_back({x_ + (_engine->Settings.MapHexWidth / 2), y_ + (_engine->Settings.MapHexHeight / 2), COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
+                    }
+                }
+            }
+
+            auto base_x = 0;
+            auto base_y = 0;
+            GetHexCurrentPosition(base_hx, base_hy, base_x, base_y);
+            if (!_fogLookPoints.empty()) {
+                _fogLookPoints.push_back(*_fogLookPoints.begin());
+                _fogLookPoints.insert(_fogLookPoints.begin(), {base_x + (_engine->Settings.MapHexWidth / 2), base_y + (_engine->Settings.MapHexHeight / 2), COLOR_RGBA(0, 0, 0, 0), &chosen->SprOx, &chosen->SprOy});
+            }
+            if (!_fogShootPoints.empty()) {
+                _fogShootPoints.push_back(*_fogShootPoints.begin());
+                _fogShootPoints.insert(_fogShootPoints.begin(), {base_x + (_engine->Settings.MapHexWidth / 2), base_y + (_engine->Settings.MapHexHeight / 2), COLOR_RGBA(255, 0, 0, 0), &chosen->SprOx, &chosen->SprOy});
+            }
+
+            _fogOffsX = chosen != nullptr ? &chosen->SprOx : nullptr;
+            _fogOffsY = chosen != nullptr ? &chosen->SprOy : nullptr;
+            _fogLastOffsX = static_cast<short>(_fogOffsX != nullptr ? *_fogOffsX : 0);
+            _fogLastOffsY = static_cast<short>(_fogOffsY != nullptr ? *_fogOffsY : 0);
+            _fogForceRerender = true;
+        }
+    }
+
+    if (_fogForceRerender || _fogOffsX == nullptr || *_fogOffsX != _fogLastOffsX || *_fogOffsY != _fogLastOffsY) {
+        _fogForceRerender = false;
+
+        if (_fogOffsX != nullptr) {
+            _fogLastOffsX = *_fogOffsX;
+            _fogLastOffsY = *_fogOffsY;
+        }
+
+        const auto offset = FPoint(static_cast<float>(_rtScreenOx), static_cast<float>(_rtScreenOy));
+        _engine->SprMngr.PushRenderTarget(_rtFog);
+        _engine->SprMngr.ClearCurrentRenderTarget(0);
+        _engine->SprMngr.DrawPoints(_fogLookPoints, RenderPrimitiveType::TriangleFan, &_engine->Settings.SpritesZoom, &offset, _engine->EffectMngr.Effects.Fog);
+        _engine->SprMngr.DrawPoints(_fogShootPoints, RenderPrimitiveType::TriangleFan, &_engine->Settings.SpritesZoom, &offset, _engine->EffectMngr.Effects.Fog);
+        _engine->SprMngr.PopRenderTarget();
+    }
 }
 
 auto MapView::Scroll() -> bool

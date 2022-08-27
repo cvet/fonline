@@ -2,10 +2,14 @@
 Passes = 2
 ShadowPass = 1
 
-[VertexShader Pass2]
+[ShaderCommon]
 const vec3 LightDir = vec3(0.0, 0.0, 1.0);
-const vec3 AmbientColor = vec3(0.0, 0.0, 0.0);
+const float LightPower = 0.6;
+const float CameraAngleCos = 0.9010770213221; // cos(25.7)
+const float CameraAngleSin = 0.4336590845875; // sin(25.7)
+const float ShadowAngleTan = 0.2548968037538; // tan(14.3)
 
+[VertexShader Pass2]
 uniform mat4 ProjectionMatrix;
 uniform mat4 WorldMatrices[MAX_BONES];
 
@@ -47,8 +51,8 @@ void main(void)
     normal = normalize(normal);
     
     // Shade
-    Color.rgb = AmbientColor + max(0.0, dot(normal, LightDir));
-    Color.a = 1.0;
+    float light = max(LightPower, dot(normal, LightDir));
+    Color = vec4(light, light, light, 1.0);
     
     // Pass to fragment shader
     TexCoord = InTexCoord;
@@ -68,10 +72,6 @@ void main(void)
 }
 
 [VertexShader Pass1]
-const float CameraAngleCos = 0.9010770213221; // cos(25.7)
-const float CameraAngleSin = 0.4336590845875; // sin(25.7)
-const float ShadowAngleTan = 0.2548968037538; // tan(14.3)
-
 uniform mat4 ProjectionMatrix;
 uniform vec4 GroundPosition;
 uniform mat4 WorldMatrices[MAX_BONES];

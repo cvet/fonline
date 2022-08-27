@@ -214,8 +214,7 @@ public:
     void RebuildMap(int rx, int ry);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
-
-    void SetFog(vector<PrimitivePoint>& look_points, vector<PrimitivePoint>& shoot_points, short* offs_x, short* offs_y);
+    void RebuildFog() { _rebuildFog = true; }
 
     auto Scroll() -> bool;
     void ScrollToHex(int hx, int hy, float speed, bool can_stop);
@@ -341,35 +340,43 @@ private:
     void OnWindowSizeChanged();
 
     EventUnsubscriber _eventUnsubscriber {};
+
+    bool _mapperMode {};
+    ushort _maxHexX {};
+    ushort _maxHexY {};
+
     vector<CritterHexView*> _critters {};
     map<uint, CritterHexView*> _crittersMap {};
     vector<ItemHexView*> _items {};
     map<uint, ItemHexView*> _itemsMap {};
+
     vector<MapText> _mapTexts {};
+
     vector<Sprite*> _spritesPool {};
+    vector<Field> _hexField {};
+    vector<short> _findPathGrid {};
+
     Sprites _mainTree;
     Sprites _tilesTree;
     Sprites _roofTree;
-    ushort _maxHexX {};
-    ushort _maxHexY {};
-    vector<Field> _hexField {};
+
     AnyFrames* _picTrack1 {};
     AnyFrames* _picTrack2 {};
     AnyFrames* _picHexMask {};
+    AnyFrames* _picHex[3] {};
     bool _isShowTrack {};
     bool _isShowHex {};
-    AnyFrames* _picHex[3] {};
-    vector<short> _findPathGrid {};
+
     int _curMapTime {-1};
     int _dayTime[4] {};
     uchar _dayColor[12] {};
-    bool _mapperMode {};
+
     RenderTarget* _rtMap {};
     RenderTarget* _rtLight {};
     RenderTarget* _rtFog {};
     uint _rtScreenOx {};
     uint _rtScreenOy {};
-    vector<ViewField> _viewField {};
+
     int _screenHexX {};
     int _screenHexY {};
     int _hTop {};
@@ -378,19 +385,27 @@ private:
     int _wRight {};
     int _wVisible {};
     int _hVisible {};
+    vector<ViewField> _viewField {};
+
     short* _fogOffsX {};
     short* _fogOffsY {};
     short _fogLastOffsX {};
     short _fogLastOffsY {};
     bool _fogForceRerender {};
+    bool _rebuildFog {};
+    bool _drawLookBorders {true};
+    bool _drawShootBorders {};
     vector<PrimitivePoint> _fogLookPoints {};
     vector<PrimitivePoint> _fogShootPoints {};
+
     uint _critterContourCrId {};
     int _critterContour {};
     int _crittersContour {};
+
     bool _requestRebuildLight {};
     bool _requestRenderLight {};
     vector<uchar> _hexLight {};
+
     uint _lightPointsCount {};
     vector<vector<PrimitivePoint>> _lightPoints {};
     vector<PrimitivePoint> _lightSoftPoints {};
@@ -404,13 +419,16 @@ private:
     int _lightProcentR {};
     int _lightProcentG {};
     int _lightProcentB {};
+
     int _roofSkip {};
+
     int _drawCursorX {};
     AnyFrames* _cursorPrePic {};
     AnyFrames* _cursorPostPic {};
     AnyFrames* _cursorXPic {};
     int _cursorX {};
     int _cursorY {};
+
     set<hstring> _fastPids {};
     set<hstring> _ignorePids {};
     vector<char> _hexTrack {};

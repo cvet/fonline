@@ -166,6 +166,8 @@ auto SpriteManager::GetWindowSize() const -> tuple<int, int>
 
 void SpriteManager::SetWindowSize(int w, int h)
 {
+    NON_CONST_METHOD_HINT();
+
     _window->SetSize(w, h);
 }
 
@@ -176,11 +178,15 @@ auto SpriteManager::GetWindowPosition() const -> tuple<int, int>
 
 void SpriteManager::SetWindowPosition(int x, int y)
 {
+    NON_CONST_METHOD_HINT();
+
     _window->SetPosition(x, y);
 }
 
 void SpriteManager::SetMousePosition(int x, int y)
 {
+    NON_CONST_METHOD_HINT();
+
     App->Input.SetMousePosition(x, y, _window);
 }
 
@@ -191,26 +197,36 @@ auto SpriteManager::IsWindowFocused() const -> bool
 
 void SpriteManager::MinimizeWindow()
 {
+    NON_CONST_METHOD_HINT();
+
     _window->Minimize();
 }
 
 auto SpriteManager::EnableFullscreen() -> bool
 {
+    NON_CONST_METHOD_HINT();
+
     return _window->ToggleFullscreen(true);
 }
 
 auto SpriteManager::DisableFullscreen() -> bool
 {
+    NON_CONST_METHOD_HINT();
+
     return _window->ToggleFullscreen(false);
 }
 
 void SpriteManager::BlinkWindow()
 {
+    NON_CONST_METHOD_HINT();
+
     _window->Blink();
 }
 
 void SpriteManager::SetAlwaysOnTop(bool enable)
 {
+    NON_CONST_METHOD_HINT();
+
     _window->AlwaysOnTop(enable);
 }
 
@@ -678,7 +694,7 @@ void SpriteManager::DestroyAtlases(AtlasType atlas_type)
     }
 }
 
-static void WriteSimpleTga(string_view fname, uint width, uint height, const uint* data)
+static void WriteSimpleTga(string_view fname, uint width, uint height, vector<uint> data)
 {
     auto file = DiskFileSystem::OpenFile(fname, true);
     RUNTIME_ASSERT(file);
@@ -688,7 +704,11 @@ static void WriteSimpleTga(string_view fname, uint width, uint height, const uin
         static_cast<uchar>(height % 256), static_cast<uchar>(height / 256), 4 * 8, 0x20};
     file.Write(header);
 
-    file.Write(data, width * height * 4);
+    for (auto& c : data) {
+        c = COLOR_SWAP_RB(c);
+    }
+
+    file.Write(data.data(), data.size() * sizeof(uint));
 }
 
 void SpriteManager::DumpAtlases() const
@@ -702,15 +722,15 @@ void SpriteManager::DumpAtlases() const
 
     if (const auto* rt = _rtMain; rt != nullptr) {
         const string fname = _str("{}/Main_{}x{}.tga", dir, rt->MainTex->Width, rt->MainTex->Height);
-        const auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
-        WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, tex_data.data());
+        auto tex_data = rt->MainTex->GetTextureRegion(0, 0, rt->MainTex->Width, rt->MainTex->Height);
+        WriteSimpleTga(fname, rt->MainTex->Width, rt->MainTex->Height, std::move(tex_data));
     }
 
     auto cnt = 0;
     for (auto&& atlas : _allAtlases) {
         const string fname = _str("{}/{}_{}_{}x{}.tga", dir, cnt, atlas->Type, atlas->Width, atlas->Height);
-        const auto tex_data = atlas->MainTex->GetTextureRegion(0, 0, atlas->Width, atlas->Height);
-        WriteSimpleTga(fname, atlas->Width, atlas->Height, tex_data.data());
+        auto tex_data = atlas->MainTex->GetTextureRegion(0, 0, atlas->Width, atlas->Height);
+        WriteSimpleTga(fname, atlas->Width, atlas->Height, std::move(tex_data));
         cnt++;
     }
 }
@@ -1020,7 +1040,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
         }
     }
     if (rt == nullptr) {
-        rt = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, false);
+        rt = CreateRenderTarget(true, RenderTarget::SizeType::Custom, frame_width, frame_height, true);
         _rt3D.push_back(rt);
     }
 
@@ -1514,7 +1534,7 @@ auto SpriteManager::CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> b
     if (egg_type == EGG_ALWAYS) {
         return true;
     }
-    if (_eggHy == hy && (hx & 1) != 0 && (_eggHx & 1) == 0) {
+    if (_eggHy == hy && (hx % 2) != 0 && (_eggHx % 2) == 0) {
         hy--;
     }
     switch (egg_type) {
@@ -1579,7 +1599,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
     const auto ex = _eggX + _settings.ScrOx;
     const auto ey = _eggY + _settings.ScrOy;
 
-    for (auto* spr = dtree.RootSprite(); spr != nullptr; spr = spr->ChainChild) {
+    for (const auto* spr = dtree.RootSprite(); spr != nullptr; spr = spr->ChainChild) {
         RUNTIME_ASSERT(spr->Valid);
 
         if (spr->DrawOrderType < draw_oder_from) {
@@ -1590,7 +1610,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         }
 
         const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
-        auto* si = _sprData[id];
+        const auto* si = _sprData[id];
         if (si == nullptr) {
             continue;
         }
@@ -1782,6 +1802,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             case EGG_X_OR_Y:
                 PrepareSquare(corner, FPoint(xf + cx, yf + hf - 49.0f), FPoint(xf + cx + 10.0f, yf + hf - 52.0f), FPoint(xf + cx, yf + hf + 1.0f), FPoint(xf + cx + 10.0f, yf + hf - 2.0f), 0x5FAF0000);
                 PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 55.0f), FPoint(xf + cx, yf + hf - 45.0f), FPoint(xf + cx - 10.0f, yf + hf - 5.0f), FPoint(xf + cx, yf + hf + 5.0f), 0x5FAF0000);
+                break;
             default:
                 break;
             }

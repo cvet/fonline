@@ -943,7 +943,7 @@ void CritterHexView::ProcessMoving()
                 ResetOk();
 
                 if (IsChosen()) {
-                    // RebuildLookBorders = true;
+                    _map->RebuildFog();
                 }
             }
 

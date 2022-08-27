@@ -277,7 +277,6 @@ auto ModelManager::CreateModel(string_view name) -> ModelInstance*
     for (size_t i = 0, j = model_info->_hierarchy->_allDrawBones.size(); i < j; i++) {
         auto* mesh_instance = model->_allMeshes[i] = new MeshInstance();
         auto* mesh = model_info->_hierarchy->_allDrawBones[i]->AttachedMesh.get();
-        std::memset(mesh_instance, 0, sizeof(MeshInstance));
         mesh_instance->Mesh = mesh;
         const auto* tex_name = (mesh->DiffuseTexture.length() != 0u ? mesh->DiffuseTexture.c_str() : nullptr);
         mesh_instance->CurTexures[0] = mesh_instance->DefaultTexures[0] = (tex_name != nullptr ? model_info->_hierarchy->GetTexture(tex_name) : nullptr);
@@ -374,8 +373,9 @@ void ModelInstance::SetupFrame()
     auto draw_height = _modelInfo->_drawHeight;
 
     const auto draw_size_scale = std::max(std::max(_matScaleBase.a1, _matScaleBase.b2), _matScaleBase.c3);
-    draw_width = static_cast<uint>(static_cast<float>(draw_width) * draw_size_scale);
-    draw_height = static_cast<uint>(static_cast<float>(draw_height) * draw_size_scale);
+    const auto draw_size_scale2 = std::max(std::max(_matScale.a1, _matScale.b2), _matScale.c3);
+    draw_width = static_cast<uint>(static_cast<float>(draw_width) * draw_size_scale * draw_size_scale2);
+    draw_height = static_cast<uint>(static_cast<float>(draw_height) * draw_size_scale * draw_size_scale2);
 
     _frameWidth = static_cast<int>(draw_width) * FRAME_SCALE;
     _frameHeight = static_cast<int>(draw_height) * FRAME_SCALE;
@@ -1192,16 +1192,24 @@ void ModelInstance::GenerateCombinedMeshes()
 
     // Clean up buffers
     for (size_t i = 0; i < _combinedMeshesSize; i++) {
-        ClearCombinedMesh(_combinedMeshes[i]);
+        auto* combined_mesh = _combinedMeshes[i];
+        combined_mesh->EncapsulatedMeshCount = 0;
+        combined_mesh->CurBoneMatrix = 0;
+        combined_mesh->Meshes.clear();
+        combined_mesh->MeshIndices.clear();
+        combined_mesh->MeshVertices.clear();
+        combined_mesh->MeshAnimLayers.clear();
+        combined_mesh->MeshBuf->Vertices3D.clear();
+        combined_mesh->MeshBuf->Indices.clear();
     }
     _combinedMeshesSize = 0;
 
     // Combine meshes recursively
-    FillCombinedMeshes(this, this);
+    FillCombinedMeshes(this);
 
     // Cut
     _disableCulling = false;
-    CutCombinedMeshes(this, this);
+    CutCombinedMeshes(this);
 
     // Finalize meshes
     for (size_t i = 0; i < _combinedMeshesSize; i++) {
@@ -1209,16 +1217,16 @@ void ModelInstance::GenerateCombinedMeshes()
     }
 }
 
-void ModelInstance::FillCombinedMeshes(ModelInstance* base, const ModelInstance* cur)
+void ModelInstance::FillCombinedMeshes(const ModelInstance* cur)
 {
     // Combine meshes
     for (const auto* mesh : cur->_allMeshes) {
-        base->CombineMesh(mesh, cur->_parentBone != nullptr ? cur->_animLink.Layer : 0);
+        CombineMesh(mesh, cur->_parentBone != nullptr ? cur->_animLink.Layer : 0);
     }
 
     // Fill child
     for (const auto* child_anim : cur->_children) {
-        FillCombinedMeshes(base, child_anim);
+        FillCombinedMeshes(child_anim);
     }
 }
 
@@ -1249,18 +1257,6 @@ void ModelInstance::CombineMesh(const MeshInstance* mesh_instance, int anim_laye
     _combinedMeshesSize++;
 }
 
-void ModelInstance::ClearCombinedMesh(CombinedMesh* combined_mesh)
-{
-    combined_mesh->EncapsulatedMeshCount = 0;
-    combined_mesh->CurBoneMatrix = 0;
-    combined_mesh->Meshes.clear();
-    combined_mesh->MeshIndices.clear();
-    combined_mesh->MeshVertices.clear();
-    combined_mesh->MeshAnimLayers.clear();
-    combined_mesh->MeshBuf->Vertices3D.clear();
-    combined_mesh->MeshBuf->Indices.clear();
-}
-
 auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, const MeshInstance* mesh_instance) const -> bool
 {
     if (combined_mesh->EncapsulatedMeshCount == 0) {
@@ -1279,7 +1275,7 @@ auto ModelInstance::CanBatchCombinedMesh(const CombinedMesh* combined_mesh, cons
 
 void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer)
 {
-    auto* mesh = mesh_instance->Mesh;
+    auto* mesh_data = mesh_instance->Mesh;
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
     const auto vertices_old_size = vertices.size();
@@ -1287,27 +1283,27 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
 
     // Set or add data
     if (combined_mesh->EncapsulatedMeshCount == 0) {
-        vertices = mesh->Vertices;
-        indices = mesh->Indices;
+        vertices = mesh_data->Vertices;
+        indices = mesh_data->Indices;
         combined_mesh->DrawEffect = mesh_instance->CurEffect;
         std::memset(&combined_mesh->SkinBones[0], 0, combined_mesh->SkinBones.size() * sizeof(void*));
         std::memset(combined_mesh->Textures, 0, sizeof(combined_mesh->Textures));
         combined_mesh->CurBoneMatrix = 0;
     }
     else {
-        vertices.insert(vertices.end(), mesh->Vertices.begin(), mesh->Vertices.end());
-        indices.insert(indices.end(), mesh->Indices.begin(), mesh->Indices.end());
+        vertices.insert(vertices.end(), mesh_data->Vertices.begin(), mesh_data->Vertices.end());
+        indices.insert(indices.end(), mesh_data->Indices.begin(), mesh_data->Indices.end());
 
         // Add indices offset
-        const auto index_offset = static_cast<ushort>(vertices.size() - mesh->Vertices.size());
-        const auto start_index = indices.size() - mesh->Indices.size();
+        const auto index_offset = static_cast<ushort>(vertices.size() - mesh_data->Vertices.size());
+        const auto start_index = indices.size() - mesh_data->Indices.size();
         for (auto i = start_index, j = indices.size(); i < j; i++) {
             indices[i] += index_offset;
         }
 
         // Add bones matrices offset
         const auto bone_index_offset = static_cast<float>(combined_mesh->CurBoneMatrix);
-        const auto start_vertex = vertices.size() - mesh->Vertices.size();
+        const auto start_vertex = vertices.size() - mesh_data->Vertices.size();
         for (auto i = start_vertex, j = vertices.size(); i < j; i++) {
             for (auto& blend_index : vertices[i].BlendIndices) {
                 blend_index += bone_index_offset;
@@ -1316,17 +1312,17 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     }
 
     // Set mesh transform and anim layer
-    combined_mesh->Meshes.push_back(mesh);
+    combined_mesh->Meshes.push_back(mesh_data);
     combined_mesh->MeshVertices.push_back(static_cast<uint>(vertices.size() - vertices_old_size));
     combined_mesh->MeshIndices.push_back(static_cast<uint>(indices.size() - indices_old_size));
     combined_mesh->MeshAnimLayers.push_back(anim_layer);
 
     // Add bones matrices
-    for (size_t i = 0; i < mesh->SkinBones.size(); i++) {
-        combined_mesh->SkinBones[combined_mesh->CurBoneMatrix + i] = mesh->SkinBones[i];
-        combined_mesh->SkinBoneOffsets[combined_mesh->CurBoneMatrix + i] = mesh->SkinBoneOffsets[i];
+    for (size_t i = 0; i < mesh_data->SkinBones.size(); i++) {
+        combined_mesh->SkinBones[combined_mesh->CurBoneMatrix + i] = mesh_data->SkinBones[i];
+        combined_mesh->SkinBoneOffsets[combined_mesh->CurBoneMatrix + i] = mesh_data->SkinBoneOffsets[i];
     }
-    combined_mesh->CurBoneMatrix += mesh->SkinBones.size();
+    combined_mesh->CurBoneMatrix += mesh_data->SkinBones.size();
 
     // Add textures
     for (auto i = 0; i < EFFECT_TEXTURES; i++) {
@@ -1336,6 +1332,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     }
 
     // Fix texture coords
+    // Todo: move texcoord offset calculation to gpu
     if (mesh_instance->CurTexures[0] != nullptr) {
         const auto* mesh_tex = mesh_instance->CurTexures[0];
         for (auto i = vertices_old_size, j = vertices.size(); i < j; i++) {
@@ -1348,21 +1345,21 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
     combined_mesh->EncapsulatedMeshCount++;
 }
 
-void ModelInstance::CutCombinedMeshes(ModelInstance* base, ModelInstance* cur)
+void ModelInstance::CutCombinedMeshes(const ModelInstance* cur)
 {
     // Cut meshes
     if (!cur->_allCuts.empty()) {
         for (const auto* cut : cur->_allCuts) {
-            for (size_t i = 0; i < base->_combinedMeshesSize; i++) {
-                base->CutCombinedMesh(base->_combinedMeshes[i], cut);
+            for (size_t i = 0; i < _combinedMeshesSize; i++) {
+                CutCombinedMesh(_combinedMeshes[i], cut);
             }
         }
         _disableCulling = true;
     }
 
     // Fill child
-    for (auto* child_anim : cur->_children) {
-        CutCombinedMeshes(base, child_anim);
+    for (const auto* child_anim : cur->_children) {
+        CutCombinedMeshes(child_anim);
     }
 }
 
@@ -1681,7 +1678,9 @@ void ModelInstance::Draw()
     ProcessAnimation(elapsed, w / 2, h - h / 4, static_cast<float>(FRAME_SCALE));
 
     if (_combinedMeshesSize != 0u) {
-        DrawCombinedMeshes();
+        for (size_t i = 0; i < _combinedMeshesSize; i++) {
+            DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
+        }
     }
 
     DrawAllParticles();
@@ -1817,13 +1816,6 @@ void ModelInstance::UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matr
     }
 }
 
-void ModelInstance::DrawCombinedMeshes()
-{
-    for (size_t i = 0; i < _combinedMeshesSize; i++) {
-        DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
-    }
-}
-
 void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled)
 {
     auto* effect = combined_mesh->DrawEffect != nullptr ? combined_mesh->DrawEffect : _modelMngr._effectMngr.Effects.Skinned3d;
@@ -1864,6 +1856,8 @@ void ModelInstance::DrawCombinedMesh(const CombinedMesh* combined_mesh, bool sha
         effect->AnimBuf->NormalizedTime = _animPosProc;
         effect->AnimBuf->AbsoluteTime = _animPosTime;
     }
+
+    effect->DisableCulling = _disableCulling;
 
     combined_mesh->MeshBuf->Upload(effect->Usage);
     effect->DrawBuffer(combined_mesh->MeshBuf);

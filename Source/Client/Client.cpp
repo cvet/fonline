@@ -352,109 +352,6 @@ void FOClient::ProcessAutoLogin()
 #endif
 }
 
-void FOClient::LookBordersPrepare()
-{
-    _lookBorders.clear();
-    _shootBorders.clear();
-
-    auto* chosen = GetMapChosen();
-    if (chosen == nullptr || CurMap == nullptr || (!_drawLookBorders && !_drawShootBorders)) {
-        CurMap->SetFog(_lookBorders, _shootBorders, nullptr, nullptr);
-        return;
-    }
-
-    const auto dist = chosen->GetLookDistance() + Settings.FogExtraLength;
-    const auto base_hx = chosen->GetHexX();
-    const auto base_hy = chosen->GetHexY();
-    int hx = base_hx;
-    int hy = base_hy;
-    const int chosen_dir = chosen->GetDir();
-    const auto dist_shoot = chosen->GetAttackDist();
-    const auto maxhx = CurMap->GetWidth();
-    const auto maxhy = CurMap->GetHeight();
-    auto seek_start = true;
-    for (auto i = 0; i < (Settings.MapHexagonal ? 6 : 4); i++) {
-        const auto dir = (Settings.MapHexagonal ? (i + 2) % 6 : ((i + 1) * 2) % 8);
-
-        for (uint j = 0, jj = (Settings.MapHexagonal ? dist : dist * 2); j < jj; j++) {
-            if (seek_start) {
-                // Move to start position
-                for (uint l = 0; l < dist; l++) {
-                    Geometry.MoveHexByDirUnsafe(hx, hy, Settings.MapHexagonal ? 0 : 7);
-                }
-                seek_start = false;
-                j = -1;
-            }
-            else {
-                // Move to next hex
-                Geometry.MoveHexByDirUnsafe(hx, hy, static_cast<uchar>(dir));
-            }
-
-            auto hx_ = static_cast<ushort>(std::clamp(hx, 0, maxhx - 1));
-            auto hy_ = static_cast<ushort>(std::clamp(hy, 0, maxhy - 1));
-            if (IsBitSet(Settings.LookChecks, LOOK_CHECK_DIR)) {
-                const int dir_ = Geometry.GetFarDir(base_hx, base_hy, hx_, hy_);
-                auto ii = (chosen_dir > dir_ ? chosen_dir - dir_ : dir_ - chosen_dir);
-                if (ii > static_cast<int>(Settings.MapDirCount / 2)) {
-                    ii = Settings.MapDirCount - ii;
-                }
-                const auto dist_ = dist - dist * Settings.LookDir[ii] / 100;
-                pair<ushort, ushort> block = {};
-                CurMap->TraceBullet(base_hx, base_hy, hx_, hy_, dist_, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, false);
-                hx_ = block.first;
-                hy_ = block.second;
-            }
-
-            if (IsBitSet(Settings.LookChecks, LOOK_CHECK_TRACE_CLIENT)) {
-                pair<ushort, ushort> block = {};
-                CurMap->TraceBullet(base_hx, base_hy, hx_, hy_, 0, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
-                hx_ = block.first;
-                hy_ = block.second;
-            }
-
-            auto dist_look = Geometry.DistGame(base_hx, base_hy, hx_, hy_);
-            if (_drawLookBorders) {
-                auto x = 0;
-                auto y = 0;
-                CurMap->GetHexCurrentPosition(hx_, hy_, x, y);
-                auto* ox = (dist_look == dist ? &chosen->SprOx : nullptr);
-                auto* oy = (dist_look == dist ? &chosen->SprOy : nullptr);
-                _lookBorders.push_back({x + (Settings.MapHexWidth / 2), y + (Settings.MapHexHeight / 2), COLOR_RGBA(0, 255, dist_look * 255 / dist, 0), ox, oy});
-            }
-
-            if (_drawShootBorders) {
-                pair<ushort, ushort> block = {};
-                const auto max_shoot_dist = std::max(std::min(dist_look, dist_shoot), 0u) + 1u;
-                CurMap->TraceBullet(base_hx, base_hy, hx_, hy_, max_shoot_dist, 0.0f, nullptr, false, nullptr, CritterFindType::Any, nullptr, &block, nullptr, true);
-                const auto hx_2 = block.first;
-                const auto hy_2 = block.second;
-
-                auto x_ = 0;
-                auto y_ = 0;
-                CurMap->GetHexCurrentPosition(hx_2, hy_2, x_, y_);
-                const auto result_shoot_dist = Geometry.DistGame(base_hx, base_hy, hx_2, hy_2);
-                auto* ox = (result_shoot_dist == max_shoot_dist ? &chosen->SprOx : nullptr);
-                auto* oy = (result_shoot_dist == max_shoot_dist ? &chosen->SprOy : nullptr);
-                _shootBorders.push_back({x_ + (Settings.MapHexWidth / 2), y_ + (Settings.MapHexHeight / 2), COLOR_RGBA(255, 255, result_shoot_dist * 255 / max_shoot_dist, 0), ox, oy});
-            }
-        }
-    }
-
-    auto base_x = 0;
-    auto base_y = 0;
-    CurMap->GetHexCurrentPosition(base_hx, base_hy, base_x, base_y);
-    if (!_lookBorders.empty()) {
-        _lookBorders.push_back(*_lookBorders.begin());
-        _lookBorders.insert(_lookBorders.begin(), {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(0, 0, 0, 0), &chosen->SprOx, &chosen->SprOy});
-    }
-    if (!_shootBorders.empty()) {
-        _shootBorders.push_back(*_shootBorders.begin());
-        _shootBorders.insert(_shootBorders.begin(), {base_x + (Settings.MapHexWidth / 2), base_y + (Settings.MapHexHeight / 2), COLOR_RGBA(255, 0, 0, 0), &chosen->SprOx, &chosen->SprOy});
-    }
-
-    CurMap->SetFog(_lookBorders, _shootBorders, &chosen->SprOx, &chosen->SprOy);
-}
-
 void FOClient::MainLoop()
 {
     const auto time_changed = GameTime.FrameAdvance();
@@ -526,20 +423,12 @@ void FOClient::MainLoop()
     // Quake effect
     ProcessScreenEffectQuake();
 
-    // Render
+    // Render map
     if (GetMainScreen() == SCREEN_GAME && CurMap != nullptr) {
-        // Move cursor
         if (Settings.ShowMoveCursor) {
             CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
         }
 
-        // Look borders
-        if (_rebuildLookBordersRequest) {
-            LookBordersPrepare();
-            _rebuildLookBordersRequest = false;
-        }
-
-        // Map
         CurMap->DrawMap();
     }
 
@@ -1185,7 +1074,7 @@ void FOClient::Net_OnAddCritter()
     OnCritterIn.Fire(cr);
 
     if (cr->IsChosen()) {
-        _rebuildLookBordersRequest = true;
+        CurMap->RebuildFog();
     }
 }
 
@@ -1872,7 +1761,7 @@ void FOClient::Net_OnCritterTeleport()
         CurMap->ScrollToHex(cr->GetHexX(), cr->GetHexY(), 0.1f, false);
 
         // Maybe changed some parameter influencing on look borders
-        _rebuildLookBordersRequest = true;
+        CurMap->RebuildFog();
     }
 }
 
@@ -1920,7 +1809,7 @@ void FOClient::Net_OnCritterPos()
         CurMap->TransitCritter(cr, hx, hy, true);
 
         if (cr->IsChosen()) {
-            _rebuildLookBordersRequest = true;
+            CurMap->RebuildFog();
         }
     }
 
@@ -1966,7 +1855,7 @@ void FOClient::Net_OnAllProperties()
     }
 
     // Refresh borders
-    _rebuildLookBordersRequest = true;
+    CurMap->RebuildFog();
 }
 
 void FOClient::Net_OnChosenClearItems()
@@ -2023,7 +1912,8 @@ void FOClient::Net_OnChosenAddItem()
 
     item->AddRef();
 
-    _rebuildLookBordersRequest = true;
+    CurMap->RebuildFog();
+
     if (item->LightGetHash() != prev_light_hash && (slot != 0u || prev_slot != 0u)) {
         CurMap->RebuildLight();
     }
@@ -2113,7 +2003,7 @@ void FOClient::Net_OnAddItemOnMap()
 
         // Refresh borders
         if (!item->GetIsShootThru()) {
-            _rebuildLookBordersRequest = true;
+            CurMap->RebuildFog();
         }
     }
 }
@@ -2137,7 +2027,7 @@ void FOClient::Net_OnEraseItemFromMap()
 
         // Refresh borders
         if (!item->GetIsShootThru()) {
-            _rebuildLookBordersRequest = true;
+            CurMap->RebuildFog();
         }
 
         if (is_deleted) {
@@ -2569,8 +2459,6 @@ void FOClient::Net_OnLoadMap()
 
     if (map_pid) {
         SetDayTime(true);
-        _lookBorders.clear();
-        _shootBorders.clear();
 
         _curLocation = new LocationView(this, loc_id, ProtoMngr.GetProtoLocation(loc_pid));
         _curLocation->RestoreData(_tempPropertiesDataExt);
@@ -3154,7 +3042,7 @@ void FOClient::OnSetItemFlags(Entity* entity, const Property* prop, const void* 
             item->SetSprite(nullptr);
         }
         else if (prop == item->GetPropertyIsShootThru()) {
-            _rebuildLookBordersRequest = true;
+            CurMap->RebuildFog();
             rebuild_cache = true;
         }
         else if (prop == item->GetPropertyIsLightThru()) {
@@ -3621,21 +3509,21 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
     }
     else if (cmd == "SwitchLookBorders") {
         // _drawLookBorders = !_drawLookBorders;
-        // _rebuildLookBordersRequest = true;
+        // _rebuildFog = true;
     }
     else if (cmd == "SwitchShootBorders") {
         // _drawShootBorders = !_drawShootBorders;
-        // _rebuildLookBordersRequest = true;
+        // _rebuildFog = true;
     }
     else if (cmd == "GetShootBorders") {
-        return _drawShootBorders ? "true" : "false";
+        // return _drawShootBorders ? "true" : "false";
     }
     else if (cmd == "SetShootBorders" && args.size() >= 2) {
         auto set = (args[1] == "true");
-        if (_drawShootBorders != set) {
-            _drawShootBorders = set;
-            _rebuildLookBordersRequest = true;
-        }
+        // if (_drawShootBorders != set) {
+        //    _drawShootBorders = set;
+        //    CurMap->RebuildFog();
+        // }
     }
     else if (cmd == "SetMousePos" && args.size() == 4) {
         /*int x = _str(args[1]).toInt();
@@ -3850,8 +3738,9 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         }
 
         // Light
-        _rebuildLookBordersRequest = true;
-        if (is_light && (!to_slot || (!from_slot && to_slot != -1))) {
+        CurMap->RebuildFog();
+
+        if (is_light && (to_slot == 0 || (from_slot == 0 && to_slot != -1))) {
             CurMap->RebuildLight();
         }
 
@@ -3865,7 +3754,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         CurMap->SetSkipRoof(static_cast<ushort>(hx), static_cast<ushort>(hy));
     }
     else if (cmd == "RebuildLookBorders") {
-        _rebuildLookBordersRequest = true;
+        CurMap->RebuildFog();
     }
     else if (cmd == "SetMove") {
         auto* chosen = GetMapChosen();

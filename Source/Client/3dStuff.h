@@ -46,6 +46,8 @@
 #include "Settings.h"
 #include "Timer.h"
 
+// Todo: remove unnecessary allocations from 3d
+
 constexpr uint ANIMATION_STAY = 0x01;
 constexpr uint ANIMATION_ONE_TIME = 0x02;
 constexpr auto ANIMATION_PERIOD(uint proc) -> uint
@@ -94,7 +96,6 @@ struct MeshInstance
     RenderEffect* DefaultEffect {};
     RenderEffect* LastEffect {};
 };
-static_assert(std::is_standard_layout_v<MeshInstance>);
 
 struct ModelBone
 {
@@ -300,15 +301,13 @@ private:
     [[nodiscard]] auto GetTick() const -> uint;
 
     void GenerateCombinedMeshes();
-    void FillCombinedMeshes(ModelInstance* base, const ModelInstance* cur);
+    void FillCombinedMeshes(const ModelInstance* cur);
     void CombineMesh(const MeshInstance* mesh_instance, int anim_layer);
-    void ClearCombinedMesh(CombinedMesh* combined_mesh);
     void BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshInstance* mesh_instance, int anim_layer);
-    void CutCombinedMeshes(ModelInstance* base, ModelInstance* cur);
+    void CutCombinedMeshes(const ModelInstance* cur);
     void CutCombinedMesh(CombinedMesh* combined_mesh, const ModelCutData* cut);
     void ProcessAnimation(float elapsed, int x, int y, float scale);
     void UpdateBoneMatrices(ModelBone* bone, const mat44* parent_matrix);
-    void DrawCombinedMeshes();
     void DrawCombinedMesh(const CombinedMesh* combined_mesh, bool shadow_disabled);
     void DrawAllParticles();
     void SetAnimData(ModelAnimationData& data, bool clear);

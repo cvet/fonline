@@ -1349,7 +1349,7 @@
     }
 
     if (init_zoom != client->Settings.SpritesZoom) {
-        client->RebuildLookBorders();
+        client->CurMap->RebuildFog();
     }
 }
 
@@ -1894,7 +1894,7 @@
         return;
     }
 
-    auto& model = client->DrawCritterModel[instance];
+    auto*& model = client->DrawCritterModel[instance];
     if (model == nullptr || client->DrawCritterModelCrType[instance] != modelName) {
         if (model != nullptr) {
             client->SprMngr.FreeModel(model);
