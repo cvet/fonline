@@ -2507,7 +2507,7 @@ auto ModelInformation::Load(string_view name) -> bool
         _hierarchy = xfile;
 
         // Single frame render
-        if ((render_fname[0] != 0) && (render_anim[0] != 0)) {
+        if (!render_fname.empty() && !render_anim.empty()) {
             anims.push_back({-1, render_fname, render_anim});
         }
 

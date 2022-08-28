@@ -1000,7 +1000,7 @@ label_FindOk:
             int best_step_dir = -1;
             float best_step_angle_diff = 0.0f;
 
-            const auto check_hex = [&, this](int dir, int step_hx, int step_hy) {
+            const auto check_hex = [&best_step_dir, &best_step_angle_diff, &input, numindex, base_angle, this](int dir, int step_hx, int step_hy) {
                 if (GridAt(step_hx, step_hy) == numindex) {
                     const float angle = _engine->Geometry.GetDirAngle(step_hx, step_hy, input.FromHexX, input.FromHexY);
                     const float angle_diff = _engine->Geometry.GetDirAngleDiff(base_angle, angle);

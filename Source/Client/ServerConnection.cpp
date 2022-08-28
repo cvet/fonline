@@ -608,10 +608,10 @@ auto ServerConnection::DispatchData() -> bool
         }
         else {
 #if FO_WINDOWS
-            DWORD len = 0;
             WSABUF buf;
             buf.buf = reinterpret_cast<char*>(_netOut.GetData()) + sendpos;
             buf.len = tosend - sendpos;
+            DWORD len;
             if (::WSASend(_impl->NetSock, &buf, 1, &len, 0, nullptr, nullptr) == SOCKET_ERROR || len == 0)
 #else
             int len = (int)::send(_impl->NetSock, _netOut.GetData() + sendpos, tosend - sendpos, 0);
@@ -650,11 +650,11 @@ auto ServerConnection::ReceiveData(bool unpack) -> int
         RUNTIME_ASSERT(_impl->NetSock != INVALID_SOCKET);
 
 #if FO_WINDOWS
-        DWORD len = 0;
         DWORD flags = 0;
         WSABUF buf;
         buf.buf = reinterpret_cast<char*>(_incomeBuf.data());
         buf.len = static_cast<uint>(_incomeBuf.size());
+        DWORD len;
         if (::WSARecv(_impl->NetSock, &buf, 1, &len, &flags, nullptr, nullptr) == SOCKET_ERROR)
 #else
         int len = static_cast<int>(::recv(_impl->NetSock, _incomeBuf.data(), _incomeBuf.size(), 0));

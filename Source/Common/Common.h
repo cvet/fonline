@@ -443,7 +443,7 @@ public:
     }
 
 private:
-    void ThrowException()
+    void ThrowException() const
     {
         if (std::uncaught_exceptions() == 0) {
             throw GenericException("Some of pointer still alive", _ptrCounter.load());
@@ -457,7 +457,7 @@ template<typename T>
 // ReSharper disable once CppInconsistentNaming
 class ptr final
 {
-    static_assert(std::is_base_of<RefCounter, T>::value, "T must inherit from RefCounter");
+    static_assert(std::is_base_of_v<RefCounter, T>, "T must inherit from RefCounter");
     using type = ptr<T>;
 
 public:
@@ -672,43 +672,56 @@ constexpr auto RAD_TO_DEG_FLOAT = 57.29577951f;
 constexpr auto DEG_TO_RAD_FLOAT = 0.017453292f;
 
 // Memory pool
-template<int StructSize, int PoolSize>
+template<typename T, int ChunkSize>
 class MemoryPool final
 {
 public:
-    MemoryPool() { Grow(); }
     MemoryPool(const MemoryPool&) = delete;
     MemoryPool(MemoryPool&&) noexcept = default;
     auto operator=(const MemoryPool&) = delete;
-    auto operator=(MemoryPool&&) -> MemoryPool& = delete;
+    auto operator=(MemoryPool&&) noexcept -> MemoryPool& = delete;
+
+    MemoryPool()
+    {
+        _freePtrs.reserve(ChunkSize);
+        Grow();
+    }
 
     ~MemoryPool()
     {
-        for (auto it = _allocatedData.begin(); it != _allocatedData.end(); ++it)
-            delete[] * it;
-        _allocatedData.clear();
+        for (const auto* chunk : _chunks) {
+            delete[] chunk;
+        }
     }
 
-    auto Get() -> void*
+    auto Get() -> T*
     {
-        if (_allocatedData.empty())
+        if (_freePtrs.empty()) {
             Grow();
-        void* result = _allocatedData.back();
-        _allocatedData.pop_back();
+        }
+
+        T* result = _freePtrs.back();
+        _freePtrs.pop_back();
         return result;
     }
 
-    void Put(void* t) { _allocatedData.push_back(static_cast<char*>(t)); }
+    void Put(T* ptr) //
+    {
+        _freePtrs.emplace_back(ptr);
+    }
 
 private:
     void Grow()
     {
-        _allocatedData.reserve(_allocatedData.size() + PoolSize);
-        for (auto i = 0; i < PoolSize; i++)
-            _allocatedData.push_back(new char[StructSize]);
+        auto* new_chunk = new T[ChunkSize]();
+        _chunks.emplace_back(new_chunk);
+        for (auto i = 0; i < ChunkSize; i++) {
+            _freePtrs.emplace_back(&new_chunk[i]);
+        }
     }
 
-    vector<char*> _allocatedData;
+    vector<T*> _chunks {};
+    vector<T*> _freePtrs {};
 };
 
 // Data serialization helpers

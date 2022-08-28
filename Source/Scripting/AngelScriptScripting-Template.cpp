@@ -2572,6 +2572,8 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
     FOEngine* game_engine = new FOEngine();
 #endif
 
+    auto game_engine_releaser = ScopeCallback([game_engine]() noexcept { game_engine->Release(); });
+
 #if COMPILER_MODE
     static int dummy = 0;
 #endif
@@ -3105,8 +3107,6 @@ void SCRIPTING_CLASS::InitAngelScriptScripting(INIT_ARGS)
 #if !COMPILER_MODE
     _loopCallbacks.emplace_back([this] { AngelScriptData->ResumeSuspendedContexts(); });
 #endif
-
-    game_engine->Release();
 }
 
 class BinaryStream : public asIBinaryStream

@@ -42,22 +42,18 @@ auto AnyData::ValueToString(const Value& value) -> string
 {
     constexpr auto default_buf_size = 1024;
 
-    if (value.index() == INT_VALUE) {
+    switch (value.index()) {
+    case INT_VALUE:
         return _str("{}", std::get<INT_VALUE>(value)).str();
-    }
-    else if (value.index() == INT64_VALUE) {
+    case INT64_VALUE:
         return _str("{}", std::get<INT64_VALUE>(value)).str();
-    }
-    else if (value.index() == DOUBLE_VALUE) {
+    case DOUBLE_VALUE:
         return _str("{}", std::get<DOUBLE_VALUE>(value)).str();
-    }
-    else if (value.index() == BOOL_VALUE) {
+    case BOOL_VALUE:
         return std::get<BOOL_VALUE>(value) ? "True" : "False";
-    }
-    else if (value.index() == STRING_VALUE) {
+    case STRING_VALUE:
         return CodeString(std::get<STRING_VALUE>(value), false);
-    }
-    else if (value.index() == ARRAY_VALUE) {
+    case ARRAY_VALUE: {
         string arr_str;
         arr_str.reserve(default_buf_size);
         const auto& arr = std::get<ARRAY_VALUE>(value);
@@ -68,29 +64,30 @@ auto AnyData::ValueToString(const Value& value) -> string
             }
 
             const auto& arr_value = arr[i];
-            if (arr_value.index() == INT_VALUE) {
+            switch (arr_value.index()) {
+            case INT_VALUE:
                 arr_str.append(_str("{}", std::get<INT_VALUE>(arr_value)).str());
-            }
-            else if (arr_value.index() == INT64_VALUE) {
+                break;
+            case INT64_VALUE:
                 arr_str.append(_str("{}", std::get<INT64_VALUE>(arr_value)).str());
-            }
-            else if (arr_value.index() == DOUBLE_VALUE) {
+                break;
+            case DOUBLE_VALUE:
                 arr_str.append(_str("{}", std::get<DOUBLE_VALUE>(arr_value)).str());
-            }
-            else if (arr_value.index() == BOOL_VALUE) {
+                break;
+            case BOOL_VALUE:
                 arr_str.append(std::get<BOOL_VALUE>(arr_value) ? "True" : "False");
-            }
-            else if (arr_value.index() == STRING_VALUE) {
+                break;
+            case STRING_VALUE:
                 arr_str.append(CodeString(std::get<STRING_VALUE>(arr_value), true));
-            }
-            else {
+                break;
+            default:
                 throw UnreachablePlaceException(LINE_STR);
             }
         }
 
         return arr_str;
     }
-    else if (value.index() == DICT_VALUE) {
+    case DICT_VALUE: {
         string dict_str;
         dict_str.reserve(default_buf_size);
         const auto& dict = std::get<DICT_VALUE>(value);
@@ -107,22 +104,23 @@ auto AnyData::ValueToString(const Value& value) -> string
 
             dict_str.append(" ");
 
-            if (dict_value.index() == INT_VALUE) {
+            switch (dict_value.index()) {
+            case INT_VALUE:
                 dict_str.append(_str("{}", std::get<INT_VALUE>(dict_value)).str());
-            }
-            else if (dict_value.index() == INT64_VALUE) {
+                break;
+            case INT64_VALUE:
                 dict_str.append(_str("{}", std::get<INT64_VALUE>(dict_value)).str());
-            }
-            else if (dict_value.index() == DOUBLE_VALUE) {
+                break;
+            case DOUBLE_VALUE:
                 dict_str.append(_str("{}", std::get<DOUBLE_VALUE>(dict_value)).str());
-            }
-            else if (dict_value.index() == BOOL_VALUE) {
+                break;
+            case BOOL_VALUE:
                 dict_str.append(std::get<BOOL_VALUE>(dict_value) ? "True" : "False");
-            }
-            else if (dict_value.index() == STRING_VALUE) {
+                break;
+            case STRING_VALUE:
                 dict_str.append(CodeString(std::get<STRING_VALUE>(dict_value), true));
-            }
-            else if (dict_value.index() == ARRAY_VALUE) {
+                break;
+            case ARRAY_VALUE: {
                 string dict_arr_str;
                 dict_arr_str.reserve(default_buf_size);
                 const auto& dict_arr = std::get<ARRAY_VALUE>(dict_value);
@@ -133,34 +131,38 @@ auto AnyData::ValueToString(const Value& value) -> string
                     }
 
                     const auto& dict_arr_value = dict_arr[i];
-                    if (dict_arr_value.index() == INT_VALUE) {
+                    switch (dict_arr_value.index()) {
+                    case INT_VALUE:
                         dict_arr_str.append(_str("{}", std::get<INT_VALUE>(dict_arr_value)).str());
-                    }
-                    else if (dict_arr_value.index() == INT64_VALUE) {
+                        break;
+                    case INT64_VALUE:
                         dict_arr_str.append(_str("{}", std::get<INT64_VALUE>(dict_arr_value)).str());
-                    }
-                    else if (dict_arr_value.index() == DOUBLE_VALUE) {
+                        break;
+                    case DOUBLE_VALUE:
                         dict_arr_str.append(_str("{}", std::get<DOUBLE_VALUE>(dict_arr_value)).str());
-                    }
-                    else if (dict_arr_value.index() == BOOL_VALUE) {
+                        break;
+                    case BOOL_VALUE:
                         dict_arr_str.append(std::get<BOOL_VALUE>(dict_arr_value) ? "True" : "False");
-                    }
-                    else if (dict_arr_value.index() == STRING_VALUE) {
+                        break;
+                    case STRING_VALUE:
                         dict_arr_str.append(CodeString(std::get<STRING_VALUE>(dict_arr_value), true));
-                    }
-                    else {
+                        break;
+                    default:
                         throw UnreachablePlaceException(LINE_STR);
                     }
                 }
 
                 dict_str.append("\"").append(CodeString(dict_arr_str, true, true)).append("\"");
-            }
-            else {
+            } break;
+            default:
                 throw UnreachablePlaceException(LINE_STR);
             }
         }
 
         return dict_str;
+    }
+    default:
+        break;
     }
 
     throw UnreachablePlaceException(LINE_STR);
@@ -184,45 +186,49 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
                 const char* s2 = decoded_dict_value_entry.c_str();
                 string arr_entry;
                 while ((s2 = ReadToken(s2, arr_entry)) != nullptr) {
-                    if (value_type == INT_VALUE) {
+                    switch (value_type) {
+                    case INT_VALUE:
                         dict_arr.push_back(_str("{}", arr_entry).toInt());
-                    }
-                    else if (value_type == INT64_VALUE) {
+                        break;
+                    case INT64_VALUE:
                         dict_arr.push_back(_str("{}", arr_entry).toInt64());
-                    }
-                    else if (value_type == DOUBLE_VALUE) {
+                        break;
+                    case DOUBLE_VALUE:
                         dict_arr.push_back(_str("{}", arr_entry).toDouble());
-                    }
-                    else if (value_type == BOOL_VALUE) {
+                        break;
+                    case BOOL_VALUE:
                         dict_arr.push_back(_str("{}", arr_entry).toBool());
-                    }
-                    else if (value_type == STRING_VALUE) {
+                        break;
+                    case STRING_VALUE:
                         dict_arr.push_back(DecodeString(arr_entry));
-                    }
-                    else {
+                        break;
+                    default:
                         throw UnreachablePlaceException(LINE_STR);
                     }
                 }
 
                 dict.emplace(dict_key_entry, dict_arr);
             }
-            else if (value_type == INT_VALUE) {
-                dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toInt());
-            }
-            else if (value_type == INT64_VALUE) {
-                dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toInt64());
-            }
-            else if (value_type == DOUBLE_VALUE) {
-                dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toDouble());
-            }
-            else if (value_type == BOOL_VALUE) {
-                dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toBool());
-            }
-            else if (value_type == STRING_VALUE) {
-                dict.emplace(dict_key_entry, DecodeString(dict_value_entry));
-            }
             else {
-                throw UnreachablePlaceException(LINE_STR);
+                switch (value_type) {
+                case INT_VALUE:
+                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toInt());
+                    break;
+                case INT64_VALUE:
+                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toInt64());
+                    break;
+                case DOUBLE_VALUE:
+                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toDouble());
+                    break;
+                case BOOL_VALUE:
+                    dict.emplace(dict_key_entry, _str("{}", dict_value_entry).toBool());
+                    break;
+                case STRING_VALUE:
+                    dict.emplace(dict_key_entry, DecodeString(dict_value_entry));
+                    break;
+                default:
+                    throw UnreachablePlaceException(LINE_STR);
+                }
             }
         }
 
@@ -234,42 +240,44 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, int val
         const char* s = str.c_str();
         string arr_entry;
         while ((s = ReadToken(s, arr_entry)) != nullptr) {
-            if (value_type == INT_VALUE) {
+            switch (value_type) {
+            case INT_VALUE:
                 arr.push_back(_str("{}", arr_entry).toInt());
-            }
-            else if (value_type == INT64_VALUE) {
+                break;
+            case INT64_VALUE:
                 arr.push_back(_str("{}", arr_entry).toInt64());
-            }
-            else if (value_type == DOUBLE_VALUE) {
+                break;
+            case DOUBLE_VALUE:
                 arr.push_back(_str("{}", arr_entry).toDouble());
-            }
-            else if (value_type == BOOL_VALUE) {
+                break;
+            case BOOL_VALUE:
                 arr.push_back(_str("{}", arr_entry).toBool());
-            }
-            else if (value_type == STRING_VALUE) {
+                break;
+            case STRING_VALUE:
                 arr.push_back(DecodeString(arr_entry));
-            }
-            else {
+                break;
+            default:
                 throw UnreachablePlaceException(LINE_STR);
             }
         }
 
         return arr;
     }
-    else if (value_type == INT_VALUE) {
-        return _str("{}", str).toInt();
-    }
-    else if (value_type == INT64_VALUE) {
-        return _str("{}", str).toInt64();
-    }
-    else if (value_type == DOUBLE_VALUE) {
-        return _str("{}", str).toDouble();
-    }
-    else if (value_type == BOOL_VALUE) {
-        return _str("{}", str).toBool();
-    }
-    else if (value_type == STRING_VALUE) {
-        return DecodeString(str);
+    else {
+        switch (value_type) {
+        case INT_VALUE:
+            return _str("{}", str).toInt();
+        case INT64_VALUE:
+            return _str("{}", str).toInt64();
+        case DOUBLE_VALUE:
+            return _str("{}", str).toDouble();
+        case BOOL_VALUE:
+            return _str("{}", str).toBool();
+        case STRING_VALUE:
+            return DecodeString(str);
+        default:
+            break;
+        }
     }
 
     throw UnreachablePlaceException(LINE_STR);

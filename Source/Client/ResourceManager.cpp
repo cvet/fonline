@@ -170,7 +170,7 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
                         _sprMngr.PopAtlasType();
 
                         // Fix by dirs
-                        for (auto d = 0; anim != nullptr && d < anim->DirCount; d++) {
+                        for (uint d = 0; anim != nullptr && d < anim->DirCount; d++) {
                             auto* dir_anim = anim->GetDir(d);
 
                             // Process flags
@@ -245,7 +245,7 @@ auto ResourceManager::GetCritterAnim(hstring model_name, uint anim1, uint anim2,
 
     // Store resulted animation indices
     if (anim != nullptr) {
-        for (auto d = 0; d < anim->DirCount; d++) {
+        for (uint d = 0; d < anim->DirCount; d++) {
             anim->GetDir(d)->Anim1 = anim1;
             anim->GetDir(d)->Anim2 = anim2;
         }
@@ -277,7 +277,7 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
             }
 
             auto* anim_merge_base = _sprMngr.CreateAnyFrames(anim->CntFrm + animex->CntFrm, anim->Ticks + animex->Ticks);
-            for (auto d = 0; d < anim->DirCount; d++) {
+            for (uint d = 0; d < anim->DirCount; d++) {
                 if (d == 1) {
                     _sprMngr.CreateAnyFramesDirAnims(anim_merge_base, anim->DirCount);
                 }
@@ -309,7 +309,7 @@ auto ResourceManager::LoadFalloutAnim(hstring model_name, uint anim1, uint anim2
         // Clone
         if (anim != nullptr) {
             auto* anim_clone_base = _sprMngr.CreateAnyFrames(!IsBitSet(flags, ANIM_FLAG_FIRST_FRAME | ANIM_FLAG_LAST_FRAME) ? anim->CntFrm : 1, anim->Ticks);
-            for (auto d = 0; d < anim->DirCount; d++) {
+            for (uint d = 0; d < anim->DirCount; d++) {
                 if (d == 1) {
                     _sprMngr.CreateAnyFramesDirAnims(anim_clone_base, anim->DirCount);
                 }
@@ -351,7 +351,7 @@ void ResourceManager::FixAnimOffs(AnyFrames* frames_base, AnyFrames* stay_frm_ba
         return;
     }
 
-    for (auto d = 0; d < stay_frm_base->DirCount; d++) {
+    for (uint d = 0; d < stay_frm_base->DirCount; d++) {
         const auto* frames = frames_base->GetDir(d);
         const auto* stay_frm = stay_frm_base->GetDir(d);
 
@@ -380,7 +380,7 @@ void ResourceManager::FixAnimOffsNext(AnyFrames* frames_base, AnyFrames* stay_fr
         return;
     }
 
-    for (auto d = 0; d < stay_frm_base->DirCount; d++) {
+    for (uint d = 0; d < stay_frm_base->DirCount; d++) {
         auto* frames = frames_base->GetDir(d);
         auto* stay_frm = stay_frm_base->GetDir(d);
 

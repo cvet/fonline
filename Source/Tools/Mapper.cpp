@@ -301,9 +301,9 @@ auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) -> bool
 
 void FOMapper::ChangeGameTime()
 {
-    const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
-    SprMngr.SetSpritesTreeColor(color);
     if (CurMap != nullptr) {
+        const auto color = GenericUtils::GetColorDay(CurMap->GetMapDayTime(), CurMap->GetMapDayColor(), CurMap->GetMapTime(), nullptr);
+        SprMngr.SetSpritesTreeColor(color);
         CurMap->RefreshMap();
     }
 }

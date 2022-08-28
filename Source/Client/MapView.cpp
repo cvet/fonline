@@ -3298,13 +3298,13 @@ auto MapView::GetHexAtScreenPos(int x, int y, ushort& hx, ushort& hy, int* hex_o
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 5u : 6u);
                     }
                     else if (r == 100) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 0u : 0u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 0u);
                     }
                     else if (r == 150) {
                         _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 3u : 4u);
                     }
                     else if (r == 200) {
-                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, _engine->Settings.MapHexagonal ? 2u : 2u);
+                        _engine->Geometry.MoveHexByDirUnsafe(hx_, hy_, 2u);
                     }
                 }
 
@@ -3643,7 +3643,7 @@ auto MapView::FindPath(CritterHexView* cr, ushort start_x, ushort start_y, ushor
         int best_step_dir = -1;
         float best_step_angle_diff = 0.0f;
 
-        const auto check_hex = [&](int dir, int step_hx, int step_hy) {
+        const auto check_hex = [&best_step_dir, &best_step_angle_diff, numindex, grid_ox, grid_oy, start_x, start_y, base_angle, this](int dir, int step_hx, int step_hy) {
             if (GRID_AT(step_hx, step_hy) == numindex) {
                 const float angle = _engine->Geometry.GetDirAngle(step_hx, step_hy, start_x, start_y);
                 const float angle_diff = _engine->Geometry.GetDirAngleDiff(base_angle, angle);
@@ -3983,68 +3983,25 @@ void MapView::FindSetCenter(int cx, int cy)
         }
     };
 
-    // Up
     if (_engine->Settings.MapHexagonal) {
-        find_set_center_dir({0, 5}, ih);
+        find_set_center_dir({0, 5}, ih); // Up
+        find_set_center_dir({3, 2}, ih); // Down
+        find_set_center_dir({1, -1}, iw); // Right
+        find_set_center_dir({4, -1}, iw); // Left
+        find_set_center_dir({0, -1}, ih); // Up-Right
+        find_set_center_dir({3, -1}, ih); // Down-Left
+        find_set_center_dir({5, -1}, ih); // Up-Left
+        find_set_center_dir({2, -1}, ih); // Down-Right
     }
     else {
-        find_set_center_dir({0, 6}, ih);
-    }
-
-    // Down
-    if (_engine->Settings.MapHexagonal) {
-        find_set_center_dir({3, 2}, ih);
-    }
-    else {
-        find_set_center_dir({4, 2}, ih);
-    }
-
-    // Right
-    if (_engine->Settings.MapHexagonal) {
-        find_set_center_dir({1, -1}, iw);
-    }
-    else {
-        find_set_center_dir({1, -1}, iw);
-    }
-
-    // Left
-    if (_engine->Settings.MapHexagonal) {
-        find_set_center_dir({4, -1}, iw);
-    }
-    else {
-        find_set_center_dir({5, -1}, iw);
-    }
-
-    // Up-Right
-    if (_engine->Settings.MapHexagonal) {
-        find_set_center_dir({0, -1}, ih);
-    }
-    else {
-        find_set_center_dir({0, -1}, ih);
-    }
-
-    // Down-Left
-    if (_engine->Settings.MapHexagonal) {
-        find_set_center_dir({3, -1}, ih);
-    }
-    else {
-        find_set_center_dir({4, -1}, ih);
-    }
-
-    // Up-Left
-    if (_engine->Settings.MapHexagonal) {
-        find_set_center_dir({5, -1}, ih);
-    }
-    else {
-        find_set_center_dir({6, -1}, ih);
-    }
-
-    // Down-Right
-    if (_engine->Settings.MapHexagonal) {
-        find_set_center_dir({2, -1}, ih);
-    }
-    else {
-        find_set_center_dir({2, 1}, ih);
+        find_set_center_dir({0, 6}, ih); // Up
+        find_set_center_dir({4, 2}, ih); // Down
+        find_set_center_dir({1, -1}, iw); // Right
+        find_set_center_dir({5, -1}, iw); // Left
+        find_set_center_dir({0, -1}, ih); // Up-Right
+        find_set_center_dir({4, -1}, ih); // Down-Left
+        find_set_center_dir({6, -1}, ih); // Up-Left
+        find_set_center_dir({2, 1}, ih); // Down-Right
     }
 
     RebuildMap(hx, hy);

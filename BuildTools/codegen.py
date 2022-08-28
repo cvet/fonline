@@ -39,7 +39,7 @@ parser.add_argument('-content', dest='content', action='append', default=[], hel
 parser.add_argument('-resource', dest='resource', action='append', default=[], help='resource file path')
 parser.add_argument('-config', dest='config', action='append', default=[], help='debugging config')
 parser.add_argument('-genoutput', dest='genoutput', required=True, help='generated code output dir')
-parser.add_argument('-ascontentoutput', dest='ascontentoutput', required=True, help='generated angel script content script output dir')
+parser.add_argument('-ascontentoutput', dest='ascontentoutput', help='generated angel script content script output dir')
 parser.add_argument('-verbose', dest='verbose', action='store_true', help='verbose mode')
 args = parser.parse_args()
 

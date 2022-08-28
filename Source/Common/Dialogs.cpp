@@ -170,7 +170,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
 {
     auto fodlg = ConfigFile(_str("{}.fodlg", pack_name), string(data), _engine, ConfigFileOption::CollectContent);
 
-    auto* pack = new DialogPack();
+    auto&& pack = std::make_unique<DialogPack>();
     auto dlg_buf = fodlg.GetSectionContent("dialog");
     istringstream input(dlg_buf);
     string lang_buf;
@@ -370,7 +370,7 @@ auto DialogManager::ParseDialog(string_view pack_name, string_view data) -> Dial
         pack->Dialogs.push_back(current_dialog);
     }
 
-    return pack;
+    return pack.release();
 }
 
 auto DialogManager::LoadDemandResult(istringstream& input, bool is_demand) -> DemandResult*
@@ -555,5 +555,5 @@ auto DialogManager::GetWho(char who) -> uchar
 
 auto DialogManager::CheckOper(char oper) -> bool
 {
-    return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' || oper == '/' || oper == '=' || oper == '!' || oper == '}' || oper == '{';
+    return oper == '>' || oper == '<' || oper == '=' || oper == '+' || oper == '-' || oper == '*' || oper == '/' || oper == '!' || oper == '}' || oper == '{';
 }

@@ -326,7 +326,7 @@ auto SoundManager::LoadAcm(Sound* sound, string_view fname, bool is_music) -> bo
     sound->BaseBuf.resize(buf_size);
     sound->BaseBufLen = sound->BaseBuf.size();
 
-    auto* buf = reinterpret_cast<unsigned short*>(&sound->BaseBuf[0]);
+    auto* buf = reinterpret_cast<unsigned short*>(sound->BaseBuf.data());
     const auto dec_data = acm->readAndDecompress(buf, buf_size);
     if (dec_data != buf_size) {
         WriteLog("Decode Acm error");

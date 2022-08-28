@@ -133,8 +133,8 @@ public:
     void UnsubscribeAllEvent(const string& event_name);
     auto FireEvent(const string& event_name, const initializer_list<void*>& args) -> bool;
 
-    void AddRef() const;
-    void Release() const;
+    void AddRef() const noexcept;
+    void Release() const noexcept;
 
     void MarkAsDestroying();
     virtual void MarkAsDestroyed();

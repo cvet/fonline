@@ -50,7 +50,8 @@ struct ParticleSystem::ParticleSystemData
 
 ParticleManager::ParticleManager(RenderSettings& settings, FileSystem& file_sys) : _settings {settings}, _fileSys {file_sys}
 {
-    if (static bool init; !init) {
+    static bool init = false;
+    if (!init) {
         // SPK::GL::GLQuadRenderer::setTextureLoader(LoadParticlesTexture);
         SPK::IO::IOManager::get().registerObject<SPK::GL::GLLineRenderer>();
         SPK::IO::IOManager::get().registerObject<SPK::GL::GLLineTrailRenderer>();

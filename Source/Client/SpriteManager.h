@@ -161,7 +161,7 @@ struct AnyFrames
     [[nodiscard]] auto GetNextY(uint num_frm) const -> short;
     [[nodiscard]] auto GetCurSprId(uint tick) const -> uint;
     [[nodiscard]] auto GetCurSprIndex(uint tick) const -> uint;
-    [[nodiscard]] auto GetDir(int dir) -> AnyFrames*;
+    [[nodiscard]] auto GetDir(uint dir) -> AnyFrames*;
 
     uint Ind[MAX_FRAMES] {}; // Sprite Ids
     short NextX[MAX_FRAMES] {};
@@ -171,10 +171,9 @@ struct AnyFrames
     uint Anim1 {};
     uint Anim2 {};
     hstring Name {};
-    int DirCount {1};
+    uint DirCount {1};
     AnyFrames* Dirs[7] {}; // 7 additional for square hexes, 5 for hexagonal
 };
-static_assert(std::is_standard_layout_v<AnyFrames>);
 
 struct PrimitivePoint
 {
@@ -315,7 +314,7 @@ private:
     bool _accumulatorActive {};
     vector<SpriteInfo*> _accumulatorSprInfo {};
     vector<SpriteInfo*> _sprData {};
-    MemoryPool<sizeof(AnyFrames), ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
+    MemoryPool<AnyFrames, ANY_FRAMES_POOL_SIZE> _anyFramesPool {};
     vector<DipData> _dipQueue {};
     RenderDrawBuffer* _spritesDrawBuf {};
     RenderDrawBuffer* _primitiveDrawBuf {};

@@ -222,8 +222,6 @@ auto GenericUtils::Percent(int full, int peace) -> int
 
 auto GenericUtils::Percent(uint full, uint peace) -> uint
 {
-    RUNTIME_ASSERT(full >= 0);
-
     if (full == 0u) {
         return 0u;
     }

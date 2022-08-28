@@ -439,7 +439,6 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value)
 {
-    switch (const_hash(setting_name.c_str())) {
 #define SET_SETTING(sett) \
     if (!setting_value.empty() && setting_value[0] == '+') { \
         SetEntry(sett, setting_value.substr(1), true); \
@@ -456,11 +455,14 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
         SET_SETTING(name)
 #define SETTING_GROUP(name, ...)
 #define SETTING_GROUP_END()
+
+    switch (const_hash(setting_name.c_str())) {
 #include "Settings-Include.h"
-#undef SET_SETTING
     default:
         Custom[setting_name] = setting_value;
     }
+
+#undef SET_SETTING
 }
 
 void GlobalSettings::Draw(bool editable)

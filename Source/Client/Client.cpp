@@ -3131,7 +3131,6 @@ void FOClient::FormatTags(string& text, CritterView* cr, CritterView* npc, strin
     auto sex = 0;
     auto sex_tags = false;
     string tag;
-    tag[0] = 0;
 
     for (size_t i = 0; i < text.length();) {
         switch (text[i]) {

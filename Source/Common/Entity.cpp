@@ -40,12 +40,12 @@ Entity::Entity(const PropertyRegistrator* registrator) : _props {registrator}
     _props.SetEntity(this);
 }
 
-void Entity::AddRef() const
+void Entity::AddRef() const noexcept
 {
     ++_refCounter;
 }
 
-void Entity::Release() const
+void Entity::Release() const noexcept
 {
     if (--_refCounter == 0) {
         delete this;

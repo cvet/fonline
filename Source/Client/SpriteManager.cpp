@@ -113,7 +113,7 @@ auto AnyFrames::GetCurSprIndex(uint tick) const -> uint
     return CntFrm > 1 ? tick % Ticks * 100 / Ticks * CntFrm / 100 : 0;
 }
 
-auto AnyFrames::GetDir(int dir) -> AnyFrames*
+auto AnyFrames::GetDir(uint dir) -> AnyFrames*
 {
     return dir == 0 || DirCount == 1 ? this : Dirs[dir - 1];
 }
@@ -1156,9 +1156,10 @@ void SpriteManager::FreeModel(ModelInstance* model)
 
 auto SpriteManager::CreateAnyFrames(uint frames, uint ticks) -> AnyFrames*
 {
-    auto* anim = static_cast<AnyFrames*>(_anyFramesPool.Get());
-    std::memset(anim, 0, sizeof(AnyFrames));
-    anim->CntFrm = std::min(frames, static_cast<uint>(MAX_FRAMES));
+    RUNTIME_ASSERT(frames < MAX_FRAMES);
+    auto* anim = _anyFramesPool.Get();
+    *anim = {}; // Reset state
+    anim->CntFrm = frames;
     anim->Ticks = ticks != 0u ? ticks : frames * 100;
     return anim;
 }
@@ -1179,7 +1180,7 @@ void SpriteManager::DestroyAnyFrames(AnyFrames* anim)
         return;
     }
 
-    for (auto dir = 1; dir < anim->DirCount; dir++) {
+    for (uint dir = 1; dir < anim->DirCount; dir++) {
         _anyFramesPool.Put(anim->GetDir(dir));
     }
     _anyFramesPool.Put(anim);
