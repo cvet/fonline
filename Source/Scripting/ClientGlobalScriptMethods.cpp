@@ -1774,7 +1774,7 @@
         return;
     }
 
-    auto* anim = client->AnimGetFrames(mapSpr->SprId);
+    const auto* anim = client->AnimGetFrames(mapSpr->SprId);
     if (!anim || mapSpr->FrameIndex >= static_cast<int>(anim->CntFrm)) {
         return;
     }
@@ -1798,16 +1798,16 @@
         is_flat = proto_item->GetIsFlat();
         const auto is_item = !proto_item->IsAnyScenery();
         no_light = (is_flat && !is_item);
-        draw_order = (is_flat ? (is_item ? DRAW_ORDER_FLAT_ITEM : DRAW_ORDER_FLAT_SCENERY) : (is_item ? DRAW_ORDER_ITEM : DRAW_ORDER_SCENERY));
+        draw_order = (is_flat ? (is_item ? DrawOrderType::FlatItem : DrawOrderType::FlatScenery) : (is_item ? DrawOrderType::Item : DrawOrderType::Scenery));
         draw_order_hy_offset = proto_item->GetDrawOrderOffsetHexY();
         corner = proto_item->GetCorner();
         disable_egg = proto_item->GetDisableEgg();
         contour_color = (proto_item->GetIsBadItem() ? COLOR_RGB(255, 0, 0) : 0);
     }
 
-    auto& f = client->CurMap->GetField(mapSpr->HexX, mapSpr->HexY);
+    auto& field = client->CurMap->GetField(mapSpr->HexX, mapSpr->HexY);
     auto& tree = client->CurMap->GetDrawTree();
-    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, (client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &f.ScrX, &f.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
+    auto& spr = tree.InsertSprite(draw_order, mapSpr->HexX, mapSpr->HexY + draw_order_hy_offset, (client->Settings.MapHexWidth / 2) + mapSpr->OffsX, (client->Settings.MapHexHeight / 2) + mapSpr->OffsY, &field.ScrX, &field.ScrY, mapSpr->FrameIndex < 0 ? anim->GetCurSprId(client->GameTime.GameTick()) : anim->GetSprId(mapSpr->FrameIndex), nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsX : nullptr, mapSpr->IsTweakOffs ? &mapSpr->TweakOffsY : nullptr, mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, nullptr, &mapSpr->Valid);
 
     spr.MapSpr = mapSpr;
     mapSpr->AddRef();
@@ -1817,23 +1817,23 @@
     }
 
     if (!is_flat && !disable_egg) {
-        int egg_type;
+        EggAppearenceType egg_appearence;
         switch (corner) {
         case CornerType::South:
-            egg_type = EGG_X_OR_Y;
+            egg_appearence = EggAppearenceType::ByXOrY;
             break;
         case CornerType::North:
-            egg_type = EGG_X_AND_Y;
+            egg_appearence = EggAppearenceType::ByXAndY;
             break;
         case CornerType::EastWest:
         case CornerType::West:
-            egg_type = EGG_Y;
+            egg_appearence = EggAppearenceType::ByY;
             break;
         default:
-            egg_type = EGG_X;
+            egg_appearence = EggAppearenceType::ByX;
             break;
         }
-        spr.SetEgg(egg_type);
+        spr.SetEggAppearence(egg_appearence);
     }
 
     if (color != 0u) {
@@ -1842,7 +1842,7 @@
     }
 
     if (contour_color != 0u) {
-        spr.SetContour(CONTOUR_CUSTOM, contour_color);
+        spr.SetContour(ContourType::Custom, contour_color);
     }
 }
 

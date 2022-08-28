@@ -429,7 +429,7 @@ def parseTags():
                         keyValues.append((l.rstrip(','), str(int(keyValues[-1][1], 0) + 1) if len(keyValues) else '0', []))
                     else:
                         keyValues.append((l[:sep].rstrip(), l[sep + 1:].lstrip().rstrip(','), []))
-        
+                
                 codeGenTags['ExportEnum'].append((grname, utype, keyValues, exportFlags, comment))
                 assert grname not in validTypes, 'Enum already in valid types'
                 validTypes.add(grname)
@@ -1732,7 +1732,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                     globalLines.append('    void Release() { }')
                     globalLines.append('    int RefCounter;')
                     for f in fields:
-                        globalLines.append('    ' + metaTypeToEngineType(f[0], target, False) + ' ' + f[1] + ';')
+                        globalLines.append('    ' + metaTypeToASEngineType(f[0]) + ' ' + f[1] + ';')
                     globalLines.append('};')
                     globalLines.append('')
             

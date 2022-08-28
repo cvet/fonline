@@ -3023,7 +3023,7 @@ void FOClient::OnSetCritterContourColor(Entity* entity, const Property* prop, co
     UNUSED_VARIABLE(prop);
 
     if (auto* cr = dynamic_cast<CritterHexView*>(entity); cr != nullptr && cr->SprDrawValid) {
-        cr->SprDraw->SetContour(cr->SprDraw->ContourType, *static_cast<const uint*>(new_value));
+        cr->SprDraw->SetContour(cr->SprDraw->Contour, *static_cast<const uint*>(new_value));
     }
 }
 
@@ -3682,11 +3682,11 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         SprMngr.DrawPoints(_lmapPrepPix, RenderPrimitiveType::LineList);
     }
     else if (cmd == "SetCrittersContour" && args.size() == 2) {
-        auto countour_type = _str(args[1]).toInt();
+        auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
         CurMap->SetCrittersContour(countour_type);
     }
     else if (cmd == "SetCritterContour" && args.size() == 3) {
-        int countour_type = _str(args[1]).toInt();
+        auto countour_type = static_cast<ContourType>(_str(args[1]).toInt());
         uint cr_id = _str(args[2]).toInt();
         CurMap->SetCritterContour(cr_id, countour_type);
     }

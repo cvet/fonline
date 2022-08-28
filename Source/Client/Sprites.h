@@ -35,14 +35,54 @@
 
 #include "Common.h"
 
-#include "Settings.h"
-
 constexpr auto SPRITES_POOL_GROW_SIZE = 10000;
 
 class RenderEffect;
 class SpriteManager;
 class Sprites;
 class Sprite;
+
+///@ ExportEnum
+enum class DrawOrderType : uchar
+{
+    Tile = 0,
+    Tile1 = 1,
+    Tile2 = 2,
+    Tile3 = 3,
+    TileEnd = 4,
+    HexGrid = 5,
+    FlatScenery = 8,
+    Ligth = 9,
+    DeadCritter = 10,
+    FlatItem = 13,
+    Track = 16,
+    Normal = 20,
+    Scenery = 23,
+    Item = 26,
+    Critter = 29,
+    Rain = 32,
+    Last = 39,
+};
+
+///@ ExportEnum
+enum class ContourType : uchar
+{
+    None,
+    Red,
+    Yellow,
+    Custom,
+};
+
+///@ ExportEnum
+enum class EggAppearenceType : uchar
+{
+    None,
+    Always,
+    ByX,
+    ByY,
+    ByXAndY,
+    ByXOrY,
+};
 
 ///@ ExportObject Client
 struct MapSprite
@@ -58,7 +98,7 @@ struct MapSprite
     int OffsY {};
     bool IsFlat {};
     bool NoLight {};
-    int DrawOrder {};
+    DrawOrderType DrawOrder {};
     int DrawOrderHyOffset {};
     CornerType Corner {};
     bool DisableEgg {};
@@ -84,18 +124,17 @@ public:
     [[nodiscard]] auto GetIntersected(int ox, int oy) -> Sprite*;
 
     void Unvalidate();
-    void SetEgg(int egg);
-    void SetContour(int contour);
-    void SetContour(int contour, uint color);
+    void SetEggAppearence(EggAppearenceType egg_appearence);
+    void SetContour(ContourType contour);
+    void SetContour(ContourType contour, uint color);
     void SetColor(uint color);
     void SetAlpha(uchar* alpha);
-    void SetFlash(uint mask);
     void SetLight(CornerType corner, uchar* light, ushort maxhx, ushort maxhy);
     void SetFixedAlpha(uchar alpha);
 
     // Todo:: incapsulate all sprite data
     Sprites* Root {};
-    int DrawOrderType {};
+    DrawOrderType DrawOrder {};
     uint DrawOrderPos {};
     uint TreeIndex {};
     uint SprId {};
@@ -114,8 +153,8 @@ public:
     uchar* Light {};
     uchar* LightRight {};
     uchar* LightLeft {};
-    int EggType {};
-    int ContourType {};
+    EggAppearenceType EggAppearence {};
+    ContourType Contour {};
     uint ContourColor {};
     uint Color {};
     RenderEffect** DrawEffect {};
@@ -147,15 +186,15 @@ public:
     [[nodiscard]] auto RootSprite() -> Sprite*;
     [[nodiscard]] auto Size() const -> uint;
 
-    [[nodiscard]] auto AddSprite(int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
-    [[nodiscard]] auto InsertSprite(int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+    [[nodiscard]] auto AddSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+    [[nodiscard]] auto InsertSprite(DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
 
     void Unvalidate();
     void SortByMapPos();
     void Clear();
 
 private:
-    [[nodiscard]] auto PutSprite(Sprite* child, int draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
+    [[nodiscard]] auto PutSprite(Sprite* child, DrawOrderType draw_order, ushort hx, ushort hy, int x, int y, int* sx, int* sy, uint id, uint* id_ptr, short* ox, short* oy, uchar* alpha, RenderEffect** effect, bool* callback) -> Sprite&;
 
     void GrowPool();
 

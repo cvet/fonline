@@ -284,29 +284,29 @@ void ItemHexView::SetSprite(Sprite* spr)
 
     if (SprDrawValid) {
         SprDraw->SetColor(IsColorize() ? GetColor() : 0);
-        SprDraw->SetEgg(GetEggType());
+        SprDraw->SetEggAppearence(GetEggType());
         if (GetIsBadItem()) {
-            SprDraw->SetContour(CONTOUR_RED);
+            SprDraw->SetContour(ContourType::Red);
         }
     }
 }
 
-auto ItemHexView::GetEggType() const -> int
+auto ItemHexView::GetEggType() const -> EggAppearenceType
 {
     if (GetDisableEgg() || GetIsFlat()) {
-        return 0;
+        return EggAppearenceType::None;
     }
 
     switch (GetCorner()) {
     case CornerType::South:
-        return EGG_X_OR_Y;
+        return EggAppearenceType::ByXOrY;
     case CornerType::North:
-        return EGG_X_AND_Y;
+        return EggAppearenceType::ByXAndY;
     case CornerType::EastWest:
     case CornerType::West:
-        return EGG_Y;
+        return EggAppearenceType::ByY;
     default:
-        return EGG_X; // CornerType::NorthSouth, CORNER_EAST
+        return EggAppearenceType::ByX;
     }
 }
 

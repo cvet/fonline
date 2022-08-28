@@ -232,8 +232,8 @@ public:
     auto TransitCritter(CritterHexView* cr, ushort hx, ushort hy, bool smoothly) -> bool;
     void DestroyCritter(CritterHexView* cr);
 
-    void SetCritterContour(uint crid, int contour);
-    void SetCrittersContour(int contour);
+    void SetCritterContour(uint crid, ContourType contour);
+    void SetCrittersContour(ContourType contour);
     void SetMultihex(ushort hx, ushort hy, uint multihex, bool set);
 
     // Items
@@ -399,8 +399,8 @@ private:
     vector<PrimitivePoint> _fogShootPoints {};
 
     uint _critterContourCrId {};
-    int _critterContour {};
-    int _crittersContour {};
+    ContourType _critterContour {};
+    ContourType _crittersContour {};
 
     bool _requestRebuildLight {};
     bool _requestRenderLight {};

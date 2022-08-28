@@ -330,7 +330,7 @@
     }
 
     auto layer_ = layer;
-    layer_ = std::clamp(layer_, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
+    layer_ = std::clamp(layer_, 0, 4);
 
     mapper->CurMap->SetTile(picHash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);
 }
@@ -390,7 +390,7 @@
     }
 
     auto layer_ = layer;
-    layer_ = std::clamp(layer_, DRAW_ORDER_TILE, DRAW_ORDER_TILE_END);
+    layer_ = std::clamp(layer_, 0, 4);
 
     const auto pic_hash = mapper->ToHashedString(picName);
     mapper->CurMap->SetTile(pic_hash, hx, hy, static_cast<short>(ox), static_cast<short>(oy), static_cast<uchar>(layer_), roof, false);

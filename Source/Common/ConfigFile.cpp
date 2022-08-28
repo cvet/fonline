@@ -255,7 +255,7 @@ void ConfigFile::SetStr(string_view section_name, string_view key_name, string_v
     if (it_section == _sectionKeyValues.end()) {
         map<string, string> key_values;
         key_values[string(key_name)] = val;
-        const auto it = _sectionKeyValues.emplace(section_name, key_values);
+        _sectionKeyValues.emplace(section_name, key_values);
     }
     else {
         it_section->second[string(key_name)] = val;

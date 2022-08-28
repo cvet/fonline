@@ -583,9 +583,9 @@ auto SpriteManager::CreateAtlas(uint w, uint h) -> TextureAtlas*
         }
     }
 
-    atlas->RT = CreateRenderTarget(false, RenderTarget::SizeType::Custom, w, h, true);
-    atlas->RT->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
-    atlas->MainTex = atlas->RT->MainTex.get();
+    atlas->RTarg = CreateRenderTarget(false, RenderTarget::SizeType::Custom, w, h, true);
+    atlas->RTarg->LastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
+    atlas->MainTex = atlas->RTarg->MainTex.get();
     atlas->Width = w;
     atlas->Height = h;
     atlas->RootNode = _accumulatorActive ? std::make_unique<TextureAtlas::SpaceNode>(0, 0, w, h) : nullptr;
@@ -811,8 +811,8 @@ void SpriteManager::FillAtlas(SpriteInfo* si, const uint* data)
     }
 
     // Invalidate last pixel color picking
-    if (!atlas->RT->LastPixelPicks.empty()) {
-        atlas->RT->LastPixelPicks.clear();
+    if (!atlas->RTarg->LastPixelPicks.empty()) {
+        atlas->RTarg->LastPixelPicks.clear();
     }
 
     // Set parameters
@@ -1060,7 +1060,7 @@ void SpriteManager::RenderModel(ModelInstance* model)
     const auto b = iround((1.0f - si->SprRect.Bottom) * static_cast<float>(si->Atlas->Height));
     const auto region_to = IRect(l, t, r, b);
 
-    PushRenderTarget(si->Atlas->RT);
+    PushRenderTarget(si->Atlas->RTarg);
     DrawRenderTarget(rt, false, nullptr, &region_to);
     PopRenderTarget();
 }
@@ -1529,31 +1529,36 @@ void SpriteManager::InitializeEgg(string_view egg_name)
     }
 }
 
-auto SpriteManager::CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> bool
+auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool
 {
-    if (egg_type == EGG_ALWAYS) {
+    if (egg_appearence == EggAppearenceType::None) {
+        return false;
+    }
+    if (egg_appearence == EggAppearenceType::Always) {
         return true;
     }
+
     if (_eggHy == hy && (hx % 2) != 0 && (_eggHx % 2) == 0) {
         hy--;
     }
-    switch (egg_type) {
-    case EGG_X:
+
+    switch (egg_appearence) {
+    case EggAppearenceType::ByX:
         if (hx >= _eggHx) {
             return true;
         }
         break;
-    case EGG_Y:
+    case EggAppearenceType::ByY:
         if (hy >= _eggHy) {
             return true;
         }
         break;
-    case EGG_X_AND_Y:
+    case EggAppearenceType::ByXAndY:
         if (hx >= _eggHx || hy >= _eggHy) {
             return true;
         }
         break;
-    case EGG_X_OR_Y:
+    case EggAppearenceType::ByXOrY:
         if (hx >= _eggHx && hy >= _eggHy) {
             return true;
         }
@@ -1561,6 +1566,7 @@ auto SpriteManager::CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> b
     default:
         break;
     }
+
     return false;
 }
 
@@ -1583,7 +1589,7 @@ void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
     _eggValid = true;
 }
 
-void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender, int prerender_ox, int prerender_oy)
+void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, bool prerender, int prerender_ox, int prerender_oy)
 {
     if (dtree.Size() == 0u) {
         return;
@@ -1602,10 +1608,10 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
     for (const auto* spr = dtree.RootSprite(); spr != nullptr; spr = spr->ChainChild) {
         RUNTIME_ASSERT(spr->Valid);
 
-        if (spr->DrawOrderType < draw_oder_from) {
+        if (spr->DrawOrder < draw_oder_from) {
             continue;
         }
-        if (spr->DrawOrderType > draw_oder_to) {
+        if (spr->DrawOrder > draw_oder_to) {
             break;
         }
 
@@ -1686,7 +1692,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
 
         // Egg process
         auto egg_added = false;
-        if (use_egg && spr->EggType != 0 && CompareHexEgg(spr->HexX, spr->HexY, spr->EggType)) {
+        if (use_egg && CheckEggAppearence(spr->HexX, spr->HexY, spr->EggAppearence)) {
             auto x1 = x - ex;
             auto y1 = y - ey;
             auto x2 = x1 + si->Width;
@@ -1781,25 +1787,25 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         }
 
         // Corners indication
-        if (_settings.ShowCorners && spr->EggType != 0) {
+        if (_settings.ShowCorners && spr->EggAppearence != EggAppearenceType::None) {
             vector<PrimitivePoint> corner;
             const auto cx = wf / 2.0f;
 
-            switch (spr->EggType) {
-            case EGG_ALWAYS:
+            switch (spr->EggAppearence) {
+            case EggAppearenceType::Always:
                 PrepareSquare(corner, FRect(xf + cx - 2.0f, yf + hf - 50.0f, xf + cx + 2.0f, yf + hf), 0x5FFFFF00);
                 break;
-            case EGG_X:
+            case EggAppearenceType::ByX:
                 PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 55.0f), FPoint(xf + cx + 5.0f, yf + hf - 45.0f), FPoint(xf + cx - 5.0f, yf + hf - 5.0f), FPoint(xf + cx + 5.0f, yf + hf + 5.0f), 0x5F00AF00);
                 break;
-            case EGG_Y:
+            case EggAppearenceType::ByY:
                 PrepareSquare(corner, FPoint(xf + cx - 5.0f, yf + hf - 49.0f), FPoint(xf + cx + 5.0f, yf + hf - 52.0f), FPoint(xf + cx - 5.0f, yf + hf + 1.0f), FPoint(xf + cx + 5.0f, yf + hf - 2.0f), 0x5F00FF00);
                 break;
-            case EGG_X_AND_Y:
+            case EggAppearenceType::ByXAndY:
                 PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 49.0f), FPoint(xf + cx, yf + hf - 52.0f), FPoint(xf + cx - 10.0f, yf + hf + 1.0f), FPoint(xf + cx, yf + hf - 2.0f), 0x5FFF0000);
                 PrepareSquare(corner, FPoint(xf + cx, yf + hf - 55.0f), FPoint(xf + cx + 10.0f, yf + hf - 45.0f), FPoint(xf + cx, yf + hf - 5.0f), FPoint(xf + cx + 10.0f, yf + hf + 5.0f), 0x5FFF0000);
                 break;
-            case EGG_X_OR_Y:
+            case EggAppearenceType::ByXOrY:
                 PrepareSquare(corner, FPoint(xf + cx, yf + hf - 49.0f), FPoint(xf + cx + 10.0f, yf + hf - 52.0f), FPoint(xf + cx, yf + hf + 1.0f), FPoint(xf + cx + 10.0f, yf + hf - 2.0f), 0x5FAF0000);
                 PrepareSquare(corner, FPoint(xf + cx - 10.0f, yf + hf - 55.0f), FPoint(xf + cx, yf + hf - 45.0f), FPoint(xf + cx - 10.0f, yf + hf - 5.0f), FPoint(xf + cx, yf + hf + 5.0f), 0x5FAF0000);
                 break;
@@ -1815,7 +1821,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
             const auto x1 = static_cast<int>(static_cast<float>(spr->ScrX + _settings.ScrOx) / zoom);
             auto y1 = static_cast<int>(static_cast<float>(spr->ScrY + _settings.ScrOy) / zoom);
 
-            if (spr->DrawOrderType >= DRAW_ORDER_FLAT && spr->DrawOrderType < DRAW_ORDER) {
+            if (spr->DrawOrder < DrawOrderType::Normal) {
                 y1 -= static_cast<int>(40.0f / zoom);
             }
 
@@ -1823,7 +1829,7 @@ void SpriteManager::DrawSprites(Sprites& dtree, bool collect_contours, bool use_
         }
 
         // Process contour effect
-        if (collect_contours && spr->ContourType != 0) {
+        if (collect_contours) {
             CollectContour(x, y, si, spr);
         }
     }
@@ -1867,7 +1873,7 @@ auto SpriteManager::GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_z
 
     offs_x += static_cast<int>(si->Atlas->MainTex->SizeData[0] * si->SprRect.Left);
     offs_y += static_cast<int>(si->Atlas->MainTex->SizeData[1] * si->SprRect.Top);
-    return GetRenderTargetPixel(si->Atlas->RT, offs_x, offs_y);
+    return GetRenderTargetPixel(si->Atlas->RTarg, offs_x, offs_y);
 }
 
 auto SpriteManager::IsEggTransp(int pix_x, int pix_y) const -> bool
@@ -1995,6 +2001,9 @@ void SpriteManager::DrawContours()
 
 void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Sprite* spr)
 {
+    if (spr->Contour == ContourType::None) {
+        return;
+    }
     if (_rtContours == nullptr || _rtContoursMid == nullptr || _effectMngr.Effects.Contour == nullptr) {
         return;
     }
@@ -2086,13 +2095,13 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
     }
 
     uint contour_color;
-    if (spr->ContourType == CONTOUR_RED) {
+    if (spr->Contour == ContourType::Red) {
         contour_color = 0xFFAF0000;
     }
-    else if (spr->ContourType == CONTOUR_YELLOW) {
+    else if (spr->Contour == ContourType::Yellow) {
         contour_color = 0x00AFAF00; // Disable flashing by passing alpha == 0.0
     }
-    else if (spr->ContourType == CONTOUR_CUSTOM) {
+    else if (spr->Contour == ContourType::Custom) {
         contour_color = spr->ContourColor;
     }
     else {

@@ -82,38 +82,6 @@ static constexpr auto COLOR_TEXT_RED = COLOR_RGB(200, 0, 0);
 #define COLOR_SCRIPT_SPRITE(c) ((c) != 0u ? (c) : COLOR_SPRITE)
 #define COLOR_SCRIPT_TEXT(c) ((c) != 0u ? (c) : COLOR_TEXT)
 
-// Sprite layers
-// Todo: convert DRAW_ORDER to enum
-static constexpr auto DRAW_ORDER_FLAT = 0;
-static constexpr auto DRAW_ORDER = 20;
-static constexpr auto DRAW_ORDER_TILE = DRAW_ORDER_FLAT + 0;
-static constexpr auto DRAW_ORDER_TILE_END = DRAW_ORDER_FLAT + 4;
-static constexpr auto DRAW_ORDER_HEX_GRID = DRAW_ORDER_FLAT + 5;
-static constexpr auto DRAW_ORDER_FLAT_SCENERY = DRAW_ORDER_FLAT + 8;
-static constexpr auto DRAW_ORDER_LIGHT = DRAW_ORDER_FLAT + 9;
-static constexpr auto DRAW_ORDER_DEAD_CRITTER = DRAW_ORDER_FLAT + 10;
-static constexpr auto DRAW_ORDER_FLAT_ITEM = DRAW_ORDER_FLAT + 13;
-static constexpr auto DRAW_ORDER_TRACK = DRAW_ORDER_FLAT + 16;
-static constexpr auto DRAW_ORDER_SCENERY = DRAW_ORDER + 3;
-static constexpr auto DRAW_ORDER_ITEM = DRAW_ORDER + 6;
-static constexpr auto DRAW_ORDER_CRITTER = DRAW_ORDER + 9;
-static constexpr auto DRAW_ORDER_RAIN = DRAW_ORDER + 12;
-static constexpr auto DRAW_ORDER_LAST = 39;
-
-// Egg types
-// Todo: convert egg types to enum
-static constexpr auto EGG_ALWAYS = 1;
-static constexpr auto EGG_X = 2;
-static constexpr auto EGG_Y = 3;
-static constexpr auto EGG_X_AND_Y = 4;
-static constexpr auto EGG_X_OR_Y = 5;
-
-// Contour types
-// Todo: convert contour types to enum
-static constexpr auto CONTOUR_RED = 1;
-static constexpr auto CONTOUR_YELLOW = 2;
-static constexpr auto CONTOUR_CUSTOM = 3;
-
 enum class AtlasType
 {
     Static,
@@ -156,7 +124,7 @@ struct TextureAtlas
     };
 
     AtlasType Type {};
-    RenderTarget* RT {};
+    RenderTarget* RTarg {};
     RenderTexture* MainTex {};
     uint Width {};
     uint Height {};
@@ -250,7 +218,7 @@ public:
     [[nodiscard]] auto GetPixColor(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> uint;
     [[nodiscard]] auto IsPixNoTransp(uint spr_id, int offs_x, int offs_y, bool with_zoom) const -> bool;
     [[nodiscard]] auto IsEggTransp(int pix_x, int pix_y) const -> bool;
-    [[nodiscard]] auto CompareHexEgg(ushort hx, ushort hy, int egg_type) const -> bool;
+    [[nodiscard]] auto CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool;
     [[nodiscard]] auto IsAccumulateAtlasActive() const -> bool;
     [[nodiscard]] auto LoadAnimation(string_view fname, bool use_dummy) -> AnyFrames*;
     [[nodiscard]] auto ReloadAnimation(AnyFrames* anim, string_view fname) -> AnyFrames*;
@@ -292,7 +260,7 @@ public:
     void DrawSpriteSize(uint id, int x, int y, int w, int h, bool zoom_up, bool center, uint color);
     void DrawSpriteSizeExt(uint id, int x, int y, int w, int h, bool zoom_up, bool center, bool stretch, uint color);
     void DrawSpritePattern(uint id, int x, int y, int w, int h, int spr_width, int spr_height, uint color);
-    void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, int draw_oder_from, int draw_oder_to, bool prerender, int prerender_ox, int prerender_oy);
+    void DrawSprites(Sprites& dtree, bool collect_contours, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, bool prerender = false, int prerender_ox = 0, int prerender_oy = 0);
     void DrawPoints(const vector<PrimitivePoint>& points, RenderPrimitiveType prim, const float* zoom = nullptr, const FPoint* offset = nullptr, RenderEffect* custom_effect = nullptr);
 
     void DrawContours();

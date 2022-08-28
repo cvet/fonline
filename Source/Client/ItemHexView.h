@@ -59,7 +59,7 @@ public:
     [[nodiscard]] auto IsDrawContour() const -> bool { return /*IsFocused && */ !IsAnyScenery() && !GetIsNoHighlight() && !GetIsBadItem(); }
     [[nodiscard]] auto IsTransparent() const -> bool { return _maxAlpha < 0xFF; }
     [[nodiscard]] auto IsFullyTransparent() const -> bool { return _maxAlpha == 0; }
-    [[nodiscard]] auto GetEggType() const -> int;
+    [[nodiscard]] auto GetEggType() const -> EggAppearenceType;
     [[nodiscard]] auto IsFinishing() const -> bool;
     [[nodiscard]] auto IsFinished() const -> bool;
     [[nodiscard]] auto IsDynamicEffect() const -> bool { return _isEffect && (_effSx != 0.0f || _effSy != 0.0f); }
