@@ -3518,7 +3518,7 @@ auto FOClient::CustomCall(string_view command, string_view separator) -> string
         // return _drawShootBorders ? "true" : "false";
     }
     else if (cmd == "SetShootBorders" && args.size() >= 2) {
-        auto set = (args[1] == "true");
+        // auto set = (args[1] == "true");
         // if (_drawShootBorders != set) {
         //    _drawShootBorders = set;
         //    CurMap->RebuildFog();
