@@ -163,7 +163,7 @@ public:
     auto CreateLocation(hstring proto_id, ushort wx, ushort wy) -> Location*;
     auto CreateMap(hstring proto_id, Location* loc) -> Map*;
     void LinkMaps();
-    void DeleteLocation(Location* loc, vector<Critter*>* gmap_player_critters);
+    void DeleteLocation(Location* loc);
     void LocationGarbager();
     void RegenerateMap(Map* map);
     void TraceBullet(TraceData& trace);

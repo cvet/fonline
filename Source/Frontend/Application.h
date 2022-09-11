@@ -330,7 +330,7 @@ class Application final
 {
     friend void InitApp(int argc, char** argv, string_view name_appendix);
 
-    Application(int argc, char** argv, string_view name_appendix);
+    Application(int argc, char** argv, string_view name);
 
 public:
     Application(const Application&) = delete;

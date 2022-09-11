@@ -35,6 +35,7 @@
 #include "AnyData.h"
 #include "DiskFileSystem.h"
 #include "FileSystem.h"
+#include "Log.h"
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
@@ -350,25 +351,6 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
         }
     }
 
-    // External config
-    if (!ExternalConfig.empty()) {
-        if (auto settings_file = DiskFileSystem::OpenFile(ExternalConfig, false)) {
-            string settings_content;
-            settings_content.resize(settings_file.GetSize());
-            settings_file.Read(settings_content.data(), settings_content.size());
-
-            const auto config = ConfigFile("ExternalConfig.focfg", settings_content);
-            for (auto&& [key, value] : config.GetSection("")) {
-                SetValue(key, value);
-            }
-        }
-        else {
-            if (!BreakIntoDebugger("External config not found")) {
-                throw GenericException("External config not found", ExternalConfig);
-            }
-        }
-    }
-
     // Command line config
     for (auto i = 0; i < argc; i++) {
         // Skip path
@@ -389,6 +371,27 @@ GlobalSettings::GlobalSettings(int argc, char** argv)
             }
             else {
                 SetValue(key, "1");
+            }
+        }
+    }
+
+    // External config
+    if (!ExternalConfig.empty()) {
+        WriteLog("Load external config {}", ExternalConfig);
+
+        if (auto settings_file = DiskFileSystem::OpenFile(ExternalConfig, false)) {
+            string settings_content;
+            settings_content.resize(settings_file.GetSize());
+            settings_file.Read(settings_content.data(), settings_content.size());
+
+            const auto config = ConfigFile("ExternalConfig.focfg", settings_content);
+            for (auto&& [key, value] : config.GetSection("")) {
+                SetValue(key, value);
+            }
+        }
+        else {
+            if (!BreakIntoDebugger("External config not found")) {
+                throw GenericException("External config not found", ExternalConfig);
             }
         }
     }

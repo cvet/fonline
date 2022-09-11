@@ -639,21 +639,15 @@ void MapManager::LocationGarbager()
     if (_runGarbager) {
         _runGarbager = false;
 
-        vector<Critter*>* gmap_players = nullptr;
-        vector<Critter*> players;
         for (auto&& [id, loc] : copy(_engine->EntityMngr.GetLocations())) {
             if (!loc->IsDestroyed() && loc->GetAutoGarbage() && loc->IsCanDelete()) {
-                if (gmap_players == nullptr) {
-                    players = _engine->CrMngr.GetPlayerCritters(true);
-                    gmap_players = &players;
-                }
-                DeleteLocation(loc, gmap_players);
+                DeleteLocation(loc);
             }
         }
     }
 }
 
-void MapManager::DeleteLocation(Location* loc, vector<Critter*>* gmap_player_critters)
+void MapManager::DeleteLocation(Location* loc)
 {
     // Start deleting
     auto&& maps = copy(loc->GetMaps());
@@ -674,16 +668,10 @@ void MapManager::DeleteLocation(Location* loc, vector<Critter*>* gmap_player_cri
         _engine->OnMapFinish.Fire(map);
     }
 
-    // Send players on global map about this
-    vector<Critter*> players;
-    if (gmap_player_critters == nullptr) {
-        players = _engine->CrMngr.GetPlayerCritters(true);
-        gmap_player_critters = &players;
-    }
-
-    for (auto* cl : *gmap_player_critters) {
-        if (CheckKnownLoc(cl, loc->GetId())) {
-            cl->Send_GlobalLocation(loc, false);
+    // Inform players on global map about this
+    for (auto* cr : _engine->CrMngr.GetPlayerCritters(true)) {
+        if (CheckKnownLoc(cr, loc->GetId())) {
+            cr->Send_GlobalLocation(loc, false);
         }
     }
 
@@ -699,14 +687,14 @@ void MapManager::DeleteLocation(Location* loc, vector<Critter*>* gmap_player_cri
         _engine->EntityMngr.UnregisterEntity(map);
     }
 
-    // Invalidate for use
-    loc->MarkAsDestroyed();
+    // Invalidate
     for (auto* map : maps) {
         map->MarkAsDestroyed();
     }
+    loc->MarkAsDestroyed();
 
-    // Release after some time
-    for (auto* map : maps) {
+    // Release
+    for (const auto* map : maps) {
         map->Release();
     }
     loc->Release();

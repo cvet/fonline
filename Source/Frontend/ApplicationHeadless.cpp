@@ -87,7 +87,17 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
     CreateGlobalData();
 
-    App = new Application(argc, argv, name_appendix);
+    string name = FO_DEV_NAME;
+    if (!name_appendix.empty()) {
+        name.append("_");
+        name.append(name_appendix);
+    }
+
+#if !FO_WEB
+    LogToFile(_str("{}.log", name));
+#endif
+
+    App = new Application(argc, argv, name);
 }
 
 void ExitApp(bool success)
@@ -131,7 +141,7 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
     return false;
 }
 
-Application::Application(int argc, char** argv, string_view name_appendix) : Settings(argc, argv)
+Application::Application(int argc, char** argv, string_view name) : Settings(argc, argv), _name {name}
 {
     UNUSED_VARIABLE(_time);
     UNUSED_VARIABLE(_timeFrequency);
@@ -148,12 +158,6 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
 #if FO_WINDOWS && FO_DEBUG
     ::_CrtMemCheckpoint(&CrtMemState);
 #endif
-
-    _name.append(FO_DEV_NAME);
-    if (!name_appendix.empty()) {
-        _name.append("_");
-        _name.append(name_appendix);
-    }
 }
 
 auto Application::GetName() const -> string_view

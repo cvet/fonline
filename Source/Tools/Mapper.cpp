@@ -81,10 +81,6 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
 
     InitIface();
 
-    // Prototypes
-    // bool protos_ok = ProtoMngr.LoadProtosFromFiles(FileSys);
-    // RUNTIME_ASSERT(protos_ok);
-
     // Initialize tabs
     const auto& cr_protos = ProtoMngr.GetProtoCritters();
     for (auto&& [pid, proto] : cr_protos) {
@@ -112,7 +108,6 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     }
 
     // Initialize tabs scroll and names
-    std::memset(TabsScroll, 0, sizeof(TabsScroll));
     for (auto i = INT_MODE_CUSTOM0; i <= INT_MODE_CUSTOM9; i++) {
         TabsName[i] = "-";
     }

@@ -156,6 +156,7 @@ set( FO_DEBUGGING_CONFIG "" )
 set( FO_MAPPER_CONFIG "" )
 set( FO_GENERATE_ANGELSCRIPT_CONTENT "" )
 set( FO_PACKAGES "" )
+set( FO_CONFIGS "" )
 
 # Evaluate build hash
 execute_process( COMMAND git rev-parse HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} RESULT_VARIABLE FO_GIT_HASH_RESULT OUTPUT_VARIABLE FO_GIT_HASH OUTPUT_STRIP_TRAILING_WHITESPACE )
@@ -567,12 +568,18 @@ macro( AddMonoSource assembly target )
 endmacro()
 macro( CreatePackage package config debug )
 	list( APPEND FO_PACKAGES ${package} )
-	set( Package_${package}_Config "${config}" )
-	set( Package_${package}_Debug "${debug}" )
+	set( Package_${package}_Config ${config} )
+	set( Package_${package}_Debug ${debug} )
 	set( Package_${package}_Parts "" )
+	list( APPEND FO_CONFIGS ${config} )
+	list( REMOVE_DUPLICATES FO_CONFIGS )
 endmacro()
 macro( AddToPackage package binary platform arch packType )
 	list( APPEND Package_${package}_Parts "${binary},${platform},${arch},${packType},${ARGN}" )
+	if( NOT "${ARGN}" STREQUAL "" )
+		list( APPEND FO_CONFIGS ${ARGN} )
+		list( REMOVE_DUPLICATES FO_CONFIGS )
+	endif()
 endmacro()
 
 # User contribution
@@ -1954,35 +1961,19 @@ endforeach()
 
 # External commands
 if( FONLINE_MAKE_EXTERNAL_COMMANDS )
-	function( CreateExternalCommand cmdName prepareCmd program )
-		cmake_path( RELATIVE_PATH program BASE_DIRECTORY ${FONLINE_OUTPUT_PATH} OUTPUT_VARIABLE program )
-
-		if( WIN32 )
-			if( NOT "${prepareCmd}" STREQUAL "" )
-				set( prepareCmd "${prepareCmd}.bat\n" )
-			endif()
-			set( startProgram "@echo off\n${prepareCmd}\"${program}.exe\"" )
-			set( breakLine "^" )
-			set( scriptExt "bat" )
-			set( finishLine "pause" )
-		else()
-			if( NOT "${prepareCmd}" STREQUAL "" )
-				set( prepareCmd "${prepareCmd}.sh\n" )
-			endif()
-			set( startProgram "#!/bin/bash -e\n${prepareCmd}\"./${program}\"" )
-			set( breakLine "\\" )
-			set( scriptExt "sh" )
-			set( finishLine "read -p \"Press enter to continue\"" )
-		endif()
-
-		set( FO_GEN_FILE_CONTENT "${startProgram}" )
-		foreach( arg ${ARGN} )
-			set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n${arg}" )
-		endforeach()
-		set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT}\n${finishLine}" )
-
-		configure_file( "BuildTools/blank.cmake" "${FONLINE_OUTPUT_PATH}/${cmdName}.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ )
-	endfunction()
+	if( WIN32 )
+		set( prolog "@echo off\n\n" )
+		set( start "start \"\" " )
+		set( breakLine "^" )
+		set( scriptExt "bat" )
+		set( pause "pause" )
+	else()
+		set( prolog "#!/bin/bash -e\n\n" )
+		set( start "" )
+		set( breakLine "\\" )
+		set( scriptExt "sh" )
+		set( pause "read -p \"Press enter to continue\"" )
+	endif()
 
 	cmake_path( RELATIVE_PATH FO_BACKED_RESOURCES_OUTPUT BASE_DIRECTORY ${FONLINE_OUTPUT_PATH} OUTPUT_VARIABLE resourcesDir )
 
@@ -2000,18 +1991,51 @@ if( FONLINE_MAKE_EXTERNAL_COMMANDS )
 		list( APPEND bakeResourceEntries "-BakeResourceEntries \"+${packName},${packEntry}\"" )
 	endforeach()
 
-	CreateExternalCommand( CompileScripts "" "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_ASCompiler" ${bakeResourceEntries} )
-	CreateExternalCommand( BakeResources "" "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" "-ForceBakering False" ${bakeResourceEntries} )
-	CreateExternalCommand( ForceBakeResources "" "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" "-ForceBakering True" ${bakeResourceEntries} )
-	CreateExternalCommand( Mapper "" "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Mapper" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/{FO_MAPPER_CONFIG}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
-	# CreateExternalCommand( Server_Default "" "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Server" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/Server_Default.focfg\"" )
-	# CreateExternalCommand( Client_Default "" "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/Client_Default.focfg\"" )
+	function( CreateSimpleExternalCommand cmdName program )
+		cmake_path( RELATIVE_PATH program BASE_DIRECTORY ${FONLINE_OUTPUT_PATH} OUTPUT_VARIABLE program )
+
+		set( FO_GEN_FILE_CONTENT "${prolog}\"${program}\"" )
+		foreach( arg ${ARGN} )
+			set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n${arg}" )
+		endforeach()
+		set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT}\n\n${pause}" )
+
+		configure_file( "BuildTools/blank.cmake" "${FONLINE_OUTPUT_PATH}/${cmdName}.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ )
+	endfunction()
+
+	function( CreateBakeredExternalCommand cmdName program )
+		cmake_path( RELATIVE_PATH program BASE_DIRECTORY ${FONLINE_OUTPUT_PATH} OUTPUT_VARIABLE program )
+
+		set( bakerProgram "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" )
+		cmake_path( RELATIVE_PATH bakerProgram BASE_DIRECTORY ${FONLINE_OUTPUT_PATH} OUTPUT_VARIABLE bakerProgram )
+
+		set( FO_GEN_FILE_CONTENT "${prolog}\"${bakerProgram}\" -ForceBakering False" )
+		foreach( arg ${bakeResourceEntries} )
+			set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n${arg}" )
+		endforeach()
+		set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT}\n\n" )
+
+		set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT}${start}\"${program}\"" )
+		foreach( arg ${ARGN} )
+			set( FO_GEN_FILE_CONTENT "${FO_GEN_FILE_CONTENT} ${breakLine}\n${arg}" )
+		endforeach()
+
+		configure_file( "BuildTools/blank.cmake" "${FONLINE_OUTPUT_PATH}/${cmdName}.${scriptExt}" FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ )
+	endfunction()
+
+	CreateSimpleExternalCommand( CompileScripts "${FONLINE_OUTPUT_PATH}/Binaries/ASCompiler-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_ASCompiler" ${bakeResourceEntries} )
+	CreateSimpleExternalCommand( BakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" "-ForceBakering False" ${bakeResourceEntries} )
+	CreateSimpleExternalCommand( ForceBakeResources "${FONLINE_OUTPUT_PATH}/Binaries/Baker-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Baker" "-ForceBakering True" ${bakeResourceEntries} )
+
+	CreateBakeredExternalCommand( Mapper "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Mapper" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${FO_MAPPER_CONFIG}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+	foreach( config ${FO_CONFIGS} )
+		CreateBakeredExternalCommand( Server-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Server" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+		CreateBakeredExternalCommand( Client-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+	endforeach()
 
 	# Todo:
 	# PackResources
 	# MakePackage-PackageName
-	# Server-Config
-	# Client-Config
 	# DebugServer-Config
 	# DebugClient-Config
 	# Profiler InterfaceEditor DialogEditor...

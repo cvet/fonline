@@ -802,7 +802,7 @@
 [[maybe_unused]] void Server_Game_DeleteLocation(FOServer* server, Location* loc)
 {
     if (loc != nullptr) {
-        server->MapMngr.DeleteLocation(loc, nullptr);
+        server->MapMngr.DeleteLocation(loc);
     }
 }
 
@@ -813,7 +813,7 @@
 {
     auto* loc = server->MapMngr.GetLocation(locId);
     if (loc) {
-        server->MapMngr.DeleteLocation(loc, nullptr);
+        server->MapMngr.DeleteLocation(loc);
     }
 }
 

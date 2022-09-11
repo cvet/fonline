@@ -106,7 +106,17 @@ void InitApp(int argc, char** argv, string_view name_appendix)
 
     CreateGlobalData();
 
-    App = new Application(argc, argv, name_appendix);
+    string name = FO_DEV_NAME;
+    if (!name_appendix.empty()) {
+        name.append("_");
+        name.append(name_appendix);
+    }
+
+#if !FO_WEB
+    LogToFile(_str("{}.log", name));
+#endif
+
+    App = new Application(argc, argv, name);
 }
 
 void ExitApp(bool success)
@@ -171,18 +181,8 @@ auto RenderEffect::CanBatch(const RenderEffect* other) const -> bool
 static unordered_map<SDL_Keycode, KeyCode>* KeysMap {};
 static unordered_map<int, MouseButton>* MouseButtonsMap {};
 
-Application::Application(int argc, char** argv, string_view name_appendix) : Settings(argc, argv)
+Application::Application(int argc, char** argv, string_view name) : Settings(argc, argv), _name {name}
 {
-    _name.append(FO_DEV_NAME);
-    if (!name_appendix.empty()) {
-        _name.append("_");
-        _name.append(name_appendix);
-    }
-
-#if !FO_WEB
-    LogToFile(_str("{}.log", _name));
-#endif
-
     if (SDL_InitSubSystem(SDL_INIT_TIMER) != 0) {
         throw AppInitException("SDL_InitSubSystem SDL_INIT_TIMER failed", SDL_GetError());
     }
@@ -317,7 +317,7 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
 
     // Initialize audio
     if (!Settings.DisableAudio) {
-        if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
             AudioStreamWriter = new AppAudio::AudioStreamCallback();
 
             SDL_AudioSpec desired;
@@ -387,28 +387,36 @@ Application::Application(int argc, char** argv, string_view name_appendix) : Set
 #endif
 
     // If none of selected then evaluate automatic selection
-    if (ActiveRenderer == nullptr) {
-#if FO_HAVE_OPENGL
-        ActiveRendererType = RenderType::OpenGL;
-        ActiveRenderer = new OpenGL_Renderer();
-#endif
 #if FO_HAVE_DIRECT_3D
+    if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::Direct3D;
         ActiveRenderer = new Direct3D_Renderer();
+    }
 #endif
 #if FO_HAVE_METAL
+    if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::Metal;
+    }
 #endif
 #if FO_HAVE_VULKAN
+    if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::Vulkan;
+    }
 #endif
 #if FO_HAVE_GNM
+    if (ActiveRenderer == nullptr) {
         ActiveRendererType = RenderType::GNM;
+    }
+#endif
+#if FO_HAVE_OPENGL
+    if (ActiveRenderer == nullptr) {
+        ActiveRendererType = RenderType::OpenGL;
+        ActiveRenderer = new OpenGL_Renderer();
+    }
 #endif
 
-        if (ActiveRenderer == nullptr) {
-            throw AppInitException("No renderer selected");
-        }
+    if (ActiveRenderer == nullptr) {
+        throw AppInitException("No renderer selected");
     }
 
     // Determine main window size

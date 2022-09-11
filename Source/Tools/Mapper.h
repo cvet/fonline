@@ -66,15 +66,6 @@ class FOMapper final : virtual public FOEngineBase, public FOClient
     friend class MapperScriptSystem;
 
 public:
-    struct IfaceAnim
-    {
-        AnyFrames* Frames {};
-        AtlasType ResType {};
-        uint LastTick {};
-        ushort Flags {};
-        uint CurSpr {};
-    };
-
     struct SubTab
     {
         vector<const ProtoItem*> ItemProtos {};

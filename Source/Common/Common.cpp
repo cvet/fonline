@@ -121,7 +121,7 @@ void CreateDumpMessage(string_view appendix, string_view message)
 {
     const auto traceback = GetStackTrace();
     const auto dt = Timer::GetCurrentDateTime();
-    const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", appendix, FO_DEV_NAME, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+    const string fname = _str("{}_{}_{:04}.{:02}.{:02}_{:02}-{:02}-{:02}.txt", FO_DEV_NAME, appendix, dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
 
     if (auto file = DiskFileSystem::OpenFile(fname, true)) {
         file.Write(_str("{}\n", appendix));
