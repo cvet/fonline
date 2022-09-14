@@ -161,10 +161,6 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnStaticItemWalk, StaticItem* /*item*/, Critter* /*cr*/, bool /*isIn*/, uchar /*dir*/);
 
-#if !FO_SINGLEPLAYER
-    vector<uchar> RestoreInfoBin {};
-#endif
-
     ProtoManager ProtoMngr;
     ServerDeferredCallManager ServerDeferredCalls;
 

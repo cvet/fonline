@@ -63,6 +63,7 @@
 #include "StringUtils.h"
 #include "TwoBitMask.h"
 
+DECLARE_EXCEPTION(EngineDataNotFoundException);
 DECLARE_EXCEPTION(ResourcesOutdatedException);
 
 // Screens
@@ -85,12 +86,7 @@ class FOClient : virtual public FOEngineBase, public AnimationResolver
     friend class ClientScriptSystem;
 
 public:
-#if !FO_SINGLEPLAYER
-    FOClient(GlobalSettings& settings, AppWindow* window, const vector<uchar>& restore_info_bin);
-#else
     FOClient(GlobalSettings& settings, AppWindow* window);
-#endif
-
     FOClient(const FOClient&) = delete;
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;

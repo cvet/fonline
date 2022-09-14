@@ -50,7 +50,6 @@ struct ClientAppData
     FOClient* Client {};
     bool ResourcesSynced {};
     Updater* ResourceUpdater {};
-    vector<uchar> ClientRestoreBin {};
 };
 GLOBAL_DATA(ClientAppData, Data);
 
@@ -71,6 +70,12 @@ static void MainEntry(void*)
             try {
                 // Synchronize files
                 if (!Data->ResourcesSynced) {
+                    if (!App->Settings.DataSynchronization) {
+                        Data->ResourcesSynced = true;
+                        App->EndFrame();
+                        return;
+                    }
+
                     if (Data->ResourceUpdater == nullptr) {
                         Data->ResourceUpdater = new Updater(App->Settings, &App->MainWindow);
                     }
@@ -80,15 +85,13 @@ static void MainEntry(void*)
                         return;
                     }
 
-                    Data->ClientRestoreBin = std::move(Data->ResourceUpdater->ClientRestoreBin);
-
                     delete Data->ResourceUpdater;
                     Data->ResourceUpdater = nullptr;
                     Data->ResourcesSynced = true;
                 }
 
                 // Create game module
-                Data->Client = new FOClient(App->Settings, &App->MainWindow, Data->ClientRestoreBin);
+                Data->Client = new FOClient(App->Settings, &App->MainWindow);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);
@@ -109,8 +112,20 @@ static void MainEntry(void*)
                 ReportExceptionAndExit(ex);
             }
         }
+        catch (const EngineDataNotFoundException& ex) {
+            ReportExceptionAndExit(ex);
+        }
         catch (const std::exception& ex) {
             ReportExceptionAndContinue(ex);
+
+            // Recreate client on unhandled error
+            try {
+                Data->Client->Release();
+                Data->Client = nullptr;
+            }
+            catch (const std::exception& ex) {
+                ReportExceptionAndExit(ex);
+            }
         }
 
         App->EndFrame();

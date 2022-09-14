@@ -59,6 +59,12 @@ public:
         extern void Baker_RegisterData(FOEngineBase*);
         Baker_RegisterData(this);
     }
+
+    static auto GetRestoreInfo() -> vector<uchar>
+    {
+        extern auto Baker_GetRestoreInfo()->vector<uchar>;
+        return Baker_GetRestoreInfo();
+    }
 };
 
 // Implementation in AngelScriptScripting-*Compiler.cpp
@@ -910,6 +916,21 @@ int main(int argc, char** argv)
                 }
 
                 WriteLog("Bake texts complete");
+
+                // Engine restore info
+                WriteLog("Bake engine restore info");
+
+                {
+                    const auto restore_info_bin = BakerEngine::GetRestoreInfo();
+                    const auto del_restore_info_ok = DiskFileSystem::DeleteDir(MakeOutputPath("EngineData"));
+                    RUNTIME_ASSERT(del_restore_info_ok);
+                    auto restore_info_file = DiskFileSystem::OpenFile(MakeOutputPath("EngineData/RestoreInfo.fobin"), true);
+                    RUNTIME_ASSERT(restore_info_file);
+                    const auto restore_info_file_write_ok = restore_info_file.Write(restore_info_bin);
+                    RUNTIME_ASSERT(restore_info_file_write_ok);
+                }
+
+                WriteLog("Bake engine restore info complete");
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);

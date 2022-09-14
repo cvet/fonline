@@ -57,8 +57,6 @@ public:
 
     [[nodiscard]] auto Process() -> bool;
 
-    vector<uchar> ClientRestoreBin {};
-
 private:
     struct UpdateFile
     {

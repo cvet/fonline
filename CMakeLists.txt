@@ -2031,13 +2031,13 @@ if( FONLINE_MAKE_EXTERNAL_COMMANDS )
 	foreach( config ${FO_CONFIGS} )
 		CreateBakeredExternalCommand( Server-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Server" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
 		CreateBakeredExternalCommand( Client-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+		#CreateBakeredExternalCommand( Server-${config}-Debug "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}-Debug/${FO_DEV_NAME}_Server" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+		#CreateBakeredExternalCommand( Client-${config}-Debug "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}-Debug/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
 	endforeach()
 
 	# Todo:
 	# PackResources
 	# MakePackage-PackageName
-	# DebugServer-Config
-	# DebugClient-Config
 	# Profiler InterfaceEditor DialogEditor...
 endif()
 

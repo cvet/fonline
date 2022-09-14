@@ -74,8 +74,8 @@ FOServer::FOServer(GlobalSettings& settings) :
     }
 
 #if !FO_SINGLEPLAYER
-    extern auto Server_RegisterData(FOEngineBase*)->vector<uchar>;
-    RestoreInfoBin = Server_RegisterData(this);
+    extern void Server_RegisterData(FOEngineBase*);
+    Server_RegisterData(this);
 
     ScriptSys = new ServerScriptSystem(this);
     ScriptSys->InitSubsystems();
@@ -251,6 +251,7 @@ FOServer::FOServer(GlobalSettings& settings) :
             writer.Write<uint>(Hashing::MurmurHash2(data.data(), data.size()));
         };
 
+        add_sync_file("EngineData.zip");
         add_sync_file("Core.zip");
         add_sync_file("Protos.zip");
         add_sync_file("Texts.zip");
@@ -786,6 +787,10 @@ void FOServer::ProcessUnloginedPlayer(Player* unlogined_player)
                 break;
             }
         }
+
+        if (IsRunInDebugger() && connection->IsInterthreadConnection() && !connection->Bin.NeedProcess()) {
+            RUNTIME_ASSERT(connection->Bin.GetReadPos() == connection->Bin.GetEndPos());
+        }
     }
 }
 
@@ -818,6 +823,9 @@ void FOServer::ProcessPlayer(Player* player)
 
         if (!player->Connection->Bin.NeedProcess()) {
             CHECK_CLIENT_IN_BUF_ERROR(player->Connection);
+            if (IsRunInDebugger() && player->Connection->IsInterthreadConnection()) {
+                RUNTIME_ASSERT(player->Connection->Bin.GetReadPos() == player->Connection->Bin.GetEndPos());
+            }
             break;
         }
 
@@ -2043,9 +2051,8 @@ void FOServer::Process_Login(Player* unlogined_player)
     }
 
     // Login ok
-    msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(uint) * 2 + sizeof(uint);
-    const uint bin_seed = GenericUtils::Random(100000, 2000000000);
-    const uint bout_seed = GenericUtils::Random(100000, 2000000000);
+    const auto encrypt_key = NetBuffer::GenerateEncryptKey();
+    msg_len = sizeof(uint) + sizeof(msg_len) + sizeof(encrypt_key) + sizeof(uint);
 
     vector<uchar*>* global_vars_data = nullptr;
     vector<uint>* global_vars_data_sizes = nullptr;
@@ -2060,15 +2067,13 @@ void FOServer::Process_Login(Player* unlogined_player)
     CONNECTION_OUTPUT_BEGIN(player->Connection);
     player->Connection->Bout << NETMSG_LOGIN_SUCCESS;
     player->Connection->Bout << msg_len;
-    player->Connection->Bout << bin_seed;
-    player->Connection->Bout << bout_seed;
+    player->Connection->Bout << encrypt_key;
     player->Connection->Bout << player_id;
     NET_WRITE_PROPERTIES(player->Connection->Bout, global_vars_data, global_vars_data_sizes);
     NET_WRITE_PROPERTIES(player->Connection->Bout, player_data, player_data_sizes);
     CONNECTION_OUTPUT_END(player->Connection);
 
-    player->Connection->Bin.SetEncryptKey(bin_seed);
-    player->Connection->Bout.SetEncryptKey(bout_seed);
+    player->Connection->Bout.SetEncryptKey(encrypt_key);
 
     // Attach critter
     bool critter_reconnected = false;

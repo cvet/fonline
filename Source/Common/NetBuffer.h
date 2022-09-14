@@ -152,7 +152,7 @@ public:
     }
 
     auto operator>>(hstring& i) -> NetBuffer& = delete;
-    [[nodiscard]] auto ReadHashedString(NameResolver& name_resolver) -> hstring;
+    [[nodiscard]] auto ReadHashedString(const NameResolver& name_resolver) -> hstring;
 
 private:
     uint _bufReadPos {};

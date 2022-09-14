@@ -1289,8 +1289,8 @@ auto AppAudio::ConvertAudio(int format, int channels, int rate, vector<uchar>& b
 
     if (converter->NeedConvert) {
         converter->Cvt.len = static_cast<int>(buf.size());
-        converter->Cvt.buf = buf.data();
         buf.resize(static_cast<size_t>(converter->Cvt.len) * converter->Cvt.len_mult);
+        converter->Cvt.buf = buf.data();
 
         if (SDL_ConvertAudio(&converter->Cvt) != 0) {
             return false;

@@ -248,7 +248,7 @@ void NetInBuffer::ShrinkReadBuf()
     }
 }
 
-auto NetInBuffer::ReadHashedString(NameResolver& name_resolver) -> hstring
+auto NetInBuffer::ReadHashedString(const NameResolver& name_resolver) -> hstring
 {
     hstring::hash_t h;
     *this >> h;
@@ -393,8 +393,41 @@ auto NetInBuffer::NeedProcess() -> bool
         return NETMSG_POD_PROPERTY_SIZE(4, 2) + _bufReadPos <= _bufEndPos;
     case NETMSG_POD_PROPERTY(8, 2):
         return NETMSG_POD_PROPERTY_SIZE(8, 2) + _bufReadPos <= _bufEndPos;
-    default:
+
+    case NETMSG_LOGIN:
+    case NETMSG_LOGIN_SUCCESS:
+    case NETMSG_LOADMAP:
+    case NETMSG_REGISTER:
+    case NETMSG_UPDATE_FILES_LIST:
+    case NETMSG_ADD_CRITTER:
+    case NETMSG_SEND_COMMAND:
+    case NETMSG_SEND_TEXT:
+    case NETMSG_CRITTER_TEXT:
+    case NETMSG_MSG_LEX:
+    case NETMSG_MAP_TEXT:
+    case NETMSG_MAP_TEXT_MSG_LEX:
+    case NETMSG_ADD_ITEM:
+    case NETMSG_ADD_ITEM_ON_MAP:
+    case NETMSG_SOME_ITEM:
+    case NETMSG_SOME_ITEMS:
+    case NETMSG_CRITTER_MOVE_ITEM:
+    case NETMSG_PLAY_SOUND:
+    case NETMSG_TALK_NPC:
+    case NETMSG_RPC:
+    case NETMSG_GLOBAL_INFO:
+    case NETMSG_AUTOMAPS_INFO:
+    case NETMSG_COMPLEX_PROPERTY:
+    case NETMSG_SEND_COMPLEX_PROPERTY:
+    case NETMSG_ALL_PROPERTIES:
+    case NETMSG_SEND_MOVE:
+    case NETMSG_CRITTER_MOVE:
         break;
+
+    default:
+        // Unknown message
+        ResetBuf();
+        _isError = true;
+        return false;
     }
 
     // Changeable size
@@ -435,11 +468,9 @@ auto NetInBuffer::NeedProcess() -> bool
     case NETMSG_SEND_MOVE:
     case NETMSG_CRITTER_MOVE:
         return _bufReadPos + msg_len <= _bufEndPos;
+
     default:
-        // Unknown message
-        ResetBuf();
-        _isError = true;
-        return false;
+        throw UnreachablePlaceException(LINE_STR);
     }
 }
 
@@ -651,12 +682,12 @@ void NetInBuffer::SkipMsg(uint msg)
     case NETMSG_ALL_PROPERTIES:
     case NETMSG_SEND_MOVE:
     case NETMSG_CRITTER_MOVE: {
-        // Changeable size
         uint msg_len = 0;
         EncryptKey(sizeof(msg));
         CopyBuf(_bufData.get() + _bufReadPos + sizeof(msg), &msg_len, EncryptKey(-static_cast<int>(sizeof(msg))), sizeof(msg_len));
         size = msg_len;
     } break;
+
     default:
         ResetBuf();
         return;

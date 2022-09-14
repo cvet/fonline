@@ -43,11 +43,7 @@
 
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
-#if !FO_SINGLEPLAYER
-    FOClient(settings, window, {}),
-#else
     FOClient(settings, window),
-#endif
 
     IfaceIni("", "", this)
 {

@@ -58,43 +58,11 @@
 #if !COMPILER_MODE
 #if SERVER_REGISTRATION
 
-auto Server_RegisterData(FOEngineBase* engine) -> vector<uchar>
+void Server_RegisterData(FOEngineBase* engine)
 {
     ///@ CodeGen ServerRegister
 
     engine->FinalizeDataRegistration();
-
-    map<string, vector<string>> restore_info;
-
-    ///@ CodeGen WriteRestoreInfo
-
-    size_t estimated_size = sizeof(uint);
-    for (const auto& [name, data] : restore_info) {
-        estimated_size += sizeof(uint) + name.size();
-        estimated_size += sizeof(uint);
-        for (const auto& entry : data) {
-            estimated_size += sizeof(uint) + entry.size();
-        }
-    }
-
-    vector<uchar> restore_info_bin;
-    restore_info_bin.reserve(estimated_size + 1024u);
-
-    auto writer = DataWriter(restore_info_bin);
-    writer.Write<uint>(static_cast<uint>(restore_info.size()));
-    for (const auto& [name, data] : restore_info) {
-        writer.Write<uint>(static_cast<uint>(name.size()));
-        writer.WritePtr(name.data(), name.size());
-        writer.Write<uint>(static_cast<uint>(data.size()));
-        for (const auto& entry : data) {
-            writer.Write<uint>(static_cast<uint>(entry.size()));
-            writer.WritePtr(entry.data(), entry.size());
-        }
-    }
-
-    restore_info_bin.shrink_to_fit();
-
-    return restore_info_bin;
 }
 
 #elif CLIENT_REGISTRATION
@@ -244,6 +212,41 @@ void Baker_RegisterData(FOEngineBase* engine)
     ///@ CodeGen BakerRegister
 
     engine->FinalizeDataRegistration();
+}
+
+auto Baker_GetRestoreInfo() -> vector<uchar>
+{
+    map<string, vector<string>> restore_info;
+
+    ///@ CodeGen WriteRestoreInfo
+
+    size_t estimated_size = sizeof(uint);
+    for (const auto& [name, data] : restore_info) {
+        estimated_size += sizeof(uint) + name.size();
+        estimated_size += sizeof(uint);
+        for (const auto& entry : data) {
+            estimated_size += sizeof(uint) + entry.size();
+        }
+    }
+
+    vector<uchar> restore_info_bin;
+    restore_info_bin.reserve(estimated_size + 1024u);
+
+    auto writer = DataWriter(restore_info_bin);
+    writer.Write<uint>(static_cast<uint>(restore_info.size()));
+    for (const auto& [name, data] : restore_info) {
+        writer.Write<uint>(static_cast<uint>(name.size()));
+        writer.WritePtr(name.data(), name.size());
+        writer.Write<uint>(static_cast<uint>(data.size()));
+        for (const auto& entry : data) {
+            writer.Write<uint>(static_cast<uint>(entry.size()));
+            writer.WritePtr(entry.data(), entry.size());
+        }
+    }
+
+    restore_info_bin.shrink_to_fit();
+
+    return restore_info_bin;
 }
 
 #endif

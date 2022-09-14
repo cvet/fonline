@@ -1364,7 +1364,7 @@ def genDataRegistration(target, isASCompiler):
         registerLines.append('')
     
     # Restore enums info
-    if target == 'Server' and not isASCompiler:
+    if target == 'Baker' and not isASCompiler:
         restoreLines.append('restore_info["Enums"] =')
         restoreLines.append('{')
         for e in codeGenTags['Enum']:
@@ -1380,7 +1380,7 @@ def genDataRegistration(target, isASCompiler):
         restoreLines.append('')
     
     # Restore properties info
-    if target == 'Server' and not isASCompiler:
+    if target == 'Baker' and not isASCompiler:
         restoreLines.append('restore_info["PropertyComponents"] =')
         restoreLines.append('{')
         for propCompTag in codeGenTags['PropertyComponent']:
@@ -1418,7 +1418,7 @@ def genDataRegistration(target, isASCompiler):
     
     # Todo: make script events restorable
     # Restore events info
-    #if target == 'Server' and not isASCompiler:
+    #if target == 'Baker' and not isASCompiler:
     #    restoreLines.append('restore_info["Events"] =')
     #    restoreLines.append('{')
     #    for entity in gameEntities:
@@ -1432,7 +1432,7 @@ def genDataRegistration(target, isASCompiler):
     
     # Todo: make setting values restorable
     # Restore settings
-    #if target == 'Server' and not isASCompiler:
+    #if target == 'Baker' and not isASCompiler:
     #    restoreLines.append('restore_info["Settings"] =')
     #    restoreLines.append('{')
     #    for settTag in codeGenTags['ExportSettings']:
@@ -1465,7 +1465,6 @@ def genDataRegistration(target, isASCompiler):
     
     if not isASCompiler:
         if target == 'Server':
-            insertCodeGenLines(restoreLines, 'WriteRestoreInfo')
             insertCodeGenLines(registerLines, 'ServerRegister')
             insertCodeGenLines(globalLines, 'Global')
         elif target == 'Client':
@@ -1480,6 +1479,7 @@ def genDataRegistration(target, isASCompiler):
             insertCodeGenLines(registerLines, 'MapperRegister')
             insertCodeGenLines(globalLines, 'Global')
         elif target == 'Baker':
+            insertCodeGenLines(restoreLines, 'WriteRestoreInfo')
             insertCodeGenLines(registerLines, 'BakerRegister')
             insertCodeGenLines(globalLines, 'Global')
     else:
@@ -1669,6 +1669,20 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                 return v + ' = static_cast<int>(' + v2 + ')'
             return None
         
+        def marshalBackRef2(t, v, v2):
+            tt = t.split('.')
+            if tt[-1] != 'ref':
+                return None
+            if tt[0] == 'dict':
+                d2 = tt[2] if tt[2] != 'arr' else tt[2] + '.' + tt[3]
+                return v2 + ' = MarshalDict<' + metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(tt[1]) + ', ' + \
+                        metaTypeToASEngineType(tt[1]) + ', ' + metaTypeToASEngineType(d2) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
+            elif tt[0] == 'arr':
+                return v2 + ' = MarshalArray<' + metaTypeToEngineType(tt[1], target, False) + ', ' + metaTypeToASEngineType(tt[1]) + '>(GET_AS_ENGINE_FROM_SELF(), ' + v + ')'
+            elif tt[0] in engineEnums or tt[0] in scriptEnums:
+                return v2 + ' = static_cast<' + metaTypeToEngineType(tt[0], target, False) + '>(' + v + ')'
+            return None
+        
         def marshalBackRelease(t, v):
             tt = t.split('.')
             if tt[0] in ['dict', 'arr']:
@@ -1854,7 +1868,7 @@ def genCode(lang, target, isASCompiler=False, isASCompilerValidation=False):
                         globalLines.append('    if (script_sys->RunContext(ctx, func->GetReturnTypeId() == asTYPEID_VOID)) {')
                         globalLines.append('        event_result = (func->GetReturnTypeId() == asTYPEID_VOID || (func->GetReturnTypeId() == asTYPEID_BOOL && ctx->GetReturnByte() != 0));')
                         for p in evArgs:
-                            mbr = marshalBackRef(p[0], 'as_' + p[1], 'arg_' + p[1])
+                            mbr = marshalBackRef2(p[0], 'as_' + p[1], 'arg_' + p[1])
                             if mbr:
                                 globalLines.append('        ' + mbr + ';')
                         globalLines.append('        script_sys->ReturnContext(ctx);')

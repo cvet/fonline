@@ -2157,6 +2157,8 @@ void SpriteManager::CollectContour(int x, int y, const SpriteInfo* si, const Spr
 
 auto SpriteManager::GetFont(int num) -> FontData*
 {
+    NON_CONST_METHOD_HINT();
+
     if (num < 0) {
         num = _defFontIndex;
     }

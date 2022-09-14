@@ -40,11 +40,10 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
 #if !FO_SINGLEPLAYER
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window, const vector<uchar>& restore_info_bin) :
     FOEngineBase(settings, PropertiesRelationType::ClientRelative),
 #else
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     FOEngineBase(settings, PropertiesRelationType::BothRelative),
 #endif
     ProtoMngr(this),
@@ -61,6 +60,7 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     FileSys.AddDataSource(Settings.EmbeddedResources);
     FileSys.AddDataSource(Settings.ResourcesDir, DataSourceType::DirRoot);
 
+    FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("EngineData"));
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Core"));
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Maps"));
     FileSys.AddDataSource(_str(Settings.ResourcesDir).combinePath("Protos"));
@@ -82,8 +82,13 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
 #endif
 
 #if !FO_SINGLEPLAYER
-    extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
-    Client_RegisterData(this, restore_info_bin);
+    if (const auto restore_info = FileSys.ReadFile("RestoreInfo.fobin")) {
+        extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
+        Client_RegisterData(this, restore_info.GetData());
+    }
+    else {
+        throw EngineDataNotFoundException(LINE_STR);
+    }
 
     ScriptSys = new ClientScriptSystem(this);
     ScriptSys->InitSubsystems();
@@ -679,7 +684,7 @@ void FOClient::Net_SendHandshake()
     _conn.OutBuf << NETMSG_HANDSHAKE;
     _conn.OutBuf << static_cast<uint>(FO_COMPATIBILITY_VERSION);
 
-    const uint encrypt_key = NetBuffer::GenerateEncryptKey();
+    const auto encrypt_key = NetBuffer::GenerateEncryptKey();
     _conn.OutBuf << encrypt_key;
     _conn.OutBuf.SetEncryptKey(encrypt_key);
     _conn.InBuf.SetEncryptKey(encrypt_key);
@@ -972,14 +977,11 @@ void FOClient::Net_OnLoginSuccess()
 
     AddMessage(0, _curLang.Msg[TEXTMSG_GAME].GetStr(STR_NET_LOGINOK));
 
-    // Set encrypt keys
     uint msg_len;
-    uint bin_seed;
-    uint bout_seed; // Server bin/bout == client bout/bin
+    uint encrypt_key;
     uint player_id;
     _conn.InBuf >> msg_len;
-    _conn.InBuf >> bin_seed;
-    _conn.InBuf >> bout_seed;
+    _conn.InBuf >> encrypt_key;
     _conn.InBuf >> player_id;
 
     NET_READ_PROPERTIES(_conn.InBuf, _globalsPropertiesData);
@@ -987,8 +989,7 @@ void FOClient::Net_OnLoginSuccess()
 
     CHECK_SERVER_IN_BUF_ERROR(_conn);
 
-    _conn.OutBuf.SetEncryptKey(bin_seed);
-    _conn.InBuf.SetEncryptKey(bout_seed);
+    _conn.InBuf.SetEncryptKey(encrypt_key);
 
     RestoreData(_globalsPropertiesData);
 

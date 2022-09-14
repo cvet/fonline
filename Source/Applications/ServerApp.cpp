@@ -126,11 +126,11 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
         const auto spawn_client = [](bool in_separate_window) {
             Data->ClientSpawning = true;
             Data->ThreadTasks.fetch_add(1);
-            // Todo: allow instantiate client in separate thread (rendering issues)
+            // Todo: allow instantiate client in separate thread (fix mt rendering issues)
             // std::thread([] {
             try {
-                auto* window = in_separate_window ? App->CreateChildWindow(800, 600) : &App->MainWindow;
-                Data->SpawnedClient = new FOClient(App->Settings, window, Data->Server->RestoreInfoBin);
+                auto* window = in_separate_window ? App->CreateChildWindow(App->Settings.ScreenWidth, App->Settings.ScreenHeight) : &App->MainWindow;
+                Data->SpawnedClient = new FOClient(App->Settings, window);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);

@@ -72,6 +72,7 @@ public:
     [[nodiscard]] auto IsHardDisconnected() const -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const -> bool;
     [[nodiscard]] auto IsWebConnection() const -> bool;
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool;
 
     void DisableCompression();
     void Dispatch();
