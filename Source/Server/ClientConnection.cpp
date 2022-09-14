@@ -78,6 +78,11 @@ auto ClientConnection::IsWebConnection() const -> bool
     return _netConnection->IsWebConnection();
 }
 
+auto ClientConnection::IsInterthreadConnection() const -> bool
+{
+    return _netConnection->IsInterthreadConnection();
+}
+
 void ClientConnection::DisableCompression()
 {
     NON_CONST_METHOD_HINT();

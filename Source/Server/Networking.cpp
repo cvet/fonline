@@ -338,6 +338,7 @@ public:
     }
 
     [[nodiscard]] auto IsWebConnection() const -> bool override { return false; }
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return false; }
 
 private:
     void NextAsyncRead()
@@ -446,6 +447,7 @@ public:
     }
 
     [[nodiscard]] auto IsWebConnection() const -> bool override { return true; }
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return false; }
 
 private:
     void OnMessage(message_ptr msg)
@@ -663,6 +665,7 @@ public:
     ~InterthreadConnection() override = default;
 
     [[nodiscard]] auto IsWebConnection() const -> bool override { return false; }
+    [[nodiscard]] auto IsInterthreadConnection() const -> bool override { return true; }
 
     void Receive(const_span<uchar> buf)
     {
