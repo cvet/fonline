@@ -48,13 +48,61 @@ assert (args.singleplayer or args.multiplayer) and not (args.singleplayer and ar
 def getGuid(name):
     return '{' + str(uuid.uuid3(uuid.NAMESPACE_OID, name)).upper() + '}'
 
-def getHash(s):
-    # Todo: exclude mmh3 dependency
-    try:
-        import mmh3 as mmh3
-    except ImportError:
-        import pymmh3 as mmh3
-    return str(mmh3.hash(s, seed=0))
+def getHash(input, seed=0):
+    input = input.encode()
+
+    def intTo4Bytes(i):
+        return i & 0xffffffff
+
+    m = 0x5bd1e995
+    r = 24
+
+    length = len(input)
+    h = seed ^ length
+
+    round = 0
+    while length >= (round * 4) + 4:
+        k = input[round * 4]
+        k |= input[(round * 4) + 1] << 8
+        k |= input[(round * 4) + 2] << 16
+        k |= input[(round * 4) + 3] << 24
+        k = intTo4Bytes(k)
+        k = intTo4Bytes(k * m)
+        k ^= k >> r
+        k = intTo4Bytes(k * m)
+        h = intTo4Bytes(h * m)
+        h ^= k
+        round += 1
+
+    lengthDiff = length - (round * 4)
+
+    if lengthDiff == 1:
+        h ^= input[-1]
+        h = intTo4Bytes(h * m)
+    elif lengthDiff == 2:
+        h ^= intTo4Bytes(input[-1] << 8)
+        h ^= input[-2]
+        h = intTo4Bytes(h * m)
+    elif lengthDiff == 3:
+        h ^= intTo4Bytes(input[-1] << 16)
+        h ^= intTo4Bytes(input[-2] << 8)
+        h ^= input[-3]
+        h = intTo4Bytes(h * m)
+
+    h ^= h >> 13
+    h = intTo4Bytes(h * m)
+    h ^= h >> 15
+
+    assert h <= 0xffffffff
+    if h & 0x80000000 == 0:
+        return str(h)
+    else:
+        return str(-((h ^ 0xFFFFFFFF) + 1))
+
+assert getHash('abcd') == '646393889'
+assert getHash('abcde') == '1594468574'
+assert getHash('abcdef') == '1271458169'
+assert getHash('abcdefg') == '-106836237'
 
 # Generated file list
 genFileList = ['EmbeddedResources-Include.h',
