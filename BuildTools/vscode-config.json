@@ -39,7 +39,7 @@
         {
             "label": "Generate Engine Todo",
             "group": "Service",
-            "command": "cd BuildTools && python todo-generator.py",
+            "command": "cd BuildTools && python3 todo-generator.py",
             "env": "win linux mac"
         },
         {

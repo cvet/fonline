@@ -306,7 +306,7 @@ def build():
 		patchFile(gameOutputPath + '/debug.html', 'FOnline.js', 'FOnline_Debug.js')
 
 		# Generate resources
-		r = subprocess.call(['python', os.environ['EMSCRIPTEN'] + '/tools/file_packager.py', \
+		r = subprocess.call(['python3', os.environ['EMSCRIPTEN'] + '/tools/file_packager.py', \
 				'Resources.data', '--preload', resourcesPath + '@/Data', '--js-output=Resources.js'], shell = True)
 		assert r == 0
 		shutil.move('Resources.js', gameOutputPath + '/Resources.js')

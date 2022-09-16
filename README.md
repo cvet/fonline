@@ -105,7 +105,7 @@ Reference project:
 Following Linux packages will help us build our game for target platforms.  
 These packages will automatically installed during workspace preparing (i.e. `prepare-workspace.sh`).
 * Common:  
-`clang` `clang-format` `build-essential` `git` `cmake` `python` `wget` `unzip`
+`clang` `clang-format` `build-essential` `git` `cmake` `python3` `wget` `unzip`
 * Building for Linux:  
 `libc++-dev` `libc++abi-dev` `binutils-dev` `libx11-dev` `freeglut3-dev` `libssl-dev` `libevent-dev` `libxi-dev` `curl`
 * Building for Web:  

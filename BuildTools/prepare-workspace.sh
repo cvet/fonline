@@ -26,8 +26,8 @@ function install_common_packages()
     sudo apt-get -qq -y install git
     echo "Install cmake"
     sudo apt-get -qq -y install cmake
-    echo "Install python"
-    sudo apt-get -qq -y install python
+    echo "Install python3"
+    sudo apt-get -qq -y install python3
     echo "Install wget"
     sudo apt-get -qq -y install wget
     echo "Install unzip"
