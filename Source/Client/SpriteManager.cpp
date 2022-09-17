@@ -1200,9 +1200,8 @@ void SpriteManager::Flush()
     for (const auto& dip : _dipQueue) {
         RUNTIME_ASSERT(dip.SourceEffect->Usage == _dipQueue.front().SourceEffect->Usage);
 
-        if (_sprEgg != nullptr) {
-            dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
-        }
+        dip.SourceEffect->EggTex = _sprEgg->Atlas->MainTex;
+
         if (dip.SourceEffect->MapSpriteBuf) {
             dip.SourceEffect->MapSpriteBuf->ZoomFactor = _settings.SpritesZoom;
         }
@@ -1511,23 +1510,22 @@ void SpriteManager::InitializeEgg(string_view egg_name)
 {
     _eggValid = false;
     _eggHx = _eggHy = _eggX = _eggY = 0;
-    if (auto* egg_frames = LoadAnimation(egg_name, true); egg_frames != nullptr) {
-        _sprEgg = GetSpriteInfo(egg_frames->Ind[0]);
 
-        DestroyAnyFrames(egg_frames);
+    auto* egg_frames = LoadAnimation(egg_name, true);
+    RUNTIME_ASSERT(egg_frames != nullptr);
 
-        _eggSprWidth = _sprEgg->Width;
-        _eggSprHeight = _sprEgg->Height;
-        _eggAtlasWidth = static_cast<float>(App->Render.MAX_ATLAS_WIDTH);
-        _eggAtlasHeight = static_cast<float>(App->Render.MAX_ATLAS_HEIGHT);
+    _sprEgg = GetSpriteInfo(egg_frames->Ind[0]);
 
-        const auto x = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->SprRect.Left);
-        const auto y = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->SprRect.Top);
-        _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _eggSprWidth, _eggSprHeight);
-    }
-    else {
-        WriteLog("Load sprite '{}' fail. Egg disabled", egg_name);
-    }
+    DestroyAnyFrames(egg_frames);
+
+    _eggSprWidth = _sprEgg->Width;
+    _eggSprHeight = _sprEgg->Height;
+    _eggAtlasWidth = static_cast<float>(App->Render.MAX_ATLAS_WIDTH);
+    _eggAtlasHeight = static_cast<float>(App->Render.MAX_ATLAS_HEIGHT);
+
+    const auto x = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[0] * _sprEgg->SprRect.Left);
+    const auto y = static_cast<int>(_sprEgg->Atlas->MainTex->SizeData[1] * _sprEgg->SprRect.Top);
+    _eggData = _sprEgg->Atlas->MainTex->GetTextureRegion(x, y, _eggSprWidth, _eggSprHeight);
 }
 
 auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType egg_appearence) const -> bool
@@ -1573,10 +1571,6 @@ auto SpriteManager::CheckEggAppearence(ushort hx, ushort hy, EggAppearenceType e
 
 void SpriteManager::SetEgg(ushort hx, ushort hy, Sprite* spr)
 {
-    if (_sprEgg == nullptr) {
-        return;
-    }
-
     const auto id = spr->PSprId != nullptr ? *spr->PSprId : spr->SprId;
     const auto* si = _sprData[id];
     if (si == nullptr) {
@@ -2601,12 +2595,9 @@ static void StrCopy(char (&to)[Size], string_view from)
     return StrCopy(to, Size, from);
 }
 
-static void StrGoTo(char*& str, char ch, bool skip_char)
+static void StrGoTo(char*& str, char ch)
 {
     while (*str != 0 && *str != ch) {
-        ++str;
-    }
-    if (skip_char && *str != 0) {
         ++str;
     }
 }
@@ -2697,9 +2688,9 @@ void SpriteManager::FormatText(FontFormatInfo& fi, int fmt_type)
 
     while (*str_ != 0) {
         auto* s0 = str_;
-        StrGoTo(str_, '|', true);
+        StrGoTo(str_, '|');
         auto* s1 = str_;
-        StrGoTo(str_, ' ', true);
+        StrGoTo(str_, ' ');
         auto* s2 = str_;
 
         if (dots != nullptr) {
