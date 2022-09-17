@@ -196,7 +196,7 @@ VARIABLE_SETTING(bool, ForceBakering, false);
 VARIABLE_SETTING(string, BakeOutput);
 VARIABLE_SETTING(vector<string>, BakeResourceEntries);
 VARIABLE_SETTING(vector<string>, BakeContentEntries);
-VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json"); // Todo: move resource files control (include/exclude/pack rules) to cmake
+VARIABLE_SETTING(vector<string>, BakeExtraFileExtensions, "fofnt", "bmfc", "fnt", "acm", "ogg", "wav", "ogv", "json", "ini"); // Todo: move resource files control (include/exclude/pack rules) to cmake
 SETTING_GROUP_END();
 
 ///@ ExportSettings Server
@@ -269,8 +269,6 @@ SETTING_GROUP_END();
 SETTING_GROUP(InputSettings, virtual DummySettings);
 VARIABLE_SETTING(uint, DoubleClickTime, 500);
 VARIABLE_SETTING(uint, ConsoleHistorySize, 100);
-VARIABLE_SETTING(bool, DisableMouseEvents, false);
-VARIABLE_SETTING(bool, DisableKeyboardEvents, false);
 VARIABLE_SETTING(int, MouseX, 0);
 VARIABLE_SETTING(int, MouseY, 0);
 SETTING_GROUP_END();

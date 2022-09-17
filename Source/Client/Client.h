@@ -86,7 +86,7 @@ class FOClient : virtual public FOEngineBase, public AnimationResolver
     friend class ClientScriptSystem;
 
 public:
-    FOClient(GlobalSettings& settings, AppWindow* window);
+    FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode);
     FOClient(const FOClient&) = delete;
     FOClient(FOClient&&) noexcept = delete;
     auto operator=(const FOClient&) = delete;

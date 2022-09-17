@@ -91,7 +91,7 @@ static void MainEntry(void*)
                 }
 
                 // Create game module
-                Data->Client = new FOClient(App->Settings, &App->MainWindow);
+                Data->Client = new FOClient(App->Settings, &App->MainWindow, false);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndExit(ex);

@@ -68,7 +68,6 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<v
 
     SetHexX(hx);
     SetHexY(hy);
-    SetOwnership(ItemOwnership::MapHex);
     HexScrX = hex_scr_x;
     HexScrY = hex_scr_y;
 
@@ -77,7 +76,7 @@ ItemHexView::ItemHexView(MapView* map, uint id, const ProtoItem* proto, vector<v
 
 void ItemHexView::AfterConstruction()
 {
-    RUNTIME_ASSERT(GetOwnership() == ItemOwnership::MapHex);
+    SetOwnership(ItemOwnership::MapHex);
 
     RefreshAnim();
     RefreshAlpha();

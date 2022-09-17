@@ -125,7 +125,6 @@ public:
     static constexpr auto FONT_THIN = 6;
     static constexpr auto FONT_FAT = 7;
     static constexpr auto FONT_BIG = 8;
-    static constexpr auto DRAW_CR_INFO_MAX = 2;
     static constexpr auto CUR_MODE_DEFAULT = 0;
     static constexpr auto CUR_MODE_MOVE_SELECTION = 1;
     static constexpr auto CUR_MODE_PLACE_OBJECT = 2;
@@ -171,12 +170,12 @@ public:
     ~FOMapper() override = default;
 
     void InitIface();
-    auto IfaceLoadRect(IRect& comp, string_view name) -> bool;
+    auto IfaceLoadRect(IRect& comp, string_view name) const -> bool;
     void MapperMainLoop();
     void RefreshTiles(int tab);
     auto GetProtoItemCurSprId(const ProtoItem* proto_item) -> uint;
     void ChangeGameTime();
-    void ProcessInputEvent(const InputEvent& ev);
+    void ProcessMapperInput();
 
     void CurDraw();
     void CurRMouseUp();
@@ -257,8 +256,9 @@ public:
     ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
     vector<MapView*> LoadedMaps {};
-    ConfigFile IfaceIni;
+    unique_ptr<ConfigFile> IfaceIni {};
     vector<const Property*> ShowProps {};
+    bool PressedKeys[0x100] {};
     int CurMode {};
     AnyFrames* CurPDef {};
     AnyFrames* CurPHand {};

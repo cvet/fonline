@@ -130,7 +130,7 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
             // std::thread([] {
             try {
                 auto* window = in_separate_window ? App->CreateChildWindow(App->Settings.ScreenWidth, App->Settings.ScreenHeight) : &App->MainWindow;
-                Data->SpawnedClient = new FOClient(App->Settings, window);
+                Data->SpawnedClient = new FOClient(App->Settings, window, false);
             }
             catch (const std::exception& ex) {
                 ReportExceptionAndContinue(ex);

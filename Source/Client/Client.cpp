@@ -40,7 +40,7 @@
 #include "StringUtils.h"
 #include "Version-Include.h"
 
-FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
+FOClient::FOClient(GlobalSettings& settings, AppWindow* window, bool mapper_mode) :
 #if !FO_SINGLEPLAYER
     FOEngineBase(settings, PropertiesRelationType::ClientRelative),
 #else
@@ -81,19 +81,6 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
     FileSys.AddDataSource("PersistentData");
 #endif
 
-#if !FO_SINGLEPLAYER
-    if (const auto restore_info = FileSys.ReadFile("RestoreInfo.fobin")) {
-        extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
-        Client_RegisterData(this, restore_info.GetData());
-    }
-    else {
-        throw EngineDataNotFoundException(LINE_STR);
-    }
-
-    ScriptSys = new ClientScriptSystem(this);
-    ScriptSys->InitSubsystems();
-#endif
-
     ResMngr.IndexFiles();
 
     GameTime.FrameAdvance();
@@ -118,7 +105,27 @@ FOClient::FOClient(GlobalSettings& settings, AppWindow* window) :
 #endif
 
     EffectMngr.LoadDefaultEffects();
+
+    if (mapper_mode) {
+        return;
+    }
+
+#if !FO_SINGLEPLAYER
+    if (const auto restore_info = FileSys.ReadFile("RestoreInfo.fobin")) {
+        extern void Client_RegisterData(FOEngineBase*, const vector<uchar>&);
+        Client_RegisterData(this, restore_info.GetData());
+    }
+    else {
+        throw EngineDataNotFoundException(LINE_STR);
+    }
+
+    ScriptSys = new ClientScriptSystem(this);
+    ScriptSys->InitSubsystems();
+#endif
+
     ProtoMngr.LoadFromResources();
+
+    ResMngr.ReinitializeDynamicAtlas();
 
     // Recreate static atlas
     SprMngr.AccumulateAtlasData();
@@ -408,6 +415,11 @@ void FOClient::MainLoop()
 
     ClientDeferredCalls.Process();
 
+#if !FO_SINGLEPLAYER
+    // Script loop
+    OnLoop.Fire();
+#endif
+
     if (IsMainScreen(SCREEN_GLOBAL_MAP)) {
         ProcessGlobalMap();
     }
@@ -416,39 +428,35 @@ void FOClient::MainLoop()
         CurMap->Process();
     }
 
-    // Start render
+    // Render
     EffectMngr.UpdateEffects(GameTime);
+
     SprMngr.BeginScene(COLOR_RGB(0, 0, 0));
+    {
+        // Quake effect
+        ProcessScreenEffectQuake();
 
-#if !FO_SINGLEPLAYER
-    // Script loop
-    OnLoop.Fire();
-#endif
+        // Render map
+        if (GetMainScreen() == SCREEN_GAME && CurMap != nullptr) {
+            if (Settings.ShowMoveCursor) {
+                CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
+            }
 
-    // Quake effect
-    ProcessScreenEffectQuake();
-
-    // Render map
-    if (GetMainScreen() == SCREEN_GAME && CurMap != nullptr) {
-        if (Settings.ShowMoveCursor) {
-            CurMap->SetCursorPos(GetMapChosen(), Settings.MouseX, Settings.MouseY, Keyb.CtrlDwn, false);
+            CurMap->DrawMap();
         }
 
-        CurMap->DrawMap();
+        // Make dirty offscreen surfaces
+        if (!PreDirtyOffscreenSurfaces.empty()) {
+            DirtyOffscreenSurfaces.insert(DirtyOffscreenSurfaces.end(), PreDirtyOffscreenSurfaces.begin(), PreDirtyOffscreenSurfaces.end());
+            PreDirtyOffscreenSurfaces.clear();
+        }
+
+        CanDrawInScripts = true;
+        OnRenderIface.Fire();
+        CanDrawInScripts = false;
+
+        ProcessScreenEffectFading();
     }
-
-    // Make dirty offscreen surfaces
-    if (!PreDirtyOffscreenSurfaces.empty()) {
-        DirtyOffscreenSurfaces.insert(DirtyOffscreenSurfaces.end(), PreDirtyOffscreenSurfaces.begin(), PreDirtyOffscreenSurfaces.end());
-        PreDirtyOffscreenSurfaces.clear();
-    }
-
-    CanDrawInScripts = true;
-    OnRenderIface.Fire();
-    CanDrawInScripts = false;
-
-    ProcessScreenEffectFading();
-
     SprMngr.EndScene();
 }
 
@@ -573,6 +581,10 @@ void FOClient::ProcessInputEvent(const InputEvent& ev)
     if (ev.Type == InputEvent::EventType::KeyDownEvent) {
         const auto key_code = ev.KeyDown.Code;
         const auto key_text = ev.KeyDown.Text;
+
+        if (ev.KeyDown.Code == KeyCode::Escape && Keyb.ShiftDwn) {
+            Settings.Quit = true;
+        }
 
         if (key_code == KeyCode::Rcontrol || key_code == KeyCode::Lcontrol) {
             Keyb.CtrlDwn = true;

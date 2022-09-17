@@ -428,7 +428,7 @@ void MapView::LoadStaticData()
 
             auto* scenery = new ItemHexView(this, 0u, item_proto, item_props);
 
-            AddItem(scenery);
+            AddItemInternal(scenery);
         }
     }
 
@@ -683,8 +683,7 @@ auto MapView::AddItem(uint id, const ProtoItem* proto, const map<string, string>
         return nullptr;
     }
 
-    _items.emplace_back(item);
-    _itemsMap.emplace(id, item);
+    AddItemInternal(item);
 
     return item;
 }
@@ -703,30 +702,13 @@ auto MapView::AddItem(uint id, hstring pid, ushort hx, ushort hy, bool is_added,
     if (is_added) {
         item->SetShowAnim();
     }
-    AddItem(item);
 
-    // Check ViewField size
-    if (!ProcessHexBorders(item->Anim->GetSprId(0), item->GetOffsetX(), item->GetOffsetY(), true)) {
-        // Draw
-        if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent()) {
-            auto& spr = _mainTree.InsertSprite(EvaluateItemDrawOrder(item), hx, hy + item->GetDrawOrderOffsetHexY(), (_engine->Settings.MapHexWidth / 2), (_engine->Settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, 0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
-            if (!item->GetIsNoLightInfluence()) {
-                spr.SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
-            }
-            item->SetSprite(&spr);
-
-            field.AddSpriteToChain(&spr);
-        }
-
-        if (item->GetIsLight() || !item->GetIsLightThru()) {
-            RebuildLight();
-        }
-    }
+    AddItemInternal(item);
 
     return item;
 }
 
-void MapView::AddItem(ItemHexView* item)
+void MapView::AddItemInternal(ItemHexView* item)
 {
     const auto hx = item->GetHexX();
     const auto hy = item->GetHexY();
@@ -757,6 +739,26 @@ void MapView::AddItem(ItemHexView* item)
     }
 
     AddItemToField(item);
+
+    if (!ProcessHexBorders(item->Anim->GetSprId(0), item->GetOffsetX(), item->GetOffsetY(), true)) {
+        auto& field = GetField(hx, hy);
+
+        if (IsHexToDraw(hx, hy) && !item->GetIsHidden() && !item->GetIsHiddenPicture() && !item->IsFullyTransparent()) {
+            auto& spr = _mainTree.InsertSprite(EvaluateItemDrawOrder(item), hx, hy + item->GetDrawOrderOffsetHexY(), //
+                (_engine->Settings.MapHexWidth / 2), (_engine->Settings.MapHexHeight / 2), &field.ScrX, &field.ScrY, //
+                0, &item->SprId, &item->ScrX, &item->ScrY, &item->Alpha, &item->DrawEffect, &item->SprDrawValid);
+            if (!item->GetIsNoLightInfluence()) {
+                spr.SetLight(item->GetCorner(), _hexLight.data(), _maxHexX, _maxHexY);
+            }
+            item->SetSprite(&spr);
+
+            field.AddSpriteToChain(&spr);
+        }
+
+        if (item->GetIsLight() || !item->GetIsLightThru()) {
+            RebuildLight();
+        }
+    }
 
     // Sort
     const auto& field = GetField(hx, hy);
@@ -1911,7 +1913,7 @@ void MapView::CollectLightSources()
     }
 }
 
-auto MapView::ProcessTileBorder(Field::Tile& tile, bool is_roof) -> bool
+auto MapView::ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool
 {
     const auto ox = (is_roof ? _engine->Settings.MapRoofOffsX : _engine->Settings.MapTileOffsX) + tile.OffsX;
     const auto oy = (is_roof ? _engine->Settings.MapRoofOffsY : _engine->Settings.MapTileOffsY) + tile.OffsY;
@@ -2082,7 +2084,7 @@ auto MapView::IsVisible(uint spr_id, int ox, int oy) const -> bool
     return !(top > zoomed_screen_height || bottom < 0 || left > zoomed_screen_width || right < 0);
 }
 
-void MapView::ProcessHexBorders(ItemHexView* item)
+void MapView::ProcessHexBorders(const ItemHexView* item)
 {
     ProcessHexBorders(item->Anim->GetSprId(0), item->GetOffsetX(), item->GetOffsetY(), true);
 }
@@ -3073,7 +3075,7 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, const map<string, s
         return nullptr;
     }
 
-    AddCritter(cr);
+    AddCritterInternal(cr);
     return cr;
 }
 
@@ -3084,11 +3086,11 @@ auto MapView::AddCritter(uint id, const ProtoCritter* proto, ushort hx, ushort h
     cr->SetHexX(hx);
     cr->SetHexY(hy);
 
-    AddCritter(cr);
+    AddCritterInternal(cr);
     return cr;
 }
 
-void MapView::AddCritter(CritterHexView* cr)
+void MapView::AddCritterInternal(CritterHexView* cr)
 {
     uint fading_tick = 0u;
 

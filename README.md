@@ -34,7 +34,7 @@
 * Multiplayer mode with authoritative server
 * Singleplayer mode (one binary, no network connections)
 * Supporting of hexagonal and square map tiling
-* Perendered sprites for environment but with possibility of using 3D models for characters
+* Prerendered sprites for environment but with possibility of using 3D models for characters
 * Engine core written in C++ (favored C++17 standard)
 * Flexible scripting system with varies supporting languages:
   + Mono C#

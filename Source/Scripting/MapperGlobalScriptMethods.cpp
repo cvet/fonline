@@ -749,5 +749,5 @@
 ///@ ExportMethod
 [[maybe_unused]] string Mapper_Game_GetIfaceIniStr(FOMapper* mapper, string_view key)
 {
-    return mapper->IfaceIni.GetStr("", key, "");
+    return mapper->IfaceIni->GetStr("", key, "");
 }

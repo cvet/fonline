@@ -92,6 +92,10 @@ extern "C" int main(int argc, char** argv) // Handled by SDL
 
         WriteLog("Starting Mapper {}...", FO_GAME_VERSION);
 
+        if (App->Settings.HideNativeCursor) {
+            App->HideCursor();
+        }
+
 #if FO_IOS
         MapperEntry(nullptr);
         App->SetMainLoopCallback(MapperEntry);

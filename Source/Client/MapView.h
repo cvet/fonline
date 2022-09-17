@@ -210,7 +210,7 @@ public:
     void GetHexCurrentPosition(ushort hx, ushort hy, int& x, int& y) const;
 
     void FindSetCenter(int cx, int cy);
-    void ProcessHexBorders(ItemHexView* item);
+    void ProcessHexBorders(const ItemHexView* item);
     void RebuildMap(int rx, int ry);
     void RebuildMapOffset(int ox, int oy);
     void RefreshMap() { RebuildMap(_screenHexX, _screenHexY); }
@@ -310,11 +310,11 @@ private:
     [[nodiscard]] auto ScrollCheckPos(int (&positions)[4], int dir1, int dir2) -> bool;
     [[nodiscard]] auto ScrollCheck(int xmod, int ymod) -> bool;
 
-    void AddCritter(CritterHexView* cr);
+    void AddCritterInternal(CritterHexView* cr);
     void AddCritterToField(CritterHexView* cr);
     void RemoveCritterFromField(CritterHexView* cr);
 
-    void AddItem(ItemHexView* item);
+    void AddItemInternal(ItemHexView* item);
     void AddItemToField(ItemHexView* item);
     void RemoveItemFromField(ItemHexView* item);
 
@@ -324,7 +324,7 @@ private:
     void InitView(int cx, int cy);
     void ResizeView();
     auto ProcessHexBorders(uint spr_id, int ox, int oy, bool resize_map) -> bool;
-    auto ProcessTileBorder(Field::Tile& tile, bool is_roof) -> bool;
+    auto ProcessTileBorder(const Field::Tile& tile, bool is_roof) -> bool;
 
     // Lighting
     void PrepareLightToDraw();

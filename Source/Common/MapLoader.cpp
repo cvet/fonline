@@ -51,6 +51,19 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
         throw MapLoaderException("Invalid map format", name);
     }
 
+    // Automatic id fixier
+    unordered_set<uint> busy_ids;
+    const auto process_id = [&busy_ids](uint id) {
+        if (!busy_ids.insert(id).second) {
+            uint new_id = std::numeric_limits<uint>::max();
+            while (!busy_ids.insert(new_id).second) {
+                new_id--;
+            }
+            return new_id;
+        }
+        return id;
+    };
+
     // Critters
     vector<string> errors;
     for (const auto& pkv : map_data.GetSections("Critter")) {
@@ -60,7 +73,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
             continue;
         }
 
-        const auto id = _str(kv["$Id"]).toUInt();
+        const auto id = process_id(_str(kv["$Id"]).toUInt());
         const auto& proto_name = kv["$Proto"];
         const auto* proto = proto_mngr.GetProtoCritter(name_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {
@@ -79,7 +92,7 @@ void MapLoader::Load(string_view name, const string& buf, ProtoManager& proto_mn
             continue;
         }
 
-        const auto id = _str(kv["$Id"]).toUInt();
+        const auto id = process_id(_str(kv["$Id"]).toUInt());
         const auto& proto_name = kv["$Proto"];
         const auto* proto = proto_mngr.GetProtoItem(name_resolver.ToHashedString(proto_name));
         if (proto == nullptr) {

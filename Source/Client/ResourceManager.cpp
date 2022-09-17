@@ -97,12 +97,15 @@ void ResourceManager::FreeResources(AtlasType atlas_type)
 void ResourceManager::ReinitializeDynamicAtlas()
 {
     FreeResources(AtlasType::Dynamic);
-    _sprMngr.PushAtlasType(AtlasType::Dynamic);
-    _sprMngr.InitializeEgg("TransparentEgg.png");
     _sprMngr.DestroyAnyFrames(CritterDefaultAnim);
     _sprMngr.DestroyAnyFrames(ItemHexDefaultAnim);
-    CritterDefaultAnim = _sprMngr.LoadAnimation("CritterStub.png", true);
-    ItemHexDefaultAnim = _sprMngr.LoadAnimation("ItemStub.png", true);
+
+    _sprMngr.PushAtlasType(AtlasType::Dynamic);
+    {
+        _sprMngr.InitializeEgg("TransparentEgg.png");
+        CritterDefaultAnim = _sprMngr.LoadAnimation("CritterStub.png", true);
+        ItemHexDefaultAnim = _sprMngr.LoadAnimation("ItemStub.png", true);
+    }
     _sprMngr.PopAtlasType();
 }
 

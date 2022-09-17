@@ -41,18 +41,19 @@
 #include "StringUtils.h"
 #include "WinApi-Include.h"
 
-FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
-    FOEngineBase(settings, PropertiesRelationType::BothRelative),
-    FOClient(settings, window),
-
-    IfaceIni("", "", this)
+FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(settings, PropertiesRelationType::BothRelative), FOClient(settings, window, true)
 {
+    for (const auto& dir : settings.BakeContentEntries) {
+        FileSys.AddDataSource(dir, DataSourceType::DirRoot);
+    }
+
     extern void Mapper_RegisterData(FOEngineBase*);
     Mapper_RegisterData(this);
     ScriptSys = new MapperScriptSystem(this);
 
-    // Default effects
-    EffectMngr.LoadDefaultEffects();
+    ProtoMngr.LoadFromResources();
+
+    ResMngr.ReinitializeDynamicAtlas();
 
     // Fonts
     SprMngr.PushAtlasType(AtlasType::Static);
@@ -84,7 +85,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         Tabs[INT_MODE_CRIT][proto->CollectionName].NpcProtos.push_back(proto);
     }
     for (auto&& [pid, proto] : Tabs[INT_MODE_CRIT]) {
-        std::sort(proto.NpcProtos.begin(), proto.NpcProtos.end(), [](const ProtoCritter* a, const ProtoCritter* b) { return a->GetName().compare(b->GetName()); });
+        std::sort(proto.NpcProtos.begin(), proto.NpcProtos.end(), [](const ProtoCritter* a, const ProtoCritter* b) -> bool { return a->GetName() < b->GetName(); });
     }
 
     const auto& item_protos = ProtoMngr.GetProtoItems();
@@ -93,7 +94,7 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
         Tabs[INT_MODE_ITEM][proto->CollectionName].ItemProtos.push_back(proto);
     }
     for (auto&& [pid, proto] : Tabs[INT_MODE_ITEM]) {
-        std::sort(proto.ItemProtos.begin(), proto.ItemProtos.end(), [](const ProtoItem* a, const ProtoItem* b) { return a->GetName().compare(b->GetName()); });
+        std::sort(proto.ItemProtos.begin(), proto.ItemProtos.end(), [](const ProtoItem* a, const ProtoItem* b) -> bool { return a->GetName() < b->GetName(); });
     }
 
     for (auto i = 0; i < TAB_COUNT; i++) {
@@ -117,10 +118,10 @@ FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) :
     TabsName[INT_MODE_LIST] = "Maps";
 
     // Hex manager
-    CurMap->SwitchShowTrack();
     ChangeGameTime();
 
     // Start script
+    ScriptSys->InitModules();
     OnStart.Fire();
 
     if (!Settings.StartMap.empty()) {
@@ -162,8 +163,10 @@ void FOMapper::InitIface()
 {
     WriteLog("Init interface");
 
-    auto& ini = IfaceIni; // Todo: parse mapper_default.ini
-    // ini = FileSys.ReadConfigFile("mapper_default.ini", *this);
+    const auto config_content = FileSys.ReadFileText("mapper_default.ini");
+
+    IfaceIni.reset(new ConfigFile("mapper_default.ini", config_content));
+    const auto& ini = *IfaceIni;
 
     // Interface
     IntX = ini.GetInt("", "IntX", -1);
@@ -273,15 +276,15 @@ void FOMapper::InitIface()
     WriteLog("Init interface complete");
 }
 
-auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) -> bool
+auto FOMapper::IfaceLoadRect(IRect& comp, string_view name) const -> bool
 {
-    const auto res = IfaceIni.GetStr("", name);
+    const auto res = IfaceIni->GetStr("", name);
     if (res.empty()) {
         WriteLog("Signature '{}' not found", name);
         return false;
     }
 
-    if (sscanf(res.c_str(), "%d%d%d%d", &comp[0], &comp[1], &comp[2], &comp[3]) != 4) {
+    if (std::sscanf(res.c_str(), "%d%d%d%d", &comp[0], &comp[1], &comp[2], &comp[3]) != 4) {
         comp.Clear();
         WriteLog("Unable to parse signature '{}'", name);
         return false;
@@ -299,692 +302,479 @@ void FOMapper::ChangeGameTime()
     }
 }
 
-void FOMapper::ProcessInputEvent(const InputEvent& ev)
+void FOMapper::ProcessMapperInput()
 {
-    throw NotImplementedException(LINE_STR);
-    // Process events
-    /*for (uint i = 0; i < events.size(); i += 2)
-    {
-        // Event data
-        int event = events[i];
-        int event_key = events[i + 1];
-        const char* event_text = events_text[i / 2].c_str();
+    std::tie(Settings.MouseX, Settings.MouseY) = App->Input.GetMousePosition();
 
-        // Keys codes mapping
-        uchar dikdw = 0;
-        uchar dikup = 0;
-        if (event == SDL_KEYDOWN)
-            dikdw = Keyb.MapKey(event_key);
-        else if (event == SDL_KEYUP)
-            dikup = Keyb.MapKey(event_key);
-        if (!dikdw && !dikup)
-            continue;
-
-        // Avoid repeating
-        static bool key_pressed[0x100];
-        if (dikdw && key_pressed[dikdw])
-            continue;
-        if (dikup && !key_pressed[dikup])
-            continue;
-
-        // Keyboard states, to know outside function
-        key_pressed[dikup] = false;
-        key_pressed[dikdw] = true;
-
-        // Key script event
-        bool script_result = true;
-        if (dikdw)
-        {
-            string event_text_script = event_text;
-            script_result = KeyDown.Fire(dikdw, event_text_script);
-        }
-        if (dikup)
-        {
-            string event_text_script = event_text;
-            script_result = KeyUp.Fire(dikup, event_text_script);
-        }
-
-        // Disable keyboard events
-        if (!script_result || Settings.DisableKeyboardEvents)
-        {
-            if (dikdw == KeyCode::Escape && Keyb.ShiftDwn)
-                Settings.Quit = true;
-            continue;
-        }
-
-        // Control keys
-        if (dikdw == KeyCode::Rcontrol || dikdw == KeyCode::Lcontrol)
-            Keyb.CtrlDwn = true;
-        else if (dikdw == KeyCode::Lmenu || dikdw == KeyCode::Rmenu)
-            Keyb.AltDwn = true;
-        else if (dikdw == KeyCode::Lshift || dikdw == KeyCode::Rshift)
-            Keyb.ShiftDwn = true;
-        if (dikup == KeyCode::Rcontrol || dikup == KeyCode::Lcontrol)
-            Keyb.CtrlDwn = false;
-        else if (dikup == KeyCode::Lmenu || dikup == KeyCode::Rmenu)
-            Keyb.AltDwn = false;
-        else if (dikup == KeyCode::Lshift || dikup == KeyCode::Rshift)
-            Keyb.ShiftDwn = false;
-
-        // Hotkeys
-        if (!Keyb.AltDwn && !Keyb.CtrlDwn && !Keyb.ShiftDwn)
-        {
-            switch (dikdw)
-            {
-            case KeyCode::F1:
-                Settings.ShowItem = !Settings.ShowItem;
-                CurMap->RefreshMap();
-                break;
-            case KeyCode::F2:
-                Settings.ShowScen = !Settings.ShowScen;
-                CurMap->RefreshMap();
-                break;
-            case KeyCode::F3:
-                Settings.ShowWall = !Settings.ShowWall;
-                CurMap->RefreshMap();
-                break;
-            case KeyCode::F4:
-                Settings.ShowCrit = !Settings.ShowCrit;
-                CurMap->RefreshMap();
-                break;
-            case KeyCode::F5:
-                Settings.ShowTile = !Settings.ShowTile;
-                CurMap->RefreshMap();
-                break;
-            case KeyCode::F6:
-                Settings.ShowFast = !Settings.ShowFast;
-                CurMap->RefreshMap();
-                break;
-            case KeyCode::F7:
-                IntVisible = !IntVisible;
-                break;
-            case KeyCode::F8:
-                Settings.MouseScroll = !Settings.MouseScroll;
-                break;
-            case KeyCode::F9:
-                ObjVisible = !ObjVisible;
-                break;
-            case KeyCode::F10:
-                CurMap->SwitchShowHex();
-                break;
-
-            // Fullscreen
-            case KeyCode::F11:
-                if (!Settings.FullScreen)
-                {
-                    if (SprMngr.EnableFullscreen())
-                        Settings.FullScreen = true;
-                }
-                else
-                {
-                    if (SprMngr.DisableFullscreen())
-                        Settings.FullScreen = false;
-                }
-                SprMngr.RefreshViewport();
-                continue;
-            // Minimize
-            case KeyCode::F12:
-                SprMngr.MinimizeWindow();
-                continue;
-
-            case KeyCode::Delete:
-                SelectDelete();
-                break;
-            case KeyCode::Add:
-                if (!ConsoleEdit && SelectedEntities.empty())
-                {
-                    int day_time = CurMap->GetDayTime();
-                    day_time += 60;
-                    Globals->SetMinute(day_time % 60);
-                    Globals->SetHour(day_time / 60 % 24);
-                    ChangeGameTime();
-                }
-                break;
-            case KeyCode::Subtract:
-                if (!ConsoleEdit && SelectedEntities.empty())
-                {
-                    int day_time = CurMap->GetDayTime();
-                    day_time -= 60;
-                    Globals->SetMinute(day_time % 60);
-                    Globals->SetHour(day_time / 60 % 24);
-                    ChangeGameTime();
-                }
-                break;
-            case KeyCode::Tab:
-                SelectType = (SelectType == SELECT_TYPE_OLD ? SELECT_TYPE_NEW : SELECT_TYPE_OLD);
-                break;
-            default:
-                break;
-            }
-        }
-
-        if (Keyb.ShiftDwn)
-        {
-            switch (dikdw)
-            {
-            case KeyCode::F7:
-                IntFix = !IntFix;
-                break;
-            case KeyCode::F9:
-                ObjFix = !ObjFix;
-                break;
-            case KeyCode::F10:
-                CurMap->SwitchShowRain();
-                break;
-            case KeyCode::F11:
-                SprMngr.DumpAtlases();
-                break;
-            case KeyCode::Escape:
-                exit(0);
-                break;
-            case KeyCode::Add:
-                if (!ConsoleEdit && SelectedEntities.empty())
-                {
-                    int day_time = CurMap->GetDayTime();
-                    day_time += 1;
-                    Globals->SetMinute(day_time % 60);
-                    Globals->SetHour(day_time / 60 % 24);
-                    ChangeGameTime();
-                }
-                break;
-            case KeyCode::Subtract:
-                if (!ConsoleEdit && SelectedEntities.empty())
-                {
-                    int day_time = CurMap->GetDayTime();
-                    day_time -= 60;
-                    Globals->SetMinute(day_time % 60);
-                    Globals->SetHour(day_time / 60 % 24);
-                    ChangeGameTime();
-                }
-                break;
-            case KeyCode::C0:
-            case KeyCode::Numpad0:
-                TileLayer = 0;
-                break;
-            case KeyCode::C1:
-            case KeyCode::Numpad1:
-                TileLayer = 1;
-                break;
-            case KeyCode::C2:
-            case KeyCode::Numpad2:
-                TileLayer = 2;
-                break;
-            case KeyCode::C3:
-            case KeyCode::Numpad3:
-                TileLayer = 3;
-                break;
-            case KeyCode::C4:
-            case KeyCode::Numpad4:
-                TileLayer = 4;
-                break;
-            default:
-                break;
-            }
-        }
-
-        if (Keyb.CtrlDwn)
-        {
-            switch (dikdw)
-            {
-            case KeyCode::X:
-                BufferCut();
-                break;
-            case KeyCode::C:
-                BufferCopy();
-                break;
-            case KeyCode::V:
-                BufferPaste(50, 50);
-                break;
-            case KeyCode::A:
-                SelectAll();
-                break;
-            case KeyCode::S:
-                if (CurMap)
-                {
-                    CurMap->GetProtoMap(*(ProtoMap*)CurMap->Proto);
-                    // Todo: need attention!
-                    // ((ProtoMap*)CurMap->Proto)->EditorSave(FileSys, "");
-                    AddMessage("Map saved");
-                    RunMapSaveScript(CurMap);
-                }
-                break;
-            case KeyCode::D:
-                Settings.ScrollCheck = !Settings.ScrollCheck;
-                break;
-            case KeyCode::B:
-                CurMap->MarkPassedHexes();
-                break;
-            case KeyCode::Q:
-                Settings.ShowCorners = !Settings.ShowCorners;
-                break;
-            case KeyCode::E:
-                Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
-                break;
-            case KeyCode::M:
-                DrawCrExtInfo++;
-                if (DrawCrExtInfo > DRAW_CR_INFO_MAX)
-                    DrawCrExtInfo = 0;
-                break;
-            case KeyCode::L:
-                SaveLogFile();
-                break;
-            default:
-                break;
-            }
-        }
-
-        // Key down
-        if (dikdw)
-        {
-            if (ObjVisible && !SelectedEntities.empty())
-            {
-                ObjKeyDown(dikdw, event_text);
-            }
-            else
-            {
-                ConsoleKeyDown(dikdw, event_text);
-                if (!ConsoleEdit)
-                {
-                    switch (dikdw)
-                    {
-                    case KeyCode::Left:
-                        Settings.ScrollKeybLeft = true;
-                        break;
-                    case KeyCode::Right:
-                        Settings.ScrollKeybRight = true;
-                        break;
-                    case KeyCode::Up:
-                        Settings.ScrollKeybUp = true;
-                        break;
-                    case KeyCode::Down:
-                        Settings.ScrollKeybDown = true;
-                        break;
-                    default:
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Key up
-        if (dikup)
-        {
-            ConsoleKeyUp(dikup);
-
-            switch (dikup)
-            {
-            case KeyCode::Left:
-                Settings.ScrollKeybLeft = false;
-                break;
-            case KeyCode::Right:
-                Settings.ScrollKeybRight = false;
-                break;
-            case KeyCode::Up:
-                Settings.ScrollKeybUp = false;
-                break;
-            case KeyCode::Down:
-                Settings.ScrollKeybDown = false;
-                break;
-            default:
-                break;
-            }
-        }
-    }
-}
-
-void FOMapper::ParseMouse()
-{
-    // Mouse position
-    int mx = 0, my = 0;
-    SDL_GetMouseState(&mx, &my);
-    Settings.MouseX = std::clamp(mx, 0, Settings.ScreenWidth - 1);
-    Settings.MouseY = std::clamp(my, 0, Settings.ScreenHeight - 1);
-
-    // Stop processing if window not active
-    if (!SprMngr.IsWindowFocused())
-    {
-        Settings.MainWindowMouseEvents.clear();
-        IntHold = INT_NONE;
-        InputLost.Fire();
-        return;
-    }
-
-    // Mouse move
-    if (Settings.LastMouseX != Settings.MouseX || Settings.LastMouseY != Settings.MouseY)
-    {
-        int ox = Settings.MouseX - Settings.LastMouseX;
-        int oy = Settings.MouseY - Settings.LastMouseY;
-        Settings.LastMouseX = Settings.MouseX;
-        Settings.LastMouseY = Settings.MouseY;
-
-        MouseMove.Fire(ox, oy);
-
-        IntMouseMove();
-    }
-
-    // Mouse Scroll
-    if (Settings.MouseScroll)
-    {
-        if (Settings.MouseX >= Settings.ScreenWidth - 1)
+    if (Settings.MouseScroll) {
+        if (Settings.MouseX >= Settings.ScreenWidth - 1) {
             Settings.ScrollMouseRight = true;
-        else
+        }
+        else {
             Settings.ScrollMouseRight = false;
+        }
 
-        if (Settings.MouseX <= 0)
+        if (Settings.MouseX <= 0) {
             Settings.ScrollMouseLeft = true;
-        else
+        }
+        else {
             Settings.ScrollMouseLeft = false;
+        }
 
-        if (Settings.MouseY >= Settings.ScreenHeight - 1)
+        if (Settings.MouseY >= Settings.ScreenHeight - 1) {
             Settings.ScrollMouseDown = true;
-        else
+        }
+        else {
             Settings.ScrollMouseDown = false;
+        }
 
-        if (Settings.MouseY <= 0)
+        if (Settings.MouseY <= 0) {
             Settings.ScrollMouseUp = true;
-        else
+        }
+        else {
             Settings.ScrollMouseUp = false;
+        }
     }
 
-    // Get buffered data
-    if (Settings.MainWindowMouseEvents.empty())
+    if (!SprMngr.IsWindowFocused()) {
+        Keyb.Lost();
+        OnInputLost.Fire();
+        IntHold = INT_NONE;
         return;
-    IntVec events = Settings.MainWindowMouseEvents;
-    Settings.MainWindowMouseEvents.clear();
+    }
 
-    // Process events
-    for (uint i = 0; i < events.size(); i += 3)
-    {
-        int event = events[i];
-        int event_button = events[i + 1];
-        int event_dy = -events[i + 2];
+    InputEvent ev;
+    while (App->Input.PollEvent(ev)) {
+        ProcessInputEvent(ev);
 
-        // Scripts
-        bool script_result = true;
-        if (event == SDL_MOUSEWHEEL)
-            script_result = MouseDown.Fire(event_dy > 0 ? MOUSE_BUTTON_WHEEL_UP : MOUSE_BUTTON_WHEEL_DOWN);
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT)
-            script_result = MouseDown.Fire(MOUSE_BUTTON_LEFT);
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT)
-            script_result = MouseUp.Fire(MOUSE_BUTTON_LEFT);
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_RIGHT)
-            script_result = MouseDown.Fire(MOUSE_BUTTON_RIGHT);
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT)
-            script_result = MouseUp.Fire(MOUSE_BUTTON_RIGHT);
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE)
-            script_result = MouseDown.Fire(MOUSE_BUTTON_MIDDLE);
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_MIDDLE)
-            script_result = MouseUp.Fire(MOUSE_BUTTON_MIDDLE);
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(4))
-            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT0);
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(4))
-            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT0);
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(5))
-            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT1);
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(5))
-            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT1);
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(6))
-            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT2);
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(6))
-            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT2);
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(7))
-            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT3);
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(7))
-            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT3);
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON(8))
-            script_result = MouseDown.Fire(MOUSE_BUTTON_EXT4);
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON(8))
-            script_result = MouseUp.Fire(MOUSE_BUTTON_EXT4);
-        if (!script_result || Settings.DisableMouseEvents)
-            continue;
+        const auto ev_type = ev.Type;
 
-        // Wheel
-        if (event == SDL_MOUSEWHEEL)
-        {
-            if (IntVisible && SubTabsActive && IsCurInRect(SubTabsRect, SubTabsX, SubTabsY))
-            {
+        if (ev_type == InputEvent::EventType::KeyDownEvent || ev_type == InputEvent::EventType::KeyUpEvent) {
+            const auto dikdw = ev_type == InputEvent::EventType::KeyDownEvent ? ev.KeyDown.Code : KeyCode::None;
+            const auto dikup = ev_type == InputEvent::EventType::KeyUpEvent ? ev.KeyUp.Code : KeyCode::None;
+
+            // Avoid repeating
+            if (dikdw != KeyCode::None && PressedKeys[static_cast<int>(dikdw)]) {
+                continue;
+            }
+            if (dikup != KeyCode::None && !PressedKeys[static_cast<int>(dikup)]) {
+                continue;
+            }
+
+            // Keyboard states, to know outside function
+            PressedKeys[static_cast<int>(dikup)] = false;
+            PressedKeys[static_cast<int>(dikdw)] = true;
+
+            // Control keys
+            if (dikdw == KeyCode::Rcontrol || dikdw == KeyCode::Lcontrol) {
+                Keyb.CtrlDwn = true;
+            }
+            else if (dikdw == KeyCode::Lmenu || dikdw == KeyCode::Rmenu) {
+                Keyb.AltDwn = true;
+            }
+            else if (dikdw == KeyCode::Lshift || dikdw == KeyCode::Rshift) {
+                Keyb.ShiftDwn = true;
+            }
+            if (dikup == KeyCode::Rcontrol || dikup == KeyCode::Lcontrol) {
+                Keyb.CtrlDwn = false;
+            }
+            else if (dikup == KeyCode::Lmenu || dikup == KeyCode::Rmenu) {
+                Keyb.AltDwn = false;
+            }
+            else if (dikup == KeyCode::Lshift || dikup == KeyCode::Rshift) {
+                Keyb.ShiftDwn = false;
+            }
+
+            // Hotkeys
+            if (!Keyb.AltDwn && !Keyb.CtrlDwn && !Keyb.ShiftDwn) {
+                switch (dikdw) {
+                case KeyCode::F1:
+                    Settings.ShowItem = !Settings.ShowItem;
+                    CurMap->RefreshMap();
+                    break;
+                case KeyCode::F2:
+                    Settings.ShowScen = !Settings.ShowScen;
+                    CurMap->RefreshMap();
+                    break;
+                case KeyCode::F3:
+                    Settings.ShowWall = !Settings.ShowWall;
+                    CurMap->RefreshMap();
+                    break;
+                case KeyCode::F4:
+                    Settings.ShowCrit = !Settings.ShowCrit;
+                    CurMap->RefreshMap();
+                    break;
+                case KeyCode::F5:
+                    Settings.ShowTile = !Settings.ShowTile;
+                    CurMap->RefreshMap();
+                    break;
+                case KeyCode::F6:
+                    Settings.ShowFast = !Settings.ShowFast;
+                    CurMap->RefreshMap();
+                    break;
+                case KeyCode::F7:
+                    IntVisible = !IntVisible;
+                    break;
+                case KeyCode::F8:
+                    Settings.MouseScroll = !Settings.MouseScroll;
+                    break;
+                case KeyCode::F9:
+                    ObjVisible = !ObjVisible;
+                    break;
+                case KeyCode::F10:
+                    CurMap->SwitchShowHex();
+                    break;
+
+                // Fullscreen
+                case KeyCode::F11:
+                    if (!Settings.FullScreen) {
+                        if (SprMngr.EnableFullscreen()) {
+                            Settings.FullScreen = true;
+                        }
+                    }
+                    else {
+                        if (SprMngr.DisableFullscreen()) {
+                            Settings.FullScreen = false;
+                        }
+                    }
+                    // SprMngr.RefreshViewport();
+                    continue;
+                // Minimize
+                case KeyCode::F12:
+                    SprMngr.MinimizeWindow();
+                    continue;
+
+                case KeyCode::Delete:
+                    SelectDelete();
+                    break;
+                case KeyCode::Add:
+                    if (!ConsoleEdit && SelectedEntities.empty()) {
+                        int day_time = CurMap->GetDayTime();
+                        day_time += 60;
+                        SetMinute(day_time % 60);
+                        SetHour(day_time / 60 % 24);
+                        ChangeGameTime();
+                    }
+                    break;
+                case KeyCode::Subtract:
+                    if (!ConsoleEdit && SelectedEntities.empty()) {
+                        int day_time = CurMap->GetDayTime();
+                        day_time -= 60;
+                        SetMinute(day_time % 60);
+                        SetHour(day_time / 60 % 24);
+                        ChangeGameTime();
+                    }
+                    break;
+                case KeyCode::Tab:
+                    SelectType = (SelectType == SELECT_TYPE_OLD ? SELECT_TYPE_NEW : SELECT_TYPE_OLD);
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            if (Keyb.ShiftDwn) {
+                switch (dikdw) {
+                case KeyCode::F7:
+                    IntFix = !IntFix;
+                    break;
+                case KeyCode::F9:
+                    ObjFix = !ObjFix;
+                    break;
+                case KeyCode::F10:
+                    // CurMap->SwitchShowRain();
+                    break;
+                case KeyCode::F11:
+                    SprMngr.DumpAtlases();
+                    break;
+                case KeyCode::Escape:
+                    exit(0);
+                    break;
+                case KeyCode::Add:
+                    if (!ConsoleEdit && SelectedEntities.empty()) {
+                        int day_time = CurMap->GetDayTime();
+                        day_time += 1;
+                        SetMinute(day_time % 60);
+                        SetHour(day_time / 60 % 24);
+                        ChangeGameTime();
+                    }
+                    break;
+                case KeyCode::Subtract:
+                    if (!ConsoleEdit && SelectedEntities.empty()) {
+                        int day_time = CurMap->GetDayTime();
+                        day_time -= 60;
+                        SetMinute(day_time % 60);
+                        SetHour(day_time / 60 % 24);
+                        ChangeGameTime();
+                    }
+                    break;
+                case KeyCode::C0:
+                case KeyCode::Numpad0:
+                    TileLayer = 0;
+                    break;
+                case KeyCode::C1:
+                case KeyCode::Numpad1:
+                    TileLayer = 1;
+                    break;
+                case KeyCode::C2:
+                case KeyCode::Numpad2:
+                    TileLayer = 2;
+                    break;
+                case KeyCode::C3:
+                case KeyCode::Numpad3:
+                    TileLayer = 3;
+                    break;
+                case KeyCode::C4:
+                case KeyCode::Numpad4:
+                    TileLayer = 4;
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            if (Keyb.CtrlDwn) {
+                switch (dikdw) {
+                case KeyCode::X:
+                    BufferCut();
+                    break;
+                case KeyCode::C:
+                    BufferCopy();
+                    break;
+                case KeyCode::V:
+                    BufferPaste(50, 50);
+                    break;
+                case KeyCode::A:
+                    SelectAll();
+                    break;
+                case KeyCode::S:
+                    if (CurMap != nullptr) {
+                        SaveMap(CurMap, "");
+                    }
+                    break;
+                case KeyCode::D:
+                    Settings.ScrollCheck = !Settings.ScrollCheck;
+                    break;
+                case KeyCode::B:
+                    CurMap->MarkPassedHexes();
+                    break;
+                case KeyCode::Q:
+                    Settings.ShowCorners = !Settings.ShowCorners;
+                    break;
+                case KeyCode::E:
+                    Settings.ShowDrawOrder = !Settings.ShowDrawOrder;
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            // Key down
+            if (dikdw != KeyCode::None) {
+                if (ObjVisible && !SelectedEntities.empty()) {
+                    ObjKeyDown(dikdw, ev.KeyDown.Text);
+                }
+                else {
+                    ConsoleKeyDown(dikdw, ev.KeyDown.Text);
+                    if (!ConsoleEdit) {
+                        switch (dikdw) {
+                        case KeyCode::Left:
+                            Settings.ScrollKeybLeft = true;
+                            break;
+                        case KeyCode::Right:
+                            Settings.ScrollKeybRight = true;
+                            break;
+                        case KeyCode::Up:
+                            Settings.ScrollKeybUp = true;
+                            break;
+                        case KeyCode::Down:
+                            Settings.ScrollKeybDown = true;
+                            break;
+                        default:
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Key up
+            if (dikup != KeyCode::None) {
+                ConsoleKeyUp(dikup);
+
+                switch (dikup) {
+                case KeyCode::Left:
+                    Settings.ScrollKeybLeft = false;
+                    break;
+                case KeyCode::Right:
+                    Settings.ScrollKeybRight = false;
+                    break;
+                case KeyCode::Up:
+                    Settings.ScrollKeybUp = false;
+                    break;
+                case KeyCode::Down:
+                    Settings.ScrollKeybDown = false;
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+        else if (ev_type == InputEvent::EventType::MouseWheelEvent) {
+            if (IntVisible && SubTabsActive && IsCurInRect(SubTabsRect, SubTabsX, SubTabsY)) {
                 int step = 4;
-                if (Keyb.ShiftDwn)
+                if (Keyb.ShiftDwn) {
                     step = 8;
-                else if (Keyb.CtrlDwn)
+                }
+                else if (Keyb.CtrlDwn) {
                     step = 20;
-                else if (Keyb.AltDwn)
+                }
+                else if (Keyb.AltDwn) {
                     step = 50;
+                }
 
-                int data = event_dy;
-                if (data > 0)
+                const int data = ev.MouseWheel.Delta;
+                if (data > 0) {
                     TabsScroll[SubTabsActiveTab] += step;
-                else
+                }
+                else {
                     TabsScroll[SubTabsActiveTab] -= step;
-                if (TabsScroll[SubTabsActiveTab] < 0)
+                }
+                if (TabsScroll[SubTabsActiveTab] < 0) {
                     TabsScroll[SubTabsActiveTab] = 0;
+                }
             }
-            else if (IntVisible && IsCurInRect(IntWWork, IntX, IntY) &&
-                (IsObjectMode() || IsTileMode() || IsCritMode()))
-            {
+            else if (IntVisible && IsCurInRect(IntWWork, IntX, IntY) && (IsObjectMode() || IsTileMode() || IsCritMode())) {
                 int step = 1;
-                if (Keyb.ShiftDwn)
+                if (Keyb.ShiftDwn) {
                     step = ProtosOnScreen;
-                else if (Keyb.CtrlDwn)
+                }
+                else if (Keyb.CtrlDwn) {
                     step = 100;
-                else if (Keyb.AltDwn)
+                }
+                else if (Keyb.AltDwn) {
                     step = 1000;
+                }
 
-                int data = event_dy;
-                if (data > 0)
-                {
-                    if (IsObjectMode() || IsTileMode() || IsCritMode())
-                    {
+                int data = ev.MouseWheel.Delta;
+                if (data > 0) {
+                    if (IsObjectMode() || IsTileMode() || IsCritMode()) {
                         (*CurProtoScroll) -= step;
-                        if (*CurProtoScroll < 0)
+                        if (*CurProtoScroll < 0) {
                             *CurProtoScroll = 0;
+                        }
                     }
-                    else if (IntMode == INT_MODE_INCONT)
-                    {
+                    else if (IntMode == INT_MODE_INCONT) {
                         InContScroll -= step;
-                        if (InContScroll < 0)
+                        if (InContScroll < 0) {
                             InContScroll = 0;
+                        }
                     }
-                    else if (IntMode == INT_MODE_LIST)
-                    {
+                    else if (IntMode == INT_MODE_LIST) {
                         ListScroll -= step;
-                        if (ListScroll < 0)
+                        if (ListScroll < 0) {
                             ListScroll = 0;
+                        }
                     }
                 }
-                else
-                {
-                    if (IsObjectMode() && (*CurItemProtos).size())
-                    {
+                else {
+                    if (IsObjectMode() && (*CurItemProtos).size()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= (int)(*CurItemProtos).size())
-                            *CurProtoScroll = (int)(*CurItemProtos).size() - 1;
+                        if (*CurProtoScroll >= static_cast<int>((*CurItemProtos).size()))
+                            *CurProtoScroll = static_cast<int>((*CurItemProtos).size()) - 1;
                     }
-                    else if (IsTileMode() && CurTileHashes->size())
-                    {
+                    else if (IsTileMode() && CurTileNames->size()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= (int)CurTileHashes->size())
-                            *CurProtoScroll = (int)CurTileHashes->size() - 1;
+                        if (*CurProtoScroll >= static_cast<int>(CurTileNames->size()))
+                            *CurProtoScroll = static_cast<int>(CurTileNames->size()) - 1;
                     }
-                    else if (IsCritMode() && CurNpcProtos->size())
-                    {
+                    else if (IsCritMode() && CurNpcProtos->size()) {
                         (*CurProtoScroll) += step;
-                        if (*CurProtoScroll >= (int)CurNpcProtos->size())
-                            *CurProtoScroll = (int)CurNpcProtos->size() - 1;
+                        if (*CurProtoScroll >= static_cast<int>(CurNpcProtos->size()))
+                            *CurProtoScroll = static_cast<int>(CurNpcProtos->size()) - 1;
                     }
-                    else if (IntMode == INT_MODE_INCONT)
+                    else if (IntMode == INT_MODE_INCONT) {
                         InContScroll += step;
-                    else if (IntMode == INT_MODE_LIST)
+                    }
+                    else if (IntMode == INT_MODE_LIST) {
                         ListScroll += step;
+                    }
                 }
             }
-            else
-            {
-                if (event_dy)
-                    CurMap->ChangeZoom(event_dy > 0 ? -1 : 1);
+            else {
+                if (ev.MouseWheel.Delta != 0) {
+                    CurMap->ChangeZoom(ev.MouseWheel.Delta > 0 ? -1 : 1);
+                }
             }
-            continue;
         }
-
-        // Middle down
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_MIDDLE)
-        {
-            CurMMouseDown();
-            continue;
+        else if (ev_type == InputEvent::EventType::MouseDownEvent) {
+            if (ev.MouseDown.Button == MouseButton::Middle) {
+                CurMMouseDown();
+            }
+            if (ev.MouseDown.Button == MouseButton::Left) {
+                IntLMouseDown();
+            }
         }
-
-        // Left Button Down
-        if (event == SDL_MOUSEBUTTONDOWN && event_button == SDL_BUTTON_LEFT)
-        {
-            IntLMouseDown();
-            continue;
+        else if (ev_type == InputEvent::EventType::MouseUpEvent) {
+            if (ev.MouseDown.Button == MouseButton::Left) {
+                IntLMouseUp();
+            }
+            if (ev.MouseDown.Button == MouseButton::Right) {
+                CurRMouseUp();
+            }
         }
-
-        // Left Button Up
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_LEFT)
-        {
-            IntLMouseUp();
-            continue;
+        else if (ev.Type == InputEvent::EventType::MouseMoveEvent) {
+            IntMouseMove();
         }
-
-        // Right Button Up
-        if (event == SDL_MOUSEBUTTONUP && event_button == SDL_BUTTON_RIGHT)
-        {
-            CurRMouseUp();
-            continue;
-        }
-    }*/
+    }
 }
 
 void FOMapper::MapperMainLoop()
 {
     GameTime.FrameAdvance();
 
-    // Fixed FPS
-    const auto start_loop = Timer::RealtimeTick();
-
     // FPS counter
-    static auto last_call = GameTime.FrameTick();
-    static uint call_counter = 0;
-    if ((GameTime.FrameTick() - last_call) >= 1000) {
-        Settings.FPS = call_counter;
-        call_counter = 0;
-        last_call = GameTime.FrameTick();
+    if (GameTime.FrameTick() - _fpsTick >= 1000) {
+        Settings.FPS = _fpsCounter;
+        _fpsCounter = 0;
+        _fpsTick = GameTime.FrameTick();
     }
     else {
-        call_counter++;
+        _fpsCounter++;
     }
 
-    // Input events
-    /*SDL_Event event;
-    while (SDL_PollEvent(&event))
-    {
-        if (event.type == SDL_MOUSEMOTION)
-        {
-            int sw = 0, sh = 0;
-            SprMngr.GetWindowSize(sw, sh);
-            int x = (int)(event.motion.x / (float)sw * (float)Settings.ScreenWidth);
-            int y = (int)(event.motion.y / (float)sh * (float)Settings.ScreenHeight);
-            Settings.MouseX = std::clamp(x, 0, Settings.ScreenWidth - 1);
-            Settings.MouseY = std::clamp(y, 0, Settings.ScreenHeight - 1);
-        }
-        else if (event.type == SDL_KEYDOWN || event.type == SDL_KEYUP)
-        {
-            Settings.MainWindowKeyboardEvents.push_back(event.type);
-            Settings.MainWindowKeyboardEvents.push_back(event.key.keysym.scancode);
-            Settings.MainWindowKeyboardEventsText.push_back("");
-        }
-        else if (event.type == SDL_TEXTINPUT)
-        {
-            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYDOWN);
-            Settings.MainWindowKeyboardEvents.push_back(510);
-            Settings.MainWindowKeyboardEventsText.push_back(event.text.text);
-            Settings.MainWindowKeyboardEvents.push_back(SDL_KEYUP);
-            Settings.MainWindowKeyboardEvents.push_back(510);
-            Settings.MainWindowKeyboardEventsText.push_back(event.text.text);
-        }
-        else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP)
-        {
-            Settings.MainWindowMouseEvents.push_back(event.type);
-            Settings.MainWindowMouseEvents.push_back(event.button.button);
-            Settings.MainWindowMouseEvents.push_back(0);
-        }
-        else if (event.type == SDL_FINGERDOWN || event.type == SDL_FINGERUP)
-        {
-            Settings.MainWindowMouseEvents.push_back(
-                event.type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP);
-            Settings.MainWindowMouseEvents.push_back(SDL_BUTTON_LEFT);
-            Settings.MainWindowMouseEvents.push_back(0);
-            Settings.MouseX = (int)(event.tfinger.x * (float)Settings.ScreenWidth);
-            Settings.MouseY = (int)(event.tfinger.y * (float)Settings.ScreenHeight);
-        }
-        else if (event.type == SDL_MOUSEWHEEL)
-        {
-            Settings.MainWindowMouseEvents.push_back(event.type);
-            Settings.MainWindowMouseEvents.push_back(SDL_BUTTON_MIDDLE);
-            Settings.MainWindowMouseEvents.push_back(-event.wheel.y);
-        }
-        else if (event.type == SDL_QUIT)
-        {
-            Settings.Quit = true;
-        }
-    }*/
-
-    // Script loop
     OnLoop.Fire();
-
-    // Input
     ConsoleProcess();
-    ProcessInputEvents();
-
-    // Process
+    ProcessMapperInput();
     AnimProcess();
 
     if (CurMap != nullptr) {
         CurMap->Process();
     }
 
-    // Start render
     SprMngr.BeginScene(COLOR_RGB(100, 100, 100));
+    {
+        DrawIfaceLayer(0);
+        if (CurMap != nullptr) {
+            CurMap->DrawMap();
+        }
 
-    DrawIfaceLayer(0);
-    if (CurMap != nullptr) {
-        CurMap->DrawMap();
+        // Iface
+        DrawIfaceLayer(1);
+        IntDraw();
+        DrawIfaceLayer(2);
+        ConsoleDraw();
+        DrawIfaceLayer(3);
+        ObjDraw();
+        DrawIfaceLayer(4);
+        CurDraw();
+        DrawIfaceLayer(5);
     }
-
-    // Iface
-    DrawIfaceLayer(1);
-    IntDraw();
-    DrawIfaceLayer(2);
-    ConsoleDraw();
-    DrawIfaceLayer(3);
-    ObjDraw();
-    DrawIfaceLayer(4);
-    CurDraw();
-    DrawIfaceLayer(5);
     SprMngr.EndScene();
-
-    // Fixed FPS
-    if (!Settings.VSync && (Settings.FixedFPS != 0)) {
-        if (Settings.FixedFPS > 0) {
-            static auto balance = 0.0;
-            const auto elapsed = Timer::RealtimeTick() - start_loop;
-            const auto need_elapsed = 1000.0 / static_cast<double>(Settings.FixedFPS);
-            if (need_elapsed > elapsed) {
-                const auto sleep = need_elapsed - elapsed + balance;
-                balance = fmod(sleep, 1.0);
-                std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(sleep)));
-            }
-        }
-        else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(-Settings.FixedFPS));
-        }
-    }
 }
 
 void FOMapper::RefreshTiles(int tab)
 {
-    static const string formats[] = {"frm", "fofrm", "bmp", "dds", "dib", "hdr", "jpg", "jpeg", "pfm", "png", "tga", "spr", "til", "zar", "art"};
+    const string formats[] = {"frm", "fofrm", "bmp", "dds", "dib", "hdr", "jpg", "jpeg", "pfm", "png", "tga", "spr", "til", "zar", "art"};
 
     // Clear old tile names
     for (auto it = Tabs[tab].begin(); it != Tabs[tab].end();) {
@@ -2320,20 +2110,20 @@ void FOMapper::RefreshCurProtos()
         InContScroll = 0;
     }
 
-    // Update fast pids
-    CurMap->ClearFastPids();
-    for (const auto* fast_proto : TabsActive[INT_MODE_FAST]->ItemProtos) {
-        CurMap->AddFastPid(fast_proto->GetProtoId());
-    }
-
-    // Update ignore pids
-    CurMap->ClearIgnorePids();
-    for (const auto* ignore_proto : TabsActive[INT_MODE_IGNORE]->ItemProtos) {
-        CurMap->AddIgnorePid(ignore_proto->GetProtoId());
-    }
-
-    // Refresh map
     if (CurMap != nullptr) {
+        // Update fast pids
+        CurMap->ClearFastPids();
+        for (const auto* fast_proto : TabsActive[INT_MODE_FAST]->ItemProtos) {
+            CurMap->AddFastPid(fast_proto->GetProtoId());
+        }
+
+        // Update ignore pids
+        CurMap->ClearIgnorePids();
+        for (const auto* ignore_proto : TabsActive[INT_MODE_IGNORE]->ItemProtos) {
+            CurMap->AddIgnorePid(ignore_proto->GetProtoId());
+        }
+
+        // Refresh map
         CurMap->RefreshMap();
     }
 }
@@ -3476,8 +3266,9 @@ void FOMapper::ParseCommand(string_view command)
             return;
         }
 
-        if (LoadMap(map_name) != nullptr) {
+        if (auto* map = LoadMap(map_name); map != nullptr) {
             AddMess("Load map success");
+            ShowMap(map);
         }
         else {
             AddMess("Load map failed");
@@ -3641,7 +3432,10 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
 
     const auto map_files = FileSys.FilterFiles("fomap");
     const auto map_file = map_files.FindFileByName(map_name);
-    RUNTIME_ASSERT(map_file);
+    if (!map_file) {
+        AddMess("Map file not found");
+        return nullptr;
+    }
 
     try {
         MapLoader::Load(
