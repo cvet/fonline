@@ -93,6 +93,8 @@ else
     exit 1
 fi
 
+BUILD_TARGET="$BUILD_TARGET -DFONLINE_CMAKE_CONTRIBUTION=$FO_CMAKE_CONTRIBUTION"
+
 if [ "$TARGET" != "mac" ] && [ "$TARGET" != "ios" ]; then
     $CUR_DIR/prepare-workspace.sh $TARGET
 fi
