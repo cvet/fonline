@@ -1787,7 +1787,9 @@ if( FONLINE_BUILD_BAKER )
 endif()
 
 if( FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
-	macro( SetupTestBuild target )
+	macro( SetupTestBuild name )
+		set( target ${FO_DEV_NAME}_${name} )
+		StatusMessage( "+ ${target}" )
 		list( APPEND FO_APPLICATIONS_GROUP ${target} )
 		add_executable( ${target}
 			"Source/Applications/TestingApp.cpp"
@@ -1815,16 +1817,17 @@ if( FONLINE_UNIT_TESTS OR FONLINE_CODE_COVERAGE )
 			target_link_libraries( ${target} "ASCompilerLib" )
 		endif()
 		CopyFbxSdkLib( ${target} )
+		add_custom_target( Run${name}
+			COMMAND ${target}
+			COMMENT "Run ${name}" )
+		list( APPEND FO_COMMANDS_GROUP "Run${name}" )
 	endmacro()
 
 	if( FONLINE_UNIT_TESTS )
-		StatusMessage( "+ ${FO_DEV_NAME}_UnitTests" )
-		SetupTestBuild( ${FO_DEV_NAME}_UnitTests )
+		SetupTestBuild( UnitTests )
 	endif()
-
 	if( FONLINE_CODE_COVERAGE )
-		StatusMessage( "+ ${FO_DEV_NAME}_CodeCoverage" )
-		SetupTestBuild( ${FO_DEV_NAME}_CodeCoverage )
+		SetupTestBuild( CodeCoverage )
 	endif()
 endif()
 

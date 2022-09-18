@@ -103,6 +103,8 @@ BUILD_DIR=validate-$1
 mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 
+CMAKE=cmake
+
 if [ "$TARGET" = "linux" ]; then
 	if [ "$USE_GCC" = "1" ]; then
 		export CC=/usr/bin/gcc
@@ -112,14 +114,14 @@ if [ "$TARGET" = "linux" ]; then
 		export CXX=/usr/bin/clang++
 	fi
 
-    cmake -G "Unix Makefiles" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug
+    $CMAKE -G "Unix Makefiles" $BUILD_TARGET "$FO_ROOT"
+    $CMAKE --build . --config Debug
 
 elif [ "$TARGET" = "web" ]; then
     source $FO_WORKSPACE/emsdk/emsdk_env.sh
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug
+    $CMAKE -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/web.cache.cmake" $BUILD_TARGET "$FO_ROOT"
+    $CMAKE --build . --config Debug
 
 elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET" = "android-x86" ]; then
     export ANDROID_NDK=$FO_WORKSPACE/android-ndk
@@ -132,13 +134,11 @@ elif [ "$TARGET" = "android" ] || [ "$TARGET" = "android-arm64" ] || [ "$TARGET"
         export ANDROID_ABI=x86
     fi
 
-    cmake -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_ROOT"
-    cmake --build . --config Debug
+    $CMAKE -G "Unix Makefiles" -C "$FO_ROOT/BuildTools/android.cache.cmake" $BUILD_TARGET "$FO_ROOT"
+    $CMAKE --build . --config Debug
 
 elif [ "$TARGET" = "mac" ] || [ "$TARGET" = "ios" ]; then
-    if [ -x "$(command -v cmake)" ]; then
-        CMAKE=cmake
-    else
+    if [ ! -x "$(command -v cmake)" ]; then
         CMAKE=/Applications/CMake.app/Contents/bin/cmake
     fi
 
@@ -153,11 +153,11 @@ fi
 
 if [ "$1" = "unit-tests" ]; then
     echo "Run unit tests"
-    ./Tests/FOnlineUnitTests
+    $CMAKE --build . --config Debug --target RunUnitTests
 
 elif [ "$1" = "code-coverage" ]; then
     echo "Run code coverage"
-    ./Tests/FOnlineCodeCoverage
+    $CMAKE --build . --config Debug --target RunCodeCoverage
 
     if [[ ! -z "$CODECOV_TOKEN" ]]; then
         echo "Upload reports to codecov.io"
