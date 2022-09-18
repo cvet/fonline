@@ -31,11 +31,12 @@
 // SOFTWARE.
 //
 
+// Todo: rewrite spark GL renderer to engine-based renderer
+
 #include "Particles.h"
 #include "FileSystem.h"
 
 #include "SPARK.h"
-#include "SPARK_OpenGL/SPARK_GL.h"
 
 struct ParticleManager::ParticleManagerData
 {
@@ -53,10 +54,10 @@ ParticleManager::ParticleManager(RenderSettings& settings, FileSystem& file_sys)
     static bool init = false;
     if (!init) {
         // SPK::GL::GLQuadRenderer::setTextureLoader(LoadParticlesTexture);
-        SPK::IO::IOManager::get().registerObject<SPK::GL::GLLineRenderer>();
-        SPK::IO::IOManager::get().registerObject<SPK::GL::GLLineTrailRenderer>();
-        SPK::IO::IOManager::get().registerObject<SPK::GL::GLPointRenderer>();
-        SPK::IO::IOManager::get().registerObject<SPK::GL::GLQuadRenderer>();
+        // SPK::IO::IOManager::get().registerObject<SPK::GL::GLLineRenderer>();
+        // SPK::IO::IOManager::get().registerObject<SPK::GL::GLLineTrailRenderer>();
+        // SPK::IO::IOManager::get().registerObject<SPK::GL::GLPointRenderer>();
+        // SPK::IO::IOManager::get().registerObject<SPK::GL::GLQuadRenderer>();
         init = true;
     }
 
@@ -163,7 +164,7 @@ void ParticleSystem::Draw(const mat44& proj, const vec3& view_offset) const
         return;
     }
 
-    SPK::GL::GLRenderer::saveGLStates();
+    /*SPK::GL::GLRenderer::saveGLStates();
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -172,11 +173,11 @@ void ParticleSystem::Draw(const mat44& proj, const vec3& view_offset) const
     glLoadMatrixf(proj[0]);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(-view_offset.x, -view_offset.y, -view_offset.z);
+    glTranslatef(-view_offset.x, -view_offset.y, -view_offset.z);*/
 
     _data->System->renderParticles();
 
-    SPK::GL::GLRenderer::restoreGLStates();
+    /*SPK::GL::GLRenderer::restoreGLStates();*/
 }
 
 /*static GLuint LoadParticlesTexture(const string& fname)
