@@ -37,7 +37,7 @@
 FOSingle::FOSingle(GlobalSettings& settings, AppWindow* window) :
     FOEngineBase(settings, PropertiesRelationType::BothRelative), //
     FOServer(settings),
-    FOClient(settings, window)
+    FOClient(settings, window, false)
 {
     extern void Single_RegisterData(FOEngineBase*);
     Single_RegisterData(this);
