@@ -670,9 +670,9 @@ auto FalloutDat::OpenFile(string_view path, size_t& size, uint64& write_time) co
         auto left = packed_size;
         while (stream.avail_out != 0u) {
             if (stream.avail_in == 0u && left > 0) {
-                stream.next_in = &_readBuf[0];
+                stream.next_in = _readBuf.data();
                 const auto len = std::min(left, static_cast<uint>(_readBuf.size()));
-                if (!_datFile.Read(&_readBuf[0], len)) {
+                if (!_datFile.Read(_readBuf.data(), len)) {
                     delete[] buf;
                     throw DataSourceException("Can't read file from fallout dat (4)", path);
                 }

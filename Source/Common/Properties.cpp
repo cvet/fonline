@@ -321,7 +321,7 @@ auto Properties::StoreData(bool with_protected, vector<uchar*>** all_data, vecto
 
     // Store complex properties data
     if (!_storeDataComplexIndices.empty()) {
-        _storeData.push_back(reinterpret_cast<uchar*>(&_storeDataComplexIndices[0]));
+        _storeData.push_back(reinterpret_cast<uchar*>(_storeDataComplexIndices.data()));
         _storeDataSizes.push_back(static_cast<uint>(_storeDataComplexIndices.size()) * sizeof(ushort));
         whole_size += _storeDataSizes.back();
 
@@ -354,7 +354,7 @@ void Properties::RestoreData(const vector<const uchar*>& all_data, const vector<
         const uint comlplex_data_count = all_data_sizes[1] / sizeof(ushort);
         RUNTIME_ASSERT(comlplex_data_count > 0);
         vector<ushort> complex_indicies(comlplex_data_count);
-        std::memcpy(&complex_indicies[0], all_data[1], all_data_sizes[1]);
+        std::memcpy(complex_indicies.data(), all_data[1], all_data_sizes[1]);
 
         for (size_t i = 0; i < complex_indicies.size(); i++) {
             RUNTIME_ASSERT(complex_indicies[i] < _registrator->_registeredProperties.size());
@@ -372,7 +372,7 @@ void Properties::RestoreData(const vector<vector<uchar>>& all_data)
     vector<const uchar*> all_data_ext(all_data.size());
     vector<uint> all_data_sizes(all_data.size());
     for (size_t i = 0; i < all_data.size(); i++) {
-        all_data_ext[i] = !all_data[i].empty() ? &all_data[i][0] : nullptr;
+        all_data_ext[i] = !all_data[i].empty() ? all_data[i].data() : nullptr;
         all_data_sizes[i] = static_cast<uint>(all_data[i].size());
     }
     RestoreData(all_data_ext, all_data_sizes);

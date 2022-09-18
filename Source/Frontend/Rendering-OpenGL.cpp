@@ -189,7 +189,7 @@ public:
         GLint prev_fbo;
         GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-        GL(glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, &result[0]));
+        GL(glReadPixels(x, y, w, h, GL_RGBA, GL_UNSIGNED_BYTE, result.data()));
         GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
 
         return result;

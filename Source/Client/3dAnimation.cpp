@@ -42,10 +42,10 @@ void ModelAnimation::Load(DataReader& reader, NameResolver& name_resolver)
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     _animFileName.resize(len);
-    reader.ReadPtr(&_animFileName[0], len);
+    reader.ReadPtr(_animFileName.data(), len);
     reader.ReadPtr(&len, sizeof(len));
     _animName.resize(len);
-    reader.ReadPtr(&_animName[0], len);
+    reader.ReadPtr(_animName.data(), len);
     reader.ReadPtr(&_durationTicks, sizeof(_durationTicks));
     reader.ReadPtr(&_ticksPerSecond, sizeof(_ticksPerSecond));
     reader.ReadPtr(&len, sizeof(len));

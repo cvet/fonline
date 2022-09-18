@@ -101,9 +101,9 @@ void SoundManager::ProcessSounds(uchar* output)
 {
     for (auto it = _soundsActive.begin(); it != _soundsActive.end();) {
         auto* sound = *it;
-        if (ProcessSound(sound, &_outputBuf[0])) {
+        if (ProcessSound(sound, _outputBuf.data())) {
             const auto volume = sound->IsMusic ? _settings.MusicVolume : _settings.SoundVolume;
-            App->Audio.MixAudio(output, &_outputBuf[0], volume);
+            App->Audio.MixAudio(output, _outputBuf.data(), volume);
             ++it;
         }
         else {
@@ -300,7 +300,7 @@ auto SoundManager::LoadWav(Sound* sound, string_view fname) -> bool
     }
 
     // Convert
-    file.CopyData(&sound->BaseBuf[0], sound->BaseBufLen);
+    file.CopyData(sound->BaseBuf.data(), sound->BaseBufLen);
 
     return ConvertData(sound);
 }
@@ -420,7 +420,7 @@ auto SoundManager::LoadOgg(Sound* sound, string_view fname) -> bool
     auto decoded = 0u;
 
     while (true) {
-        auto* buf = reinterpret_cast<char*>(&sound->BaseBuf[0]);
+        auto* buf = reinterpret_cast<char*>(sound->BaseBuf.data());
         result = static_cast<int>(ov_read(sound->OggStream.get(), buf + decoded, static_cast<int>(_streamingPortion - decoded), 0, 2, 1, nullptr));
         if (result <= 0) {
             break;

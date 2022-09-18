@@ -552,7 +552,7 @@ void Player::Send_GlobalInfo(uchar info_flags)
         if (gmap_fog.size() != GM_ZONES_FOG_SIZE) {
             gmap_fog.resize(GM_ZONES_FOG_SIZE);
         }
-        Connection->Bout.Push(&gmap_fog[0], GM_ZONES_FOG_SIZE);
+        Connection->Bout.Push(gmap_fog.data(), GM_ZONES_FOG_SIZE);
     }
 
     CONNECTION_OUTPUT_END(Connection);

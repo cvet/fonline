@@ -60,13 +60,13 @@ struct MeshData
     {
         auto len = static_cast<uint>(Vertices.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&Vertices[0], len * sizeof(Vertices[0]));
+        writer.WritePtr(Vertices.data(), len * sizeof(Vertices[0]));
         len = static_cast<uint>(Indices.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&Indices[0], len * sizeof(Indices[0]));
+        writer.WritePtr(Indices.data(), len * sizeof(Indices[0]));
         len = static_cast<uint>(DiffuseTexture.length());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&DiffuseTexture[0], len);
+        writer.WritePtr(DiffuseTexture.data(), len);
         len = static_cast<uint>(SkinBones.size());
         writer.WritePtr(&len, sizeof(len));
         for (const auto& bone_name : SkinBones) {
@@ -76,7 +76,7 @@ struct MeshData
         }
         len = static_cast<uint>(SkinBoneOffsets.size());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
+        writer.WritePtr(SkinBoneOffsets.data(), len * sizeof(SkinBoneOffsets[0]));
     }
 
     vector<Vertex3D> Vertices {};
@@ -145,10 +145,10 @@ struct AnimSet
     {
         auto len = static_cast<uint>(AnimFileName.length());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&AnimFileName[0], len);
+        writer.WritePtr(AnimFileName.data(), len);
         len = static_cast<uint>(AnimName.length());
         writer.WritePtr(&len, sizeof(len));
-        writer.WritePtr(&AnimName[0], len);
+        writer.WritePtr(AnimName.data(), len);
         writer.WritePtr(&DurationTicks, sizeof(DurationTicks));
         writer.WritePtr(&TicksPerSecond, sizeof(TicksPerSecond));
         len = static_cast<uint>(BonesHierarchy.size());
@@ -170,16 +170,16 @@ struct AnimSet
             writer.WritePtr(o.Name.data(), len);
             len = static_cast<uint>(o.ScaleTime.size());
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.ScaleTime[0], len * sizeof(o.ScaleTime[0]));
-            writer.WritePtr(&o.ScaleValue[0], len * sizeof(o.ScaleValue[0]));
+            writer.WritePtr(o.ScaleTime.data(), len * sizeof(o.ScaleTime[0]));
+            writer.WritePtr(o.ScaleValue.data(), len * sizeof(o.ScaleValue[0]));
             len = static_cast<uint>(o.RotationTime.size());
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.RotationTime[0], len * sizeof(o.RotationTime[0]));
-            writer.WritePtr(&o.RotationValue[0], len * sizeof(o.RotationValue[0]));
+            writer.WritePtr(o.RotationTime.data(), len * sizeof(o.RotationTime[0]));
+            writer.WritePtr(o.RotationValue.data(), len * sizeof(o.RotationValue[0]));
             len = static_cast<uint>(o.TranslationTime.size());
             writer.WritePtr(&len, sizeof(len));
-            writer.WritePtr(&o.TranslationTime[0], len * sizeof(o.TranslationTime[0]));
-            writer.WritePtr(&o.TranslationValue[0], len * sizeof(o.TranslationValue[0]));
+            writer.WritePtr(o.TranslationTime.data(), len * sizeof(o.TranslationTime[0]));
+            writer.WritePtr(o.TranslationValue.data(), len * sizeof(o.TranslationValue[0]));
         }
     }
 

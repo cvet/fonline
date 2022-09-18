@@ -321,7 +321,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     // SPIR-V
     auto make_spirv = [this, &fname_wo_ext, &spirv]() {
         vector<uchar> data(spirv.size() * sizeof(uint32_t));
-        std::memcpy(&data[0], &spirv[0], data.size());
+        std::memcpy(data.data(), spirv.data(), data.size());
 #if FO_ASYNC_BAKE
         std::lock_guard locker(_bakedFilesLocker);
 #endif

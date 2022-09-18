@@ -147,7 +147,7 @@ public:
         ushort len = 0;
         Pop(&len, sizeof(len));
         i.resize(len);
-        Pop(&i[0], len);
+        Pop(i.data(), len);
         return *this;
     }
 

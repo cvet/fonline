@@ -152,7 +152,7 @@ private:
 
     [[nodiscard]] auto GetLayers3dData() -> int*;
     [[nodiscard]] auto GetFadeAlpha() -> uchar;
-    [[nodiscard]] auto GetCurAnim() -> CritterAnim* { return IsAnim() ? &_animSequence[0] : nullptr; }
+    [[nodiscard]] auto GetCurAnim() -> CritterAnim* { return IsAnim() ? _animSequence.data() : nullptr; }
 
     void SetFade(bool fade_up);
     void ProcessMoving();

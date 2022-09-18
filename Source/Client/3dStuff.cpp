@@ -45,13 +45,13 @@ void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
     uint len = 0;
     reader.ReadPtr(&len, sizeof(len));
     Vertices.resize(len);
-    reader.ReadPtr(&Vertices[0], len * sizeof(Vertices[0]));
+    reader.ReadPtr(Vertices.data(), len * sizeof(Vertices[0]));
     reader.ReadPtr(&len, sizeof(len));
     Indices.resize(len);
-    reader.ReadPtr(&Indices[0], len * sizeof(Indices[0]));
+    reader.ReadPtr(Indices.data(), len * sizeof(Indices[0]));
     reader.ReadPtr(&len, sizeof(len));
     DiffuseTexture.resize(len);
-    reader.ReadPtr(&DiffuseTexture[0], len);
+    reader.ReadPtr(DiffuseTexture.data(), len);
     reader.ReadPtr(&len, sizeof(len));
     SkinBones.resize(len);
     SkinBoneNames.resize(len);
@@ -64,7 +64,7 @@ void MeshData::Load(DataReader& reader, NameResolver& name_resolver)
     }
     reader.ReadPtr(&len, sizeof(len));
     SkinBoneOffsets.resize(len);
-    reader.ReadPtr(&SkinBoneOffsets[0], len * sizeof(SkinBoneOffsets[0]));
+    reader.ReadPtr(SkinBoneOffsets.data(), len * sizeof(SkinBoneOffsets[0]));
 }
 
 void ModelBone::Load(DataReader& reader, NameResolver& name_resolver)
@@ -1286,7 +1286,7 @@ void ModelInstance::BatchCombinedMesh(CombinedMesh* combined_mesh, const MeshIns
         vertices = mesh_data->Vertices;
         indices = mesh_data->Indices;
         combined_mesh->DrawEffect = mesh_instance->CurEffect;
-        std::memset(&combined_mesh->SkinBones[0], 0, combined_mesh->SkinBones.size() * sizeof(void*));
+        std::memset(combined_mesh->SkinBones.data(), 0, combined_mesh->SkinBones.size() * sizeof(void*));
         std::memset(combined_mesh->Textures, 0, sizeof(combined_mesh->Textures));
         combined_mesh->CurBoneMatrix = 0;
     }
