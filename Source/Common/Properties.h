@@ -283,7 +283,7 @@ public:
     [[nodiscard]] auto GetValueAsInt(int property_index) const -> int;
     [[nodiscard]] auto GetValueAsFloat(int property_index) const -> float;
     [[nodiscard]] auto SavePropertyToText(const Property* prop) const -> string;
-    [[nodiscard]] auto SaveToText(Properties* base) const -> map<string, string>;
+    [[nodiscard]] auto SaveToText(const Properties* base) const -> map<string, string>;
 
     void AllocData();
     void SetEntity(Entity* entity) { _entity = entity; }
@@ -312,9 +312,14 @@ public:
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
-            auto prop_data = prop->_getter(_entity, prop);
-            T result = prop_data.GetAs<T>();
-            return result;
+            if (prop->_getter) {
+                auto prop_data = prop->_getter(_entity, prop);
+                T result = prop_data.GetAs<T>();
+                return result;
+            }
+            else {
+                return {};
+            }
         }
 
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
@@ -332,10 +337,15 @@ public:
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
-            auto prop_data = prop->_getter(_entity, prop);
-            const auto hash = prop_data.GetAs<hstring::hash_t>();
-            auto result = ResolveHash(hash);
-            return result;
+            if (prop->_getter) {
+                auto prop_data = prop->_getter(_entity, prop);
+                const auto hash = prop_data.GetAs<hstring::hash_t>();
+                auto result = ResolveHash(hash);
+                return result;
+            }
+            else {
+                return {};
+            }
         }
 
         RUNTIME_ASSERT(prop->_podDataOffset != static_cast<uint>(-1));
@@ -352,9 +362,14 @@ public:
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
-            auto prop_data = prop->_getter(_entity, prop);
-            auto result = string(prop_data.GetPtrAs<char>(), prop_data.GetSize());
-            return result;
+            if (prop->_getter) {
+                auto prop_data = prop->_getter(_entity, prop);
+                auto result = string(prop_data.GetPtrAs<char>(), prop_data.GetSize());
+                return result;
+            }
+            else {
+                return {};
+            }
         }
 
         RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));
@@ -373,7 +388,9 @@ public:
 
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
-            prop_data = prop->_getter(_entity, prop);
+            if (prop->_getter) {
+                prop_data = prop->_getter(_entity, prop);
+            }
         }
         else {
             RUNTIME_ASSERT(prop->_complexDataIndex != static_cast<uint>(-1));

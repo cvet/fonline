@@ -4050,7 +4050,7 @@ auto MapView::GetTiles(ushort hx, ushort hy, bool is_roof) -> vector<MapTile>&
 
     RUNTIME_ASSERT(_mapperMode);
 
-    return is_roof ? _roofsField[hy * GetWidth() + hx] : _tilesField[hy * GetWidth() + hx];
+    return is_roof ? _roofsField[hy * _maxHexX + hx] : _tilesField[hy * _maxHexX + hx];
 }
 
 void MapView::ClearSelTiles()
@@ -4370,4 +4370,71 @@ auto MapView::GenerateEntityId() -> uint
     // Todo: generate unique entity id
     throw NotImplementedException(LINE_STR);
     return 0u;
+}
+
+auto MapView::SaveToText() const -> string
+{
+    string fomap;
+    fomap.reserve(0x1000000); // 1mb
+
+    const auto fill_section = [&fomap](string_view name, const map<string, string>& section) {
+        fomap.append("[").append(name).append("]").append("\n");
+        for (auto&& [key, value] : section) {
+            fomap.append(key).append(" = ").append(value).append("\n");
+        }
+        fomap.append("\n");
+    };
+
+    // Header
+    fill_section("ProtoMap", GetProperties().SaveToText(nullptr));
+
+    // Critters
+    for (const auto* cr : _critters) {
+        auto kv = cr->GetProperties().SaveToText(&cr->GetProto()->GetProperties());
+        kv["$Id"] = _str("{}", cr->GetId());
+        kv["$Proto"] = cr->GetProto()->GetName();
+        fill_section("Critter", kv);
+    }
+
+    // Items
+    for (const auto* item : _items) {
+        auto kv = item->GetProperties().SaveToText(&item->GetProto()->GetProperties());
+        kv["$Id"] = _str("{}", item->GetId());
+        kv["$Proto"] = item->GetProto()->GetName();
+        fill_section("Item", kv);
+    }
+
+    // Tiles
+    for (ushort hy = 0; hy < _maxHexY; hy++) {
+        for (ushort hx = 0; hx < _maxHexX; hx++) {
+            const auto fill_tile = [&](const MapTile& tile) {
+                map<string, string> kv;
+                kv["PicMap"] = _engine->ResolveHash(tile.NameHash);
+                kv["HexX"] = _str("{}", tile.HexX);
+                kv["HexY"] = _str("{}", tile.HexY);
+                if (tile.OffsX != 0) {
+                    kv["OffsetX"] = _str("{}", tile.OffsX);
+                }
+                if (tile.OffsY != 0) {
+                    kv["OffsetY"] = _str("{}", tile.OffsY);
+                }
+                if (tile.Layer != 0) {
+                    kv["Layer"] = _str("{}", tile.Layer);
+                }
+                if (tile.IsRoof) {
+                    kv["IsRoof"] = _str("{}", tile.IsRoof);
+                }
+                fill_section("Tile", kv);
+            };
+
+            for (const auto& tile : _tilesField[hy * _maxHexX + hx]) {
+                fill_tile(tile);
+            }
+            for (const auto& tile : _roofsField[hy * _maxHexX + hx]) {
+                fill_tile(tile);
+            }
+        }
+    }
+
+    return fomap;
 }

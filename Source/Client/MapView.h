@@ -287,6 +287,8 @@ public:
 
     auto GenerateEntityId() -> uint;
 
+    auto SaveToText() const -> string;
+
     AutoScrollInfo AutoScroll {};
     uchar SelectAlpha {100};
 

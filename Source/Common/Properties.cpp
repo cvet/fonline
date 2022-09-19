@@ -418,7 +418,7 @@ auto Properties::LoadFromText(const map<string, string>& key_values) -> bool
     return !is_error;
 }
 
-auto Properties::SaveToText(Properties* base) const -> map<string, string>
+auto Properties::SaveToText(const Properties* base) const -> map<string, string>
 {
     RUNTIME_ASSERT(!base || _registrator == base->_registrator);
 
@@ -466,7 +466,7 @@ auto Properties::SaveToText(Properties* base) const -> map<string, string>
         }
 
         // Serialize to text and store in map
-        key_values.insert(std::make_pair(prop->_propName, SavePropertyToText(prop)));
+        key_values.emplace(prop->_propName, SavePropertyToText(prop));
     }
 
     return key_values;

@@ -3490,11 +3490,35 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
     const auto it = std::find(LoadedMaps.begin(), LoadedMaps.end(), map);
     RUNTIME_ASSERT(it != LoadedMaps.end());
 
-    // Todo: map saving
-    UNUSED_VARIABLE(custom_name);
-    throw NotImplementedException(LINE_STR);
+    const auto fomap_content = map->SaveToText();
 
-    OnEditMapSave.Fire(CurMap);
+    const auto fomap_name = !custom_name.empty() ? custom_name : map->GetProto()->GetName();
+    RUNTIME_ASSERT(!fomap_name.empty());
+
+    string fomap_path;
+    {
+        auto fomap_files = FileSys.FilterFiles("fomap");
+
+        if (const auto fomap_file = fomap_files.FindFileByName(fomap_name)) {
+            fomap_path = fomap_file.GetFullPath();
+        }
+        else if (const auto fomap_file2 = fomap_files.FindFileByName(map->GetProto()->GetName())) {
+            fomap_path = _str(fomap_file2.GetFullPath()).changeFileName(fomap_name);
+        }
+        else if (fomap_files.MoveNext()) {
+            fomap_path = _str(fomap_files.GetCurFile().GetFullPath()).changeFileName(fomap_name);
+        }
+        else {
+            fomap_path = _str("{}.fomap", fomap_path).formatPath();
+        }
+    }
+
+    auto fomap_file = DiskFileSystem::OpenFile(fomap_path, true);
+    RUNTIME_ASSERT(fomap_file);
+    const auto fomap_file_ok = fomap_file.Write(fomap_content);
+    RUNTIME_ASSERT(fomap_file_ok);
+
+    OnEditMapSave.Fire(map);
 }
 
 void FOMapper::UnloadMap(MapView* map)

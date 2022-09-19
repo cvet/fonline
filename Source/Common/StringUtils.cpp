@@ -505,6 +505,19 @@ auto _str::eraseFileExtension() -> _str&
     return *this;
 }
 
+auto _str::changeFileName(string_view new_name) -> _str&
+{
+    const auto ext = _str(_s).getFileExtension();
+    if (!ext.empty()) {
+        const auto new_name_with_ext = _str("{}.{}", new_name, ext);
+        _s = _str(_s).extractDir().combinePath(new_name_with_ext);
+    }
+    else {
+        _s = _str(_s).extractDir().combinePath(new_name);
+    }
+    return *this;
+}
+
 auto _str::combinePath(string_view path) -> _str&
 {
     if (!path.empty()) {

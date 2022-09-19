@@ -116,6 +116,7 @@ public:
     auto extractFileName() -> _str&;
     auto getFileExtension() -> _str&; // Extension without dot
     auto eraseFileExtension() -> _str&; // Erase extension with dot
+    auto changeFileName(string_view new_name) -> _str&;
     auto combinePath(string_view path) -> _str&;
     auto normalizePathSlashes() -> _str&;
     auto normalizeLineEndings() -> _str&;
