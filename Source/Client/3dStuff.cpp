@@ -417,7 +417,7 @@ void ModelInstance::StartMeshGeneration()
     }
 }
 
-auto ModelInstance::SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool
+auto ModelInstance::SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool
 {
     _curAnim1 = anim1;
     _curAnim2 = anim2;

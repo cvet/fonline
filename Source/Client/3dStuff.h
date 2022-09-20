@@ -260,7 +260,7 @@ public:
 
     void SetupFrame();
     void StartMeshGeneration();
-    auto SetAnimation(uint anim1, uint anim2, int* layers, uint flags) -> bool;
+    auto SetAnimation(uint anim1, uint anim2, const int* layers, uint flags) -> bool;
     void SetDir(uchar dir, bool smooth_rotation);
     void SetLookDirAngle(int dir_angle);
     void SetMoveDirAngle(int dir_angle, bool smooth_rotation);

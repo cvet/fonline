@@ -355,7 +355,7 @@ public:
     ENTITY_PROPERTY(PrivateServer, uint, ShowCritterDist3);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, vector<hstring>, KnownLocProtoId);
-    ///@ ExportProperty
+    ///@ ExportProperty Temporary
     ENTITY_PROPERTY(PrivateClient, vector<int>, ModelLayers);
     ///@ ExportProperty
     ENTITY_PROPERTY(Protected, bool, IsHide);

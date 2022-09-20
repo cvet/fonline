@@ -150,9 +150,11 @@ private:
         ItemView* ActiveItem {};
     };
 
-    [[nodiscard]] auto GetLayers3dData() -> int*;
+#if FO_ENABLE_3D
+    [[nodiscard]] auto GetModelLayersData() const -> const int*;
+#endif
     [[nodiscard]] auto GetFadeAlpha() -> uchar;
-    [[nodiscard]] auto GetCurAnim() -> CritterAnim* { return IsAnim() ? _animSequence.data() : nullptr; }
+    [[nodiscard]] auto GetCurAnim() -> CritterAnim*;
 
     void SetFade(bool fade_up);
     void ProcessMoving();
@@ -163,7 +165,6 @@ private:
     uint _curSpr {};
     uint _lastEndSpr {};
     uint _animStartTick {};
-    int _modelLayers[LAYERS3D_COUNT] {};
     CritterAnim _stayAnim {};
     vector<CritterAnim> _animSequence {};
     uint _finishingTime {};

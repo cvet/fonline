@@ -113,6 +113,11 @@ auto CritterHexView::GetFadeAlpha() -> uchar
     return static_cast<uchar>(alpha);
 }
 
+auto CritterHexView::GetCurAnim() -> CritterAnim*
+{
+    return IsAnim() ? _animSequence.data() : nullptr;
+}
+
 auto CritterHexView::AddItem(uint id, const ProtoItem* proto, uchar slot, const vector<vector<uchar>>& properties_data) -> ItemView*
 {
     auto* item = CritterView::AddItem(id, proto, slot, properties_data);
@@ -412,7 +417,7 @@ void CritterHexView::NextAnim(bool erase_front)
     if (_model != nullptr) {
         SetAnimOffs(0, 0);
 
-        _model->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetLayers3dData(), ANIMATION_ONE_TIME | ANIMATION_NO_ROTATE);
+        _model->SetAnimation(cr_anim.IndAnim1, cr_anim.IndAnim2, GetModelLayersData(), ANIMATION_ONE_TIME | ANIMATION_NO_ROTATE);
 
         return;
     }
@@ -513,10 +518,10 @@ void CritterHexView::AnimateStay()
         ProcessAnim(false, anim1, anim2, nullptr);
 
         if (GetCond() == CritterCondition::Alive || GetCond() == CritterCondition::Knockout) {
-            _model->SetAnimation(anim1, anim2, GetLayers3dData(), 0);
+            _model->SetAnimation(anim1, anim2, GetModelLayersData(), 0);
         }
         else {
-            _model->SetAnimation(anim1, anim2, GetLayers3dData(), ANIMATION_STAY | ANIMATION_PERIOD(100));
+            _model->SetAnimation(anim1, anim2, GetModelLayersData(), ANIMATION_STAY | ANIMATION_PERIOD(100));
         }
 
         return;
@@ -625,14 +630,6 @@ void CritterHexView::ProcessAnim(bool animate_stay, uint anim1, uint anim2, Item
     _engine->OnCritterAnimationProcess.Fire(animate_stay, this, anim1, anim2, item);
 }
 
-auto CritterHexView::GetLayers3dData() -> int*
-{
-    const auto layers = GetModelLayers();
-    RUNTIME_ASSERT(layers.size() == LAYERS3D_COUNT);
-    std::memcpy(_modelLayers, layers.data(), sizeof(_modelLayers));
-    return _modelLayers;
-}
-
 auto CritterHexView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
 {
     if (anim1 == 0u) {
@@ -649,6 +646,14 @@ auto CritterHexView::IsAnimAvailable(uint anim1, uint anim2) const -> bool
 }
 
 #if FO_ENABLE_3D
+auto CritterHexView::GetModelLayersData() const -> const int*
+{
+    uint data_size;
+    const auto* data = GetProperties().GetRawData(GetPropertyModelLayers(), data_size);
+    RUNTIME_ASSERT(data_size == sizeof(int) * LAYERS3D_COUNT);
+    return reinterpret_cast<const int*>(data);
+}
+
 void CritterHexView::RefreshModel()
 {
     // Release previous
@@ -671,7 +676,7 @@ void CritterHexView::RefreshModel()
 
             SprId = _model->SprId;
 
-            _model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetLayers3dData(), 0);
+            _model->SetAnimation(ANIM1_UNARMED, ANIM2_IDLE, GetModelLayersData(), 0);
 
             if (_map->IsMapperMode()) {
                 _model->StartMeshGeneration();
