@@ -566,10 +566,9 @@ macro( AddMonoSource assembly target )
 		endforeach()
 	endif()
 endmacro()
-macro( CreatePackage package config debug )
+macro( CreatePackage package config )
 	list( APPEND FO_PACKAGES ${package} )
 	set( Package_${package}_Config ${config} )
-	set( Package_${package}_Debug ${debug} )
 	set( Package_${package}_Parts "" )
 	list( APPEND FO_CONFIGS ${config} )
 	list( REMOVE_DUPLICATES FO_CONFIGS )
@@ -1901,11 +1900,7 @@ list( APPEND FO_COMMANDS_GROUP "ForceBakeResources" )
 StatusMessage( "Packages:" )
 
 foreach( package ${FO_PACKAGES} )
-	if( ${Package_${package}_Debug} )
-		StatusMessage( "+ Debug package ${package}" )
-	else()
-		StatusMessage( "+ Release package ${package}" )
-	endif()
+	StatusMessage( "+ Package ${package}" )
 
 	add_custom_target( MakePackage-${package}
 		DEPENDS CodeGeneration
@@ -1934,6 +1929,12 @@ foreach( package ${FO_PACKAGES} )
 		list( APPEND packageCommands -arch "${arch}" )
 		list( APPEND packageCommands -pack "${pack}" )
 
+		foreach( entry ${FO_RESOURCES} )
+			string( REPLACE "," ";" entry ${entry} )
+			list( GET entry 0 packName )
+			list( APPEND packageCommands -respack ${packName} )
+		endforeach()
+
 		if( customConfig )
 			set( config ${customConfig} )
 		else()
@@ -1948,12 +1949,9 @@ foreach( package ${FO_PACKAGES} )
 			list( APPEND packageCommands -mono )
 		endif()
 
-		if( ${Package_${package}_Debug} )
-			list( APPEND packageCommands -debug )
-		endif()
-
 		list( APPEND packageCommands -input ${FONLINE_OUTPUT_PATH} )
 		list( APPEND packageCommands -output ${FONLINE_OUTPUT_PATH}/${FO_DEV_NAME}-${package} )
+		list( APPEND packageCommands -compresslevel 9 )
 
 		StatusMessage( "  ${target} for ${platform}-${arch} in ${pack} with ${config} config" )
 		add_custom_command( TARGET MakePackage-${package} POST_BUILD COMMAND ${packageCommands} )
@@ -2031,14 +2029,10 @@ if( FONLINE_MAKE_EXTERNAL_COMMANDS )
 	CreateBakeredExternalCommand( Mapper "${FONLINE_OUTPUT_PATH}/Binaries/Mapper-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Mapper" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${FO_MAPPER_CONFIG}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
 	foreach( config ${FO_CONFIGS} )
 		CreateBakeredExternalCommand( Server-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Server" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
-		CreateBakeredExternalCommand( Client-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
-		#CreateBakeredExternalCommand( Server-${config}-Debug "${FONLINE_OUTPUT_PATH}/Binaries/Server-${FO_BUILD_PLATFORM}-Debug/${FO_DEV_NAME}_Server" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
-		#CreateBakeredExternalCommand( Client-${config}-Debug "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}-Debug/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
+		CreateBakeredExternalCommand( Client-${config} "${FONLINE_OUTPUT_PATH}/Binaries/Client-${FO_BUILD_PLATFORM}/${FO_DEV_NAME}_Client" "-ResourcesDir \"${resourcesDir}\"" "-ExternalConfig \"${resourcesDir}/Configs/Client_${config}.focfg\"" "-EmbeddedResources \"${resourcesDir}/Embedded\"" )
 	endforeach()
 
 	# Todo:
-	# PackResources
-	# MakePackage-PackageName
 	# Profiler InterfaceEditor DialogEditor...
 endif()
 

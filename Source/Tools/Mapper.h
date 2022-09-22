@@ -255,6 +255,7 @@ public:
     ///@ ExportEvent
     ENTITY_EVENT(OnInspectorProperties, Entity* /*entity*/, vector<int>& /*properties*/);
 
+    FileSystem ContentFileSys {};
     vector<MapView*> LoadedMaps {};
     unique_ptr<ConfigFile> IfaceIni {};
     vector<const Property*> ShowProps {};

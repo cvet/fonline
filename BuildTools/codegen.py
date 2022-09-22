@@ -7,9 +7,6 @@ import sys
 import argparse
 import time
 import uuid
-import io
-import zipfile
-import struct
 
 startTime = time.time()
 
@@ -3305,7 +3302,7 @@ try:
     preserveBufSize = 1200000 # Todo: move preserveBufSize to build setup
     assert preserveBufSize > 100
     createFile('EmbeddedResources-Include.h', args.genoutput)
-    writeFile('const unsigned char EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {0x' + ', 0x'.join(struct.pack("I", preserveBufSize).hex(' ').split(' ')) + ', 0x00, ' + ('0x42, ' * 42) + '0x00};')
+    writeFile('const unsigned char EMBEDDED_RESOURCES[' + str(preserveBufSize) + '] = {0x00, ' + ('0x42, ' * 42) + '0x00};')
 
 except Exception as ex:
     showError('Can\'t write embedded resources', ex)

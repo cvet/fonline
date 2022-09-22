@@ -8,6 +8,8 @@ import zipfile
 import subprocess
 import tarfile
 import glob
+import io
+import struct
 
 parser = argparse.ArgumentParser(description='FOnline packager')
 parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
@@ -25,39 +27,35 @@ parser.add_argument('-arch', dest='arch', required=True, help='architectures to 
 # iOS: arm64
 # Web: wasm
 parser.add_argument('-pack', dest='pack', required=True, help='package type')
-# Windows: Raw Zip Wix
+# Windows: Raw Zip Wix Headless Service
 # Linux: Raw Tar Zip AppImage
 # Android: Raw Apk
 # macOS: Raw Bundle
 # iOS: Raw Bundle
 # Web: Raw
-parser.add_argument('-debug', dest='debug', action='store_true', help='debug mode')
+parser.add_argument('-respack', dest='respack', required=True, action='append', default=[], help='resource pack entry')
 parser.add_argument('-config', dest='config', required=True, help='config name')
 parser.add_argument('-angelscript', dest='angelscript', action='store_true', help='attach angelscript scripts')
 parser.add_argument('-mono', dest='mono', action='store_true', help='attach mono scripts')
 parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FONLINE_OUTPUT_PATH)')
 parser.add_argument('-output', dest='output', required=True, help='output dir')
+parser.add_argument('-compresslevel', dest='compresslevel', required=True, help='compress level 0-9')
 args = parser.parse_args()
 
-print('[Package]', f'Make {args.configname} {args.target} for {args.platform} to {args.output}')
+def log(*text):
+	print('[Package]', *text)
+
+log(f'Make {args.target} ({args.config}) for {args.platform}')
 
 outputPath = (args.output if args.output else os.getcwd()).rstrip('\\/')
 buildToolsPath = os.path.dirname(os.path.realpath(__file__))
+resourcesDir = 'Data'
 
 curPath = os.path.dirname(sys.argv[0])
-gameName = sys.argv[1]
 
 #os.environ['JAVA_HOME'] = sys.argv[6]
 #os.environ['ANDROID_HOME'] = sys.argv[7]
 #os.environ['EMSCRIPTEN'] = sys.argv[8]
-
-# Generate config
-config = {}
-configStr = ''
-for cfg in args.config:
-	k, v = cfg.split(',', 1)
-	#print(k, v)
-	configStr += k + '=' + v + '\n'
 
 # Find files
 def getInput(subdir, inputType):
@@ -87,22 +85,15 @@ def getLogo():
 	import PIL
 	return PIL.Image.open(logoPath)
 
-def patchConfig(filePath):
+def patchData(filePath, mark, data, maxSize):
+	assert len(data) <= maxSize, 'Data size is ' + str(data) + ' but maximum is ' + str(maxSize)
 	with open(filePath, 'rb') as f:
 		file = f.read()
 	fileSize = os.path.getsize(filePath)
-	pos1 = file.find(b'###InternalConfig###')
-	assert pos1 != -1
-	pos2 = file.find(b'\0', pos1)
-	assert pos2 != -1
-	pos3 = file.find(b'\0', pos2 + 1)
-	assert pos3 != -1
-	size = pos3 - pos1
-	assert size + 1 == 5022 # Magic
-	configBytes = str.encode(configStr)
-	assert len(configBytes) <= size
-	padding = b'#' * (size - len(configBytes))
-	file = file[0:pos1] + configBytes + padding + file[pos3:]
+	pos = file.find(mark)
+	assert pos != -1
+	padding = b'#' * (maxSize - len(data))
+	file = file[0:pos] + data + padding + file[pos + maxSize:]
 	with open(filePath, 'wb') as f:
 		f.write(file)
 	assert fileSize == os.path.getsize(filePath)
@@ -114,8 +105,8 @@ def patchFile(filePath, textFrom, textTo):
 	with open(filePath, 'wb') as f:
 		f.write(content)
 
-def makeZip(name, path):
-	zip = zipfile.ZipFile(name, 'w', zipfile.ZIP_DEFLATED)
+def makeZip(name, path, compresslevel):
+	zip = zipfile.ZipFile(name, 'w', zipfile.ZIP_DEFLATED, compresslevel=compresslevel)
 	for root, dirs, files in os.walk(path):
 		for file in files:
 			zip.write(os.path.join(root, file), os.path.join(os.path.relpath(root, path), file))
@@ -134,34 +125,93 @@ def makeTar(name, path, mode):
 	tar.close()
 
 def build():
+	# Make packs
+	resourceEntries = []
+	resourceEntries += [['EngineData', 'RestoreInfo.fobin']]
+	if args.target == 'Server':
+		resourceEntries += [['Protos', '*.foprob']]
+		resourceEntries += [['AngelScript', '*.fosb']]
+		resourceEntries += [['Dialogs', '*.fodlg']]
+		resourceEntries += [['Maps', '*.fomapb*']]
+		resourceEntries += [['Texts', '*.fotxtb']]
+	elif args.target == 'Client':
+		resourceEntries += [['Protos', 'ClientProtos.foprob']]
+		resourceEntries += [['AngelScript', 'ClientRootModule.fosb']]
+		resourceEntries += [['Maps', '*.fomapb2']]
+		resourceEntries += [['Texts', '*.fotxtb']]
+	elif args.target == 'Mapper':
+		resourceEntries += [['Protos', '*.foprob']]
+		resourceEntries += [['AngelScript', '*.fosb']]
+	else:
+		assert False
+	
+	for pack in set(args.respack):
+		if not ([1 for t in ['Server', 'Client', 'Single', 'Mapper'] if t in pack] and args.target not in pack):
+			assert pack not in [p[0] for p in resourceEntries] and pack != 'Configs', 'Used reserved pack name'
+			resourceEntries += [[pack, '**']]
+	
+	bakeringPath = getInput('Bakering', 'Resources')
+	log('Bakering input', bakeringPath)
+	
+	os.makedirs(os.path.join(targetOutputPath, resourcesDir))
+	
+	for packName, fileMask in resourceEntries:
+		files = [f for f in glob.glob(os.path.join(bakeringPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
+		if packName == 'Embedded':
+			log('Make pack', packName + '/' + fileMask, '=>', 'embed to executable', '(' + str(len(files)) + ')')
+			embeddedData = io.BytesIO()
+			with zipfile.ZipFile(embeddedData, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+				for file in files:
+					zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
+			embeddedData = embeddedData.getvalue()
+			embeddedData = struct.pack("I", len(embeddedData)) + embeddedData
+			log('Embedded data length', len(embeddedData))
+		elif packName == 'Raw':
+			log('Make pack', packName + '/' + fileMask, '=>', 'raw copy', '(' + str(len(files)) + ')')
+			for file in files:
+				shutil.copy(file, os.path.join(targetOutputPath, resourcesDir, os.path.relpath(file, os.path.join(bakeringPath, packName))))
+		else:
+			log('Make pack', packName + '/' + fileMask, '=>', packName + '.zip', '(' + str(len(files)) + ')')
+			with zipfile.ZipFile(os.path.join(targetOutputPath, resourcesDir, packName + '.zip'), 'w', zipfile.ZIP_DEFLATED, compresslevel=int(args.compresslevel)) as zip:
+				for file in files:
+					zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
+	
+	def patchEmbedded(filePath):
+		patchData(filePath, bytearray([0] + [0x42] * 42 + [0]), embeddedData, 1200000)
+	
+	# Evaluate config
+	configName = args.config if args.target != 'Client' else 'Client_' + args.config
+	log('Config', configName)
+	
+	assert os.path.isfile(os.path.join(bakeringPath, 'Configs', configName + '.focfg')), 'Confif file not found'
+	with open(os.path.join(bakeringPath, 'Configs', configName + '.focfg'), 'r', encoding='utf-8-sig') as f:		
+		configData = str.encode(f.read())
+		log('Embedded config length', len(configData))
+	
+	def patchConfig(filePath):
+		patchData(filePath, b'###InternalConfig###', configData, 5022)
+	
 	if args.platform == 'Windows':
 		# Raw files
-		os.makedirs(os.path.join(targetOutputPath, 'Resources'))
-
-		resourcesPath = getInput('Resources', 'Resources')
-		for f in glob.glob(os.path.join(resourcesPath, '*.zip')):
-			shutil.copy(os.path.join(resourcesPath, f), os.path.join(targetOutputPath, 'Resources'))
-		for f in glob.glob(os.path.join(resourcesPath, 'Raw', '*')):
-			shutil.copy(os.path.join(resourcesPath, f), os.path.join(targetOutputPath, 'Resources'))
-
 		for arch in args.arch.split('+'):
-			binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch + ('-Debug' if args.debug else '')), 'FOnline' + args.target)
-			binAppendix = '_' + args.target if args.target != 'Client' and args.target != 'Single' else ''
-			shutil.copy(os.path.join(binPath, 'FOnline' + args.target + '.exe'), os.path.join(targetOutputPath, args.devname + binAppendix + '.exe'))
-			shutil.copy(os.path.join(binPath, 'FOnline' + args.target + '.pdb'), os.path.join(targetOutputPath, args.devname + binAppendix + '.pdb'))
-			patchConfig(os.path.join(targetOutputPath, args.devname + binAppendix + '.exe'))
-
-		if args.angelscript:
-			scriptsPath = getInput('Scripts', 'AngelScript')
-			shutil.copy(os.path.join(scriptsPath, args.target + 'RootModule.fosb'), os.path.join(targetOutputPath, 'Resources'))
-			if args.target == 'Server':
-				shutil.copy(os.path.join(scriptsPath, 'ClientRootModule.fosb'), os.path.join(targetOutputPath, 'Resources'))
-
+			binName = args.devname + '_' + args.target + ('Headless' if 'Headless' in args.pack else '') + ('Service' if 'Service' in args.pack else '')
+			binPath = getInput(os.path.join('Binaries', args.target + '-' + args.platform + '-' + arch), binName)
+			log('Binary input for ' + arch, binPath)
+			shutil.copy(os.path.join(binPath, binName + '.exe'), os.path.join(targetOutputPath, binName + '.exe'))
+			if os.path.isfile(os.path.join(binPath, binName + '.pdb')):
+				log('PDB file included')
+				shutil.copy(os.path.join(binPath, binName + '.pdb'), os.path.join(targetOutputPath, binName + '.pdb'))
+			else:
+				log('PDB file NOT included')
+			patchEmbedded(os.path.join(targetOutputPath, binName + '.exe'))
+			patchConfig(os.path.join(targetOutputPath, binName + '.exe'))
+		
 		# Zip
-		"""
 		if 'Zip' in args.pack:
-			makeZip(targetOutputPath + '/' + gameName + '.zip', targetOutputPath)
-
+			log('Create zipped archive')
+			makeZip(targetOutputPath + '.zip', targetOutputPath, 1)
+		
+		"""
 		# MSI Installer
 		sys.path.insert(0, os.path.join(curPath, 'msicreator'))
 		import createmsi
@@ -235,6 +285,10 @@ def build():
 		shutil.copy(gameOutputPath + '/' + gameName + '.exe', binPath + '/' + gameName + '.exe')
 		shutil.copy(gameOutputPath + '/' + gameName + '.pdb', binPath + '/' + gameName + '.pdb')
 		"""
+		
+		# Cleanup raw files if not requested
+		if 'Raw' not in args.pack:
+			shutil.rmtree(targetOutputPath, True)
 
 	elif args.platform == 'Linux':
 		# Raw files
@@ -326,11 +380,18 @@ def build():
 		assert False, 'Unknown build target'
 
 try:
-	targetOutputPath = os.path.join(outputPath, args.devname + '-' + args.configname + '-' + args.target + '-' + args.platform + ('-Debug' if args.debug else ''))
+	targetOutputPath = os.path.join(outputPath, args.devname + '-' + args.target + '-' + args.config + '-' + args.platform)
+	
+	log('Output to', targetOutputPath)
+	
 	shutil.rmtree(targetOutputPath, True)
+	if os.path.isfile(targetOutputPath + '.zip'):
+		os.remove(targetOutputPath + '.zip')
 	os.makedirs(targetOutputPath)
-
+	
 	build()
+	
+	log('Complete!')
 	
 except:
 	if targetOutputPath:

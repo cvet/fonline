@@ -49,7 +49,7 @@ SETTING_GROUP_END();
 
 ///@ ExportSettings Common
 SETTING_GROUP(FileSystemSettings, virtual DummySettings);
-FIXED_SETTING(string, ResourcesDir, "Resources");
+FIXED_SETTING(string, ResourcesDir, "Data");
 FIXED_SETTING(vector<string>, ClientResourceEntries);
 FIXED_SETTING(vector<string>, ServerResourceEntries);
 FIXED_SETTING(string, EmbeddedResources, "$Embedded");

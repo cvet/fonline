@@ -767,17 +767,17 @@ ZipFile::ZipFile(string_view fname)
             if (string(filename) == "$Embedded") {
                 static_assert(sizeof(EMBEDDED_RESOURCES) > 100);
                 auto default_array = true;
-                for (size_t i = 4; i < 5 && default_array; i++) {
+                for (size_t i = 0; i < 1 && default_array; i++) {
                     if (EMBEDDED_RESOURCES[i] != 0x00) {
                         default_array = false;
                     }
                 }
-                for (size_t i = 5; i < 47 && default_array; i++) {
+                for (size_t i = 1; i < 43 && default_array; i++) {
                     if (EMBEDDED_RESOURCES[i] != 0x42) {
                         default_array = false;
                     }
                 }
-                for (size_t i = 47; i < 48 && default_array; i++) {
+                for (size_t i = 43; i < 44 && default_array; i++) {
                     if (EMBEDDED_RESOURCES[i] != 0x00) {
                         default_array = false;
                     }
@@ -787,8 +787,8 @@ ZipFile::ZipFile(string_view fname)
                 }
 
                 auto* mem_stream = new MemStream();
-                mem_stream->Buf = EMBEDDED_RESOURCES;
-                mem_stream->Length = sizeof(EMBEDDED_RESOURCES);
+                mem_stream->Buf = EMBEDDED_RESOURCES + sizeof(uint);
+                mem_stream->Length = *reinterpret_cast<const uint*>(EMBEDDED_RESOURCES);
                 mem_stream->Pos = 0;
                 return mem_stream;
             }

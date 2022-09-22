@@ -44,7 +44,7 @@
 FOMapper::FOMapper(GlobalSettings& settings, AppWindow* window) : FOEngineBase(settings, PropertiesRelationType::BothRelative), FOClient(settings, window, true)
 {
     for (const auto& dir : settings.BakeContentEntries) {
-        FileSys.AddDataSource(dir, DataSourceType::DirRoot);
+        ContentFileSys.AddDataSource(dir, DataSourceType::DirRoot);
     }
 
     extern void Mapper_RegisterData(FOEngineBase*);
@@ -799,7 +799,7 @@ void FOMapper::RefreshTiles(int tab)
     Tabs[tab].clear();
     Tabs[tab][DEFAULT_SUB_TAB].Index = 0; // Add default
 
-    map<string, uint> PathIndex;
+    map<string, uint> path_index;
 
     for (uint t = 0, tt = static_cast<uint>(ttab.TileDirs.size()); t < tt; t++) {
         auto& path = ttab.TileDirs[t];
@@ -849,12 +849,12 @@ void FOMapper::RefreshTiles(int tab)
                 if (dir.empty()) {
                     dir = "root";
                 }
-                auto path_index = PathIndex[dir];
-                if (path_index == 0u) {
-                    path_index = static_cast<uint>(PathIndex.size());
-                    PathIndex[dir] = path_index;
+                auto path_index_entry = path_index[dir];
+                if (path_index_entry == 0u) {
+                    path_index_entry = static_cast<uint>(path_index.size());
+                    path_index[dir] = path_index_entry;
                 }
-                string collection_name = _str("{:03} - {}", path_index, dir);
+                string collection_name = _str("{:03} - {}", path_index_entry, dir);
 
                 // Make secondary collection name
                 string collection_name_ex;
@@ -3430,7 +3430,7 @@ auto FOMapper::LoadMap(string_view map_name) -> MapView*
     auto* new_map = new_map_holder.get();
     new_map->EnableMapperMode();
 
-    const auto map_files = FileSys.FilterFiles("fomap");
+    const auto map_files = ContentFileSys.FilterFiles("fomap");
     const auto map_file = map_files.FindFileByName(map_name);
     if (!map_file) {
         AddMess("Map file not found");
@@ -3497,7 +3497,7 @@ void FOMapper::SaveMap(MapView* map, string_view custom_name)
 
     string fomap_path;
     {
-        auto fomap_files = FileSys.FilterFiles("fomap");
+        auto fomap_files = ContentFileSys.FilterFiles("fomap");
 
         if (const auto fomap_file = fomap_files.FindFileByName(fomap_name)) {
             fomap_path = fomap_file.GetFullPath();

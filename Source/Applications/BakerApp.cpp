@@ -372,9 +372,6 @@ int main(int argc, char** argv)
                         all_configs_up_to_date = false;
                     }
 #if !FO_SINGLEPLAYER
-                    if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("Configs/Server_{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
-                        all_configs_up_to_date = false;
-                    }
                     if (DiskFileSystem::GetWriteTime(MakeOutputPath(_str("Configs/Client_{}.focfg", file.GetName()))) <= file.GetWriteTime()) {
                         all_configs_up_to_date = false;
                     }
@@ -423,7 +420,6 @@ int main(int argc, char** argv)
                         extern auto GetClientSettings()->unordered_set<string>;
                         auto server_settings = GetServerSettings();
                         auto client_settings = GetClientSettings();
-                        string server_config_content;
                         string client_config_content;
 #endif
 
@@ -460,7 +456,6 @@ int main(int argc, char** argv)
                             const auto is_server_setting = server_settings.count(key) != 0u;
                             const auto is_client_setting = client_settings.count(key) != 0u;
                             if (is_server_setting) {
-                                server_config_content += _str("{}={}\n", key, resolved_value);
                                 server_settings.erase(key);
                             }
                             if (is_client_setting) {
@@ -487,7 +482,6 @@ int main(int argc, char** argv)
 
                         write_config("", file.GetName(), config_content);
 #if !FO_SINGLEPLAYER
-                        write_config("Server_", file.GetName(), server_config_content);
                         write_config("Client_", file.GetName(), client_config_content);
 #endif
                     }

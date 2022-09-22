@@ -537,7 +537,7 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
         base_fs.AddDataSource(Settings.EmbeddedResources);
         _imguiEffect = ActiveRenderer->CreateEffect(EffectUsage::ImGui, "ImGui_Default", [&base_fs](string_view path) -> string {
             const auto file = base_fs.ReadFile(_str("Effects/{}", path));
-            RUNTIME_ASSERT(file);
+            RUNTIME_ASSERT_STR(file, "ImGui_Default effect not found");
             return file.GetStr();
         });
 
@@ -1345,22 +1345,15 @@ void MessageBox::ShowErrorMessage(string_view title, string_view message, string
     SDL_zero(close_button);
     close_button.buttonid = 1;
     close_button.text = "Close";
-
-    // Todo: fix workaround for strange behaviour of button focus
-#if FO_WINDOWS
-    copy_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
-    copy_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
-#else
     close_button.flags |= SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT;
     close_button.flags |= SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT;
-#endif
 
     const auto title_str = string(title);
 
     const SDL_MessageBoxButtonData buttons[] = {close_button, copy_button};
     SDL_MessageBoxData data;
     SDL_zero(data);
-    data.flags = SDL_MESSAGEBOX_ERROR;
+    data.flags = SDL_MESSAGEBOX_ERROR | SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT;
     data.title = title_str.c_str();
     data.message = verb_message.c_str();
     data.numbuttons = 2;
