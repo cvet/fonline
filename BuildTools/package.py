@@ -157,6 +157,7 @@ def build():
 	
 	for packName, fileMask in resourceEntries:
 		files = [f for f in glob.glob(os.path.join(bakeringPath, packName, fileMask), recursive=True) if os.path.isfile(f)]
+		assert len(files), 'No files in pack ' + packName
 		if packName == 'Embedded':
 			log('Make pack', packName + '/' + fileMask, '=>', 'embed to executable', '(' + str(len(files)) + ')')
 			embeddedData = io.BytesIO()
@@ -165,7 +166,6 @@ def build():
 					zip.write(file, os.path.relpath(file, os.path.join(bakeringPath, packName)))
 			embeddedData = embeddedData.getvalue()
 			embeddedData = struct.pack("I", len(embeddedData)) + embeddedData
-			log('Embedded data length', len(embeddedData))
 		elif packName == 'Raw':
 			log('Make pack', packName + '/' + fileMask, '=>', 'raw copy', '(' + str(len(files)) + ')')
 			for file in files:
@@ -178,6 +178,7 @@ def build():
 	
 	def patchEmbedded(filePath):
 		patchData(filePath, bytearray([0] + [0x42] * 42 + [0]), embeddedData, 1200000)
+	log('Embedded data length', len(embeddedData))
 	
 	# Evaluate config
 	configName = args.config if args.target != 'Client' else 'Client_' + args.config
@@ -186,10 +187,10 @@ def build():
 	assert os.path.isfile(os.path.join(bakeringPath, 'Configs', configName + '.focfg')), 'Confif file not found'
 	with open(os.path.join(bakeringPath, 'Configs', configName + '.focfg'), 'r', encoding='utf-8-sig') as f:		
 		configData = str.encode(f.read())
-		log('Embedded config length', len(configData))
 	
 	def patchConfig(filePath):
 		patchData(filePath, b'###InternalConfig###', configData, 5022)
+	log('Embedded config length', len(configData))
 	
 	if args.platform == 'Windows':
 		# Raw files
@@ -380,7 +381,11 @@ def build():
 		assert False, 'Unknown build target'
 
 try:
-	targetOutputPath = os.path.join(outputPath, args.devname + '-' + args.target + '-' + args.config + '-' + args.platform)
+	targetOutputPath = os.path.join(outputPath, args.devname + '-' + args.target)
+	if args.target != args.config:
+		targetOutputPath += '-' + args.config
+	if args.platform != 'Windows':
+		targetOutputPath += '-' + args.platform
 	
 	log('Output to', targetOutputPath)
 	

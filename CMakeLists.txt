@@ -1848,7 +1848,6 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 
 		add_custom_target( CompileAngelScript
 			COMMAND ${compileASScripts}
-			DEPENDS CodeGeneration
 			COMMENT "Compile AngelScript scripts" )
 		list( APPEND FO_COMMANDS_GROUP "CompileAngelScript" )
 	endif()
@@ -1864,7 +1863,6 @@ if( FO_NATIVE_SCRIPTING OR FO_ANGELSCRIPT_SCRIPTING OR FO_MONO_SCRIPTING )
 
 		add_custom_target( CompileMonoScripts
 			COMMAND ${compileMonoScripts}
-			DEPENDS CodeGeneration
 			SOURCES ${FO_MONO_SOURCE}
 			COMMENT "Compile Mono scripts" )
 		list( APPEND FO_COMMANDS_GROUP "CompileMonoScripts" )
@@ -1884,14 +1882,12 @@ endforeach()
 
 add_custom_target( BakeResources
 	COMMAND ${bakeResources} -ForceBakering False
-	DEPENDS CodeGeneration
 	WORKING_DIRECTORY ${FONLINE_OUTPUT_PATH}
 	COMMENT "Bake resources" )
 list( APPEND FO_COMMANDS_GROUP "BakeResources" )
 
 add_custom_target( ForceBakeResources
 	COMMAND ${bakeResources} -ForceBakering True
-	DEPENDS CodeGeneration
 	WORKING_DIRECTORY ${FONLINE_OUTPUT_PATH}
 	COMMENT "Bake resources" )
 list( APPEND FO_COMMANDS_GROUP "ForceBakeResources" )
@@ -1903,7 +1899,6 @@ foreach( package ${FO_PACKAGES} )
 	StatusMessage( "+ Package ${package}" )
 
 	add_custom_target( MakePackage-${package}
-		DEPENDS CodeGeneration
 		WORKING_DIRECTORY ${FONLINE_OUTPUT_PATH}
 		COMMENT "Make package ${package}" )
 	list( APPEND FO_COMMANDS_GROUP "MakePackage-${package}" )
