@@ -560,12 +560,12 @@ auto constexpr operator""_len(const char* str, size_t size) -> size_t
 
 // Ref counted objects scope holder
 template<typename T>
-class RefCountHolder
+class [[nodiscard]] RefCountHolder
 {
 public:
-    [[nodiscard]] explicit RefCountHolder(T* ref) : _ref {ref} { _ref->AddRef(); }
-    [[nodiscard]] RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref->AddRef(); }
-    [[nodiscard]] RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref->AddRef(); }
+    explicit RefCountHolder(T* ref) : _ref {ref} { _ref->AddRef(); }
+    RefCountHolder(const RefCountHolder& other) : _ref {other._ref} { _ref->AddRef(); }
+    RefCountHolder(RefCountHolder&& other) noexcept : _ref {other._ref} { _ref->AddRef(); }
     auto operator=(const RefCountHolder& other) = delete;
     auto operator=(RefCountHolder&& other) = delete;
     ~RefCountHolder() { _ref->Release(); }
@@ -579,12 +579,12 @@ private:
 
 // Scope callback helpers
 template<typename T>
-class ScopeCallback
+class [[nodiscard]] ScopeCallback
 {
 public:
     static_assert(std::is_nothrow_invocable_v<T>, "T must be noexcept invocable or use ScopeCallbackExt for callbacks that may throw");
-    [[nodiscard]] explicit ScopeCallback(T safe_callback) : _safeCallback {std::move(safe_callback)} { }
-    [[nodiscard]] ScopeCallback(ScopeCallback&& other) noexcept = default;
+    explicit ScopeCallback(T safe_callback) : _safeCallback {std::move(safe_callback)} { }
+    ScopeCallback(ScopeCallback&& other) noexcept = default;
     ScopeCallback(const ScopeCallback& other) = delete;
     auto operator=(const ScopeCallback& other) = delete;
     auto operator=(ScopeCallback&& other) = delete;
@@ -595,14 +595,14 @@ private:
 };
 
 template<typename T, typename T2>
-class ScopeCallbackExt
+class [[nodiscard]] ScopeCallbackExt
 {
 public:
     static_assert(std::is_invocable_v<T>, "T must be invocable");
     static_assert(!std::is_nothrow_invocable_v<T>, "T invocable is safe, use ScopeCallback instead of this");
     static_assert(std::is_nothrow_invocable_v<T2>, "T2 must be noexcept invocable");
-    [[nodiscard]] ScopeCallbackExt(T unsafe_callback, T2 safe_callback) : _unsafeCallback {std::move(unsafe_callback)}, _safeCallback {std::move(safe_callback)} { }
-    [[nodiscard]] ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
+    ScopeCallbackExt(T unsafe_callback, T2 safe_callback) : _unsafeCallback {std::move(unsafe_callback)}, _safeCallback {std::move(safe_callback)} { }
+    ScopeCallbackExt(ScopeCallbackExt&& other) noexcept = default;
     ScopeCallbackExt(const ScopeCallbackExt& other) = delete;
     auto operator=(const ScopeCallbackExt& other) = delete;
     auto operator=(ScopeCallbackExt&& other) = delete;
