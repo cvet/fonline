@@ -119,8 +119,10 @@ static auto ErrCodeToString(GLenum err_code) -> string
         ERR_CODE_CASE(GL_INVALID_OPERATION);
         ERR_CODE_CASE(GL_INVALID_FRAMEBUFFER_OPERATION);
         ERR_CODE_CASE(GL_OUT_OF_MEMORY);
+#if !FO_OPENGL_ES
         ERR_CODE_CASE(GL_STACK_OVERFLOW);
         ERR_CODE_CASE(GL_STACK_UNDERFLOW);
+#endif
     default:
         return _str("{:#X}", err_code).str();
     }
