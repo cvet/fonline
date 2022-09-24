@@ -313,7 +313,7 @@ public:
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
             if (prop->_getter) {
-                auto prop_data = prop->_getter(_entity, prop);
+                PropertyRawData prop_data = prop->_getter(_entity, prop);
                 T result = prop_data.GetAs<T>();
                 return result;
             }
@@ -338,7 +338,7 @@ public:
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
             if (prop->_getter) {
-                auto prop_data = prop->_getter(_entity, prop);
+                PropertyRawData prop_data = prop->_getter(_entity, prop);
                 const auto hash = prop_data.GetAs<hstring::hash_t>();
                 auto result = ResolveHash(hash);
                 return result;
@@ -363,7 +363,7 @@ public:
         if (prop->IsVirtual()) {
             RUNTIME_ASSERT(_entity);
             if (prop->_getter) {
-                auto prop_data = prop->_getter(_entity, prop);
+                PropertyRawData prop_data = prop->_getter(_entity, prop);
                 auto result = string(prop_data.GetPtrAs<char>(), prop_data.GetSize());
                 return result;
             }
