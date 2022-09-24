@@ -160,6 +160,10 @@ Application::Application(int argc, char** argv, string_view name) : Settings(arg
 #endif
 }
 
+void Application::HideCursor()
+{
+}
+
 auto Application::GetName() const -> string_view
 {
     return _name;
