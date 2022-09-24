@@ -563,8 +563,6 @@ int main(int argc, char** argv)
                     script_sys.InitAngelScriptScripting(baker_engine.FileSys, &validation_engine);
                     validation_engine->ScriptSys = &script_sys;
 #endif
-#else
-#error...
 #endif
 
                     WriteLog("Validate protos");
