@@ -565,6 +565,8 @@ int main(int argc, char** argv)
 #endif
 #endif
 
+                    RUNTIME_ASSERT(validation_engine);
+
                     WriteLog("Validate protos");
 
                     auto proto_errors = 0;
