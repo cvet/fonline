@@ -1,6 +1,6 @@
 # FOnline Engine
 
-> Engine currently in completely unusable state due to heavy refactoring.
+> Engine currently in semi-usable state due to heavy refactoring
 
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
@@ -12,12 +12,10 @@
 
 - [Features](#features)
 - [Usage](#usage)
-  * [Workflow](#workflow)
-    + [Public API](#public-api)
-    + [Visual Studio Code](#visual-studio-code)
+  * [Public API](#public-api)
   * [Setup](#setup)
-    + [Package dependencies](#package-dependencies)
-    + [Statically linked packages](#statically-linked-packages)
+  * [Package dependencies](#package-dependencies)
+  * [Statically linked packages](#statically-linked-packages)
   * [Footprint](#footprint)
   * [Tutorial](#tutorial)
 - [Work in progress](#work-in-progress)
@@ -61,46 +59,29 @@ Important note: *Not all from described above features are already implemented, 
 
 Engine doesn't targeting to use directly but by as part (submodule) to your own project (git repo).  
 Repository contains source code of engine, third-party sources and build tools for composing all this and your stuff into final platform-specific bundles.  
-You may work on your game either using shell scripts manually or custom Visual Studio Code extension for simplify these things.  
-Shell scripts targeted for work under (at least) Windows 10 / Ubuntu-22.04 / macOS 12.  
-You build your game fully from source, there is no prebuilt binaries, full control over the process.
+You build your game fully from source, there is no prebuilt binaries, full control over the process.  
+*Todo: write about cmake workflow*
 
-### Workflow
-
-Process of creating your game in two words looks like this:
-* Once prepare workspace where all intermediate build files will be stored
-* Manage game content and resources
-* Build executables from source to platforms that you needed
-* Compile scripts (AngelScript and/or Mono; but Native were compiled with built executables)
-* Bake all resources (shaders, images and etc) to special formats that will be loaded without overhead by server/client
-* Package built executables and baked resources from steps above to final platform specific bundle (zip, msi, app, apk and etc)
-
-#### Public API
+### Public API
 
 Documents related to public API:
 * [Public API](https://fonline.ru/PUBLIC_API)
 * [Scripting API](https://fonline.ru/SCRIPTING_API)
 
-Also you must understand that scripting api automaticly generated for each project individually and api described in [Scripting API](https://fonline.ru/SCRIPTING_API) is only basic.  
+Scripting api automaticly generated for each project individually and api described in [Scripting API](https://fonline.ru/SCRIPTING_API) is only basic.  
 See example of extended scripting api at [FOnline TLA Scripting API](https://tla.fonline.ru/SCRIPTING_API).
-
-#### Visual Studio Code
-
-Engine hosts own Visual Studio Code extension for simplify work with engine stuff.  
-In editor go to the Extensions tab and then find and install 'FOnline' extension (it's already available in marketplace).  
-More about extension usage you can find in [Tutorial](https://fonline.ru/TUTORIAL) document.
 
 ### Setup
 
 General steps:
 * Create your own project repo and link this repo as submodule
-* Setup your game in cmake extension file (see CMake contribution at [Public API](https://fonline.ru/PUBLIC_API))
-* Manage your project with Visual Studio Code + FOnline extension (see Visual Studio Code extension at [Public API](https://fonline.ru/PUBLIC_API))
+* Setup your own .cmake file with your game configuration
+* Use main CMakeLists.txt jointly with your .cmake to build game
 
 Reference project:
 * FOnline: The Life After https://guthub.com/cvet/fonline-tla
 
-#### Package dependencies
+### Package dependencies
 
 Following Linux packages will help us build our game for target platforms.  
 These packages will automatically installed during workspace preparing (i.e. `prepare-workspace.sh`).
@@ -134,7 +115,7 @@ Other stuff used in build pipeline:
 * [iOS CMake Toolchain](https://github.com/cristeab/ios-cmake)
 * [msicreator](https://github.com/jpakkane/msicreator)
 
-#### Statically linked packages
+### Statically linked packages
 
 These packages included to this repository, will compile and link statically to our binaries.  
 They are located in ThirdParty directory.
@@ -183,7 +164,7 @@ Please follow these instructions to understand how to use this engine by design:
 
 ### Roadmap
 
-**First release version:**
+**Near releases:**
 
 * [FOnline TLA](https://github.com/cvet/fonline-tla) as demo game
 * Code refactoring
@@ -195,7 +176,7 @@ Please follow these instructions to understand how to use this engine by design:
 * Documentation for public API
 * API freezing and continuing development with it's backward compatibility
 
-**Futher releases:** *(in order of priority)*
+**Futher releases:**
 
 * Visual Studio Code extension *(see separate section below)*
 * Improve more unit tests and gain code coverage to at least 80%
