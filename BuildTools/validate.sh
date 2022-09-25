@@ -161,9 +161,9 @@ elif [ "$1" = "code-coverage" ]; then
 
     if [[ ! -z "$CODECOV_TOKEN" ]]; then
         echo "Upload reports to codecov.io"
-        rm -f codecov.sh
-        curl -s https://codecov.io/bash > codecov.sh
-        chmod +x codecov.sh
-        ./codecov.sh -Z -s "$(cd .; pwd)"
+        rm -rf codecov
+        curl -Os https://uploader.codecov.io/latest/linux/codecov
+        chmod +x codecov
+        ./codecov -t $CODECOV_TOKEN
     fi
 fi
