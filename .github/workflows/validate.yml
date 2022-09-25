@@ -27,9 +27,12 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
-    - env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      run: BuildTools/validate.sh code-coverage
+    - run: BuildTools/validate.sh code-coverage
+    - uses: codecov/codecov-action@v3
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
+        gcov: true
   windows:
     runs-on: windows-2019
     strategy:
